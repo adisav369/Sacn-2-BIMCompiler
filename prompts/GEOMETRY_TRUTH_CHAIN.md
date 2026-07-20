@@ -256,7 +256,84 @@ the db's `vertex_count` is not the post-upload buffer's vert count), i.e. the te
 wrong, not the code. Same shape as `feedback_witness_gigo_facing` ("fix the test"). ⛔ Needs its own
 lane; do NOT "fix" the renderer to satisfy it without first re-deriving what `verts` SHOULD be.
 
-### S4 — The habit that makes it stick
+### ✅ RESOLVED 2026-07-20 — the low-LOD complaint: SampleCastle is FAITHFUL, the DATA is coarse
+User reported low LOD on **SampleCastle** via the pill-rail **Open** (the resident path S0 tested).
+Measured, and it closes the month-long mystery.
+
+**The distribution, not the mean.** SampleCastle renders **1,498 of 3,226 meshes at EXACTLY 12
+triangles — 46.4%**. Histogram: `12:1498, 13-24:465, 25-50:640, 51-100:306, 101-500:215, 500+:102`
+(min 2, max 7,676). A near-half box population — invisible behind the 73.6 average that S3 graded REAL.
+
+**But those boxes are REAL.** Source `mesh.db` holds **866 of 1,924** distinct SampleCastle
+geometries with a 144-byte faces blob = 12 triangles; instances resolving to a ≤12-tri real mesh:
+**1,501**. Rendered 12-tri meshes: **1,498**. **Expected 1,501 vs rendered 1,498 — a match.**
+The renderer is not substituting proxies; SampleCastle's IFC genuinely models ~46% of its elements
+as box-shaped solids. **"Low LOD" is a true observation about the DATA, not a loader/render fault.**
+Nothing to fix in the Modeller. Any real remedy is upstream (re-extract at higher LOD), a user call.
+
+Box fractions are structural across the fleet, all legitimate (`boxInstancesExpected`, manifest):
+`Terminal 2.0% · Duplex 25.6% · SampleHouse 37.9% · HHS 38.6% · SampleCastle 46.5% · HospitalGarage
+53.4% · Hospital 58.1% · Clinic 58.9%`.
+
+**Full fleet census — all 8 residents REAL, `blobMiss=0 hardFail=0 manifest=match` everywhere:**
+| building | tris | elements | tris/elem |
+|---|---|---|---|
+| SampleHouse | 24,564 | 38 | 646.4 |
+| Duplex | 24,852 | 196 | 126.8 |
+| SampleCastle | 237,504 | 3,225 | 73.6 |
+| HHS | 335,240 | 1,077 | 311.3 |
+| Clinic | 100,041 | 1,950 | 51.3 |
+| HospitalGarage | 78,445 | 496 | 158.2 |
+| Hospital | 4,666,161 | 6,929 | 673.4 |
+| Terminal | 4,330,819 | 35,552 | 121.8 |
+
+### ⚠ SELF-CAUGHT FLAW IN S3 — a mean hides a bimodal population (FIXED)
+S3 graded SampleCastle `verdict=REAL` from 73.6 tris/element while **46% of it was boxes**. The
+aggregate metric this spec proposed CANNOT distinguish "all real, some genuinely blocky" from
+"partly proxy-substituted" — the exact class of blindness the chain exists to kill, one level up.
+Had proxies genuinely leaked in, S3 would have passed them.
+
+**Fix:** `boxInstancesExpected` added to the S1 manifest (instances whose REAL mesh is ≤12 tris,
+counted from source). The sharp test is **rendered-12-tri vs expected-12-tri**, not the mean:
+equal ⇒ faithful (SampleCastle 1,498 vs 1,501); **rendered ≫ expected ⇒ proxy leakage**. This also
+makes the RED case sharper — full substrate loss reads as rendered=100% vs expected=46%.
+⛔ Remaining: wire the comparison into `witness_render_fidelity.js`'s verdict (manifest side done).
+
+### 🔬 TRACE 2026-07-20 — SampleCastle IS blocky IN THE SOURCE IFC. Nothing broke. Full chain FAITHFUL.
+User directive: *"SC was never blocky, investigate what broke it during mesh.db formulation."* Traced
+per-element to the source file. **The premise is disproven — by `Ifc2x3_SampleCastle.ifc` itself.**
+
+**Element-level trace** (`IfcRailing`, a class where a 12-tri box looks obviously wrong):
+| element | IFC entity | source Brep faces | extracted | verdict |
+|---|---|---|---|---|
+| `3pp$tut394gvh1elE1QUg0` "afscheiding" (partition) | `#450923` → `#450889 'Body','Brep'` → `#450877` | **6** | 144B = 12 tris | ✅ faithful |
+| `27$YR6LvnA1f4dzXk05qPo` "traphek" (stair rail) | `#267823` → `#267793 'Body','Brep'` → `#267781` | **264** | 11,712B = 976 tris | ✅ faithful |
+
+The "box" railings are Dutch **`afscheiding`** = partition/barrier panels — genuinely 6-faced solids
+in the IFC. The detailed ones are **`traphek`** = stair railings, and they extract with full detail.
+Both representations carry BOTH a `'Body'/'Brep'` AND a `'Box'/'BoundingBox'` shape rep, so the
+extractor is NOT mistakenly grabbing the BoundingBox — it correctly reads `'Body'` in both cases.
+
+**Population-level confirmation** (all 4,202 `IFCCLOSEDSHELL` entities in the source):
+`6 faces (a box): 1,785 = 42.5%` · then `8f×492, 10f×309, 12f×296, 7f×261, 9f×166`.
+**42.5% of the source IFC's solids are 6-faced boxes** — matching the ~45% measured in every
+downstream copy (extracted 45%, library 47%, mesh.db 45%; small deltas are dedup collapsing
+duplicate box geometries at different rates).
+
+**Verdict: the entire chain IFC → extracted.db → library → mesh.db → render is FAITHFUL.** No
+regression at any link. SampleCastle is a coarsely-modelled building at source (~43% box solids),
+and every layer has been honestly reproducing that. The earlier `1,498 rendered vs 1,501 expected`
+match now has its upstream justification too, so "no fix needed" is EVIDENCED, not assumed.
+
+**Correction to this file's own earlier claim:** the trace section previously flagged `IfcWindow 66 /
+IfcDoor 47 / IfcRailing 42` boxes as *"a railing is never a 12-triangle box → per-element extraction
+failure."* **That inference was wrong** — it reasoned from class NAME instead of checking the source,
+which is the exact non-extract shortcut this project forbids. The mixed within-class population is
+real modelling variety (partition panels vs stair railings sharing `IfcRailing`), not a defect.
+
+⛔ Remaining honest gap: this traced 2 elements individually + 4,202 shells in aggregate. It did NOT
+verify every one of the 1,501 box instances maps to a 6-face source shell. The aggregate match
+(42.5% vs 45%) makes a systematic defect implausible, but a per-GUID exhaustive join was not run.
 Any future "building has no X" / "renders wrong" report MUST quote its `§DB_IDENTITY` line and (if
 render-side) its `§RENDER_FIDELITY` line. The memory rule "name the exact source file path"
 (`project_db_snapshot_divergence_landmine`) becomes mechanical instead of remembered.
