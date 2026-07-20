@@ -254,3 +254,43 @@ coverage joins answer "is the data present", never "does it look right" — and 
 only measures counts is exactly how the 2026-07-01 all-box scar stayed green for a month. See
 `prompts/GEOMETRY_TRUTH_CHAIN.md` (whose §RENDER_FIDELITY census has this same blind spot: it graded
 SampleCastle `verdict=REAL` at 73.6 tris/element while the user could see it was wrong).
+
+## ✅ CLOSED 2026-07-20 (later same day) — data+code witness chain, both links CLEAN; verdict = stale client cache, not a regression
+
+**User directive for this pass: maths and code-witness only, no screenshots.** Two checks, both against
+`origin/main` HEAD (`a5b65fd`, what actually ships), fresh (uncached) headless session:
+
+**Check 1 — is the mesh/source itself not blocky?** YES.
+- SQL byte-diff, `SampleCastle_ARC_extracted.db` (the file behind the 2026-07-08 proof screenshot,
+  proven-good) vs `SampleCastle_ARC.db`+`mesh.db` (what's wired live today): meta counts identical per
+  class (3342), instance count identical (3225=3225), face bytes identical for 3219/3225 elements.
+  The remaining 374 "diverged" vertex blobs were decoded (Python/`struct`, float32) and are float
+  re-encoding noise (~2e-6 magnitude) — the actual point clouds are set-identical. `mesh.db`'s LFS OID
+  on `origin/main` (`sha256:1cb80e70…`, 120,025,088 bytes) matches the working copy exactly — no
+  divergent deploy copy.
+- Live triangle census (fresh browser, numbers only, no pixels): `tris=237502 elements=3225
+  trisPerElement=73.6` — matches the S1–S3 recorded baseline (`237,504 / 73.6`) to within 2 triangles.
+
+**Check 2 — does the loader faithfully avoid a silent fallback?** YES.
+```
+§DB_IDENTITY name=SampleCastle path=SampleCastle_ARC.db meta=3342 inst=3225 geo=3225/3225 substrate=mesh.db substrateRows=9198 manifest=match
+§GEOM-HARDFAIL total=0 of 3225 (geomTable=component_geometries realResolved=3225/3225)
+§BLOB_MISS count: 0
+```
+No manifest mismatch, no hardfail, no blob-miss, no substrate-absent silent-box case (the exact blind
+spot `GEOMETRY_TRUTH_CHAIN.md` §S3 flagged) — all three guards fire clean on a real load.
+
+**Verdict:** both links in the chain are provably clean on what's actually deployed. The "SampleCastle
+renders blocky" observation that triggered this whole incident is therefore **not explained by a code or
+data regression** — the most consistent remaining explanation is a **stale client-side IndexedDB cache**
+(an old cached `mesh.db`/`SampleCastle_ARC.db` from before the resident wiring or the `geoV` cache-bust
+settled, held in the browser session that reported it) rendering old/absent geometry while the shipped
+files were already correct. Reproduction harness: `modeller/tests/samplecastle_code_witness.js`
+(`/tmp/wt-geom-truth`, port 8412) — DB_IDENTITY + HARDFAIL + BLOB_MISS + live triangle census, no
+screenshot step, rerunnable on demand.
+
+**Not re-litigated:** the STANDING RULE above (look at the render first for a *first-time* "renders
+wrong" report) still holds — this pass substituted numeric code-witnesses for the screenshot only
+because the data+code chain was already independently provable and the previous session's own error was
+proven to be "measured, never looked" in the opposite direction (data-only, no code-witness). A future
+report with NO prior data/code history to lean on should still open with the screenshot diff.

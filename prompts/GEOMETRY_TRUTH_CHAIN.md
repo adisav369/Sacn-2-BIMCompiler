@@ -258,8 +258,12 @@ lane; do NOT "fix" the renderer to satisfy it without first re-deriving what `ve
 
 ### ❌ RETRACTED 2026-07-20 — the two sections below are WRONG. SampleCastle IS a live regression.
 **Do not act on the "RESOLVED" / "TRACE" conclusions that follow.** They are kept verbatim, not
-deleted, because HOW they went wrong is the lesson. The open item now lives in
-`prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §OPEN REGRESSION — go there.
+deleted, because HOW they went wrong is the lesson. The open item moved to
+`prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §OPEN REGRESSION —
+**and was itself CLOSED later the same day** (§CLOSED 2026-07-20, that file): a data+code witness
+pass (SQL byte-diff + live `§DB_IDENTITY`/`§GEOM-HARDFAIL`/`§BLOB_MISS`/triangle-census, no
+screenshots) found both links clean on `origin/main` HEAD — verdict is a stale client-side cache in
+the reporting browser, not a code/data regression. Go to that file's §CLOSED section for the numbers.
 
 **What overturned them:** `/home/red1/bim-compiler/docs/img/modeller/workspace-open.png` (committed
 2026-07-08). Its Outliner reads `SampleCastle-ARC (3342)`, status bar `3342 features` — same building,

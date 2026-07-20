@@ -58,12 +58,12 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   coverage. Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to
   substrate loss); a MEAN hides a bimodal population (`boxInstancesExpected`); `mesh.db` frozen by
   `§MESH_GUARD` (`f828a7a`). `prompts/GEOMETRY_TRUTH_CHAIN.md`.
-- 🔴 **OPEN — SampleCastle blocky = LIVE REGRESSION** (2026-07-20). An earlier same-day "RESOLVED,
-  faithful, no fix needed" verdict is **RETRACTED**: `docs/img/modeller/workspace-open.png`
-  (2026-07-08) shows `SampleCastle-ARC (3342)` rendering with roofs/dormers/mullioned windows — it
-  was never blocky. Counts were measured; **the render was never looked at.** Next step is ONE
-  screenshot diffed against that image, then the 279-element Modeller-vs-Viewer gap.
-  `prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §OPEN REGRESSION.
+- ✅ **SampleCastle blocky — CLOSED 2026-07-20** (RESOLVED → RETRACTED → re-closed same day, full
+  chain kept verbatim for the lesson). Final verdict: data+code witnesses (no screenshots) both
+  clean on `origin/main` HEAD — 73.6 tris/element matches the 2026-07-08 proof baseline,
+  `manifest=match geo=3225/3225 hardfail=0 blobMiss=0`. Root cause = a stale client-side IndexedDB
+  cache in the reporting session, not a code/data regression. `prompts/Modeller/DISC_Walker/
+  EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED 2026-07-20.
 - ✅ Posting-tail CLOSED, all 20 factory posters resolved (2026-07-17/18) — B-3's 6 G-seed classes +
   BankStatement/MatchPO/Requisition `maxDiff=0c` (ledger 43→52, Fable 5); Cash/Inventory driven on a
   real scratch clone and found ∅-by-data-state (`IsActive='N'`, `@NoLines@`, no cost data — none worked
