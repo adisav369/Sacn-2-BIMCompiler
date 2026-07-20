@@ -10,8 +10,9 @@ evidence. The acceptance bar for the OFF state is ZERO behavioural change (same 
 continued live use the same day — read §10 before touching this feature again.** Live at
 `red1oon.github.io/bim-ootb`. Final design differs from the original spec — see §9 (redesigned
 mid-session after live testing surfaced a real gap the spec didn't anticipate). Original
-implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth; §10 is the next
-session's actual task — do not re-derive the root cause, it's already found.
+implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth; §10 is the bug +
+its fix, **now implemented (PR #927, bim-ootb `fix/dlod-tm-camguard`), awaiting the user's live
+LTU orbit test before merge — do not re-derive the root cause, it's already found and fixed.**
 
 ## 8. Implementation notes (2026-07-20 session)
 - Reused `LARGE_BUILDING = 50000` (time_machine.js:471, already computed into `_isLargeBuilding` at
@@ -258,3 +259,33 @@ None of these is obviously right — this needs the same kind of care (and proba
 user which tradeoff" pattern) as the box-visibility redesign in §9 did. **Whichever is picked must
 re-verify §9's W-DLOD-EQUIV invariant still holds when `_dlodProxyOn` is false** (this bug's fix must
 not touch anything on the OFF path).
+
+**Fixed (2026-07-21, direction (b) chosen and implemented) — PR #927, bim-ootb
+`fix/dlod-tm-camguard` (`8ef3216`), pushed but NOT yet merged.** Direction (b) turned out to already
+have a proven precedent in this exact file: `_giHoldCamSig`/`_giScheduleHoldConverge` (~line 747,
+`§TM_GI_HOLD_CAMGUARD`, ported PR #816) solved the identically-shaped problem — "an accumulation/
+visibility decision needs to re-trigger on camera movement alone" — using a cheap position+quaternion
+string signature compared every tick, no arbitrary movement threshold. That answers (b)'s open
+question ("how much movement counts") for free: none needed, just a string-diff.
+
+Change: a new `_dlodLastCamSig` (module-level, reset to `null` on TM `deactivate()` and whenever
+`_dlodOn` is false so a later re-engage never compares against a stale pose). Inside the `_incrOK`
+computation (`~line 1236`), when `_dlodOn` is true, call `_giHoldCamSig(app)` and compare against
+`_dlodLastCamSig`; a mismatch sets `_dlodCamMoved = true`, which is AND-ed into `_incrOK` (forcing a
+full traverse pass for that tick only, same mechanism the ◧ pill's `window.__forceFull` already uses
+for the toggle edge). When `_dlodOn` is false, `_dlodCamMoved` is always false — `_incrOK`'s formula
+is otherwise unchanged, so the OFF path is byte-identical (W-DLOD-EQUIV preserved).
+
+Verified so far (CLI-only, per this file's own repeated note that headless is blind to GPU/THREE):
+`node --check` clean; `tests/whitebox_regression.js` pass=13/37 identical to unmodified `origin/main`
+baseline (remaining fails are pre-existing fixture/path issues in a fresh worktree, unrelated to this
+diff — confirmed by running the same suite against `origin/main` unmodified and getting the same
+count); a standalone pure-logic self-test of the exact committed boolean shape (5/5, scratchpad-only,
+mirrors §8's earlier 18/18 self-test) confirms: orbit-only tick forces full pass while DLOD is on;
+DLOD-off path never influenced by camera position; first DLOD-engage tick doesn't spuriously force
+full; re-engage after an OFF tick (sig reset) doesn't spuriously force full against a stale pose.
+
+**Still needed — user's live hardware, same as §6/§9 always required:** open LTU in Time Machine,
+engage ◧ LOD late in the build, orbit TOWARD a boxed element without touching the cursor — confirm it
+now restores to real mesh without a retoggle. Re-run W-DLOD-EQUIV/PROXY/NO-REBUILD/PERF (§6) against
+this branch before merging PR #927.
