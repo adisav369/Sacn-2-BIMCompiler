@@ -6,8 +6,9 @@ would have built.
 **Read the log after every run.** Witness lines: `§TOUR_CACHE store` (first build), `§TOUR_CACHE hit`
 (replay). The proof is the SECOND activation reaching `walkMode=true` + camera movement WITHOUT any
 `§FLY_ROUTE`/`§PATH_LEGAL` route-planning lines — absence of the slow pass in the log, plus speed.
-**Status (2026-07-20):** implemented + witnessed this session (see §3), shipped with the
-`startPlayback` warp-render TM fix wave. User request verbatim: "can this aerial sweep in Tour Fly
+**Status: ✅ DONE (retired to done/ 2026-07-20).** Shipped live v827 (bim-ootb PR #917, merged),
+W-TOUR-CACHE witnessed 15,745ms → 378ms (41×) on LTU (§1c). The §1c headless movement-stall note
+stays as a debugging pointer only — no live report exists; it is an observation, not open work. User request verbatim: "can this aerial sweep in Tour Fly
 be saved in the metadata of the building so that it need not recalculate again. For LTU it be dead
 slow."
 

@@ -119,8 +119,8 @@ cost added by #909/#912 (all changes inside renderAtTime call sites + diagnostic
    shadows. That is Phase 3's exact target; spec authored: `TM_DLOD_SCALE.md`. Secondary observed
    churn in the same log: `§SFX_PLAY` flood + `§PILL_SYNC synced=6` per event in the Finishes phase —
    noted, unmeasured, park it unless it survives Phase 3.
-Also shipped en route: Fly-Tour route cache (`TOUR_ROUTE_CACHE.md`) — repeat activation 16.5s → 431ms
-witnessed (38×), pending its PR at time of writing.
+Also shipped en route: Fly-Tour route cache — repeat activation 15.7s → 0.4s witnessed (41×), merged
+bim-ootb PR #917, live v827; spec retired to `prompts/done/TOUR_ROUTE_CACHE.md`.
 
 ## 0a. PHASE 2 SHIPPED + THE HOTFIX IT NEEDED (2026-07-20) — read this before Phase 3
 **PR #909** did exactly what §2-§3 below describe: removed the blanket `!app._shadowOn` gate on

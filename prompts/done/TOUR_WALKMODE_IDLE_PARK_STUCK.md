@@ -6,7 +6,7 @@ redesign.
 **Read the log after every run.** The witness is: after clicking Fly Tour, the camera position must
 actually change across consecutive real animation frames — not just the console log saying the tour
 started. A log line claiming success is not evidence; camera movement is.
-**Status (2026-07-20, RESOLVED — shipped live v825):** §2 CONFIRMED by A/B witness on LTU_AHouse
+**Status: ✅ DONE (retired to done/ 2026-07-20). Shipped live v825, §2 A/B-CONFIRMED (§9); no adverse live report since (user retested the same build extensively same day). The §5 streaming-rebuild finding moved to `prompts/TM_STREAM_REBUILD_COALESCE.md` — the one still-open item.** Original resolution status:** §2 CONFIRMED by A/B witness on LTU_AHouse
 (fix present = camera moves continuously; fix absent = tour freezes after one 0.2-unit twitch — §9).
 Fix merged bim-ootb PR #914 (squash `a71a699`), witness-criterion tightening PR #915. Awaiting the
 user's own live check; if the live symptom persists post-v825, that is a NEW finding, not this bug.
