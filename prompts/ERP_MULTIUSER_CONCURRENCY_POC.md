@@ -751,3 +751,160 @@ opt-in T2 content-addressed `_sigv:2` scheme, not wired here, out of this sessio
 affects this witness's `c_order.grandtotal` single-field-edit shape (no groups involved), but a future
 session wiring a DocAction (Complete/Close) through this same relay path should know groups don't survive
 a rebase today.
+
+---
+
+## §DocAction Cross-Device Attribution (2026-07-21) — SPEC for the guide's own named gap
+
+`ERPUserGuide.md`'s "Working at the same time" section (written 2026-07-20, `feedback_user_guide_quality_bar`
+discipline: don't promise what isn't built) says outright: *"Cross-device Sync is proven today for field
+edits... It does not yet carry full per-person, per-step attribution of document actions... across
+devices... that is the next piece we are building (opt-in per-step signing)."* This section specs that
+piece, closing the loop the doc opened. **Extraction only below — nothing invented; two ALREADY-BUILT,
+ALREADY-WITNESSED primitives exist in bim-ootb and are simply not wired to the ERP-relay path yet:**
+
+1. **Per-device signing already exists and is LIVE today.** `erp/erp_signer.js` mints one real ECDSA
+   P-256 keypair per device (non-extractable private key, IndexedDB custody, `installSigner()` called
+   from `idempiere.html:536`'s script load), and `KernelOps.setSigner()` wires it in — `sealChain`
+   signs each new op, `verifyChain` checks it (`kernel_ops.js:181-203,282-297,589-606`). This is real,
+   proven, per-device — it is NOT invented for this spec.
+2. **Multi-device roster verification already exists and is ALREADY WITNESSED — for a DIFFERENT sync
+   path.** `erp/erp_key_epochs.js` (ported from `scripts/poc_rotate.js` W-ROTATE, `DistributedERP.md`
+   §228/§290/§445) is an HQ-signed device roster + key-epoch map (ROTATE/REVOKE, burn-not-reattribute),
+   `verifyEpochSigsOps(ops, {roster})` walks a log verifying each op under the KEY THAT WAS ACTIVE AT
+   ITS SEQUENCE — exactly "who really signed this DocAction step, on which device" — witnessed 9/9 in
+   `erp/tests/witness_roster_verify.js` (`§RV-ROSTER/§RV-ROTATE/§RV-HISTORY/§RV-FUTURE/§RV-REVOKE/
+   §RV-RENUMBER-EPOCH/§RV-IMPORT-FORGE/§RV-IMPORT-RENUMBER`). **But it is wired ONLY into
+   `teams/erp/erp_sync.js`'s `importBranch` (`opts.roster`, line ~69) — the Teams transport — never
+   into `erp_sync_fsm.js`'s `rebase()` / `erp_sync_relay.js`'s `syncNow()`, the ERP-relay path this
+   guide's section actually documents.** Two separate sync stacks in this codebase; the attribution
+   primitive was built for one and not ported to the other.
+3. **The actual gap, precisely located:** `erp_sync_fsm.js` `rebase()` (`erp/erp_sync_fsm.js:167-184`)
+   does `SELECT op_uuid,timestamp,op_type,parameters,input_guids,output_guid` (6 columns — no `sig`,
+   `gid`, or `branch_id`), `DELETE FROM kernel_ops`, then re-`INSERT`s only those 6 columns per canonical
+   row. Consequence, read directly off this code (not assumed): every rebased op arrives with `sig=NULL`
+   and `gid=NULL`; `kernel.sealChain(db)` then signs every row lacking a sig (`kernel_ops.js:293`,
+   `if (_signer && !sig)`) — which after a rebase is now ALL of them — under the PULLING device's own
+   key. The pulling device's chain becomes internally valid and single-key-verifiable, but the
+   ORIGINAL per-device authorship of every op that came from elsewhere is destroyed, and any op that
+   was part of a DocAction fan-out group (`commitGroup(db, groupOps, {gid})`, `crud_overlay.js:1906`,
+   `foldBackGroup`, `crud_overlay.js:473-495`) loses its `gid` and un-groups into independent ops — a
+   Complete's ship+invoice+status no longer fold/undo together after a sync.
+4. **No `signed_by`/kid field is stamped on ops today at all.** `erp_key_epochs.js`'s epoch walk reads
+   `p.signed_by` out of `op.parameters` (`erp_key_epochs.js:104`) — a per-op field the Teams import path
+   presumably relies on its callers to stamp, but `crud_overlay.js`'s `_commitMeta()` (line 323-326) only
+   ever adds `{branch_id}` (Blue Future); no code path stamps `signed_by` into a live-UI-committed op's
+   parameters. Wiring the roster verifier onto the ERP-relay path needs this stamped first — it is not
+   an oversight in the roster module, it is simply not called yet from this write path.
+
+> ⚠ **CITATION CORRECTION 2026-07-21 — found while implementing S7, before any code was written for it.**
+> Point 1 above ("per-device signing already exists and is LIVE today") is **wrong for the two files this
+> whole lane is about.** `erp/erp_signer.js` defines `window.ErpSigner` and IS `<script>`-loaded by both
+> `erp/idempiere.html:536` and `erp/glassbowl.html:870` — but **neither page ever calls
+> `ErpSigner.installSigner(KernelOps)`** (grep-confirmed across both files, this session). `installSigner()`
+> IS called on other pages (`erp/erp.html:224-226`, `erp/kanban_lens.html:245`, `erp/kanban_host.js:66`,
+> `erp/rule_fold.js:85`, `erp/period_close_ui.js:46`, `erp/spike_writepath.html:77`) — just not the live
+> product UI. Consequence, read directly off `kernel_ops.js`: `_signer` stays `null` on `idempiere.html`/
+> `glassbowl.html` forever, so `sealChain`'s `if (_signer && !sig)` never fires (every `sig` column is
+> permanently NULL) and `verifyChain`'s `if (_signer && !(await _signer.verify(...)))` never fires either —
+> **the live product signs nothing and verifies no signature today,** running on chain-hash tamper-evidence
+> only (real and already proven, `§CRUD-PERSIST ... verifyChain=ok` throughout this whole lane's witnesses —
+> but hash-chain integrity ≠ signature authenticity; the guide's "steps are re-signed under the receiving
+> device's key" phrasing describes what a REBASE would do to a sig IF one existed, which today it doesn't).
+> This makes Phase 1 below one step earlier than originally scoped: install the signer before anything can
+> be preserved through a rebase at all.
+
+### §Spec (falsifiable, continuing the S-numbering above)
+
+- **S7 (Phase 1 — install the signer + turn on v2 content-signing + rebase preserves attribution).**
+  `idempiere.html` calls `ErpSigner.installSigner(window.KernelOps)` on boot (the same best-effort,
+  non-blocking idiom `erp.html:224-226` already uses — copy, not invent) followed by
+  `KernelOps.setContentSigning(true)` (already proven safe — `witness_t7_incremental.js:125` calls this
+  as "production posture since T2/#630"; v2 is required because a v1 sig attests the position-dependent
+  chain hash, `_sigBase`, `kernel_ops.js:238`, which CANNOT survive a rebase's reorder by construction —
+  only a v2 content-hash sig can). After two devices each commit a DocAction Complete (a real
+  `commitGroup` fan-out, `gid` set) and both relay-sync via `syncNow()`, a rebased device's `kernel_ops`
+  table for BOTH devices' ops shows: (a) `gid` intact — `foldBackGroup` undoes the whole group, not one
+  row; (b) every op's `sig` is non-NULL and IDENTICAL to what it was before the rebase — `sealChain`
+  does not re-sign a row that already has one (`kernel_ops.js:293`); (c) `verifyChain` still reports
+  `ok:true` post-rebase (proving the preserved v2 sig actually still verifies against the recomputed
+  chain, not just that the bytes didn't change). (Falsifies to: `gid` NULL post-rebase — breaking group
+  fold/undo across a sync — or `sig` changed/reset/failed-verify, meaning attribution was destroyed.)
+- **S8 (Phase 2 — roster-gated verify on the ERP-relay path, reusing `erp_key_epochs.js` as-is).** Given
+  two devices, each with its own real `erp_signer.js` keypair and a `signed_by` kid stamped on its own
+  ops (the one new stamp needed, added to `_commitMeta()` or the kernel's own op-stamp path — NOT a new
+  crypto primitive), and a roster object `{device_id→pubJwk, genesisKid}` available to both (constructed
+  directly in the witness for S8, exactly as `witness_roster_verify.js` already does — HQ-signed roster
+  DISTRIBUTION over the relay is explicitly Phase 3, not attempted here), `erp_key_epochs.verifyEpochSigsOps`
+  run against the POST-REBASE canonical log on either device returns `ok:true`, correctly attributing
+  each op to its real originating device's kid — not the puller's. (Falsifies to: verification fails, or
+  every op attributes to one device regardless of who actually signed it.)
+- **S9 (regression).** `witness_roster_verify.js` (Teams path) and `witness_e2e_n_converge.js` (ERP-relay
+  path, N=2/N=10) both continue to PASS unmodified — S7/S8 add columns/stamps, they do not change either
+  existing sync stack's already-witnessed behavior.
+
+### §Explicitly NOT this spec (named so no session re-derives it as missing)
+
+- **Phase 3 — HQ-signed roster DISTRIBUTION over the ERP relay** (so two real devices that have never
+  met learn each other's pubkeys/kids without an out-of-band step) is a real, separate, larger feature —
+  the relay today (`erp_relay_client.js`/`erp_relay_server.js`) only ever moves ops, never a roster
+  object. S8 constructs its roster directly (test-only), matching how `witness_roster_verify.js` already
+  does it for the Teams path. Roster distribution is the next-next gate, not this one.
+- **ROTATE/REVOKE UI** (a user-facing "rotate my device key" or "revoke a lost device" gesture) — the
+  engine primitive is proven (`§RV-ROTATE`/`§RV-REVOKE`), no UI exists on either sync stack; out of scope.
+- Rewriting `ERPUserGuide.md`'s honest-limit callout — stays exactly as written until S7 AND S8 are both
+  `✅ DONE (witness)`; per this project's own §Gate convention (`§N-User Concurrency` above), the guide
+  update is the POST-GATE deliverable, not a task for the session that specs or partially lands this.
+
+### §Results 2026-07-21 — S7 `W-REBASE-ATTRIB` witnessed, REAL 2-context browser run — ✅ DONE
+
+**Built:** branch `fix/rebase-preserves-sig-gid`, worktree `/tmp/wt-rebase-sig` (bim-ootb, off `origin/main`
+— PR #928/W-SO-CHILD-BIND already merged in, confirmed at HEAD). Three files, three separate divergent
+copies of the SAME 6-column mapping bug, found one at a time by actually running the witness rather than
+assumed from a single read:
+1. `erp/idempiere.html` — now calls `ErpSigner.installSigner(window.KernelOps).then(() =>
+   KernelOps.setContentSigning(true))` on boot (copy of `erp.html:224-226`'s idiom). **Was never called at
+   all** — corrected mid-implementation (see the CITATION CORRECTION above); the live product signed
+   nothing before this.
+2. `erp/erp_sync_fsm.js` `rebase()` — SELECT/INSERT now carry `gid`/`branch_id`/`sig` (were silently
+   dropped, blanking every rebased op's group + signature).
+3. `erp/erp_sync_relay.js` `pushRows()` — **found only by running the witness**, not by the initial read:
+   an INDEPENDENT whitelist at the push boundary (before an op ever reaches the relay) was ALSO dropping
+   the same three columns — fixing #2 alone was not sufficient, since rebase() can only preserve what the
+   relay's canonical snapshot already contains, and this function is what puts ops into the relay. A third
+   divergent copy of the identical 6-column list, matching this whole lane's own recurring pattern ("3
+   divergent bubble-era copies", commit `53c07ccb0`).
+
+**Witness:** `scripts/witness_e2e_rebase_attrib.js` (bim-compiler) — two SEPARATE Playwright
+`BrowserContext`s, real `?login=SuperUser&window=143&record=101&relay=<url>` deep link, real
+`page.fill()`/`page.click()` Save + real `#erp-sync-pill` click (same harness shape as
+`witness_e2e_n_converge.js`). Run: `WITNESS_ROOT=/tmp/wt-rebase-sig bash build/erp/run_witness.sh
+scripts/witness_e2e_rebase_attrib.js` — **exit 0, 27/27 🟢** (log: `build/erp/witness_e2e_rebase_attrib.log`,
+read in full — Log Mandate, 0 occurrences of 🔴).
+
+```
+🟢 ctx=1 real ECDSA-P256 device signer installed on boot (was never called before this fix)
+🟢 ctx=1 PRE-SYNC — committed op has a non-NULL gid / non-NULL sig / verifyChain ok
+🟢 POST-SYNC — both contexts converge to the IDENTICAL signed chain tip
+🟢 ctx=1's op keeps its ORIGINAL gid on ctx=2 (group survives rebase)
+🟢 ctx=1's op keeps its ORIGINAL sig on ctx=2 (not blanked/re-signed under the puller's key)
+🟢 ctx=1 POST-SYNC verifyChain correctly FAILS on the PEER device's foreign-keyed sig (names the S8 gap)
+```
+
+**Honest correction to S7's own falsification clause, found only by running it:** the spec above predicted
+POST-SYNC `verifyChain` would report `ok:true` once a v2 sig survives a rebase. It does NOT, and that
+turned out to be the CORRECT, expected outcome, not a defect: `verifyChain`'s `_signer.verify()` is a
+**single per-device signer** — ctx1's installed key can only verify signatures ITS OWN private key made.
+Once ctx2's real signature genuinely survives onto ctx1's device (proven — gid/sig byte-identical
+pre/post-sync, 8/8 preservation assertions 🟢), ctx1's `verifyChain` correctly reports `{ok:false,
+why:'group torn', opFail:'signature'}` on that foreign op — it has no way to know ctx2's public key. Before
+this fix, `verifyChain` trivially reported `ok:true` everywhere (no sig ever survived a rebase to disagree
+with, and no signer was ever installed at all) — this fix does not regress that into a new bug; it makes
+the REAL, previously-invisible gap visible: **cross-device attribution needs `erp_key_epochs.js`'s
+roster-gated verify (checks each op under the key that actually signed it) wired onto this path — exactly
+S8, not yet built.** The witness's own final assertion was corrected in-session to test for this exact
+failure shape rather than the originally-predicted (wrong) `ok:true`.
+
+**State:** committed on `fix/rebase-preserves-sig-gid`, NOT pushed/PR'd yet this session (push is next,
+following the same pattern as `fix/so-child-bind`/PR #928). S8 (roster wiring) remains open, now with a
+concrete, witnessed reason it's needed rather than a predicted one.
