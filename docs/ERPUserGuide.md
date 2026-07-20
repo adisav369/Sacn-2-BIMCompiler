@@ -55,6 +55,47 @@ Both are marked *CONCEPT* and run fully offline.
 
 ---
 
+## The lay of the land
+
+Before the window-by-window detail, here is the map: what's where, and why. Every box below is a real
+surface with its own section later in this guide — this is navigation only, not a feature tour.
+
+```mermaid
+flowchart TD
+    A["bubbles front door<br/>(erp.html)"] -->|long-press / double-tap| B["Login<br/>(§1) — pick a role"]
+    B --> C["Bottom Pill Bar<br/>(§3) — the one entry point for every tool"]
+    C --> D["Windows / Tabs / Fields<br/>(§4, §5) — role-pruned menu → records → forms"]
+    D --> E["the Process Button<br/>(§6) — the ▶ on any doc-bearing form"]
+    E --> F["where documents live<br/>Sales Order · Purchase Order · Shipment · Invoice · Payment"]
+    F --> G["where the books live<br/>Posting Preview · Trial Balance · Financial Reports (§8)"]
+```
+
+**How to read it, left to right:**
+
+- **The front door** (§Quick start above) is the bubble launcher — playful, but every bubble is a real
+  AD entity. A long-press or double-tap is the bridge into the classic renderer described below; if you
+  don't want the bubbles at all, open `idempiere.html` directly and skip straight there.
+- **Login (§1)** picks the *role* — GardenUser, Admin, WebService — and the menu you see next is pruned
+  live by that role's real `AD_Window_Access`/`AD_Process_Access` grants, not a mock.
+- **The Bottom Pill Bar (§3)** is the one control surface you return to for everything else: opening the
+  menu (⌂), finding a record (🔍), the process/plugin/history tools, and Help. Everything past this
+  point is reached FROM the pill bar, not around it.
+- **Windows → Tabs → Fields (§4, §5)** is the drill-down: a role-pruned window list, a record list per
+  window, a detail form per record, tabs/fields on that form driven by real `AD_Tab`/`AD_Field` rows
+  (DisplayLogic, mandatory flags — nothing hand-styled).
+- **The Process Button (§6)** is how a document *moves* — Complete, Void, Close, whatever the current
+  `AD_Docfsm` state legally allows. This is the same button whether you're on a Sales Order, a Purchase
+  Order, a Payment, or a GL Journal — one dispatch spine, not one-off per window.
+- **Where documents live** is simply "which window": Sales Order, Purchase Order, Shipment (`M_InOut`),
+  Invoice (`C_Invoice`), Payment (`C_Payment`) — each a normal AD window reached via ⌂, nothing special
+  about its URL or location.
+- **Where the books live** is the destination every document eventually posts to: open **Posting
+  Preview** on any completed document to see its journal before/after it posts, or jump straight to
+  **Trial Balance**/the **Financial Reports** (§8) to see the ledger as a whole. **"The standard
+  flow"** section below walks this entire left-to-right path as one continuous story, with the demo data.
+
+---
+
 ## Initial Tenant Setup — born a new client *(LIVE)*
 
 This is iDempiere's **Initial Client Setup**, on our engine. Open **genesis.html**, give the new
@@ -647,6 +688,135 @@ No traditional row-update happens; the current state is the fold of all ops on t
 
 **Unregistered classnames** show an honest "absent handler" card (the 333-falsifier) — 454 of the
 476 `SvrProcess` handlers are named-deferred; the 5 registered ones cover the demo flows.
+
+---
+
+## The standard flow — order to cash, procure to pay, books to reports
+
+Everything above (§3-§6) is *mechanism* — the pill bar, the menu, the form, the process button. This
+section is the *trade cycle itself*, told once as a continuous story over the GardenWorld demo data:
+one sale pulls stock down, stock falling triggers a purchase, the purchase brings stock back, and every
+step along the way lands in the books. Each step below is already **live and oracle-proven** — the
+aside after each one names the witness that proves it, so this walkthrough inherits that credibility
+instead of re-arguing it. (Addon lenses — POS, Kitchen, Warehouse Walk, Tenancy, BIM-4D scheduling,
+Ninja mode — ride this SAME cycle from a friendlier surface; they are documented in their own sections
+and are not repeated here.)
+
+```mermaid
+flowchart LR
+    SO["1 Sales Order"] --> SH["2 Shipment"]
+    SH --> INV["3 Customer Invoice → AR"]
+    INV --> AL["4 Receipt & Allocation"]
+    SH -.on-hand falls.-> RP["5 Replenishment"]
+    RP --> PO["6a Purchase Order"]
+    PO --> RC["6b Receipt"]
+    RC --> VI["6c Vendor Invoice"]
+    VI --> MI["6d Match"]
+    AL --> FA["7 Final accounts"]
+    MI --> FA
+    FA --> FR["8 Financial reporting"]
+```
+
+### 1 · Sales Order
+
+Open **Sales Order** from the menu (⌂ → Sales), create a line or two, and press the **Process** button
+(§6) → **Complete**. Completion is not just a status flip: `completeIt` fans out into the shipment and
+invoice that follow it, in the SAME signed op-group.
+
+> *Proven by* **W-FOLD-COMPLETE** (`poc_fold_complete.js`) — the whole Order→Ship→Invoice fan-out folds
+> against the real `m_inoutline`/`c_invoiceline`/`fact_acct` rows, `maxDiff=0c`.
+
+### 2 · Shipment
+
+The **Shipment** (`M_InOut`) that Complete generated is a real window of its own (⌂ → Inventory →
+Shipment) — open it to see the same document from the warehouse side. On-hand for every shipped product
+drops immediately; the shipment also carries its own GL leg (Cost of Goods Sold against Inventory), not
+just a paper movement.
+
+> *Proven by* **W-FOLD-QTYONHAND** (on-hand = the signed movement ledger, 28/28 real movements
+> reconstructed, `maxDiff=0`) and **W-FOLD-INOUTGL** (the shipment's COGS/Inventory posting, folded as
+> part of W-FOLD-COMPLETE's `fact_acct(319)` diff).
+
+### 3 · Customer Invoice → AR
+
+The **Invoice** the same Complete generated posts DR **Receivable** / CR **Revenue** (per line) / CR
+**Tax Due**. Open **Posting Preview** on the invoice (any completed document has this) to see that exact
+journal before you take our word for it — it is the SAME derivation the guide's Posting-Preview panel
+runs live, not a separate report-only calculation.
+
+> *Proven by* **W-POST-HARDEN** (4/4 sales invoices resolve iDempiere's exact accounts, 3/4 to the cent —
+> the 4th is a named post-posting source edit, not a derivation gap) and **W-DOC-POSTER** (the shipped
+> `derivePostings` verb Posting Preview actually calls, oracle-anchored to `fact_acct(318)`).
+
+### 4 · Receipt & Allocation
+
+Record the customer's **Payment** (⌂ → Sales → Payment) against the invoice, then run **Allocation**
+to match payment to invoice. A real allocation is rarely an exact match — it can carry a discount, a
+write-off, and (because tax rides the discounted portion too) a VAT correction, all in the same posting.
+
+> *Proven by* **W-FOLD-PAYMENT** (`Doc_Payment` receipt, `fact_acct(335)` `maxDiff=0c`) and
+> **W-FOLD-ALLOC** / **W-FOLD-ALLOC-FX** (the allocation incl. discount/write-off + the proportional
+> tax-correction sub-cents, `fact_acct(735)` `maxDiff=0c` in both the home and the foreign-currency
+> accounting schema).
+
+### 5 · Replenishment
+
+The sale just dropped on-hand. Rather than reorder on every sale, **Replenishment** is the staged,
+reviewable action that watches on-hand against each product's stock policy and proposes what to order —
+walked in detail in the POS section's **§P-4** (the same engine, reached from a friendlier panel there;
+not repeated here).
+
+> *Proven by* **W-FOLD-REPLENISH** (the proposal == iDempiere's own `ReplenishReport` formula-SQL,
+> 8/8 products, `maxDiff=0`).
+
+### 6 · Purchase Order → Receipt → Vendor Invoice → Match
+
+Accepting a replenishment proposal (or creating one by hand, ⌂ → Purchasing → Purchase Order) and
+completing it is the buy-side mirror of step 1. It flows the same way in reverse:
+
+- **Purchase Order** — completes; under this seed's configuration (commitment accounting off) it posts
+  no commitment/reservation entry — an honest, config-derived ∅, not a gap.
+- **Receipt** (`M_InOut`, incoming) — stock arrives, on-hand rises.
+- **Vendor Invoice** — posts DR **Inventory Clearing** / CR **Vendor Liability**.
+- **Match** (`M_MatchInv`) — clears the Inventory-Clearing/Not-Invoiced-Receipts pair the receipt and
+  invoice each opened, including any invoice-price-variance split against on-hand at match time.
+  `M_MatchPO`'s own leg stays an honest ∅ under this seed's Average costing (the variance-posting branch
+  only fires under Standard costing) — a config fact, proven by flipping it in the witness, not assumed.
+
+> *Proven by* **W-MORDER-POST** (the PO's zero-set is config-derived, the order-posting chain diffs per
+> fact line against the real oracle), **W-FOLD-AP-INVOICE** (4/4 vendor invoices, exact accounts,
+> `maxDiff=0c`), **W-FOLD-MATCHINV** / **W-FOLD-MATCHINV-FX** (18/18 matches incl. the IPV split, both
+> accounting schemas, `maxDiff=0c`), and **W-POST-TAIL** (`M_MatchPO`'s ∅ over all 37 real matched docs,
+> falsified by flipping the costing method to prove the gate — not the witness — is what closes it).
+
+### 7 · Final accounts
+
+Two more postings close the period: a **GL Journal** for anything that isn't a document (a manual
+accrual, an inter-org transfer) and a **Bank Statement** reconciling the bank's own records against
+what the ledger expects. Once every document for the period is posted, the period's `fact_acct` **is**
+the ledger — there is no separate "close" step that recomputes anything; Trial Balance is a live fold
+of the same rows, and it balances to the cent.
+
+> *Proven by* **W-FOLD-GLJOURNAL** (manual journal incl. per-org intercompany balancing, both schemas,
+> `maxDiff=0c`) and **W-POST-TAIL**'s `C_BankStatement` band (the real 13-row statement, `maxDiff=0c`
+> incl. the currency-balancing residual). Trial Balance: `ΣDr==ΣCr=46574.97` over the real GardenWorld
+> ledger (`test_report_fin.js`).
+
+### 8 · Financial reporting
+
+From here, everything is read-only fold: **Balance Sheet**, **Income Statement**, **Cash Flow**, and
+**Trial Balance** are all oracle-equivalent to the real ledger (§8 *Financial Reporting*, below, has the
+per-report cell counts), and the same ledger is what the **NinjaExcel** workbook lens (§8, "Excel
+Report") binds into your own spreadsheet layout.
+
+### Also in the books: fixed assets and projects
+
+Six more document classes — asset addition, transfer, revaluation, and disposal, plus depreciation
+entries and project-issue postings — fold to the cent against the real compiled posters the same way
+(oracle-generated on a scratch clone over a GardenWorld-model seed, since this demo tenant carries no
+source documents for them out of the box). They ride the same Posting-Preview/Trial-Balance surfaces as
+everything above; see `docs/internal/ERP_COVERAGE_MATRIX.md` (B-3, W-POST-B3) for the per-class detail —
+this guide's walkthrough stays the trade cycle.
 
 ---
 
@@ -1268,6 +1438,49 @@ faithful rehearsal, not a simulation. Take a freshly-migrated client through its
 go live or **discard** to try again. Nothing provisional ever reaches the official ledger.
 
 > Engine: `blue_future.js` (`window.BlueFuture`) over the kernel op-log `branch_id` lane.
+
+---
+
+## Appendix — maintenance cost, a rough 5-year comparison
+
+**This is a planning estimate, not a measurement.** Unlike the witness-cited claims throughout this
+guide, nothing here is benchmarked against a real deployment history on either side — there is no
+10-user install of either stack with 5 years of support tickets to pull numbers from. Treat every
+figure below as order-of-magnitude, for internal planning, not a quotable external claim.
+
+**Scope:** a 10-user shop, comparing this engine (static CDN + browser + signed op-log) against a
+self-hosted traditional stack (iDempiere/Odoo-shaped: a DB server + an app server, on-prem or a VM).
+
+| Category | Traditional, self-hosted (mandays/yr) | This engine (mandays/yr) |
+|---|---|---|
+| OS/DB/app-server patching, restarts | 5–8 | 0 — no server exists to patch |
+| Backup/DR + restore drills | 2 | 1 — exporting/verifying an op-log is a simpler shape, still needs discipline |
+| Networking (VPN/reverse-proxy/TLS for remote access) | 1–2 | ~0 — the CDN handles TLS/DNS |
+| Security fire-drills (amortized — e.g. a Log4Shell-class event) | 1–3 | ~1 — a much smaller vendored-JS surface, not zero |
+| User/access admin, support tickets | 3–5 | 3–5 — same order; still 10 humans needing help |
+| Device/key management (signed op-log needs per-device keys + revocation) | n/a to their model | 2–4 — a genuinely new admin task class |
+| Browser/platform-drift watch (the COOP/COEP-class constraint) | n/a | 2–4 |
+| Periodic major-version upgrade (real migrations run 10–30 mandays every 2–3 yrs, amortized) | 4–12 | ~0–2 — no server version to migrate off of |
+| **Async multi-writer fold, maturing to production-solid for 10 concurrent users** | n/a — RDBMS row-locking transactions solved this decades ago, at no extra cost to them | **front-loaded: ~20–60 mandays, mostly years 1–2** |
+| **Steady-state total/yr (years 3–5)** | **≈ 16–30** | **≈ 9–17** |
+| **5-year total** | **≈ 80–150** | **≈ 65–110 (front-loaded, not flat)** |
+
+**Where this favors the traditional stack, honestly:** multi-writer conflict resolution is a *solved*
+problem in a row-locking RDBMS, and has been for decades, at zero incremental cost to them. Taking
+this engine's async signed op-log from single-writer to a mature 10-node fold is real, front-loaded
+engineering — not routine maintenance. That line is this engine paying now what row-locking databases
+already paid down in the 1980s; it is not minimized here just to make the table favorable.
+
+**Where this favors this engine:** the entire server-ops block (patching, backup/DR of a live DB,
+networking, the version-upgrade treadmill) is not a discount — it is a cost *category* that does not
+exist when there is no server process to run.
+
+**The shape matters more than the 5-year sum.** The traditional curve is close to flat forever, with
+recurring upgrade spikes every 2–3 years indefinitely (year 8 costs about what year 3 did). This
+engine's curve is a hump in years 1–2 (maturing the fold) that converts into a materially lighter
+tail — once the fold is solid, there is no server-upgrade treadmill to keep paying into. A 10-year
+window would separate the two curves more than this 5-year one does, since the traditional side's
+recurring tax does not decay and this engine's does.
 
 ---
 

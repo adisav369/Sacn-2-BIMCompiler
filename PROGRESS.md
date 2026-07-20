@@ -28,8 +28,6 @@ Branch state is deliberately not hand-copied into this file (every hand-written 
 no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed up, but undelivered**.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `prompts/RESUME_ERP_POST_TAIL_AND_USERGUIDE.md` — SONNET: finish Cash/Inventory posting oracles
-  (generator built, reuse) + ERPUserGuide navigation + core S&D-flow chapter. Fresh branch off master.
 - `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — A/B/C bugs + E decision.
 - `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — G6, Ph3, Pt1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` — first-touch flicker.
@@ -62,9 +60,19 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to substrate
   loss); a MEAN hides a bimodal population (fixed via `boxInstancesExpected`). ⛔ wire that
   comparison into the witness verdict. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
-- ✅ B-3 + W-POST-TAIL posting oracles (2026-07-17/18, Fable 5) — 6 G-seed classes + BankStatement/
-  MatchPO/Requisition `maxDiff=0c`; ledger 43→52; 17/20 posters fold; Cash/Inventory next, Production ⛔.
+- ✅ Posting-tail CLOSED, all 20 factory posters resolved (2026-07-17/18) — B-3's 6 G-seed classes +
+  BankStatement/MatchPO/Requisition `maxDiff=0c` (ledger 43→52, Fable 5); Cash/Inventory driven on a
+  real scratch clone and found ∅-by-data-state (`IsActive='N'`, `@NoLines@`, no cost data — none worked
+  around); Production ⛔ (no component costs). **17/20 fold, 3 named ⛔, FINAL — ledger stays 52.**
   `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
+- ✅ ERPUserGuide core S&D chapter (2026-07-18) — "lay of the land" nav map + the 8-step standard-flow
+  walkthrough (Order→Cash / Procure→Pay / Books→Reports), each step citing its proving witness.
+  `docs/ERPUserGuide.md`.
+- ✅ ERP multi-user concurrency PoC (2026-07-19/20) — real two-tab/10-tab browser witnesses
+  (S1-S5 + `W-N10-CONCURRENT-TODAY`), N-User Concurrency spec, witnessed fix + ERPUserGuide "Working
+  at the same time" section. `prompts/ERP_MULTIUSER_CONCURRENCY_POC.md`.
+- ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
+  #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
 - ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
   `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
   content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.

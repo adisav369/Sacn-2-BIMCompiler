@@ -6,9 +6,47 @@ window. This file is the spec `TM_INCREMENTAL_RENDER_PERF.md` §0 references as 
 rediscover, do not re-litigate §1's settled history.
 **Read the log after every run.** Witnesses in §6; every claim needs its § line. Exit code is not
 evidence. The acceptance bar for the OFF state is ZERO behavioural change (same as Phases 1-2).
-**Status:** SPEC ONLY (2026-07-20, authored from the two-repo large-model survey). Nothing
-implemented. Read §2 (what already exists — you are wiring, not inventing) and §5 (landmines,
-two of which already shipped regressions in earlier phases).
+**Status:** ✅ DONE — shipped, deployed, user-accepted on real LTU hardware (2026-07-20). Live at
+`red1oon.github.io/bim-ootb`. Final design differs from the original spec — see §9 (redesigned
+mid-session after live testing surfaced a real gap the spec didn't anticipate). Original
+implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth.
+
+## 8. Implementation notes (2026-07-20 session)
+- Reused `LARGE_BUILDING = 50000` (time_machine.js:471, already computed into `_isLargeBuilding` at
+  `_finishActivate`) as `DLOD_TM_MIN_ELEMENTS` instead of a fresh DB count query — this constant
+  already matched the spec's own default, meaning the earlier survey had found it too.
+- Pick-exclusion (§4): the actual proven mechanism is `userData.isBboxPlaceholder` (checked at
+  `picking.js:257`, set by `_drawBboxPlaceholders`) — NOT `_buildMergedGhost`'s ghost boxes, which do
+  NOT set that flag and are not actually proven pick-transparent. Corrected citation; box meshes here
+  set `isBboxPlaceholder = true` to reuse the real mechanism.
+- Material: solid `MeshLambertMaterial` (color + slight emissive 0.15), NOT `_drawBboxPlaceholders`'
+  actual wireframe/0.4-opacity look (spec's own §2 citation of that file's "look" doesn't match what's
+  actually there — that one IS wireframe too). Went with the spec's explicit textual ask ("solid,
+  discipline-colored, slightly emissive") over the mismatched citation.
+- New: `_dlodBuildBoxes` (lazy per-building box index, guid→{mesh,idx,matrix,visible}, disposed on
+  building switch or TM deactivate), `_dlodUpdateBoxes` (per-tick sync with change-tracking — only
+  `setMatrixAt`+`needsUpdate` on instances whose visibility flipped, not the whole index every tick),
+  `_dlodEngaged` (toggle && `_isLargeBuilding` && `!app.streaming`).
+- The 3 `renderAtTime` traverse branches (single-mesh/BatchedMesh/InstancedMesh) each got one
+  AND-ed `hideForProxy` condition into their existing visibility test — when `_dlodProxyOn` is false
+  (default), `hideForProxy` is always false and the branch is byte-identical to pre-change code. This
+  is the actual mechanism W-DLOD-EQUIV needs to hold, not a separate code path.
+- Toggle edge: reused the existing `window.__forceFull` test hook (already built for W-INCR-EQUIV) to
+  force a full traverse on click — the incremental-delta path would otherwise skip nearly every mesh
+  at a same-cursor re-render and leave the toggle visually unapplied. Caught by re-reading the
+  `_incrOK`/span-zero logic before wiring the pill handler, not by testing it broken first.
+- UI: `◧ LOD` pill in the TM panel header, `display:none` unless `_isLargeBuilding`, gated/reset at
+  `_finishActivate` (mirrors the existing `tm-var` ⚖ gate pattern) and at `deactivate()`.
+- Verified headless: `node --check` clean; the `dlod_visibility_only` / `§WB_DLOD_VIS` guard test
+  (tests/whitebox_regression.js:646, reads `streaming.js`+`dlod.js` only) still passes — neither file
+  was touched. A standalone pure-logic self-test (18/18 pass) confirmed the OFF-path is legacy-identical
+  and the ON-path never double-draws or leaves a gap (§5.5), across all frontier/recent/lookahead
+  combinations — script not committed (scratchpad-only), logic is what's committed.
+- **NOT run: W-DLOD-EQUIV, W-DLOD-PROXY, W-DLOD-NO-REBUILD, W-DLOD-PERF.** All four need a real
+  browser against the actual LTU DB (§6 says headless is blind to GPU/THREE — correct, no way around
+  it from this CLI). Next step is the user's machine: open LTU in Time Machine, click ◧ LOD, scrub/play,
+  read `§DLOD_TM`/`§DLOD_TM_BUILD`/`§DLOD_TM_GATE` console lines, compare `§PERF_TRAVERSE`/renderer.info
+  draw calls at cursor≈95% with the pill on vs off.
 
 ## 1. Settled history — why this design and not the other one (do NOT re-litigate)
 Three different things have been called "DLOD" in this codebase. Be precise:
@@ -108,3 +146,47 @@ numbers come from the user's machine via `window.__tmTrav` + a `§DLOD_TM` stats
   separate spec, after W-DLOD-PERF numbers exist (route-planning cost is already solved by
   `TOUR_ROUTE_CACHE.md`).
 - No default-ON. Default flips only after the user's own hardware numbers say so.
+
+## 9. Shipped design (final, 2026-07-20 — supersedes §3's time-window definition)
+Live testing on LTU (day159, 106K/122K elements placed) immediately surfaced what §1's "swap axis
+= construction time, not camera distance" doctrine implied but nobody had felt yet: a pure
+time-window swap boxes almost the WHOLE building the instant it engages this late in a build,
+including whatever the camera is pointed at. User reaction: "it turns all to BBxs meshes even
+facing cam, a lost of LOD400." Correct diagnosis, not a bug — the axis really was time-only. Fixed
+by changing the axis to view, per user's explicit choice (asked 3-way: keep pure time-based / add
+camera-distance as a 2nd filter / just widen the window — picked "add camera-distance").
+
+**Final rule** (replaces §3 entirely):
+- FRONTIER (building now) and RECENT (just finished, amber linger): always real. Unchanged.
+- Everything else that's PLACED (built): real ONLY if in-view — distance ≤50m from camera AND
+  inside the camera frustum. This is the exact LOD0/LOD2 boundary the retracted S261 design used
+  (`prompts/done/S261_DLOD_MILLION.md` line 24) — reused, not invented. Out-of-view placed → box.
+- Box material: wireframe (`MeshBasicMaterial`, opacity 0.4), NOT solid — user ask after seeing solid
+  boxes read as "detail missing" rather than "not yet detailed." Matches `_drawBboxPlaceholders`'
+  actual established look (the spec's original §2/§4 citations of that file's look were wrong — it
+  IS wireframe, solid was never justified by that citation in the first place).
+- Position + bbox-radius cached once per guid at box-build time (`_dlodBoxIndex[guid].pos/.radius`)
+  — the in-view test is a cheap distance+frustum check against a cached `Vector3`, no per-tick
+  `getWorldPosition`/matrix-decompose. Frustum built once per tick from reused scratch objects
+  (`_dlodFrustum`/`_dlodPSM`/`_dlodSphere`), mirroring `dlod.js`'s own module-level reuse pattern.
+- Pill icon: the same wireframe-cube SVG as the existing Bounding-Box/Alt+X pill (`panels.js` 'box'
+  icon), not a unicode glyph — user ask, reads as "this shows boxes" at a glance.
+- `LOOKAHEAD_TICKS`/`_dlodLookahead` from the original design is gone — it was actually DEAD CODE
+  even before this redesign: `hideForProxy` required `isPlaced`, and an element can never be both
+  `isPlaced` (finished) and in the lookahead band (not yet started) at once, so the lookahead
+  condition never once fired. Worth knowing if anyone greps old commits for it.
+- Debug marker added: `im.userData.isDlodTmProxy = true` on every DLOD box — `isBboxPlaceholder`
+  (reused for the proven pick-exclusion, `picking.js:257`) is shared with `_drawBboxPlaceholders`'
+  load-time boxes, which use the identical `BoxGeometry` + wireframe material, so there was no way
+  to `scene.traverse` and tell the two apart. This is why an early post-ship verification attempt
+  (checking "are boxes really hidden when OFF") produced a false positive — it was counting ordinary
+  load-time placeholders, not DLOD boxes. Use `isDlodTmProxy` for any future check, not `isBboxPlaceholder` alone.
+
+**Shipped as 4 PRs** (bim-ootb): #918 (original time-window implementation) → #919 (solid→wireframe)
+→ #920 (time-window→view-based redesign, the real fix) → #922 (isDlodTmProxy debug tag, chore).
+All merged to `main`, GitHub Pages redeployed each time (`sw.js` CACHE_VERSION v827→v830,
+`viewer.html`'s `time_machine.js?v=` 60→63). W-DLOD-EQUIV/PROXY/NO-REBUILD/PERF (§6) were never run
+as formal witnesses — verification was live-hardware user testing instead, which is what actually
+caught the real gap (§6's headless framing wouldn't have found it). User accepted final result
+2026-07-20: "its nice now... seems faster and full bbxes seems to give near and frustum and recent
+full LOD400s, which is good enough."
