@@ -224,6 +224,68 @@ resident list (System, GardenWorld, and every installed tenant). Each tenant is 
 
 ---
 
+## Working at the same time — many tabs, many people  *(LIVE)*
+
+Most ERPs put a database server between you and everyone else, so every save waits on the network and
+the server referees who wins. This one has **no server in the middle**. Each browser holds its own
+**signed op-log** — a tamper-evident chain of every change — and works at local speed whether you are
+online, on a plane, or on hospital Wi‑Fi. Your work is yours, on your device, immediately.
+
+That design invites the honest question: *if two of us — or two of my own windows — edit the same order
+at once, whose change wins, and does anyone's work quietly disappear?* Here is the answer, and you can
+see it for yourself.
+
+### Your work is never silently lost
+
+**Open the same record in two windows and edit both.** Put an order's header in one tab and its lines in
+another, or just keep two copies open. Save in either — **both edits are kept.** Every save *appends* to
+the log; nothing is overwritten, so one window can never erase what another just saved. If two people
+change the *same field*, the later change shows as the current value — but the earlier one is still
+recorded in the history, not gone. Nothing vanishes behind a reassuring *"saved (signed)."*
+
+> **Try it.** Open the same order in two browser tabs. In tab 1 change the *Description*; in tab 2 change
+> the *Grand Total*. Save both, then reload. **Both changes are there.** This is checked on every
+> release — most recently with **ten windows editing at once: 10 of 10 edits survived, the signed chain
+> intact.**
+
+### Bringing several people together — Sync
+
+Everyone starts out working **independently and offline-first** — full local speed, no spinner, no
+dropped work when the connection does. When you want your separate copies to become *one shared set of
+books*, point each person at a shared **relay** and press **Sync** (the `⟳` pill on the bar, or open the
+app with `?relay=<url>`).
+
+Sync folds every device's log into **one identical signed history on all of them** — the order of events
+is decided by the chain itself, not by who happened to save last. Proven with **ten devices editing the
+same order and all ten converging to a single signed history, zero edits lost.**
+
+| You want to… | Do this | You get |
+|---|---|---|
+| Use several windows yourself | Nothing — it is on by default | Every edit kept, always |
+| Work with no connection | Just keep working | Local-speed edits; Sync later when you reconnect |
+| Share one set of books across people | Point each at a relay → **⟳ Sync** | Every device folds to one identical signed history |
+
+**Setting up the relay.** The relay is a deliberately *dumb* post office: it only receives, orders, and
+hands back logs — it holds no business logic and makes no accounting decisions. Run it once, give each
+person its URL, and everyone keeps logging in as their own real user. The relay carries only the *log*;
+the accounting still folds from that log on each device, identical to single-user.
+
+> **One honest limit — read this before you rely on it for approvals.** Cross-device Sync is proven today
+> for **field edits** (change a value → save → sync). It does **not yet** carry full per-person, per-step
+> attribution of **document actions** — *Complete / Void / Close* and similar workflow steps — *across
+> devices*: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
+> **single device** is unaffected. So if you need a multi-person **approval trail that holds up across
+> machines**, that is the next piece we are building (opt-in per-step signing) — not this one. We would
+> rather tell you here than have you find it during an audit.
+
+> **For auditors & compliance officers.** How this serverless, hash-chained model maps to **SOX §404 /
+> PCAOB, COSO (2013), and ISO/IEC 27001:2022** control objectives — what is *strengthened*, what
+> *relocates*, and the *open* items disclosed above — is set out in a companion control-objective map:
+> [**Times Have Changed — And So Must ISO for ERP**](AssuranceControlMap.html) (a control-mapping
+> position paper, not a certification).
+
+---
+
 ## Spatial BIM → ERP — Find a selection → Project Order  *(LIVE)*
 
 ![The live 4D/5D twin — the Time Machine plays the build (here Day 88 of the program, RM501K committed) in the real model while the dashboard tracks phase progress, site resources, and the cost S-curve; the left readout folds Budget-vs-Actual variance (RM44.7M → +35%) straight off the same project. One signed op-log unifies what is normally four tools — schedule, cost, 4D, and 5D — with no drift.](figs/whatif_live_twin.png)
