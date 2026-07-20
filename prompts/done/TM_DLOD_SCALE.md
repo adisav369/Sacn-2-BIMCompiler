@@ -6,10 +6,12 @@ window. This file is the spec `TM_INCREMENTAL_RENDER_PERF.md` §0 references as 
 rediscover, do not re-litigate §1's settled history.
 **Read the log after every run.** Witnesses in §6; every claim needs its § line. Exit code is not
 evidence. The acceptance bar for the OFF state is ZERO behavioural change (same as Phases 1-2).
-**Status:** ✅ DONE — shipped, deployed, user-accepted on real LTU hardware (2026-07-20). Live at
+**Status:** ✅ DONE (shipped, deployed, user-accepted 2026-07-20) **with ⛔ ONE OPEN BUG found in
+continued live use the same day — read §10 before touching this feature again.** Live at
 `red1oon.github.io/bim-ootb`. Final design differs from the original spec — see §9 (redesigned
 mid-session after live testing surfaced a real gap the spec didn't anticipate). Original
-implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth.
+implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth; §10 is the next
+session's actual task — do not re-derive the root cause, it's already found.
 
 ## 8. Implementation notes (2026-07-20 session)
 - Reused `LARGE_BUILDING = 50000` (time_machine.js:471, already computed into `_isLargeBuilding` at
@@ -190,3 +192,69 @@ as formal witnesses — verification was live-hardware user testing instead, whi
 caught the real gap (§6's headless framing wouldn't have found it). User accepted final result
 2026-07-20: "its nice now... seems faster and full bbxes seems to give near and frustum and recent
 full LOD400s, which is good enough."
+
+## 10. ⛔ OPEN BUG found in continued live use (2026-07-20, same day, orbiting LTU) — READ FIRST
+
+**User's exact reports, in order:**
+1. "DLOD comes on but it turns all to BBxs meshes even facing cam" → led to §9's view-based redesign.
+2. Then, orbiting LTU with the redesign live: "when we turn the LTU around the wireframe that is
+   nearest to us disappears because it is making way for the LOD400 full meshes but those don't
+   appear until we retoggle the box."
+3. Confirmed direction: **"LOD400 to bbx is OK, vice versa is not, unless retoggle."** — turning
+   AWAY from an element (real → box) works correctly every time; turning TOWARD one (box → real)
+   silently fails and leaves nothing visible (not even the box) until the ◧ pill is clicked off/on.
+
+**Root cause — found, not yet fixed.** `_dlodInView(g)` (`viewer/time_machine.js:506` on `main`
+HEAD `bbf8c9e`) is a pure function of **camera state** (position + frustum, rebuilt fresh every
+`renderAtTime` call, `~line 1195-1220`). But the real-mesh visibility decision that reads it lives
+inside `renderAtTime`'s **BatchedMesh** (`~1322`) and **InstancedMesh** (`~1380`) traverse branches,
+both gated by the `§PERF_INCR` incremental-delta skip:
+```
+if (_incrOK && !_tmHasEventIn(_evMesh[obj.id], _dLo, _dHi)) { _perfSkipped++; return; }
+```
+`_tmHasEventIn` asks "did this mesh's **construction-time** state change between the previous cursor
+and this one?" — it has no concept of camera movement. Orbiting the camera without advancing/
+scrubbing the TM cursor means `_dLo`/`_dHi` collapse to the same instant, `_tmHasEventIn` returns
+false for every mesh (nothing was built or finished in a zero-width window), so `_incrOK` mode
+**skips the branch entirely before it ever reaches `_dlodInView`** — the mesh's visibility is left
+exactly as it was the previous tick. Meanwhile `_dlodUpdateBoxes` (`~584`, the box-visibility sync)
+has **no such guard** — it unconditionally re-evaluates every box every call. So on a pure
+camera-only tick: the box correctly re-checks and hides (now in-view), but the real mesh's
+`setVisibleAt`/`setMatrixAt` restore never runs (skipped by `_incrOK`) — net result, nothing is
+visible in that spot until a forced-full pass happens to run (exactly what the ◧ pill's click
+handler does via `window.__forceFull = true`, which is why retoggling "fixes" it).
+
+The single-mesh branch (`obj.userData.guid`, `~1250`) does **NOT** have this skip (its own comment,
+`~1227`, says so explicitly: "unconditional, never skipped regardless of `_incrOK`") — so this bug
+is specific to **BatchedMesh/InstancedMesh-consolidated** elements, which is exactly how LTU's 122K
+elements are stored (`"13611 instanced groups"`, per the in-app status bar) — matches the user's
+report precisely; a small single-mesh-only building would likely not show this.
+
+**Why this wasn't caught earlier:** every witness/test run so far drove the cursor (scrub/play) —
+none tested "hold the cursor still, only orbit the camera," the exact case a real user does
+constantly while watching playback. The `§PERF_INCR` guard was designed and tuned entirely around
+construction-time events (Phase 1/2 of TM_INCREMENTAL_RENDER_PERF.md) before DLOD's camera-dependent
+visibility axis existed — it's not wrong for its original purpose, it's just now missing a second
+trigger condition DLOD introduced.
+
+**Not fixed yet. Directions to weigh, not a chosen answer:**
+- (a) When `_dlodOn` is true, force `_incrOK = false` unconditionally (mirror `_shadowJustToggled`'s
+  pattern but for every tick, not just the edge) — simplest, but gives up delta-mode's perf win for
+  the ENTIRE tick, on every tick, whenever the toggle is on, even during pure cursor scrub where nothing
+  camera-related changed. Defeats part of the point of DLOD's own perf goal.
+- (b) Detect "camera moved since last tick" (position or orientation delta) as ITS OWN edge condition,
+  same shape as `_shadowJustToggled` — force one full pass on a camera-move tick, only when `_dlodOn`.
+  Closer to the actual trigger, but "how much movement counts" needs a real threshold, and orbit
+  controls fire continuously while dragging, not just at rest — worth checking whether that means a
+  full pass on EVERY frame during a drag (probably yes, which may be the correct/needed behavior, or
+  may reproduce (a)'s cost — measure before assuming either way).
+- (c) Track a per-guid "last _dlodInView result" cache (mirroring `_dlodBoxIndex[guid].visible` which
+  already exists for boxes) and, inside the incremental-skip branches, ALSO bypass the skip
+  specifically for a guid whose cached in-view state disagrees with a fresh `_dlodInView(g)` check —
+  most surgical (only re-visits meshes that actually flipped), but adds a second state cache to keep
+  in sync with the box index's, and needs its own invalidation on building switch (same class of bug
+  `_dlodBoxIndex`/`_dlodBoxBld` mismatch already had to guard against once, see §8/§9).
+None of these is obviously right — this needs the same kind of care (and probably the same "ask the
+user which tradeoff" pattern) as the box-visibility redesign in §9 did. **Whichever is picked must
+re-verify §9's W-DLOD-EQUIV invariant still holds when `_dlodProxyOn` is false** (this bug's fix must
+not touch anything on the OFF path).
