@@ -196,6 +196,49 @@ guards stay green. That is the blind spot, now covered.
 fixture = 73.6. Threshold `REAL_MIN_TPE = 24` (2× box) sits with ~3× margin on both sides.
 `PARTIAL` verdict covers mixed populations between the two.
 
+### S2 VIEWER HALF 2026-07-20 — ✅ DONE (was MISSED in the first pass; user caught it)
+S2 names BOTH loaders — "(Viewer `streaming.js`/`db_resolve.js`; Modeller's DB open path.)" — and the
+first pass (`76f5d1b`) shipped only the Modeller half without flagging the omission. Corrected in
+bim-ootb `ee9ca9b`. **This is the half on the production data plane**, so the miss mattered:
+
+**The viewer blind spot, which is worse than the Modeller's.** Viewer building DBs live on **OCI**,
+not in the page tree, and `db_resolve.js` **SELF-HEALS a 404** by rewriting `buildings/<file>` to the
+OCI base and retrying (`§DB_404_OCI_RETRY`, `scene.js:668`). **That heal silently changes WHICH COPY
+loads.** It logged that a rewrite happened and never what came back — so a heal onto a divergent or
+emptier OCI copy is completely invisible. That is precisely the HHS "0 stairs published, then flipped
+to 20" casualty this file's own backstory cites. It also covers the viewer's silent-box state:
+`§SPLIT_GEO_FALLBACK_META` sets `libDb = meta db` and renders bboxes only, logging a reason but **no
+counts** — so "geometry unavailable" and "geometry fine" produced equally calm logs.
+
+Wired at all 4 branches where `libDb` finally resolves (split-geo / split-fallback-extracted /
+split-fallback-meta / single-db). Keyed on db-url+building so a building switch reports again.
+Witnessed live (headless, Duplex):
+`§DB_IDENTITY name=Ifc2x3_Duplex_Federated path=/buildings/Duplex_extracted.db meta=1122 inst=1119 geo=1119/1119 libDb=self(meta) libRows=814 healedAssets=[Duplex_positions.bin] at=single-db`
+Two things that line surfaces for free: the OCI heal DID fire this load (for a positions asset), and
+the internal building name (`Ifc2x3_Duplex_Federated`) ≠ the file name (`Duplex_extracted.db`).
+
+**Self-caught defect:** the first cut recorded only the LAST healed asset, so a healed
+`positions.bin` printed as `healed=YES` beside a db path — reading as "the DB was swapped" when it
+was not. Now reports the asset list explicitly. (The witness caught this, which is the point.)
+
+### 📌 FINDING 2026-07-20 — `deploy/live/` is a STALE snapshot and is NOT what serves production
+Raised by the user ("are you aware of `master:deploy/live/streaming.js`?"). Verified:
+
+| | lines | `db_resolve.js` |
+|---|---|---|
+| `master:deploy/live/streaming.js` | 705 | **absent** |
+| `bim-ootb/viewer/streaming.js` | 2,176 | present |
+| **live GH Pages** `red1oon.github.io/bim-ootb/viewer/` | **2,176** (byte-count match) | **200 OK** |
+
+**The live site serves the bim-ootb copy**, so `deploy/live/` is a ~3× divergent stale snapshot
+(last promoted `06553cc90`), not the production path — and correctly NOT where §S2 belongs
+(PRIME RULE forbids editing it anyway). Recorded because it is the same divergence class this whole
+spec exists to kill, but for CODE instead of data: two copies of `streaming.js`, no version marker,
+and the smaller/older one carries the more authoritative-sounding name (`deploy/live/`). Anyone
+grepping `deploy/live/` for `§DB_IDENTITY` will correctly not find it and could wrongly conclude the
+viewer is uninstrumented. ⛔ Whether to re-promote or retire `deploy/live/` is a user call
+(OUT OF SCOPE here) — but it should not sit at 3× stale under the name "live".
+
 ### ⛔ SIDE-FINDING 2026-07-20 — `witness_e2e_lod_match.js` A3/A4 are RED ON `origin/main` (pre-existing, NOT this lane)
 Ran as a regression check on the S2 edit (it exercises the same ARC seed path). It FAILS — and fails
 **byte-identically on an untouched `origin/main` checkout** (`/tmp/wt-sandbox` @ `2b67445`), so it is
