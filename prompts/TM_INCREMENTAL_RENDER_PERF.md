@@ -4,15 +4,171 @@ cursor, instead of O(total elements) per tick. Nothing else. This is a pure perf
 it must not change a single rendered pixel, and that is the acceptance bar.
 **Read the log after every run.** Exit code is not evidence. The witness for this work is a NUMBER
 (`§PERF_TRAVERSE`) plus a zero-mismatch equivalence check (`§INCR_VERIFY`), not "it looks fine."
-**Status:** Phase 1 SHIPPED live (v821, 2026-07-20). Phases 2-3 below are OPEN. Read §4 Risks and
-§8 (the shipped lessons) before touching code — several risks silently corrupt the scene, and one
-already shipped a net regression that had to be reverted-in-effect.
+**Status:** Phase 1 SHIPPED live (v821, 2026-07-20). **Phase 2 SHIPPED live (v824, 2026-07-20,
+bim-ootb PR #909 + hotfix PR #912 — read §0a before touching this file further.)** Phase 3 (DLOD) is
+OPEN — **spec now AUTHORED: `TM_DLOD_SCALE.md` (2026-07-20), Sonnet-implementable.** **§0c CLOSED
+(2026-07-20): the "lethargy" resolved into three concrete, separately-handled things — (1) Fly-tour
+freeze = missing §IDLE-PARK wake, fixed PR #914 v825 (`TOUR_WALKMODE_IDLE_PARK_STUCK.md` §9, A/B
+confirmed); (2) ▶-at-Hour-0 stale canvas = startPlayback's silent cursor warps, the last #912-family
+call sites, fixed PR #916 v826 — USER-CONFIRMED live "Hour 0 clears"; (3) "heavy near end" = GPU cost
+of the fully-built scene (user's own live log: traverse ms=2.0 delta — JS is NOT the cost), which is
+exactly Phase 3's target. User's live verdict same day: "LTU TM speed seems ok".** Read §4 Risks and §0 (the shipped lessons) before touching code — several risks silently
+corrupt the scene, and one already shipped a net regression that had to be reverted-in-effect; Phase 2
+itself shipped a real live regression that needed an immediate follow-up hotfix (§0a) — read it before
+assuming "equivalence witness passed" is the whole story for a delta-skip change.
 
 ---
 
+## 0c. HANDOVER (2026-07-20) — unconfirmed "lethargy" report, compare against git history first
+**This is a REVIEW task, not an implementation task, until the comparison below says otherwise.**
+**Also unresolved from the same handover:** a separate live report ("start 0hr doesn't clear the
+canvas until the user scrubs a bit") triggered an attempt at a Puppeteer witness
+(`witness_jump_to_start_clear.js`, scratch worktree `/tmp/wt-tm-hotfix` on this machine, port 8412) —
+it never got a real answer; TM activation itself timed out (240s) before the actual test ran, the same
+shared-machine contention pattern seen repeatedly this session (load average 10-14). **This is
+INCONCLUSIVE, not evidence the bug is real or fixed** — don't cite it either way. If picked up: the
+witness script's logic is written and ready (scrub via the real `#tm-slider` input event → click the
+real `#tm-start-btn` → snapshot visible-guid count → compare against a forced full-path re-render at
+the same cursor), it just needs a run that doesn't hit environment timeouts — try on a less-loaded
+machine or with a much longer activation timeout before concluding anything about the underlying report.
+User's own words: "Feeling still slight lethargy, but not sure" — explicitly flagged as uncertain, not
+a confirmed regression, no specific action/building/log attached (unlike §0a's playback-freeze report,
+which came with an exact reproducing log). Do not invent a root cause to match a vague feeling — that
+is exactly the kind of thing this project's Prime Directive (extract, don't invent) exists to prevent.
+
+**The comparison to run, precisely:** this repo's `viewer/time_machine.js` git history has an ALREADY
+CONFIRMED, user-verified speed fix — Phase 1 (commits `fa7b4ef`/#905 + `eab9248`/#906, 2026-07-19/20),
+after which "a user on real LTU (125k) confirmed 'much faster'" (§0, this file). Since then, THIS
+session shipped two more commits on the same file: `98416d9`/#909 (Phase 2 — delta skip under shadows)
+and `58a9f2a`/#912 (hotfix — the playback-freeze fix, §0a). The question to answer: **does the
+CURRENT tip (`58a9f2a`) still feel as fast as the Phase-1 confirmed-fast state, or has something in
+#909/#912 regressed it?**
+- Diff `eab9248..58a9f2a` on `viewer/time_machine.js` (and `viewer/tour.js` if the Tour handoff in
+  `prompts/TOUR_WALKMODE_IDLE_PARK_STUCK.md` is also in play) — read every change for anything that
+  could add PER-TICK or PER-FRAME cost beyond what Phase 1 already established as the accepted
+  baseline. §0a's own `§PERF_TRAVERSE` numbers (ms=2.0, skipped=15833/15872, mode=delta) are FAST on
+  their face — if the diff shows nothing that should slow things down, the next hypothesis is
+  perception/environment, not code.
+- Cross-check against §0a's OWN already-documented, NOT-yet-fixed finding: repeated full TM
+  index-rebuild cycles (`§PERF_INCR_INDEX ... ms=50-159`) while a building is still streaming in, one
+  per streaming batch. This is a REAL, KNOWN cost this session already found and explicitly left
+  unfixed (§0a, cited again in `TOUR_WALKMODE_IDLE_PARK_STUCK.md` §5) — "lethargy" during/shortly after
+  a big building's initial load is very plausibly THIS, not a new bug. Rule this in or out by timing:
+  does the sluggish feeling correlate with early-session streaming, or does it persist deep into a
+  session with a fully-streamed building and TM paused/idle?
+- Also check whether the "lethargy" might correlate with the Tour investigation happening in the SAME
+  browser tab/session (`§SFX_SUSPEND idle`, `§BVH_DEFERRED` 17s builds, multiple heavy subsystems
+  competing for the same thread) rather than Time Machine itself — don't assume TM is the source just
+  because this file is open.
+
+**What NOT to do:** don't add a new perf "fix" speculatively to chase a feeling with no number attached.
+If the diff-review above finds nothing suspicious and the streaming-cost/environment explanations don't
+fit either, the correct output is "measured X, Y, Z, found no regression — here's what to ask the user
+to reproduce with a number attached" (a `window.__tmTrav` reading, a specific action + timestamp), not
+a guessed code change.
+
+**Fable-model pass, findings (2026-07-20) — ran exactly the comparison above, made no code changes:**
+- Diffed `eab9248..origin/main` on `viewer/time_machine.js`: every hunk sits inside `renderAtTime` call
+  sites, the shadow-toggle edge detector, or diagnostic-only test hooks (`__tmSetCursor`,
+  `__tmSnapshotVisible`). TM code doesn't execute when TM isn't ticking, so a *general* (non-TM,
+  non-tour) slowdown is very unlikely to be the Phase 2/hotfix diff itself. Also checked the full
+  commit window since Phase 1's confirmed-fast state: only 5 commits landed (#907 cinema/staffage,
+  #908 modeller-only, #909+#912 TM, #911 schedule writers/no render path) — nothing touched
+  `main.js`/`scene.js`/`tour.js`/`staffage.js` in that window. #912 is cost-neutral (moves a cursor
+  assignment, doesn't add work); #909 REDUCES BatchedMesh cost (one check per tick, not more).
+- Ranked hypothesis for the "lethargy" report, most to least likely: **(1) §IDLE-PARK wake-coverage
+  gaps** — the Tour freeze (`TOUR_WALKMODE_IDLE_PARK_STUCK.md`) proves at least one path exists where
+  the render loop stays parked when it shouldn't; if that shipped, sibling gaps (streaming-settle,
+  SFX-resume, TM idle→interaction) may exist too, and a viewer that only renders on `markDirty()` calls
+  presents to a user as general lethargy (missing frames), not slow frames — this is the one hypothesis
+  that would explain "normal render AND tour" with a single mechanism. **(2)** the already-documented,
+  not-yet-fixed streaming×TM full-rebuild cost (§0a) — explains EARLY-session sluggishness only.
+  **(3)** same-tab thread contention (17.4s `§BVH_DEFERRED`, SFX, shadows all on one thread).
+  **(4)** the GPU/memory floor Phase 3/DLOD exists to fix — unchanged, not a regression.
+- **The discriminating question, still unanswered, needs the user's own testing, not more code
+  reading:** does the lethargy persist after streaming completes, with TM off and no tour running? If
+  yes AND `§IDLE_GATE` shows the loop parked/thrashing during ordinary interaction — hypothesis 1, and
+  the wake-gap audit should widen beyond just `_startFlyTour`. If it clears once streaming settles —
+  hypothesis 2, already specced (coalesce/debounce the metaGen-triggered TM rebuild).
+
+**Reviewer note (updated 2026-07-20): Fable's pass is in and reviewed above — it's methodologically
+sound, made no unjustified code changes, and correctly stopped at a diagnostic question rather than
+guessing a fix.** Still nothing to implement here until that discriminating question gets a real
+answer from the user's own testing. The Tour fix (separate file) is a different matter — see
+`TOUR_WALKMODE_IDLE_PARK_STUCK.md` §8: two independent readings of the code now agree on its root
+cause, so it's reasonable for the next session to implement + verify that one specifically (on
+LTU_AHouse, not a substitute building), while this file's §0c question stays open pending the user.
+
+## 0c-CLOSURE (2026-07-20, Fable session) — how the lethargy report resolved
+The §0c comparison was run as specced: full diff read of `eab9248..origin/main` found NO per-frame
+cost added by #909/#912 (all changes inside renderAtTime call sites + diagnostics-only hooks). The
+"lethargy" decomposed into three real items, each now closed or specced:
+1. **Fly-tour freeze** (missing `markDirty()` wake in `_startFlyTour`) — fixed PR #914, live v825,
+   A/B-witnessed (fix absent = frozen after one 0.2-unit twitch). `TOUR_WALKMODE_IDLE_PARK_STUCK.md` §9.
+2. **▶ pressed at project end left the end-state on canvas at Hour 0** (startPlayback's three silent
+   `_cursor` warps — the LAST remaining #912-family call sites, found by the §0a-mandated audit) —
+   fixed PR #916, live v826. **USER-CONFIRMED live: "Hour 0 clears."** Witness caveat recorded in the
+   #916 commit: headless Hospital self-heals (streaming re-flush), so the failing control was not
+   reproducible headless; the live confirmation is the closing evidence.
+3. **"Heavy near end" is GPU, not JS** — user's live log at the Finishes phase: `§PERF_TRAVERSE
+   ms=2.0 skipped=16019/16092 mode=delta` (Phase 2 working) while the full built scene renders with
+   shadows. That is Phase 3's exact target; spec authored: `TM_DLOD_SCALE.md`. Secondary observed
+   churn in the same log: `§SFX_PLAY` flood + `§PILL_SYNC synced=6` per event in the Finishes phase —
+   noted, unmeasured, park it unless it survives Phase 3.
+Also shipped en route: Fly-Tour route cache (`TOUR_ROUTE_CACHE.md`) — repeat activation 16.5s → 431ms
+witnessed (38×), pending its PR at time of writing.
+
+## 0a. PHASE 2 SHIPPED + THE HOTFIX IT NEEDED (2026-07-20) — read this before Phase 3
+**PR #909** did exactly what §2-§3 below describe: removed the blanket `!app._shadowOn` gate on
+`_incrOK` (replaced with a toggle-EDGE-only force-full via `_lastShadowOn`), and wired the
+already-existing event index into the BatchedMesh branch (only InstancedMesh had the skip before —
+LTU's BatchedMesh-consolidated geometry, "8 draw calls", got ZERO benefit from Phase 1 until this).
+**W-INCR-EQUIV passed cleanly**: 19 cursors each on Hospital + LTU_AHouse (forward/backward playback,
+random scrubs, forced full-path jumps), `mismatch=0`, WITH shadows on.
+
+**The equivalence witness was not the whole story.** Minutes after deploy, the user hit a real,
+user-visible regression: continuous playback (▶ button) would build correctly for a moment, then
+visibly STOP updating ("ceases as the timeline continues on"); jump-to-start/end wouldn't refresh the
+canvas until a manual scrub. Root cause (**PR #912**, hotfix): several call sites — most importantly
+`playTick()`, the real playback loop — mutated the global `_cursor` to the NEW value BEFORE calling
+`renderAtTime(_cursor)`. Inside `renderAtTime`, `_prevCursor = _cursor` then reads that
+ALREADY-mutated value, making `_prevCursor == cursorMs` on every tick (a zero-width delta window).
+`_tmHasEventIn(arr, X, X)` is mathematically always false (needs `> lo && <= hi` with `lo==hi`), so
+the delta path saw "no event for any mesh" and skipped the ENTIRE scene, every tick.
+
+**Why the equivalence witness didn't catch it:** the witness (and the `__tmStep`/`__tmSetCursor` test
+hooks) compute the target cursor as a local value and pass it straight to `renderAtTime` — exactly the
+CORRECT pattern, same as the one real call site that was never buggy (`onSlide()`, the slider drag
+handler — which is exactly why scrubbing always "fixed" the frozen scene). The bug lived entirely in
+the OTHER call sites' calling CONVENTION, not in the traverse/skip logic the witness was built to
+check. **Lesson for Phase 3 and any future `_incrOK`-adjacent change: an equivalence witness that
+re-renders at a cursor it computed itself does not prove the REAL UI call sites feed `renderAtTime`
+correctly — audit every call site that mutates the global cursor before calling `renderAtTime`, not
+just the render logic in isolation.**
+
+**Also found, pre-existing:** this exact bug predates this session (the buggy call sites were
+unchanged code) but was invisible until now, because `_incrOK` required shadows OFF before PR #909 —
+and PR #909's own real-hardware tester ran with shadows ON, so delta mode had literally never been
+exercised during continuous playback in the field until PR #909 shipped and immediately hit it.
+
+**Separate, NOT-yet-actioned finding from the same live LTU_AHouse retest** (shadow+TM together, while
+the 122k-element building was still progressively streaming in): ten-plus repeated cycles of
+`§PERF_INCR_INDEX built meshes=<growing> ... ms=50-159` → `§PERF_TRAVERSE ... mode=full` — each
+streaming batch bumps `A._metaGen`, correctly invalidating the event index (by design), but that means
+every one of ~10+ streaming batches on a big building costs a real 50-160ms rebuild + a full traverse,
+specifically because Time Machine was turned on WHILE streaming was still in progress. This is the
+SAME class of risk already named in §4 Risk area for Phase 3 (metaGen bump → 108ms rebuild), just
+triggered by streaming instead of a DLOD bbox↔mesh swap. Not fixed this session — documented in
+`prompts/TOUR_WALKMODE_IDLE_PARK_STUCK.md` §5 (found during the same testing pass, a different file
+because the primary bug that prompted that file was a Tour freeze, not this). If picked up: the shape
+is "coalesce/debounce the metaGen-triggered TM rebuild, or defer it until streaming completes" — cite
+this section, don't rediscover it.
+
 ## 🎯 NEXT-SESSION BENCHMARK (LTU, one sentence)
-**Cut LTU's per-tick traverse ~74% (23ms → ~6ms) by making the delta skip engage under Shadow/Alt-G
-(Phase 2), then profile the real-GPU frame on hardware to set — never guess — the Phase-3 (DLOD) target.**
+**Phase 2 (shadow-engaged delta skip) is shipped and equivalence-clean; get a real-hardware
+`window.__tmTrav` frame profile from the user's own machine (the headless witness in this repo's dev
+environment was unreliable — heavy shared-machine contention, load average 10-14, made activation
+routinely time out) to finally set the Phase-3 (DLOD) target instead of estimating it.**
 
 ## 0. SHIPPED + WHAT'S NEXT (2026-07-20) — read this first
 **Phase 1 (DONE, live v821):** §PERF_INCR event-index skip + the waste-removal that actually moved
@@ -40,7 +196,10 @@ the traverse) so delta engages with Shadow/Alt-G on. **Expected: ~74% off the pe
 (23ms → ~6ms), high confidence** (identical path skips 9901/10841 on Hospital). JS-only; it does NOT
 touch GPU cost. Gate remains equivalence (§INCR_VERIFY mismatch=0) WITH shadows on.
 
-**Phase 3 (NEXT, the REAL scale lever) — DLOD / bbox-proxy in TM. See `TM_DLOD_SCALE.md` (to author).**
+**Phase 3 (NEXT, the REAL scale lever) — DLOD / bbox-proxy in TM. See `TM_DLOD_SCALE.md` (AUTHORED
+2026-07-20 — full Sonnet-implementable spec; it supersedes the sketch below and corrects two claims
+in this file: "8 draw calls" is uncorroborated, measured healthy state is ~15-16K (S280c/S263), and
+"eviction (shipped)" in §0b overstates — only dispose-on-building-switch exists).**
 The per-tick JS is now ~23ms and not the bottleneck. What still renders every frame is all ~16k LTU
 meshes at full geometry — GPU cost my JS work cannot touch. The proxy already exists and is proven
 >50k in the Find Panel (`navigate_find.js _buildMergedGhost()` — per-discipline InstancedMesh unit
