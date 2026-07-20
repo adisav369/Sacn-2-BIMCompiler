@@ -1,0 +1,384 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Time Machine — 4D Competitive Position</title>
+<style>
+  :root {
+    --paper: #f5f7f9;
+    --card: #ffffff;
+    --ink: #151d26;
+    --ink-2: #46545f;
+    --ink-3: #6d7a84;
+    --line: #dde3e8;
+    --line-2: #e8edf1;
+    --accent: #1f6fb2;
+    --accent-soft: #e7f0f8;
+    --hi: #d9641e;            /* survey-orange — ties to the frontier-spark work, used only for "us" */
+    --hi-soft: #fbeee3;
+    --ok: #2f8f5b;           /* verified */
+    --ok-soft: #e4f1ea;
+    --warn: #b9801f;         /* claimed / unverified */
+    --warn-soft: #f6eeda;
+    --gap: #7c8891;          /* material gap / absent */
+    --gap-soft: #eceff1;
+    --shadow: 0 1px 2px rgba(21,29,38,.04), 0 4px 16px rgba(21,29,38,.05);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e141a; --card: #161f28; --ink: #e7edf1; --ink-2: #a3b0ba; --ink-3: #7c8b96;
+      --line: #26323d; --line-2: #202b34; --accent: #63aae4; --accent-soft: #17293a;
+      --hi: #ef8b4a; --hi-soft: #2c1e12; --ok: #56b483; --ok-soft: #14271d;
+      --warn: #d7a648; --warn-soft: #2a2412; --gap: #8b98a2; --gap-soft: #1c252d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 18px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f5f7f9; --card: #ffffff; --ink: #151d26; --ink-2: #46545f; --ink-3: #6d7a84;
+    --line: #dde3e8; --line-2: #e8edf1; --accent: #1f6fb2; --accent-soft: #e7f0f8;
+    --hi: #d9641e; --hi-soft: #fbeee3; --ok: #2f8f5b; --ok-soft: #e4f1ea;
+    --warn: #b9801f; --warn-soft: #f6eeda; --gap: #7c8891; --gap-soft: #eceff1;
+    --shadow: 0 1px 2px rgba(21,29,38,.04), 0 4px 16px rgba(21,29,38,.05);
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e141a; --card: #161f28; --ink: #e7edf1; --ink-2: #a3b0ba; --ink-3: #7c8b96;
+    --line: #26323d; --line-2: #202b34; --accent: #63aae4; --accent-soft: #17293a;
+    --hi: #ef8b4a; --hi-soft: #2c1e12; --ok: #56b483; --ok-soft: #14271d;
+    --warn: #d7a648; --warn-soft: #2a2412; --gap: #8b98a2; --gap-soft: #1c252d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 18px rgba(0,0,0,.28);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+
+  /* ── header ── */
+  header { padding: 56px 0 36px; border-bottom: 1px solid var(--line); }
+  .kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--hi); flex: none; }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px); line-height: 1.08; margin: 0 0 18px;
+    letter-spacing: -.02em; font-weight: 720; text-wrap: balance;
+  }
+  .lede { font-size: clamp(16px, 2.2vw, 19px); color: var(--ink-2); max-width: 60ch; margin: 0; }
+  .meta {
+    margin-top: 26px; display: flex; flex-wrap: wrap; gap: 8px 20px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* ── verdict ── */
+  .verdict {
+    margin: 34px 0; padding: 26px 28px; background: var(--card);
+    border: 1px solid var(--line); border-left: 3px solid var(--hi);
+    border-radius: 10px; box-shadow: var(--shadow);
+  }
+  .verdict .eyebrow { color: var(--hi); }
+  .verdict p { margin: 12px 0 0; font-size: 17px; }
+  .verdict p:first-of-type { font-size: 19px; font-weight: 600; color: var(--ink); }
+  .verdict strong { color: var(--ink); }
+
+  section { margin-top: 52px; }
+  h2 {
+    font-size: 13px; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-2); margin: 0 0 4px; font-weight: 600;
+  }
+  .h2-sub { font-size: 22px; font-weight: 680; letter-spacing: -.01em; margin: 0 0 22px; text-wrap: balance; }
+
+  /* ── scorecard ── */
+  .board { display: flex; flex-direction: column; gap: 1px; background: var(--line-2);
+           border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .row {
+    display: grid; grid-template-columns: 1fr 132px 128px; gap: 18px; align-items: center;
+    background: var(--card); padding: 15px 20px;
+  }
+  .row.head { background: transparent; padding: 11px 20px; }
+  .row.head span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+                   text-transform: uppercase; color: var(--ink-3); }
+  .row.head span:nth-child(2), .row.head span:nth-child(3) { text-align: left; }
+  .dim { font-weight: 600; font-size: 15px; }
+  .dim small { display: block; font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+
+  .score { display: flex; align-items: center; gap: 10px; }
+  .score .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600;
+                font-size: 14px; width: 34px; flex: none; color: var(--ink); }
+  .bar { height: 6px; border-radius: 3px; background: var(--line); flex: 1; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  .bar.hot i { background: var(--hi); }
+
+  .grade {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; justify-self: start;
+    border: 1px solid transparent;
+  }
+  .grade.ok  { color: var(--ok);   background: var(--ok-soft);   border-color: color-mix(in srgb, var(--ok) 22%, transparent); }
+  .grade.par { color: var(--warn); background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 22%, transparent); }
+  .grade.gap { color: var(--gap);  background: var(--gap-soft);  border-color: color-mix(in srgb, var(--gap) 22%, transparent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  /* ── detail cards ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+    padding: 22px 22px 20px; box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 660; letter-spacing: -.01em; }
+  .card .tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+               color: var(--ink-3); margin-bottom: 12px; display: block; }
+  .card p { margin: 0 0 10px; font-size: 14px; color: var(--ink-2); }
+  .card p:last-child { margin-bottom: 0; }
+  .card .us { color: var(--ink); font-weight: 600; }
+  .card .them { border-top: 1px dashed var(--line); padding-top: 11px; margin-top: 12px;
+                font-size: 13px; color: var(--ink-3); }
+  .card .them b { color: var(--ink-2); font-weight: 600; }
+
+  /* ── roadmap / next ── */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: grid; grid-template-columns: 30px 1fr; gap: 16px; align-items: start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px;
+  }
+  .step .n { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--hi);
+             font-variant-numeric: tabular-nums; }
+  .step h4 { margin: 0 0 4px; font-size: 15.5px; font-weight: 640; }
+  .step p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .step .st { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+              color: var(--ink-3); margin-top: 7px; display: inline-block; }
+
+  /* ── honesty ledger ── */
+  .ledger { background: var(--card); border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .ledger .li { display: grid; grid-template-columns: 128px 1fr; gap: 18px; padding: 15px 20px;
+                border-top: 1px solid var(--line-2); font-size: 13.5px; }
+  .ledger .li:first-child { border-top: 0; }
+  .ledger .li .who { font-family: var(--mono); font-size: 12px; color: var(--ink); font-weight: 600; }
+  .ledger .li p { margin: 0; color: var(--ink-2); }
+  .ledger .li .flag { font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
+                      color: var(--warn); }
+
+  footer { margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line);
+           font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
+
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr 96px; }
+    .row .grade-cell { display: none; }
+    .row.head span:nth-child(3) { display: none; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">
+      <span class="dot"></span>
+      <span class="eyebrow">Competitive Position &nbsp;·&nbsp; 4D Construction Sequencing</span>
+    </div>
+    <h1>Where the Time&nbsp;Machine stands against the 4D BIM field</h1>
+    <p class="lede">An evidence-graded read of the browser-native 4D tool against the desktop
+      incumbents — separating what our code verifiably does from what competitors merely claim.</p>
+    <div class="meta">
+      <span><b>Compiled</b> 2026-07</span>
+      <span><b>Our scores</b> from code, this session</span>
+      <span><b>Rival notes</b> from public docs, July 2026 snapshot</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <span class="eyebrow">The honest verdict</span>
+    <p>A top contender in one specific segment — <strong>browser-native 4D that generates a schedule
+      from the model</strong> — not a drop-in Bentley SYNCHRO replacement.</p>
+    <p>The incumbent workflow assumes a planner already built a P6 schedule; ours derives a defensible
+      one from geometry, in a browser, folded to live ERP cost. Against the tool 55% of the market
+      actually uses — Navisworks TimeLiner, whose own docs call its Gantt <em>“read-only”</em> — the
+      Time Machine is ahead today on generation, CPM, cost and delivery. It loses a head-to-head only
+      where the ask is a contractor’s existing P6 schedule with resource levelling and a decade of
+      claims-grade track record.</p>
+  </div>
+
+  <section>
+    <h2>At a glance</h2>
+    <div class="h2-sub">Ten dimensions, scored — bar is how strong, chip is how sure</div>
+    <div class="board">
+      <div class="row head">
+        <span>Dimension</span><span>Strength&nbsp;/&nbsp;10</span><span class="grade-cell">Evidence</span>
+      </div>
+
+      <div class="row">
+        <div class="dim">Schedule generation from geometry
+          <small>Z-order + support-gating derive sequence — no imported schedule required</small></div>
+        <div class="score"><span class="num">9.0</span><div class="bar hot"><i style="width:90%"></i></div></div>
+        <div class="grade-cell"><span class="grade ok">Verified</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Zero-install delivery
+          <small>Browser + PWA + offline; rivals are Windows-desktop installs</small></div>
+        <div class="score"><span class="num">9.0</span><div class="bar hot"><i style="width:90%"></i></div></div>
+        <div class="grade-cell"><span class="grade ok">Verified</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">ERP / cost / EVM fold
+          <small>PP_Order + earned-value + variance against live ERP</small></div>
+        <div class="score"><span class="num">8.0</span><div class="bar hot"><i style="width:80%"></i></div></div>
+        <div class="grade-cell"><span class="grade ok">Verified</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Schedule interop (P6 / MSP)
+          <small>XER + PMXML + MSPDI read, MSPDI write — XER writer is the one gap</small></div>
+        <div class="score"><span class="num">7.0</span><div class="bar"><i style="width:70%"></i></div></div>
+        <div class="grade-cell"><span class="grade par">Partial</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Native CPM engine
+          <small>Exact critical path over the DAG — FS/SS/FF/SF + lag, float</small></div>
+        <div class="score"><span class="num">7.0</span><div class="bar"><i style="width:70%"></i></div></div>
+        <div class="grade-cell"><span class="grade ok">Verified</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Playback polish
+          <small>Drone-fly, cooling-metal frontier sparks, movie capture</small></div>
+        <div class="score"><span class="num">7.0</span><div class="bar hot"><i style="width:70%"></i></div></div>
+        <div class="grade-cell"><span class="grade ok">Verified</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Scale ceiling
+          <small>125k elements scrub smoothly in-browser; millions need DLOD — the open front</small></div>
+        <div class="score"><span class="num">6.0</span><div class="bar"><i style="width:60%"></i></div></div>
+        <div class="grade-cell"><span class="grade par">Partial</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Resource levelling
+          <small>Project-wide crew caps, not automatic levelling</small></div>
+        <div class="score"><span class="num">3.0</span><div class="bar"><i style="width:30%"></i></div></div>
+        <div class="grade-cell"><span class="grade gap">Gap</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Multi-user / permissions
+          <small>Single-operator; rivals build around shared CDE</small></div>
+        <div class="score"><span class="num">3.0</span><div class="bar"><i style="width:30%"></i></div></div>
+        <div class="grade-cell"><span class="grade gap">Gap</span></div>
+      </div>
+      <div class="row">
+        <div class="dim">Track record
+          <small>New; incumbents carry decades of contractor deployment</small></div>
+        <div class="score"><span class="num">2.0</span><div class="bar"><i style="width:20%"></i></div></div>
+        <div class="grade-cell"><span class="grade gap">Gap</span></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i> Verified — from our code, this session</span>
+      <span><i style="background:var(--warn)"></i> Partial — real, with a named gap</span>
+      <span><i style="background:var(--gap)"></i> Gap — materially behind</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where it wins</h2>
+    <div class="h2-sub">Four positions the research confirms are genuinely ours</div>
+    <div class="cards">
+      <div class="card">
+        <h3>Generation from geometry</h3>
+        <span class="tag">Differentiator · uncontested</span>
+        <p class="us">We derive the build sequence from the model — Z-order, structural support gating, crew caps.</p>
+        <p>A Frontiers survey states doing this automatically “is not currently possible” commercially.
+          Bexel and ALICE generate from <em>rule/recipe templates</em>, not the geometry’s own support graph.</p>
+        <p class="them"><b>Field:</b> ~80% of the market (Navisworks, SYNCHRO) generates nothing — they map an imported schedule.</p>
+      </div>
+      <div class="card">
+        <h3>Schedule interop</h3>
+        <span class="tag">Stronger than assumed</span>
+        <p class="us">Three parsers — XER, P6 PMXML, MSPDI — plus MSPDI export, with a re-export-safe bind token instead of brittle GUID mapping.</p>
+        <p>Navisworks (55% share) imports P6/MSP but exports back only to CSV or MS Project XML, per Autodesk’s own docs. Round-trip depth across the desktop suites varies and is worth confirming case by case.</p>
+        <p class="them"><b>Gap:</b> no XER/PMXML <em>writer</em> yet — the single piece between us and documented Bexel parity.</p>
+      </div>
+      <div class="card">
+        <h3>Native CPM</h3>
+        <span class="tag">Verified in code</span>
+        <p class="us">Exact critical-path over the authored DAG — FS/SS/FF/SF with lag, float and critical flags written to tasks.</p>
+        <p>Navisworks has no CPM engine — Autodesk calls its Gantt “read-only.” Only SYNCHRO and Bexel match us here.</p>
+        <p class="them"><b>Gap:</b> resource <em>levelling</em> — and in our code that’s a deliberate refuse, not a missing feature.</p>
+      </div>
+      <div class="card">
+        <h3>Cost / EVM / ERP</h3>
+        <span class="tag">Rare depth</span>
+        <p class="us">Folds PP_Order, earned-value and variance from a live ERP into the 4D view.</p>
+        <p>Named earned-value in a 4D tool is rare — SYNCHRO Perform and Bexel are the clearest examples, and in SYNCHRO’s case across separate products. Navisworks records cost as manual columns, not an EVM engine.</p>
+        <p class="them"><b>Ahead of:</b> everyone whose “5D” is cost-loaded tasks with no earned value.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where it loses — and the plan</h2>
+    <div class="h2-sub">Two open fronts, each with a concrete next move</div>
+    <div class="steps">
+      <div class="step">
+        <span class="n">01</span>
+        <div>
+          <h4>Close the interop gap — add an XER / PMXML writer</h4>
+          <p>We import P6 and export MS Project, but a P6 shop can’t reingest our output natively.
+            The fix is a serializer mirroring parsers we already own — verified by round-tripping through
+            our own reader. Lands us at documented parity with Bexel, ahead of the unverified rest.</p>
+          <span class="st">Spec written · XER_PMXML_WRITER_LANE.md</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">02</span>
+        <div>
+          <h4>Prove the scale ceiling — Pareto bbox-swap, demonstrated on LTU</h4>
+          <p>Box the inactive set, keep per-element mesh only on the layer under construction. The
+            field’s core dilemma is “merge <em>or</em> 4D”; this threads it. The bbox-proxy renderer
+            already ships in the Find Panel and is proven past 50k elements — and unlike Find, the
+            Time Machine carries no x-ray transparency weight, so LTU (125k) already plays. The build
+            is wiring that proven proxy in as TM’s inactive-set layer. Target: LTU with no visible lag
+            versus HHS (6.9k).</p>
+          <span class="st">Proxy exists (navigate_find.js) · wiring + LTU-vs-HHS capture pending</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Methodology &amp; limitations</h2>
+    <div class="h2-sub">How to read this — and where the evidence is thin</div>
+    <div class="ledger">
+      <div class="li">
+        <span class="who">Our scores</span>
+        <p>Drawn directly from our own source code and stand behind. Scale is our sharpest edge and our honest limit at once: a 125k-element model now scrubs smoothly in a browser — where the desktop incumbents live and browser rivals cap out — but millions is not yet proven, and closing that is exactly what the roadmap’s step 02 (DLOD) targets.</p>
+      </div>
+      <div class="li">
+        <span class="who">Competitor claims</span>
+        <p>Compiled from public vendor documentation and secondary sources as of <span class="flag">July 2026</span>. Where a capability rests on vendor marketing rather than primary documentation, we treat it as <em>stated but not independently confirmed</em> rather than asserting it either way.</p>
+      </div>
+      <div class="li">
+        <span class="who">Round-trip depth</span>
+        <p>P6/MS-Project round-trip fidelity varies across the desktop suites and, in several cases, could not be confirmed from current primary docs within this research. Any head-to-head on interop should be validated tool-by-tool with a live licence.</p>
+      </div>
+      <div class="li">
+        <span class="who">Market movement</span>
+        <p>The category moves — Trimble Vico Office reached end-of-life in June 2024, and Autodesk’s construction line has been rebranding — so any comparison is a snapshot, not a standing fact.</p>
+      </div>
+      <div class="li">
+        <span class="who">Scale figures</span>
+        <p>Vendor element-count ceilings are rarely published; the real-world limits circulating in forums are the least-sourced numbers in the space and are worth re-checking before being quoted as fact.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Time Machine — 4D construction sequencing in the BIM viewer. &nbsp;·&nbsp;
+    Our-side claims verified against our own source. &nbsp;·&nbsp;
+    Competitor references reflect public documentation as of July 2026 and are a research snapshot, not a standing benchmark. &nbsp;·&nbsp;
+    Figures should be re-validated before use in a formal claim.
+  </footer>
+</div>
