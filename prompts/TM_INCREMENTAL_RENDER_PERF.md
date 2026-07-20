@@ -4,8 +4,62 @@ cursor, instead of O(total elements) per tick. Nothing else. This is a pure perf
 it must not change a single rendered pixel, and that is the acceptance bar.
 **Read the log after every run.** Exit code is not evidence. The witness for this work is a NUMBER
 (`§PERF_TRAVERSE`) plus a zero-mismatch equivalence check (`§INCR_VERIFY`), not "it looks fine."
-**Status:** SPEC ONLY (2026-07-19). No implementation started. Do not write code before reading
-§4 Risks — several of them will silently corrupt the scene rather than throw.
+**Status:** Phase 1 SHIPPED live (v821, 2026-07-20). Phases 2-3 below are OPEN. Read §4 Risks and
+§8 (the shipped lessons) before touching code — several risks silently corrupt the scene, and one
+already shipped a net regression that had to be reverted-in-effect.
+
+---
+
+## 0. SHIPPED + WHAT'S NEXT (2026-07-20) — read this first
+**Phase 1 (DONE, live v821):** §PERF_INCR event-index skip + the waste-removal that actually moved
+the needle. A user on real LTU (125k) confirmed "much faster." The honest post-mortem of WHAT helped:
+- **Index thrash removed** — the biggest win, and it was fixing MY OWN regression. `_tmSceneSig()`
+  first folded `scene.children.length` into the staleness key; that count changes every tick (spark
+  sprites, SFX, stars, bloom add/remove children), so the 108ms event index rebuilt EVERY tick AND
+  reset `_incrPrimed` → forced `mode=full` forever → ~158ms/tick, slower than no optimisation.
+  Fixed by keying only on `A._metaGen`. **Lesson: never validate a perf change only headless — a
+  software-WebGL rig showed a flat 60fps for both 6.9k and 125k and was blind to all of this.**
+- **§WB_MAT logging gated** behind `window.__TM_WBDEBUG` (was ~40 console.logs/sec, real cost even
+  console-closed; catastrophic with Firefox devtools open). Full traverse 50ms→23ms just from this.
+- **25.8MB ad_seed.db reread** cached as a miss (`§PERF_NEG_CACHE`) — was re-deserialised from IDB
+  EVERY tick on non-folded buildings (LTU). Verified: per-tick (30+) → 2 total.
+- **The incremental SKIP itself contributed ~nothing** for this user, because it is gated OFF under
+  shadows (`_incrOK = ... && !app._shadowOn`) and they run Shadow + Alt-G. `mode=full skipped=0` in
+  their live log. Be honest about this: the felt win was waste-removal, not the headline skip.
+- Diagnostic hooks shipped for real-hardware profiling: `window.__tmTrav` (last-traverse stats),
+  `window.__tmStep(dms)` (drive a playback-like tick without the cinema UI).
+
+**Phase 2 (NEXT, JS lever) — make the delta skip work UNDER SHADOWS.** Currently `_incrOK` forces
+full whenever `app._shadowOn`, because the shadow-caster promotion pass needs the complete
+`_placedMeshes` list each tick. Maintain that list incrementally (or decouple the shadow pass from
+the traverse) so delta engages with Shadow/Alt-G on. **Expected: ~74% off the per-tick traverse
+(23ms → ~6ms), high confidence** (identical path skips 9901/10841 on Hospital). JS-only; it does NOT
+touch GPU cost. Gate remains equivalence (§INCR_VERIFY mismatch=0) WITH shadows on.
+
+**Phase 3 (NEXT, the REAL scale lever) — DLOD / bbox-proxy in TM. See `TM_DLOD_SCALE.md` (to author).**
+The per-tick JS is now ~23ms and not the bottleneck. What still renders every frame is all ~16k LTU
+meshes at full geometry — GPU cost my JS work cannot touch. The proxy already exists and is proven
+>50k in the Find Panel (`navigate_find.js _buildMergedGhost()` — per-discipline InstancedMesh unit
+boxes from the DB `center_*`/`bbox_*` columns). Wire it in as TM's INACTIVE-SET renderer: real mesh
+only on the active construction layer, boxes for the rest. **⚠ interaction with Phase 1:** a
+bbox↔mesh swap bumps `A._metaGen` → rebuilds the event index (108ms). Fine for a user-driven layer
+switch, fatal if it happens per playback tick — needs targeted per-mesh invalidation, not a global
+`_metaGen` bump.
+
+**MEASURE BEFORE ESTIMATING (hard rule this session learned twice).** The headless rig cannot see
+GPU cost. Before quoting any Phase-3 %, get a real-hardware frame profile via `__tmTrav` + a
+frame-time capture on the user's machine. The only number currently defensible is Phase 2's ~74%
+traverse cut. Total-lag % is UNKNOWN until the GPU baseline exists — do not invent it.
+
+## 0b. FOOTPRINT STRATEGY TO 1M — ingredients yes, proof no
+Coherent on paper, unproven at 1M. Pieces: batching/instancing (LTU 125k = 8 draw calls, shipped) +
+streaming/eviction (shipped) + O(changed) event index (shipped) + **DLOD bbox proxy (Phase 3, the
+load-bearing piece)**. **Binding constraint = the ~2GB browser tab memory ceiling** (Autodesk's own
+figure). At 1M the strategy only holds if the bbox proxy is the DEFAULT resident representation and
+real mesh is streamed for the active window then evicted — memory is the wall nobody has measured.
+Honest external phrasing: "architected for 1M via Pareto DLOD, demonstrated at 125k" — NOT "handles
+1M." Next-session task: build Phase 3, then measure real memory + frame footprint at 250k/500k/1M to
+find where the wall actually is.
 
 ---
 
