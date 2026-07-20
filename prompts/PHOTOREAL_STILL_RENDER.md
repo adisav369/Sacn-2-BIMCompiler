@@ -3675,10 +3675,53 @@ else in this feature matters until the dive lands in the concourse.**
 Also open, lower priority: Alt+P perf regression (~0.9s→2.7s, BVH probing) — see
 `prompts/STAFFAGE_WALKABLE_PLACEMENT.md` §STAFFAGE cars-never-indoors + perf section.
 
-## R2/R3/R1 SHIPPED (2026-07-20, PR bim-ootb#907) — the 3-item list above is DONE, witnessed on
-Terminal + Hospital. `EFFECTS_V` v5→v6, `CACHE_VERSION` v821→v822.
+## ⚠ NEXT SESSION — TEST LIVE. DO NOT ASSUME ANY OF THE FOUR ITEMS BELOW ARE ACTUALLY SOLVED
+**Read this before touching the cinema code again, and before believing the "SHIPPED"-style labels
+on the four sections below.** Every one of R2, the bbox-ghost fix, §CINEMA_FLAT_ENDING, and
+§CINEMA_ORBIT_V2 is: merged to `main` (PRs #907, #921, #923, #925, all MERGED), and passed its OWN
+unit-level witness (a headless Puppeteer script driving `A.cinemaPathPlan()` directly and asserting
+on the numbers). **None of it has been confirmed correct by the user actually pressing Alt+C and
+watching the film.** This distinction has bitten this exact feature TWICE already this session — R2
+passed its own witness, shipped, and the user found it "STILL BROKEN" in live use (the dive still
+went to the attic — turned out to be a SEPARATE bug, the bbox-ghost-stuck issue, that no unit witness
+could have caught since it depends on Find-panel navigation state a synthetic `cinemaPathPlan()` call
+never touches). Then §CINEMA_FLAT_ENDING ALSO passed its own witness and shipped, and the user's live
+trial ("from above then level then back above is not cinematic smooth") triggered the entire
+§CINEMA_ORBIT_V2 redesign. **Passing a unit witness is necessary, not sufficient — it proves the
+formula does what the code intends, not that what the code intends is what the film actually needs.**
+Assume nothing is settled until the user has pressed Alt+C on a real building and said so.
 
-## §CINEMA_SIMPLE — bbox-ghost-stuck root cause found for the R2 recurrence, SHIPPED (2026-07-20,
+**Concrete things to verify live, per piece — Terminal AND Hospital, several different camera
+starting positions/angles each (the whole point of this feature is that different starts should
+diverge):**
+- **Space selection (§CINEMA_SPACE, simplified in #925):** does the dive actually land somewhere
+  that reads as "the main hall/concourse" to a human eye, not the attic, not an awkward bbox-centre
+  fallback floating in empty space? The fallback-to-bbox-centre path is now MORE likely to fire than
+  before (no second-best candidate to fall back to), and it was only confirmed numerically (via
+  `§CINEMA_SPACE` log lines), never watched.
+- **Exit mood (§CINEMA_TRAVEL_CLASS):** does "rushed" actually read as purposeful/quick, or does it
+  read as clipping through the nearest wall regardless of what's there? Does "graceful" actually look
+  unhurried, or just slow?
+- **Spin (§CINEMA_SPIN_MOTIVATED):** does skipping the spin when already facing the exit look
+  natural, or does it read as the film forgetting to establish the room at all?
+- **Exterior shape (§CINEMA_SUN_ORDER):** does the sun-first "rise to an elevated closing view" and
+  the sun-last "glide down to the Sun" both actually look intentional on screen? Does the reflection
+  genuinely read as a highlight, or is it too subtle/fast to notice at 24fps?
+- **End deceleration + beat overlap:** do these actually remove the "abrupt" feeling the user
+  reported, or is it still perceptible? These were verified via a numeric rate/angle check, never a
+  frame-by-frame watch.
+
+If the user reports ANY of this still looks wrong, that is not a regression of the witnessed formula
+— read it the way R2's "still broken" turned out to be a different bug entirely. Reproduce with a
+fresh probe against the SPECIFIC pose/building the user describes before touching the code again.
+
+## R2/R3/R1 MERGED — unit-witnessed only, live-trial status UNKNOWN (2026-07-20, PR bim-ootb#907) —
+the 3-item list above is IMPLEMENTED, witnessed on Terminal + Hospital via a synthetic
+`cinemaPathPlan()` probe, NOT yet confirmed by the user watching a real film. `EFFECTS_V` v5→v6,
+`CACHE_VERSION` v821→v822.
+
+## §CINEMA_SIMPLE — bbox-ghost-stuck root cause found for the R2 recurrence, MERGED — unit-witnessed
+only, live-trial status UNKNOWN (2026-07-20,
 PR bim-ootb#921) — "the orbit still goes to attic" resurfaced after #907's fix had already
 stress-tested clean across 24 pose/building combinations. Root cause: `_drillSelect()` silently
 auto-enables the merged-ghost bbox shell (hides real solids) on a Storey/Discipline Find-panel drill
@@ -3692,7 +3735,9 @@ coarse ghost boxes instead of real walls while the display was stuck in that sta
 exclusion convention `picking.js`/`city.js`/`measure.js` already use. Verified on Duplex (real
 solids survive the filter, ghost never does, in both a solids-hidden and solids-visible scenario).
 
-## §CINEMA_FLAT_ENDING — the swoop ENDING redesigned per live-trial feedback, SHIPPED (2026-07-20,
+## §CINEMA_FLAT_ENDING — the swoop ENDING redesigned per live-trial feedback, MERGED — unit-witnessed
+only, live-trial status UNKNOWN, and NOW SUPERSEDED (§CINEMA_ORBIT_V2 below scopes this to the
+sun-last branch only, it is no longer universal) (2026-07-20,
 PR bim-ootb#923). User's verdict on the R3 swoop as shipped (a brief mid-loop dip toward the Sun that
 then CLIMBED BACK UP to the 45° look-down for the rest of the orbit): *"the last part of orbit, it
 should go last 5 secs at least to be flat eye level without the wobble. Catch the Sun is luck but
@@ -3739,8 +3784,10 @@ radius spread before the pullback flourish engages is 0.0000 (fully damped), and
 engages radius grows strictly monotonically (no oscillation) in every case.
 
 ## §CINEMA_ORBIT_V2 — the whole ROUTE redesigned (dive target, exit mood, spin, exterior shape,
-ending), SHIPPED (2026-07-20, PR bim-ootb#TBD) — worked out interactively across many user messages
-in the same session as §CINEMA_FLAT_ENDING above, after live-trialing it. §CINEMA_FLAT_ENDING itself
+ending), MERGED — unit-witnessed only, live-trial status UNKNOWN (2026-07-20, PR bim-ootb#925) —
+worked out interactively across many user messages in the same session as §CINEMA_FLAT_ENDING above,
+after live-trialing it — itself NOT YET live-trialed, so treat the whole design as provisional until
+the user reports back on it. §CINEMA_FLAT_ENDING itself
 is now CONDITIONAL (only the sun-last half of this spec) rather than universal — see Phase 3 below.
 
 ### Why (verbatim user framing, read before touching any of this again)
