@@ -5,8 +5,12 @@ it must not change a single rendered pixel, and that is the acceptance bar.
 **Read the log after every run.** Exit code is not evidence. The witness for this work is a NUMBER
 (`§PERF_TRAVERSE`) plus a zero-mismatch equivalence check (`§INCR_VERIFY`), not "it looks fine."
 **Status:** Phase 1 SHIPPED live (v821, 2026-07-20). **Phase 2 SHIPPED live (v824, 2026-07-20,
-bim-ootb PR #909 + hotfix PR #912 — read §0a before touching this file further.)** Phase 3 (DLOD) is
-OPEN — **spec now AUTHORED: `TM_DLOD_SCALE.md` (2026-07-20), Sonnet-implementable.** **§0c CLOSED
+bim-ootb PR #909 + hotfix PR #912 — read §0a before touching this file further.)** **Phase 3 (DLOD)
+SHIPPED + RETIRED (2026-07-20): landed as bim-ootb #918, then redesigned VIEW-BASED at the user's
+ask (#919 wireframe, #920 view-based redesign, #922 box tagging) — live and user-accepted on real
+LTU hardware. ALL THREE PHASES DONE — this file is now history, not a work queue. The spec, with
+§9 recording the shipped view-based truth (it supersedes the time-based design this file's §0
+sketch describes), is retired to `prompts/done/TM_DLOD_SCALE.md`.** **§0c CLOSED
 (2026-07-20): the "lethargy" resolved into three concrete, separately-handled things — (1) Fly-tour
 freeze = missing §IDLE-PARK wake, fixed PR #914 v825 (`TOUR_WALKMODE_IDLE_PARK_STUCK.md` §9, A/B
 confirmed); (2) ▶-at-Hour-0 stale canvas = startPlayback's silent cursor warps, the last #912-family
