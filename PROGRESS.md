@@ -20,9 +20,6 @@
 fast-forward/PRs, verification habits unchanged) until the user pauses again. `CLAUDE.md` §⏸ PUSH PAUSE.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `prompts/GEOMETRY_TRUTH_CHAIN.md` — ONE lane: DB→loader→scene trust chain, witnessed at both
-  links (§DB_IDENTITY manifest + §RENDER_FIDELITY triangle tripwire); S0 diagnoses the live
-  Modeller low-LOD fallback first. Merged from the two 2026-07-19 spec files (same generality).
 - `prompts/RESUME_ERP_POST_TAIL_AND_USERGUIDE.md` — SONNET: finish Cash/Inventory posting oracles
   (generator built, reuse) + ERPUserGuide navigation + core S&D-flow chapter. Fresh branch off master.
 - `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — A/B/C bugs + E decision.
@@ -50,6 +47,11 @@ fast-forward/PRs, verification habits unchanged) until the user pauses again. `C
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY (Modeller + Viewer) + §RENDER_FIDELITY
+  triangle tripwire. bim-ootb PR #908 (`76f5d1b`,`ee9ca9b`), UNMERGED. GREEN 4/4 REAL; RED trips at
+  12.0 tris/element while `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 — the blind spot. S0 CORRECTED the
+  spec's own premise (ARC dbs pair with `mesh.db`; all 8 residents 100%, not "zero geometry").
+  ⛔ open: which building+URL shows the low-LOD fallback. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
 - ✅ B-3 + W-POST-TAIL posting oracles (2026-07-17/18, Fable 5) — 6 G-seed classes + BankStatement/
   MatchPO/Requisition `maxDiff=0c`; ledger 43→52; 17/20 posters fold; Cash/Inventory next, Production ⛔.
   `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
