@@ -3737,3 +3737,129 @@ forced to fall where it CAN be caught vs where it CAN'T): tilt monotonically non
 the entire descent in all four cases (zero re-climb), exactly flat (0.000°) for a clean 5.00s hold,
 radius spread before the pullback flourish engages is 0.0000 (fully damped), and once the flourish
 engages radius grows strictly monotonically (no oscillation) in every case.
+
+## §CINEMA_ORBIT_V2 — the whole ROUTE redesigned (dive target, exit mood, spin, exterior shape,
+ending), SHIPPED (2026-07-20, PR bim-ootb#TBD) — worked out interactively across many user messages
+in the same session as §CINEMA_FLAT_ENDING above, after live-trialing it. §CINEMA_FLAT_ENDING itself
+is now CONDITIONAL (only the sun-last half of this spec) rather than universal — see Phase 3 below.
+
+### Why (verbatim user framing, read before touching any of this again)
+- On Alt+P: *"Alt-P is not perf issue because it lags due to size."* (a SEPARATE thread — see the
+  §Alt+P PERF INVESTIGATION note further below; not part of this orbit redesign.)
+- On R2's floor-level ranking: *"i think abandon the 'next largest room on way zooming in' idea. It
+  is disastrous for sure. Just back to original 'go to largest space within 4 sec'. Let user play
+  with it."*
+- On the already-inside short-circuit vs "go to largest space" (asked "is my logic off?", answer:
+  no — it's ONE rule, not two): *"prior to that maintains, 'when in any inside space go to largest
+  space then head out closest entrance nearest to you due to short of time as u got another 4 secs
+  to get out'. When starting from largest space, 'look around and head to main exit in 4 secs'."*
+  Reconciled: "go to the largest space" is the constant; "settle in place" is what that rule DOES
+  when you're already standing in the target — not a separate override. No code needed to detect
+  "already there" specially; it falls out of the general case (a near-zero `diveDist`) for free.
+- On exit choice, already-at-target case: *"if the nearest is behind then turn around to it, helps
+  shows around the place... If it is facing the nearest exit, [skip the spin, glide straight
+  there]... no matter what the cam angle from up or to the ceiling or sky or upside down, it simply
+  normalise, no abrup cut."*
+- On the overall feel: *"Ok try, and as overall rule, no abruptness or too sharp ie when exiting to
+  turn back to the building"* / *"even the path when reaching outside should not be robotic abrupt
+  stop and turn, it can play while doing both."*
+- On the exterior act's shape: *"a different angle outside will determine if the Sun reflect is
+  happening first or last. If first stay eye level to catch the reflect. Then raise cam to see from
+  above the closing sec rotation of the building. If last, then rise gracefully but catch the
+  reflecting Sun to end, which last 2 sec should slow down not abrupt stop."*
+
+### Phase 1 — reaching the target (dive-in, unchanged 4s budget)
+Three starting conditions, ONE rule (`§CINEMA_SPACE`, effects.js): rank ALL real rooms once by the
+ORIGINAL area/centrality formula (`area / (1 + dCtr/envelope*0.5)` — "largest space NEAREST TO the
+centre" beats the strict geometric centre), take the single TOP-ranked room, one enclosure sanity
+check (never dive into literal open sky — e.g. Duplex's R301 roof terrace, 135m², which fans 0%
+enclosed), fall straight to bbox-centre if that fails. **No floor-level weighting (R2's
+`_cinemaFloorLevelWeight`, deleted), no multi-candidate iteration (R2's try-up-to-6-then-take-
+best-enclosed loop, deleted).** This is a deliberate simplification, not a regression — see the
+"Just back to original" quote above. Consequence worth knowing: since there is no second-best
+candidate to fall back to anymore, a building whose SINGLE largest room happens to fail the
+enclosure check (Duplex, confirmed) now lands at the generic bbox-centre rather than a real named
+room — accepted per "let user play with it".
+- Outside/roof start → dives to the chosen room.
+- Inside, not the chosen room → travels there (this consumes the dive's time budget).
+- Inside, already the chosen room → the ease-in is a near-no-op (settle ≈ camPos0). No special-case
+  branch exists for this — it is the SAME code path as the other two, just with `diveDist≈0`.
+
+### Phase 2 — exit choice (`§CINEMA_TRAVEL_CLASS` + `§CINEMA_SPIN_MOTIVATED`, effects.js)
+`diveDist` (settle vs the camera's actual start position) classifies the mood — `hadToTravel =
+diveDist > 3m`:
+- **Rushed** (outside start, or inside-but-not-the-target): time is short — exit cost weights
+  proximity heavily (`CINEMA_EXIT_FACE_GAIN_RUSHED = 0.1`), nearest door wins outright.
+- **Graceful** (already at the target, no travel spent): time to spare — exit cost weights facing
+  more (`CINEMA_EXIT_FACE_GAIN_GRACEFUL = 0.8`, the pre-existing measured value, unchanged), a
+  door roughly matching where the camera is already facing is preferred.
+
+The spin (Beat 2) is MOTIVATED, never forced — replaces the old "always extend small angles into a
+full 360° lap" rule entirely:
+- Already facing the chosen exit (within 20°) → NO spin at all (`dYaw=0`). Beat 2 still plays for
+  its time budget but rotates nothing — a graceful pause, not a manufactured search.
+- Exit is roughly BEHIND (beyond 120°) → turn the LONG way around (a full lap) — "helps shows
+  around the place," per the user's own framing of the incidental benefit.
+- Anywhere in between → a direct turn, no artificial extension.
+
+### Phase 3 — the exterior act's SHAPE (`§CINEMA_SUN_ORDER`, effects.js)
+Whichever half of the final 360° loop the Sun-crossing (`swoopU`, unchanged formula — an emergent
+consequence of the chosen exit, itself driven by where the user started/faced — THIS is the "angle
+of start correlates dynamically" lever) falls into decides the whole shape:
+- **Sun-first** (`swoopU < 0.5`): start the exterior act FLAT (eye level) immediately — the camera
+  is flat from u=0 straight through the crossing, not just an instant — then climb ONCE to the
+  45° look-down for the remainder, ending ELEVATED (an overhead view of the closing rotation).
+- **Sun-last** (`swoopU >= 0.5`): rise gracefully early (the pre-existing Sun-hold logic — don't
+  climb into the look-down while the Sun sits near the EXIT heading, take it right after), cruise
+  at look-down, then glide back DOWN to flat at the crossing as the finale — this IS
+  `§CINEMA_FLAT_ENDING` above, now scoped to this branch only, not universal.
+
+Both branches share the two overall rules below.
+
+### Overall rule 1 — `§CINEMA_END_DECEL`: the whole film settles before it cuts
+The recording used to just STOP at u=1 while the camera was still actively orbiting at a constant
+angular rate — reads as the recording being cut off mid-move, not a deliberate close. The azimuth
+formula now eases its own RATE to zero over the final `CINEMA_END_DECEL_SEC`=2s
+(`f(t)=t+t²-t³`, the unique cubic with `f(0)=0,f(1)=1,f'(0)=1,f'(1)=0` — matches the incoming
+constant rate with zero slope mismatch, eases exactly to a standstill by the cut). Applies to BOTH
+Phase 3 branches identically — the whole camera motion, not just tilt, settles before the end.
+
+### Overall rule 2 — `§CINEMA_BEAT_OVERLAP`: no stop-then-turn at Beat 3→4
+User: *"even the path when reaching outside should not be robotic abrupt stop and turn, it can play
+while doing both."* The walk-out (Beat 3) used to ease to a dead stop (smoothstep's own zero-slope
+end), then the turn-to-face-the-building (Beat 4) started a FRESH spin from a standing start
+(smoothstep's own zero-slope start) — two decelerate-then-accelerate segments back to back reads as
+"stop, then turn" even though raw position was technically continuous. Fix: the look-at starts
+blending toward the pivot in the LAST 40% of the walk-out (`CINEMA_TURN_OVERLAP=0.4`), reaching
+`CINEMA_TURN_OVERLAP_MAX=0.5` by the time the walk ends, so Beat 4 CONTINUES the turn already in
+progress rather than starting one. Both ramps use smoothstep, so the blend weight is continuous AND
+slope-matched (zero/zero) at the boundary — no kink.
+
+`EFFECTS_V` v7→v8, `CACHE_VERSION` v831→TBD.
+
+**Verified** (`witness_cinema_orbit_v2.js`, Terminal + Hospital + Duplex): outside start always
+produces `mood=rushed`; teleporting the camera to the plan's own settle point (near-zero `diveDist`)
+always produces `mood=graceful`; spin class is always one of the three recognised values; sun-first
+scenario always opens flat (0.00°) and ends elevated (45.00°), sun-last always opens elevated and
+ends flat (0.00°); azimuthal rate in the final samples drops to <15% of the mid-loop rate on every
+building; the look-at direction shows no kink at the Beat 3/4 boundary beyond normal per-building
+geometric variance (Duplex 0.43°, Terminal 0.08-0.14°, Hospital 0.68-0.96° — all comfortably under
+the 2° bar that would separate real variance from an actual regression, which prior investigation
+showed would be an order of magnitude larger). Space selection confirmed to reject Duplex's roof
+terrace (0% enclosed) and fall through to bbox-centre with at most 2 `§CINEMA_SPACE` log lines
+(single candidate + at most one fallback — no iteration) on every building tested.
+
+### §Alt+P PERF INVESTIGATION (2026-07-20, separate thread, NOT part of the orbit redesign above)
+User: *"Alt-P is not perf issue because it lags due to size.. but if u are smart solve it by
+referring just to meta.db or bbxes?"* Root cause already found this session (profiling, not
+guessed): Terminal's real geometry streams as `THREE.InstancedMesh` (34k+ instances in the largest
+bucket), and this project's BVH acceleration (`loader.js` `§BVH_INIT`) only patches
+`THREE.Mesh.prototype.raycast` — `InstancedMesh` never got it, so every clearance/occlusion ray
+against real geometry falls back to a linear per-instance scan. Alt+P's clearance fan fires
+200-400+ rays per press, multiplying that cost hundreds of times over. `picking.js` has the exact
+same gap but nobody noticed since a click only fires one ray. Three fix directions were presented
+(scoped DB/meta.db-driven spatial pre-filter — skip the raycast entirely when nothing is even
+nearby, matching the user's own suggestion; fewer rays; or a proper app-wide `InstancedMesh` BVH)
+— **not yet implemented, no direction chosen as of this writing.** Worktree `/tmp/wt-altp-perf`
+branch `perf/staffage-altp-clearance-cache` has the profiling instrumentation already in place,
+uncommitted, ready to resume.
