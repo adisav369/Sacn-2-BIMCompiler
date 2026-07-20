@@ -53,53 +53,25 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY (Modeller+Viewer) + §RENDER_FIDELITY.
-  bim-ootb **PR #908 UNMERGED** (`76f5d1b`,`ee9ca9b`,`ef31a25`). All 8 residents REAL, 100% geo
-  coverage. Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to
-  substrate loss); a MEAN hides a bimodal population (`boxInstancesExpected`); `mesh.db` frozen by
-  `§MESH_GUARD` (`f828a7a`). `prompts/GEOMETRY_TRUTH_CHAIN.md`.
-- ✅ **SampleCastle blocky — CLOSED 2026-07-20** (RESOLVED → RETRACTED → re-closed same day, full
-  chain kept verbatim for the lesson). Final verdict: data+code witnesses (no screenshots) both
-  clean on `origin/main` HEAD — 73.6 tris/element matches the 2026-07-08 proof baseline,
-  `manifest=match geo=3225/3225 hardfail=0 blobMiss=0`. Root cause = a stale client-side IndexedDB
-  cache in the reporting session, not a code/data regression. `prompts/Modeller/DISC_Walker/
-  EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED 2026-07-20.
-- ✅ Posting-tail CLOSED, all 20 factory posters resolved (2026-07-17/18) — B-3's 6 G-seed classes +
-  BankStatement/MatchPO/Requisition `maxDiff=0c` (ledger 43→52, Fable 5); Cash/Inventory driven on a
-  real scratch clone and found ∅-by-data-state (`IsActive='N'`, `@NoLines@`, no cost data — none worked
-  around); Production ⛔ (no component costs). **17/20 fold, 3 named ⛔, FINAL — ledger stays 52.**
+- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY+§RENDER_FIDELITY, bim-ootb PR #908
+  UNMERGED, all 8 residents REAL/100% geo coverage. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
+- ✅ SampleCastle blocky — CLOSED 2026-07-20 (RESOLVED→RETRACTED→re-closed same day, chain kept for
+  the lesson): root cause = stale client IndexedDB cache, not a code/data regression.
+  `prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED.
+- ✅ Posting-tail CLOSED, 20/20 factory posters resolved (2026-07-17/18), ledger stays 52.
   `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
-- ✅ ERPUserGuide core S&D chapter (2026-07-18) — "lay of the land" nav map + the 8-step standard-flow
-  walkthrough (Order→Cash / Procure→Pay / Books→Reports), each step citing its proving witness.
-  `docs/ERPUserGuide.md`.
-- ✅ ERP multi-user concurrency PoC (2026-07-19/20) — real two-tab/10-tab browser witnesses
-  (S1-S5 + `W-N10-CONCURRENT-TODAY`), N-User Concurrency spec, witnessed fix + ERPUserGuide "Working
-  at the same time" section. `prompts/ERP_MULTIUSER_CONCURRENCY_POC.md`.
+- ✅ ERPUserGuide core S&D chapter (2026-07-18). `docs/ERPUserGuide.md`.
+- ✅ ERP multi-user concurrency PoC (2026-07-19/20) — real two/ten-tab witnesses, N-User spec.
+  `prompts/ERP_MULTIUSER_CONCURRENCY_POC.md`.
 - ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
   #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
-- ✅ Fly Tour route cache re-fixed (2026-07-20) — live LTU regression: cache's own un-evicted stale
-  keys filled localStorage quota, silently disabling the 41× win. Self-heal (evict+retry, stale-
-  version prune) shipped bim-ootb PR #926, W-TOUR-CACHE-EVICT PASS. `prompts/done/TOUR_ROUTE_CACHE.md` §4.
-  ⛔ OPEN follow-up filed for Fable: extend the TM DLOD box-proxy to general Fly-Tour/nav rendering
-  for buildings ≥LTU scale. `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md`.
-- ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
-  `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
-  content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.
-- ✅ FLY_TOUR + walker translation-invariance cure chain (2026-07-16/17) — PRs #812,#815,#832-#835
-  merged+Pages-deployed; §WALKER-PHASE-SENSITIVITY resolved. `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`.
-- ✅ Photoreal staffage + BimWhale ground fix (2026-07-17) — local only (PUSH PAUSE). `prompts/PHOTOREAL_STILL_RENDER.md`.
-- ✅ LTU krn-persist readonly-ops fix, LIVE (PR #808). `prompts/MOBILE_PERF.md`.
-- ✅ Room Lens §14/§26 (2026-07-15/16) — x-crossing, bbox threshold, door markers, §26 texture-
-  serialization hang fixed LIVE (PR #811). `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md`.
-- ✅ Room Lens taxonomy + island-bridge (2026-07-15) — Clinic 71.8%→95.7%, HHS 49.4%→85.2%
-  connected (PR #794/#795).
-- ✅ DiscWalk containment (2026-07-12/13) — Bug A/B, D3/D4/D4b, storey='Unknown' substrate() fix.
-  §TE-ARC-DATUM + §LIVEWIRE closed.
-- ✅ Modeller glass parity + guide-quality pass (2026-07-13) — PR #735.
-- ✅ Building Parts Taxonomy — `prompts/BUILDING_PARTS_TAXONOMY.md`.
-- ✅ MANAGER housekeeping (2026-07-11/13) — stale branches/worktrees pruned.
-- ✅ pending merge only: `SCALE_AND_UX_SWEEP.md` (#665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md` — human merge click.
-- 2026-07-05 arc (Save/Open, grid, Teams E2E, HBA mobile, UBBL) — ALL MERGED (#654-664).
+- ✅ Fly Tour route cache re-fixed (2026-07-20) — cache's own un-evicted stale keys filled
+  localStorage quota, killing the 41× win; self-heal shipped bim-ootb PR #926, W-TOUR-CACHE-EVICT
+  PASS. `prompts/done/TOUR_ROUTE_CACHE.md` §4. ⛔ Follow-up GATED at §8, not started: general-nav
+  DLOD/occlusion for ≥LTU-scale buildings — this problem class has failed 4× before (S258/259/261/
+  262, hysteresis alone insufficient); Fable is authorized to investigate+report only, no
+  implementation without user sign-off. `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md`.
+- 2026-07-05 through 2026-07-16 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md`.
 - Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
   Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
