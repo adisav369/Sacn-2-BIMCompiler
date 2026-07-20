@@ -6,13 +6,12 @@ window. This file is the spec `TM_INCREMENTAL_RENDER_PERF.md` §0 references as 
 rediscover, do not re-litigate §1's settled history.
 **Read the log after every run.** Witnesses in §6; every claim needs its § line. Exit code is not
 evidence. The acceptance bar for the OFF state is ZERO behavioural change (same as Phases 1-2).
-**Status:** ✅ DONE (shipped, deployed, user-accepted 2026-07-20) **with ⛔ ONE OPEN BUG found in
-continued live use the same day — read §10 before touching this feature again.** Live at
-`red1oon.github.io/bim-ootb`. Final design differs from the original spec — see §9 (redesigned
-mid-session after live testing surfaced a real gap the spec didn't anticipate). Original
-implementation notes kept in §8 for the reasoning trail; §9 is the shipped truth; §10 is the bug +
-its fix, **now implemented (PR #927, bim-ootb `fix/dlod-tm-camguard`), awaiting the user's live
-LTU orbit test before merge — do not re-derive the root cause, it's already found and fixed.**
+**Status:** ✅ DONE (shipped, deployed, user-accepted 2026-07-20; camguard fix merged 2026-07-21,
+PR #927 `ee57a3e` on `main`). Live at `red1oon.github.io/bim-ootb`. Final design differs from the
+original spec — see §9 (redesigned mid-session after live testing surfaced a real gap the spec
+didn't anticipate). Original implementation notes kept in §8 for the reasoning trail; §9 is the
+shipped truth; §10 is the box↔real orbit bug found the same day — root-caused, fixed, and merged;
+nothing further open on this file.
 
 ## 8. Implementation notes (2026-07-20 session)
 - Reused `LARGE_BUILDING = 50000` (time_machine.js:471, already computed into `_isLargeBuilding` at
@@ -285,7 +284,6 @@ mirrors §8's earlier 18/18 self-test) confirms: orbit-only tick forces full pas
 DLOD-off path never influenced by camera position; first DLOD-engage tick doesn't spuriously force
 full; re-engage after an OFF tick (sig reset) doesn't spuriously force full against a stale pose.
 
-**Still needed — user's live hardware, same as §6/§9 always required:** open LTU in Time Machine,
-engage ◧ LOD late in the build, orbit TOWARD a boxed element without touching the cursor — confirm it
-now restores to real mesh without a retoggle. Re-run W-DLOD-EQUIV/PROXY/NO-REBUILD/PERF (§6) against
-this branch before merging PR #927.
+**Confirmed and merged (2026-07-21):** live-hardware orbit test passed (demo:
+youtu.be/juwOrpqKhFE, "Time Machine Box Proxy Fixed"), PR #927 merged to `main` (`ee57a3e`). §10
+closed.
