@@ -14,7 +14,10 @@ re-litigate `TM_DLOD_SCALE.md` §1's settled DLOD-naming history.
 **Status:** OPEN, filed 2026-07-20. Triggered by a live user question ("how to get true DLOD to
 scale LTU above sizes") asked immediately after `prompts/done/TOUR_ROUTE_CACHE.md` §4's fix — the
 user's own framing tied the two together ("perhaps it is just the FlyTour isolated case... delve
-into its initial"), i.e. Fly Tour is the first real-world path this should cover.
+into its initial"), i.e. Fly Tour is the first real-world path this should cover. **§5 added same
+day**: a viability test for a DIFFERENT, structural culling axis (storey occlusion) the user's own
+domain pushback surfaced — see §5's "why this wasn't found earlier" note before assuming the
+box-proxy design in §0-§4 is the only lever worth pulling.
 
 ## 0. What already exists — reuse, do not reinvent (all shipped, all proven)
 - **`viewer/time_machine.js`'s DLOD proxy** (`_dlodEngaged`, `_dlodBuildBoxes`, `_dlodUpdateBoxes`,
@@ -106,3 +109,63 @@ user's machine, `window.__tmTrav`-style stats or an equivalent nav-scope hook)
   plainly, don't extrapolate from TM's (also never formally witnessed) numbers.
 - **W-DLOD-NAV-NO-REBUILD:** confirm zero `§PERF_INCR_INDEX` (or equivalent) rebuilds fire from DLOD
   box visibility flips alone during a sustained tour/orbit session (post-streaming).
+
+## 5. Storey occlusion — a SEPARATE, structural culling axis (viability tested 2026-07-20)
+
+**Why this is here and why it wasn't found weeks ago (read before designing more box-proxy work):**
+every perf phase to date — TM delta-rendering, box-proxy distance+frustum, plain `dlod.js` frustum
+culling, the retracted S261 geometry-swap — asks a CAMERA-RELATIVE question (distance, frustum,
+time-window). None ever asked whether the BUILDING'S OWN STRUCTURE already proves an element can't
+be seen. That's not a data gap — `elements_meta.storey` has been 100%-populated the whole time — it's
+an analysis blind spot: each phase was a reactive fix to a specific live complaint, built by reusing
+whatever mechanism already existed (correctly, per this project's reuse-first doctrine), which means
+a mechanism that had never been built (structural occlusion) never entered the reuse pool. It surfaced
+this session only because the user pushed back on the "wide view = mostly facade" assumption with
+"behind the walls can't they be culled" — a domain intuition the camera-relative framing above never
+reached for on its own. Both Fly Tour AND Alt+C Cinema Orbit are affected — `effects.js`'s MaxQ film
+always "dives" into the largest interior space at floor level (`§CINEMA_SIMPLE decision 3`), so
+Cinema is NOT purely exterior/aerial either; occlusion here has to be room/storey-aware for BOTH
+entry points, not envelope-only (a naive "hide everything behind the outer shell" rule would go dark
+the instant either camera is inside its own dive/walk target — see the conversation this file's git
+history sits under for the fuller reasoning).
+
+**Viability test run 2026-07-20 (pure SQL against the real DB, no browser/GPU needed — this only
+tests spatial partition, not render cost):** `buildings/LTU_AHouse_extracted.db`, 125,698 elements.
+```
+SELECT storey, COUNT(*), 125698-COUNT(*), ROUND(100.0*(125698-COUNT(*))/125698,1)
+FROM elements_meta GROUP BY storey ORDER BY 2 DESC;
+```
+| storey (top 5 of 19 distinct labels) | on this storey | elsewhere | % elsewhere |
+|---|---|---|---|
+| Plan 1 | 44,374 | 81,324 | 64.7% |
+| Plan 2 | 28,542 | 97,156 | 77.3% |
+| Plan 3 | 18,815 | 106,883 | 85.0% |
+| Plan 4 | 13,522 | 112,176 | 89.2% |
+| VÅNING 3 | 2,218 | 123,480 | 98.2% |
+
+Even parked on the single biggest floor, **65% of the building is on a different storey** —
+opaque floor/ceiling slabs make that a strong occlusion candidate (exception: stairwells/atria with
+genuine vertical sightlines — a small exempted set, not a dent in the ceiling). Most storeys clear
+90%+. **`storey` coverage is complete** — this is buildable today with no new extraction.
+
+**Same-floor room-level occlusion (walls blocking lateral sightlines) is a SEPARATE, currently
+BLOCKED question** — checked `rel_contained_in_space` (element→IfcSpace containment): only 1,608 of
+125,698 elements (1.3%) have a room assignment, across 181 spaces. Not a logic problem, a data
+problem — do not attempt room-level occlusion until containment extraction coverage is fixed
+(separate task, not this spec).
+
+**Recommended shape (not yet designed in full — this is a viability finding, not a spec):**
+1. Storey-aware culling: query (or cache) which storey the camera currently occupies (Fly
+   Tour/Cinema both already know their current stop's storey from the room-graph/dive-target data
+   they compute for path-planning — reuse that, don't recompute), then treat any element whose
+   `storey` differs as an occlusion candidate — box-proxy it (reuse §0-§2's existing box mechanism)
+   or outright skip its draw, pending a design decision on which is cheaper to toggle live.
+2. Exempt stairwell/atrium elements spanning the current storey and its immediate vertical
+   neighbor (a name/class filter — `IfcStair`/`IfcStairFlight`/void-openings — not a full 3D
+   containment test) from storey-based hiding, so vertical sightlines don't visibly break.
+3. This is ADDITIVE to §0-§2's distance+frustum box-proxy, not a replacement — storey occlusion
+   catches "wrong floor entirely" (the biggest single win per the numbers above); distance+frustum
+   still matters for same-floor far/background elements.
+4. Needs its own viability witness before implementation claims anything: confirm live on LTU that
+   the current-storey lookup is cheap/already-available at the exact point `_dlodUpdateBoxes`-style
+   code would need it, not just that the SQL partition looks good in isolation.
