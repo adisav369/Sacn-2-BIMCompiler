@@ -321,3 +321,67 @@ secondary cross-check, not conflated with this one):
    mechanics in `viewer/dlod.js`, `viewer/streaming.js`, or `viewer/time_machine.js`'s DLOD
    sections. §0-§4's nav-scope box-proxy extension and §7's R-tree line-of-sight idea both wait on
    this investigation's outcome before any implementation work starts.
+
+### §8 FINDINGS — 2026-07-21 (Fable, isolated prototype, REPORT ONLY — no live code touched)
+
+**Prototype:** scratchpad-only (`xfade_proto/proto.html` + playwright runner, session scratchpad —
+throwaway per task 1; key § lines quoted below are the durable evidence). Thin wall 6m×3m×0.08m
+viewed 3° off edge-on (projects a ~4px sliver — S258's condition), real mesh ↔ wireframe bbox proxy
+using the shipped §9 look (`MeshBasicMaterial` wireframe, opacity 0.4), hard 50m threshold.
+Fully deterministic: frame-index-driven camera, 640×480, SwiftShader software GL, full-canvas
+`gl.readPixels` every frame. Metrics are numeric per the FUNDAMENTAL LAW — no screenshots:
+`changedPx` (pixels with any-channel delta>10 vs prev frame) and `sumAbsK` (total abs pixel delta,
+kilo-units); a CTRL run (always-real, same path) gives the camera-motion baseline (max 7K/frame,
+mean 6-8 changedPx). Two camera paths: T = genuine traverse 90→30→90m (2 real crossings);
+O = oscillation 50±2.5m + ±0.5° yaw wobble (the flicker trigger). 17 runs total.
+
+**1. Reproduction: CONFIRMED.** Hard toggle on the oscillating path flips 14×/400 frames
+(`§XFADE_RUN path=O mode=HARD flips=14 ... maxChangedPx=194`), each flip a 36K single-frame delta
+vs 7K motion baseline — a 5× pop repeating every ~30 frames = the recorded edge-on flicker. On the
+traverse path each genuine crossing pops 29K in one frame (`§XFADE_POPSUM path=T mode=HARD
+worstFrameSumExcessK=29@f134 ctrlMaxFrameSumK=7`).
+
+**2. Hysteresis alone (S261's 50/80 band): exactly matches its historical "insufficient" record.**
+Kills oscillation completely (O-path flips 14→0) but the pop at a genuine crossing is BYTE-IDENTICAL
+to hard toggle (29K@f134, same frame, same magnitude) — hysteresis fixes decision instability, does
+nothing for the swap itself. The prototype independently re-derives why S261 retracted.
+
+**3. Cross-fade alone: NOT a fix either — two new findings.**
+(a) **First-frame depth-occlusion step, N-independent:** the first fade frame carries HALF the hard
+pop (15K for N=10, 17K for N=20 — same regardless of N) because the real mesh, even at 5-10%
+opacity, still writes depth and instantly occludes the proxy's back wireframe lines. A hard
+structural pop hiding inside the "smooth" fade.
+(b) **On an oscillating decision, fade converts binary flicker into sustained shimmer:** O-path
+FADE10 still flips 14×, opacity never settles, mean churn 47 changedPx/frame — WORSE than hard
+toggle's 24 (`§XFADE_RUN path=O mode=FADE10 ... meanChangedPx=47`).
+
+**4. The working combination — hysteresis + cross-fade N=10 + depthWrite:false while mid-fade:**
+depthWrite-off during the transition removes finding 3a entirely: worst per-frame excess drops
+29K (hard) → 11K (naive fade) → **7K — indistinguishable from the camera-motion baseline itself**
+(`§XFADE_POPSUM path=T mode=FADE10DW worstFrameSumExcessK=7@f143 ctrlMaxFrameSumK=7`; same for
+FADEHYST10DW). Hysteresis supplies decision stability (0 oscillation flips, O-path identical to
+CTRL), fade+DW supplies a pop-free transition. N=10 frames sufficed; N=5 and N=20 were both
+slightly worse pre-DW (12K/13K) — no reason found to go longer than 10.
+
+**5. Z-fighting (the risk unique to cross-fade): STABLE in this environment.** Worst case tested —
+box-shaped wall means proxy and real mesh are EXACTLY coplanar — 58 static frames with both drawn
+at 50/50: zero changed pixels across all three variants (`§XFADE_ZFIGHT mode=ZSTATIC ...
+totalChangedPx=0 verdict=STABLE`, ditto ZSTATICDW). Caveat: SwiftShader is a deterministic software
+rasterizer; a real-GPU spot check on the user's machine is a cheap prerequisite before any go.
+
+**6. Costs/limits found:** draw calls double per transitioning element for N frames (returns to 1
+after — transient, bounded); both representations must render in the transparent pass mid-fade
+(sorting cost at scale untested). **Biggest implementation-reality gap, untested here:** the
+prototype fades a standalone `Mesh` material — the live viewer's real geometry is
+InstancedMesh/BatchedMesh with SHARED materials, so per-element opacity needs per-instance alpha
+(shader patch) or temporarily hoisting transitioning elements into an overlay mesh; neither is
+trivial and neither was prototyped. Also: cross-fade addresses ONLY the pop — it does nothing for
+S258's second named cause (TM/Find visibility-ownership fights); that remains §6's exemption-clause
+design, a separate mandatory piece of any implementation.
+
+**Verdict for user review:** flicker mechanism reproduced and killed in isolation by
+hysteresis + N=10 cross-fade + mid-fade depthWrite-off — worst-frame delta equal to normal camera
+motion, zero oscillation churn, zero static-overlap instability (software GL). Open before any
+implementation decision: real-GPU z-fight/artifact spot check, and the batched/instanced
+per-element-opacity question in finding 6. STOPPED HERE per gate — no live wiring, no PR,
+`_useDlodPath`/`§WB_DLOD_VIS` untouched.
