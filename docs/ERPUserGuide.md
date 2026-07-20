@@ -185,41 +185,57 @@ resident list (System, GardenWorld, and every installed tenant). Each tenant is 
 
 ## Working at the same time — many tabs, many people  *(LIVE)*
 
-A classic ERP puts one database server between everyone, so concurrency is the server's problem. This
-one has **no server** — each browser holds its own signed op-log. That raises a fair question: *if two
-people (or two of my own windows) edit the same order at once, does someone's work get lost?* We tested
-it, found it did, and fixed it. Here is where it stands, plainly.
+Most ERPs put a database server between you and everyone else, so every save waits on the network and
+the server referees who wins. This one has **no server in the middle**. Each browser holds its own
+**signed op-log** — a tamper-evident chain of every change — and works at local speed whether you are
+online, on a plane, or on hospital Wi‑Fi. Your work is yours, on your device, immediately.
 
-**Two windows of your own** — e.g. the order header in one tab, its lines in another, or just two copies
-open. **Every edit is kept.** Each save appends to the log; nothing overwrites anything. Saving in one
-window no longer erases an unsaved-then-saved change in the other. (This was a real defect — a whole
-save could vanish while the screen still said *"saved (signed)."* It is closed: witnessed at **10
-windows editing at once, 10 of 10 edits survive**, the signed history intact.)
+That design invites the honest question: *if two of us — or two of my own windows — edit the same order
+at once, whose change wins, and does anyone's work quietly disappear?* Here is the answer, and you can
+see it for yourself.
 
-**Two people on two machines** — each works fully **offline-first**, on their own copy, at local speed
-(no round-trip, no spinner, works with the network down). To bring them together you point both at a
-shared **relay** and hit **Sync** (the `⟳` pill; or open with `?relay=<url>`). Sync merges both logs
-into **one identical signed history on every device** — total order decided by the log, not by who saved
-last. Witnessed at **10 devices editing the same order, all 10 converging to the same signed tip, zero
-edits lost.**
+### Your work is never silently lost
 
-| You want | How | What you get |
+**Open the same record in two windows and edit both.** Put an order's header in one tab and its lines in
+another, or just keep two copies open. Save in either — **both edits are kept.** Every save *appends* to
+the log; nothing is overwritten, so one window can never erase what another just saved. If two people
+change the *same field*, the later change shows as the current value — but the earlier one is still
+recorded in the history, not gone. Nothing vanishes behind a reassuring *"saved (signed)."*
+
+> **Try it.** Open the same order in two browser tabs. In tab 1 change the *Description*; in tab 2 change
+> the *Grand Total*. Save both, then reload. **Both changes are there.** This is checked on every
+> release — most recently with **ten windows editing at once: 10 of 10 edits survived, the signed chain
+> intact.**
+
+### Bringing several people together — Sync
+
+Everyone starts out working **independently and offline-first** — full local speed, no spinner, no
+dropped work when the connection does. When you want your separate copies to become *one shared set of
+books*, point each person at a shared **relay** and press **Sync** (the `⟳` pill on the bar, or open the
+app with `?relay=<url>`).
+
+Sync folds every device's log into **one identical signed history on all of them** — the order of events
+is decided by the chain itself, not by who happened to save last. Proven with **ten devices editing the
+same order and all ten converging to a single signed history, zero edits lost.**
+
+| You want to… | Do this | You get |
 |---|---|---|
-| One person, many windows | Nothing to set up | Every edit kept; safe by default |
-| Many people, shared data | Point each at a relay → **⟳ Sync** | All devices fold to one identical signed log |
-| Work with no network | Just work | Local-speed edits; sync later when reconnected |
+| Use several windows yourself | Nothing — it is on by default | Every edit kept, always |
+| Work with no connection | Just keep working | Local-speed edits; Sync later when you reconnect |
+| Share one set of books across people | Point each at a relay → **⟳ Sync** | Every device folds to one identical signed history |
 
-**Setup, in short.** Run the relay (the "dumb post office" — it only orders and hands back op-logs, no
-business logic), give each user its URL, and Sync. Each person still logs in as their own real user; the
-relay carries the *log*, the accounting still folds from it exactly as single-user.
+**Setting up the relay.** The relay is a deliberately *dumb* post office: it only receives, orders, and
+hands back logs — it holds no business logic and makes no accounting decisions. Run it once, give each
+person its URL, and everyone keeps logging in as their own real user. The relay carries only the *log*;
+the accounting still folds from that log on each device, identical to single-user.
 
-> **Honest limit — read before relying on it for approvals.** Convergence is proven today for **field
-> edits** (change a value, save, sync). A cross-device **document action** — Complete / Void / Close and
-> other multi-step workflow steps — is **not yet** covered by cross-device sync: merging re-signs the
-> combined log under each device's own key and does not yet preserve per-step, per-person attribution of
-> those workflow actions across devices. Same-device workflows are unaffected. If you need multi-person
-> *approval* trails across machines, that is the next piece (opt-in per-op content-signing), not this
-> one. We would rather name the gap than have you discover it on an audit.
+> **One honest limit — read this before you rely on it for approvals.** Cross-device Sync is proven today
+> for **field edits** (change a value → save → sync). It does **not yet** carry full per-person, per-step
+> attribution of **document actions** — *Complete / Void / Close* and similar workflow steps — *across
+> devices*: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
+> **single device** is unaffected. So if you need a multi-person **approval trail that holds up across
+> machines**, that is the next piece we are building (opt-in per-step signing) — not this one. We would
+> rather tell you here than have you find it during an audit.
 
 ---
 
