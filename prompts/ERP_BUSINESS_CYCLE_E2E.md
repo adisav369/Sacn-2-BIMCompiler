@@ -200,5 +200,8 @@ defect), reported as-is, not investigated further. Stages 2-4 remain blocked by 
 already-documented Gap 2/3/4 facts above (P2P absence, no receipt-linking path, no on-hand recompute),
 unchanged by this fix.
 
-**State:** committed locally only, `fix/so-child-bind` branch, worktree `/tmp/wt-so-bind`, commit
-`950af9f`. Per worker discipline, NOT pushed — push is the user's call.
+**State:** DEPLOYED 2026-07-21. Branch was 1 commit behind `main` — merged `origin/main` into
+`fix/so-child-bind` in worktree `/tmp/wt-so-bind` (clean, no conflicts; merge commit `306effe`),
+re-ran `W-SO-CHILD-BIND` against the synced worktree (still 🟢), pushed, opened
+[PR #928](https://github.com/red1oon/bim-ootb/pull/928), auto-merge (squash) armed — merges once
+`fast-checks` CI passes.
