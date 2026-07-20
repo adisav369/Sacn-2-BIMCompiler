@@ -19,6 +19,14 @@
 ▶ **PUSH PAUSE LIFTED (2026-07-17, user: "push permission is ON")** — push freely (normal
 fast-forward/PRs, verification habits unchanged) until the user pauses again. `CLAUDE.md` §⏸ PUSH PAUSE.
 
+▶ **In-flight work is NOT listed here — read it from git, it is authoritative and never stale.**
+Branch state is deliberately not hand-copied into this file (every hand-written copy has been wrong:
+"10 commits" when it was 336, "55 .txt" when it was 6). To see what is in flight, in `bim-ootb`:
+`gh pr list --state open` · unmerged-with-no-PR: `git for-each-ref --format='%(refname:short)' refs/heads/ | while read b; do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`
+**Verified 2026-07-20: 0 commits exist only on this disk** (48 were single-copy, now pushed; 1 —
+`feat/component-catalog-dedup` — awaits an LFS-quota window). ~40 branches carry unmerged work with
+no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed up, but undelivered**.
+
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
 - `prompts/RESUME_ERP_POST_TAIL_AND_USERGUIDE.md` — SONNET: finish Cash/Inventory posting oracles
   (generator built, reuse) + ERPUserGuide navigation + core S&D-flow chapter. Fresh branch off master.
@@ -47,11 +55,13 @@ fast-forward/PRs, verification habits unchanged) until the user pauses again. `C
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY (Modeller + Viewer) + §RENDER_FIDELITY
-  triangle tripwire. bim-ootb PR #908 (`76f5d1b`,`ee9ca9b`), UNMERGED. GREEN 4/4 REAL; RED trips at
-  12.0 tris/element while `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 — the blind spot. S0 CORRECTED the
-  spec's own premise (ARC dbs pair with `mesh.db`; all 8 residents 100%, not "zero geometry").
-  ⛔ open: which building+URL shows the low-LOD fallback. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
+- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY (Modeller+Viewer) + §RENDER_FIDELITY.
+  bim-ootb **PR #908 UNMERGED** (`76f5d1b`,`ee9ca9b`,`ef31a25`). All 8 residents REAL, 100% geo
+  coverage. **Low-LOD complaint RESOLVED: SampleCastle renders 1,498 boxes vs 1,501 expected from
+  source — faithful; the IFC is genuinely ~46% box solids. Not a render fault, no fix needed.**
+  Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to substrate
+  loss); a MEAN hides a bimodal population (fixed via `boxInstancesExpected`). ⛔ wire that
+  comparison into the witness verdict. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
 - ✅ B-3 + W-POST-TAIL posting oracles (2026-07-17/18, Fable 5) — 6 G-seed classes + BankStatement/
   MatchPO/Requisition `maxDiff=0c`; ledger 43→52; 17/20 posters fold; Cash/Inventory next, Production ⛔.
   `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
