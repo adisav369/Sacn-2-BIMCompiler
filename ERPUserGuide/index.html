@@ -954,6 +954,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#working-at-the-same-time-many-tabs-many-people-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working at the same time — many tabs, many people (LIVE)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working at the same time — many tabs, many people (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-work-is-never-silently-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your work is never silently lost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bringing-several-people-together-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bringing several people together — Sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#spatial-bim-erp-find-a-selection-project-order-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2640,6 +2679,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#working-at-the-same-time-many-tabs-many-people-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working at the same time — many tabs, many people (LIVE)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working at the same time — many tabs, many people (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-work-is-never-silently-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your work is never silently lost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bringing-several-people-together-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bringing several people together — Sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#spatial-bim-erp-find-a-selection-project-order-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3693,6 +3771,74 @@ dialog, no <code>?shard=</code>, no server. Once installed it survives a reload 
 resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
 <strong>own Admin user</strong> (e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.
 (In-tenant test links that skip the picker enter via <code>?client=garden</code>.)</p>
+<hr />
+<h2 id="working-at-the-same-time-many-tabs-many-people-live">Working at the same time — many tabs, many people  <em>(LIVE)</em><a class="headerlink" href="#working-at-the-same-time-many-tabs-many-people-live" title="Permanent link">&para;</a></h2>
+<p>Most ERPs put a database server between you and everyone else, so every save waits on the network and
+the server referees who wins. This one has <strong>no server in the middle</strong>. Each browser holds its own
+<strong>signed op-log</strong> — a tamper-evident chain of every change — and works at local speed whether you are
+online, on a plane, or on hospital Wi‑Fi. Your work is yours, on your device, immediately.</p>
+<p>That design invites the honest question: <em>if two of us — or two of my own windows — edit the same order
+at once, whose change wins, and does anyone's work quietly disappear?</em> Here is the answer, and you can
+see it for yourself.</p>
+<h3 id="your-work-is-never-silently-lost">Your work is never silently lost<a class="headerlink" href="#your-work-is-never-silently-lost" title="Permanent link">&para;</a></h3>
+<p><strong>Open the same record in two windows and edit both.</strong> Put an order's header in one tab and its lines in
+another, or just keep two copies open. Save in either — <strong>both edits are kept.</strong> Every save <em>appends</em> to
+the log; nothing is overwritten, so one window can never erase what another just saved. If two people
+change the <em>same field</em>, the later change shows as the current value — but the earlier one is still
+recorded in the history, not gone. Nothing vanishes behind a reassuring <em>"saved (signed)."</em></p>
+<blockquote>
+<p><strong>Try it.</strong> Open the same order in two browser tabs. In tab 1 change the <em>Description</em>; in tab 2 change
+the <em>Grand Total</em>. Save both, then reload. <strong>Both changes are there.</strong> This is checked on every
+release — most recently with <strong>ten windows editing at once: 10 of 10 edits survived, the signed chain
+intact.</strong></p>
+</blockquote>
+<h3 id="bringing-several-people-together-sync">Bringing several people together — Sync<a class="headerlink" href="#bringing-several-people-together-sync" title="Permanent link">&para;</a></h3>
+<p>Everyone starts out working <strong>independently and offline-first</strong> — full local speed, no spinner, no
+dropped work when the connection does. When you want your separate copies to become <em>one shared set of
+books</em>, point each person at a shared <strong>relay</strong> and press <strong>Sync</strong> (the <code>⟳</code> pill on the bar, or open the
+app with <code>?relay=&lt;url&gt;</code>).</p>
+<p>Sync folds every device's log into <strong>one identical signed history on all of them</strong> — the order of events
+is decided by the chain itself, not by who happened to save last. Proven with <strong>ten devices editing the
+same order and all ten converging to a single signed history, zero edits lost.</strong></p>
+<table>
+<thead>
+<tr>
+<th>You want to…</th>
+<th>Do this</th>
+<th>You get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Use several windows yourself</td>
+<td>Nothing — it is on by default</td>
+<td>Every edit kept, always</td>
+</tr>
+<tr>
+<td>Work with no connection</td>
+<td>Just keep working</td>
+<td>Local-speed edits; Sync later when you reconnect</td>
+</tr>
+<tr>
+<td>Share one set of books across people</td>
+<td>Point each at a relay → <strong>⟳ Sync</strong></td>
+<td>Every device folds to one identical signed history</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Setting up the relay.</strong> The relay is a deliberately <em>dumb</em> post office: it only receives, orders, and
+hands back logs — it holds no business logic and makes no accounting decisions. Run it once, give each
+person its URL, and everyone keeps logging in as their own real user. The relay carries only the <em>log</em>;
+the accounting still folds from that log on each device, identical to single-user.</p>
+<blockquote>
+<p><strong>One honest limit — read this before you rely on it for approvals.</strong> Cross-device Sync is proven today
+for <strong>field edits</strong> (change a value → save → sync). It does <strong>not yet</strong> carry full per-person, per-step
+attribution of <strong>document actions</strong> — <em>Complete / Void / Close</em> and similar workflow steps — <em>across
+devices</em>: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
+<strong>single device</strong> is unaffected. So if you need a multi-person <strong>approval trail that holds up across
+machines</strong>, that is the next piece we are building (opt-in per-step signing) — not this one. We would
+rather tell you here than have you find it during an audit.</p>
+</blockquote>
 <hr />
 <h2 id="spatial-bim-erp-find-a-selection-project-order-live">Spatial BIM → ERP — Find a selection → Project Order  <em>(LIVE)</em><a class="headerlink" href="#spatial-bim-erp-find-a-selection-project-order-live" title="Permanent link">&para;</a></h2>
 <p><img alt="The live 4D/5D twin — the Time Machine plays the build (here Day 88 of the program, RM501K committed) in the real model while the dashboard tracks phase progress, site resources, and the cost S-curve; the left readout folds Budget-vs-Actual variance (RM44.7M → +35%) straight off the same project. One signed op-log unifies what is normally four tools — schedule, cost, 4D, and 5D — with no drift." src="../figs/whatif_live_twin.png" /></p>
