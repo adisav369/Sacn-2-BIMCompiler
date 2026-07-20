@@ -2603,12 +2603,23 @@ one icon:</p>
 <li><strong>Clash Matrix</strong> (key <strong>C</strong>) opens the clash-detection engine (discipline-pair grid, tolerance, Review /
   Resolve / Accept status, HTML + CSV export) — full coverage: <strong><a href="../CLASH_DETECTION/">Clash Detection guide</a></strong>.</li>
 <li><strong>Time Machine</strong> (key <strong>T</strong>) opens the 4D construction timeline — author a schedule, play it back,
-  try a What-if slip, share a <code>?tm=play</code> link. Full authoring/playback walkthrough already lives in
-  <strong><a href="../ERPUserGuide/">Kernel-ERP User Guide → Time Machine</a></strong> (not re-documented here — same building,
-  same feature, reached from either app).</li>
-<li><strong>4D / 5D</strong> (key <strong>4</strong>) opens the analytics dashboard (<code>boq_charts.html</code>) for the loaded building in a
-  new tab — full coverage: <strong><a href="../4D5DAnalysis/">4D/5D Analysis guide</a></strong>.</li>
+  try a What-if slip, share a <code>?tm=play</code> link. On a large building (100K+ elements), a box-cube pill
+  in the panel header trims GPU cost by rendering already-built-but-out-of-view elements as lightweight
+  wireframe boxes, keeping whatever you're actually looking at full LOD400.</li>
 </ul>
+<figure style="margin: 12px 0;">
+  <a href="https://youtu.be/juwOrpqKhFE" target="_blank"><img src="https://img.youtube.com/vi/juwOrpqKhFE/hqdefault.jpg" alt="Time Machine box-proxy demo" style="width:100%; max-width:480px; border:1px solid #333; border-radius:8px;"/></a>
+  <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:6px;"><a href="https://youtu.be/juwOrpqKhFE">Watch on YouTube</a> — Time Machine playback on a large building with the box-cube proxy toggle.</figcaption>
+  </figure>
+
+<p>Full authoring/playback walkthrough already lives in
+  <strong><a href="../ERPUserGuide/">Kernel-ERP User Guide → Time Machine</a></strong> (not re-documented here — same building,
+  same feature, reached from either app), including the
+  <strong><a href="../ERPUserGuide/#author-the-4d5d-schedule--build-it-up-from-the-model-live">ERP-side entry point</a></strong> —
+  picking an element in 3D (or a red <strong>Zoom Across</strong> pill on an ERP record) jumps the Time Machine
+  straight to that element's construction moment.
+- <strong>4D / 5D</strong> (key <strong>4</strong>) opens the analytics dashboard (<code>boq_charts.html</code>) for the loaded building in a
+  new tab — full coverage: <strong><a href="../4D5DAnalysis/">4D/5D Analysis guide</a></strong>.</p>
 <h3 id="camera-view-drawer">Camera / View drawer<a class="headerlink" href="#camera-view-drawer" title="Permanent link">&para;</a></h3>
 <p>The <strong>Camera / View</strong> drawer (camera icon) bundles three camera-control toggles:</p>
 <p><img alt="The Camera / View drawer open — Precision (Fine), Reset Camera, and Auto-Pivot, each with its shortcut key" src="../img/viewer/pill-camview-drawer.png" /></p>

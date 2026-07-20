@@ -2868,9 +2868,18 @@ their discipline colour, room by room. This is the corrected placement too (2026
 version of this pipeline had a containment bug where roughly a quarter of placements landed outside the
 building's own walls — fixed (mesh-recovered true-midpoint host binding) and independently verified 5
 separate ways (containment count, real-oracle walk-back match, measured-pattern conformance, wall-clearance
-margin, mirror-symmetry residual on the Duplex's own A/B twin layout). The fixture mesh itself is still a
-box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
-honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.</p>
+margin, mirror-symmetry residual on the Duplex's own A/B twin layout).</p>
+<p><strong>How real is the fixture mesh, up close?</strong> It depends on whether the rule-set was mined from <em>this</em>
+building. Duplex is the building <code>duplex_rules.db</code>'s residential standard was mined from, so its own
+walked fixtures resolve to their own real extracted device mesh — a genuine ceiling fan, motor housing and
+all, not a box:</p>
+<p><img alt="Close-up of a Duplex-walked ceiling fan — a real rule-mined LOD400 device mesh (motor housing, blades, mount stem), not a box stand-in" src="../img/modeller/duplex-fixture-lod400-closeup.png" /></p>
+<p>SampleCastle walks the <em>same</em> residential rule-set (it's a different building — see the table below), so
+it has no catalog match for its own fixture classes and falls back honestly to a measured box, sized from
+that class's real dimensions but not a finished model:</p>
+<p><img alt="Close-up of a SampleCastle-walked fixture — an honest measured-box fallback (no catalog mesh match for this building's own classes) placed against its host wall" src="../img/modeller/samplecastle-fixture-honestbox-closeup.png" /></p>
+<p>Guessing at a fixture's real shape when no mesh is mined is exactly what this project's non-invent rule
+forbids — a plain box, correctly sized and positioned, beats an invented model every time.</p>
 <p><strong>One engine, two standards.</strong> A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:</p>
 <table>
