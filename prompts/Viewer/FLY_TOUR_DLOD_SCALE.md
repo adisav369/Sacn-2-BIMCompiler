@@ -567,3 +567,10 @@ engage/demote wave, scene stays half-real, sweep mean 19.9→92.5ms, draw calls 
 transitions are NOT the flight bottleneck. **Honest remainder:** flight p50 ~114ms is genuine
 in-view interior geometry cost — §5 track 2 (room-level occlusion, blocked on 1.3% containment
 coverage) is the only lever left for interior legs; distance-based DLOD is done squeezing there.
+
+**Prerequisite CLEARED 2026-07-21** — `prompts/done/CONTAINMENT_LTU_STOREY_ALIAS.md` (bim-compiler
+PR #55): the 1.3% figure was a storey-naming mismatch (ARC/STR/MEP each spelled the same floor
+differently), not a source-data gap. `compile_rooms.py` fix raises LTU_AHouse coverage to 24.2%
+(314→30,409 rows), MEP now included. Room-level occlusion (this file's track 2) is unblocked but
+NOT implemented — next session's job, and the live deployed `LTU_AHouse_extracted.db` still needs
+regenerating/redistributing (OCI) before any viewer code can see the wider containment.
