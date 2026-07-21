@@ -18,7 +18,7 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (5 layers fixed+landed: picker gap, `cleanVals`, `fetchOrder`, IsSOTrx/DocType, DeliveryRule/InvoiceRule — process gate fully PASSES `dispatched=Y ok=Y`; now fails because a fresh order LINE's own `C_Order_ID` gets a stale/wrong value at create — a deeper W-SO-CHILD-BIND-shaped gap, named not yet fixed) |
+| 2 | Delivery / Shipment | UI | **FAIL** (6 layers fixed+landed, computation now fully correct — `dispatched=Y ok=Y rows=1`, a real shipment line computes; fails ONLY because there is no wiring anywhere that commits a Generate-process result to the op-log — a MISSING FEATURE predating this whole lane, not a bug, named not yet fixed) |
 | 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
@@ -562,3 +562,75 @@ resolution happens to produce).
 Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`) — unaffected by this fix; once
 fixed, Stage 3 would hit this SAME order-line-parent-FK wall too (Invoice lines are generated FROM order
 lines the same way Shipment lines are).
+
+---
+
+## §Fix — 2026-07-22, order-line parent-FK — FIXED and witnessed; found the ACTUAL remaining blocker is a
+## MISSING FEATURE (no commit wiring), not another bug — the biggest-scope finding of this whole lane
+
+**Fix (branch `fix/orderline-parent-fk`, worktree `/tmp/wt-orderline-parent-fk`, bim-ootb PR #956,
+auto-merge armed):** confirmed and closed the gap named directly above, root-caused precisely (not by
+inspection alone — traced through `fieldInput`/`populateRefs`/`gatherVals` step by step): a child tab's New
+form renders its locked parent-link `<select>` with ONE placeholder option whose value is `''` (since
+`AD_Column.DefaultValue` for a parent-link column is empty by real iDempiere convention — the link is set
+programmatically, never via a column default — confirmed live: `C_OrderLine.C_Order_ID`'s `AD_Column.
+DefaultValue` is blank in the seed). `populateRefs()`'s FK branch then re-queries the RAW base table for a
+fresh option list and tries to mark the CURRENT value (`''`) as `selected` — nothing matches `''`, so the
+browser's native `<select>` falls back to auto-selecting its FIRST listed row (`ORDER BY <pk> LIMIT 200` →
+the lowest-id real seed order, `100`) — completely arbitrary, and since a CREATE always counts as "dirty"
+(`_inlineDirty()`), that wrong value genuinely gets saved. Note: `renderInline`'s OWN existing comment
+(`crud_overlay.js`, near `_inlineBaseline = gatherVals(e)`) already names this EXACT symptom in passing —
+*"a readonly fk select that fell to another option"* — the baseline-diffing logic was built to TOLERATE it
+on UPDATE (harmless there, since nothing changes if untouched) without ever fixing the root cause, which
+only bites on CREATE.
+
+Three small, connected pieces (verified against real AD_Field metadata, not assumed — `IsReadOnly='Y'` for
+`C_Order_ID` confirmed on both the SO-Line tab 187 and PO-Line tab 293):
+1. `idempiere.html`'s `buildForm()` computes the parent-link column via the EXACT SAME naming-convention
+   resolution `renderActiveTab()` already uses for grid filtering (`pKey` = the parent tab's own key column
+   name, matched by identity against the child table — real iDempiere's `GridTab.getLinkColumnName()`
+   convention, reused verbatim, non-invented) and passes `{[pKey]: parentPk}` as `opts.seedVals`.
+2. `crud_overlay.js`'s `createInline()` merges `opts.seedVals` into `vals` right after `defaultsFor()` —
+   optional, every other call site unaffected.
+3. `crud_overlay.js`'s `populateRefs()` no longer blindly repopulates a READONLY fk select from the raw
+   base table (which can never include a synthetic/overlay-only parent anyway, since it's an overlay-only
+   op-log row) — it looks up just that ONE row's friendly label via a targeted query instead, falling back
+   to showing the raw pk if it isn't a real base row (a synthetic negative pk) — never loses display quality
+   for a genuinely-existing readonly fk value on UPDATE, never silently swaps in a wrong one on CREATE.
+
+**Witnessed**, full log read:
+```
+before: §AD-PROC-LIVE proc=118 ... dispatched=Y ok=Y rows=0
+after:  §AD-PROC-LIVE proc=118 ... dispatched=Y ok=Y rows=1
+```
+Generate-Shipments now computes a REAL shipment line for the freshly-created order — confirms the order
+line's own data (product, qty, and now its correct parent) is fully correct end-to-end, six layers deep
+(DocStatus → IsSOTrx → Warehouse → DeliveryRule → order-line-parent, all now correct). No regression.
+
+**Stage 2 STILL fails — but for a reason that changes the shape of this whole investigation.** Checked
+whether `res.result.ops` (the computed `CREATE_DOCUMENT`+`CREATE_LINE` op group `genShipmentLines`/
+`buildDoc` produce, now correctly containing 1 real line) ever actually gets APPLIED to the kernel op-log
+anywhere. **It does not, anywhere, for any Generate-process, for any order — seed or synthetic, and this
+predates every fix in this whole lane:** grepped `idempiere.html` for `applyOp(`/`commitCrud(` near any
+process-result handling — **zero hits**. `renderProcResult()` (the function that renders the computed
+lines/header table after a Generate-Shipments/Invoices/PO run) is a PURE READ-ONLY PREVIEW — it displays
+`r.ops`/`r.header` but never calls anything that persists them. Also checked whether `crud_overlay.js`
+exposes any PUBLIC api a caller could use to commit an arbitrary op-group (`applyOps`/`commitOps`/
+`applyOpGroup` on `window.__crud`) — **zero hits** — the capability to persist a KIND-2 multi-op result
+doesn't exist yet at all, not even as an unwired internal function. **This means the "Generate Shipments"/
+"Generate Invoices"/"Generate Order (from Project)" flows have NEVER been able to produce a real, persisted
+document through this UI — not because of any bug fixed or found today, but because the confirm/commit step
+was simply never built.** Every prior "§CYCLE stage=2/3 FAIL" line in this whole document (2026-07-20
+onward) was ALWAYS going to fail at this exact point, for EVERY order including the four real pre-existing
+seed orders — today's six fixes closed every layer that was masking this, one at a time, down to bedrock.
+
+**This is the true remaining blocker, and it's a different KIND of task than any of the 6 fixes above it —
+a missing FEATURE, not a bug:** needs a real design decision (does the result pane get a "Confirm"/"Post"
+button, matching real iDempiere's own Generate-process UX of preview-then-confirm? does confirming call a
+new `window.__crud.applyOpGroup(ops)` that signs+commits every op in the group atomically?) before any code
+gets written — explicitly NOT attempted this session. This is the single biggest-scope item found in this
+entire lane (2026-07-20→22) and deserves a dedicated design/spec pass, not a continuation.
+
+Stage 3 (Generate Invoices) is blocked earlier still by the separate `AD_Org_ID=NaN` casing bug — but would
+hit this SAME missing-commit wall immediately after, once that's fixed too (its own `genInvoiceLines`
+result has the identical "computed but never applied" shape).
