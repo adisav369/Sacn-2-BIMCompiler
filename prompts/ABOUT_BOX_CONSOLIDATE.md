@@ -70,3 +70,76 @@
 6. **bim-compiler working tree** has ~144 pre-existing non-doc changes (build/erp, deploy, scripts) untouched by
    this session — the user's own pending work; commit/triage separately.
 7. **The real ERP roadmap spine** is unchanged: GRAND_LANE S3/J6 POST → P2 (this About/DIY lane was a tributary).
+
+## §2026-07-22 AUDIT — user asked "does the self-host installer have a witness run log, and is it in the guide"
+
+**No execution witness exists for the self-host installer itself.** `viewer/tests/poc_about_help_restore.js` and
+`erp/tests/poc_overlay_kit.js` (the only tests touching this area) prove UI WIRING only — clicking the DIY
+download button triggers a Blob download and logs `§ABOUT-DIY diy-download os=...`. Neither one, nor anything
+else found in either repo, actually RUNS the generated `bim-ootb-install.sh`/`.bat` (curl the zip → extract →
+`python -m http.server 8080` → confirm the landing serves). The "Self-host installer FIXED" line above (correcting
+the old broken `full` branch / `BIMCompiler-full/deploy/dev` 404) was a **code-read fix, not an executed one** —
+no `.log` file for this flow exists anywhere. Per this project's own Log Mandate, "fixed" here means "read and
+reasoned to be correct," not "proven."
+
+**Guide coverage — already there, but check for staleness in a sibling doc:**
+- `docs/ERPUserGuide.md` §2 (line 163-164) + pill table (line 645) DO document this, briefly and accurately
+  (doesn't over-claim beyond what the code does).
+- `docs/AboutMore.md` §"DIY Self-Host" (lines 120-143) gives a MORE DETAILED but possibly STALE manual recipe —
+  it instructs downloading from `github.com/red1oon/BIMCompiler`'s `deploy/dev/`, which reads like the OLD path
+  this lane's 2026-06-16 fix replaced (corrected script pulls `bim-ootb`'s own `main.zip` instead). It also lists
+  bundle contents (DXF templates, locales, `rates.js`) that look like they describe the SEPARATE "Save Offline
+  Copy" (`packageLandingPage`) bundle, not the git-zip self-host installer — possibly two different downloads
+  conflated in one doc section. Not confirmed either way — flagging for the next session to verify against
+  current `about_diy.js` behavior before editing.
+
+**NEXT TASK for a future session (spec, not yet built):**
+1. Write an actual execution witness: either a Playwright/Node test that runs the generated script (or its
+   logic directly) against a mocked/real zip fetch and asserts `localhost:8080` serves the landing page, or at
+   minimum a manually-run, logged (`tee`'d) end-to-end pass on each OS this claims to support — Windows path
+   especially, since `winget install Python.Python.3.12` inside the `.bat` has never been observed to run.
+2. Re-verify `docs/AboutMore.md` §"DIY Self-Host" against current `about_diy.js` (`_downloadInstaller()`,
+   `REPO_ZIP` constant) and fix the stale `BIMCompiler`/`deploy/dev` instructions if confirmed wrong; separate
+   its "What gets installed" content into the correct one of the two flows (self-host installer vs. Save
+   Offline Copy) rather than presenting them as one.
+
+## §2026-07-22 AUDIT PART 2 — CONFIRMED BUG: self-host install breaks all 8 Modeller buildings' geometry
+
+User asked to trace whether the self-host installer truly enables "download once (incl. CDN), then run fully
+offline" — including IFC drop-import, ERP seeds, and Modeller's 8 embedded buildings. Traced end-to-end:
+
+**Working as intended:**
+- IFC drop-import (`viewer/import_worker.js`) is genuinely local-first (§S284c): loads `lib/web-ifc-api-iife.js`/
+  `.wasm` from same-origin first, CDN (`unpkg.com`) only on local-load failure. `lib/` (three.js, web-ifc,
+  sql.js, xlsx, chart.js — both `viewer/lib/` and `modeller/lib/`) are ORDINARY git files (confirmed via
+  `git check-attr filter` — unspecified, not LFS) — survive a GitHub codeload zip intact.
+- ERP seed DBs (`erp/ad_seed.db` + `12-odoo.db`/`13-idempiere.db`/`14-sap.db`/`15-oracle.db`/`16-dynamics.db`)
+  are ALSO ordinary git blobs (`.gitattributes` only LFS-filters `modeller/*_geo.db` + `modeller/mesh.db`) —
+  survive the zip fine, persist to IndexedDB on first load same as live.
+- Some secondary CDN refs remain live (newer OrbitControls/three-mesh-bvh in `viewer/loader.js`, ERP's
+  `sql-wasm-fts5`, clash-report's Chart.js tag) — by design these rely on the SW precaching them on one real
+  online visit, offline after. Not a bug, but means "truly zero-network from install onward" isn't quite
+  accurate for those specific features — only "online once, offline after," which matches what the user described.
+
+**CONFIRMED BUG — `modeller/mesh.db` (115MB, THE shared geometry for all 8 Modeller buildings: SampleHouse,
+Duplex, SampleCastle, HHS, Clinic, Hospital, HospitalGarage, Terminal — `modeller/str_walker_outliner.js:36-46`
+`EMBED_8_ARC_BUILDINGS_MESH_DB`) is Git-LFS-tracked** (`.gitattributes`: `modeller/mesh.db filter=lfs`).
+GitHub's repo-archive ZIP endpoint (`archive/refs/heads/main.zip` — exactly what `about_diy.js`'s
+`_downloadInstaller()` fetches via the `REPO_ZIP` constant) does **not** resolve LFS pointers — it ships the
+~130-byte pointer text, not the real binary. **Empirically confirmed**: `git show HEAD:modeller/mesh.db`
+returns the literal `version https://git-lfs.github.com/spec/v1...` pointer, not mesh data. Each building's own
+per-building DB (`Clinic_ARC.db` etc, `Terminal_meta.db`) IS an ordinary git blob and would come through fine —
+only the SHARED geometry backing all 8 is broken. Net effect: **after running today's self-host installer, all
+8 Modeller buildings load structure/metadata but have NO real mesh geometry** — silent breakage (no error
+surfaced), not a crash. `modeller/sw.js` doesn't help here either — like the ERP/viewer SWs, it deliberately
+skips `.db` from precache (`url.endsWith('.db') → skip SW`, relies on IndexedDB after a real fetch succeeds) —
+irrelevant when the fetched file itself is a corrupt pointer from the start.
+
+**NEXT TASK for a future session:** fix `_downloadInstaller()` (or the generated script) to pull `mesh.db`'s
+real LFS content — options: (a) have the generated script run `git clone` + `git lfs pull` instead of a plain
+zip download (needs git+git-lfs on the user's machine — heavier prerequisite than today's curl/unzip-only
+approach), or (b) host `mesh.db` on OCI (matching this project's own DB-distribution doctrine — see
+`feedback_db_change_via_sql_migration_not_binary` memory — LFS-tracked runtime data arguably belongs there
+already) and have the installer/served app fetch it from there directly, independent of the git-zip. Whichever
+direction, this needs an ACTUAL execution witness afterward (per Part 1's finding above — none exists today):
+run the real installer, load a Modeller building, confirm real geometry renders, not just that files exist.
