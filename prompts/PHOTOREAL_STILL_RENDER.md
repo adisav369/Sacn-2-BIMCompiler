@@ -4294,8 +4294,9 @@ enclosed within 4.5m — not a guessed fraction of the building bbox), nearestWa
   (floor + lateral fan) changed.
 
 Debug instrumentation used to root-cause bug #2 (`§DD_DEBUG_MARKER`, `_ddDebugList`) was added
-then REMOVED before finalizing — not shipped. Change is on branch
-`fix/altp-camroom-cinema-exit`, worktree `/tmp/wt-altp-camroom` (bim-ootb). PR bim-ootb#957.
+then REMOVED before finalizing — not shipped. PR bim-ootb#957 — **MERGED** (squash, auto-merge bot,
+before Issue 2a's commit below could be pushed to the same branch — see the landmine note in the
+Issue 2a section).
 
 ## ✅ Issue 2a (spin-at-wall / glazing acceptance) — FIXED + light-verified (2026-07-22)
 Picked up from the "⛔ SPEC ONLY" section's Issue 2. Per the user's own instruction for this issue
@@ -4337,6 +4338,18 @@ per this issue's explicit "don't overthink" verification bar. If a future live t
 Alt+C/MaxQ path, which DOES warm the room graph) still shows a spin landing at an opaque wall,
 check `fanMinGlazing`/`nudgeCap` in that run's own `§CINEMA_DIVE` line first — it will say
 directly whether this fix's condition fired or not.
+
+**Landmine hit + recovered**: this commit was originally pushed as a second commit onto PR #957's
+branch (`fix/altp-camroom-cinema-exit`) — but #957's auto-merge bot squash-merged the branch right
+after its FIRST commit (Issue 1), before this second commit could be pushed, exactly the
+"squash-merge + late push orphans the new commit" landmine CLAUDE.md's Concurrent Branches section
+already names (the PR #138 precedent). Confirmed via `git show origin/main:viewer/effects.js |
+grep fanMinGlazing` → zero hits even after #957 showed MERGED. Recovered per that same doc's own
+instruction — fresh branch off `origin/main`, cherry-picked the orphaned commit clean (no
+conflicts), verified syntax + content, opened as its **own PR bim-ootb#958** (branch
+`fix/cinema-spin-glazing`), old branch deleted. Worth remembering: any repo with auto-merge-on-push
+needs each logically-separate fix on its OWN PR/branch from the start, or a fast-following commit
+risks exactly this orphaning.
 
 ## ⛔ Issue 2b (always-exit-then-return) — ASSESSED, NOT IMPLEMENTED, plan below (2026-07-22)
 Deliberately deferred this session, not overlooked. The concrete fix direction was already spec'd
