@@ -102,6 +102,25 @@ checked-in DB touched):
   wording assumes LTU's widening scenario, so it reports "FAIL" on these — read as "0 diff", the
   correct and intended regression result, not a defect.)
 
+### ADDENDUM (2026-07-21) — this fix alone never reaches real users; ported to room_walker.js
+
+**Correction, not an extension of scope:** compile_rooms.py is the offline reference/verification
+tool, run manually by developers. It is NOT what runs for real users — the viewer compiles rooms
+CLIENT-SIDE, on demand, from whatever DB a user has loaded (including a building this codebase has
+never seen before) via `A.ensureRooms()` in `viewer/navigate_find.js`, which calls `room_walker.js`
+(bim-ootb) — the JS port of this exact file. `room_walker.js` had the IDENTICAL bug (same
+`byst[r.storey]`/`byst[e.st]` exact-string join). Fixing only the Python side would have been a
+proven, tested fix that never actually shipped to anyone.
+
+**bim-ootb PR #950** ports `_canonicalFloor()`/`_joinKey()` verbatim into `room_walker.js` (same
+regex, same Z-band-fallback technique) and bumps `ROOM_WALKER_V` v2→v3 so the existing stage-3
+version-stamp self-heal (`ROOM_INJECTOR_NEEDLE.md`, `§NEEDLE_VERSION_STALE`) recompiles any
+already-loaded building once and picks up the fix — **no OCI redistribution of any per-building DB
+needed**, which is exactly what that self-heal mechanism is for. Parity witness
+(`witness_containment_alias_js.js`, sql.js) confirms BYTE-IDENTICAL numbers to this file's Python
+result: LTU_AHouse 314→30,409 rows, same per-discipline breakdown; same 4-building regression set
+(HHS_Office_Federated, Duplex, SampleHouse, Terminal) byte-identical before/after in JS too.
+
 ## 5. NOT IN SCOPE
 
 - Room geometry/flood-fill changes (ARC-only detection stays as-is).
