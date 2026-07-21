@@ -17,25 +17,28 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 
 | # | Stage | Driven | Result |
 |---|---|---|---|
-| 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — see §Fix entries below, both now landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (new order not offered by the Generate-Shipments picker) |
-| 3 | Sales Invoice | UI | **FAIL** (new order not offered by the Generate-Invoices picker) |
+| 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
+| 2 | Delivery / Shipment | UI | **FAIL** (picker gap fixed+landed; now fails one layer deeper — `cleanVals` drops the derived warehouse, named not yet fixed) |
+| 3 | Sales Invoice | UI | **FAIL** (same picker fix landed; same deeper layer blocks it) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
 | 6 | Purchase Order | UI | **PASS** |
 | 7 | Material Receipt | UI | **ABSENT** |
 | 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
 
-**Where the cycle now first stops being user-drivable: Stage 2.** Stage 1 is fully closed as of 2026-07-21
-(both its root causes — master/detail mis-selection, PR #928; and a witness-artifact false-negative on
-DocAction Complete — fixed and re-verified). A real user CAN author and complete a fresh Sales Order
-end-to-end today. What they cannot yet do is turn that order into a Shipment or Invoice — neither
-Generate-process's order picker offers a freshly-created order as a candidate (§Fix 2026-07-21 below,
-not yet root-caused). Independently, Stage 8 (vendor invoice + three-way match) is **completely and
-permanently blocked** by design, with no dependency on Stage 1/2 at all.
+**Where the cycle now first stops being user-drivable: Stage 2, one layer deeper than before.** Stage 1 is
+fully closed (both root causes fixed and re-verified). Stage 2/3's picker gap is ALSO fixed and verified —
+a freshly-created order is now correctly offered as a candidate. What still blocks the cycle: the order's
+warehouse (derived by a save-hook, since the New form has no field for it) never actually gets persisted —
+`cleanVals()` in `crud_overlay.js`'s shared `buildOp` strips any field not declared in `crud_ops.json`,
+silently discarding the hook-derived value moments after it was correctly computed. This is now the
+frontier — named precisely (§Fix 2026-07-21 below), not yet fixed (it touches the shared CREATE path every
+table uses, more central than the two fixes already landed). Independently, Stage 8 (vendor invoice +
+three-way match) is **completely and permanently blocked** by design, with no dependency on Stages 1-3.
 
-The cycle still does **not** close end-to-end — the break moved one stage further in, from "can't even
-complete an order" to "can complete an order but can't turn it into downstream documents."
+The cycle still does **not** close end-to-end — the break has now moved TWO layers in from where it stood
+2026-07-20: "can't even complete an order" → "can complete an order, picker offers it, but the order's own
+data is incomplete" (the derived warehouse never survives to storage).
 
 <details><summary>Original 2026-07-20 table (superseded, kept for history)</summary>
 
@@ -271,8 +274,62 @@ since 2/3 are gated on 1's order actually reaching CO):
 ```
 The freshly-completed order (a synthetic negative-pk overlay row) is never offered as a candidate by either
 Generate-process's order picker — both pickers' options lists show only the four pre-existing seed orders.
-Not investigated further this session (this is the genuinely NEXT gap in the cycle, not re-derived from
-stale notes) — the leading hypothesis, unverified, is that `renderOrderPicker()`'s candidate SQL reads only
-`window.__idmpDb` (the raw seed bundle) and never folds in the op-log overlay's created/completed rows, the
-same class of "engine-proven, UI reads the wrong source" gap this lane keeps finding. Stage 4 (stock effect)
-remains structurally unreachable regardless (§Findings above, unchanged). Stages 5-8 unchanged from prior runs.
+
+---
+
+## §Fix — 2026-07-21, Stage 2/3 picker gap — CONFIRMED and fixed (one layer); a DEEPER, distinct layer found underneath
+
+**Confirmed:** `renderOrderPicker()` (`idempiere.html:2386`) read candidates via `_sqlRows("SELECT ... FROM
+c_order WHERE " + statusClause + " AND issotrx='Y'")` — `window.__idmpDb` only, the raw seed bundle. It
+never folded the op-log overlay, so a freshly-created-then-Completed order (a signed `CRUD_CREATE` +
+`SET_STATUS` pair in the sidecar) could never be a candidate no matter how legitimately it reached CO. Same
+class of "engine-proven, UI reads the wrong source" gap this lane keeps finding.
+
+**Fix (branch `fix/order-picker-overlay-fold`, worktree `/tmp/wt-order-picker-overlay`):** `renderOrderPicker`
+now pulls ALL `issotrx='Y'` base rows (no status filter — a synthetic row's status only exists post-fold),
+folds `CRUD_CREATE`/`CRUD_UPDATE` via `window.__crud.core.listTip` (the SAME primitive `idempiere.html`'s own
+`_overlayListTip` already uses for grids — non-invent, reused verbatim), overlays each row's latest signed
+`SET_STATUS` via `core.readTip` (same primitive `_overlayDocTip` uses for the status chip), THEN applies the
+status filter. No sidecar/engine present → falls through to the OLD base-only behavior (never worse than
+before). Rendering is now async (mount the pane immediately with a "Loading…" option, repaint once the fold
+resolves) since the sidecar hydrate is async.
+
+**Witnessed — the picker itself is fixed.** Re-run (`WITNESS_ROOT=/tmp/wt-order-picker-overlay bash
+build/erp/run_witness.sh scripts/witness_e2e_business_cycle.js`), log read in full:
+```
+§GENSHIP-LIVE-CANDIDATES count=7 ids=[100,101,108,1300100,1300101,1300108,-1]
+§E2E-PICKER genship options=[...six seed orders..., {"v":"-1","t":"1784606993701  (rule undefined)"}]
+```
+The new order (`-1`) is now correctly offered — confirms the picker fold works exactly as designed.
+
+**But Stage 2/3 still FAIL, for a NEW and DEEPER reason, found immediately underneath:**
+```
+§GENSHIP-LIVE run proc=118 Record_ID(C_Order_ID)=-1 M_Warehouse_ID=NaN
+§AD-PROC-LIVE proc=118 name="Generate Shipments" classname=org.compiere.process.InOutGenerate dispatched=N reason=param-validation-failed
+```
+The process now RUNS (picker gap closed) but is rejected at param validation: `M_Warehouse_ID=NaN`. Traced
+to the actual root cause, one more layer down, via `saveForm`/`buildOp` in `crud_overlay.js`:
+
+1. `c_order`'s New form has no `m_warehouse_id` field (confirmed, Stage 1 §Findings) — the value is
+   **derived** by a `BEFORE_SAVE` model-validation hook (`fireBeforeSaveHooks`, `crud_overlay.js:1546`) and
+   correctly merged into `vals.m_warehouse_id` at save time (`crud_overlay.js:1242`, whose OWN comment
+   already states the intent: *"a beforeSave-filled MANDATORY default that has NO visible field... must
+   STILL persist on the new row — iDempiere saves what beforeSave derived"*).
+2. But `buildOp('create', ...)` (`crud_overlay.js:212`) then calls `base.fields = cleanVals(entry, values)`,
+   and `cleanVals` (`crud_overlay.js:160-164`) **only copies keys present in `entry.fields`** — `c_order`'s
+   crud_ops.json entry does not declare `m_warehouse_id` (by design — no visible field for it), so
+   `cleanVals` silently drops the just-derived value before it ever reaches the signed `CRUD_CREATE` op.
+3. Net effect: the derived value correctly unblocks the SAVE (the hook doesn't reject), but is never actually
+   PERSISTED anywhere — not just invisible to the Generate-Shipments picker, genuinely absent from the
+   record. Any future reader of this order's warehouse (not only this picker) would see it missing.
+
+**Not yet fixed — this is more central/higher-blast-radius than the two fixes above it.** `cleanVals`/
+`buildOp` are shared by EVERY table's CRUD_CREATE across the whole app, not just `c_order` — the correct fix
+(letting a hook-derived value ride the op even when undeclared, ON CREATE ONLY, matching the code's own
+already-stated intent) needs to not regress any OTHER table's create path. Named precisely, not touched,
+pending a go — the two fixes above it (Stage 1's DocAction, Stage 2/3's picker overlay) were self-contained
+to one function each; this one touches the shared write path every table's New-form save goes through.
+
+Stage 4 (stock effect) remains structurally unreachable regardless (§Findings above, unchanged). Stages 5-8
+unchanged from prior runs (Stage 8's PO-not-offered-to-Generate-Invoices finding, IsSOTrx-gated by design,
+is unrelated to any of the three fixes in this cycle).
