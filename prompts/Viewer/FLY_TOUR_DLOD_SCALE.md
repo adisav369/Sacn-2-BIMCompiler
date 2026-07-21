@@ -550,3 +550,20 @@ fine with it." Compatible by design (lighting/post-processing modes don't touch 
 visibility; not gate conditions). Their log also captured the largest live transition wave yet:
 `started=47817 eval_ms=34` — one eval absorbed a ~48k-element wave (128 faded, rest snapped via
 FADE_CAP) in 34ms, no hang: the cap's graceful-degradation path confirmed at full scale.
+
+### §10 addendum — 2026-07-21 later same day: #942 re-measure + in-flight smoothness (PR #943)
+**PR bim-ootb#942 (peer session's idle-deferred rooms warm-up in `toggleDlodNav`) re-measured on
+the RTX 4060 as requested:** §DLOD_NAV_ROOMS wall-clock = **952-1188ms** across three runs (their
+SwiftShader-confounded 50-100s estimate confirmed as a ~50-100× software-rendering contention
+artifact). No W-DLOD-NAV-PERF regression (ON sweep 19.9-21.9ms across runs, same 3245 draw calls).
+The change honors the room-blind review conditions (ON-branch only, fire-and-forget, engage
+machinery untouched).
+**User "still lagging in flight" root-caused with a 600-frame real-tour-flight profile:** the
+150ms-cadence monolithic eval cost 42ms/hit (28% duty cycle). **PR #943: scan chunked to ~16k
+elements/rAF tick (1.3-1.7ms/chunk, pass ≈8 frames)** → flight mean 96.1→79.5ms, frames>50ms
+466→300/600, ON-sweep p95 53.8→37.3. **Negative result, recorded in-code and here — do not
+re-try without new numbers:** a per-frame TRANSITION_BUDGET (384) measured WORSE (throttles the
+engage/demote wave, scene stays half-real, sweep mean 19.9→92.5ms, draw calls 3245→7984);
+transitions are NOT the flight bottleneck. **Honest remainder:** flight p50 ~114ms is genuine
+in-view interior geometry cost — §5 track 2 (room-level occlusion, blocked on 1.3% containment
+coverage) is the only lever left for interior legs; distance-based DLOD is done squeezing there.
