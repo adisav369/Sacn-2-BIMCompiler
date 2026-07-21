@@ -4,8 +4,8 @@
 # scripts/witness_e2e_business_cycle.js` from bim-compiler). This is NOT a green-run hunt — a break IS the
 # deliverable. Do not re-run "hoping" for a full pass; the findings below are the answer.
 
-**2026-07-20** — witness: `scripts/witness_e2e_business_cycle.js` (bim-compiler). Precedents adapted:
-`witness_e2e_crud_blob_race.js`, `witness_e2e_multiuser_login_fork.js`.
+**2026-07-20**, updated **2026-07-21** — witness: `scripts/witness_e2e_business_cycle.js` (bim-compiler).
+Precedents adapted: `witness_e2e_crud_blob_race.js`, `witness_e2e_multiuser_login_fork.js`.
 
 ## THE QUESTION
 
@@ -13,28 +13,44 @@ Can a real user drive a full business cycle end-to-end through the live iDempier
 Order → Shipment → Sales Invoice → stock effect → replenishment signal → Purchase Order → Material
 Receipt → vendor invoice + three-way match — and if not, exactly where does it break?
 
-## §Results — per-stage table
+## §Results — per-stage table (2026-07-21, current)
 
 | # | Stage | Driven | Result |
 |---|---|---|---|
-| 1 | Sales Order | UI | **FAIL** |
-| 2 | Delivery / Shipment | UI | **FAIL** (blocked by #1) |
-| 3 | Sales Invoice | UI | **FAIL** (blocked by #1) |
+| 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — see §Fix entries below, both now landed) |
+| 2 | Delivery / Shipment | UI | **FAIL** (new order not offered by the Generate-Shipments picker) |
+| 3 | Sales Invoice | UI | **FAIL** (new order not offered by the Generate-Invoices picker) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
 | 6 | Purchase Order | UI | **PASS** |
 | 7 | Material Receipt | UI | **ABSENT** |
 | 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
 
-**Where the cycle first stops being user-drivable: Stage 1.** A freshly-authored Sales Order cannot be
-reliably taken through its own Order Line tab — the master/detail selection silently locks the child tab
-onto an unrelated, pre-existing seed order instead of the record the user just created and clicked on.
-Everything downstream of that (Shipment, Invoice, stock effect) is a direct consequence, not a separate
-break. Independently, Stage 8 (vendor invoice + three-way match) is **completely and permanently blocked**
-by design, with no dependency on Stage 1 at all.
+**Where the cycle now first stops being user-drivable: Stage 2.** Stage 1 is fully closed as of 2026-07-21
+(both its root causes — master/detail mis-selection, PR #928; and a witness-artifact false-negative on
+DocAction Complete — fixed and re-verified). A real user CAN author and complete a fresh Sales Order
+end-to-end today. What they cannot yet do is turn that order into a Shipment or Invoice — neither
+Generate-process's order picker offers a freshly-created order as a candidate (§Fix 2026-07-21 below,
+not yet root-caused). Independently, Stage 8 (vendor invoice + three-way match) is **completely and
+permanently blocked** by design, with no dependency on Stage 1/2 at all.
 
-The cycle does **not** close end-to-end. Two real business partners (P2P vendor-invoice/matching, and
-O2C shipment/invoice generation off a self-authored order) have no working path through this UI today.
+The cycle still does **not** close end-to-end — the break moved one stage further in, from "can't even
+complete an order" to "can complete an order but can't turn it into downstream documents."
+
+<details><summary>Original 2026-07-20 table (superseded, kept for history)</summary>
+
+| # | Stage | Driven | Result |
+|---|---|---|---|
+| 1 | Sales Order | UI | FAIL |
+| 2 | Delivery / Shipment | UI | FAIL (blocked by #1) |
+| 3 | Sales Invoice | UI | FAIL (blocked by #1) |
+| 4 | Stock effect | UI-observed | ABSENT |
+| 5 | Replenishment signal | UI | PASS |
+| 6 | Purchase Order | UI | PASS |
+| 7 | Material Receipt | UI | ABSENT |
+| 8 | Vendor invoice + three-way match | BLOCKED | ABSENT |
+
+</details>
 
 ## §Exact §CYCLE lines (from `build/erp/witness_e2e_business_cycle.log`)
 
@@ -205,3 +221,58 @@ unchanged by this fix.
 re-ran `W-SO-CHILD-BIND` against the synced worktree (still 🟢), pushed, opened
 [PR #928](https://github.com/red1oon/bim-ootb/pull/928), auto-merge (squash) armed — merges once
 `fast-checks` CI passes.
+
+---
+
+## §Fix — 2026-07-21, Stage 1's remaining "CO did not land" — WITNESS artifact, not a product bug
+
+With `fix/so-child-bind` now live on `main` (PR #928 merged, confirmed via a fresh checkout re-sync), the
+"unrelated, separate reason" named above — `chip=null coButtonVisible=0` — was investigated rather than
+left as a standing note. Root-caused via a debug worktree (`/tmp/wt-so-docaction`, throwaway diagnostics,
+never committed) with targeted `console.log`s at `_fsmCtx`, `buildForm`, the `<tr>`/`<td>` click handlers,
+and `editInline`'s call stack — each step ruled out a hypothesis (tableId mismatch: no, both SO/PO tabs
+are `AD_Table_ID=259`, verified via `sqlite3`; case-sensitivity in `recVal`: no, it's already
+case-insensitive; a stale `_newMode`: no, `afterSaveCreate` correctly clears it) until the actual
+mechanism surfaced:
+
+**`idempiere.html`'s grid deliberately makes every individually crud-editable cell open a single-field
+inline cell editor on click** (`_editGridCell`, P4/W-INPLACE-GRID-LIVE, "GridView parity" — `td`'s click
+handler calls `ev.stopPropagation()`, so the row's own click handler never fires). Playwright's
+`row.click()` lands on whatever cell happens to sit at the row's geometric center — column layout
+happened to put `DocumentNo` (curated crud-editable, per `crud_ops.json`'s `c_order` field list) there for
+window 143's Order tab, and `POReference` (NOT in that field list, so `_editGridCell` correctly falls
+through to `openForm()` → the full record + DocAction bar) for window 181's Purchase Order tab. **Same
+table, same code, no Sales-Order-specific defect** — pure column-position luck determined by which window
+was under test, confirmed with `§DEBUG-TDCLICK`/`§DEBUG-TRCLICK` instrumentation showing every single
+click (both windows, both the first and second row-open) landing on a `<td>`, never the bare `<tr>`.
+
+**Fix (witness-only, no product code touched):** `scripts/witness_e2e_business_cycle.js` gained
+`clickRowOpen(row, opts)` — clicks the row's `td[data-ad-col="POReference"]` cell explicitly (present in
+both windows, deterministically non-crud-editable) instead of the bare row, falling back to the row click
+if that column isn't rendered. Replaces all four `found*.handle.click()` call sites (Stage 1's two row-opens
++ Stage 6's two, the only stages driving `c_order`). Also made `ROOT` env-overridable
+(`process.env.WITNESS_ROOT`) so this and future debug sessions can point the witness at a throwaway
+worktree without editing the file each time.
+
+**Result — Stage 1 now PASSES.** Re-run (`bash build/erp/run_witness.sh scripts/witness_e2e_business_cycle.js`
+against live `bim-ootb main`), log read in full (Log Mandate):
+```
+§CYCLE stage=1 name=SalesOrder driven=UI result=PASS detail=order 1784602787337 (id=-1) authored+completed via real UI; header New form has NO m_warehouse_id field but a save-hook derives it (103) per §AD-MODELVAL-LIVE
+```
+A real, freshly-authored Sales Order can now be taken all the way through New → Save → Order Line → back to
+header → **Complete (CO)** via the real DocAction bar, end to end, through the live UI — the most basic
+iDempiere user action (author + complete a document) genuinely works today.
+
+**Stages 2/3 now fail for a NEW, more precise, and real reason** (previously masked by Stage 1's failure,
+since 2/3 are gated on 1's order actually reaching CO):
+```
+§CYCLE stage=2 name=Shipment driven=UI result=FAIL detail=exception: new SO not offered by Generate-Shipments picker (target=-1, options=[...four existing seed orders, no -1...])
+§CYCLE stage=3 name=SalesInvoice driven=UI result=FAIL detail=exception: new SO not offered by Generate-Invoices picker (same shape)
+```
+The freshly-completed order (a synthetic negative-pk overlay row) is never offered as a candidate by either
+Generate-process's order picker — both pickers' options lists show only the four pre-existing seed orders.
+Not investigated further this session (this is the genuinely NEXT gap in the cycle, not re-derived from
+stale notes) — the leading hypothesis, unverified, is that `renderOrderPicker()`'s candidate SQL reads only
+`window.__idmpDb` (the raw seed bundle) and never folds in the op-log overlay's created/completed rows, the
+same class of "engine-proven, UI reads the wrong source" gap this lane keeps finding. Stage 4 (stock effect)
+remains structurally unreachable regardless (§Findings above, unchanged). Stages 5-8 unchanged from prior runs.

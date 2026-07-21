@@ -56,7 +56,7 @@
 //   summary line.
 'use strict';
 var path = require('path'), http = require('http'), fs = require('fs');
-var ROOT = '/home/red1/bim-ootb';   // live product UI lives there — bim-compiler only hosts this witness + its log
+var ROOT = process.env.WITNESS_ROOT || '/home/red1/bim-ootb';   // live product UI lives there — bim-compiler only hosts this witness + its log
 var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
   '.db': 'application/octet-stream', '.wasm': 'application/wasm' };
 function reqPw() { try { return require('playwright'); } catch (e) { return require('/home/red1/bim-ootb/tests/node_modules/playwright'); } }
@@ -164,6 +164,22 @@ async function rowIdByText(page, text) {
   }
   return null;
 }
+// clickRowOpen — open a row's FULL record form (idmp-docfsm bar included), not a single-cell inline editor.
+//   ROOT CAUSE (found 2026-07-21, this session, W-SO-DOCACTION-CLICK): a bare row.click() lands wherever
+//   Playwright's default click point (the element's geometric center) happens to fall — and idempiere.html's
+//   grid deliberately makes EVERY individually crud-editable cell (P4 W-INPLACE-GRID-LIVE, "GridView parity")
+//   open a single-field inline cell editor on click, stopPropagation()-ing past the row's own click handler
+//   (idempiere.html _editGridCell). Whether the click lands on such a cell is pure column-layout luck per
+//   window — it happened to land on `documentno` (curated crud-editable) for window 143's Order tab and on
+//   `POReference` (NOT in crud_ops.json's c_order field list, so _editGridCell falls through to openForm())
+//   for window 181's Purchase Order tab — same table, same code, no Sales-Order-specific defect. Click the
+//   POReference cell explicitly (present in both windows, deterministically non-crud-editable) so every
+//   caller reliably reaches the full form + DocAction bar, matching what a real user opening the record sees.
+async function clickRowOpen(row, opts) {
+  var poCell = await row.$('td[data-ad-col="POReference"]');
+  if (poCell) { await poCell.click(opts); return; }
+  await row.click(opts);   // defensive fallback if that column isn't rendered on some other table/window
+}
 function deepUrl(port, params) {
   var q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
   return 'http://localhost:' + port + '/erp/idempiere.html?' + q;
@@ -225,7 +241,7 @@ function deepUrl(port, params) {
       // text-locator re-match risked landing on an unrelated row; a real user would just click the row
       // they see, this is that same click), then the Order Line detail tab. Verify the master/detail
       // parent filter (§IDEMPIERE-MD) actually locked onto OUR order before trusting anything filled next.
-      await found1.handle.click({ timeout: 8000 });
+      await clickRowOpen(found1.handle, { timeout: 8000 });
       await page.waitForTimeout(400);
       await page.click('#idmp-tabstrip >> text=Order Line', { timeout: 8000 });
       var mdLine = await w.wait([/§IDEMPIERE-MD tab=Order Line/], 8000).catch(function () { return null; });
@@ -258,7 +274,7 @@ function deepUrl(port, params) {
       await page.waitForTimeout(500);
       var found1b = await rowIdByText(page, uniqDoc);
       if (!found1b) throw new Error('order row for ' + uniqDoc + ' not found on returning to the Order tab');
-      await found1b.handle.click({ timeout: 8000 });
+      await clickRowOpen(found1b.handle, { timeout: 8000 });
       await page.waitForTimeout(500);
       var coBtn = page.locator('.idmp-docfsm button[data-doc-action="CO"]');
       var coVisible = await coBtn.count();
@@ -430,7 +446,7 @@ function deepUrl(port, params) {
       var whLine6 = w.lines.filter(function (l) { return /§AD-MODELVAL-LIVE table=c_order verb=create/.test(l); }).pop();
       log('§E2E-STATE new PO c_order_id(from grid row)=' + newPoId + ' modelval-derive-line=' + whLine6);
 
-      await found6.handle.click({ timeout: 8000 });
+      await clickRowOpen(found6.handle, { timeout: 8000 });
       await page.waitForTimeout(400);
       await page.click('#idmp-tabstrip >> text=PO Line', { timeout: 8000 });
       var mdLine6 = await w.wait([/§IDEMPIERE-MD tab=PO Line/], 8000).catch(function () { return null; });
@@ -460,7 +476,7 @@ function deepUrl(port, params) {
       await page.waitForTimeout(500);
       var found6b = await rowIdByText(page, uniqPoDoc);
       if (!found6b) throw new Error('PO row for ' + uniqPoDoc + ' not found on returning to the header tab');
-      await found6b.handle.click({ timeout: 8000 });
+      await clickRowOpen(found6b.handle, { timeout: 8000 });
       await page.waitForTimeout(500);
       var coBtnPo = page.locator('.idmp-docfsm button[data-doc-action="CO"]');
       var coVisiblePo = await coBtnPo.count();
