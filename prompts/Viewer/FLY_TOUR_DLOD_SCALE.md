@@ -583,3 +583,82 @@ fix verbatim (parity witness confirms byte-identical numbers to the Python resul
 picks up the wider containment automatically — no DB redistribution, no per-building action at all.
 Room-level occlusion (this file's track 2) is unblocked but still NOT implemented — that remains
 the next session's job.
+
+## 11. Room-level occlusion — STUDY TASK (2026-07-21, dispatch-ready — study before implementing,
+per user directive: "It can be studied by the session first before doing")
+
+**Do not implement from this section alone.** It names the mechanism to reuse, the real numbers
+that motivate it, and the open design questions that must be resolved WITH CODE/MEASUREMENT before
+any implementation PR — same discipline as §8's "GATED, report only" and §9's "IMPLEMENTATION
+DESIGN" that came after it. First pass on this task = answer §11.2 with citations + numbers, write
+the answers into this file, THEN a separate go for implementation.
+
+### 11.1 GIVEN — what already exists to reuse (verified in code, not assumed)
+- **Containment data is wide enough to build on:** `rel_contained_in_space` now covers 24.2% of
+  LTU_AHouse (30,409 rows, all disciplines) post-`CONTAINMENT_LTU_STOREY_ALIAS.md`; self-heals to
+  any other building automatically via the version stamp (§10 above).
+- **The box-proxy state machine already exists and is the right mechanism to extend, not replace:**
+  `dlod_nav.js` maintains `_boxIndex[guid] = {mesh, idx, matrix, pos, radius, state:'real'|'box'}`,
+  promoting/demoting per-element on a `PROMOTE_DIST`/`DEMOTE_DIST` + frustum test, with a 10-frame
+  cross-fade and a `FADE_CAP` snap-fallback at scale — all of this is DISTANCE/FRUSTUM-based and
+  untouched by containment. Room-level occlusion is a SECOND criterion for the same promote/demote
+  decision (element's room ≠ camera's current room ⇒ eligible to box), not a parallel system.
+- **The `>50k` engage gate (`NAV_MIN_ELEMENTS`, `dlod_nav.js:26`) means dlod_nav today NEVER
+  engages on Terminal (48,428 — confirmed live by the user this session, pressing 'o' correctly did
+  nothing) or any building under that line** — room-level occlusion, if wired only into
+  `dlod_nav.js`, would inherit the same size-blindness unless deliberately generalized. Whether
+  that's correct (rooms only matter at scale) or wrong (a Duplex-scale building could still want its
+  own interior-vs-exterior split during Fly Tour, cheaply) is 11.2 Q1.
+- **Fly Tour ('L' key, `toggleFlyAround` → `_prepareGraphTour` → `A.ensureRooms()`) has NO size
+  gate at all** — unlike `dlod_nav`'s 'o' key, it warms rooms on every building regardless of scale
+  (confirmed this session: 'L' fires the NEEDLE chain on Terminal, sub-50k, where 'o' does not).
+  Room occlusion tied to Fly Tour specifically would not inherit the 50k blindness.
+- **Room-per-camera-position is already computed, but only at PLANNING time, not per-frame:** the
+  Fly Tour route planner (`tour.js` §FLY_ROUTE / RoomGraph) already knows which room each `flyPts[i]`
+  stop belongs to (seen live this session: `{"name":"⚠ VÅNING 1 R95"}` etc. in a real `§TOUR_PATH`
+  dump) — this is a PATH-INDEXED lookup (which stop am I nearest, in the planned sequence), not a
+  live point-in-room-rect test against the camera's actual current XY. Whether the planned-path
+  index is accurate enough for occlusion (camera stays close to its planned path) or a live
+  point-in-rect test is needed (same rect data the containment join already uses) is 11.2 Q2.
+
+### 11.2 OPEN DESIGN QUESTIONS — resolve with code + numbers before implementing
+1. **Scope by building size or not?** Measure room-count and elements/room on a below-50k building
+   (Terminal: 48,428 elements — real per-discipline containment numbers already in
+   `CONTAINMENT_LTU_STOREY_ALIAS.md`'s regression set) vs LTU (122k). Is the per-room element count
+   (8.9 avg on LTU) similarly worth culling on a smaller building, or does `dlod_nav`'s existing 50k
+   gate already mark the point below which this isn't worth the engineering? Answer with the actual
+   numbers, not a guess.
+2. **Current-room detection: reuse the planned-path index, or a live point-in-rect test?** The
+   planned-path index is free (already computed) but only as accurate as "camera follows its planned
+   route" — measure how far the ACTUAL camera position (not the plan) drifts from the nearest
+   planned stop during a real flight (same `§FLYPATH_INIT`/camera-position log lines already used
+   for other Fly Tour proofs this session) before assuming it's good enough. A live test would reuse
+   the exact rect-containment math `compile_rooms.py`/`room_walker.js` already do (`abs(x-cx)<=sx/2
+   && abs(y-cy)<=sy/2`), just evaluated against the CAMERA position instead of an element's, at
+   whatever per-frame or per-N-frame cadence `dlod_nav`'s existing 150ms eval throttle suggests.
+3. **Aerial/orbit legs must not lose the room test's own §5-track-1 lesson:** §5 already found that
+   a blanket "hide anything not on camera's current storey" rule breaks aerial/orbit shots (no
+   single current storey then). Room-level occlusion inherits the same failure mode one level finer
+   — during an orbit/aerial `TOUR_PATH` action, there is no "current room" either. Reuse §5's own
+   fix shape: gate room-occlusion to INTERIOR legs only (same signal §5.3 already named — storey/
+   room membership from the path-planning data marks which actions are interior vs aerial).
+4. **Interaction with the existing distance/frustum promote-demote, not a second box mesh set:**
+   should room-mismatch be a THIRD demote condition alongside `DEMOTE_DIST`/frustum-margin in the
+   SAME `_boxIndex` state machine (an element can be demoted for EITHER reason), or does it need its
+   own hysteresis tuning (a room boundary is a hard cut, not a soft distance band — does the same
+   10-frame cross-fade look right for "camera walked through a doorway," or does that need to be
+   instant)? Needs a real interior-flight video/log comparison, not assumed to be identical.
+5. **Below-50k buildings without `dlod_nav` engaged at all:** if Q1 concludes small buildings ARE
+   worth it, room occlusion there has no existing box-proxy host to plug into — would need either
+   generalizing `dlod_nav`'s engage gate (room-mismatch alone, no size floor) or a separate minimal
+   mechanism. Do not build a third DLOD engine (`time_machine.js`'s own is already a cautionary
+   precedent per its `assignStoreyByZ` mirroring note in `ROOM_INJECTOR_NEEDLE.md`) — extend
+   `dlod_nav.js`'s existing gate/state machine if this is needed, per that doc's needle-sharing
+   recommendation applied to this mechanism too.
+
+### 11.3 Non-goals (v1, same discipline as §3/§7)
+- Time Machine occlusion — separate feature, separate go, once §11 settles the mechanism shape here
+  (`ROOM_INJECTOR_NEEDLE.md`'s recommendation: share `A.ensureRooms()`, not the box-proxy engine
+  itself, which is Fly-Tour/nav-specific machinery TM would need its own engage-gate story for).
+- Find Panel's `isolateRoom` warming its own rooms (separate, smaller, already-named follow-up in
+  `ROOM_INJECTOR_NEEDLE.md`) — unrelated to this occlusion mechanism, don't fold it in here.
