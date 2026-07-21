@@ -18,11 +18,11 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` warehouse-drop both fixed+landed; now fails one layer deeper — the process handler's own `fetchOrder` reads the raw base table, misses the sidecar CO status) |
+| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` warehouse-drop + handler `fetchOrder` base-only read all fixed+landed; now fails on `IsSOTrx` — DocType is never derived per-window, see Stage 6 caveat) |
 | 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a NEW casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
-| 6 | Purchase Order | UI | **PASS** |
+| 6 | Purchase Order | UI | **PASS**\* (UI-level pass; §Fix 2026-07-21 found the completed record is DATA-tagged as a Standard *Sales* doctype underneath — `c_doctypetarget_id` is never derived per-window) |
 | 7 | Material Receipt | UI | **ABSENT** |
 | 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
 
@@ -389,3 +389,60 @@ Stage 3 (SalesInvoice) result is unaffected either way this session (still FAIL)
 (`ad_process.js:319-324`) never even reaches the `AD_Org_ID` question yet; `§AD-PROC-LIVE proc=119 ...
 dispatched=N reason=param-validation-failed` fires first because the process's own mandatory-param check
 (`validateParams`, `ad_process.js:515-530`) rejects the `NaN` before the handler runs at all.
+
+---
+
+## §Fix — 2026-07-21, Stage 2's `fetchOrder`/`fetchOrderLines` base-only read — FIXED and witnessed;
+## found a THIRD, more structural gap underneath (IsSOTrx/DocType never derived at all)
+
+**Fix (branch `fix/genship-fetchorder-overlay`, worktree `/tmp/wt-genship-fetchorder`, bim-ootb PR #948,
+auto-merge armed):** `_procCtx()`'s `fetchOrder`/`fetchOrderLines` (`idempiere.html`) read ONLY
+`window.__idmpDb` — the same class of bug the picker fix (§Fix above) already closed for the SELECTOR, not
+yet for the RUN path: `inoutGenGate()` checks `order.docstatus==='CO'`, but the handler's own order-fetch
+never saw the synthetic order's sidecar-only CO status. New `_foldOrderRow(id)`/`_foldOrderLines(id)`
+helpers reuse the SAME `window.__crud.core.listTip`/`readTip` primitives the picker already uses, read
+SYNCHRONOUSLY via `window.__crud.kernelDb()` (safe: the picker's own `withSidecar` call has already
+hydrated it by the time Run is clicked — confirmed by tracing `withSidecar`'s `SIDE = db;
+_flushSideCbs(SIDE)` ordering, the assignment always precedes the callback). Falls through to the base-only
+row/rows on any infra gap, matching the lane's established "never worse than before" convention.
+
+**Witnessed** (also enriched `§AD-PROC-LIVE`'s console.log to surface `res.message`, previously silently
+dropped — needed to diagnose what this fix uncovered):
+```
+before: §AD-PROC-LIVE proc=118 ... dispatched=Y ok=N rows=0 reason=order-not-shippable
+after:  §AD-PROC-LIVE proc=118 ... dispatched=Y ok=N rows=0 reason=order-not-shippable
+        message="Order is not a Sales Order (Generate Shipments is the SO path)"
+```
+The gate now reaches the `IsSOTrx` check (previously failed one check earlier, on `DocStatus` — confirmed
+by the message text changing) — the fix genuinely closes the DocStatus layer. No regression: Stage 1/5/6
+unchanged.
+
+**NOT yet fixed — a THIRD, more structural gap, found immediately underneath, DIFFERENT IN KIND from the
+first two (this one isn't "handler reads the wrong source" — the value never gets derived ANYWHERE):**
+`order.issotrx` is `undefined` on a freshly-created order because `c_order`'s `crud_ops.json` entry has no
+`issotrx` field (declared or hook-derived) at all. Traced to `MOrder.docTypeTargetDefault`
+(`ad_modelval.js:131-138`, a faithful port of real `MOrder.java:1311-1312`): it ALWAYS defaults
+`c_doctypetarget_id` to the client's Standard **Sales** Order doctype when the record doesn't already
+supply one — real iDempiere lets a window override this via its own `AD_Window`-level DocType context
+default, but THIS UI's `c_order` New form has no DocType field/context at all (confirmed already, Stage 6
+§Findings — "same curated crud_ops.json c_order entry as Sales Order... no editable ... field"). Net effect,
+confirmed by the log: **the Sales Order (Stage 1) and the Purchase Order (Stage 6) both derived the
+IDENTICAL `c_doctypetarget_id:132`** (`derived={"m_warehouse_id":103,...,"c_doctypetarget_id":132,...}`,
+byte-identical across both `§AD-MODELVAL-LIVE` lines) — there is currently no signal anywhere in this UI
+that distinguishes a Purchase Order from a Sales Order at the DATA level, only by which window/menu item the
+user happened to click. **Resolved, not just flagged:** `c_doctype_id=132` in the seed
+(`erp/ad_seed.db`) is `name="Standard Order" docbasetype='SOO' docsubtypeso='SO' issotrx='Y'` — a genuine
+SALES doctype. So Stage 6's "PurchaseOrder PASS" (§Findings above) is a real UI-level pass (the record was
+authored via the PO window, has a real vendor `C_BPartner_ID`, completed via the DocAction bar) but the
+underlying record is DATA-tagged as a Standard **Sales** Order — `IsSOTrx` was never actually set to `'N'`
+anywhere. This is a genuine, distinct gap (this UI has no Purchase doctype in its `c_doctype` seed selection
+path / no window-level DocType default), not a regression from either fix in this session. **Needs its own
+fix session** — likely: (a) confirm whether a Purchase-side Standard doctype even exists in the seed, (b)
+wire `_docCtx()`/`fireBeforeSaveHooks`'s ctx with a window-scoped DocType hint (PO window → Purchase
+doctype) the same way `M_Warehouse_ID` already gets a ctx fallback (`ad_modelval.js:86-90`,
+`MOrder.warehouseMandatory`) — `docTypeTargetDefault` (`ad_modelval.js:131-138`) would need the SAME
+`ctx`-fallback treatment before falling back to the client's Standard SO. Not attempted this session — a
+data-model fix, not a "handler reads wrong source" fix like the two above it.
+
+Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`, the separate casing bug named
+above) — unaffected by this fix or this finding.
