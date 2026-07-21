@@ -146,3 +146,25 @@ then do so." bim-ootb PR #926 (`fix/tour-cache-quota-evict`), auto-merge armed o
    original two-pass §3 witness (clean-profile 41× claim) was NOT re-run live post-fix — the fix only
    touches the failure path, PR #926's own harness covers what changed; re-run §3 on LTU if a live
    confirmation is wanted.
+
+## §5 RE-OPENED FINDING — 2026-07-21 (live user log, LTU on the deployed origin): quota self-heal
+is IMPOTENT on github.io — the cache never engages, Fly re-plans (and "hangs the scene") every press
+User's live console (LTU_AHouse, red1oon.github.io):
+`§TOUR_CACHE store-skip The quota has been exceeded` → `§TOUR_CACHE_EVICT removed=0 bytes_freed=0`
+→ `store-skip (post-evict) The quota has been exceeded`. Diagnosis, from the §4 evict code itself:
+the evict-and-retry only removes OTHER `tmTourCache:` keys — but `removed=0` proves none exist; the
+origin's localStorage is full of NON-tour data. **`https://red1oon.github.io` is ONE ORIGIN for
+every GH-Pages app in every repo** — viewer, modeller (op-logs), ERP all share the same ~5-10MB
+localStorage quota. §4's self-heal can only reclaim its own keys, so on this machine the 41×
+fast-path NEVER engages: every Fly press re-runs the full route plan (minutes of main-thread
+`§PATH_LEGAL` on LTU = the "kinda hanging"/"hangs the scene" the user reported — NOT the new
+nav-DLOD module; no `§DLOD_NAV` lines were present, the pill was off).
+Second observation from the same log: the planning sweep ran TWICE per press (two full
+`§PATH_LEGAL`+`§FLY_ROUTE` blocks before one `§TOUR_PATH`) — `§FLY_ROUTE_ISOLATED dropped=2`
+triggers a full re-route rather than reusing the legality results; doubles the already-minutes cost.
+**Named fix direction (not yet implemented, needs its own go):** move the route cache off
+localStorage to IndexedDB (per-origin quota is orders of magnitude larger, and the viewer already
+uses IDB for building caches — `A.CACHE_STORE`/`§CACHE_EVICT_LRU` in scene.js is the pattern to
+reuse); keep the same key scheme. Optionally also de-duplicate the double plan (reuse door-legality
+across the isolated-stop re-route). Route JSON itself is small (~tens of KB) — the store choice,
+not the payload, is the whole problem.
