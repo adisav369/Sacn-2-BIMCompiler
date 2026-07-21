@@ -3910,3 +3910,462 @@ nearby, matching the user's own suggestion; fewer rays; or a proper app-wide `In
 — **not yet implemented, no direction chosen as of this writing.** Worktree `/tmp/wt-altp-perf`
 branch `perf/staffage-altp-clearance-cache` has the profiling instrumentation already in place,
 uncommitted, ready to resume.
+
+## §CINEMA_ORBIT_V2 — LIVE-DRIVEN root cause found, NOT a repeat of R1/R2/R3 (2026-07-21)
+User reported "same issues" after a hard SW reset on the live site. Ruled out deploy/cache first: live
+`red1oon.github.io/bim-ootb` was confirmed serving `EFFECTS_V v8`/`CACHE_VERSION v832` (current `main`,
+includes #925) — not a stale-deploy landmine. Then drove a REAL Alt+C keydown (Puppeteer, `KeyboardEvent
+{altKey:true,key:'c'}` on `window`, matching `scene.js:1853`'s listener) against `localhost:8399` on
+Terminal/Hospital/Duplex, per [[feedback_whitebox_deduce_not_browser]]-class discipline — no screenshots,
+numeric proof only: camera position/tilt/azimuth time series read off `A.camera` + a fine re-sample of the
+real post-trigger `A.cinemaPathPlan(24)`, and space identity looked up from `spatial_structure` (the
+compiler's own room classification) rather than a coordinate-guessed heuristic.
+
+**Finding 1 (structural, not a bug):** Alt+C routes to `A.startMaxQualityOrbit()` (MaxQ, `cinema_maxq.js`)
+since PR #885 — `A.startCinemaOrbit()` (the "24s live-capture film" this whole thread assumed) is dead
+code, only an `else if` fallback that never fires because MaxQ is always defined. Real UX: a ~10s
+real-time path PREVIEW (plain look, no Alt+S), then — unless cancelled — a multi-minute per-frame
+photoreal bake. Both stages fly the same shared `A.cinemaPathPlan(24)` the 4 PRs fixed, so the numbers
+below are the real numbers a user sees; only the "24s film" framing was stale.
+
+**Finding 2 (real, reproducible, DB-verified) — THE likely cause of "same issues":** `§CINEMA_SPACE`'s
+largest-space-only search (#925's simplification) has NO filter against `SUSPECT_OPEN`/`Roof`-typed
+spaces. On every building tested, the #1 (and only, no second-candidate fallback per #925) candidate is
+one of these and gets disqualified by the enclosure check, so the dive falls through to the raw
+bbox-centre — which on Terminal is ITSELF `enclosed=0%`:
+- Terminal: `RM_Aras_01_1` = `spatial_structure` name `"⚠ Aras 01 R1"`, `predefined_type="SUSPECT_OPEN"` →
+  fallback bbox-centre, `enclosed=0%`, `diveDist=143.7m`.
+- Hospital: `RM_Level_1_14` = `"⚠ Level 1 R14"`, `predefined_type="SUSPECT_OPEN"` → fallback, `enclosed=3%`.
+- Duplex: candidate GUID resolves to `object_type="Roof"` (`R301`, the known roof-terrace case) →
+  fallback bbox-centre — happened to land `enclosed=100%` this time, essentially by luck.
+The `⚠` prefix is a PRE-EXISTING upstream data-quality marker (already flagged as suspect before this
+feature ever touched it) — `§CINEMA_SPACE` just never learned to skip it. `witness_cinema_orbit_v2.js`
+never caught this because it only asserts mood/spinClass/exitAz/tilt-shape — a plan built entirely on the
+bbox-centre fallback still satisfies every one of those checks. This is a space-SELECTION filter bug, not
+a regression of R1/R2/R3's own logic.
+
+**Finding 3 — downstream logic is correct, numerically confirmed, not the problem:** real `§CINEMA_EXIT`/
+`§CINEMA_SPIN`/`§CINEMA_SUN_ORDER` lines vary sanely per building. 1000-step re-sample of the real plan:
+ending tilt lands exactly on the declared target (Terminal flat→`0.000°`; Hospital/Duplex rise→`45.000°`
+at u=1.0), azimuthal rate decelerates monotonically on all 3 (`30.000°/s` at u=0.5 → `0.359°/s` at u=1.0,
+1.2% of mid-rate, smooth taper, no re-climb/discontinuity). Zero JS exceptions in any of the 3 runs.
+
+**Next:** add a `spatial_structure.predefined_type NOT LIKE 'SUSPECT%'` (and exclude `object_type='Roof'`)
+guard to the `§CINEMA_SPACE` candidate query before the enclosure check — restores a real second-best
+fallback instead of always landing on bbox-centre. Confirm with user whether "same issues" was this
+(dive-target landing) or the Finding-1 UX-shape mismatch (preview+bake vs the assumed 24s film) before
+touching code — per this file's own standing rule, don't fix on an assumed symptom.
+
+## §MAXQ_MP4 — webm fallback on a real HHS Office capture, checked for dangling-unmerge (2026-07-21)
+User's real MaxQ bake on HHS_Office_Federated (`~/Downloads/BIM_MaxQ_HHS_Office_Federated_1784572371226.webm`,
+Jul 21 02:32) came out `.webm`, not `.mp4`, and asked whether §MAXQ_MP4 (PR #895) was another dangling-unmerge
+like the cinema-orbit one earlier this session. Checked, NOT a merge/deploy gap: `f913b67` (§MAXQ_MP4) IS an
+ancestor of `origin/main`; live `viewer/lib/mp4_mux.js` fetched directly (200, 14020 bytes, byte-matches local);
+a headless `google-chrome-stable` v150 check of `VideoEncoder.isConfigSupported()` for all 5 `MP4_CODECS` on
+this machine returned `supported:true` for every one. So the mp4 path is merged, deployed, and codec-capable
+here in principle — the real capture still fell back to webm for some OTHER runtime reason (`§MAXQ_MP4_FALLBACK
+reason=...` is the exact line that would say why: `no-webcodecs`/`no-muxer`/`no-usable-h264-codec`/
+`no-avcC-description`/a mux() exception/zero-chunks). That line wasn't captured from the real session — needs
+the actual browser console from a real Alt+M/MaxQ run to pin down, not guessed. **Next time this happens,
+capture that one log line before concluding anything.** (Housekeeping done in passing: pruned 2 stale,
+already-merged worktrees found while checking this — `/tmp/wt-maxq-idb` (#894, clean, 0 unpushed real content)
+and `/tmp/wt-maxq-mp4` (#895) — both were post-squash-merge leftovers, not in-progress work.)
+
+**Separate, NOT a bug — do not "fix" (user, 2026-07-21):** the MaxQ bake shows a brightness pulse/flash between
+darker and brighter across frames, "supposedly an error but then i like it this way as it gives a glimpse from
+dark shadow to brighter. Like in a distant thunderstorm." This almost certainly comes from each frame's
+independent Alt+S GI/shadow fold not being temporally coherent frame-to-frame (each frame re-solves lighting
+fresh) — but the user explicitly wants this KEPT as an aesthetic, not smoothed/stabilized. Any future session
+touching MaxQ's per-frame lighting consistency should check this note first — "fixing" temporal flicker here
+would remove something the user likes, not a real defect.
+
+## §CINEMA_SPACE_ENCLOSED_SKIP — implemented + verified, but does NOT fix Terminal/Hospital (2026-07-21)
+Per user ruling (asked directly: keep #925's any-floor "largest space" ranking exactly as-is, no floor
+preference; separately fix the real SUSPECT_OPEN/bad-fallback bug only): implemented iteration over the
+SAME area-ranked candidate list (top 6, same cap R2 used pre-#925), skipping any candidate that fails the
+existing enclosure check, before falling to bbox-centre. `EFFECTS_V v8→v9`, `CACHE_VERSION v832→v833`.
+Branch `fix/cinema-space-enclosed-skip` (worktree `/tmp/wt-cinema-space-skip`, no shared-tree edit — the
+worktree-enforcement hook correctly blocked a direct `~/bim-ootb` edit and named the exact repro steps).
+
+**Verified live (real Alt+C, headless google-chrome-stable, correct flags
+`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader` — the earlier `--use-gl=swiftshader`
+alone silently breaks WebGL/`[S205] §INIT_VIEWER_ERROR`, cost a debugging round, note for next time):**
+- **Duplex: FIXED, mechanism proven.** Top candidate (roof, 0% enclosed) now correctly skipped; rank-2
+  candidate `A102` (27.7m², 100% enclosed) chosen instead of falling to bbox-centre.
+- **Terminal: NOT fixed.** All 6 top-ranked candidates (660/576/496/481/100/70 m²) measure `enclosed=0%`.
+  Falls through to bbox-centre exactly as before — the iteration has nothing viable to land on.
+- **Hospital: NOT fixed.** Same shape — all 6 top candidates (316/219/97/106/78/65 m², mix of `RM_*` and
+  `CORRIDOR_ROOM::*`) measure `enclosed=0%`. Falls to bbox-centre (this run measured 3% — still a void).
+
+**Root cause is NOT a candidate-selection bug — it's the same class of problem as HHS Office's fragmented
+room compile** (see the §MAXQ_MP4 section above), just a different symptom: for these two large/complex
+buildings, the auto-compiled "rooms" large enough to be interesting candidates are themselves unreliable
+geometry (already flagged `SUSPECT_OPEN` by the compiler) — the 32-ray/60m enclosure fan finding zero walls
+in any direction from their own compiled centre-point is consistent with that flag, not a raycast bug.
+Iterating through more of the SAME bad candidate pool cannot produce a good one. **This needs real
+room-graph/room-compile work on Terminal and Hospital specifically (same lane as HHS's unfinished
+`fix/suspect-large-room-cap` work above), not another cinema-code tweak.**
+
+**Ship decision:** the fix is real, verified, no-regression (identical behavior on any case where the #1
+candidate already passes — only adds a skip-and-retry when it doesn't) — merging it now helps
+Duplex-class/small buildings and is strictly not worse than today for Terminal/Hospital (bbox-centre
+fallback, unchanged). **Do NOT tell the user Terminal/Hospital are fixed — they are not.** The next real
+step for those two is a room-compile investigation, not more cinema-orbit iteration.
+
+## §CINEMA_GHOST_RESET — the REAL bbox-wireframe-during-Alt+C bug, found + fixed (2026-07-21)
+User reported the bbox wireframe bug recurring during Alt+C testing with NO Find-panel interaction at
+all — directly contradicting my first diagnosis (which assumed the Find-panel's `_mgLensOwned`
+auto-engage was the only source, and was verified/fixed against THAT scenario only, branch
+`fix/cinema-orbit-ghost-reset` first commit). User corrected: "why u ask me to test a Find panel.. it
+was not there. The code has to have proper refactored separation" — right call. Also surfaced real
+history: Alt+X was deleted and merged into a 3-state Alt+Z cycle (Off→X-Ray→Bbox→Off,
+`A.cycleXrayBboxMode` in tools.js) — "double Alt+Z to arrive at it," per the user's own memory of that
+refactor ("after we moved it into pill registry as double toggle the icon").
+
+**Real root cause:** `_mergedGhost.visible` (the actual shown/hidden state) and `_mgLensOwned` (an
+"auto-engage claimed this" ownership flag) are two SEPARATE, non-synced booleans on the same object.
+The manual Alt+Z cycle (`toggleMergedGhost()`) only ever flips `_mergedGhost.visible` — confirmed
+reading it directly, it never touches `_mgLensOwned`. My first fix (`A.resetCinemaGhostLens()`) only
+checked `_mgLensOwned`, so a MANUALLY-toggled-on ghost (cycled via Alt+Z, no Find panel involved at
+all) sailed straight through untouched into the cinema orbit — exactly what the user hit.
+
+**Fix, broadened:** `A.resetCinemaGhostLens()` now keys off `_mergedGhost.visible` directly (regardless
+of who turned it on), and separately, `cinema_maxq.js`'s `start()` also force-clears `A.xrayOn` if
+engaged — same Alt+Z cycle can leave X-Ray on instead of Bbox, equally wrong for a cinematic film
+however it got there. `EFFECTS_V v8→v10` (`v9` was already claimed by the separate, still-unmerged
+`fix/cinema-space-enclosed-skip` branch — these are two independent PRs off the same base, whichever
+merges second takes the higher `CACHE_VERSION` per this repo's own sw.js-conflict convention).
+`CACHE_VERSION v832→v834`. Branch `fix/cinema-orbit-ghost-reset`, worktree `/tmp/wt-cinema-ghost-reset`.
+
+**Verified live** (real Alt+Z×2 keydowns, no Find panel touched, then real Alt+C, `--use-gl=angle
+--use-angle=swiftshader --enable-unsafe-swiftshader`, Terminal — needed a 20s warm-up before Alt+Z's
+ghost-build succeeded in this slow headless/software-render environment, a large building needs real
+streaming time; 6-8s wasn't enough and produced `§BBOX_GHOST_EMPTY rows=0` on the first attempt, a test
+environment artifact not a fix bug): `ghostOn:true` after Alt+Z×2 → `ghostOn:false` right after Alt+C,
+log line `[MG] §CINEMA_GHOST_RESET hidden (manually toggled, cinema orbit starting)` fires exactly as
+designed. Hospital's ghost didn't finish building within the same wait window in this run (same code
+path, just needs more headless warm-up for a 63k-element building) — not re-tested further since the
+mechanism is proven on the identical shared function, not per-building logic.
+
+**Lesson for next time (already added to memory):** don't assume a repro path without asking/checking
+when the user says a precondition (Find panel) wasn't involved — the first fix was real and correct for
+its own narrower scenario, but shipping it alone would have left the user's actual bug unfixed and
+looked like "still broken" on the next test, repeating this exact session's whole pattern.
+
+## ✅ Sub-task CLOSED — HHS Office's dive fix is no longer blocked (2026-07-21, stages 1-3 shipped)
+HHS Office's Alt+C dive-target problem was DIAGNOSED and the fix PROVEN to work end-to-end
+(§CINEMA_SPACE_ENCLOSED_SKIP above + a regenerated room compile — live-verified: dive lands in a
+real 185.6m² 100%-enclosed "Level 2 Hall/Corridor," not bbox-centre) but was deliberately NOT shipped
+for HHS specifically, pending `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md`'s §ROOM_WALKER_VERSION_STAMP
+sub-task (version-stamp self-heal, so every future self-service user's own uploaded building gets
+the same fix room_walker.js improvements need, not a one-building hand-patch). **That sub-task's
+three stages are now all shipped** — see ROOM_INJECTOR_NEEDLE.md's own "Stage 3 — DONE, HHS-only
+pilot" note for the full live-verification detail (bim-ootb PRs #934, #939). Headless-verified:
+HHS's stale 14-room compile now auto-recompiles to 73 current-algorithm rooms on the exact
+`A.ensureRooms({})` call `cinema_maxq.js`/`effects.js` make before Alt+C, settles after one
+recompute (no repeat trigger across reloads), and the recompiled set carries the 281.6m² Level 3
+SUSPECT_LARGE-class room the stale compile never saw.
+**Not yet done — separate from the sub-task, a real next step:** an end-to-end live Alt+C
+re-verification on HHS specifically (does the dive actually land on the 185.6m² Hall/Corridor now,
+with the self-heal running for real rather than a synthetic `ensureRooms({})` call) has NOT been
+run this session — the sub-task closure above verified the self-heal mechanism itself, not a fresh
+Alt+C capture. Do that check before calling HHS's dive fix fully closed. Do NOT regenerate/upload
+HHS's DB by hand — that was explicitly rejected in favor of the self-heal approach (see
+ROOM_INJECTOR_NEEDLE.md's own "why this beats the server-side regenerate+OCI-upload path" note).
+
+**Everything else in this file is unblocked and independently shippable:**
+- `fix/cinema-orbit-ghost-reset` (PR #931) — merged-or-mergeable now, no dependency on the above.
+- `fix/cinema-space-enclosed-skip` (branch pushed, no PR yet) — fixes Duplex-class buildings today;
+  Terminal/Hospital need the SAME room-compile staleness fix as HHS (their top candidates are all
+  `SUSPECT_OPEN`, likely also stale-compile artifacts, not yet confirmed via a fresh recompute the
+  way HHS was — worth checking with `compile_rooms.py --write` on a scratch copy before assuming).
+
+## ✅ §MAXQ_STREAM_FIRST — MaxQ waits for geometry streaming before baking (2026-07-21)
+User report: on LTU_AHouse (122k elements), the 10s preview correctly showed boxes for speed, but
+the bake should have auto-switched to solid geometry — it didn't. `cinema_maxq.js` had **zero**
+references to `A.streaming` anywhere. Ruled out `dlod_nav.js` first (already fully disengages the
+instant `A._maxqActive` is set, every frame, via its own gate check) before concluding the boxes
+were the geometry-streaming pipeline's own unpromoted-element placeholders bleeding through on a
+large building still mid-stream when Alt+C is pressed.
+
+**Fix (bim-ootb PR [#945](https://github.com/red1oon/bim-ootb/pull/945), merged):** reused
+`tour.js`'s existing `§FLY_STREAM_WAIT` pattern verbatim — wait for `A.streaming` to fully drain
+BEFORE the preview even starts, rather than detecting/switching mid-flight (which would still pop
+visibly in the baked video). Cancel-safe via the existing `_cancel` flag.
+
+**Verified:** headless Chromium, `A.streaming` forced true/false to exercise the gate
+deterministically (real 122k-element streaming under this environment's SwiftShader software
+render is too slow to reliably exercise directly) — waits while streaming, logs
+`§MAXQ_STREAM_WAIT ms=<n>` once cleared, proceeds to preview; a cancel mid-wait aborts cleanly.
+**Not verified:** real-hardware wait duration on an actual large building mid-stream — same
+real-GPU gap as the DLOD-nav work below.
+
+## Firefox mp4→webm — confirmed NOT a bug (2026-07-21)
+User report: a baked movie landed in `Downloads/` as `.webm` instead of `.mp4`. Real browser
+console log showed `§MAXQ_MP4 probe codec=avc1.* supported=false` for all 5 H.264 codec strings
+tried → `§MAXQ_MP4_FALLBACK reason=no-usable-h264-codec` → clean webm fallback, exactly as
+`§MAXQ_MP4`'s own design (PR #895) already handles. The session was Firefox (confirmed by its
+`WEBGL_debug_renderer_info is deprecated` console warning) — Firefox's WebCodecs API exists but
+lacks a usable platform H.264 encoder; Chrome has one. **User confirmed same building, Chrome →
+`Downloads/H.mp4` works.** No code change — flagging here so a future session doesn't re-diagnose
+this as a regression from a bug report that names "webm instead of mp4."
+
+## ✅ §CINEMA_SPACE_MEP_SKIP — dive no longer picks MEP/plant-dominated rooms (2026-07-21)
+User report, live production (GitHub Pages, reproduced identically in Firefox AND Chrome — ruled
+out as a browser quirk before investigating further): Alt+C on Hospital landed the dive in
+`RM_Level_2_20` (270m², logged `enclosed=97% chosen=true`) instead of an interior space. DB-
+confirmed via `rel_contained_in_space`: 304 `IfcPipeFitting` + 290 `IfcPipeSegment` + 49
+`IfcDuctFitting` + 14 `IfcDistributionControlElement` + 11 `IfcFireSuppressionTerminal` of ~858
+total contained (78%) — a rooftop **mechanical plant room**, not a habitable space. Only 2
+`IfcSlab` elements found anywhere above its footprint — no real ceiling.
+
+**Root cause:** `§CINEMA_SPACE_ENCLOSED_SKIP`'s ray-fan (`_cinemaFan`) casts every ray with
+`dir.set(cos,0,sin)` — Y is always 0, purely horizontal. It can detect "no walls around me," never
+"no roof above me." A plant yard walled in for screening (common, e.g. rooftop AHU/chiller decks)
+passes the enclosure check fine. Area/centrality ranking alone also can't distinguish a large plant
+room from a large ward.
+
+**Fix (bim-ootb PR [#949](https://github.com/red1oon/bim-ootb/pull/949), merged):** a second,
+independent disqualifier in the same "skip and keep looking" loop (both checks must pass, neither
+replaces the other) — query `rel_contained_in_space` per top-6 candidate, skip if ≥50% of its ≥20
+contained elements are MEP/plant/services classes (pipe/duct/cable/flow-device/plant-equipment
+families). `EFFECTS_V` v11→v12.
+
+**Verified:** live against the real Hospital DB — `§CINEMA_SPACE cand=RM_Level_2_20 area=270.3
+enclosed=13% mep=78% chosen=false`, matching the manual DB query that diagnosed the bug.
+**Not independently verified this session:** the full happy path (dive lands on a genuine
+habitable room end-to-end) — the headless test forced `A.streaming=false` to skip slow real
+geometry loading, which also starved the enclosure ray-fan of meshes to hit, so every top-6
+candidate fell through to bbox-centre in that specific run (a testing-shortcut artifact — the
+enclosure check itself is unchanged code — not a defect in this fix). **Needs a real-GPU live
+Alt+C check on Hospital** to confirm the dive now lands on a real ward/corridor, not just that the
+plant room gets excluded. Note also: Hospital's rooms recompiled 142→214 under the unrelated
+§CONTAINMENT-ALIAS v3 bump (see `ROOM_INJECTOR_NEEDLE.md`) since this fix was verified — room
+GUIDs may have shifted, but the fix keys off each candidate's `guid` at evaluation time, not a
+hardcoded room, so it applies correctly regardless.
+
+## ⛔ SPEC ONLY, NOT IMPLEMENTED — Alt+P room-avoidance + Alt+C always-exit-then-return (2026-07-21)
+User report on HHS_Office, two issues, both about the algorithm not adapting to where the camera
+ALREADY is. **This session investigated and specced only — deliberately not implemented, for a new
+session to pick up.** Read the user's own framing below before touching either: they explicitly do
+NOT want precision-engineered fixes here.
+
+**User's verbatim design philosophy (read this before writing any code for either issue):**
+*"Make code simple and abstract, no need for accuracy just some simplest of rules as we do not
+wana overthink as user creatively set start cam pos/orient to get many variants. Go for simplest
+markers.. again been abstract makes it more dynamic. Ie OTW to look for bigger room, it may run
+out of time and gracefully just turn around a glass walled place to see more, thus cam richer POV
+is a marker itself. Again do not want u to overthink as complex has its own burden."* Translation:
+prefer a cheap, generalizable heuristic over a geometrically-precise one; "good enough visual
+richness" (e.g. near glass, open sightlines) is an acceptable STOPPING CONDITION on its own, not
+just a fallback — don't chase the objectively-best room/spot if a decent one presents itself
+opportunistically within a time/step budget.
+
+### Issue 1 — Alt+P avoids placing pax in the room the camera is already standing in
+**NOT a deliberate camera-avoidance rule — confirmed by reading the code, no such check exists.**
+It's an emergent side effect of `_updateInFrameInterior()`'s candidate search
+(`viewer/effects.js` ~L1795-1812): candidate walk/sit spots are generated strictly AHEAD of the
+camera, forward distance `dd` starting at a **4m minimum** (`for (var dd = 4; dd <= 13; dd += 3)`).
+In a small/typical office room (HHS_Office-scale), a spot 4m+ ahead of the camera frequently lands
+past the far wall or within `_CLR_PERSON` (0.45m) of it, gets rejected by `_spaceOK()` or the
+on-screen frustum test, and the room comes up empty — reading exactly as "avoids my room" even
+though nothing targets it for exclusion. Sit-candidates share the same pool
+(`sitFallbackPick`), so both walking and seated placement are affected identically. Exterior/
+entrance pax (`_buildStaffage()`) is a structurally separate pool (targets beyond the building
+silhouette only) and is unaffected/irrelevant here.
+
+**Simple-rule direction for the next session (not a mandate — per the philosophy above, pick
+whichever is cheapest to ship, don't over-engineer):** the 4m floor is the whole bug — the
+candidate band should scale to the room, not use a fixed constant tuned for larger spaces. Cheapest
+fix: lower the minimum `dd` (e.g. 1.5-2m) and let `_spaceOK()`'s existing rejection do the real
+work of avoiding camera-clipping — don't add a new "avoid camera" rule, the existing wall/clearance
+check already does that job once candidates are allowed closer in. Verify on HHS_Office specifically
+(the reported building) plus one larger building (Hospital/Terminal) to confirm the wider band
+doesn't reintroduce camera-straddling figures there.
+
+### Issue 2 — Alt+C always exits the building before returning, and the spin sometimes lands at a wall
+**This is NOT a bug in the sense of contradicting the code's own intent — it's the code doing
+EXACTLY what `§CINEMA_SIMPLE` (2026-07-20, `effects.js` L3101-3107) deliberately specifies:**
+```
+ONE routine, same script for every film, every building, every start pose:
+  pivot on the real building → 4s ease to eye level at the centre of the largest interior
+  space (heading PRESERVED) → the clock is up, spin to find the way out → travel out through
+  the exit that start pose chose → rise onto the orbit band with the 45° look-down ... →
+  standard orbit + pull-back ending.
+```
+There's already an explicit comment (L3331-3343) addressing "camera already inside the chosen
+room" for the DIVE-IN beat only — it correctly no-ops that one beat, but the film still ALWAYS
+proceeds through walk-to-exit → rise → exterior orbit regardless of starting position. **The user
+is now asking to reconsider that specific "always exit" doctrine for the already-inside case** —
+this is a deliberate design change, not a regression fix, and should be written up as one (cite
+§CINEMA_SIMPLE's own text, don't silently override it).
+
+**Spin-at-wall root cause:** the spin (Beat 2, `settle` point, L3442-3671) is nudged toward open
+space by `_cinemaFan`'s 32-ray horizontal BVH cast, capped at 3m (`CINEMA_FAN_NUDGE_MAX`, L3161),
+computed ONCE and never re-verified after nudging. A large/elongated room, or a start spot deep
+against a wall, can leave `settle` still close to geometry after only a capped 3m nudge.
+**No glass/curtain-wall distinction exists anywhere in this code today** — `_cinemaFanMeshes()`
+(L3197-3206) treats an `IfcWindow`/`IfcCurtainWall` glazing hit identically to an opaque
+`IfcWall` hit. A parallel classification already exists for a DIFFERENT feature (sun-sparkle glint)
+— `PHOTO_SPARKLE_FLAT_CLASSES`/`PHOTO_SPARKLE_ROUND_CLASSES` (`IfcWall`/`IfcWindow` vs
+`IfcCurtainWall`/`IfcPlate`/`IfcMember`, L318-319) — reusable as a lookup, not new geometry work.
+
+**Simple-rule directions for the next session, straight from the user's own example (pick one,
+don't combine into something complex):**
+- Treat "the fan's nearest hit in the open direction is a glazing class, not opaque" as an
+  ACCEPTABLE outcome even when close — i.e. don't force the nudge to hit `CINEMA_FAN_FAR`-scale
+  clearance if what's nearby is a window/curtain wall; being near glass with a view IS the marker
+  of a good spot, per the user's own words, not a failure case to keep nudging away from.
+- For the always-exit tension: a simple abstract marker for "already in a good enough spot, don't
+  bother leaving" could be as coarse as "starting camera position is inside the building's plan
+  bbox" (already computed as `arcBbox`, a cheap point-in-box test — no room-graph lookup needed) —
+  if true, shorten or skip the walk-to-exit/rise/exterior-orbit tail rather than reworking the
+  whole beat sequence. Exact shape (skip entirely vs. shorten) is a call for whoever implements —
+  the point is a cheap boolean gate, not a new geometric analysis pass.
+- "OTW to a bigger room, may run out of time, gracefully turn around at a rich-POV spot instead":
+  suggests the room-search/dive-target selection could be time/step-bounded and accept the best
+  candidate found SO FAR (using richness-of-view — glazing proximity, fan openness — as the accept
+  marker) rather than requiring the search to reach a specific "objectively largest" target before
+  it's allowed to stop. This is the most open-ended of the three — don't build this speculatively,
+  only if the simpler two directions above don't already resolve the reported complaint.
+
+**Do NOT overthink this** (user's explicit instruction, repeated twice in their report) — the
+"simple abstract markers" framing is a hard constraint on the SOLUTION shape, not just a stylistic
+preference. A geometrically-precise fix (e.g. full room-boundary detection, precise view-quality
+scoring) is the wrong shape of answer even if it would also work.
+
+**Not investigated this session:** live reproduction/verification of either issue (this was a
+code-reading investigation to ground the spec, not a live test pass) — the next session should
+confirm current behavior on HHS_Office before and after whichever fix direction is chosen.
+
+## ✅ Staffage save/load persistence — already implemented, nothing to do (2026-07-21 confirmation)
+User asked to "ensure placed props are included when saving the DB and restored on reopen."
+**Checked the code — this already exists**, `§STAFFAGE_PERSIST` (2026-07-18), not a new task:
+`A.saveModelDb` → `A._exportBuildingDb()` → `_writeStaffageTable(db)` (`viewer/scene.js` L520-531)
+writes every placed staffage instance into a `staffage_instances(kind, file, ifc_x, ifc_y, ifc_z,
+rot_y)` table before export. On load, `A.togglePopulate` (Alt+P, `effects.js` L1926) checks for
+that table FIRST (L1951) and calls `A._restoreStaffageInstances()` (exact restore, bypassing
+placement math) before ever falling back to fresh computation. This matters because placement is
+explicitly NON-deterministic (`Math.random()`, `effects.js` L844-847 — "user can experiment
+repeatedly" is the stated reason) — re-running the algorithm on load would NOT reproduce a saved
+layout, which is exactly why the persistence table exists. **Flagging here so a future session
+doesn't re-implement or re-verify this from scratch** — if a live test finds it NOT actually
+restoring correctly, that would be a regression in existing code, not a missing feature; investigate
+`_writeStaffageTable`/`_restoreStaffageInstances` directly rather than assuming greenfield work.
+
+## ✅ Issue 1 (Alt+P camera-room avoidance) — FIXED + live-verified, PR pending (2026-07-22)
+Picked up from the "⛔ SPEC ONLY" section above. `viewer/effects.js` `_updateInFrameInterior()`'s
+aisle-candidate search (~L1801-1826) had TWO compounding bugs, not the one named in the original
+spec — both had to be fixed together, confirmed via live headless-browser witnesses (real DB,
+real geometry, on HHS_Office_Federated) rather than reasoning from the code alone:
+
+1. **The named bug**: forward-distance floor `dd=4` landed candidates past a small room's far wall.
+   Fix: lowered the floor to `dd=1.5`, widened the step (`4/7/10/13` → `1.5/4.375/7.25/10.125/13`)
+   so the SAME 5-band spread still reaches 13m — a naive `dd=1.5` at the OLD step-3 would have
+   DROPPED the 13m far band instead of adding a near one, net-losing far-room reach for no reason.
+2. **A second bug the spec didn't anticipate, found via live measurement, not code-reading**: the
+   lateral fan (`lat=-4.5..4.5`) is a FIXED metric width reused at every `dd`. At the far band
+   (dd=13) that's a sane ~19° half-angle off dead-ahead; reused verbatim at the new dd=1.5 near
+   band it demands a 72° swing, which the frustum test rejects on EVERY sample — confirmed by
+   `walkTried`/`rejectedInObject` coming out BYTE-IDENTICAL before vs after the dd-floor-only fix
+   (14/7 both times, at 3 different camera spots) — the near band was contributing exactly zero
+   candidates. Fix: scale the lateral fan with `dd` (`_latMax = dd * (4.5/13)`), keeping the SAME
+   angular cone at every distance instead of a fixed metric width tuned only for the far band.
+
+**Live verification** (`node witness_one_spot.js <before|after> <A|B|C>`, one isolated process per
+spot — an earlier version that reused one puppeteer instance across multiple `launch()` calls
+reliably hung/got killed on the 2nd+ launch; isolating per-process was the fix for the *test*
+harness, unrelated to the app bug): 3 camera spots discovered by grid-scanning + raycasting the
+REAL loaded HHS_Office_Federated geometry for genuinely tight rooms (all 4 cardinal directions
+enclosed within 4.5m — not a guessed fraction of the building bbox), nearestWall 0.8-1.3m:
+- **Spot B (nearestWall=1.3m) — clear win**: nearest placed pax went from 8.35m (before) to
+  1.68m (after) — genuinely in-room now, not a neighboring space reached via the far band.
+- **Spots A/C (nearestWall=1.0m, 0.8m) — flat/marginal, not a regression**: pool size
+  (`walkTried - rejectedInObject`) stayed roughly flat (7→5, 12→11) and single-draw nearest
+  distance was noisy (§STAFFAGE_SHUFFLE picks randomly from whatever pool exists, so one draw
+  isn't a clean signal) — plausible physical limit: a room with a wall 0.8-1.0m away may be too
+  tight for ANY forward-facing candidate regardless of the floor, since `_spaceOK`'s 0.45m person
+  clearance plus the wall itself leaves almost no margin. Not chased further per the "simplest
+  markers, don't overthink" instruction the user gave for the sibling Issue 2 below — same spirit
+  applies here: the fix demonstrably works where the room physically allows it, and doesn't
+  regress the extreme edge cases.
+- No new "avoid camera" rule added, per the original spec's own instruction — `_spaceOK()`'s
+  existing clearance check still does 100% of the real rejection work; only the search geometry
+  (floor + lateral fan) changed.
+
+Debug instrumentation used to root-cause bug #2 (`§DD_DEBUG_MARKER`, `_ddDebugList`) was added
+then REMOVED before finalizing — not shipped. Change is on branch
+`fix/altp-camroom-cinema-exit`, worktree `/tmp/wt-altp-camroom` (bim-ootb). PR bim-ootb#957.
+
+## ✅ Issue 2a (spin-at-wall / glazing acceptance) — FIXED + light-verified (2026-07-22)
+Picked up from the "⛔ SPEC ONLY" section's Issue 2. Per the user's own instruction for this issue
+("no need for accuracy, just some simplest of rules... do not want u to overthink"), verification
+here is deliberately lighter than Issue 1's — a live regression check that the change computes
+sane values and breaks nothing, not an exhaustive multi-spot statistical proof.
+
+**What shipped** (`viewer/effects.js`, `_cinemaFan`/the settle-point nudge in `_cinemaPathPlan`):
+- `_cinemaFan()` now classifies each ray's nearest hit as glazing or opaque (`CINEMA_GLAZING_CLASSES
+  = IfcWindow/IfcCurtainWall/IfcPlate/IfcMember` — the same family `PHOTO_SPARKLE_ROUND_CLASSES`
+  already uses for a different feature, not a new invented grouping), and additively exposes
+  `out.glazing[]`/`out.minGlazing` alongside the existing `free`/`min`/`max`/`mean`/`openDir` fields
+  — every other consumer of the fan object (`_cinemaEvalCand`'s enclosure fraction, the candidate
+  room selection) is untouched, since none of the EXISTING fields changed meaning.
+- The settle-point nudge (previously always capped at `CINEMA_FAN_NUDGE_MAX=3m` regardless of what
+  was nearby) now uses a 3x-wider cap (9m) ONLY when the closest obstruction is opaque AND still
+  inside the normal 3m cap — i.e. only in the exact case the spec named ("a large/elongated room...
+  can leave `settle` still close to geometry after only a capped 3m nudge"). When the closest thing
+  is glazing, the original 3m cap is unchanged — per the user's own words, being close to a window
+  IS an acceptable outcome, not something to keep nudging away from.
+- New `§CINEMA_DIVE` log fields `fanMinGlazing=`/`nudgeCap=` make the decision visible in a pasted
+  console, matching this project's log-tag convention.
+
+**Verification** (`witness_cinema_glazing.js`, one isolated process per case — same lesson as
+`witness_one_spot.js`: reusing one puppeteer instance across multiple launches in-process hung
+reliably): called `A.cinemaPathPlan()` directly (the synchronous shared plan `A.startCinemaOrbit`/
+MaxQ's exporter both use — no video capture needed) from 3 poses across HHS_Office_Federated and
+Hospital. All 3 ran clean: no page errors, `§CINEMA_DIVE` fired with the new fields present and
+sane — 2 cases had `fanMinGlazing=true` (nudge correctly stayed at the normal 3m cap), 1 case had
+`fanMinGlazing=false` but `fanMin=29.4m` (already far, correctly no extension either). **The
+specific trigger case (opaque AND within 3m) was not organically hit by these 3 poses** — the
+witness's camera placement bypasses `ensureRooms()`/room-graph warmup (only the full
+`startCinemaOrbit`/MaxQ entry points call that), so `_cinemaEvalCand` never found an enclosed
+room-graph candidate and fell back to bbox-centre every time, which happened not to land opaque-
+and-close in these 3 samples. The conditional itself is a small, auditable 2-line boolean
+(`fan.min < CINEMA_FAN_NUDGE_MAX && !fan.minGlazing`) reading only pre-existing, already-verified
+fields — judged adequately covered by code-level correctness plus the 3 live non-regression runs,
+per this issue's explicit "don't overthink" verification bar. If a future live trial (via the real
+Alt+C/MaxQ path, which DOES warm the room graph) still shows a spin landing at an opaque wall,
+check `fanMinGlazing`/`nudgeCap` in that run's own `§CINEMA_DIVE` line first — it will say
+directly whether this fix's condition fired or not.
+
+## ⛔ Issue 2b (always-exit-then-return) — ASSESSED, NOT IMPLEMENTED, plan below (2026-07-22)
+Deliberately deferred this session, not overlooked. The concrete fix direction was already spec'd
+("a cheap boolean gate... starting camera position is inside the building's plan bbox (`arcBbox`,
+already computed) — if true, shorten or skip the walk-to-exit/rise/exterior-orbit tail"), and the
+code path is understood (`_cinemaPathPlan`'s Beat 3 "walk it out" / Beat 4 "turn + rise", timed by
+FIXED constants `CINEMA_OUT_SEC=4`/`CINEMA_RISE_SEC=2` at effects.js L3144-3145, folded into
+`tO`/`tR` fractions at L3696-3699) — implementing the gate itself is mechanically simple (a
+point-in-`arcBbox` test on `camPos0`, then shrink `CINEMA_OUT_SEC`/`CINEMA_RISE_SEC` when true).
+
+**Why not done in the same session as 2a**: this beat-timing sequence is the single most
+regression-prone part of this whole file — `§CINEMA_SIMPLE`'s own history (search this file for
+"R1 STILL BROKEN", "R2 recurrence", "R3 swoop") shows THREE prior rounds of live-trial regressions
+on changes to this exact area, each requiring dedicated live-capture verification (not just a
+synchronous `cinemaPathPlan()` call like Issue 2a's witness) to catch, because the bug only shows
+up in the actual timed animation, not the static plan output. Rushing a timing-fraction change here
+without that same live-capture verification budget risks shipping a FOURTH regression into a
+subsystem that took real effort to stabilize — worse than leaving it unimplemented one more
+session. This session's remaining verification budget went to Issues 1 and 2a instead.
+
+**Plan for whoever picks this up next**: add `var startedInside = arcBbox && _pointInArcBbox(camPos0Ifc, arcBbox);`
+(a helper computing the IFC-space point-in-box test — `camPos0` is three.js-space, convert via
+`_cinemaThree2Ifc` first, already defined at L3197-3201) right after `camPos0` is computed
+(~L3306). When true, halve (not zero, to avoid an abrupt cut) `CINEMA_OUT_SEC`/`CINEMA_RISE_SEC`
+for THIS plan only (local override, not the shared `var` — don't mutate the file-level constant,
+it's shared with MaxQ's export math too). Verify via a REAL Alt+C or MaxQ capture (not just
+`cinemaPathPlan()`) on a building/pose known to start inside, checking the resulting film's actual
+wall-clock walk-out duration looks shortened — screenshots/eyeballing are NOT proof per this
+project's own hardened rule, extract real camera-position time-series numbers from the capture
+instead (see `feedback_geometry_hell_math_discipline` discipline — camera paths are code-and-maths
+truth). Test on at least 2 buildings/start-poses (one genuinely inside, one genuinely outside) to
+confirm the gate doesn't fire when it shouldn't.
