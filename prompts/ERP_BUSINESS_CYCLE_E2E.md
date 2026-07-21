@@ -13,32 +13,26 @@ Can a real user drive a full business cycle end-to-end through the live iDempier
 Order → Shipment → Sales Invoice → stock effect → replenishment signal → Purchase Order → Material
 Receipt → vendor invoice + three-way match — and if not, exactly where does it break?
 
-## §Results — per-stage table (2026-07-21, current)
+## §Results — per-stage table (2026-07-22, current)
 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (6 layers fixed+landed, computation now fully correct — `dispatched=Y ok=Y rows=1`, a real shipment line computes; fails ONLY because there is no wiring anywhere that commits a Generate-process result to the op-log — a MISSING FEATURE predating this whole lane, not a bug, named not yet fixed) |
-| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
-| 4 | Stock effect | UI-observed | **ABSENT** |
+| 2 | Delivery / Shipment | UI | **PASS** (2026-07-22 — 7 layers fixed+landed; a real signed `M_InOut` document now reaches the op-log via the real UI, first time in this lane's history — see §Fix 2026-07-22 "Confirm & Post") |
+| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed; the commit-wiring built for Stage 2 is generic and should close Stage 3 too once this clears) |
+| 4 | Stock effect | UI-observed | **FAIL** (sharper finding, not a regression — a real signed shipment now exists, but `m_storageonhand` has no live fold off the op-log anywhere, so it still can't reflect it — a structurally-absent capability, unchanged since 2026-07-20) |
 | 5 | Replenishment signal | UI | **PASS** |
 | 6 | Purchase Order | UI | **PASS** (§Fix 2026-07-21 "DocType/IsSOTrx" landed — the record is now correctly DATA-tagged Purchase, `c_doctypetarget_id:126 issotrx:"N"`; previously byte-identical to a Sales Order underneath) |
 | 7 | Material Receipt | UI | **ABSENT** |
 | 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
 
-**Where the cycle now first stops being user-drivable: Stage 2, one layer deeper than before.** Stage 1 is
-fully closed (both root causes fixed and re-verified). Stage 2/3's picker gap is ALSO fixed and verified —
-a freshly-created order is now correctly offered as a candidate. What still blocks the cycle: the order's
-warehouse (derived by a save-hook, since the New form has no field for it) never actually gets persisted —
-`cleanVals()` in `crud_overlay.js`'s shared `buildOp` strips any field not declared in `crud_ops.json`,
-silently discarding the hook-derived value moments after it was correctly computed. This is now the
-frontier — named precisely (§Fix 2026-07-21 below), not yet fixed (it touches the shared CREATE path every
-table uses, more central than the two fixes already landed). Independently, Stage 8 (vendor invoice +
-three-way match) is **completely and permanently blocked** by design, with no dependency on Stages 1-3.
-
-The cycle still does **not** close end-to-end — the break has now moved TWO layers in from where it stood
-2026-07-20: "can't even complete an order" → "can complete an order, picker offers it, but the order's own
-data is incomplete" (the derived warehouse never survives to storage).
+**Stage 2 now closes end-to-end for the first time in this lane's history (2026-07-20→22).** Eight
+connected fixes, each one layer deeper than the last (Sales Order completion, picker-overlay gap, dropped
+hook-derived CREATE fields, handler base-only reads, IsSOTrx/DocType-per-window, DeliveryRule/InvoiceRule,
+order-line parent-FK, and finally the missing Confirm/Post commit wiring itself) — full detail in the dated
+`§Fix` sections below, most recent first. Stage 3 is blocked earlier by one remaining, UNRELATED bug
+(`AD_Org_ID=NaN`); Stage 4 is a separately-scoped, structurally-absent capability (no live stock-fold);
+Stage 8 remains completely and permanently blocked by design, independent of everything else.
 
 <details><summary>Original 2026-07-20 table (superseded, kept for history)</summary>
 
@@ -634,3 +628,66 @@ entire lane (2026-07-20→22) and deserves a dedicated design/spec pass, not a c
 Stage 3 (Generate Invoices) is blocked earlier still by the separate `AD_Org_ID=NaN` casing bug — but would
 hit this SAME missing-commit wall immediately after, once that's fixed too (its own `genInvoiceLines`
 result has the identical "computed but never applied" shape).
+
+---
+
+## §Fix — 2026-07-22, "Confirm & Post" — SHIPPED. Stage 2 PASSES for the first time in this lane's history.
+
+**User call:** given the design question named directly above, the user answered explicitly — *"Ok to that
+familiar Confirm/Post box"* — build the real iDempiere-style preview-then-confirm affordance.
+
+**Feature (branch `feat/genprocess-confirm-commit`, worktree `/tmp/wt-genprocess-commit`, bim-ootb PR #960,
+auto-merge armed):** `erp_engine.js`'s `buildDoc` (the shared archetype `createShipment`/`createInvoice`
+already ride) carries its OWN header comment stating the missing half explicitly: *"Verbs return ops[]; the
+kernel applies + commitOps them (handlers never write)"* — the KERNEL side of this contract already existed
+(`kernel().commitGroup`), just never wired to this UI. A working precedent for committing this EXACT op
+shape already existed elsewhere in the app — `pos_lens.js`'s `buildSaleGroup`/`buildRegisterGroup` call
+`KO.commitGroup(opDb, ops.map(o => ({op_type: o.op_type, params: o})), {})` for POS checkout — reused
+verbatim, not invented, which meaningfully de-risked the whole feature (a proven, already-shipping pattern,
+not a novel one).
+
+Two pieces:
+1. `crud_overlay.js` gets `applyOpGroup(ops, cb)`: commits a multi-op result as ONE atomic signed group via
+   the SAME `kernel.commitGroup()` primitive `applyOp`/`commitCrud` already use for a single op, wrapped in
+   the same cross-tab-safe `_withFreshSide` hydration `commitCrud` uses (no owner-gating needed — every op
+   in a Generate-process group is a fresh CREATE, matching `commitCrud`'s own existing "CREATE has no prior
+   owner to gate" note). Exposed as `window.__crud.applyOpGroup`.
+2. `idempiere.html`'s `renderProcResult()` gets a real **"Confirm & Post"** button on the KIND-2 op-group
+   branch (Generate-Shipments/-Invoices/-Order-from-Project — the SAME branch that already renders the
+   preview table) — this result table WAS already the preview half; this adds the confirm half. Button only
+   renders when `r.header` is truthy, which `registerInOutGenerate`/`registerInvoiceGenerate` only ever set
+   on a NON-empty result — an honest "nothing to ship" result never gets a confirm affordance to click.
+
+**Witnessed — the deepest verification of this whole lane.** `scripts/witness_e2e_business_cycle.js`
+updated to click the real `button[data-genprocess-confirm]` (not just the preview `Run`) before checking
+`tipDocsFor` — proving the FULL real user path end to end, not the preview half alone. Full log read:
+```
+§CRUD-GROUP-PERSIST ops=2 source=sidecar gid=8a841aec-... sealed=2 verifyChain=ok
+§GENPROCESS-CONFIRM table=M_InOut committed=Y gid=8a841aec-... ops=2 verifyOk=true
+§CYCLE stage=2 name=Shipment driven=UI result=PASS detail=M_InOut created (op=4, {"op_type":"CREATE_DOCUMENT",
+  "table":"M_InOut","source_id":-1,"issotrx":"Y","movementtype":"C-","c_bpartner_id":112,"m_warehouse_id":103,
+  "c_order_id":-1,"_sv":1,"_sigv":2,"signed_by":"3059301306072a8648ce3d..."}) via real Generate-Shipments
+  process picker
+```
+**Stage 2 (Delivery/Shipment) PASSES — the first time in this lane's entire history (2026-07-20→22).** A
+real, cryptographically-signed `M_InOut` `CREATE_DOCUMENT` op, reached by a real user driving: New Sales
+Order → fill header → Save → New Order Line → fill product/qty → Save → Complete (CO) → open Generate
+Shipments → pick the order → Run (preview) → **Confirm & Post** → a genuinely persisted document. Eight
+layers deep (DocStatus → picker-overlay → warehouse → IsSOTrx/DocType → DeliveryRule → order-line-parent →
+missing-commit-wiring, the seven fixes above it in this whole lane) all correct, together, for the first
+time. No regression: Stage 1/5/6 still PASS.
+
+**Stage 3 remains unaffected, correctly** — the Confirm button correctly does NOT render for Generate
+Invoices, since that process still never dispatches at all (`reason=param-validation-failed`, the
+still-unfixed, separate `AD_Org_ID=NaN` casing bug named above). Once that bug is fixed, Stage 3 should
+close the SAME way Stage 2 just did — the commit wiring built here is generic (any KIND-2 op-group), not
+Shipment-specific, so no further commit-side work should be needed for Invoices or PO-from-Project once
+their own upstream blockers clear.
+
+**Stage 4 (Stock effect) — unchanged verdict but a MEANINGFULLY MORE PRECISE finding, automatically, from
+the witness's own pre-existing branching logic (no witness-script edit needed for this part):** now reads
+*"M_InOut op=4 was created upstream via the crud-overlay sidecar, but m_storageonhand lives only in the raw
+seed db — no live fold/recompute of on-hand off the op-log was found anywhere ... so a created shipment
+CANNOT change what this table shows even if the document itself is real."* This is the SAME
+structurally-absent capability named back on 2026-07-20 (§Findings) — just now demonstrated against a real
+signed document instead of a hypothetical one, sharpening the finding rather than changing it.
