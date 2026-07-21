@@ -385,3 +385,44 @@ motion, zero oscillation churn, zero static-overlap instability (software GL). O
 implementation decision: real-GPU z-fight/artifact spot check, and the batched/instanced
 per-element-opacity question in finding 6. STOPPED HERE per gate — no live wiring, no PR,
 `_useDlodPath`/`§WB_DLOD_VIS` untouched.
+
+### §8 FINDINGS ADDENDUM — 2026-07-21 same day (user: "test against all assumptions before Go")
+Both open items from the entry above are now POC'd — same isolated-prototype discipline
+(`xfade_proto/proto2.html`), this time mirroring the LIVE stack exactly: the viewer's own three.js
+r185 lib copy, BatchedMesh + InstancedMesh + shared `MeshStandardMaterial` per streaming.js §S280d
+routing, directional+ambient lighting. Every test ran TWICE — SwiftShader AND this machine's real
+GPU (`§P0_GL renderer=ANGLE (NVIDIA... RTX 4060 Laptop GPU ... OpenGL 4.5.0)`, via system Chrome
+headless-new + `--use-angle=gl`). Verdicts identical across both renderers except one 1-pixel
+nuance noted below.
+
+**A. Real-GPU check: CLOSED, no longer needs the user's machine.** The full proto1 suite rerun on
+the RTX 4060 reproduces every SwiftShader conclusion: hard pop 33-34K vs 10K motion baseline,
+hysteresis byte-identical pop (33K), fade 12-13K, fade+depthWrite-off **8K — below the 10K
+baseline**; z-fight static-overlap STABLE (0 changed px, 58 frames, all three variants) on real
+NVIDIA hardware (`proto_gpu.log`).
+
+**B. Per-element opacity on the real mesh types — one NO, two YES:**
+- **BatchedMesh built-in alpha: FAILS** (`§P1_VERDICT BATCH_ALPHA=FAILS`, both renderers). r185's
+  per-instance `_colorsTexture` is RGBA `Float32Array`, but poking the alpha texel has ZERO pixel
+  effect — the batching shader multiplies RGB only. No supported per-element fade inside
+  BatchedMesh without patching the batching shader chunk itself (deeper surgery, untested,
+  unnecessary given the next finding).
+- **Overlay-hoist (Find-Panel `_hlOverlay` pattern): PIXEL-IDENTICAL through the whole cycle**
+  (`§P3_VERDICT OVERLAY_SWAP=PIXEL_IDENTICAL swapChg=0`, both renderers). `setVisibleAt(slot,
+  false)` + same-frame standalone `Mesh` with same geometry/matrix/material = 0 changed pixels;
+  `material.clone()` swap = 0; fading the clone leaves the neighbor element byte-stable (0 changed
+  px in its region across all fade steps); restore = 0 vs original baseline. **This is the
+  BatchedMesh fade path** — and it never perturbs the shared material at all.
+- **InstancedMesh per-instance alpha via onBeforeCompile attribute patch: WORKS**
+  (`§P2_VERDICT INST_ALPHA=WORKS`, both renderers): faded instance changes monotonically, sibling
+  instance byte-stable, outside region byte-stable, and the transparent-flip itself is 0-delta.
+- **Transparent-pass flip at alpha=1** (`§P4`): 0-delta on SwiftShader; on real GPU, 1 (one) changed
+  pixel at sub-measurable magnitude with overlapping instances — effectively safe, but the overlay
+  approach avoids even that by never flipping the base mesh's material.
+
+**Remaining scale consideration (named, not POC'd — needs the real viewer, i.e. implementation):**
+overlay-hoist costs 1 extra draw call per concurrently-fading element for N frames. A camera
+rounding a corner could start hundreds of fades in one tick; cap/stagger concurrent fades (or an
+InstancedMesh overlay for the fading cohort) is the obvious shape, but measuring that belongs to
+the implementation phase this gate still guards. All assumptions testable in isolation are now
+tested; still no live wiring, no PR, `_useDlodPath`/`§WB_DLOD_VIS` untouched.
