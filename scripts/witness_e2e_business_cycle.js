@@ -316,6 +316,18 @@ function deepUrl(port, params) {
       await page.click('button[data-proc-run]');
       var r2 = await w.wait([/§AD-PROC-LIVE proc=118/], 10000).catch(function (e) { return null; });
       log('§E2E-RUN genship result-line=' + (r2 ? r2.line : 'NONE CAPTURED'));
+      await page.waitForTimeout(300);
+      // §GENPROCESS-CONFIRM (ERP_BUSINESS_CYCLE_E2E.md §Fix 2026-07-22) — the preview alone never commits;
+      // click the real "Confirm & Post" button (only rendered when the computed result is non-empty) so
+      // this witness proves the FULL user path, not just the preview half.
+      var cfBtn2 = await page.$('button[data-genprocess-confirm]');
+      if (cfBtn2) {
+        await cfBtn2.click();
+        var rc2 = await w.wait([/§GENPROCESS-CONFIRM/], 10000).catch(function () { return null; });
+        log('§E2E-CONFIRM genship result-line=' + (rc2 ? rc2.line : 'NONE CAPTURED'));
+      } else {
+        log('§E2E-CONFIRM genship: no Confirm button rendered (empty/absent computed result)');
+      }
       await page.waitForTimeout(800);
       var shipTip = await tipDocsFor(page, 'm_inout', newSoId);
       log('§E2E-STATE m_inout tipDocs for order ' + newSoId + ': ' + JSON.stringify(shipTip));
@@ -347,6 +359,15 @@ function deepUrl(port, params) {
       await page.click('button[data-proc-run]');
       var r3 = await w.wait([/§AD-PROC-LIVE proc=119/], 10000).catch(function () { return null; });
       log('§E2E-RUN geninv result-line=' + (r3 ? r3.line : 'NONE CAPTURED'));
+      await page.waitForTimeout(300);
+      var cfBtn3 = await page.$('button[data-genprocess-confirm]');
+      if (cfBtn3) {
+        await cfBtn3.click();
+        var rc3 = await w.wait([/§GENPROCESS-CONFIRM/], 10000).catch(function () { return null; });
+        log('§E2E-CONFIRM geninv result-line=' + (rc3 ? rc3.line : 'NONE CAPTURED'));
+      } else {
+        log('§E2E-CONFIRM geninv: no Confirm button rendered (empty/absent computed result)');
+      }
       await page.waitForTimeout(800);
       var invTip = await tipDocsFor(page, 'c_invoice', newSoId);
       log('§E2E-STATE c_invoice tipDocs for order ' + newSoId + ': ' + JSON.stringify(invTip));
