@@ -169,7 +169,7 @@ reuse); keep the same key scheme. Optionally also de-duplicate the double plan (
 across the isolated-stop re-route). Route JSON itself is small (~tens of KB) — the store choice,
 not the payload, is the whole problem.
 
-## §6 READY TASK (OPEN, not yet dispatched) — bust the route cache when a stage-3 recompile fires
+## §6 ✅ DONE — bust the route cache when a stage-3 recompile fires (bim-ootb PR #946)
 (2026-07-21, spec authored by the Alt-C/rooms session — preserved here verbatim from its session
 scratchpad, since that location evaporates; this file is the cache's canonical home)
 
@@ -202,3 +202,24 @@ fast-path log lines.
 
 NOT IN SCOPE: widening stage 3 past HHS (separately gated, `ROOM_INJECTOR_NEEDLE.md` risk-cliff
 guidance). This task only makes the interaction safe for whenever that widening happens.
+
+### RESULT (2026-07-21) — reactive shape (option 1) implemented, PR bim-ootb#946
+`_ensureRoomsCore()` (navigate_find.js, right before the `'injected'` return, same S4 breath as
+the existing `_pathGraphCache`/`_corridorLabelsCache` bust) now calls `A._tourCacheBust()` whenever
+`versionStale` was true for that recompile — guarded `if (A._tourCacheBust)`. This covers EVERY
+caller of `A.ensureRooms()`, not just Fly's own `_prepareGraphTour` — dlod_nav's nav-scope toggle,
+the needle button, and cinema orbit all call it too, and any of them can now be the one that busts
+a Fly-tour route left over from before a version bump.
+W-TOUR-CACHE-BUST (headless, `witness_tour_cache_versionbust.js` in the bim-ootb worktree): fresh
+profile → one Fly toggle builds+stores a real cache (`§TOUR_CACHE store`) → force `rooms_meta.version`
+stale → a DIRECT (non-Fly) `ensureRooms({})` call → both `§NEEDLE_VERSION_STALE` and
+`§TOUR_CACHE_BUST idb removed>0` fire → next Fly press MISSES (rebuilds) instead of replaying the
+stale-rooms route. PASS. This is the scenario the spec's GIVEN actually describes (a cache stored
+BEFORE a version bump, busted by whichever caller next notices the staleness) — a same-session
+"fly once / fly again" alone can't exercise it, since the first-ever Fly press already recompiles
+before anything is cached.
+Concurrent-edit note: `feat/room-walker-stage4-fleet-wide` (widening the HHS-only gate at
+`_dbFileNow === 'HHS_Office_Federated_extracted.db'` fleet-wide, per `ROOM_INJECTOR_NEEDLE.md`
+Stage 4) touches the same function, ~140 lines earlier (the gate condition, not the `versionStale`
+variable or the `'injected'` return) — compatible, not conflicting; its widening only makes this
+fix apply to more buildings, not fewer.
