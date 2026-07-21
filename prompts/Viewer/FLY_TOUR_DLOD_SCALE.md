@@ -571,6 +571,15 @@ coverage) is the only lever left for interior legs; distance-based DLOD is done 
 **Prerequisite CLEARED 2026-07-21** — `prompts/done/CONTAINMENT_LTU_STOREY_ALIAS.md` (bim-compiler
 PR #55): the 1.3% figure was a storey-naming mismatch (ARC/STR/MEP each spelled the same floor
 differently), not a source-data gap. `compile_rooms.py` fix raises LTU_AHouse coverage to 24.2%
-(314→30,409 rows), MEP now included. Room-level occlusion (this file's track 2) is unblocked but
-NOT implemented — next session's job, and the live deployed `LTU_AHouse_extracted.db` still needs
-regenerating/redistributing (OCI) before any viewer code can see the wider containment.
+(314→30,409 rows), MEP now included.
+**Correction — no OCI redistribution needed, ported to the client-side engine instead
+(2026-07-21):** rooms aren't baked into a per-building DB and shipped as a static OCI artifact —
+`A.ensureRooms()` compiles them client-side, on demand, from whatever DB a user (including one
+bringing their own IFC building this codebase has never seen) has loaded, via `room_walker.js`
+(the JS port of `compile_rooms.py`). That file had the IDENTICAL bug. bim-ootb PR #950 ports the
+fix verbatim (parity witness confirms byte-identical numbers to the Python result) and bumps
+`ROOM_WALKER_V` v2→v3, so the existing stage-3 version-stamp self-heal (`§NEEDLE_VERSION_STALE`,
+`TOUR_ROUTE_CACHE.md` §6's cache-bust included) recompiles any already-loaded building once and
+picks up the wider containment automatically — no DB redistribution, no per-building action at all.
+Room-level occlusion (this file's track 2) is unblocked but still NOT implemented — that remains
+the next session's job.
