@@ -531,3 +531,17 @@ witness run was vacuous-GIGO (`REALIDX entries=0` — placeholders-only scene fr
 not the verdicts. **Known honest costs:** eval spike 25-50ms per 150ms-throttled re-evaluation
 while the camera moves (122k index; amortized mean stays 17ms); close-in p95 88.9ms; §7's
 line-of-sight axis and any eval chunking remain future work, separate go.
+
+### §10 live-user confirmation — 2026-07-21, Firefox on LTU (user: "working.. aesthetics ok, no
+hangs.. slightly improved speeds")
+Field log during a Fly Tour: `§DLOD_NAV active≈19-22k boxed≈100-103k eval_ms=9-18` — eval cost on
+the user's machine is 9-18ms (vs 25-50ms in the headless witness runs), well inside the 150ms
+throttle. Fades pinned at the 128 cap every eval with started=500-1500 (continuous camera motion →
+constant transition churn; cap+snap behaving as designed). Depth-pass aesthetics approved.
+**Why only "slightly improved" there:** an INTERIOR tour keeps ~20k elements real across most of
+the ~16k mesh objects, so mesh-level visible=false rarely triggers — the 6.5× win is the WIDE-orbit
+/aerial regime (everything boxed → 16 draw calls); interior legs are bounded by in-view real
+geometry, and Firefox's missing WEBGL_multi_draw raises its per-instance BatchedMesh cost baseline
+regardless. Expected shape, stated in §5 all along (aerial=box-proxy; interior's real lever is
+room-level occlusion, still data-blocked). Remaining named lever for the tour experience: the
+TOUR_ROUTE_CACHE.md §5 re-opened IDB fix (planning hang), separate go.
