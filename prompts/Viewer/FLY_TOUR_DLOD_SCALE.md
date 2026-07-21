@@ -109,6 +109,19 @@ extraction + room graph + streaming + render, all witnessed elsewhere). Before w
 - No default-ON, no auto-engage without an explicit user toggle, until §4's numbers justify it.
 - Not a fix for `TM_STREAM_REBUILD_COALESCE.md`'s open per-batch rebuild cost — separate, already-filed.
 
+### SCOPE DECISION — 2026-07-21, USER-DICTATED (engage surfaces, settled — do not re-litigate)
+Nav-scope DLOD engages ONLY during: free orbit/pan/plain viewing + Fly Tour. Excluded, per the
+user's explicit direction ("But not Find Panel and Alt-C movie orbit"):
+- **Find Panel isolation active → nav-DLOD disengages ENTIRELY** (stronger and simpler than §6's
+  minimum per-GUID exemption, which stays documented below as the fallback shape). Rationale:
+  isolation already hides most of the building — there is no draw cost left for DLOD to save, only
+  the §6 revert-flicker risk. Re-engage (if the pill is on) when the isolation clears.
+- **Alt+C Cinema Orbit: excluded** — visual-quality mode; a wireframe proxy box must never appear
+  in a movie frame. Same rationale extends to Alt+P photoreal stills (session note: extended by the
+  assistant on the same logic, flagged to the user in-conversation, not independently dictated).
+  Accepted tradeoff, on record: Cinema pays full render cost on LTU-scale buildings — if a Cinema
+  run is slow there, that is this decision working as intended, not a bug.
+
 ## 4. Witnesses (blocking; headless is blind to GPU per TM_DLOD_SCALE.md §6 — real numbers need the
 user's machine, `window.__tmTrav`-style stats or an equivalent nav-scope hook)
 - **W-DLOD-NAV-EQUIV:** toggle OFF → scene identical to today's Fly Tour / free-orbit rendering,
