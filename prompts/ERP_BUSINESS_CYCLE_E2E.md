@@ -18,8 +18,8 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (picker gap fixed+landed; now fails one layer deeper — `cleanVals` drops the derived warehouse, named not yet fixed) |
-| 3 | Sales Invoice | UI | **FAIL** (same picker fix landed; same deeper layer blocks it) |
+| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` warehouse-drop both fixed+landed; now fails one layer deeper — the process handler's own `fetchOrder` reads the raw base table, misses the sidecar CO status) |
+| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a NEW casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
 | 6 | Purchase Order | UI | **PASS** |
@@ -323,13 +323,69 @@ to the actual root cause, one more layer down, via `saveForm`/`buildOp` in `crud
    PERSISTED anywhere — not just invisible to the Generate-Shipments picker, genuinely absent from the
    record. Any future reader of this order's warehouse (not only this picker) would see it missing.
 
-**Not yet fixed — this is more central/higher-blast-radius than the two fixes above it.** `cleanVals`/
-`buildOp` are shared by EVERY table's CRUD_CREATE across the whole app, not just `c_order` — the correct fix
-(letting a hook-derived value ride the op even when undeclared, ON CREATE ONLY, matching the code's own
-already-stated intent) needs to not regress any OTHER table's create path. Named precisely, not touched,
-pending a go — the two fixes above it (Stage 1's DocAction, Stage 2/3's picker overlay) were self-contained
-to one function each; this one touches the shared write path every table's New-form save goes through.
-
 Stage 4 (stock effect) remains structurally unreachable regardless (§Findings above, unchanged). Stages 5-8
 unchanged from prior runs (Stage 8's PO-not-offered-to-Generate-Invoices finding, IsSOTrx-gated by design,
 is unrelated to any of the three fixes in this cycle).
+
+---
+
+## §Fix — 2026-07-21, `cleanVals`/`buildOp` — FIXED and witnessed; one more layer found underneath
+
+**Fix (branch `fix/cleanvals-create-derived`, worktree `/tmp/wt-cleanvals-create`):** `cleanVals`
+(`erp/crud_overlay.js:165-179`) now takes a third `verb` arg. On `verb==='create'` only, after copying every
+declared field (unchanged behavior), it also copies any OTHER key already present in `values` that isn't
+`null`/`''` — i.e. exactly the hook-derived columns `saveForm`'s `fireBeforeSaveHooks` callback already
+merges into `vals` at `crud_overlay.js:1242` (confirmed by tracing `gatherVals`, `crud_overlay.js:1210-1213`:
+it seeds `vals` ONLY from `entry.fields`, so no other writer can put an extra key there — the passthrough is
+provably scoped to hook-derived values, not stray UI state). `buildOp`'s one call site
+(`crud_overlay.js:225`) now passes `verb` through. `cleanVals` has exactly one caller in the whole tree
+(confirmed via grep, incl. its `CORE.cleanVals` export) — always inside the CREATE branch — so this is a
+fully self-contained, single-function change; UPDATE's tight declared-only guard is untouched.
+
+**Witnessed** — re-ran `scripts/witness_e2e_business_cycle.js` against both the unfixed baseline
+(`WITNESS_ROOT` unset → `bim-ootb` `main`) and the fixed worktree (`WITNESS_ROOT=/tmp/wt-cleanvals-create`),
+full log read both times (Log Mandate):
+```
+baseline: §GENSHIP-LIVE run proc=118 Record_ID(C_Order_ID)=-1 M_Warehouse_ID=NaN
+          §AD-PROC-LIVE proc=118 ... dispatched=N reason=param-validation-failed
+fixed:    §GENSHIP-LIVE run proc=118 Record_ID(C_Order_ID)=-1 M_Warehouse_ID=103
+          §AD-PROC-LIVE proc=118 ... dispatched=Y ok=N rows=0 reason=order-not-shippable
+```
+The derived warehouse now rides the `CRUD_CREATE` op and reaches the process param — Generate-Shipments
+moves from rejected-before-running to actually dispatched. No regression: Stage 1 (SalesOrder) still PASS,
+Stage 6 (PurchaseOrder, same `c_order` create path, same derived-field set) still PASS with the identical
+`§AD-MODELVAL-LIVE derived={...}` line, Stages 4/5/7/8 unchanged.
+
+**Stage 2 now fails ONE LAYER DEEPER, a genuine business-rule gate, not this bug:** `inoutGenGate()`
+(`ad_process.js:251-256`) requires the order's `docstatus==='CO'` — but the process HANDLER's own
+`ctx.fetchOrder(info)` (unlike the picker, which was already fixed 2026-07-21 above to fold the sidecar)
+still reads the RAW base `c_order` table only, so it sees the synthetic order's status as it exists in
+`window.__idmpDb` (never `CO` — the CO only exists as a signed op in the sidecar). Same "engine/handler reads
+the wrong source, picker was fixed but the handler wasn't" pattern this whole lane keeps finding — one
+function (`fetchOrder`'s wiring into `registerInOutGenerate`/`registerInvoiceGenerate`'s ctx), not yet
+touched, named here for the next session.
+
+**A SEPARATE, independently-confirmed new bug found investigating Stage 3 (Generate Invoices) — real root
+cause identified, NOT fixed this session:** `§GENINV-LIVE` shows `AD_Org_ID=NaN` even after the cleanVals
+fix (unlike `M_Warehouse_ID`, which is now correct). Traced to `listTip`'s stdDefaults-materialization block
+(`crud_overlay.js:386-405`, "Task 1 — iDempiere setStandardDefaults parity"): it writes the new row's derived
+tenant/audit columns in **mixed case** — `nr['AD_Org_ID']`, `nr['AD_Client_ID']`, `nr['CreatedBy']`,
+`nr['UpdatedBy']`, `nr['Created']`, `nr['Updated']`, `nr['IsActive']`, `nr['Processed']`, `nr['Processing']`,
+`nr['Posted']` — while every OTHER key on that same row object (`nr[c] = f[c]` from `op.fields`, one line
+above at `crud_overlay.js:385`) is lowercase, matching this codebase's column convention throughout (`
+m_warehouse_id`, `c_currency_id`, etc. — confirmed via `_getTableCols`, which itself lowercases whatever
+`PRAGMA table_info` returns before comparing). `renderOrderPicker` (`idempiere.html:2408/2433`) reads
+`r.ad_org_id` (lowercase) off the SAME folded row — finds nothing, `Number(undefined)` → `NaN`. Confirmed
+this is a real bug and not by-design: grepped every `.js`/`.html` file in `erp/` for a JS (non-SQL) property
+read of `.AD_Org_ID`, `.AD_Client_ID`, `.CreatedBy`, `.UpdatedBy`, `.IsActive` etc. on a folded row —
+zero hits, nothing anywhere consumes the mixed-case form. **Not yet fixed** (out of scope for this
+session's handoff, which was cleanVals specifically) — the fix is a straight 10-line case-lowering in that
+one block, no other logic change, but confirming it doesn't regress anything reading real `AD_*` system-table
+rows elsewhere (a genuinely different, PascalCase-cased table family, per `ad_graph.js:264`'s `rec.IsActive`
+on a raw `AD_Table` query row) needs a deliberate look before touching it — named precisely here so the next
+session doesn't have to re-derive it.
+
+Stage 3 (SalesInvoice) result is unaffected either way this session (still FAIL) — `invoiceGenGate()`
+(`ad_process.js:319-324`) never even reaches the `AD_Org_ID` question yet; `§AD-PROC-LIVE proc=119 ...
+dispatched=N reason=param-validation-failed` fires first because the process's own mandatory-param check
+(`validateParams`, `ad_process.js:515-530`) rejects the `NaN` before the handler runs at all.
