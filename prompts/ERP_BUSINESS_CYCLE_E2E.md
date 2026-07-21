@@ -18,11 +18,11 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` warehouse-drop + handler `fetchOrder` base-only read all fixed+landed; now fails on `IsSOTrx` — DocType is never derived per-window, see Stage 6 caveat) |
-| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a NEW casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
+| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` + `fetchOrder` base-only read + IsSOTrx/DocType-per-window all fixed+landed; gate now fully PASSES, `dispatched=Y ok=Y` — fails now only because `DeliveryRule`/`InvoiceRule` are never declared/derived, so 0 shippable lines fold — named, not yet fixed) |
+| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
-| 6 | Purchase Order | UI | **PASS**\* (UI-level pass; §Fix 2026-07-21 found the completed record is DATA-tagged as a Standard *Sales* doctype underneath — `c_doctypetarget_id` is never derived per-window) |
+| 6 | Purchase Order | UI | **PASS** (§Fix 2026-07-21 "DocType/IsSOTrx" landed — the record is now correctly DATA-tagged Purchase, `c_doctypetarget_id:126 issotrx:"N"`; previously byte-identical to a Sales Order underneath) |
 | 7 | Material Receipt | UI | **ABSENT** |
 | 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
 
@@ -446,3 +446,67 @@ data-model fix, not a "handler reads wrong source" fix like the two above it.
 
 Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`, the separate casing bug named
 above) — unaffected by this fix or this finding.
+
+---
+
+## §Fix — 2026-07-21, IsSOTrx/DocType-per-window — FIXED and witnessed; found a FOURTH gap underneath
+## (DeliveryRule/InvoiceRule, same shape, blocking Generate-Shipments' last mile)
+
+**Fix (branch `fix/doctype-per-window`, worktree `/tmp/wt-doctype-per-window`, bim-ootb PR #953, auto-merge
+armed):** confirmed the gap named directly above is real and fixable — the seed genuinely has a distinct
+Purchase-side Standard doctype (`c_doctype_id=126 name="Purchase Order" docbasetype='POO' docsubtypeso=NULL
+issotrx='N'`, queried live from `erp/ad_seed.db`), and the WINDOW already carries the real per-window signal
+needed to pick it: `AD_Tab.WhereClause` for window 143 (Sales Order tab) is `"C_Order.IsSOTrx='Y'"`, for
+window 181 (Purchase Order tab) is `"C_Order.IsSOTrx='N'"` — real AD metadata, already loaded into
+`tab.whereClause` and already used for GRID filtering, just never consulted at CREATE time. Three small,
+connected edits:
+1. `idempiere.html`'s `buildForm()` (the CREATE branch, right before calling `window.__crud.createInline`)
+   extracts `/\bIsSOTrx\s*=\s*'([YN])'/i` from `_curTab().whereClause` and stashes it on
+   `window.APP._createIsSOTrx` — the SAME session-context channel `_docCtx()` already reads `orgId`/
+   `clientId` from (not a new side-channel, the existing convention).
+2. `crud_overlay.js`'s `_docCtx(b)` surfaces it as `ctx.issotrx` when present.
+3. `ad_modelval.js`'s `MOrder.docTypeTargetDefault` (`ad_modelval.js:131-146`) now branches on
+   `ctx.issotrx==='N'` to pick the Purchase-side doctype instead of always the Standard Sales one, AND
+   (new, needed since IsSOTrx has no other source anywhere in this engine) derives `d(info).issotrx` from
+   the resolved doctype's own `issotrx` column — real iDempiere sets this at record-construction time from
+   the chosen DocType, a seam this ported engine doesn't have yet, so the beforeSave slice is the only place
+   left to do it faithfully.
+No behavior change for any create that supplies no hint (falls through to the original Standard-Sales
+default — every other table's create path is untouched).
+
+**Witnessed**, full log read (Log Mandate):
+```
+Stage 1 (SO): §AD-MODELVAL-LIVE ... derived={"m_warehouse_id":103,...,"c_doctypetarget_id":132,"issotrx":"Y",...}
+Stage 6 (PO): §AD-MODELVAL-LIVE ... derived={"m_warehouse_id":103,...,"c_doctypetarget_id":126,"issotrx":"N",...}
+```
+Previously BYTE-IDENTICAL (`c_doctypetarget_id:132` for both) — now genuinely distinct and correct. Generate-
+Shipments' gate, which had been failing on `IsSOTrx` (§Fix above), now **fully passes**:
+```
+before: §AD-PROC-LIVE proc=118 ... dispatched=Y ok=N rows=0 reason=order-not-shippable message="Order is not a Sales Order..."
+after:  §AD-PROC-LIVE proc=118 ... dispatched=Y ok=Y rows=0
+```
+No regression: Stage 1/5/6 still PASS (Stage 6's PASS is now also a genuinely correct data-level pass, not
+just a UI-level one — see §Fix above for the prior caveat, now resolved).
+
+**Stage 2 still FAILS, one more layer down, a FOURTH gap in the exact same shape as the first three (a
+value nothing anywhere ever declares or derives):** `ok=Y rows=0` — the gate passed but zero shipment lines
+folded. Traced to `genShipmentLines()` (`ad_process.js:261-277`): a line only produces shipment output when
+`deliveryRule==='F'` (Force) or `==='A'` (Availability, capped at on-hand) — any OTHER value, INCLUDING
+`undefined`, falls to the `else` branch and is silently treated as `deferredRule` (an honest "named-deferred"
+empty, same as a real O/L/M/5 rule would be). `c_order`'s `crud_ops.json` entry declares no `deliveryrule`
+field (nor `invoicerule`, which `genInvoiceLines()`, `ad_process.js:330-342`, needs the exact same way for
+Stage 3) and no hook derives either — so EVERY freshly-created order silently gets treated as
+indefinitely-deferred, never actually shippable/invoiceable, regardless of DocStatus/IsSOTrx/warehouse all
+now being correct. **Not fixed this session — deliberately, it's a different KIND of change than the three
+before it:** real iDempiere defaults `DeliveryRule`/`InvoiceRule` from the AD_Column's own `DefaultValue`
+('A'/'I', Availability/Immediate) at NEW-record time, not a beforeSave hook — the faithful, low-risk fix is
+almost certainly adding both as DECLARED fields in `crud_ops.json`'s `c_order` entry with
+`"default": "A"`/`"default": "I"` (the exact mechanism `docstatus`/`grandtotal`/`dateordered` already use,
+confirmed via `CORE.defaultsFor`, `crud_overlay.js:62-71`, which handles a plain string default verbatim).
+The one thing that makes this different from the three fixes above: declaring a field makes it a VISIBLE
+form input (this is genuinely how real iDempiere's Order window looks — DeliveryRule/InvoiceRule are real
+visible header fields there too — but it changes what the user sees, not just a backend read/derive path),
+so it deserves a deliberate look before shipping rather than folding into this session's backend-only run.
+
+Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`) — unaffected by this fix; once
+that's fixed too, Stage 3 would hit this SAME `invoicerule`-undeclared wall next.
