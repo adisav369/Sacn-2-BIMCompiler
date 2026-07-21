@@ -18,7 +18,7 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **FAIL** (picker gap + `cleanVals` + `fetchOrder` base-only read + IsSOTrx/DocType-per-window all fixed+landed; gate now fully PASSES, `dispatched=Y ok=Y` — fails now only because `DeliveryRule`/`InvoiceRule` are never declared/derived, so 0 shippable lines fold — named, not yet fixed) |
+| 2 | Delivery / Shipment | UI | **FAIL** (5 layers fixed+landed: picker gap, `cleanVals`, `fetchOrder`, IsSOTrx/DocType, DeliveryRule/InvoiceRule — process gate fully PASSES `dispatched=Y ok=Y`; now fails because a fresh order LINE's own `C_Order_ID` gets a stale/wrong value at create — a deeper W-SO-CHILD-BIND-shaped gap, named not yet fixed) |
 | 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed) |
 | 4 | Stock effect | UI-observed | **ABSENT** |
 | 5 | Replenishment signal | UI | **PASS** |
@@ -510,3 +510,55 @@ so it deserves a deliberate look before shipping rather than folding into this s
 
 Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`) — unaffected by this fix; once
 that's fixed too, Stage 3 would hit this SAME `invoicerule`-undeclared wall next.
+
+---
+
+## §Fix — 2026-07-21/22, DeliveryRule/InvoiceRule — FIXED and witnessed via a hook, not a new visible
+## field; found a FIFTH, deeper, DIFFERENT-CLASS gap underneath (order LINE create loses its own parent FK)
+
+**Fix (branch `fix/order-rule-defaults`, worktree `/tmp/wt-order-rule-defaults`, bim-ootb PR #955,
+auto-merge armed):** re-examined the "declare a visible field" plan named above and chose the LOWER-risk
+alternative instead — a new `MOrder.deliveryInvoiceRuleDefault` beforeSave hook (`ad_modelval.js`, right
+after `docTypeTargetDefault`) fills `deliveryrule`/`invoicerule` when unset, matching the SAME "curated
+subset, hook fills the mandatory rest" convention already used for `M_Warehouse_ID`/`IsSOTrx` — no form-shape
+change, no new visible field, reuses the `cleanVals` hook-derived-passthrough machinery from the
+`M_Warehouse_ID` fix (§Fix 2026-07-21 "cleanVals/buildOp" above) verbatim. **Values are the REAL
+`AD_Column.DefaultValue` rows for `C_Order` in the seed, queried live before writing any code (non-invent):
+`DeliveryRule='F'` (Force), `InvoiceRule='I'` (Immediate)** — the initial plan's guess of `'A'`
+(Availability) for DeliveryRule would have been WRONG had it been written without checking.
+
+**Witnessed**, full log read: both Stage 1 (SO) and Stage 6 (PO) now derive
+`deliveryrule:"F" invoicerule:"I"` in their `§AD-MODELVAL-LIVE` line (previously absent from both — the
+picker's own option label even changed from `"rule undefined"` to `"rule F"`/`"rule I"`). No regression.
+
+**Stage 2 STILL fails, one more layer down — but this is a DIFFERENT KIND of bug than DR/IR or any of the
+four before it, found by adding a temporary diagnostic (`console.log` of `ctx.fetchOrderLines(info)`,
+removed before shipping — not part of the landed fix) after `ok=Y rows=0` persisted even with DeliveryRule
+now correctly `'F'` (which should force-ship the full ordered qty unconditionally, no on-hand cap):**
+`fetchOrderLines(-1)` returned `[]` — the fresh order's own line was invisible. Dumping the PRE-FILTER
+`listTip` fold (also temporary, removed) showed why: the just-created order line's own `CRUD_CREATE` op
+really does carry a `c_order_id` value — but it's **`100`, a pre-existing SEED order's id, not `-1`** (the
+order the line was actually created under). The witness's own script independently confirms this field
+exists and is normally exercised (`fillField(page, 'c_order_id', ...)`, `witness_e2e_business_cycle.js:253`,
+noting the input is "locked" — pre-filled and disabled, matching real iDempiere's child-tab convention where
+the parent-link column is never user-editable) — but whatever pre-fills that disabled input's value at
+New-Order-Line-form-mount time is stale, pointing at some earlier/default order (100) instead of the
+just-created one (-1). **This is the SAME CLASS of defect `W-SO-CHILD-BIND` (Stage 1, PR #928) already fixed
+once** — but that fix closed the gap at the GRID-FILTER level (`_selByLevel[level-1]`, which tab-level
+child-record filtering reads) — this is a SEPARATE, deeper instance: the child ROW's own stored FK value at
+CREATE time, which `_overlayListTip`'s own existing comment (`idempiere.html`, near
+`GATING (W-CRITIC-GATING, load-bearing)`) already half-names as unfinished: *"crud_ops creatable tables are
+header-level (tabLevel 0) this leg; a created CHILD row's parent-FK scope is the next generalization
+(§-noted), not silently dropped"* — this IS that named-but-not-yet-generalized next step, now concretely
+reproduced. **Not fixed this session** — this is architecturally BIGGER than DR/IR: it likely affects the
+S2B-folded generic child-create path used by EVERY child table across the whole app (`M_InOutLine`,
+`C_InvoiceLine`, any other tabLevel>0 table), not just `c_orderline` — needs its own dedicated investigation
+into wherever a child tab's New-record form currently seeds/locks its parent-FK input value (searched;
+found no existing "parent column" binding logic in `idempiere.html`/`crud_overlay.js`/`ad_parser.js` at all
+— grep for `Parent_Column_ID`/`parentFk`/`parentColumn` came up completely empty, suggesting there may be
+NO real per-tab parent-binding mechanism today, only whatever the FIELD's own generic `readonly`/`default`
+resolution happens to produce).
+
+Stage 3 remains blocked earlier still (param-validation on `AD_Org_ID=NaN`) — unaffected by this fix; once
+fixed, Stage 3 would hit this SAME order-line-parent-FK wall too (Invoice lines are generated FROM order
+lines the same way Shipment lines are).
