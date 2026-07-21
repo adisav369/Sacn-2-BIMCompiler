@@ -168,3 +168,37 @@ uses IDB for building caches — `A.CACHE_STORE`/`§CACHE_EVICT_LRU` in scene.js
 reuse); keep the same key scheme. Optionally also de-duplicate the double plan (reuse door-legality
 across the isolated-stop re-route). Route JSON itself is small (~tens of KB) — the store choice,
 not the payload, is the whole problem.
+
+## §6 READY TASK (OPEN, not yet dispatched) — bust the route cache when a stage-3 recompile fires
+(2026-07-21, spec authored by the Alt-C/rooms session — preserved here verbatim from its session
+scratchpad, since that location evaporates; this file is the cache's canonical home)
+
+**SCOPE: `viewer/tour.js` (+ one hook in `navigate_find.js`). Read the log after every run.**
+
+GIVEN (verified by that session in code, don't re-derive):
+- `toggleFlyAround`'s fast-path (PR bim-ootb#940, `_decide()`, tour.js:39-79): on a route cache hit
+  it calls `A._startFlyTour(btn)` directly — skips `_prepareGraphTour()` entirely, the ONLY caller
+  of `A.ensureRooms()` (tour.js:101-102).
+- `ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP stage 3 (bim-ootb#939): `_ensureRoomsCore()`
+  recompiles when `rooms_meta.version` ≠ loaded `ROOM_WALKER_V` — HHS-only pilot today.
+- Interaction: the (now-persistent, #940) cached route wins BEFORE `ensureRooms()` runs, so a
+  stage-3 recompile never fires on a cached building — the user never sees improved rooms.
+- Existing partial bust: `A._tourCacheBust()` (tour.js:236) clears LS + IDB + route memo, called
+  today only by §THIN-GRAPH-RECURE (route-probe failure), NOT by a version-triggered recompile.
+
+SPEC — call `A._tourCacheBust()` in the same breath as any stage-3-triggered recompile:
+1. **Reactive (PREFERRED — smaller diff, fast-path perf untouched):** `_ensureRoomsCore()`
+   (navigate_find.js) already knows a version-mismatch recompile happened (`§NEEDLE_VERSION_STALE`
+   fires just before it) — call `A._tourCacheBust()` (guarded `if defined` — tour.js may not be
+   loaded) right after the version-triggered recompile completes.
+2. Alternative (only if (1) composes badly): hoist a CHEAP `rooms_meta.version` check into
+   `_decide()`'s cache-hit fast-path — must NOT reintroduce `_prepareGraphTour()`'s cost per hit
+   (that cost removal is exactly what #940 shipped).
+
+VERIFY (headless): force a stale `rooms_meta` on HHS (delete row / old version string), fly once
+to warm the cache, fly again — the SECOND run's rooms must reflect the fresh recompile, not the
+stale cached route. Prove the path with both `§NEEDLE_VERSION_STALE` and `§TOUR_CACHE` bust/
+fast-path log lines.
+
+NOT IN SCOPE: widening stage 3 past HHS (separately gated, `ROOM_INJECTOR_NEEDLE.md` risk-cliff
+guidance). This task only makes the interaction safe for whenever that widening happens.
