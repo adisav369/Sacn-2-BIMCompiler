@@ -545,3 +545,8 @@ geometry, and Firefox's missing WEBGL_multi_draw raises its per-instance Batched
 regardless. Expected shape, stated in §5 all along (aerial=box-proxy; interior's real lever is
 room-level occlusion, still data-blocked). Remaining named lever for the tour experience: the
 TOUR_ROUTE_CACHE.md §5 re-opened IDB fix (planning hang), separate go.
+**Same-day field addendum:** user ran Night (N) + Alt+G GI simultaneously with nav-DLOD — "i am
+fine with it." Compatible by design (lighting/post-processing modes don't touch per-element
+visibility; not gate conditions). Their log also captured the largest live transition wave yet:
+`started=47817 eval_ms=34` — one eval absorbed a ~48k-element wave (128 faded, rest snapped via
+FADE_CAP) in 34ms, no hang: the cap's graceful-degradation path confirmed at full scale.
