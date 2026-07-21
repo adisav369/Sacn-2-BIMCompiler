@@ -644,3 +644,326 @@ leg. Finding B is the enabling bug (the corridor route is literally absent from 
 has no choice), but even with all doors present the cost model should penalise room↔room transitions where
 a corridor edge is available, so circulation is the default spine and rooms are leaves off it. This is the
 design target for the eventual fix, beyond just rescuing the Unknown-storey doors.
+
+## §10 — UTILITY/CABLING ROOMS routed as normal circulation nodes (2026-07-22, user, from live
+screenshots `MIssBehindCutThruAir.png`/`MissCOback2doors.png` — same PRINCIPLE as §9, a second
+enabling bug — NOTED, confirmed against live code, NOT fixed yet)
+
+**User's framing, verbatim shape:** internal cabling/service rooms without real openings/doors are
+being listed and path-found through like ordinary rooms, breaking the "room-to-room is thru a door"
+circulation rule (which is real but was never written down as an explicit graph-building guardrail).
+Access to such utility spaces for servicing is fine at an advanced/maintenance stage — but ordinary
+room-to-room pathing should not treat them as equal-weight circulation hops.
+
+**Screenshot evidence:** a `Level 1 Hall/Corridor 1 → Level 3 R6` Path result (10 doors, 107.9m)
+renders with a straight `THREE.Line` segment cutting diagonally through open atrium air to a floating
+destination box, and the room list includes **`≈ Level 1 R7 · COMPILED INTE...`** (step 6) and
+**`≈ Level 1 R13 · COMPILED INT...`** (step 8) as ordinary path hops — plus the corridor is revisited
+4 times (`Corridor — Level 1` at steps 2/5/7/11) for what should be a much more direct route.
+
+**Confirmed against live code (`bim-ootb origin/main`), not assumed:**
+1. **`common/room_graph.js buildGraph()`'s `spaceRows` query (~line 208)** pulls every `IfcSpace` row
+   into the pathfinding graph with **zero filter on `predefined_type`** — no habitability/utility
+   exclusion of any kind before a room becomes a full graph node.
+2. **`viewer/lib/room_walker.js:1290`** confirms what "COMPILED INTE..." means: `predefined_type` is
+   stamped `'INTERNAL_DOORPART'` / `'INTERNAL_SMALL'` / `'INTERNAL'` — the walker's generic tag for
+   any synthetically flood-filled space (cabling/service voids included, but not exclusively — some
+   `INTERNAL` rooms are ordinary unlabeled real rooms too; the tag alone isn't a utility signal).
+3. **The actual utility signal already exists and is already used elsewhere, just not here:**
+   `common/room_habitability.js`'s `classifyUtilityRooms()`/`utilityContentClass()` (added
+   2026-07-15, `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md §10`) classifies a room "Utilities" by real element
+   COMPOSITION (ACMV `IfcFlowSegment` duct-routing dominance, or pure `IfcFooting`) — batched for perf
+   (`§UTILITY-CONTENT-BATCH`, Hospital 600+-room regression fix). It's wired into the Type-lens
+   display (`navigate_find.js:2941-2950`, `:2340-2352`) but **`room_graph.js`'s `buildGraph()` never
+   calls it** — a room correctly labelled "Utilities" in the Type view is still a full, unweighted
+   Path-mode node today.
+4. **Not a fabricated/doorless edge — checked the E1/E2 binding loop (~lines 388-460):** every edge in
+   the graph traces to a real door (E1 two-room binding, E2 lone-door circulation rescue, E9 ambiguous-
+   residual rescue) — there is no synthetic "nearest room" shortcut. `utilityContentClass()` itself
+   already says "a room with a genuine nearby door is NEVER classified Utilities" — reasonable for its
+   original DISPLAY purpose (a serviced room with its own door isn't a sealed void), but **wrong for
+   pathfinding**: a cabling closet's genuine maintenance-access door still shouldn't make it an
+   equal-weight room-to-room hop next to a corridor. This is precisely **§9's own PRINCIPLE**
+   (corridor-preference is a routing-quality invariant) surfacing through a SECOND enabling bug —
+   not Unknown-storey doors dropping the corridor edge, but a real-but-service door letting Dijkstra's
+   plain center-to-center distance treat a utility void as a legitimate shortcut.
+
+**Not fixed here, per user's own framing (advanced-stage access is wanted, not exclusion):** the
+right shape is a **cost penalty in `shortestPath()`'s Dijkstra weighting for room↔room legs through a
+utility-classified room, not a hard exclusion from the graph** — utility rooms should stay reachable
+(a maintenance-access "find path to the cabling closet" query should still work) but should never win
+against an available corridor/spine route on a normal room→room query. Concretely: wire
+`RoomHabitability.classifyUtilityRooms()` into `buildGraph()` (same batched call shape already proven
+safe on Hospital's 311 rooms), tag utility nodes, then apply a weight multiplier (not removal) on any
+edge touching one, same "penalise, prefer circulation" design target §9 already named. Left as a
+follow-up, same discipline as §9 — flagged with exact citations so it doesn't need re-deriving.
+
+### §10 EXECUTION 2026-07-22 (Opus coder session) — ✅ MECHANISM SHIPPED, PR #959, with an honest limitation
+
+Worked in bim-ootb worktree `/tmp/wt-room-path-utility`, branch `fix/room-path-utility-penalty` off
+`origin/main` @ `0269cec`. **SCOPE held: `common/room_graph.js` `buildGraph()`/`_buildAdjacency()`
+only** (+ the `viewer/main.js` cache-bump + a new node witness). No `room_habitability.js` edit, no
+`fullConnectivity()` touch, no Playwright.
+
+**What shipped (`common/room_graph.js`):**
+- `RoomHabitability.classifyUtilityRooms()` wired into `buildGraph()` via the dual-mode require
+  pattern (mirrors `HallwayBackbone`/`StoreyRaster`). Descriptor `{cx,cy,sx,sy,storey}` built from
+  each logical room's **union rect bbox** (§MULTI-RECT aware — single-rect degenerates to its own
+  rect), self-consistent center+extent for the classifier's range-scan. Utility rooms tagged
+  `node.isUtility` (+ `node.utilityWhy`). Batched — 2 SQL queries total regardless of room count.
+- `_buildAdjacency()`: after computing edge weight `w`, `if (na.isUtility || nb.isUtility) w *=
+  UTILITY_EDGE_PENALTY`. Both `shortestPath()` and `escapeRoute()` share this adjacency → both inherit
+  the preference (confirmed sensible for escape routing too — an exit route also shouldn't thread a
+  service room when a corridor exists).
+- **Penalty constant `UTILITY_EDGE_PENALTY = 8`** (documented in-code like `DOOR_BUFFER_SLACK`).
+  Reasoning, not fixture-tuned: real room-center edges run ~3–12 m; a corridor alternative a few hops
+  longer adds ~10–40 m; ×8 makes even a single ~5 m utility hop cost ~40 m and a *through*-route (two
+  touching edges, entry+exit, both penalised) ~80 m — reliably losing to any realistic detour, while
+  **finite** (a multiplier, never `Infinity`/removal, so reachability is preserved per §10's "do NOT
+  hard-exclude"). A destination-IS-utility query pays the penalty on its single arrival edge only.
+- `viewer/main.js`: `room_graph.js?v=5→v=6` cache-bust.
+
+**⚠ HONEST LIMITATION (measured, not hidden — the key finding of this session):** on **every** current
+real fixture the rooms `classifyUtilityRooms()` flags are **doorless sealed voids that already carry
+ZERO routing edges** — because the classifier excludes any room with a nearby door (§10 point 4) and a
+graph edge *requires* a nearby door, so "utility-classified" and "has a routing edge" are mutually
+exclusive today. Measured: Clinic 7 utility rooms / 0 with edges, Hospital 15 / 0, Duplex 2 / 0,
+Hospital_3·JKR·Terminal 0 utility. **So the penalty, wired exactly as §10 specified, is a present-day
+NO-OP on real data** — it cannot yet bite the screenshot's `COMPILED INTERNAL` through-hops, because
+those rooms HAVE doors and are therefore never flagged by `classifyUtilityRooms`. This ships the
+correct, in-scope mechanism (it bites the moment a utility-tagged room has an edge — e.g. once the
+door-exclusion is relaxed, or a building shares a door with a service void). **Named follow-up (out of
+this task's SCOPE = room_graph only):** a pathfinding-specific utility signal that relaxes
+`classifyUtilityRooms`'s door-exclusion for the routing call, so door-carrying cabling closets get
+tagged too. The task brief anticipated exactly this ("if no real fixture reproduces it cleanly, say so
+honestly").
+
+**Witness — `witness_room_graph_utility_penalty.js` (bim-ootb, committed), 12/12 green** (real
+Clinic/Duplex/JKR `_extracted.db`, `better-sqlite3`, §-log-first, self-contained — regenerates the
+`origin/main` "before" module from pinned SHA `0269cec`; log `w_util_penalty.log` read per Log Mandate):
+- `§ROOM_GRAPH_UTILITY utilityRooms=7 (routing penalty x8 on touching edges, not removed)` — A1
+  buildGraph tags the 7 real Clinic utility rooms; A1b matches `classifyUtilityRooms` output exactly.
+- `§UTIL_EDGELESS RM_First_Floor_26(edges=0,utility:ACMV) … RM_TOF_Footing_1(edges=0,utility:footing)`
+  → A2 `utilityRoomsWithEdges=0/7` (the honest structural finding above, asserted).
+- `§MULTIPLIER pair=RM_First_Floor_20->RM_First_Floor_29 d_before=9.4626 d_after=75.7005 ratio=8.0000`
+  → B1 the touching-edge weight multiplies by **exactly** ×8.
+- Real through-hop reroute (force-tag on the real graph — the "clearest available real-data
+  reproduction" §10 asks for): `§REROUTE_EXAMPLE RM_First_Floor_1->RM_First_Floor_2
+  before=[…,RM_First_Floor_20,RM_First_Floor_9,RM_First_Floor_2](d=24.14)
+  after=[…,RM_First_Floor_20,RM_First_Floor_2](d=24.76) avoids RM_First_Floor_9=true` — B2c the route
+  now AVOIDS the tagged room for a slightly-longer direct hop, and still resolves. B2b (a cut-vertex
+  hub, only route): `§THRUHOP … tagged … d=76.26` stays reachable at ×~8 cost, never null.
+- `§DEST_REACHABLE RM_First_Floor_29->RM_First_Floor_20(tagged) d=75.70 vs untagged d=9.46` — B3 a
+  destination-IS-utility query still returns a valid non-null path.
+- No regression vs `origin/main`: `§NOREG_DUPLEX compared=10 identical=10` +
+  `§NOREG_JKR compared=190 identical=190` — byte-identical path arrays + distances (Duplex's 2 utility
+  rooms are edgeless → penalty branch inert; JKR has none).
+
+**PR:** https://github.com/red1oon/bim-ootb/pull/959 (`fix/room-path-utility-penalty` @ `24a4d52`,
+pushed, opened un-merged — merge is the user's call). Files: `common/room_graph.js`, `viewer/main.js`,
+`witness_room_graph_utility_penalty.js` (new), `.gitignore` (ignores the regenerated before-module).
+**#959 is now MERGED to `origin/main` (squash `6209f54`).**
+
+### §10 EXECUTION 2026-07-22 (Opus, follow-up) — ✅ GAP CLOSED, PR #961 (door-exemption opt)
+
+#959 shipped the correct penalty mechanism but was a **no-op against the actual reported bug**, and
+that's exactly what its own §10 EXECUTION honestly flagged: `classifyUtilityRooms()`'s door-exemption
+(`room_habitability.js` `utilityContentClass()` line ~124 / batched `classifyUtilityRooms()` line
+~179 — "a room with a nearby door is a serviced space, not a void") is CORRECT for the Type-lens
+DISPLAY but WRONG for ROUTING preference, and since a graph edge REQUIRES a nearby door, every room
+that could ever be a through-hop was door-exempted out and never tagged. Coordinator-directed fix (the
+design fork resolved as an additive opt, NOT a forked classifier — the codebase's "one shared signal"
+discipline):
+
+**What shipped:**
+- **`common/room_habitability.js`** — `utilityContentClass(room, dbQueryFn, opts)` and batched
+  `classifyUtilityRooms(rooms, dbQueryFn, opts)` gain **`opts.ignoreDoorExemption`** (§DOOR-EXEMPTION-
+  POLICY). Default `false` = today's exact door-exempting behavior, byte-identical for every existing
+  caller; when `true`, the `_hasNearbyDoor`/`nearDoor` check is skipped and the room is classified by
+  element COMPOSITION alone (ACMV `IfcFlowSegment` / `IfcFooting`). Additive opt-in only — no existing
+  call signature's meaning changes.
+- **`common/room_graph.js` `buildGraph()`** — passes `{ignoreDoorExemption: true}` on the routing
+  classification call (the one-line gap-closer), AND excludes synthetic `CORRIDOR_ROOM::*` circulation
+  nodes from utility classification outright (**§NEVER-PENALISE-A-CORRIDOR** — a footing under a
+  corridor slab would otherwise tag the very corridor routing should PREFER; measured: Hospital_3
+  tagged all 8 of its corridor nodes before this guard, penalising the circulation spine — exactly
+  backwards).
+- Cache-bust: `room_habitability.js?v=1→v2` (a stale v1 would ignore the new opts arg),
+  `room_graph.js?v=6→v7`.
+
+**Real-data proof — the screenshot building is Hospital** (Level 1/2/3, R6/R7/R13 — matched directly).
+Witness `witness_room_graph_utility_penalty.js` rewritten, **9/9 green** (real Clinic/Duplex/JKR/
+Hospital `_extracted.db`, `better-sqlite3`, §-log-first, self-contained via pinned SHA `6209f54`; log
+`w_util_penalty2.log` read per Log Mandate):
+- **A DISPLAY-REGRESSION (verified, not asserted):** `classifyUtilityRooms` with default opts (and
+  `{}`, and `{ignoreDoorExemption:false}`) byte-identical to the origin/main "before" module —
+  `§A_DISPLAY Clinic before=7 newDefault=7`, `Duplex 2==2`, `JKR 0==0`. navigate_find.js's two
+  display call sites (which pass no opts) provably unaffected.
+- **B ROUTING-TAG-FIRES:** `§B_SCREENSHOT RM_Level_1_7(nowTagged=true,deg=4,beforeTagged=false)
+  RM_Level_1_13(nowTagged=true,deg=6,beforeTagged=false)` — the two real screenshot rooms now tagged
+  utility WITH edges, where the door-exempt default tagged neither. `§ROOM_GRAPH_UTILITY
+  utilityRooms=23`, `corridorTagged=0 of 23` (guard holds).
+- **C** `§MULTIPLIER … ratio=8.0000`. **E** `§E_REACHABLE RM_Level_1_16->RM_Level_1_13 tagged=true
+  d=24.50` (destination-IS-utility still resolves). **F** `§F_NOREG JKR … compared=190 identical=190`.
+- **D REAL-REROUTE (real tags, not forced):** `§REAL_REROUTE RM_Level_1_16->CORRIDOR_ROOM::Level 1|y|8.18`
+  — before(unpenalised) `[RM_Level_1_16,RM_Level_1_13,RM_Level_1_7,Corridor…12.84,Corridor…8.18]` d=33.62
+  (cutting through BOTH screenshot rooms); after(penalised) `[RM_Level_1_16,Corridor…8.18]` d=44.77,
+  `avoids RM_Level_1_13=true`. The route now takes the corridor instead of threading R13+R7 — §9's
+  "prefer circulation over cutting through rooms" principle, closing on the real building.
+
+**⚠ HONEST LIMITATION (logged `§OVERTAG`, doc-named follow-up):** the composition signal is
+PRESENCE-based (any ACMV `IfcFlowSegment` in the room's bbox), and HVAC ducts traverse most ceilings —
+so on duct-dense buildings it over-tags (`§OVERTAG Clinic tagged=110/119 rooms`). With corridors
+exempt, the net routing effect there is *general* corridor-preference (rooms penalised, circulation
+not — which aligns with §9's broader principle) rather than *cabling-only* targeting. Sharpening to a
+duct-**DOMINANCE** threshold (room is utility only if MEP is its PRIMARY content, not merely
+overhead-transited) is the named follow-up — not invented here, needs the same measured treatment as
+the existing signal. On sparser-signal buildings (Hospital: `utility:footing`, 23 rooms incl. the
+exact screenshot R7/R13) it targets precisely.
+
+**PR:** https://github.com/red1oon/bim-ootb/pull/961 (`fix/room-utility-routing-door-exemption` @
+`d23846a`, off merged `origin/main` `6209f54`, pushed, un-merged — merge is the user's call). Files:
+`common/room_habitability.js`, `common/room_graph.js`, `viewer/main.js`,
+`witness_room_graph_utility_penalty.js`, `.gitignore`. **MERGED to `origin/main` (`03a6cb7`).**
+
+## §11 — HARD-FAIL illegal chords (Task 1) + corridor-avoidance zigzag (Task 2): 2026-07-22
+## INVESTIGATION — NEITHER SHIPPED (Task 1's requested fix measured HARMFUL; Task 2 report-only)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: common/room_graph.js _legalizePath()/_detourForChord() (Task 1) + routing-quality
+investigation (Task 2). Both investigated against real data on a fresh branch off origin/main
+@ e84a079 (includes #959/#961). OUTCOME: Task 1's "hard fail with no fallback" was CODED and
+MEASURED, found to null 93–100% of multi-hop paths INCLUDING with an accurate raster, and would
+break LIVE routing (JKR/Hospital/HHS self-heal rasters) — so it was REVERTED, NOT shipped. Task 2
+root-caused to the SAME layer. No PR for either — this is the honest finding, per "tests expose
+issues" + "never ship a fabricated/broken route".
+```
+
+### Task 1 — hard-fail illegal chords: CODED, MEASURED, REVERTED (not shipped)
+Implemented exactly as asked: `_legalizePath()` returns `null` (→ `shortestPath()` null, honest "no
+path") when a same-storey chord is `_chordIllegalCount>0` and `_detourForChord` finds no legal detour.
+Then measured on real data — three findings that together make it unshippable as specified:
+1. **Cross-storey layer is NOT the bug (investigation answer).** Traced a real Hospital Level 1→Level 2
+   path: every different-storey adjacency in the returned `path` has a real `stairwp`/`circ` endpoint
+   (`crossStoreyHops=1 bareRoomToRoom=0`) — a genuine vertical stair hop, never a bare
+   `room[A]->room[B]` cross-storey adjacency. So the `storey!==storey` guard correctly skips them; the
+   screenshot's diagonal is NOT an untested cross-storey chord. The screenshot's actual illegal chord
+   is a SAME-storey `stairwp->SPINE` chord on the destination floor (measured 129–131 illegal sample
+   points ≈ 33 m through open atrium air) that `_detourForChord` can't detour (`no legal detour among
+   62 doors`).
+2. **No deployed building's LOCAL `.db` ships a walkable raster** — every legality test falls back to
+   the coarse room-rect signal. Blanket-hard-failing on it nulls **JKR 190/190, Duplex 10/10, Hospital
+   118/120** pairs — mass FALSE-POSITIVE (the coarse rect test flags legitimate hops to synthetic
+   `CIRC`/`SPINE`/`doorwp` waypoints as "illegal" because those points aren't inside a room rectangle,
+   even though the route through real doors is fine).
+3. **An accurate raster does NOT rescue it.** The live viewer self-heals real rasters onto JKR/Hospital/
+   HHS via `buildings/patches/*.db.sql` (`A._applyPendingPatch`). Applying Hospital's real patch (7
+   storeys) and re-running: the screenshot repro `RM_Level_1_5->RM_Level_2_7` **does** now hard-fail
+   (`§PATH_LEGAL_HARDFAIL illegalPts=131 ... path rejected`) — BUT so does **780/780 = 100%** of Hospital
+   pairs, and **93%** of JKR. Root cause: the returned `path` is a sequence of graph WAYPOINTS including
+   synthetic bookkeeping centroids (`CIRC::<storey>` at a stair centroid, `SPINE` corridor points,
+   `stairwp`), and the straight-line polyline between them routinely crosses non-floor even for a valid
+   route — because the polyline is a topology representation, not a walked path. So "illegal chord" is
+   dominated by representation artifacts, not genuine wall-crossings, and hard-failing on it — with OR
+   without a raster — rejects almost every real route. Gating to raster-backed storeys made real
+   raster-less buildings byte-identical (Clinic 153/153, Duplex 10/10, JKR 190/190, Hospital 120/120 vs
+   pre-change) but would 93–100% break the LIVE rastered ones — the repo auto-merges PRs, so shipping
+   this was an active production hazard.
+**Decision: REVERTED. Not shipped, no PR.** The screenshot's diagonal-through-air is a RENDERING-layer
+problem (straight polyline between graph waypoints, not a walked route), not a routing-validity problem;
+hard-failing at the path-legality layer cannot fix it without nulling the feature. (Witness fixture
+proving the mechanism DOES fire on an accurate raster — H1 hard-fail/H2 walkable-control/H3 raster-less-
+gate, 8/8 green — was built and confirmed, then discarded with the reverted code; findings preserved
+here.)
+
+### Task 2 — corridor-avoidance "goes looking for another door" zigzag: ROOT-CAUSED (report only)
+Reproduced on real Clinic (`RM_First_Floor_29 -> RM_First_Floor_64`, full hop trace, current shipped
+code). Finding: the **Dijkstra room/corridor SELECTION is already corridor-preferring** (post-#961) —
+the trace goes `R29 →(door) R20 →(E2) Corridor →(E5) Corridor →(E5) Corridor → … → R65 →(door) R64`,
+i.e. it DOES get onto the corridor spine and stay on it. The zigzag is NOT in which rooms/corridors are
+chosen. It is in the **polyline LEGALIZATION pass** (`_legalizePath`/`_detourForChord`): to make a
+coarse-legality-flagged `spine->spine` (or spine-to-room) chord "legal", the door-waypoint visibility
+graph splices in `doorwp` detour points — and when the local pass (`DETOUR_LOCALITY_MARGIN=6 m`) finds
+none, it falls back to a WIDER search (`§PATH_LEGAL_DETOUR_NONLOCAL used a wider one`) and picks
+**distant** door waypoints, weaving the rendered line spine→doorwp→spine→doorwp along the corridor
+(measured: 21.2 m and 13.8 m detour legs to far doors; 1008 nonlocal/fail detour events across the
+sampled run). That "hunting for a door" IS the detour visibility graph literally searching door
+waypoints — but as a RENDERING legalizer, not as route selection.
+- **Same root cause as Task 1**, and as §9's principle discussion: the coarse room-rect legality signal
+  vs. straight-line chords between synthetic graph waypoints. It is NOT §9's Unknown-storey-door edge
+  drop (single-floor here), NOT the ambiguous-door tie-break (the E1 hops in the trace are clean), and
+  NOT the E1 distance weight undervaluing corridors (selection already prefers the corridor).
+- **Fixability read (the part the bigger-redesign discussion needs):** this is NOT fixable with one more
+  weight/preference signal in the existing single-path Dijkstra — the Dijkstra output is already good;
+  the defect is downstream, in a SEPARATE visibility-graph legalization pass operating on a coarse
+  signal against synthetic-node positions. It needs one of: (a) an accurate walkable raster on every
+  storey so legality is right and detours are minimal/correct (raster already exists for some buildings
+  via self-heal; extending coverage is a data/pipeline task), OR (b) a representation redesign so the
+  drawn polyline follows the real corridor centerline / door sequence instead of straight lines between
+  graph waypoints legalized post-hoc. It is the "multiple competing signals reconciled" class of problem
+  (route topology vs. walkable polyline vs. synthetic-waypoint placement), i.e. the bigger redesign — not
+  a targeted single-signal tweak. Reported plainly for that decision; nothing implemented.
+
+## §12 — STAGE A: Terminal's 0/174 walkable-raster slab-resolution failure — ROOT-CAUSED + FIXED
+## (2026-07-22, Opus session) — ✅ SHIPPED, bim-ootb PR #964
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb scripts/build_storey_walkable_raster.js. Root-cause the ROOM_LENS §24 finding
+("component_geometries slab resolution failed entirely — 0/174 slabs resolved across every storey,
+unexplored") and fix if a real generalizable bug; else declare an honest data gap. Read the log
+after every run. This is Stage A of a two-stage task; Stage B (raster-constrained routing) follows.
+```
+
+### Root cause — NOT a data absence; a split-DB plumbing gap (the exact opposite of Hospital's §24 case)
+Investigated directly against the real DBs (not guessed). **Terminal is a split-DB building** — the
+same 3-file layout the live viewer's own `§S260b` split-DB detection loads (`streaming.js:1667`):
+`Terminal_meta.db` (spatial/panels/`element_instances`) + `Terminal_geo.db` (`component_geometries`
+meshes) + `Terminal_positions.bin` (instant bboxes). The raster builder, however, read
+`Terminal_extracted.db` and called `RealGeometry.buildGeometryIndex(db)` **single-DB**. Measured facts:
+- `Terminal_extracted.db` has **no `component_geometries` table at all** (`.tables` confirms it's split
+  out to `_geo.db`) → `geometryTable(db)` returns null → `buildGeometryIndex` returns an empty index →
+  every slab unresolved → the raster silently degraded to crude full-slab-**bbox** fallback rects (the
+  concave-slab overreach `storey_raster.js` exists to prevent). This is why §24's Terminal raster *tied*.
+- `Terminal_extracted.db` is also a **divergent §24 snapshot**: 705 IfcSlab guids that share **zero**
+  guids with `Terminal_meta.db`'s 705, coordinate frame offset ~(+545,+51,+14.5)m (x∈[635,699] vs
+  meta's x∈[89,154]), and `element_instances.geometry_hash` values that match **0 of 9394** rows in
+  `_geo.db`. The matching instances live in `Terminal_meta.db` (all 9394 geo hashes resolve there).
+- Decisively: **the live viewer never uses `Terminal_extracted.db` for Terminal.** In split mode
+  (`streaming.js:1768`) `A.db = Terminal_meta.db` patched by `patches/Terminal_meta.db.sql`; the
+  `Terminal_extracted.db.sql` patch (with §24's coord fix + any raster) is dead code for Terminal.
+- **The mesh is 100% present** — `buildGeometryIndex(meta.db, geo.db)` resolves **705/705** IfcSlab
+  guids (0/705 without geo.db). Genuinely the opposite of Hospital's §24 honest data gap (empty storeys).
+
+### Fix (in SCOPE) — split-DB awareness in `build_storey_walkable_raster.js`
+`§SPLIT-DB`: when the primary db carries no `component_geometries`/`base_geometries` table, resolve the
+sibling `_geo.db` (`dbPath.replace(/_(meta|extracted|rooms)\.db$/,'_geo.db')`) and pass it to
+`buildGeometryIndex` as its second `geoDb` arg — `real_geometry.js`'s two-arg contract already supports
+this; `element_instances` stays keyed off the primary db, meshes decode from geo.db. **No-op for
+single-file buildings** (guard returns null → original `buildGeometryIndex(db, db)`; verified JKR/HHS/
+Hospital carry `component_geometries` inline). Rebuilt Terminal's raster from `Terminal_meta.db` +
+`Terminal_geo.db`, shipped into `Terminal_meta.db.sql` (both `buildings/patches/` and the live
+`viewer/buildings/patches/` copy, kept in sync per the §22 divergence landmine).
+
+### Witness — `witness_terminal_walkable_raster.js` (bim-ootb, committed), 5/5 green
+- `§TERMINAL_SLAB_RES total=705 singleDB=0 splitDB=705` — the root-cause proof, both directions.
+- Per-storey rebuild: Aras 01 21/21, Aras 02 89/89, Aras 03 59/59, Aras 04 **0 slabs** (honestly empty,
+  tiny storey), Aras Bumbung 1/1, Aras Tanah 4/4 — sum 174/174 (the exact "0/174" §24 measured, now 100%).
+- Routing on the **meta.db graph the split-mode viewer actually runs** (43 rooms, 903 pairs):
+  `§TERMINAL_BASELINE detourFail=54.6%` → `§TERMINAL_WITH_RASTER detourFail=46.5%` — a real
+  chord-legality improvement (unlike §24's tie against the wrong extracted.db). Connectivity **62.1%
+  unchanged** (a raster legalizes chords on existing edges; it never adds/removes edges — asserted).
+- Regression: JKR raster 4/4, HHS raster 4/4, Hospital raster 3/3 (unchanged, single-file guard no-op),
+  `witness_room_graph_path` 15/15.
+
+### Shipped
+bim-ootb `fix/terminal-walkable-raster-splitdb`, **PR https://github.com/red1oon/bim-ootb/pull/964**
+(pushed, un-merged — merge is the user's call). Files: `scripts/build_storey_walkable_raster.js`,
+`buildings/patches/Terminal_meta.db.sql`, `viewer/buildings/patches/Terminal_meta.db.sql`,
+`witness_terminal_walkable_raster.js` (new). No binary DB committed (raster travels as the SQL patch).
+
+### For Stage B
+Terminal is now a fixed, raster-backed building — fleet raster coverage is Clinic/HHS/JKR/Hospital(tie)/
+Terminal. Stage B (raster-constrained A* routing replacing straight-line `_legalizePath` chords)
+proceeds using this coverage; it degrades honestly only on storeys with no raster at all.
