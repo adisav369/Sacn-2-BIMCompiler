@@ -439,3 +439,95 @@ rounding a corner could start hundreds of fades in one tick; cap/stagger concurr
 InstancedMesh overlay for the fading cohort) is the obvious shape, but measuring that belongs to
 the implementation phase this gate still guards. All assumptions testable in isolation are now
 tested; still no live wiring, no PR, `_useDlodPath`/`§WB_DLOD_VIS` untouched.
+
+## 9. IMPLEMENTATION DESIGN — v1 (2026-07-21, user said "proceed"; §8 gate satisfied by the two
+dated findings entries above; this section is the Spec-First artifact the code cites)
+
+**Module:** new `viewer/dlod_nav.js` (IIFE-wrapped per `feedback_browser_iife_wrap_engines`),
+loaded after `time_machine.js` in `viewer.html`. TM's DLOD internals are NOT modified — the four
+prior retractions all involved coupling visibility systems; nav-scope is a sibling that reuses the
+PATTERN (box-build query, distance+frustum test, wireframe look, pick-exclusion flags) with
+mutual exclusion instead of shared state. `_useDlodPath`/`§WB_DLOD_VIS` untouched.
+
+**Engage gate (all must hold, checked every tick — any failure = full disengage+restore):**
+`_navPillOn && app.activeBuildingTotal > 50000 && !app.streaming && !app._tmOn (TM owns visibility
+when open) && !A.activeGuidFilter (§3 scope decision: Find isolation = full disengage) &&
+!A.activeStoreyFilter && A.hiddenDiscs.size === 0 (storey/disc filters own per-element visibility
+— same conflict class as Find, same remedy) && !cinema (A._cinemaOrbitActive, new 3-line public
+mirror of effects.js's private _cinemaActive) && !A._maxqActive && !A._stillRefineActive (§3:
+Alt+C/Alt+P excluded)`.
+
+**Decision rule (per element, §8 combo):** hysteresis two-state — promote to real when
+`dist ≤ 50m AND bounding-sphere in exact frustum`; demote to box when `dist > 80m OR sphere+5m
+margin outside frustum` (the +5m frustum margin is the angular analogue of the 50/80 distance
+band — rotation jitter at the frustum edge must not re-trigger, same reason S261 added 50/80).
+Between bands: state holds. Transitions run a 10-frame opacity cross-fade with `depthWrite:false`
+on the fading materials (§8 FINDINGS #4).
+
+**Transition mechanics — overlay-hoist for ALL three mesh types (§8 ADDENDUM B: BatchedMesh has
+no per-instance alpha; overlay-hoist measured pixel-identical; used uniformly for simplicity):**
+demote = hide real slot (Mesh.visible / InstancedMesh zero-scale caching `_origMatrix`, same
+convention as `A.filterInstancedMesh` / BatchedMesh `setVisibleAt(false)`) + same-frame standalone
+real-copy Mesh (geometry: own for Mesh; shared geo + `getMatrixAt` for InstancedMesh; for
+BatchedMesh a new `bm.userData.slotGeo[slotId] = geo` reference recorded at flush — one additive
+line in streaming.js, contract structures untouched) + standalone box-copy (wireframe clone);
+real-copy fades 1→0 while box-copy fades 0→0.4; on completion overlays are disposed and the box
+instance in the nav box-set goes visible. Promote = exact inverse. **Concurrency cap 128:**
+transitions beyond the cap in one tick SNAP (today's shipped TM-DLOD behavior — graceful
+degradation, not a new failure mode). Fades cancel+snap instantly on disengage.
+
+**Box set:** own per-discipline wireframe `InstancedMesh` set, built with the same
+`element_transforms JOIN elements_meta` query + `isBboxPlaceholder` (pick-exclusion, picking.js:257)
++ new `isDlodNavProxy` marker; never registered in `_instanceMeta`/`_batchMeta` (landmine 1);
+disposed on pill-off/building switch.
+
+**Driver:** own rAF loop, alive ONLY while the pill is ON (pill OFF = zero listeners, zero per-
+frame work — W-DLOD-NAV-EQUIV is structural). Per frame: guard check (flag reads), camera pose
+signature compare (TM camguard's string shape); evaluate transitions only on pose change or active
+fades.
+
+**Pill:** panels.js tool-registry entry (sibling of 'fly'), same box glyph as `tm-lod`, default
+OFF, `isActive` highlight; on <50k buildings the toggle no-ops with a toast + `§DLOD_NAV_GATE`
+log (registry is static; TM-style dynamic hiding not available there — accepted v1 tradeoff).
+
+**Witness hooks:** `window.__dlodNav` = {mutations, active, boxed, fades, snaps} + `§DLOD_NAV_*`
+log lines; `window.__dlodNavAudit()` recomputes the wanted partition from scratch and returns
+mismatch count (drives W-DLOD-NAV-PROXY). W-DLOD-NAV-PERF runs on THIS machine's real GPU
+(headless hardware-GL path proven in §8 ADDENDUM) on LTU + a city-view case, OFF vs ON, draw
+calls + frame time. W-DLOD-NAV-NO-REBUILD asserts zero `§PERF_INCR_INDEX` and zero
+`_instanceMeta`/`_batchMeta` registrations from nav-DLOD during a sustained orbit.
+
+### §9 addition — USER-DICTATED mid-implementation (2026-07-21): "bboxes must not shine thru"
+TM's shipped DLOD has an X-ray artifact: wireframe boxes write no face depth, so a boxed region
+shows EVERY box through every other box (and through boxed facades). Nav-scope v1 must improve on
+this: each per-disc wireframe box InstancedMesh gets a PAIRED depth-only InstancedMesh
+(`colorWrite:false, depthWrite:true`, opaque pass ⇒ renders before the transparent wireframes;
+same instance matrices, same zero-scale hiding; `isBboxPlaceholder` pick-excluded, marker
+`isDlodNavDepth`). Effect: boxed masses self-occlude — only the visible outer shell's wireframes
+render. Wireframe look itself unchanged (feedback_no_fake_lod_unbreakable). Fading overlay boxes
+(10-frame transitions) deliberately skip the depth pass — a mid-fade element must not pop
+neighbors' occlusion; 10-frame inconsistency accepted. TM's own pill keeps its current behavior
+(out of scope here; port later if the user asks).
+
+## 10. SHIPPED — 2026-07-21 (PR #935, auto-merge armed)
+§9 v1 implemented as `viewer/dlod_nav.js` + pill (panels.js, sibling of Fly Tour) + slotGeo record
+(streaming.js) + sw v836. All §4 witnesses PASS on real GPU (RTX 4060, LTU 122k, headless
+hardware-GL — `w_nav_run4.log`):
+- **W-DLOD-NAV-EQUIV PASS** — pill OFF: `mutations=0` across a 240-frame scripted sweep.
+- **W-DLOD-NAV-PERF** (first real numbers for this mechanism, MEASURE-BEFORE-ESTIMATING satisfied):
+  OFF baseline wide orbit **112.7ms/frame, 15,675 draw calls** (LTU free-orbit truly runs ~9fps
+  today). ON, fully boxed: **17.3ms, 16 draw calls (6.5×)**. Close-in quarter-orbit at 25m with
+  29,815 promoted real elements: **52.1ms (2.2×)**, 2,304 cross-fades executed.
+- **W-DLOD-NAV-PROXY PASS** — `__dlodNavAudit()` mismatch=0 at settled pose after the promote leg.
+- **W-DLOD-NAV-NO-REBUILD PASS** — 0 `§PERF_INCR_INDEX` post-engage; 16 box meshes, 0 registered
+  in `_instanceMeta`/`_batchMeta`.
+- **Restore PASS** — pill off: 0 nav meshes left in scene, `mutations` symmetric (521,022 total).
+**Two mid-implementation corrections that ARE the perf story (recorded for future DLOD work):**
+(1) per-slot hiding alone (zero-scale/setVisibleAt) cut only 15,675→13,639 calls — LTU's scene is
+~16K SMALL MESH OBJECTS (meshAggs=16104), so the real lever is mesh-LEVEL `visible=false` when
+every slot of a mesh is boxed (same `anyVisible` lever as `A.filterInstancedMesh`); (2) first
+witness run was vacuous-GIGO (`REALIDX entries=0` — placeholders-only scene from a bad symlink;
+8 draw calls should have been the tell vs the known-healthy 15-16K) — caught by reading the log,
+not the verdicts. **Known honest costs:** eval spike 25-50ms per 150ms-throttled re-evaluation
+while the camera moves (122k index; amortized mean stays 17ms); close-in p95 88.9ms; §7's
+line-of-sight axis and any eval chunking remain future work, separate go.
