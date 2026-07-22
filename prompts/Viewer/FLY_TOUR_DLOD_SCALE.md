@@ -1549,3 +1549,214 @@ occluder, same as §15's own POC used).
    alone supersedes §16 entirely — compose is the more consistent choice with this file's own
    "extend, don't discard" pattern (§9→§13 kept both criteria OR'd), tentatively recommended, not
    decided here.
+
+### 17.9 §17.8 DECIDED (2026-07-22, user reviewed, proceed)
+1. **Build cost:** not decided up front — MEASURE the real in-memory JS build directly (standalone
+   timing script over the actual resident element set) before choosing sync-at-load vs
+   idle-deferred. The 2-3s number is an SQLite-round-trip estimate, not the JS structure's own cost,
+   and is cheap to pin down first.
+2. **Fresh JS tree, not the `elements_rtree` blob decoder.** Decided, closed. The R-tree's cell
+   format isn't a supported SQLite interface (reverse-engineering internals for a one-off), and it's
+   built in a different coordinate frame (IFC/raw) than 17.2 needs (Three.js world space) — the
+   frame conversion alone is most of the work a fresh tree needs anyway.
+3. **Compose.** PVS (§16) as a first free filter; BVH/GPU-query only on whatever PVS leaves visible.
+   Consistent with §9→§13's own "extend, don't discard." Also reduces live GPU-query volume per
+   cycle (already-PVS-culled rooms need no query at all).
+
+### 17.10 CHEAP POC — spec (before full §17 build; de-risks the causal claim, not the engineering)
+**Issue this POC proves/disproves, isolated from implementation cost:** §13 and §16 BOTH already
+found draw-call reduction with NO measurable frame_ms change. Before spending real effort on the
+BVH + async GPU-query mechanism (17.2-17.4), test whether object-grain occlusion demotion moves
+frame_ms AT ALL, using a PERFECT oracle in place of the real-time mechanism — decouples "does the
+idea work" from "can we build a fast enough approximation of it."
+- **Oracle source:** §15's own proven classifier, `witness/occl_classify.js` (Stage-0-gated,
+  `mismatch=0`), reused verbatim — same discipline as §16's own witnesses. Extend §15 Stage 1's
+  existing per-pose capture (`witness/w_occl_stage1.js`: freeze camera at a captured interior pose,
+  enumerate the full active set, classify each) to additionally emit a **guid→occluded boolean map**
+  per pose (Stage 1 today only aggregates counts — this POC needs the per-guid verdict list to
+  actually demote by).
+- **Wiring — smallest possible addition to `dlod_nav.js`, mirrors `_roomMismatch` exactly:** a new
+  `_occlOracle` guid-map + `_stats.occlOracleEnabled` console-only lever (default false, inert), a
+  `_occlMismatch(e)` test (`occlOracleEnabled === true && _occlOracle && _occlOracle[e.guid] ===
+  true`), OR'd into `_wantedReal` alongside `roomMis`. `window.__dlodNav.setOcclOracle(map)` setter
+  to inject a pose's hide-map from the witness script. No BVH, no GPU query, no temporal
+  amortization — the oracle map itself stands in for all of 17.2-17.4 for this POC only.
+- **Measurement — static-pose hold, not a live flight (cheaper, and the oracle is only valid AT the
+  pose it was classified for):** at each of Stage 1's captured poses, freeze the camera, sample
+  frame_ms over a short window with the oracle OFF then ON then ON then OFF (same off1/on1/on2/off2
+  interleave §16's W-PVS-PERF used, to cancel warm-up/GC drift), aggregate delta_ms across poses.
+- **What it does NOT test:** build cost, async query correctness/staleness, temporal hold-window
+  tuning, or a moving-camera flight — all deferred to the real §17 build IF this POC shows frame_ms
+  moves. A negative result here (no delta despite a perfect, zero-cost oracle) is itself a
+  reportable, valid finding per this file's own §13/§15 discipline — it would mean the bottleneck is
+  JS-side/CPU-submission cost, not draw-call/bucket-occupancy, and §17's real build should NOT
+  proceed.
+- **Where:** new branch `poc/occl-bvh-oracle` off `feat/room-occlusion-pvs` tip (86b096b) in
+  `bim-ootb`, worktree `/tmp/wt-occl-oracle-poc` (reusing the existing worktree-hygiene discipline —
+  checked `git worktree list` first, no duplicate). Local only, not pushed — same convention as
+  `poc/occlusion-culling-study` (§15) and `feat/room-occlusion-pvs` (§16) itself, both currently
+  local-only pending the user's own promote decision.
+
+### 17.11 RESULT — 2026-07-22, real RTX 4060, `bim-ootb` branch `poc/occl-bvh-oracle`
+**W-OCCL-ORACLE-PERF ran twice.** First run's boxed/real counts were BIT-IDENTICAL between
+oracle-off and oracle-on at every pose despite the audit's own `mismatch` jumping into 5 figures —
+a contradiction, caught before trusting it: `dlod_nav.js`'s chunked scan (`_evalChunk`) only re-arms
+on a camera-POSE change (`_lastCamSig`), and a frozen-pose A/B never moves the camera, so the oracle
+lever toggle never actually triggered a state transition. Fixed by re-arming the scan on an
+oracle-lever change too (`_lastOracleEnabled`/`_lastOracleSet`, mirrors the existing room-change
+re-arm at line ~374). Reran clean — `mismatch` converges to 0 every run, boxed/real genuinely differ
+oracle-off vs oracle-on.
+
+**4 frozen interior poses, off1/on1/on2/off2 interleave (same method as §16's W-PVS-PERF):**
+
+| pose | OFF frame_ms | ON frame_ms | delta_ms | drawCalls Δ | boxed Δ |
+|---|---|---|---|---|---|
+| 0 | 27.24 | 21.54 | -5.69 (-21%) | -994 | +3810 |
+| 1 | 34.05 | 16.69 | -17.36 (-51%) | -3403 | +21255 |
+| 2 | 41.64 | 16.69 | -24.94 (-60%) | -4087 | +23049 |
+| 3 | 16.69 | 16.68 | -0.01 (n/a — already 98.6% boxed pre-oracle, no headroom) | -337 | +1463 |
+
+`mean_delta_ms=-12.00 mean_delta_calls=-2205 mean_delta_boxed=12394 meanOccludedPct=94.1%`.
+Full log: `witness/w_occl_oracle_perf.log` / `witness/w_occl_oracle_perf.json`.
+
+**Two honesty flags, not glossed over:**
+1. Poses 1-3 all land at exactly 16.6-16.7ms once demoted (=1/60s) — reads as a vsync/rAF frame cap
+   being hit once GPU submission cost drops low enough, meaning the true win at those poses is more
+   likely UNDERSTATED by this measurement than overstated.
+2. This used a zero-cost precomputed oracle at 4 FROZEN poses, not a live moving flight, and no
+   BVH/query/traversal overhead of its own — it isolates the causal claim only, per 17.10's own
+   design. The real mechanism (17.2-17.4) still has to prove its own overhead doesn't eat the win —
+   that is what W-OCCL-BVH-PERF (17.6) is for, unchanged.
+
+**§17.11 VERDICT: the cheap gate PASSED, decisively.** Unlike §13 (frustum/distance) and §16
+(room-PVS), both of which found draw-call reduction with NO measurable frame_ms movement at the
+harness's noise floor, object-grain demotion here moved frame_ms in lockstep with draw calls, by as
+much as 60% at some poses. The bottleneck this codebase's PERF harness kept finding "elsewhere" is
+NOT JS-traversal/CPU-submission-bound at these interior poses — it is genuinely bucket-occupancy-
+bound, and finer-than-room-grain culling has real, large headroom to exploit. **§17's real
+BVH+GPU-occlusion-query build (17.2-17.4) is justified to proceed** — the POC's job (decide whether
+the engineering is worth doing BEFORE doing it) is done.
+
+### 17.12 REAL BUILD — implemented, EQUIV passed, CORRECT FAILED (2026-07-22/23, real RTX 4060,
+`bim-ootb` branch `feat/occl-bvh-gpu-query`, off `feat/room-occlusion-pvs` tip)
+**Implementation:** `viewer/dlod_nav.js` +397 lines — median-split BVH over `_boxIndex`'s AABBs
+(measured 418ms build, 122,330 elements, confirms §17.9-1's 439ms estimate), async WebGL2
+`ANY_SAMPLES_PASSED_CONSERVATIVE` occlusion queries per visited node (poll-only, never blocks),
+temporal HOLD window at `FADE_FRAMES`-scale, composed with §16's PVS as a further OR'd
+`_occlBvhMismatch` criterion. `window.__dlodNav.occlBvhEnabled` (default false).
+
+**W-OCCL-BVH-EQUIV: PASS**, independently re-verified — off-path byte-identical to shipped §13+§16
+(`diff` of both JSON runs empty, `mismatch=0` at all 4 poses, zero nodes/queries built while
+disabled).
+
+**W-OCCL-BVH-CORRECT: FAILS, two independently-confirmed bugs, not one.**
+
+1. **Off→on re-enable is permanently inert (root-caused in code, not patched).** `_occlDisable()`
+   empties the cut and nulls the hide-set; `_bvhEnsure()` early-returns once `_bvh` already exists
+   for the current building (line ~493), and cut-reseeding/hide-set-reset only live in the BUILD
+   path (lines ~497, ~513-515) — so a simple re-enable within the same building never issues another
+   query. First surfaced as "poses 1-3 completely dead" in a same-browser, multi-pose run 1; ruled
+   OUT as a witness-harness artifact by running again with a fresh browser per pose (removing the
+   off→on re-enable from the test entirely) — confirmed as a real code bug, not a test artifact.
+
+2. **Nonzero, large false-hide rate — the correctness bar itself fails.** Fresh-browser-per-pose
+   run: `meanFalseHideRate=31.48%` (per-pose 18.46%/8.48%/82.32%/16.67%, worst case 135 of 164
+   actually-visible elements wrongly hidden). The spec's own bar (17.6) is "~0 — a real correctness
+   bug if nonzero"; this is decisively over that bar, not a rounding residual. The hide-set also
+   never stabilizes — `hidden` oscillates by TENS OF THOUSANDS between 5s samples at a FROZEN
+   camera (pose 1: 81,454↔117,721; pose 3: 75,917↔122,078) — every pose reports `settled=timeout`,
+   and at pose 3 the applied partition collapsed to `real=103` for the entire 122,330-element
+   building.
+
+**Root-cause hypothesis (plausible, consistent with the numbers, NOT separately proven):** occlusion
+queries depth-test against "whatever the renderer last drew" (17.3's own design, matching real
+occluder discipline, §17.7) — but what's actually drawn includes the ~100k+ nav-DLOD wireframe BOX
+PROXIES for already-demoted elements (EQUIV logged `boxVis=121953`), not just real solid mesh. A box
+proxy is a rendering STAND-IN, not real occlusion evidence — using it as an occluder plausibly
+creates a SELF-AMPLIFYING FEEDBACK LOOP: hiding an element adds another box proxy to the depth
+buffer → that proxy occludes MORE real geometry in later queries → more elements hide → more
+proxies → runaway, matching the observed 5-figure oscillation and the pose-3 near-total collapse.
+If correct, this is a design conflict between the existing box-proxy DLOD system and reusing "last
+drawn frame" as the occlusion source (17.7 named this the correct occluder in principle — real
+scene geometry — but did not anticipate the box PROXIES contaminating that same depth buffer).
+
+**Status: NOT proceeding to STABILITY/PERF.** This is now a real architectural question, not a
+tuning pass — likely fix shape is excluding box-proxy geometry from whatever depth buffer occlusion
+queries test against (e.g. a depth-only pre-pass over real/solid meshes only), which is real,
+non-trivial engineering, not a quick patch. Open call for the user: invest in that redesign, or stop
+here and report §17 as a proven-opportunity/failed-first-implementation result (the causal claim
+from 17.10-17.11 stands — object-grain occlusion demonstrably moves frame_ms when correctly
+identified — this implementation just doesn't correctly identify it yet), same "negative-but-real
+result is reportable" discipline already used for §13/§15/§16, and ship §16's PVS alone as the
+practical stopping point.
+
+## 18. nav-DLOD root-cause + real-frame_ms wins on LTU_AHouse (2026-07-23, separate from §17's occl-bvh work — this is `dlod_nav.js`, the older distance-based box-proxy system §9/§10 shipped, not §16/§17's occlusion work)
+
+**Starting observation (user):** flying LTU_AHouse (122,330 elements) with `'o'` (nav-DLOD) on, solid
+display and bbox-cycle display felt the SAME speed — read at first as "occlusion has hit the bbxes
+floor." That reading was wrong; root cause below.
+
+**Root cause, code-confirmed:** Alt+Z's bbox/ghost display cycle (`navigate_find.js` `toggleMergedGhost`)
+calls `A.filterByGuids(new Set())` to hide solids for the ghost — an EMPTY Set, but still truthy in JS.
+`dlod_nav.js`'s `_gateBlockReason` (`if (app.activeGuidFilter) return 'find-isolation';`) unconditionally
+blocks nav-DLOD while any guid filter is set, including this empty one. Pressing `'o'` while in bbox mode
+(or with a stale filter left over from Find/isolation) silently logged `on=true` and never engaged — no
+error, no `§DLOD_NAV_ENGAGE`, indistinguishable from working. That's what made "solid vs bbox" look like
+the same speed: bbox mode was never actually running nav-DLOD's box-proxy system at all — it's a fully
+separate mechanism (`§GHOST_XRAY`'s own 28,569-box `SHELL_GHOST_BBOX`, vs nav-DLOD's 122,330-element
+index).
+
+**Three PRs shipped (bim-ootb), in order:**
+- **#973** `feat/fps-mode-log` — throttled `§FPS_MODE mean=.. max=.. n=.. dlod=.. disp=.. fly=.. orbit=..`
+  frame_ms sampler (only counts frames that did real work, post idle-park gate).
+- **#974** `feat/dlod-nav-gate-toast` — `toggleDlodNav` now checks `_gateBlockReason` synchronously and
+  logs/toasts `§DLOD_NAV_TOGGLE on=true blocked=<reason>` instead of a false `on=true` when a gate
+  condition (bbox/ghost isolation, `streaming`, `find-isolation`, etc.) already holds. Diagnostic only,
+  zero behavior change to when nav-DLOD actually engages.
+- **#975** `fix/dlod-nav-restore-chunk` — two fixes found via #973's real frame_ms data:
+  1. `_restoreAll` (disengage path) was a single synchronous loop over the whole 122,330-element index —
+     measured **2.5-3.6s frame_ms spike** on every `'o'`-off. Chunked the same way `_evalChunk` already is
+     (`_restoreAllNow`, `EVAL_CHUNK` per rAF tick); a re-engage mid-drain force-flushes the pending restore
+     synchronously first (`_restoreFlush`) so `_buildBoxes` never races a stale in-flight drain.
+  2. `§FPS_MODE`'s `dlod=` tag read pill-intent (`_dlodNavOn`), not real engagement (`_engaged`) — a
+     gate-blocked press tagged frames `dlod=on` while nav-DLOD did nothing, which would have silently
+     poisoned the exact on/off comparison the sampler exists to make. Now reads `window._dlodNavEngaged`.
+
+**Confirmed live, same session, post-merge — real numbers, not inference:**
+- **Disengage freeze is gone.** `'o'` toggled off mid-flight: `§FPS_MODE mean=116 max=207.7 dlod=off` —
+  unremarkable, in line with surrounding frames. Pre-#975 this exact moment was 2.5-3.6s.
+- **#974's blocked-toast fires correctly in the wild**, twice, different reasons: `blocked=streaming`
+  (pressed `'o'` before streaming finished) and `blocked=find-isolation` (pressed `'o'` while a
+  pick/ghost isolation filter was still set).
+- **First trustworthy `dlod=on` vs `dlod=off` comparison during actual flight** (previously impossible —
+  the tag itself lied): clean `dlod=off` sample right before engaging, `mean=219.8 max=285.6`; after the
+  one-time engage burst settles (`mean=299.1` for the burst itself, matching the cold-engage-burst finding
+  below), sustained `dlod=on` flight: `mean=100-150` across dozens of 2s windows. **Roughly 45-55% mean
+  frame-time reduction, real and reproducible**, not a screenshot/feel — this is the first number-backed
+  answer to whether nav-DLOD helps on a building this size.
+- **New, slightly counter-intuitive finding, not yet acted on:** full ghost/xray mode (nav-DLOD gated off
+  the whole stretch, confirmed via `blocked=find-isolation`) measured **~70-90ms mean** during flight —
+  FASTER than solid+nav-DLOD-on's ~100-150ms. Expected once stated: nav-DLOD still keeps roughly
+  15-30% of elements as full real geometry at any moment (`active=22366 boxed=99964` typical), while
+  full-ghost hides essentially all real solids. nav-DLOD beats full-solid, but doesn't reach full-hide.
+
+**Confounds identified, do not misattribute:**
+- Cold-engage burst (`active=0 boxed=122330 started=122330`, `mean≈300ms`) is real and reproducible on
+  every fresh engage — expected from `_evalChunk`'s design (whole-building reclassification), not a bug.
+- `three-mesh-bvh`'s incremental build (`§BVH_DEFERRED`, seen at 6.9s/13.3s/30.4s across runs — highly
+  variable, likely CPU-contention-dependent) can coincide with nav-DLOD/bbox testing and inflate frame_ms
+  spikes that aren't nav-DLOD's fault.
+- The camera-teleport reclassification jank named in an earlier pass of this session turned out to be
+  **general, not nav-DLOD-specific** — the same tour-start jank (`mean=550.7 max=1533.1`) recurred with
+  `dlod=off`. Likely three.js's own frustum-culling/visibility churn on a large instant camera jump. Don't
+  scope a nav-DLOD-only fix at it.
+- Do not re-litigate the "R185/BatchedMesh was great, then got worse" arc against this session's data —
+  already root-caused to machine/driver state in §12, not app code; this session's slower-than-usual
+  module bootstrap (`§UPGRADE_THREE_DONE ms=1057` vs the usual `ms=22-48`) was a cold service-worker cache
+  after a hard reset, unrelated to §12's history and unrelated to nav-DLOD.
+
+**Open, not yet done (two real perf candidates, ranked):**
+1. Investigate whether nav-DLOD's DEMOTE/PROMOTE distance thresholds can be tightened for buildings this
+   size, to box more aggressively and close the ~30-60ms gap to full-ghost speed while still keeping
+   nearby real geometry visible. Not started.
+2. The general (non-nav-DLOD) camera-teleport jank above — separate investigation, not scoped here.
