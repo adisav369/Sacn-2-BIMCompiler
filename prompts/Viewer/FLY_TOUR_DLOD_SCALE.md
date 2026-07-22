@@ -1153,3 +1153,399 @@ the call count — the win is plausible but only the implementation's own W-perf
 ~99% visibility ceiling converts to frame-time. §16 must also pick a real-time mechanism up front
 (GPU occlusion query w/ N-frame reuse, or compiled-room portal visibility) — the POC's raycast
 method is measurement-only by construction.
+
+## 16. IMPLEMENTATION DESIGN — real occlusion culling (2026-07-22, design only per §8→§9/§11→§13
+discipline; no shipped code in this pass, a separate go implements it)
+
+### 16.1 Why §13's mechanism undercounts the §15 ceiling — the gap this design closes
+§13's room-mismatch demote (`viewer/dlod_nav.js` `_wantedReal`, shipped on branch `feat/room-
+occlusion-step1` @ `e84a079`, NOT yet on `main` — confirmed live, `main`@`df5def1` still has only
+the distance/frustum test) only boxes an element when `e.room !== _roomCur` (strict equality,
+`dlod_nav.js:394` on that branch) — camera's current room vs the element's OWN room, nothing about
+what's actually visible FROM the current room. Two things this misses that §15's ~99% figure
+captures: (a) an element in a DIRECTLY-adjacent room through an open doorway is "mismatched" and
+gets demoted even though it may be genuinely visible (a false demote §13's own 3-spot PROXY witness
+didn't test for, because it only checked "inside a room" / "outside all rooms", never "in the next
+room over"); (b) most of what §13 measured as only a 3% additional cut is because distance/frustum
+had ALREADY boxed the majority of other-room/other-floor elements — the residual 3% is the SMALL
+set that survived distance/frustum but failed room-equality. §15's true line-of-sight test, run on
+the SAME building/route, found the ACTIVE set (already distance/frustum-real) is ~99% occluded —
+meaning most of what distance+frustum call "real" is other-room/other-floor geometry seen through
+open frustum cones but blocked by walls/slabs that room-EQUALITY never flagged because §13 never
+asked "can the current room see that room," only "is it the same room."
+
+### 16.2 Mechanism choice — portal/PVS on the compiled room graph, GPU occlusion query as fallback
+**Primary: precomputed room-to-room Potentially-Visible-Set (PVS), not a per-frame GPU query.**
+Reasons, weighed against the two options this file's own history already put on the table:
+- **§7 already flagged GPU occlusion queries' "latency/driver-inconsistency/per-object overhead"
+  as a reason to prefer a CPU/precomputed approach** over live hardware queries — that concern
+  wasn't resolved, just deferred to when a real design was needed. It's needed now.
+- **§15 Stage 1 already proved per-frame CPU raycasting is 4 orders of magnitude too slow**
+  (91-279s/pose) — ruling out a live-raycast mechanism too. What's left is something computed
+  ONCE (at compile/graph-build time) and looked up cheaply at runtime.
+- **The exact data a portal/PVS needs already exists, unbuilt-on:** `common/room_graph.js`'s
+  `buildGraph()` already emits `E1` edges (`{a:roomGuidA, b:roomGuidB, doorGuid, storey, kind:'E1'}`
+  — a REAL door directly connecting two rooms, `room_graph.js:407-408`), `E2` (room↔CIRC/hallway),
+  `E5` (corridor-junction↔junction), `E8` (corridor-room↔junction), and `E3` (stair groups bridging
+  storeys ONLY at the stair's own footprint, `:518`, WalkerDoctrine's one trusted stair extractor).
+  These edges ARE portals — a doorway or open corridor junction is exactly the "can room A see
+  through to room B" relationship a PVS needs, already measured from real geometry, not invented
+  for this task.
+- **This is the SAME "prepared vocabulary, not real-time logic" principle
+  `FLY_TOUR_CORRIDOR_GRAPH.md §VOCABULARY_NOT_REALTIME` already commits this codebase to** — extend
+  the compiled graph (a new derived artifact: room→visible-room-set) rather than add a live
+  geometric computation per feature. GPU occlusion query would be exactly the kind of "grow its own
+  real-time... logic" that section warns against when a compiled alternative exists and is cheap.
+- **GPU occlusion query is kept as a named fallback, not discarded**, for the specific case portal/
+  PVS cannot handle by construction: open-plan/atrium spaces where room compilation itself is weak
+  or absent (§10's storey-occlusion track already named atria/stairwells as the exception to
+  opaque-floor culling), or if 16.4's Stage-0 validation shows the 1-hop portal assumption is too
+  coarse. Spec for that fallback is in 16.5 — build it ONLY if 16.4 falsifies portal/PVS.
+
+### 16.3 Portal/PVS design
+- **Cells** = compiled rooms already in `spatial_structure` (RM_ guids), identical to what
+  `buildCameraRoomIndex()` (`viewer/lib/room_walker.js:1285`, `e84a079`) already resolves a camera
+  position to — reuse that function verbatim for "what room is the camera in now," unchanged from
+  §13's step 1 (including its `_makeJoinKey` floor-anchor Z-join, `:1260` — the exact fix for the
+  VÅNING_2→VÅNING_1 cross-floor mispick §11.2 Q2 found).
+- **Portals** = graph edges of kind `E1`/`E2`/`E5`/`E8` on the SAME storey (a doorway or open
+  corridor junction transmits visibility); `E3` (stairs) transmits ONLY between the two rooms/
+  landings the stair group itself directly touches, never "the whole floor above is visible" — this
+  mirrors §5's own atrium/stairwell carve-out for storey-occlusion, applied here at room grain.
+  Door open/closed state is NOT modeled (no per-frame IFC operation-state exists) — a portal is
+  always "open" for this purpose. This is a deliberate CONSERVATIVE bias: it can show a few elements
+  through an actually-closed door (safe — a false "still real" costs a few extra draw calls, never a
+  popping/missing-geometry bug), never hides something genuinely visible.
+- **visibleRoomsFrom(roomGuid)** = `{roomGuid}` ∪ every room reachable via ONE portal hop (depth=1,
+  default — see 16.4 for why this needs validating before trusting it, not assuming it). Computed
+  once per room via a shallow BFS over the already-built graph's edge list, cached as
+  `Map<roomGuid, Set<roomGuid>>` alongside the existing `_pathGraphCache`/`A.getRoomGraph()` (never
+  a second graph cache — `FLY_TOUR_CORRIDOR_GRAPH.md` R2's "reuse one cache" rule applies here too).
+  Trivial cost: room counts are in the 10s-100s (LTU 422, Terminal 54, §11.2 Q1) — a full BFS over
+  every room is microseconds, done once per building load/graph rebuild, not per frame.
+- **Runtime integration is a ONE-LINE change to §13's already-shipped-and-witnessed mechanism**,
+  not a new state machine: `dlod_nav.js`'s `roomMis` (`:394` on `e84a079`) changes from
+  `e.room !== _roomCur` to `!visibleRoomsFrom(_roomCur).has(e.room)` — the exact same OR'd
+  criterion slot, the exact same `_roomActive`/interior-leg gating (`:385`), the exact same
+  `ROOM_STABLE_N=12`-frame membership-stability gate (`:55`), the exact same fade/snap machinery
+  (`FADE_FRAMES`/`FADE_CAP`, unchanged), the exact same explicit no-room state (`_roomActive =
+  (_roomCur !== null)`, `:385`). Everything §13 already proved safe (EQUIV/PROXY/STABILITY) stays
+  proved safe by construction — only the SET an element is checked against grows from "one room" to
+  "one room's visible set."
+- **No new UI/pill** (unchanged non-goal from §11.3/§13), no Time Machine port (unchanged non-goal).
+
+### 16.4 Stage 0 — REQUIRED validation before trusting depth=1, same discipline as §15's own Stage 0
+**Do not implement 16.3 with depth=1 assumed correct — measure it first**, exactly as §15 refused
+to trust its own raycast classifier on real data before a synthetic ground-truth gate.
+- §15's own POC scripts (`/tmp/wt-occl-poc`, branch `poc/occlusion-culling-study` @ `6d95ac1`,
+  `witness/w_occl_stage1.js`) already compute a per-element CLEAR/OCCLUDED verdict per pose but only
+  persist AGGREGATES (`witness/w_occl_stage1_poses.json` — confirmed by direct read: `activeTotal`/
+  `occluded`/`clear` counts only, no per-guid rows) — the per-element verdict + guid exists
+  transiently in that script's loop (`w_occl_stage1.js:180-194`) and is thrown away. The cheapest
+  next step is NOT a new POC: add one line to dump `{guid, verdict, room: e.room}` per classified
+  element in that same loop, re-run on the SAME already-captured 8 poses.
+- **Validation question:** of the elements classified `clear` (genuinely visible), what fraction
+  have `room === cameraRoom` (depth 0) vs `room` reachable via one portal hop from cameraRoom
+  (depth 1) vs neither (depth 2+ or no portal path at all — a PVS miss)? Report this distribution
+  per pose. If depth ≤1 covers e.g. ≥95% of `clear` elements, depth=1 is the right default. If a
+  material fraction of `clear` elements sit at depth 2+ (e.g. visible down a straight double-door
+  corridor two rooms over), extend BFS to depth=2 for `E2`/`E5`/`E8` (corridor/junction) edges only
+  — corridors are architecturally the case where sightlines legitimately travel multiple hops,
+  rooms behind closed doors are not.
+- **Report the inverse too:** of elements the PVS at the chosen depth would mark visible (in the
+  visible-set), what fraction the ground-truth raycast actually classified `occluded`? This is the
+  "false real" rate — the cost of the conservative bias in 16.3. Must stay small enough that it
+  doesn't erase §15's ~99% ceiling (a PVS that's visible-set-too-generous just reduces the win, it
+  never causes a correctness bug, per 16.3's "safe direction" framing — but report the number rather
+  than assume it's small).
+- Only once this passes with a stated, defensible depth does 16.3 proceed to implementation.
+
+### 16.5 GPU occlusion-query fallback — spec only, build IF 16.4 falsifies portal/PVS
+Kept minimal, per §7's own caution, and scoped to the residual set portal/PVS leaves ambiguous —
+never a full per-element per-frame sweep:
+- **Per-BUCKET, not per-element:** issue `EXT_occlusion_query_boolean`/`ANY_SAMPLES_PASSED_
+  CONSERVATIVE` (WebGL2) queries against each BatchedMesh bucket's own combined AABB proxy — buckets
+  are already the draw-call unit (`§10`/`§13`'s own framing: emptying a BUCKET is what saves a
+  call), and there are only ~2,500 of them (§0-2 baseline) vs ~110k+ elements, directly answering
+  §7's "per-object overhead" concern by construction.
+- **Only query buckets portal/PVS left UNRESOLVED** (i.e. contains a mix of visible-set and
+  not-visible-set elements per 16.3 — a bucket portal/PVS can already fully resolve either way needs
+  no query at all). This bounds query count to the genuinely ambiguous cases.
+- **N-frame temporal reuse**, reusing the SAME `ROOM_STABLE_N`-scale window already tuned by §11.2
+  Q4/§13's stability gate (~10-15 frames) rather than inventing a new constant — query issued, result
+  read back ASYNCHRONOUSLY on a LATER frame (never a synchronous `getParameter` stall, the classic
+  occlusion-query correctness bug), reused for the window, re-issued after.
+- Non-goal unless 16.4 requires it: do not build this speculatively. Portal/PVS alone, if 16.4
+  validates it, is the whole mechanism — this section exists so a future session doesn't have to
+  re-derive the shape from scratch if 16.4 comes back negative.
+
+### 16.6 Witness plan — frame-time A/B is the gate, not draw-call count (the session's own mandate)
+Same EQUIV/CORRECT/STABILITY/PERF pattern §13 already ran, extended:
+- **W-PVS-EQUIV:** mechanism flag off (default) ⇒ byte-identical to §13's shipped `e84a079`
+  behavior across the same 8 deterministic poses (regression floor: this design must not silently
+  change §13's OWN behavior when the new flag is unset).
+- **W-PVS-CORRECT:** `visibleRoomsFrom()` at the chosen depth, computed fresh, matches a from-
+  scratch BFS recompute; cross-checked against 16.4's ground-truth clear/occluded split (report
+  agreement %, not just "it ran").
+- **W-PVS-STABILITY:** reuse §13's exact flap-resistance test (24×5-frame A↔B flap ⇒ zero room-
+  state changes) — the stability gate is unchanged, only what's being gated changed.
+- **W-PVS-PERF — the decisive witness, per this session's charter:** real interior-flight A/B on the
+  SAME machine/GPU/route already used for §13/§15 (LTU CINE-GRAPH tour), mechanism OFF vs ON,
+  reporting frame_ms mean/median/p95 AND draw calls AND a NEW number — count of BatchedMesh buckets
+  with zero active instances this frame (the thing that actually removes a draw call) — per frame,
+  both runs. **Draw-call count alone is not sufficient evidence, per §13's own lesson** (3% fewer
+  calls, frame-time unmoved) — report frame_ms honestly even if it doesn't move, and if it doesn't,
+  investigate WHETHER the bottleneck is CPU submission overhead that persists even for skipped
+  buckets (e.g. `renderer.render()`'s own per-object traversal cost) before concluding occlusion
+  culling "doesn't work" — that would itself be a valuable, reportable finding, not a reason to keep
+  silently retuning until a number looks good (this file's own standing discipline, §13/§15 both).
+- **Non-goals (unchanged):** no pill/UI, no default-on, no Time Machine port, no cross-building sweep
+  beyond LTU (+ Terminal as the small-building regression check, matching §13's own pattern).
+
+### 16.7 Open questions for user review before the implementation go
+1. Depth=1 vs depth=2-for-corridors default, pending 16.4's actual measured distribution (not
+   guessed here).
+2. Whether the "false real through an always-open portal" bias (16.4's inverse check) is small
+   enough to ship without also modeling door open/closed state — and if not, whether that state is
+   even extractable from source IFC data (`IfcDoor.OperationType` is static, not a live position).
+3. Whether 16.5's GPU-query fallback is worth building at all if 16.4 validates portal/PVS cleanly,
+   or should stay a documented-not-built option indefinitely (matching §15's "throwaway measurement
+   tools, not the eventual mechanism" framing for its own raycaster).
+
+### §16 RESULT — 2026-07-22, real RTX 4060, `bim-ootb` branch `feat/room-occlusion-pvs`
+(worktree `/tmp/wt-occl-pvs` off `origin/main`@`be8f122`, committed locally only — same worker/
+review-later split §13 used, not yet pushed/PR'd)
+
+Implemented exactly as specced: `common/room_graph.js`'s `buildRoomPVS(graph, opts)` (0-1 BFS —
+E1/E3 "door crossing" edges cost 1, all circulation edges free, `maxDoorCrossings` default 1) +
+`viewer/dlod_nav.js`'s `pvsEnabled` console lever (default false), replacing §13's plain
+`e.room !== _roomCur` equality with PVS set-membership inside the SAME `_roomMismatch()` helper
+now shared by `_wantedReal` and `__dlodNavAudit` — a genuinely one-line semantic change at the
+call site, gated behind its own default-false flag so §13's shipped behavior is provably untouched
+when it's off.
+
+**W-PVS-EQUIV: PASS.** `pvsEnabled=false` (with `roomOcclEnabled=true`, §13's mechanism actually
+engaged, not both flags dormant) produced a byte-identical 4-pose fingerprint/audit record against
+`origin/main`'s shipped `dlod_nav.js` swapped onto disk in its place (the harness's own established
+swap method) — `witness/w_pvs_equiv_pvs-off.json` == `witness/w_pvs_equiv_shipped-main.json`,
+diff clean.
+
+**W-PVS-CORRECT: PASS.** Pure-Node sql.js run (`witness/w_pvs_correct.js`, no browser) against real
+LTU_AHouse (371 rooms) and Terminal (55 rooms): shipped `buildRoomPVS` agreed guid-for-guid with an
+INDEPENDENTLY-written reference 0-1 BFS on every room (`mismatchRooms=0` both buildings), every
+room's own set contained itself (`selfMissing=0`). Sane, non-degenerate size distribution: LTU
+avgVisible=34.4/371 rooms (min 1, max 110), Terminal avgVisible=18.0/55 (min 1, max 33) — the PVS
+is neither "just yourself" nor "everything," consistent with corridor chains genuinely linking many
+rooms for free while doors still cost a crossing.
+
+**W-PVS-STABILITY: PASS.** Same 24×5-frame synthetic A↔B flap as §13's own test, `pvsEnabled=true`
+this time: zero room-state changes during the flap, genuine holds still accepted in 12 frames, and
+`§ROOM_PVS_BUILD` logged exactly once (not rebuilt per flap/room-change) — the PVS build is
+correctly a per-building one-time cost, not coupled to room-membership churn.
+
+**W-PVS-PERF: two attempts, both incomplete (same recurring crash — §16.8), but together enough to
+call the direction.** The 4-run interleaved harness (`witness/w_pvs_perf.js`) crashed on the 3rd
+leg both times with the identical `Target page, context or browser has been closed` failure §13's
+own PERF run first hit (now seen 3×, see §16.8) — never got a full off1/on1/on2/off2 interleave
+either time. Two independent attempts, reported together rather than cherry-picking the friendlier
+one:
+- **Attempt 1** (off1 only, on1 only): OFF frame_ms=86.26 drawCalls=3205 boxed=102849 | ON
+  frame_ms=91.22 drawCalls=3244 boxed=102237 → delta +4.96ms, +39 calls.
+- **Attempt 2** (got 3 of 4 legs — off1, on1, on2): OFF frame_ms=83.47 drawCalls=3216 boxed=102709
+  | ON (on1+on2 avg) frame_ms=83.40 drawCalls=3223 boxed=102316 → delta **−0.08ms**, +7 calls.
+- **Cross-attempt noise floor:** the SAME "off" condition measured 86.26ms in attempt 1 vs 83.47ms
+  in attempt 2 — a 2.79ms spread with `pvsEnabled` never touched. Both attempts' on/off deltas
+  (+4.96ms, −0.08ms) sit inside or near that noise band. **Honest read: frame_ms shows no
+  consistent, distinguishable direction across two independent measurements — a wash, not a
+  win and not a measurable regression either, matching §13's own PERF finding almost exactly**
+  (a draw-call-adjacent change that doesn't move frame time).
+- **What IS consistent across all 3 "on" samples vs both "off" samples: boxed count reliably
+  DROPS** (−612, −394) — confirming the structural fact (PVS's visible-set is a strict superset of
+  §13's same-room-only test) independent of the noisy frame-time reading. This costs nothing
+  measurable and buys nothing measurable on THIS metric — it is a correctness change with a
+  performance side-effect too small to detect at this noise floor, not a performance mechanism.
+
+**W-PVS-STAGE0-VALIDATE (added beyond the original plan, per §16.4's own "required before
+trusting depth=1" gate): informative but incomplete — real cost measured, not just assumed
+small.** Same recurring crash, this time on pose 7/8, in the POC worktree
+(`/tmp/wt-occl-poc/witness/w_pvs_stage0_validate.js`, PVS injected verbatim into that worktree's
+page context — no files edited there, per §15's own "throwaway measurement, not shipped code"
+convention). 6 of 7 completed poses landed `camRoom=none` (this tour's flyPath frames spent little
+time inside a compiled room rect vs. doorways/circulation — a route/sampling artifact, not
+necessarily representative of §11.2's own 83.7%-in-room figure from a different flight). The one
+pose with usable data (`camRoom=RM_VÅNING_1_100`) gave a real, reportable number on the side that
+matters: of 6,005 OCCLUDED elements with room data, the PVS still called **1,863 (31.0%)
+"visible"** — the documented conservative-bias cost, and it is not small. n=1 pose is not enough to
+generalize the exact percentage, but combined with W-PVS-PERF's direction, the shape is consistent
+and not encouraging for a performance win from this mechanism alone.
+
+**§16 VERDICT: portal-PVS is a CORRECTNESS fix with a performance effect too small to measure at
+this harness's noise floor — confirmed across two independent attempts, not assumed.** It
+demonstrably stops §13 from incorrectly boxing elements genuinely visible through an open doorway
+(the failure mode §16.1 named), and does so safely (EQUIV/CORRECT/STABILITY all clean). It does
+NOT reach §15's ~99% ceiling — the boxed-count direction is consistently down (fewer culled, as the
+superset design predicts) but frame_ms shows no consistent direction across two measurements
+against a ~3ms cross-run noise floor, and the Stage-0 cross-tab's 31% false-positive rate (n=1
+pose, real but not yet generalized) shows the conservative bias has a real, non-trivial cost on the
+occluded side. That ceiling is dominated by occlusion INSIDE what a room-adjacency graph already
+calls "visible" — same-room partitions, furniture, ceilings hiding MEP directly overhead, floor
+slabs — nothing a room graph can see, no matter how it's tuned. Closing that gap needs a mechanism
+that judges visibility at object/region grain, not room grain. §17 below specs that mechanism.
+
+**Open call for the user:** ship §16 as a modest correctness fix (console-lever only, as scoped, no
+default-on decision per §11.3/§13's own non-goals — it costs nothing measurable to leave available),
+or hold it pending §17's outcome and ship both together. Either is consistent with this file's own
+"negative-but-real result is reportable, not a failure" discipline (§13, §15).
+
+### §16.8 Standing infrastructure finding — recurring headless-Chrome crash on long real-GPU runs
+Both of today's long real-GPU witness runs (§16's own PVS-PERF, and the Stage-0 validation) hit the
+identical `Target page, context or browser has been closed` failure that §13's own PERF run first
+reported ("the repeated same-point crash is itself worth a follow-up look... not chased down as
+part of this step"). Now observed a 3rd time, always on a long-running (minutes, not seconds) real-
+hardware-GL headless session doing sustained heavy work (either a multi-leg tour flight or repeated
+multi-second CPU raycasts). Still not root-caused (possible resource accumulation across sequential
+in-page tour restarts, or a headless-Chrome memory/handle ceiling under sustained real-GL load) —
+flagging again, explicitly, so a THIRD recurrence doesn't get re-discovered as a surprise. Named,
+not fixed; a real follow-up if long real-GPU witness runs are going to keep being this file's
+standard method (they should — screenshots/estimates are exactly what this file's own "math
+discipline, not screenshots" rule exists to replace).
+
+## 17. IMPLEMENTATION DESIGN — hierarchical GPU occlusion culling (2026-07-22, design only, per
+§8→§9/§11→§13/§15→§16 discipline; motivated by §16's own verdict that portal-PVS cannot reach the
+~99% ceiling, and by a live side-investigation into whether this codebase's existing R-tree
+(clash detection) or MeshBVH (raycasting) structures could drive it for free)
+
+### 17.1 Why neither existing hierarchical structure is directly usable — verified, not assumed
+Prompted externally (a pasted second-AI suggestion) that the project's existing spatial R-tree is
+"precisely the hierarchical bounding structure needed" for GPU occlusion queries. Checked directly,
+empirically, rather than accepted on description:
+- **The SQLite `elements_rtree` (`viewer/measure.js:143`, clash detection/pick-proximity) DOES
+  maintain a genuine multi-level internal hierarchy** — confirmed by building the real 122,330-
+  element R-tree in Node/sql.js and querying its `_node`/`_parent` shadow tables directly:
+  **3,555 internal nodes, real parent→child rows** (e.g. `[2,373]`, `[3,55]`). The hierarchy is
+  not hand-wavy; it is real and SQLite maintains it whether or not anything ever reads it.
+- **But it is not walkable for this purpose as shipped.** Each `_node` row's bounding box is an
+  OPAQUE PACKED BINARY BLOB (SQLite's internal R*-tree cell format) — not queryable columns. The
+  R-tree's two proven wins in this project (fast Bonsai preview, fast clash detection) both go
+  through its SUPPORTED interface — a flat SQL range query (`WHERE minX<=? AND maxX>=?...`) that
+  never requires touching node internals; SQLite walks its own tree invisibly and just returns
+  rows. Getting a specific node's actual extent for GPU-query traversal would need a from-scratch
+  binary decoder for that cell format — real, bounded, documented work, but not "already there."
+- **`three-mesh-bvh`'s `MeshBVH` (already loaded for raycasting, §15) is real and directly
+  walkable**, but scoped PER MESH/BATCHEDMESH-BUCKET over TRIANGLES, not across buckets. Draw-call
+  buckets in this codebase group by DISCIPLINE (`dlod_nav.js`'s own `_buildBoxes`: `byDisc[d] =
+  byDisc[d] || []`), not spatial locality — a single bucket's own bounding box typically spans the
+  whole building, so "is this bucket's box occluded" would almost never return true. MeshBVH is the
+  right tool for a LATER step (once a spatial region is known-hidden, toggle per-instance
+  visibility for whatever of that bucket's instances fall inside it — the SAME per-instance
+  mechanism `dlod_nav.js`/BatchedMesh's `setVisibleAt` already use today), not for discovering which
+  regions are hidden in the first place.
+- **The piece that is actually missing: a hierarchy over ELEMENT POSITIONS, cutting across
+  disciplines/buckets, with real (non-opaque) traversable nodes.** Neither existing structure gives
+  this. Building one needs NO new query and NO new data: `dlod_nav.js` already holds every
+  element's `{pos, radius}` resident in memory (`_boxIndex`, built once per building load from
+  `element_transforms`) — a small in-memory spatial tree over that already-resident data is the
+  actual missing piece, and it is cheap (see 17.2).
+
+### 17.2 The index — build once per building, over already-resident element data
+- **Input:** `_boxIndex`'s existing `{pos, radius}` per element (already in memory, zero new SQL).
+  A real AABB (not just a bounding sphere) is preferable for tighter culling — `_buildBoxes` already
+  queries `bbox_x/y/z` per element (`dlod_nav.js` ~line 101) and could stash it alongside `pos`/
+  `radius` at the same build step, at negligible extra memory cost (3 more floats/element).
+- **Structure:** a plain median-split BVH (or an existing small library, e.g. the same family as
+  `rbush` — real traversable JS objects with `{minX,minY,minZ,maxX,maxY,maxZ,children|leaf}`, never
+  an opaque blob), built ONCE per building load/graph-rebuild event (same cadence as `_roomIdxEnsure`/
+  `_pvsEnsure`'s own building-keyed cache). Cost estimate: building a comparable SQLite R-tree over
+  the real 122,330-row set took 2.65s wall-clock in-process (measured this session) — a pure-JS
+  in-memory median-split build over the same row count, with no DB round-trip, should be
+  comparable or faster; MEASURE this directly before committing to it as cheap, not asserted here.
+- **Coordinate frame — a named landmine, learned from this project's own history:** build the index
+  in the SAME space `dlod_nav.js`'s existing frustum/sphere tests already use (Three.js world
+  space, via `camPos`/`e.pos` — NOT raw IFC coordinates). This project has hit a translation/frame
+  mismatch bug class before (`FLY_TOUR_CORRIDOR_GRAPH.md`'s §WALKER-PHASE-SENSITIVITY /
+  §PATCH-FRAME-GUARD sagas) — do not reintroduce it here by building the tree in a different frame
+  than the one it will be queried against.
+
+### 17.3 Traversal + GPU occlusion query design
+- **Query target:** WebGL2 `EXT_occlusion_query_boolean` (`ANY_SAMPLES_PASSED_CONSERVATIVE`,
+  cheaper/less precise than exact — appropriate here, a coarse ancestor-node test doesn't need
+  pixel-perfect answers). One query per VISITED internal node, against a proxy (the node's own AABB
+  rendered as a simple invisible box, depth-tested against the already-rendered frame).
+- **Top-down, early-out:** start at the tree's top internal nodes (not the root singleton — query
+  its children directly, same shape Gemini's own diagram sketched). If a node's query result comes
+  back "hidden" (0 samples), mark EVERY element in its subtree as occlusion-hidden this cycle and do
+  **not** descend further or query any of its children — this is where the big wins come from (one
+  query result culling potentially thousands of elements across many different discipline-buckets
+  at once, unlike MeshBVH's per-bucket ceiling). If "visible" (or the query hasn't resolved yet),
+  descend to its children on a LATER cycle (17.4).
+- **Integration point — reuse §13/§16's own machinery, do not build a second demote pipeline:** a
+  new `occlMis` criterion, OR'd into `_wantedReal`'s existing decision alongside `roomMis`, using
+  the SAME fade/snap state machine (`FADE_FRAMES`/`FADE_CAP`), the SAME "only demote, never a new
+  visual system" discipline §8/§9 already established for this file. An occlusion-hidden element is
+  just another reason to want `box`, structurally identical to a distance/frustum/room-mismatch
+  demote from the engine's point of view.
+- **Async by construction — never block the main thread on a query result.** Issue queries one
+  frame, poll `getQueryParameter(query, GL.QUERY_RESULT_AVAILABLE)` on later frames, only read
+  `GL.QUERY_RESULT` once available. This is the single most common way hierarchical occlusion
+  culling gets implemented WRONG (a synchronous stall) — call it out explicitly in the eventual
+  code's own comments, not just here.
+
+### 17.4 Temporal amortization — do not re-traverse/re-query every frame
+- **Round-robin the tree across frames**, same amortization shape `dlod_nav.js`'s own `EVAL_CHUNK`
+  chunked scan already uses for its distance/frustum pass (§FLY_SMOOTH) — query a rolling subset of
+  nodes per frame rather than the whole tree at once, spreading cost instead of bursting it.
+  Reuse each node's last query result for a HOLD window before re-querying — start from the SAME
+  `FADE_FRAMES=10`-scale constant already tuned for this codebase's own hysteresis rather than
+  inventing a new number, and revise only if a witness shows it's wrong for this specific case.
+- **Camera-motion-aware re-query priority (not required for v1, name it for later):** nodes nearer
+  the camera's current view direction change visibility more often than distant/peripheral ones —
+  a v2 lever, not needed to get a first correct-and-safe version working.
+
+### 17.5 Correctness pitfalls to test explicitly, not assume away
+1. A parent node's proxy box can be VISIBLE even when every real element inside it happens to be
+   individually occluded by DIFFERENT things — this is fine (conservative, same safe-direction bias
+   §16.3 already established for portals) and just means "descend further," never a correctness bug.
+2. The reverse must never happen by construction: if a query says a node is hidden, everything
+   inside it must ACTUALLY be behind that same occluding geometry — verify this against §15's own
+   ground-truth classifier (17.6), not assumed from the query semantics alone.
+3. Query result staleness across a moving camera — the HOLD window (17.4) trades a few stale
+   frames of over-conservatism (kept real one cycle too long) for avoiding query-storm cost; verify
+   this doesn't reintroduce the "pop/flicker" failure class §8 was gated against.
+
+### 17.6 Witness plan (same rigor as §13/§16 — frame-time A/B is still the only real bar)
+- **W-OCCL-BVH-EQUIV:** mechanism off ⇒ byte-identical to §16's own shipped behavior (same pattern:
+  a pure superset lever, never implied by `pvsEnabled`/`roomOcclEnabled` alone).
+- **W-OCCL-BVH-CORRECT:** THE important one — cross-check the traversal's hide/show verdict against
+  §15's own PROVEN ground-truth classifier (`occl_classify.js`, Stage-0-gated, `mismatch=0`) at the
+  SAME captured poses, not a fresh, unproven ground truth. Report false-hide rate (must be ~0 — a
+  real correctness bug if nonzero) separately from false-show rate (the acceptable conservative
+  residual, report honestly, same as §16.4's 31%).
+- **W-OCCL-BVH-STABILITY:** temporal-hold window doesn't flicker under the same synthetic flap
+  method §13/§16 already use.
+- **W-OCCL-BVH-PERF — the decisive witness:** real interior-flight A/B, same machine/route/method as
+  §13/§16's own PERF runs, reporting frame_ms AND draw calls AND bucket-empty count. Given §13 and
+  §16 have NOW BOTH shown a draw-call change without a frame-time change, this witness's own
+  finding is not assumed — if frame_ms still doesn't move despite emptying far more buckets than
+  §13/§16 could, that means the bottleneck is elsewhere (JS-side traversal/query overhead itself,
+  or a CPU submission cost independent of bucket occupancy) and must be reported as its own finding,
+  not chased by retuning until a number looks good.
+
+### 17.7 Non-goals (v1)
+No pill/UI, no default-on, no Time Machine port (unchanged from §11.3/§13/§16). No v2 camera-
+motion-aware re-query priority (17.4). No new occluder types beyond what's already in the scene
+(no synthetic coarse "room shell" proxies — the real geometry already rendered each frame IS the
+occluder, same as §15's own POC used).
+
+### 17.8 Open questions for user review before implementation
+1. Is the AABB-tree build cost (17.2, estimated ~2-3s from the SQLite comparison, not yet measured
+   for the actual JS in-memory version) acceptable as a per-building-load cost, or does it need to
+   be incremental/idle-deferred like `ensureRooms()`'s own pattern?
+2. Should 17.1's finding be acted on for `elements_rtree` too (write the binary node-blob decoder,
+   since the hierarchy genuinely exists on disk) as an alternative to a fresh in-memory tree, or is
+   a fresh JS tree simply less code for the same result? Leaning fresh-tree (this doc's own
+   recommendation) but flagged as an explicit choice, not a foregone one.
+3. Whether §16 (portal-PVS) and §17 (hierarchical occlusion) should compose (PVS as a first, near-
+   free filter; the BVH/GPU-query pass only for whatever PVS didn't already resolve) or whether §17
+   alone supersedes §16 entirely — compose is the more consistent choice with this file's own
+   "extend, don't discard" pattern (§9→§13 kept both criteria OR'd), tentatively recommended, not
+   decided here.
