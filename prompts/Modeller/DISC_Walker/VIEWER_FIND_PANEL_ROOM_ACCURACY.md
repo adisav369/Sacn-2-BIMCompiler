@@ -967,3 +967,75 @@ bim-ootb `fix/terminal-walkable-raster-splitdb`, **PR https://github.com/red1oon
 Terminal is now a fixed, raster-backed building — fleet raster coverage is Clinic/HHS/JKR/Hospital(tie)/
 Terminal. Stage B (raster-constrained A* routing replacing straight-line `_legalizePath` chords)
 proceeds using this coverage; it degrades honestly only on storeys with no raster at all.
+
+## §13 — STAGE B: raster-constrained A* routing — the drawn polyline hugs real floor
+## (2026-07-22, Opus session) — ✅ SHIPPED, bim-ootb PR #967
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb common/room_graph.js shortestPath() + viewer/navigate_find.js line render. The
+redesign §11 converged on: replace straight-line polyline legalization (straight chords between
+synthetic waypoints, patched post-hoc by a sparse door-visibility detour that failed 90-100% of
+multi-hop paths) with a real A* grid-search over the storey's own walkable raster. Read the log
+after every run. Push permission ON — own PR, no bundle with Stage A (#964).
+```
+
+### Design — ADDITIVE, zero risk to the logical route (the crucial call)
+The room SEQUENCE Dijkstra is correct (§11) and was NOT touched. `shortestPath()` gains **one new
+field, `polyline`** — world `{x,y,z}` points from A* over `_pointWalkable` (raster-first via
+`storey_raster.js`'s `contains()`, room+corridor-rect fallback, `null`=no-data). **`path`/`doors`/
+`distance` and the existing `_legalizePath` door-detour are UNTOUCHED** — this matters because the
+Stage-A raster witnesses (`witness_{jkr,hhs,hospital,terminal}_walkable_raster.js`) MEASURE the
+`§PATH_LEGAL_DETOUR_FAIL` rate that `_legalizePath`/`_detourForChord` emit; removing that mechanism
+would break them. So the polyline is the "additive geometric detail between real hops" the task named,
+and the viewer's `THREE.Line` now follows it (markers/room-list/zoom unchanged). Result: every existing
+witness is byte-identical, AND the drawn line hugs floor.
+
+### The key finding, proven on real data — §CIRC-NOT-A-WALKPOINT
+Root-caused why a naive A* fixed nothing: **every** illegal chord ran to/from the synthetic `circ`
+node — a per-storey circulation-hub CENTROID (stair-group average), NOT a walked point. Flood-fill
+proved it sits on a **disconnected raster island** (HHS Level 2: 3 walkable components, circ not in the
+main one), so A* correctly can't reach it. The polyline **bypasses circ and routes the flanking corridor
+spines directly** (HHS spine→spine straight = 61 illegal → A* polyline = 0). circ is never dropped from
+`path` (room list/markers keep it); cross-storey never relies on it (`_publicHop` already substitutes
+real `stairwp`). This is precisely §11's "synthetic bookkeeping centroids" diagnosis, closed.
+
+### §ON-FLOOR-GUARANTEE + honest degrade
+A* returns a route ONLY if it verifies on-floor **end to end** (including the anchor connectors);
+otherwise `null` → the caller keeps the original straight/synthetic route. So the polyline is provably
+**NEVER worse**, and where the raster connects the endpoints it is **100% on real floor by
+construction**. Where a building has no raster (Clinic/Duplex rect fallback), A* runs over the rects and,
+where doorway seams aren't rect-covered, verification fails → honest straight fallback (measured: 0
+regression, not the old straight-only reversion). Where `_pointWalkable` returns `null` (no floor data at
+all), the straight segment is the only non-invented route.
+
+### Witness — `witness_room_path_raster_polyline.js` (bim-ootb, committed), 7/7 green
+- **Terminal** (raster, Stage-A split-DB build): OLD straight **1152 illegal pts → polyline 0**
+  (`§POLY_LEGALITY reduction=100.0% improvedPairs=48 worsePairs=0`).
+- **HHS** (raster): **11866 → 90** illegal pts (`reduction=99.2% improvedPairs=322`) via the circ bypass.
+- ON-FLOOR GUARANTEE: `worsePairs T=0 HHS=0 Clinic=0 Duplex=0`.
+- Regression `§POLY_NOREG` path/doors/distance byte-identical to origin/main: Terminal 903/903,
+  HHS 5460/5460, JKR 2145/2145, Duplex 210/210.
+- Honest degrade: Clinic/Duplex `reduction=0.0%` (never worse, doorway seams genuinely uncrossable).
+- **Timing** `§POLY_TIMING Hospital` (largest, 156 rooms/7 storeys): **avg 34.9ms / max 126ms** per path
+  (real `process.hrtime`, connected pairs only) — well within an interactive Find-Panel click. Bounded
+  coarser widen pass (vs full-storey) brought max from 205ms → 126ms with zero correctness loss (the
+  §ON-FLOOR-GUARANTEE verification re-tests at fine res regardless).
+- Full existing suite green: `room_graph_path` 15/15, `room_graph_utility_penalty` 9/9,
+  `backbone_routing` 10/10, `corridor_room_backprop` 5/5, `full_connectivity` 6/6, `hallway_backbone`
+  7/7, `corridor_type_label` 5/5, `stair_flight_assembly_merge` 4/4, JKR/HHS/Terminal rasters all green.
+
+### Honest gaps / deferred
+- `witness_terminal_room_coordinate_fix` fails 2/5 — confirmed **pre-existing on origin/main** (verified by
+  stashing this change), a drifted §24 "before" fixture whose stale-patch baseline no longer reproduces the
+  old broken state. Unrelated to Stage B (this change doesn't touch `buildGraph`/`fullConnectivity`); named
+  here, not fixed (out of scope, own housekeeping task).
+- HHS's residual **90** illegal pts (of 11866) are the genuinely raster-disconnected chains — the same
+  upstream raster-coverage gap §21/§24 tracks; a routing pass can't bridge them, honest degrade applies.
+- `escapeRoute()` was intentionally left without a polyline (out of Find-Panel scope; it degrades to the
+  old room-center line via the viewer's fallback) — a clean follow-up if wanted.
+
+### Shipped
+bim-ootb `feat/room-path-raster-astar`, **PR https://github.com/red1oon/bim-ootb/pull/967** (pushed,
+un-merged — merge is the user's call). Files: `common/room_graph.js`, `viewer/navigate_find.js`,
+`viewer/main.js` (cache-bust v7→8 / v55→56), `witness_room_path_raster_polyline.js` (new).
