@@ -18,21 +18,42 @@ Receipt → vendor invoice + three-way match — and if not, exactly where does 
 | # | Stage | Driven | Result |
 |---|---|---|---|
 | 1 | Sales Order | UI | **PASS** (was FAIL 2026-07-20 — §Fix entries below, landed) |
-| 2 | Delivery / Shipment | UI | **PASS** (2026-07-22 — 7 layers fixed+landed; a real signed `M_InOut` document now reaches the op-log via the real UI, first time in this lane's history — see §Fix 2026-07-22 "Confirm & Post") |
-| 3 | Sales Invoice | UI | **FAIL** (blocked earlier, at process param-validation — `AD_Org_ID=NaN`, a separate casing bug in `listTip`'s stdDefaults fold, named not yet fixed; the commit-wiring built for Stage 2 is generic and should close Stage 3 too once this clears) |
-| 4 | Stock effect | UI-observed | **FAIL** (sharper finding, not a regression — a real signed shipment now exists, but `m_storageonhand` has no live fold off the op-log anywhere, so it still can't reflect it — a structurally-absent capability, unchanged since 2026-07-20) |
+| 2 | Delivery / Shipment | UI | **PASS** (2026-07-22 — a real signed `M_InOut` document reaches the op-log via the real UI, first time in this lane's history) |
+| 3 | Sales Invoice | UI | **PASS** (2026-07-22 — a real signed `C_Invoice` document reaches the op-log via the real UI; the SAME Confirm-and-Post wiring built for Stage 2, unmodified, closed this too once its own upstream blocker cleared) |
+| 4 | Stock effect | UI-observed | **FAIL** (structurally-absent capability, unrelated to any fix in this lane — `m_storageonhand` has no live fold off the op-log anywhere, so a real signed shipment still can't move it; scoped OUT of this lane, see §Closed below) |
 | 5 | Replenishment signal | UI | **PASS** |
 | 6 | Purchase Order | UI | **PASS** (§Fix 2026-07-21 "DocType/IsSOTrx" landed — the record is now correctly DATA-tagged Purchase, `c_doctypetarget_id:126 issotrx:"N"`; previously byte-identical to a Sales Order underneath) |
-| 7 | Material Receipt | UI | **ABSENT** |
-| 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** |
+| 7 | Material Receipt | UI | **ABSENT** (structural, out of scope — see §Closed below) |
+| 8 | Vendor invoice + three-way match | BLOCKED | **ABSENT** (blocked by design, out of scope — see §Closed below) |
 
-**Stage 2 now closes end-to-end for the first time in this lane's history (2026-07-20→22).** Eight
-connected fixes, each one layer deeper than the last (Sales Order completion, picker-overlay gap, dropped
-hook-derived CREATE fields, handler base-only reads, IsSOTrx/DocType-per-window, DeliveryRule/InvoiceRule,
-order-line parent-FK, and finally the missing Confirm/Post commit wiring itself) — full detail in the dated
-`§Fix` sections below, most recent first. Stage 3 is blocked earlier by one remaining, UNRELATED bug
-(`AD_Org_ID=NaN`); Stage 4 is a separately-scoped, structurally-absent capability (no live stock-fold);
-Stage 8 remains completely and permanently blocked by design, independent of everything else.
+## §Closed — the Sales-side O2C cycle (Order → Shipment → Invoice) is DONE, 2026-07-22
+
+**A real user can now drive Sales Order → Delivery → Sales Invoice completely through the live UI,
+end-to-end, with real cryptographically-signed documents landing in the op-log at every step.** Nine
+connected fixes closed this, each one layer deeper than the last found it: Sales Order completion
+(master/detail mis-selection, PR #928), picker-overlay gap (PR #938), dropped hook-derived CREATE fields
+(PR #944), handler base-only reads (PR #948), IsSOTrx/DocType-per-window (PR #953),
+DeliveryRule/InvoiceRule (PR #955), order-line parent-FK (PR #956), the missing Confirm/Post commit wiring
+itself (PR #960), and finally the `AD_Org_ID` casing bug that was uniquely blocking Stage 3 (PR #968). Full
+detail in the dated `§Fix` sections below, most recent first.
+
+**What's left is NOT a continuation of this bug-hunting lane — it's three separately-scoped, structural
+capability gaps, each independent of the other and of everything fixed above:**
+- **Stage 4 (Stock effect):** `m_storageonhand` has no live fold/recompute off the signed op-log anywhere in
+  `idempiere.html`/`crud_overlay.js` — a real completed shipment simply cannot be seen to move on-hand qty.
+  This is a missing READ-side capability (a new live-fold feature), not a bug in the write path just closed.
+- **Stage 7 (Material Receipt):** the manual `M_InOut` New form omits `M_Warehouse_ID`/`C_BPartner_ID`
+  entirely, and no Generate-process route exists for PO-side receipts (`inoutGenGate` is hard-gated
+  `IsSOTrx='Y'`-only). A real fix needs either a fuller manual form or a P2P-side Generate-Receipts process —
+  a bigger design question, not a small fix.
+- **Stage 8 (Vendor invoice + three-way match):** blocked by design at three independent points (`c_invoice`
+  has no `create` verb at all; `Generate-Invoices` is SO-only gated both at the picker SQL and the process
+  gate; no `M_MatchPO` emission exists anywhere). Closing this is effectively "build the P2P invoice path,"
+  not a bug fix.
+
+**For a future session:** each of these three is its own scoped project, not a "next item" in this same
+discovery witness. If picked up, start a NEW dated section (or a new doc) rather than continuing this one —
+this lane's own question ("can Sales-side O2C close end-to-end") is answered: yes, as of 2026-07-22.
 
 <details><summary>Original 2026-07-20 table (superseded, kept for history)</summary>
 
@@ -691,3 +712,41 @@ seed db — no live fold/recompute of on-hand off the op-log was found anywhere 
 CANNOT change what this table shows even if the document itself is real."* This is the SAME
 structurally-absent capability named back on 2026-07-20 (§Findings) — just now demonstrated against a real
 signed document instead of a hypothetical one, sharpening the finding rather than changing it.
+
+---
+
+## §Fix — 2026-07-22, `AD_Org_ID` casing — FIXED and witnessed. Stage 3 PASSES. Sales-side O2C is CLOSED.
+
+**Fix (branch `fix/adorgid-casing`, worktree `/tmp/wt-adorgid-casing`, bim-ootb PR #968, auto-merge armed):**
+confirmed and closed the last remaining named gap. `listTip`'s CRUD_CREATE `stdDefaults`-materialization
+block wrote a freshly-created row's derived tenant/audit columns in MIXED CASE (`nr['AD_Org_ID']`,
+`nr['CreatedBy']`, `nr['AD_Client_ID']`, `nr['Created']`, `nr['Updated']`, `nr['IsActive']`,
+`nr['Processed']`, `nr['Processing']`, `nr['Posted']`) while every OTHER key on that same row
+(`nr[c]=f[c]`, one line above) is lowercase — this codebase's column convention throughout
+(`m_warehouse_id`, `c_currency_id`, etc). Re-confirmed by grep before touching anything (not assumed):
+zero JS-property reads of the mixed-case form anywhere in `erp/` — only SQL text ever matched it, which is
+case-insensitive. Now lowercase, matching every other key this block sits beside. Single fix point (grepped
+for any second `stdDefaults`-materializing block — only this one exists).
+
+**Witnessed**, full log read:
+```
+before: §GENINV-LIVE run proc=119 Record_ID(C_Order_ID)=-1 AD_Org_ID=NaN
+        §AD-PROC-LIVE proc=119 ... dispatched=N reason=param-validation-failed
+after:  §GENINV-LIVE run proc=119 Record_ID(C_Order_ID)=-1 AD_Org_ID=0
+        §CRUD-GROUP-PERSIST ops=2 source=sidecar gid=55165c4d-... sealed=2 verifyChain=ok
+        §GENPROCESS-CONFIRM table=C_Invoice committed=Y gid=55165c4d-... ops=2 verifyOk=true
+        §CYCLE stage=3 name=SalesInvoice driven=UI result=PASS detail=C_Invoice created (op=6,
+          {"op_type":"CREATE_DOCUMENT","table":"C_Invoice","source_id":-1,"issotrx":"Y","ad_client_id":11,
+          "ad_org_id":0,"c_bpartner_id":112,"c_currency_id":100,"c_paymentterm_id":105,"m_pricelist_id":101,
+          "c_order_id":-1,"_sv":1,"_sigv":2,"signed_by":"3059301306072a8648ce3d..."}) via real
+          Generate-Invoices process picker
+```
+**Stage 3 (Sales Invoice) PASSES** — the Confirm & Post commit wiring built for Stage 2 (PR #960) needed
+ZERO changes to close Stage 3 too, confirming it really was generic (any KIND-2 op-group), exactly as
+predicted when it was built. No regression: Stage 2 (Shipment) still PASS.
+
+**With both Stage 2 and Stage 3 now genuinely PASS, the Sales-side O2C cycle (Sales Order → Delivery →
+Invoice) closes completely end-to-end through the real UI, with real signed documents at every step — the
+first time in this lane's entire 2026-07-20→22 history.** See §Closed at the top of this document for the
+full nine-fix summary and what's deliberately left as separately-scoped follow-on work (Stock effect,
+Material Receipt, Vendor invoice/three-way match — none of them "next items" in this same lane).
