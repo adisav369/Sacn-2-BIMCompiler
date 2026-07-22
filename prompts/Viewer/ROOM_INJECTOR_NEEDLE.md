@@ -564,3 +564,51 @@ effect of every algorithm fix since Hospital's rooms were last compiled, not thi
 fix in isolation — the join fix's own contribution (room CONTAINMENT, not room DETECTION count)
 isn't yet consumed by anything Fly Tour renders differently. Flagging this so a future session
 doesn't mis-attribute "Fly Tour got better" solely to §CONTAINMENT-ALIAS.
+
+### §FIND_ENSURE_ROOMS — Find Panel Room lens now self-heals (2026-07-21) — ✅ DONE, closes the follow-up flagged above
+bim-ootb: `fix/find-panel-ensure-rooms` — PR [red1oon/bim-ootb#954](https://github.com/red1oon/bim-ootb/pull/954).
+This implements exactly the "real follow-up" flagged in the "Corrected framing — Find Panel does NOT
+independently trigger this" note above (~line 499): Find Panel was a **passive reader** of
+`rel_contained_in_space`, so its Room facet only saw fresh/self-healed data if Fly Tour / Cinema-MaxQ /
+DLOD-nav ('o') / the manual needle happened to warm it FIRST in the same page session. Open Find + Room
+lens as the first action on a fresh load → stale rooms. Now the Room lens calls the same shared
+`A.ensureRooms()` core itself — becoming its **fifth caller**, not a parallel path (exactly the "NOT a
+fifth parallel room-compile path" discipline this doc argued for Time Machine two paragraphs up; here the
+fix is to ADD the missing call to the existing core, which is the same principle).
+
+**Hook points (traced the live click path on `origin/main`, not assumed):**
+- `_buildRoomTree()` top — `A.ensureRooms({})` **non-force** (respects the Stage-4 version-check trust
+  path: ~9ms when already fresh, pays the real recompile only once), guarded per-building
+  (`_roomsEnsuredBld`) so filter keystrokes / Storey↔Type↔Path sub-toggle switches don't re-fire it. A
+  real self-heal (`status==='injected'`) rebuilds the tree (`§FIND_ENSURE_ROOMS self-heal … — rebuilding
+  room tree`) so the user sees current rooms, not the stale set that first painted.
+- `_isolateLensGroup()` made `async` — awaits `A._ensureRoomsInflight` before reading `rel_contained_in_space`,
+  covering the race where a user taps a group on the pre-recompile tree before it rebuilt. Only call site
+  is the tree-row `onTap` (fire-and-forget), so async is safe. Both hooks were needed: the tree hook makes
+  the list current; the isolate await makes a fast tap during a ~7s Terminal recompile isolate against
+  current rows.
+
+**Witnessed headless (Chromium — Room lens opened via the real `#find-axis-toggle` cycle as the FIRST
+action on a fresh page load, NO Fly/Cinema/DLOD before it; fresh IndexedDB so `rooms_meta` starts absent):**
+
+*Small — HHS (the dramatic stale→fresh flip):*
+```
+[RP-T3] §LENS_GROUPS lens=room mode=volume groupBy=storey groups=4 rooms=14     <- stale tree first paint
+[NEEDLE] §NEEDLE_VERSION_STALE bld=HHS_Office_Federated_extracted.db stored=null current=v3 (…) — recompiling
+[NEEDLE] §NEEDLE_INJECT bld=HHS_Office_Federated source=patch+walker rooms=73 rects=96
+[NEEDLE] §NEEDLE_STAMP rooms_meta version=v3 (…) rooms=73 source=patch+walker
+[RP-T3] §FIND_ENSURE_ROOMS self-heal bld=HHS_Office_Federated source=patch+walker rooms=73 — rebuilding room tree
+[RP-T3] §LENS_GROUPS lens=room mode=volume groupBy=storey groups=4 rooms=96     <- fresh tree, rebuilt
+§FIND_ENSURE_WITNESS db=HHS_Office_Federated_extracted.db RESULT=PASS ensureFired=true selfHeal=true rooms_meta null->v3 ifcspace 14->96 rel 88->1464
+```
+*Large — Terminal:* `§FIND_ENSURE_ROOMS self-heal … source=patch`, `rooms_meta null->v3`, tree rebuilt.
+`RESULT=PASS ensureFired=true selfHeal=true`.
+*Mid — Duplex:* stale `rooms=5` → `§FIND_ENSURE_ROOMS self-heal … source=walker rooms=7` → tree rebuilt
+`rooms=11`; `rooms_meta null->v3`. `RESULT=PASS`.
+
+All three: the Room lens as the first action fired the self-heal and rebuilt the tree to current data —
+the order-of-operations dependency is gone. `ROOM_WALKER_V` is now `v3` (§CONTAINMENT-ALIAS, PR #950), so
+the recompiled sets carry that fix too.
+
+**Cache-bust:** `navigate_find.js?v=54 → ?v=55` (main.js). `sw.js` `CACHE_VERSION` NOT bumped
+(`navigate_find.js` not in `PRECACHE_ASSETS`). Builds on #947 (Stage 4).

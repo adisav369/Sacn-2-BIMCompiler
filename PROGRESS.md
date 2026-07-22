@@ -47,12 +47,11 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   §14 — Hospital's real per-tab-switch number never captured (263MB DB wouldn't stream in sandbox).
 - `prompts/PHOTOREAL_STILL_RENDER.md` — Alt+C cinema-orbit: §CINEMA_ORBIT_V2 (#907/921/923/925)
   live-tested 2026-07-21, found real (not the already-witnessed) bugs — bim-ootb PR #931 (ghost/
-  x-ray stuck through orbit) + PR #933 (candidate-skip, fixes Duplex-class only — Terminal/Hospital/
-  HHS need the room-compile fix below, not more cinema-code changes) shipped, both awaiting merge.
-- `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP — version-stamp + self-heal
-  room compile (economics: newbies' own uploaded buildings must self-heal, not need per-building dev
-  re-patching). Staged 1-2-3 plan written, NOT started. Blocks HHS's Alt+C fix from shipping (see
-  PHOTOREAL_STILL_RENDER.md's own pointer) — do this sub-task first, HHS should self-heal after.
+  x-ray stuck through orbit) + PR #933 (candidate-skip, fixes Duplex-class only) shipped. Room-compile
+  self-heal blocker (below) is now CLOSED — this should render correctly on Hospital/Terminal/HHS now.
+- **NEXT session, resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
+  — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
+  land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
 - HBA IoT items 1/2/0 (CCTV double-click, camera-POV fly-to ⛔ needs facing vector, mobile
   card-stack) — `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -63,6 +62,11 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22) — version-stamped compile
+  self-heals every building (#947), Find Panel wired as 5th `ensureRooms()` caller (#954), utility-room
+  routing penalty (#959/#961), Terminal raster fix + A*-on-raster polyline routing (#964/#967, un-merged).
+  Hard-fail-illegal-chords tried, measured harmful, reverted (honest negative). Log-precision follow-up
+  NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md` + `.../VIEWER_FIND_PANEL_ROOM_ACCURACY.md §9-§14`.
 - ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (07-20), bim-ootb PR #908 UNMERGED, 8/8 residents REAL. `GEOMETRY_TRUTH_CHAIN.md`.
 - ✅ SampleCastle blocky CLOSED (07-20) — root cause: stale client IndexedDB, not a regression.
   `Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED.
@@ -82,12 +86,8 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
 ## OCI Deployment
-- Live: `bim-ootb-live` (SYSNOVA landing + viewer + single DBs). Always upload here.
-- Single DB per building: `buildings/{Name}_extracted.db` (metadata + geometry + bbox).
-- `deploy/sandbox/` stale (last ~S225) — not used for deploy. `deploy/dev/` is canonical.
-- Deploy SOP: `deploy/OCI_UPLOAD.md`
+Live: `bim-ootb-live` (SYSNOVA landing+viewer+single DBs, `buildings/{Name}_extracted.db`). Always
+upload here — `deploy/dev/` is canonical, `deploy/sandbox/` stale. SOP: `deploy/OCI_UPLOAD.md`.
 
 ## Reference
-- Docs site: https://red1oon.github.io/BIMCompiler/
-- Academic paper: `docs/SPATIAL_COMPILATION_PAPER.md`
-- OCI setup: `internal/OCI_SETUP.md`
+Docs: https://red1oon.github.io/BIMCompiler/ · `docs/SPATIAL_COMPILATION_PAPER.md` · `internal/OCI_SETUP.md`

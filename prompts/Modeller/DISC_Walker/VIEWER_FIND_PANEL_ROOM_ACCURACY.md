@@ -1039,3 +1039,74 @@ all), the straight segment is the only non-invented route.
 bim-ootb `feat/room-path-raster-astar`, **PR https://github.com/red1oon/bim-ootb/pull/967** (pushed,
 un-merged — merge is the user's call). Files: `common/room_graph.js`, `viewer/navigate_find.js`,
 `viewer/main.js` (cache-bust v7→8 / v55→56), `witness_room_path_raster_polyline.js` (new).
+
+## §14 — LOG PRECISION FIRST: two real console-log findings show the gap directly (2026-07-22)
+**User's standing directive, this session:** logging needs to be precise enough to pinpoint an issue
+from the log text ALONE — live-browser + human checking every time is expensive and should be the
+LAST resort, not the first move. Read this section before dispatching any live-browser diagnostic
+session on a Find-Panel/room-lens symptom — check whether the existing `§`-log lines already answer
+it first; if they don't (as below), FIX THE LOGGING before spending a browser session on it.
+
+**The contrast that makes the case, from this session's own two real questions:**
+1. **Hospital's corridor-coloring gap WAS pinpointed from log text alone, zero browser needed** —
+   `§CORRIDOR_TYPE_LABEL classifiedRooms=0 / 142`, `§ROOM_LENS_CATEGORY ... corridor=0 ...`, and
+   `§CATEGORY_REVEAL on gk="Hall / Corridor" rooms=0 doors=59` together prove, in plain log text, that
+   zero real compiled rooms are ever classified "corridor" even though 59 corridor-adjacent doors exist
+   — root cause (label-keyword classifier has nothing to match on 100%-synthetic unlabeled rooms) was
+   derivable on sight. This is the log-precision BAR to hold every other axis to.
+2. **Terminal's "disciplines disappeared except Air-Conditioning" could NOT be answered from the same
+   log** — every discipline-related log line in the whole session's Terminal capture prints a bare
+   COUNT, never the actual codes/labels:
+   - `viewer/streaming.js:216` — `§BBOX_PLACEHOLDERS ... discs=${discEntries.length}`
+   - `viewer/streaming.js:1808` — `§BBOX_RECOLOR discs=' + new Set(_colorRows.map(r=>r[3])).size`
+   - `viewer/navigate_find.js:4127` — `§FIND_TREE mode=disc discs=' + discs[0].values.length` (inside
+     `_buildDiscTree()`, `:4085-4127` — the raw `[discipline, count]` rows ARE sitting right there in
+     `discs[0].values` at the exact line that logs only `.length`; not logging them is the whole gap)
+   - `viewer/dlod_nav.js:150`, `viewer/measure.js:1721`, `viewer/time_machine.js:585` — same
+     count-only pattern, three more call sites.
+   Both Hospital and Terminal booted with the SAME `discs=7` count at BOTH boot-recolor and
+   Find-panel-disc-tree time — the count survives, but nothing says WHICH 7, so a real bug (a
+   discipline code present but its `friendlyDisc()` translation failing/blank — plausible given
+   `en_MY` locale + Terminal's Malay storey names, `§TRL_LOADED cached locale=en_MY keys=334`) and a
+   non-bug (7 real disciplines, correctly labeled, user simply misread the panel) are INDISTINGUISHABLE
+   from this log. That ambiguity is exactly what forces a live-browser check — avoidable.
+
+### Task — fix the logging with a SUMMARY-first, DETAIL-on-mismatch pattern (not unconditional dumps)
+**User's refinement (2026-07-22):** don't just dump full lists everywhere — that trades "can't
+diagnose" for "spammy, still hard to read." The right shape, applied consistently: always log one
+CHEAP compact assertion (two numbers, or a small coverage count); only expand to the full
+breakdown/list when those two numbers actually disagree. Same principle as this codebase's own
+`§CONTRACT_CHECK batch=... instanced=... guidMap=... streamed=... orphans=0` line elsewhere in this
+file's own captured log (already exactly this pattern — a one-line reconciliation of several counts,
+present every load, cheap, and `orphans=0` is the signal to watch, not a list to read) — extend that
+SAME shape to the two gaps this session found, don't invent a new logging idiom:
+
+1. **Computed-vs-rendered count check, generalized past just disc** — every `_build*Tree()` function
+   (`_buildDiscTree`, and the room/type/material/storey equivalents) computes a count from SQL
+   (`discs[0].values.length` etc.) and separately renders N tree nodes via `elTree.appendChild()` in a
+   loop that can silently skip rows (a falsy `disc`/filter continue, same as the `if (!disc) return`
+   guard already in `_buildDiscTree` at `:4094`). Change each tree-builder's existing summary log
+   (`§FIND_TREE mode=disc discs=7` etc.) to a **reconciliation line**: computed vs. actually-appended
+   count, e.g. `§FIND_TREE mode=disc computed=7 rendered=7` (still one line, no spam) — and ONLY when
+   `computed !== rendered`, append the specific skipped code(s)/reason on that SAME line (e.g.
+   `computed=7 rendered=6 skipped=[null-disc:1]`). Healthy case stays a single terse number pair;
+   broken case is self-diagnosing without a second log line or a browser.
+2. **"Black-box" coverage metric for space/color assignment** — a single compact count, not a list:
+   how many real doors/elements got NO room/space color classification at all, alongside the existing
+   `§ROOM_LENS_CATEGORY` breakdown (e.g. append `unassignedDoors=N` to that same existing line — do
+   not add a new separate log call). This is the general form of what `§CORRIDOR_TYPE_LABEL
+   classifiedRooms=0/142` already showed for corridors specifically — generalize it to "how many
+   real doors sit in a space that got no category at all," which would have flagged the Hospital
+   finding in ONE number instead of needing three correlated lines to reconstruct it.
+
+**Where:** `viewer/navigate_find.js` — `_buildDiscTree()` (`:4085-4127`) first (the live question),
+`§ROOM_LENS_CATEGORY`'s existing log call (search for that exact tag) second. Apply the same
+reconciliation shape to the other tree-builders (room/type/material/storey) and the other 5 count-only
+disc sites (`dlod_nav.js:150`, `measure.js:1721`, `streaming.js:216`/`:1808`, `time_machine.js:585`)
+only if/when a real question is blocked on one of them — don't blanket-rewrite speculatively.
+
+### Non-goal
+Do NOT use this task to go diagnose Terminal's actual discipline-list symptom yet — that's still a
+live-browser question, deliberately deferred until the logging fix above lands and can be read from a
+fresh capture first. Log fix → re-capture → read the (now self-diagnosing) summary line → only open a
+browser if it genuinely still can't resolve it.
