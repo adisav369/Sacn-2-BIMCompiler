@@ -1,0 +1,416 @@
+#!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
+// ⚠ DO NOT REMOVE — prompts/ERP_P2P_INVOICE_MATCH.md. DISCOVERY/PROOF WITNESS for the fixes landed there
+// (§Fix 1/2/3/5): Material Receipt (Stage 7) unblocked via manual header+line entry against a real PO,
+// M_MatchPO emitted on Receipt Complete; Vendor Invoice (Stage 8) unblocked the same way, M_MatchInv
+// emitted on Invoice Complete; the shared M_InOutLine_ID linkage between the two IS the three-way match.
+// A break is a real finding, not a script bug — read the log, don't assume PASS from exit code.
+//
+// REAL USER PATH ONLY: every mutation is driven by page.click()/page.fill()/page.selectOption() on the
+// real toolbar/inline-form/DocAction-bar, mirroring scripts/witness_e2e_business_cycle.js's own Stage 6/7/8
+// helpers verbatim (deepUrl/fillField/clickToolbarBtn/rowIdByText/clickRowOpen/waitForCrudPersist). The
+// ONLY page.evaluate() calls are READ-ONLY observation via the app's OWN published accessors
+// (window.__idmpDb.exec, window.__crud.kernelDb()/core.*, window.KernelOps.replayOps) — never a fake commit.
+//
+// Run: WITNESS_ROOT=/tmp/wt-p2p-invoice-match bash build/erp/run_witness.sh scripts/witness_p2p_invoice_match.js
+'use strict';
+var path = require('path'), http = require('http'), fs = require('fs');
+var ROOT = process.env.WITNESS_ROOT || '/tmp/wt-p2p-invoice-match';
+var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
+  '.db': 'application/octet-stream', '.wasm': 'application/wasm' };
+function reqPw() { try { return require('playwright'); } catch (e) { return require('/home/red1/bim-ootb/tests/node_modules/playwright'); } }
+
+function log(m) { console.log('   ' + m); }
+var stageResults = [];
+function cycleLine(n, name, driven, result, detail) {
+  var l = '§P2P stage=' + n + ' name=' + name + ' driven=' + driven + ' result=' + result + ' detail=' + detail;
+  console.log(l);
+  stageResults.push({ n: n, name: name, driven: driven, result: result, detail: detail });
+  return l;
+}
+function verdict(ok, label, detail) { console.log('   ' + (ok ? '🟢' : '🔴') + ' ' + label + (detail ? ' — ' + detail : '')); }
+
+function mkWaiter(page, tag) {
+  var lines = [], cursor = 0;
+  page.on('console', function (m) { var t = m.text(); lines.push(t); if (/^§/.test(t)) log('[' + tag + '] ' + t); });
+  page.on('dialog', function (d) { log('[' + tag + '] ALERT: ' + d.message()); d.accept(); });
+  return {
+    lines: lines,
+    wait: function (regexes, timeoutMs) {
+      var start = Date.now();
+      return new Promise(function (resolve, reject) {
+        (function poll() {
+          for (; cursor < lines.length; cursor++) {
+            for (var i = 0; i < regexes.length; i++) if (regexes[i].test(lines[cursor])) return resolve({ line: lines[cursor], which: i });
+          }
+          if (Date.now() - start > (timeoutMs || 12000)) return reject(new Error('[' + tag + '] timeout waiting for ' + regexes.join(' | ')));
+          setTimeout(poll, 100);
+        })();
+      });
+    }
+  };
+}
+function waitForCrudPersist(waiter, table, timeoutMs) {
+  var rxPersist = new RegExp('§CRUD-PERSIST key=' + table + ' '), rxReject = new RegExp('§CRUD-GATE key=' + table + '.*REJECT'),
+    rxSkip = new RegExp('§(CRUD-HOSTCREATE|INPLACE-NEW) table=' + table + ' skipped');
+  return waiter.wait([rxPersist, rxReject, rxSkip], timeoutMs).then(function (r) {
+    if (r.which === 0) return { committed: true, line: r.line };
+    if (r.which === 1) return { committed: false, reason: 'owner-gate REJECT', line: r.line };
+    return { committed: false, reason: 'create not permitted', line: r.line };
+  }).catch(function (e) { return { committed: false, reason: 'timeout: ' + e.message }; });
+}
+function sql(page, q) {
+  return page.evaluate(function (query) {
+    try {
+      var r = window.__idmpDb.exec(query);
+      if (!r.length) return [];
+      var cols = r[0].columns, out = [];
+      r[0].values.forEach(function (row) { var o = {}; cols.forEach(function (c, i) { o[c] = row[i]; }); out.push(o); });
+      return out;
+    } catch (e) { return { __error: e.message }; }
+  }, q);
+}
+// matchLinesFor — read-only observation via window.__crud.kernelDb() + window.KernelOps.replayOps, the
+// app's OWN published sidecar accessors (same family as the O2C witness's tipDocsFor). Filters CREATE_LINE
+// ops by table name — M_MatchPO/M_MatchInv are junction records (erp_engine.js completeReceipt/
+// completeInvoice), not documents, so tipDocs (CREATE_DOCUMENT-only) doesn't see them.
+function matchLinesFor(page, table) {
+  return page.evaluate(function (t) {
+    var K = window.__crud && window.__crud.kernelDb ? window.__crud.kernelDb() : null;
+    if (!K || !window.KernelOps) return { ok: false, rows: [] };
+    var ops = window.KernelOps.replayOps(K, 'CREATE_LINE');
+    var rows = ops.filter(function (o) { return o.parameters && String(o.parameters.table) === t; }).map(function (o) { return o.parameters; });
+    return { ok: true, rows: rows };
+  }, table);
+}
+// foldedRowsFor — read-only observation of a fresh (sidecar-only) row set via the app's OWN published
+// listTip accessor (window.__crud.core.listTip / window.__crud.kernelDb), the same convention
+// witness_e2e_business_cycle.js's renderOrderPicker fix established. baseRows=[] since these child tables
+// carry no seed rows in this tenant — the fold is 100% CRUD_CREATE overlay for a freshly-authored row.
+function foldedRowsFor(page, table, pkCol) {
+  return page.evaluate(function (args) {
+    var c = window.__crud;
+    if (!c || !c.kernelDb || !c.core || typeof c.core.listTip !== 'function') return { ok: false, rows: [] };
+    var K = c.kernelDb();
+    if (!K) return { ok: false, rows: [] };
+    var folded = c.core.listTip(K, args.table, args.pkCol, [], null);
+    return { ok: true, rows: (folded && folded.rows) || [] };
+  }, { table: table, pkCol: pkCol });
+}
+async function fillField(page, col, value, kind) {
+  var sel = '#idmp-inline-mount input[data-col="' + col + '"], #idmp-inline-mount select[data-col="' + col + '"]';
+  var el = await page.$(sel);
+  if (!el) return 'absent';
+  var disabled = await el.evaluate(function (e) { return !!e.disabled; });
+  if (disabled) return 'locked';
+  var visible = await el.isVisible();
+  if (!visible) return 'hidden';
+  var tag = await el.evaluate(function (e) { return e.tagName; });
+  if (tag === 'SELECT') await page.selectOption(sel, String(value));
+  else await page.fill(sel, String(value));
+  return true;
+}
+async function clickToolbarBtn(page, titlePrefix) {
+  var btn = await page.$('#idmp-toolbar button[title^="' + titlePrefix + '"]');
+  if (!btn) return false;
+  await btn.click();
+  return true;
+}
+async function rowIdByText(page, text) {
+  var rows = await page.$$('tr[data-ad-record]');
+  for (var i = 0; i < rows.length; i++) {
+    var t = await rows[i].textContent();
+    if (t && t.indexOf(text) >= 0) return { id: await rows[i].getAttribute('data-ad-record'), handle: rows[i] };
+  }
+  return null;
+}
+async function clickRowOpen(row, opts) {
+  var poCell = await row.$('td[data-ad-col="POReference"]');
+  if (poCell) { await poCell.click(opts); return; }
+  await row.click(opts);
+}
+function deepUrl(port, params) {
+  var q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  return 'http://localhost:' + port + '/erp/idempiere.html?' + q;
+}
+
+(async function () {
+  var server = http.createServer(function (req, res) {
+    var p = decodeURIComponent(req.url.split('?')[0]);
+    var fp = path.join(ROOT, p);
+    if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) { res.writeHead(404); res.end('nf'); return; }
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
+    fs.createReadStream(fp).pipe(res);
+  });
+  await new Promise(function (r) { server.listen(0, r); });
+  var port = server.address().port;
+  var browser = await reqPw().chromium.launch();
+  var harnessThrew = false;
+  var page = await browser.newPage();
+  var w = mkWaiter(page, 'P2P');
+  var today = new Date().toISOString().slice(0, 10);
+  var newPoId = null, newRcptId = null, newInvId = null;
+
+  try {
+    // ════════════════════════════════════════════════════════════════════
+    // STAGE 1 — Purchase Order (source doc for the whole match chain), window 181. Same recipe as
+    // witness_e2e_business_cycle.js's own Stage 6.
+    // ════════════════════════════════════════════════════════════════════
+    console.log('\n═══ STAGE 1 — Purchase Order (source doc) ═══\n');
+    var uniqPoDoc = String(Date.now());
+    try {
+      await page.goto(deepUrl(port, { login: 'GardenAdmin', window: 181 }), { waitUntil: 'load' });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 20000 });
+      await clickToolbarBtn(page, 'New record');
+      await page.waitForSelector('#idmp-inline-mount [data-col="c_bpartner_id"]', { timeout: 10000 });
+      await fillField(page, 'documentno', uniqPoDoc);
+      await fillField(page, 'c_bpartner_id', '120');
+      await fillField(page, 'dateordered', today);
+      await fillField(page, 'grandtotal', '45.00');
+      await fillField(page, 'm_pricelist_id', '101');
+      await fillField(page, 'bill_bpartner_id', '120');
+      await clickToolbarBtn(page, 'Save');
+      var p1 = await waitForCrudPersist(w, 'c_order', 15000);
+      log('§P2P-SAVE table=c_order(PO) committed=' + p1.committed + (p1.reason ? ' reason=' + p1.reason : ''));
+      if (!p1.committed) throw new Error('PO header create did not persist: ' + p1.reason);
+      await page.waitForTimeout(600);
+      var found1 = await rowIdByText(page, uniqPoDoc);
+      if (!found1) throw new Error('no grid row found for documentno ' + uniqPoDoc);
+      newPoId = found1.id;
+      log('§P2P-STATE new PO c_order_id=' + newPoId);
+
+      await clickRowOpen(found1.handle, { timeout: 8000 });
+      await page.waitForTimeout(400);
+      await page.click('#idmp-tabstrip >> text=PO Line', { timeout: 8000 });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 10000 });
+      await clickToolbarBtn(page, 'New record');
+      await page.waitForSelector('#idmp-inline-mount [data-col="m_product_id"]', { timeout: 10000 });
+      await fillField(page, 'c_order_id', String(newPoId));
+      await fillField(page, 'c_bpartner_id', '120');
+      await fillField(page, 'dateordered', today);
+      await fillField(page, 'line', '10');
+      await fillField(page, 'm_warehouse_id', '103');
+      await fillField(page, 'm_product_id', '130');
+      await fillField(page, 'qtyentered', '5');
+      await fillField(page, 'c_uom_id', '100');
+      await fillField(page, 'qtyordered', '5');
+      await fillField(page, 'priceentered', '9.00');
+      await fillField(page, 'priceactual', '9.00');
+      await fillField(page, 'c_tax_id', '104');
+      await clickToolbarBtn(page, 'Save');
+      var p1b = await waitForCrudPersist(w, 'c_orderline', 15000);
+      log('§P2P-SAVE table=c_orderline(PO) committed=' + p1b.committed + (p1b.reason ? ' reason=' + p1b.reason : ''));
+      if (!p1b.committed) throw new Error('PO line create did not persist: ' + p1b.reason);
+
+      await page.click('#idmp-tabstrip >> text=Purchase Order', { timeout: 8000 }).catch(function () { return page.click('#idmp-tabstrip >> text=Order'); });
+      await page.waitForTimeout(500);
+      var found1b = await rowIdByText(page, uniqPoDoc);
+      if (!found1b) throw new Error('PO row not found on returning to header tab');
+      await clickRowOpen(found1b.handle, { timeout: 8000 });
+      await page.waitForTimeout(500);
+      var coBtn1 = page.locator('.idmp-docfsm button[data-doc-action="CO"]');
+      if (await coBtn1.count()) { await coBtn1.first().click(); await w.wait([/§AD-DOCFSM-LIVE.*clicked=CO/], 8000).catch(function () {}); }
+      var poChip = await page.locator('.idmp-docfsm .chip').first().textContent().catch(function () { return null; });
+      var stage1Ok = !!(poChip && /·\s*CO\b/.test(poChip));
+      verdict(stage1Ok, 'Stage1: PO reaches CO', 'chip=' + poChip);
+      cycleLine(1, 'PurchaseOrder', 'UI', stage1Ok ? 'PASS' : 'FAIL', 'PO id=' + newPoId + ' chip=' + poChip);
+    } catch (e) {
+      log('🔴 Stage1 threw: ' + e.message);
+      cycleLine(1, 'PurchaseOrder', 'UI', 'FAIL', 'exception: ' + e.message.replace(/\n/g, ' '));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // STAGE 2 — Material Receipt against the PO (ERP_P2P_INVOICE_MATCH.md §Fix 1: m_warehouse_id/
+    // c_bpartner_id/c_order_id header fields; §Fix 2: movementtype/issotrx derived from the window).
+    // ════════════════════════════════════════════════════════════════════
+    console.log('\n═══ STAGE 2 — Material Receipt (header + line against the PO) ═══\n');
+    var uniqRcptDoc = String(Date.now() + 1);
+    try {
+      await page.goto(deepUrl(port, { login: 'GardenAdmin', window: 184 }), { waitUntil: 'load' });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 20000 });
+      await clickToolbarBtn(page, 'New record');
+      await page.waitForSelector('#idmp-inline-mount [data-col="documentno"]', { timeout: 10000 });
+      var rcptFields = await page.$$eval('#idmp-inline-mount [data-col]', function (els) { return Array.from(new Set(els.map(function (e) { return e.getAttribute('data-col'); }))); });
+      log('§P2P-FORM m_inout header fields shown: ' + rcptFields.join(','));
+      var hasWh = rcptFields.indexOf('m_warehouse_id') >= 0, hasBp = rcptFields.indexOf('c_bpartner_id') >= 0, hasPo = rcptFields.indexOf('c_order_id') >= 0;
+      verdict(hasWh && hasBp && hasPo, 'Stage2: Material Receipt New form now exposes warehouse+vendor+PO (§Fix 1)', 'fields=' + rcptFields.join(','));
+      await fillField(page, 'documentno', uniqRcptDoc);
+      await fillField(page, 'movementdate', today);
+      await fillField(page, 'm_warehouse_id', '103');
+      await fillField(page, 'c_bpartner_id', '120');
+      await fillField(page, 'c_order_id', String(newPoId));
+      await clickToolbarBtn(page, 'Save');
+      var p2 = await waitForCrudPersist(w, 'm_inout', 15000);
+      log('§P2P-SAVE table=m_inout committed=' + p2.committed + (p2.reason ? ' reason=' + p2.reason : ''));
+      if (!p2.committed) throw new Error('m_inout header create did not persist: ' + p2.reason);
+      var mvLine = w.lines.filter(function (l) { return /§AD-MODELVAL-LIVE table=m_inout verb=create/.test(l); }).pop();
+      log('§P2P-STATE m_inout modelval-derive-line=' + (mvLine || 'NONE (movementtype/issotrx derivation did not fire)'));
+      await page.waitForTimeout(600);
+      var found2 = await rowIdByText(page, uniqRcptDoc);
+      if (!found2) throw new Error('no grid row found for documentno ' + uniqRcptDoc);
+      newRcptId = found2.id;
+      log('§P2P-STATE new m_inout_id=' + newRcptId);
+
+      await clickRowOpen(found2.handle, { timeout: 8000 });
+      await page.waitForTimeout(400);
+      await page.click('#idmp-tabstrip >> text=Receipt Line', { timeout: 8000 }).catch(function () { return page.click('#idmp-tabstrip >> text=Line'); });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 10000 });
+      await clickToolbarBtn(page, 'New record');
+      await page.waitForSelector('#idmp-inline-mount [data-col="m_product_id"]', { timeout: 10000 });
+      var lineFields2 = await page.$$eval('#idmp-inline-mount [data-col]', function (els) { return Array.from(new Set(els.map(function (e) { return e.getAttribute('data-col'); }))); });
+      log('§P2P-FORM m_inoutline fields shown: ' + lineFields2.join(','));
+      // FINDING (separate, pre-existing, OUT of this lane's scope — the generic FK dropdown populator
+      // (idempiere.html populateRefs) reads the RAW bundle only, same "fresh rows are sidecar-only,
+      // invisible to a raw-bundle-driven read" class of gap ERP_BUSINESS_CYCLE_E2E.md §Fix 2026-07-21
+      // already found+fixed for renderOrderPicker's <select> — just never hit before for a generic
+      // AD-tab FK <select> because the O2C lane never manually linked one fresh child row to another via
+      // a picked dropdown value (buildDoc's auto-fold always supplied the FK programmatically, not via a
+      // rendered <option>). Confirmed live: page.selectOption() times out — "did not find some options" —
+      // for a real, freshly-resolved c_orderline_id value. Named, not silently worked around: this witness
+      // sidesteps it by sourcing the match-chain from a REAL SEED Purchase Order line (id=108, order 104,
+      // product 123) instead of the freshly-created PO from Stage 1 — a real, positive id IS listed in the
+      // dropdown (populateRefs' raw-bundle read finds it), so the actual subject of THIS fix (does
+      // completeReceipt/completeInvoice emit M_MatchPO/M_MatchInv correctly once the FK is set) is still
+      // exercised for real, just anchored on a stable seed line rather than Stage 1's fresh one.
+      var seedPoLineId = 108, seedPoOrderId = 104, seedPoProduct = 123;
+      await fillField(page, 'c_orderline_id', String(seedPoLineId));
+      await fillField(page, 'm_inout_id', String(newRcptId));
+      await fillField(page, 'm_product_id', String(seedPoProduct));
+      await fillField(page, 'movementqty', '2');
+      await fillField(page, 'line', '10');
+      await clickToolbarBtn(page, 'Save');
+      var p2b = await waitForCrudPersist(w, 'm_inoutline', 15000);
+      log('§P2P-SAVE table=m_inoutline committed=' + p2b.committed + (p2b.reason ? ' reason=' + p2b.reason : ''));
+      if (!p2b.committed) throw new Error('m_inoutline create did not persist: ' + p2b.reason);
+
+      await page.click('#idmp-tabstrip >> text=Material Receipt', { timeout: 8000 }).catch(function () {});
+      await page.waitForTimeout(500);
+      var found2b = await rowIdByText(page, uniqRcptDoc);
+      if (found2b) { await clickRowOpen(found2b.handle, { timeout: 8000 }); await page.waitForTimeout(500); }
+      var coBtn2 = page.locator('.idmp-docfsm button[data-doc-action="CO"]');
+      var coVis2 = await coBtn2.count();
+      if (coVis2) { await coBtn2.first().click(); await w.wait([/§AD-DOCFSM-LIVE.*clicked=CO/], 8000).catch(function () {}); }
+      var rcptChip = await page.locator('.idmp-docfsm .chip').first().textContent().catch(function () { return null; });
+      var matchPoLine = await w.wait([/§RECEIPT-FANOUT receipt=/], 6000).catch(function () { return null; });
+      log('§P2P-FANOUT-CHECK receipt CO chip=' + rcptChip + ' fanoutLine=' + (matchPoLine ? matchPoLine.line : 'NONE'));
+      var stage2Ok = !!(rcptChip && /·\s*CO\b/.test(rcptChip));
+      verdict(stage2Ok, 'Stage2: Material Receipt reaches CO through the real UI', 'chip=' + rcptChip);
+      cycleLine(2, 'MaterialReceipt', 'UI', stage2Ok ? 'PASS' : 'FAIL',
+        'm_inout id=' + newRcptId + ' chip=' + rcptChip + ' fanout=' + (matchPoLine ? matchPoLine.line : 'none') + ' coButtonVisible=' + coVis2);
+    } catch (e) {
+      log('🔴 Stage2 threw: ' + e.message);
+      cycleLine(2, 'MaterialReceipt', 'UI', 'FAIL', 'exception: ' + e.message.replace(/\n/g, ' '));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // STAGE 3 — Vendor Invoice against the same PO (§Fix 1: "create" verb + c_bpartner_id/c_order_id;
+    // §Fix 2: issotrxFromWindow derivation).
+    // ════════════════════════════════════════════════════════════════════
+    console.log('\n═══ STAGE 3 — Vendor Invoice (header + line against the PO) ═══\n');
+    var uniqInvDoc = String(Date.now() + 2);
+    try {
+      await page.goto(deepUrl(port, { login: 'GardenAdmin', window: 183 }), { waitUntil: 'load' });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 20000 });
+      await clickToolbarBtn(page, 'New record');
+      var newAttempt3 = await w.wait([/§INPLACE-NEW table=c_invoice|§AD-MODELVAL-LIVE table=c_invoice/], 6000).catch(function () { return null; });
+      var mount3 = await page.$('#idmp-inline-mount [data-col]');
+      log('§P2P-NEW-ATTEMPT c_invoice: ' + (newAttempt3 ? newAttempt3.line : 'none captured') + ' mountPresent=' + !!mount3);
+      verdict(!!mount3, 'Stage3: Vendor Invoice "New" now mounts a real form (§Fix 1 "create" verb)', 'mountPresent=' + !!mount3);
+      if (!mount3) throw new Error('c_invoice New form did not mount — "create" verb fix did not land');
+
+      await fillField(page, 'documentno', uniqInvDoc);
+      await fillField(page, 'dateinvoiced', today);
+      await fillField(page, 'c_bpartner_id', '120');
+      await fillField(page, 'c_order_id', String(newPoId));
+      await clickToolbarBtn(page, 'Save');
+      var p3 = await waitForCrudPersist(w, 'c_invoice', 15000);
+      log('§P2P-SAVE table=c_invoice committed=' + p3.committed + (p3.reason ? ' reason=' + p3.reason : ''));
+      if (!p3.committed) throw new Error('c_invoice header create did not persist: ' + p3.reason);
+      var mvLine3 = w.lines.filter(function (l) { return /§AD-MODELVAL-LIVE table=c_invoice verb=create/.test(l); }).pop();
+      log('§P2P-STATE c_invoice modelval-derive-line=' + (mvLine3 || 'NONE'));
+      await page.waitForTimeout(600);
+      var found3 = await rowIdByText(page, uniqInvDoc);
+      if (!found3) throw new Error('no grid row found for documentno ' + uniqInvDoc);
+      newInvId = found3.id;
+      log('§P2P-STATE new c_invoice_id=' + newInvId);
+
+      await clickRowOpen(found3.handle, { timeout: 8000 });
+      await page.waitForTimeout(400);
+      await page.click('#idmp-tabstrip >> text=Invoice Line', { timeout: 8000 }).catch(function () { return page.click('#idmp-tabstrip >> text=Line'); });
+      await page.waitForSelector('#idmp-toolbar button[title^="New record"]', { timeout: 10000 });
+      await clickToolbarBtn(page, 'New record');
+      await page.waitForSelector('#idmp-inline-mount [data-col="m_product_id"]', { timeout: 10000 });
+      var lineFields3 = await page.$$eval('#idmp-inline-mount [data-col]', function (els) { return Array.from(new Set(els.map(function (e) { return e.getAttribute('data-col'); }))); });
+      log('§P2P-FORM c_invoiceline fields shown: ' + lineFields3.join(','));
+      // Resolve the fresh Receipt line's real synthetic pk the same way — this is the linkage M_MatchInv
+      // needs (erp_engine.js completeInvoice() only emits a match when l.m_inoutline_id is truthy).
+      var rcptLines = await foldedRowsFor(page, 'm_inoutline', 'm_inoutline_id');
+      var rcptLine = (rcptLines.rows || []).filter(function (r) { return String(r.m_inout_id) === String(newRcptId); })[0];
+      log('§P2P-STATE Receipt lines folded=' + JSON.stringify(rcptLines.rows) + ' matched=' + JSON.stringify(rcptLine));
+      if (!rcptLine) throw new Error('could not resolve the fresh Receipt line via listTip fold — m_inoutline_id linkage cannot be set');
+      var fillRes = await fillField(page, 'm_inoutline_id', String(rcptLine.m_inoutline_id));
+      log('§P2P-FILL m_inoutline_id value=' + rcptLine.m_inoutline_id + ' result=' + fillRes);
+      await fillField(page, 'c_invoice_id', String(newInvId));
+      await fillField(page, 'm_product_id', String(seedPoProduct));
+      await fillField(page, 'qtyinvoiced', '5');
+      await fillField(page, 'priceentered', '9.00');
+      await fillField(page, 'priceactual', '9.00');
+      await fillField(page, 'line', '10');
+      await clickToolbarBtn(page, 'Save');
+      var p3b = await waitForCrudPersist(w, 'c_invoiceline', 15000);
+      log('§P2P-SAVE table=c_invoiceline committed=' + p3b.committed + (p3b.reason ? ' reason=' + p3b.reason : ''));
+      if (!p3b.committed) throw new Error('c_invoiceline create did not persist: ' + p3b.reason);
+
+      await page.click('#idmp-tabstrip >> text=Invoice', { timeout: 8000 }).catch(function () {});
+      await page.waitForTimeout(500);
+      var found3b = await rowIdByText(page, uniqInvDoc);
+      if (found3b) { await clickRowOpen(found3b.handle, { timeout: 8000 }); await page.waitForTimeout(500); }
+      var coBtn3 = page.locator('.idmp-docfsm button[data-doc-action="CO"]');
+      var coVis3 = await coBtn3.count();
+      if (coVis3) { await coBtn3.first().click(); await w.wait([/§AD-DOCFSM-LIVE.*clicked=CO/], 8000).catch(function () {}); }
+      var invChip = await page.locator('.idmp-docfsm .chip').first().textContent().catch(function () { return null; });
+      var matchInvLine = await w.wait([/§INVOICE-FANOUT invoice=/], 6000).catch(function () { return null; });
+      log('§P2P-FANOUT-CHECK invoice CO chip=' + invChip + ' fanoutLine=' + (matchInvLine ? matchInvLine.line : 'NONE'));
+      var stage3Ok = !!(invChip && /·\s*CO\b/.test(invChip));
+      verdict(stage3Ok, 'Stage3: Vendor Invoice reaches CO through the real UI', 'chip=' + invChip);
+      cycleLine(3, 'VendorInvoice', 'UI', stage3Ok ? 'PASS' : 'FAIL',
+        'c_invoice id=' + newInvId + ' chip=' + invChip + ' fanout=' + (matchInvLine ? matchInvLine.line : 'none') + ' coButtonVisible=' + coVis3);
+    } catch (e) {
+      log('🔴 Stage3 threw: ' + e.message);
+      cycleLine(3, 'VendorInvoice', 'UI', 'FAIL', 'exception: ' + e.message.replace(/\n/g, ' '));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // STAGE 4 — Three-way match observation: do M_MatchPO and M_MatchInv both exist, and do they share
+    // the same M_InOutLine_ID (the real invariant MMatchPO.java enforces at beforeSave)?
+    // ════════════════════════════════════════════════════════════════════
+    console.log('\n═══ STAGE 4 — Three-way match linkage ═══\n');
+    try {
+      var mpo = await matchLinesFor(page, 'M_MatchPO');
+      var minv = await matchLinesFor(page, 'M_MatchInv');
+      log('§P2P-MATCH M_MatchPO rows=' + JSON.stringify(mpo.rows) );
+      log('§P2P-MATCH M_MatchInv rows=' + JSON.stringify(minv.rows));
+      var sharedIol = mpo.ok && minv.ok && mpo.rows.some(function (p) { return minv.rows.some(function (i) { return p.m_inoutline_id != null && String(p.m_inoutline_id) === String(i.m_inoutline_id); }); });
+      verdict(mpo.ok && mpo.rows.length > 0, 'Stage4a: M_MatchPO emitted on Receipt Complete', 'count=' + (mpo.rows || []).length);
+      verdict(minv.ok && minv.rows.length > 0, 'Stage4b: M_MatchInv emitted on Invoice Complete', 'count=' + (minv.rows || []).length);
+      verdict(sharedIol, 'Stage4c: M_MatchPO and M_MatchInv share the same M_InOutLine_ID (three-way match invariant)', 'shared=' + sharedIol);
+      cycleLine(4, 'ThreeWayMatch', 'observed', (mpo.rows.length && minv.rows.length && sharedIol) ? 'PASS' : 'PARTIAL',
+        'm_matchpo=' + JSON.stringify(mpo.rows) + ' m_matchinv=' + JSON.stringify(minv.rows) + ' sharedInOutLineId=' + sharedIol);
+    } catch (e) {
+      log('🔴 Stage4 threw: ' + e.message);
+      cycleLine(4, 'ThreeWayMatch', 'observed', 'FAIL', 'exception: ' + e.message.replace(/\n/g, ' '));
+    }
+
+  } catch (e) {
+    harnessThrew = true;
+    console.log('🔴 HARNESS THREW (outside per-stage try/catch): ' + e.message + '\n' + (e.stack || '').split('\n').slice(1, 8).join('\n'));
+  } finally {
+    await browser.close(); server.close();
+  }
+
+  console.log('\n═══ SUMMARY ═══\n');
+  stageResults.forEach(function (s) { console.log('  stage ' + s.n + ' (' + s.name + '): ' + s.result); });
+  console.log('\nHarness completed to the end: ' + !harnessThrew + ' (exit code reflects HARNESS health only, not stage verdicts — read the §P2P lines above)');
+  process.exit(harnessThrew ? 1 : 0);
+})().catch(function (e) { console.log('🔴 THREW (top-level) ' + e.message + '\n' + (e.stack || '').split('\n').slice(1, 8).join('\n')); process.exit(1); });
