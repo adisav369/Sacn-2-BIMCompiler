@@ -656,9 +656,500 @@ the answers into this file, THEN a separate go for implementation.
    `dlod_nav.js`'s existing gate/state machine if this is needed, per that doc's needle-sharing
    recommendation applied to this mechanism too.
 
+### §11.2 FINDINGS — 2026-07-21 (STUDY dispatch: measured, not guessed; no implementation code
+touched, per the §8 "report only" discipline)
+
+**Method:** Q1 via the CURRENT walker (`lib/room_walker.js` v3 `§CONTAINMENT-ALIAS`, run in Node
+against fresh copies of both extracted DBs — harness validated by reproducing §11.1's exact LTU
+numbers: 30,409 rel rows / 24.2%). Q2/Q4 via a real Fly Tour flight on LTU in headless
+hardware-GL Chrome (`§HARNESS_GL renderer=ANGLE (NVIDIA ... RTX 4060 Laptop GPU ... OpenGL
+4.5.0)`), 122,330 elements loaded, CINE-GRAPH route (`§FLY_ROUTE storeys=4 stops=13/14 pts=97
+illegalChords=0/92`), **12,628 frames recorded at 60.0fps (16.7ms mean)** of which **11,168 were
+interior `flyPath` frames (~186s)**; per-frame camera position + walkActionIdx sampled via rAF,
+analyzed offline (numeric log evidence only — no screenshots). Q3 by code reading of the
+`df5def1` checkout. Code moved since §11.1 was written: `NAV_MIN_ELEMENTS` is now
+`dlod_nav.js:28` (was :26), and #943's `EVAL_CHUNK=16384` chunked eval (`dlod_nav.js:39`,
+`_evalChunk` ~:307) landed on top.
+
+**Q1 — Scope by size: YES, keep the >50k gate. Room occlusion below it buys ≤4.2%.**
+- LTU (125,698 meta rows): **422 rooms** (301 non-empty), contained **30,409 = 24.2%**, avg
+  **72.1**/compiled room, **101.0**/non-empty, median 52, max 962.
+- Terminal (48,428): **54 rooms** (40 non-empty), contained **2,045 = 4.2%**, avg 51.1/non-empty,
+  median 34, max 176.
+- **Correction to Q1's own prose:** "8.9 avg on LTU" was the PRE-alias number (§5's 1,608 rows /
+  181 rooms at 1.3% coverage). Post-alias reality is 72–101 elements/room.
+- Verdict: Terminal's theoretical max cull is ≤2,045 elements (4.2% of the building) — not worth
+  the engineering, and sub-50k buildings render at the healthy baseline without dlod_nav anyway
+  (§12). The existing 50k gate marks the right cutoff.
+- Parity debt noted (not this task's scope): `scripts/compile_rooms.py --write` yields only
+  **314** LTU rel rows — the `§CONTAINMENT-ALIAS` fix lives in the JS walker only (ported there
+  per bim-ootb PR #950); the Python source of truth has not received it back.
+
+**Q2 — Planned-path index DISPROVEN; live point-in-rect test required.**
+- Measured camera drift from the nearest planned `flyPt` during interior legs: **mean 4.14m /
+  median 3.60m / p95 10.37m / max 14.19m** (3D; XY-only mean 3.57m, max 13.56m). The drift is
+  by-design: CatmullRom(0.5) smoothing (`tour.js:1160`) + adaptive SMOOTH damping
+  (`tour.js:1204-1211`) keep the camera off its stops continuously.
+- Direct verdict number: nearest-planned-stop room attribution agrees with a live point-in-rect
+  test on only **39.3%** of interior frames (3,731 match + 656 both-null of 11,168). Median drift
+  3.6m exceeds the half-width of LTU's typical rooms.
+- The live test is cheap: one camera point vs 529 rect rows per eval (same
+  `abs(x-cx)<=sx/2 && abs(y-cy)<=sy/2` math, `room_walker.js:1356`) — trivial next to dlod_nav's
+  150ms eval throttle. ⚠ It must reuse the walker's own floor-anchor Z resolution
+  (`_joinKey`/`floorAnchors`, `room_walker.js:1311-1337`): the harness's naive nearest-cz matching
+  produced observable cross-floor picks (VÅNING_2 → VÅNING_1) at rect overlaps.
+- Design fact for the null policy: the camera was inside a compiled room **83.7%** of interior
+  frames; **16.3%** in no room (doorways/circulation) — "no current room ⇒ no room-based demote"
+  needs to be an explicit state, not an edge case.
+
+**Q3 — Interior-vs-aerial signal EXISTS at action granularity (confirmed, with one correction).**
+- Interior = `act.type === 'flyPath'` (points are graph room/door/stair nodes at eye height,
+  `tour.js:602-604`, actions assembled `:869-870`). Aerial/exterior = `orbit` (`:757-758`),
+  `moveTo` Entrance (`:761`), Bird's eye (`:882`), Final (`:894`), and the closing `lookAround`
+  — distinguishable from interior look-around beats because only the finale carries
+  `lookAtX/lookAtY` (`:900-901`); the interior beats between flyPath segments (`:871-875`) hold
+  camera position, so interior-ness persists through them.
+- **Correction to §11.1's claim:** the planner carries room display NAMES per point
+  (`act.names`, filled only for room/exit/stairwp nodes at `:603`, `''` for doorwp/circ/spine) —
+  per-point room GUIDs and storeys (`ifcTrail`, `:576-605`) are computed then DROPPED (not in
+  `_buildGraphRouteInner`'s return, `:642`). So the leg-level flag is free today; per-point room
+  membership is not — moot given Q2's verdict anyway (live test wins).
+
+**Q4 — Neither instant cut nor bare fade: same 10-frame fade machinery + a ~10-15-frame
+membership-stability window.**
+- Same flight: **236 room-membership changes** across 11,168 interior frames (**1.27/s** avg);
+  gap between changes **median 19 frames (317ms)**, mean 49.3 (822ms), p95 257; 160 non-null room
+  visits, median dwell 500ms; **17 A→B→A flap sequences returning within ≤10 frames**.
+- Reading: a hard cut at 1.27 changes/s with ~100-1000 elements flipping per room (avg 101
+  non-empty, max 962) would be constant popping. A bare 10-frame fade (167ms @60fps) is ~half the
+  median transition gap, and the 17 flaps land INSIDE one fade duration — churn, not smoothing.
+- dlod_nav's existing machinery already fits: state owned at fade START (`dlod_nav.js:254`),
+  `FADE_FRAMES=10` (`:32`), snap beyond `FADE_CAP=128` (`:33`, `:235`) — a room switch is mostly
+  snap territory by size, and the cap's graceful path is proven at 48k/34ms (§10). Recommendation:
+  reuse it unchanged, gate the room-mismatch criterion on membership being STABLE for ~10-15
+  frames first — filters all 17 observed flaps at the cost of ~0.2s switch latency, well under
+  the 500ms median room dwell.
+
+**Q5 — Not needed (per Q1).** Terminal's 4.2% / ≤2,045-element ceiling doesn't justify any
+mechanism below the gate. If sub-50k containment coverage ever materially improves, the named
+(NOT built) generalization is: split `dlod_nav.js`'s single engage gate (`NAV_MIN_ELEMENTS`,
+`:28`, checked at `:68`/`:411`) into per-criterion gates — size floor stays for distance/frustum
+boxing; the room-mismatch criterion would gate on containment coverage (contained-fraction ×
+element count), not raw size. No third DLOD engine, per `ROOM_INJECTOR_NEEDLE.md`.
+
+**§11.3 framing note:** PR bim-ootb #954 (landed `df5def1`) shipped the "Find Panel Room lens
+calls `A.ensureRooms()` itself" follow-up — §11.3's second non-goal is now DONE upstream, so it
+drops out of the non-goal list naturally; nothing folded into this scope.
+
+**VERDICT: READY for an IMPLEMENTATION DESIGN section (§8→§9 pattern) — no further data needed.**
+The design is pinned by the numbers above: (a) live per-eval point-in-rect current-room test with
+the walker's floor-anchor Z-join, never the planned-path index (39.3% agreement kills it);
+(b) room-occlusion active only during `flyPath` legs (signal exists today, Q3); (c) room-mismatch
+as an additional demote criterion inside the existing `_boxIndex` state machine, using the
+existing fade/snap path plus a ~10-15-frame membership-stability window (Q4); (d) explicit
+"camera in no room ⇒ no room-demote" state (16.3% of interior frames); (e) scope stays >50k /
+dlod_nav-hosted (Q1/Q5). Implementation is a separate go, gated on user review of these findings.
+
 ### 11.3 Non-goals (v1, same discipline as §3/§7)
 - Time Machine occlusion — separate feature, separate go, once §11 settles the mechanism shape here
   (`ROOM_INJECTOR_NEEDLE.md`'s recommendation: share `A.ensureRooms()`, not the box-proxy engine
   itself, which is Fly-Tour/nav-specific machinery TM would need its own engage-gate story for).
 - Find Panel's `isolateRoom` warming its own rooms (separate, smaller, already-named follow-up in
   `ROOM_INJECTOR_NEEDLE.md`) — unrelated to this occlusion mechanism, don't fold it in here.
+
+## 12. Perf-history correction — the "R185/BatchedMesh was great, then it got worse" arc (2026-07-21,
+user pushed back on a first-pass wrong theory; corrected trace below, cite this before re-asking)
+
+**User's memory, verbatim shape:** first r185+BatchedMesh+DLOD pass felt great on LTU, then perf
+"took a turn" during continuous testing since — **without ever pressing N (night) or H (shadow)**.
+That last fact rules out a rendering-pipeline/feature-toggle explanation (a first-pass theory blaming
+S277's Cinematic Rendering/night-mode lighting cost was wrong and is retracted here, in writing, so a
+future session doesn't re-propose it). The real cause traces to the MACHINE, not the app:
+
+1. **2026-05-26/27 — driver update, no reboot (`prompts/done/S280c_PERF_VERIFY.md`).** Two days after
+   S276 (r184 BatchedMesh, "LTU 122K verified smooth", `45a393b62`), an NVIDIA driver bump (595.71)
+   landed but the machine was never rebooted onto the matching kernel. Firefox's WebGL context
+   silently fell back to the **Intel iGPU**, and LTU rendered at **83K draw calls** instead of its
+   healthy count. Root-caused and fixed the next day (S280c, `47a69ee`): reboot + threshold/
+   consolidation/render-gate fixes restored the real baseline — **~16K draw calls** (2500
+   BatchedMesh @ ~87K slots + 13600 InstancedMesh @ ~35K instances).
+   **Correction (2026-07-22, user pushback — "how could it run fast in FF for a while" if Firefox
+   never had multi_draw?):** the ORIGINAL framing of this point ("no `WEBGL_multi_draw` there")
+   wrongly implied Firefox had multi_draw before the iGPU fallback and lost it. Re-verified live,
+   empirically, on THIS machine (WebDriver/geckodriver session against real system Firefox, real
+   NVIDIA driver 595.71.05 active): `WEBGL_multi_draw` is **absent in Firefox regardless of which
+   GPU it's bound to** — confirmed just now, not assumed from old docs. The real mechanism
+   (`viewer/scene.js:47-54`): Three.js's `BatchedMesh` doesn't fail without `multi_draw` — it
+   silently falls back to **one GL draw call per instance instead of one combined multi-draw call
+   per bucket**. Firefox has ALWAYS been on that slower per-draw path on this GPU, including during
+   the "fast" period right after S276 — nothing about multi_draw ever changed in Firefox. What
+   actually changed was which PHYSICAL GPU was doing the (always-fallback) rendering: a discrete
+   RTX 4060 has enough raw throughput to absorb the extra per-draw-call overhead and stay smooth;
+   the Intel iGPU does not. The iGPU swap broke it, not a multi_draw regression.
+2. **2026-05-24 → broke later → fixed 2026-07-13, i.e. 8 days before this conversation** (memory:
+   `project_machine_chrome_firefox_gpu_launchers.md`). The SAME DAY as S276's r185 WebGPU test,
+   `~/.local/share/applications/google-chrome-gpu.desktop` was created with PRIME render-offload +
+   Vulkan/WebGPU flags, silently shadowing the normal Chrome icon. "Worked for a while, then broke"
+   (a later driver bump or Chrome auto-update likely flipped it) — every load started failing WebGL
+   context creation outright. Sat broken, invisible from inside the viewer, until 8 days ago.
+3. **Permanent, not a regression — see point 1's correction above for the live-verified detail.**
+   Firefox on this GPU never supports `WEBGL_multi_draw`, on any GPU it's bound to; BatchedMesh's
+   per-instance-draw-call fallback is Firefox's constant state here, not something that broke.
+4. **Today's §10 baseline (112.7ms/frame, 15,675 draw calls, wide-orbit OFF) matches S280c's
+   "healthy" ~15-16K number almost exactly.** The system is in its normal state today, not a degraded
+   one — §9/§10's `dlod_nav.js` box-proxy is a NEW layer stacked on top of that honest baseline, not a
+   restoration of lost multi_draw throughput. The felt "took a turn" was most likely one or both
+   machine incidents above landing inside the same continuous-testing window, silently, then getting
+   fixed without the app itself ever telling the user why.
+
+**Forward-looking question, answered:** if/when this machine's GPU/driver state improves further
+(e.g. multi_draw reliably active, no more launcher/driver flukes), does that ADD ON TO today's
+`dlod_nav` win, or regress it? **Adds on — the two layers are orthogonal, not competing.**
+`dlod_nav`'s win comes from cutting the NUMBER of elements considered "real" at all (distance+frustum
+demote to a ~16-draw-call box set); a faster/healthier BatchedMesh path underneath speeds up exactly
+the promoted/real subset the same way it always did, and the boxed floor (~16 draw calls, wireframe)
+is already near-free regardless of multi_draw. `W-DLOD-NAV-EQUIV` (pill OFF ⇒ byte-identical to
+today's ordinary rendering) is the structural guarantee: OFF mode automatically inherits whatever the
+underlying baseline is, good or bad, and ON mode multiplies a cut on top of it. **One honest caveat:**
+the measured multipliers (6.5× wide-orbit, 2.2× close-orbit) are multipliers against TODAY's ~15-16K
+baseline — if that baseline itself gets cheaper, there is less headroom to cut, so the *relative*
+multiplier will likely shrink even though the *absolute* frame time keeps improving. Re-measure
+(§4 witnesses), don't assume the 6.5×/2.2× numbers carry over to a faster baseline unchanged.
+
+## 13. IMPLEMENTATION DESIGN v1 — room-mismatch demote, STEP 1 ONLY (2026-07-22, user: "spec and
+implement a step first here so i can test incremental perf change"; §11.2 FINDINGS is the gate this
+satisfies, same §8→§9 pattern)
+
+**Scope of this step, deliberately narrow:** wire ONE new demote criterion (camera's current room ≠
+element's contained room) into the existing `dlod_nav.js` `_boxIndex` state machine, live-toggleable
+from the console with zero reload, so a real before/after frame-time number can be pulled on THIS
+machine before any UI/pill work is done. Full UX polish (a proper pill, a user-facing toggle, default-
+on decision) is explicitly deferred to a follow-up step once this number is in hand — this is the
+smallest slice that produces a measurable, comparable perf delta.
+
+**Module:** extend `viewer/dlod_nav.js` in place (no new engine — §11.1/§11.2(c) already ruled out a
+parallel system). New code additive only; existing distance/frustum demote path untouched when the
+new criterion is disabled.
+
+**Current-room detection (§11.2 Q2's verdict — live test, not the planned-path index):**
+- Per eval chunk (reuse the existing `EVAL_CHUNK`/`_evalChunk` cadence, `dlod_nav.js:39`/~:307 —
+  do NOT add a second timer), compute the camera's current room via the SAME point-in-rect test
+  `room_walker.js:1356` already uses (`abs(x-cx)<=sx/2 && abs(y-cy)<=sy/2`), reusing its floor-anchor
+  Z-join (`_joinKey`/`floorAnchors`, `room_walker.js:1311-1337`) — the study's harness got cross-floor
+  mispicks from skipping this; do not repeat that.
+- **Explicit no-room state:** camera outside all compiled rects (measured 16.3% of interior frames)
+  ⇒ room-criterion contributes nothing that tick; distance/frustum alone still governs. Never treat
+  "no room" as "any room" or "eligible to demote everything."
+- **Membership-stability gate (§11.2 Q4):** only update "camera's current room" after N consecutive
+  evals agree (N=10-15 frames — the study measured 17 A→B→A flaps inside a single fade window without
+  this; a bare per-tick room read would reproduce that churn). Track a small pending-room counter
+  alongside the existing per-tick state, reset on disagreement.
+- **Gate to interior legs only (§11.2 Q3):** room-criterion active only while the current tour action
+  is `flyPath` (`tour.js:602-604`/`:869-870`) or, outside a tour, free navigation (no cheap "am I on
+  an orbit/moveTo leg" signal exists outside the tour context — treat non-tour free-nav as interior by
+  default, since there is no aerial/orbit leg concept there; only tour-driven orbit/moveTo/Bird's-
+  eye/Final legs (`tour.js:757-758,761,882,894`) explicitly disable it).
+
+**Demote/promote integration — SAME state machine, one more OR'd condition:**
+- Demote condition becomes: `dist > DEMOTE_DIST OR frustum-margin-exceeded OR (roomOcclEnabled AND
+  hasCurrentRoom AND element.containedRoom !== currentRoom)`. Promote is the inverse AND-of-NOTs.
+  This is additive to the existing hysteresis (`dlod_nav.js` promote/demote bands) — do not fork a
+  parallel demote path.
+- Reuse the exact same fade/snap mechanics already shipped: 10-frame cross-fade
+  (`FADE_FRAMES`, `:32`), state owned at fade start (`:254`), `FADE_CAP=128` snap fallback (`:33`,
+  `:235`). No new transition code.
+- Elements with no compiled containment row (75.8% of LTU, per §11.2 Q1) are simply never eligible
+  for the room-criterion — distance/frustum still apply to them unchanged. Do not treat "uncontained"
+  as its own bucket.
+
+**Step-1 testing lever (the actual deliverable for "test incremental perf change"), NOT a UI toggle:**
+`window.__dlodNav.roomOcclEnabled` — a plain boolean, default `false`, flippable live from DevTools
+console on an already-loaded, already-flying scene (no reload needed to A/B). When `false`, behavior
+and performance must be BIT-IDENTICAL to today's shipped `dlod_nav.js` (this IS the v1 "equivalence"
+witness — see below). A real pill/pref-panel toggle is out of scope for this step; note it as the
+obvious next step once a real number justifies shipping it broadly.
+
+**Witnesses (blocking, real GPU — headless hardware-GL per every prior witness in this file):**
+- **W-ROOM-OCCL-EQUIV:** `roomOcclEnabled=false` ⇒ scene/mutations byte-identical to current shipped
+  behavior across a scripted sweep (mirrors `W-DLOD-NAV-EQUIV`'s method exactly).
+- **W-ROOM-OCCL-PROXY:** `roomOcclEnabled=true` ⇒ boxed set matches a from-scratch recompute of
+  (distance-eligible OR frustum-eligible OR room-mismatch-eligible), `mismatch=0`, same audit-fn
+  pattern as `__dlodNavAudit()`.
+- **W-ROOM-OCCL-PERF (the actual deliverable):** on the SAME interior LTU flight profile the study
+  used (flyPath legs, real GPU, `§HARNESS_GL` real RTX 4060 log line required), report frame time and
+  draw calls `roomOcclEnabled=false` vs `=true`, back to back, same route, same machine state. This is
+  the first real number for whether room-mismatch demote helps interior legs at all — §10's own
+  honest remainder said interior legs are "bounded by in-view real geometry" and named this exact
+  mechanism as the only remaining lever; this witness is what confirms or falsifies that, no more
+  hand-waving. Log with a `§ROOM_OCCL_*` tag; read the log before any conclusion, per this project's
+  Log Mandate.
+- **W-ROOM-OCCL-STABILITY:** confirm the flap sequences the study found (17 A→B→A within ≤10 frames on
+  the same real flight) no longer trigger a room-state change, using the stability-gate counter.
+
+**Non-goals (this step):** no pill/UI, no default-on decision, no Time Machine port, no Find Panel
+fold-in — all already named out of scope by §11.3, unchanged here. If W-ROOM-OCCL-PERF comes back
+negative (no measurable win on interior legs), that is a valid, reportable outcome — say so plainly,
+do not keep tuning to force a positive number.
+
+### §13 RESULT — 2026-07-22, real RTX 4060, `bim-ootb` branch `feat/room-occlusion-step1` @ `9b5d9dc`
+(committed locally only — worker/Watchdog role separation, not yet pushed/PR'd; pending user review)
+
+Implemented exactly as specced above: `viewer/dlod_nav.js`'s `_wantedReal()` gets a third OR'd
+demote condition (`roomMis`), a lazy building-keyed camera-room index + per-element room stamp
+(`room_walker.js`'s new `buildCameraRoomIndex()`, hoisting the exact `_joinKey` floor-anchor math
+`writeRooms()` already used, so the camera-side test can't drift from the containment-side one), a
+12-frame membership-stability gate, and interior-leg gating via `app.walkActions[idx].type`. Console
+lever `window.__dlodNav.roomOcclEnabled` (default false), zero pill/UI as scoped.
+
+**All 4 witnesses ran on this machine's real RTX 4060 (headless hardware-GL, `§HARNESS_GL` confirmed
+each run):**
+- **W-ROOM-OCCL-EQUIV: PASS.** `roomOcclEnabled=false` byte-identical to `origin/main`'s shipped
+  `dlod_nav.js` across 8 deterministic poses (4 rooms + 4 orbit points) — same hash, same
+  real/boxed/mismatch at every pose. (First run raced streaming and showed a spurious 125,698 vs
+  122,330 total mismatch; re-ran clean and it resolved — a harness timing artifact, not a code
+  difference, logged here so it isn't re-investigated as a regression later.)
+- **W-ROOM-OCCL-PROXY: PASS.** Boxed set matches a from-scratch recompute at 3 spots: inside a small
+  room (`roomOnlyBoxed=17`), inside a large room spanning most of a floor (`roomOnlyBoxed=4165`), and
+  outside all compiled rooms (`roomOnlyBoxed=0, active=false` — explicit no-room state holds).
+- **W-ROOM-OCCL-STABILITY: PASS.** A synthetic 24× 5-frame A↔B room flap (faster than any of the
+  study's 17 measured real flaps) produced **zero** room-state changes; a genuine hold was still
+  accepted in 12 frames both directions — the stability gate filters churn without deadlocking.
+- **W-ROOM-OCCL-PERF: small draw-call win, frame-time a wash — honest result, not a dramatic one.**
+  Real interior-flight A/B on LTU (122k elements), `roomOcclEnabled` false vs true, same CINE-GRAPH
+  route both runs: **OFF** frame_ms mean=106.16 median=113.0 p95=228.6, drawCalls mean=3328. **ON**
+  frame_ms mean=105.63 median=117.0 p95=237.5, drawCalls mean=3229, roomChanges=30 (confirms the
+  criterion engaged continuously, not a no-op run). ~3% fewer draw calls, essentially no frame-time
+  change (p95 marginally worse in this one sample). Matches §10's own prior prediction exactly:
+  interior legs are "bounded by in-view real geometry," and room-mismatch only additionally boxes
+  elements already inside the distance/frustum-eligible set but in a different room — for a typical
+  interior camera position that set is small relative to the ~110k already-boxed baseline, so the
+  extra cut is real but modest. **Caveat: only one clean OFF/ON pair, not the full interleaved
+  off/on/on/off design** — the headless Chrome session crashed (`Target page, context or browser has
+  been closed`) mid-run on the 3rd of 4 planned legs, on two separate attempts, at the same point
+  both times. A second independent OFF sample from the first crashed attempt (mean=108.70,
+  drawCalls=3317) is consistent with this run's OFF (mean=106.16, drawCalls=3328), giving some
+  confidence in the baseline despite the incomplete interleave. The repeated same-point crash is
+  itself worth a follow-up look (possible resource accumulation across sequential in-page tour
+  restarts) — not chased down as part of this step.
+
+**Where this leaves step 1:** mechanism works exactly as designed and is provably safe (EQUIV/PROXY/
+STABILITY all clean), but the perf payoff on THIS building/route is small, not the dramatic win §10
+hoped for. Open call for the user: ship this modest win as-is (PR + pill/UI as a follow-up step), hold
+for a bigger-payoff scenario (denser multi-room interiors, lower-end hardware where every draw call
+counts more), or treat the STUDY's mechanism as validated-but-not-yet-worth-shipping broadly.
+
+**RESOLVED 2026-07-22 — user: "that is what we been waiting for."** Pushed + PR bim-ootb#962 opened,
+honest result stated plainly in the PR description (not oversold). This closes step 1.
+
+## 14. GPU capability warning — spec (2026-07-22, user: "u may launch an agent to do now")
+
+**Problem this solves (§12's own root-cause finding):** both real machine incidents that degraded
+this app's perf on this machine were **100% silent** — no in-app indication, ever. The iGPU fallback
+(§12 point 1) and the broken Chrome launcher (§12 point 2) were each discovered only via felt
+slowness over days/weeks, not anything the app told the user. The app already computes renderer
+capability at load (`§RENDERER_CAPS` log line, `viewer/scene.js:47-54`) — it just never surfaces
+that to the user or compares it against anything. This spec closes that gap.
+
+**Design:**
+- At the SAME point `§RENDERER_CAPS` already logs (`scene.js`, right after line 54), read a stored
+  "last known good" renderer signature from `localStorage` (key `bim_gpu_lastgood`:
+  `{renderer, multiDraw, ts}`).
+- **No stored baseline (first-ever run on this browser/profile):** just store the current
+  signature. No warning — nothing to compare against yet.
+- **Compare current vs stored:** flag DEGRADED if `multiDraw` went `true→false`, OR the renderer
+  string looks like it moved from a discrete GPU to an integrated one (simple, documented
+  heuristic: previous string matched `/nvidia|amd|radeon/i` and current matches `/intel|uhd|iris/i`
+  — do not over-engineer a full GPU classifier here, this heuristic only needs to catch the two
+  real incidents already seen, not every conceivable GPU swap).
+- **DEGRADED:** show one dismissible toast/banner ("Rendering fell back to a slower GPU (<renderer>)
+  — if this seems wrong, check GPU drivers or reboot.") + a `§GPU_DEGRADED_WARN` console line. Do
+  NOT nag every load once dismissed for the SAME degraded state — only re-show if the signature
+  changes again (e.g. degrades further, or recovers then degrades again).
+- **Same or IMPROVED:** silently update the stored baseline, no toast. An improvement (e.g. driver
+  fixed, back on the dGPU) should refresh what "good" means going forward, not stay pinned to a
+  stale weaker baseline forever.
+- Cheap by construction: one `localStorage` read + conditional write, zero additional GPU queries
+  beyond what `§RENDERER_CAPS` already does today.
+
+**Witnesses (can run headless, no real degraded hardware needed — this is pure JS logic driven off
+a mocked localStorage baseline, not a live GPU-swap):**
+- **W-GPU-WARN-FIRSTRUN:** no stored baseline → no toast, baseline gets written.
+- **W-GPU-WARN-DEGRADED:** stored baseline = discrete GPU + multiDraw=true; current = integrated +
+  multiDraw=false → toast appears, `§GPU_DEGRADED_WARN` logs, baseline is NOT silently overwritten
+  by the degraded reading (so the warning would still be meaningful if checked again without a
+  session in between — confirm the actual persistence semantics chosen and pin them here).
+- **W-GPU-WARN-RECOVERED:** stored baseline = degraded state; current = discrete GPU + multiDraw=true
+  → no toast (improvement), baseline updates to the better state.
+- **W-GPU-WARN-NONAG:** same degraded signature on two consecutive loads → toast shows once, not
+  twice (confirm the exact "don't nag" mechanism, e.g. a session-only dismissed-flag vs a persisted
+  one — pin whichever is chosen with a citation here).
+
+**Non-goals:** no attempt to detect WHY the GPU changed (driver/reboot/launcher-flags) — this is a
+symptom detector, not a diagnostic tool. No auto-fix action (reboot prompts, driver links) — just
+visibility. No change to `§RENDERER_CAPS`'s existing log line itself.
+
+## 15. Interior-lag POCs — GATED, REPORT ONLY, no implementation (2026-07-22, user: "wont it be
+better to run POCs on all these? Once we get the formula right, then we know" — same discipline as
+§8's cross-fade investigation: measure first, no live wiring, no PR, until reviewed)
+
+**Why this is here:** discussing the "why does Fly still lag with only ~20k 'active' elements"
+puzzle surfaced two live, UNMEASURED hypotheses — (1) per-triangle/vertex cost on top of element
+count, (2) the `CINEMATIC_RENDERING.md` S277 FPS-notes estimate that "interior views: 60-70% of
+in-frustum geometry is occluded" was never actually measured, just estimated back in May. Both are
+worth a real number before anyone designs an implementation around them.
+
+### POC-A: Triangle/vertex complexity of the "active" (real, non-boxed) set during interior flight
+**Question:** is frame cost dominated by draw-call/CPU overhead (element count), or by raw
+vertex/fragment cost (polygon complexity), or split roughly evenly?
+- Extend the existing perf-harness pattern (`witness/harness.js`/`w_perf.js` from the room-occlusion
+  task, or a fresh copy) to also sample `renderer.info.render.triangles` alongside `.calls`, per
+  interior frame, same real-GPU interior LTU flight already used for W-ROOM-OCCL-PERF.
+- Report: mean/median/p95 triangles-per-frame alongside the already-known draw-calls-per-frame
+  numbers (mean=3328 OFF baseline). Cross-reference against the ~20k "active" element count to get
+  an average triangles/element figure — compare that against a few known element classes (a plain
+  wall panel vs a railing/stair/MEP run) to judge whether complexity is concentrated in a few
+  high-poly classes or evenly spread.
+- Cheap, quick — no new infrastructure, just an added sample point on an existing harness.
+
+### POC-B: Real occlusion percentage — replace the untested "60-70%" estimate with a measured number
+**Question:** of the ~20k elements distance/frustum currently calls "active" (real) during an
+interior leg, how many are ACTUALLY visible (clear line of sight to camera) vs genuinely occluded
+(a wall/floor/slab blocks the sightline) — right now, TODAY, on real LTU data, not a May guess?
+
+**Stage 0 — REQUIRED FIRST, sandbox correctness proof (user: "i believe it is just algorithm maths,
+in a sandbox, setup of test elements, cam moving to and fro, witnessing of values" — 2026-07-22):**
+before this touches the real 122k-element LTU building at all, prove the line-of-sight math itself
+is correct against a small, KNOWN-ground-truth synthetic scene — same methodology this file already
+used for `§CAMIDX_SELF`/`§CAMIDX_XFLOOR` (room_walker's floor-anchor join proven against
+self-consistent synthetic checks before trusting it on real data).
+- Build a tiny synthetic scene (plain Node + `three` + `three-mesh-bvh`, no browser/GPU needed — this
+  is pure geometry math): a handful of test elements with HAND-PICKED, known positions — e.g. one
+  blocking wall plane between camera and a target box (expected: occluded), one target box with clear
+  line of sight (expected: visible), one target partially behind a wall edge (expected: boundary case
+  — decide and document which way it should classify).
+- Move the camera through a small SCRIPTED sweep (to-and-fro along a line, not a full flight) —
+  several fixed positions where the expected clear/occluded verdict for each test element is known
+  in advance BY CONSTRUCTION (you built the geometry, you know the answer), not estimated.
+- At each camera position, run the SAME raycast-occlusion function the real POC-B measurement below
+  will use, and witness its output against the hand-computed expected verdict per test element per
+  camera position — `mismatch` must be 0. This is the correctness gate: if the algorithm gets the
+  synthetic case wrong, fix the math here BEFORE spending any time on the real building.
+- Only once this passes cleanly does Stage 1 (below, real LTU data) proceed.
+
+**Stage 1 — apply the proven algorithm to real LTU data:**
+- **Reuse, don't rebuild:** `viewer/loader.js` already monkey-patches `THREE.Mesh.prototype.raycast`
+  via `three-mesh-bvh`'s `acceleratedRaycast`, and `viewer/streaming.js` (~line 737-752) already
+  computes a BVH bounds tree for every mesh geometry AND every BatchedMesh bucket
+  (`computeBatchedBoundsTree`) during normal streaming — full-scene accelerated raycasting already
+  exists, confirmed by direct grep, not assumed. A line-of-sight occlusion POC is a raycast from the
+  camera to each candidate element's center (or bbox corners for a stricter test), checking whether
+  anything else in the scene intersects that ray BEFORE reaching the target — reusing this exact
+  existing acceleration structure, not building a new one.
+- **Method:** during the same real interior LTU flight (headless hardware-GL, real GPU, same route
+  already used for W-ROOM-OCCL-PERF), at a sampled cadence (every N frames, not every frame — this
+  is a report-only cost measurement, keep the POC's OWN overhead from confounding the frame-time
+  numbers being investigated), cast one ray per "active" element from camera position to element
+  center. Classify: **clear** (ray reaches target unobstructed) vs **occluded** (something blocks
+  it first). Report the real occluded fraction, compared directly against the "60-70%" estimate.
+- **Known landmine to test for, not assume away:** a raycast can validly hit the TARGET element's
+  own geometry first (self-intersection) — exclude the target mesh/instance itself from the
+  occlusion test, the same way picking code already has to (`picking.js`'s existing self-exclusion
+  pattern, if one exists — check before writing a new one).
+- **From the measured occluded fraction, compute the CEILING, not a promise:** if X% of the active
+  set is genuinely occluded, and (per §10's own finding) draw-call savings only materialize when a
+  whole mesh/BatchedMesh bucket empties, report BOTH the raw occluded-element percentage AND a
+  more honest bucket-level estimate (how many of LTU's ~16,104 mesh objects would have EVERY one of
+  their visible instances occluded, vs how many have a mix of occluded+visible instances and
+  therefore wouldn't save a draw call even with perfect occlusion culling). This second number is
+  the real ceiling on what real occlusion culling could buy — report it even if it's much smaller
+  than the raw occluded-element percentage.
+
+### Deliverable
+Write findings into this file (dated, cited, real numbers — same format as §11.2 FINDINGS/§13
+RESULT) with an overall verdict: is real occlusion culling worth designing as a follow-up spec (§16
+IMPLEMENTATION DESIGN, same §8→§9/§11→§13 pattern), not worth it, or is the honest bucket-level
+ceiling too small to bother — same "negative result is a valid, reportable outcome" discipline as
+every prior POC in this file. **No implementation code in this pass** — raycasting/sampling scripts
+for the POC itself are throwaway measurement tools, not the eventual occlusion-culling mechanism.
+
+### §15 FINDINGS — 2026-07-22 (Fable, REPORT ONLY — no shipped file touched; scripts + logs
+committed locally in `/tmp/wt-occl-poc` worktree, branch `poc/occlusion-culling-study` off
+`e84a079`, NOT pushed/PR'd per dispatch)
+
+**Method + Stage 0 gate (per the user's "prove the algorithm maths in a sandbox first"):** the
+line-of-sight classifier lives in ONE file (`witness/occl_classify.js` — center-ray, guid-based
+self-exclusion mirroring picking.js's hit→guid resolution, non-element hits ignored, non-finite
+distances guarded) and is used VERBATIM by both stages. Stage 0 (`witness/w_occl_stage0.mjs`, plain
+Node + `three@0.184` + `three-mesh-bvh@0.8.0`, no browser): hand-placed AABB scene (wall 4×3×0.2 +
+3 targets incl. a wall-edge boundary case), 21-pose to-and-fro sweep, expectations from an
+INDEPENDENT segment-vs-AABB slab oracle + a 6-row hand-derived literal table.
+**`§OCCL0_RESULT checks=63 mismatch=0 handChecks=6 handMismatch=0 selfFirstSeen=35 verdict=PASS`** —
+boundary rule pinned: verdict follows the CENTER ray only (a half-exposed element with blocked
+center classifies occluded). Stage 1 ran only after this gate. Both Stage 1 runs on real RTX 4060
+(`§HARNESS_GL renderer=ANGLE (NVIDIA ... RTX 4060 Laptop GPU ... OpenGL 4.5.0)`), LTU 122,330
+elements, DLOD-nav ON, `roomOcclEnabled` default false (shipped state), CINE-GRAPH tour route.
+
+**POC-A RESULT — triangle load is trivial for the GPU; neither triangles nor draw calls explain
+interior frame-time variance (`witness/w_occl_poca.log`):**
+- 3,000 interior flyPath frames: frame_ms mean=109.03 median=119.4 p95=247.9 (cross-checks §13's
+  OFF mean=106.16); triangles/frame mean=3,365,410 median=3,418,136 p95=4,181,646 max=4,704,151;
+  drawCalls mean=3,262 median=3,333 p95=4,757; dlodActive mean=19,987 boxed mean=102,343 →
+  **168.4 tris/active element, 1,032 tris/draw call** (`§POCA_TRIS`/`§POCA_PER_ELEMENT`).
+- Correlations (`§POCA_CORR`): r(frame_ms,triangles)=**0.197**, r(frame_ms,drawCalls)=**0.190**,
+  r(triangles,drawCalls)=0.950 (collinear — can't separate observationally). ~3.4M tris is nothing
+  for an RTX 4060, yet frames average 109ms → per-triangle GPU cost is NOT the bottleneck; the cost
+  rides on object/submission count + per-frame CPU work, consistent with dlod_nav.js's own prior
+  W-DLOD-NAV-PERF finding ("the scene is ~15K small mesh objects, the object-level flag is the
+  lever", dlod_nav.js ~:175) and §13's 3%-fewer-calls ⇒ frame-time-wash result.
+- Census (`§POCA_CENSUS`, all 122,330 elements = 12,955,180 tris): mean 105.9 tris/el, median 92,
+  p95 232, p99 828, max 10,726 — complexity is mostly FLAT, not concentrated. Biggest classes by
+  triangle share: IfcFlowFitting 24.0% + IfcFlowSegment 20.1% (74,210 MEP elements, avg 62-97
+  tris/el — share comes from COUNT, not per-element weight); concentration exists only in IfcDoor
+  (606 els, avg 2,302 tris, 10.8%) and IfcFurnishingElement (242 els, avg 2,074 tris, 3.9%) —
+  LOD-simplification candidates, but only ~15% of total tris combined. **Verdict: element/object
+  count is the axis that matters; per-element polygon complexity is not LTU's problem.**
+
+**POC-B RESULT — the May-2026 "60-70% of in-frustum geometry is occluded" estimate
+(`docs/internal/CINEMATIC_RENDERING.md:91`, never measured) was a large UNDERestimate. Measured:
+~99% (`witness/w_occl_stage1.log` + `w_occl_stage1_run1_nofrustum.log`):**
+- Method: 8 camera poses captured DURING the live tour at 350-interior-frame cadence, then frozen
+  and classified after it (full active set per pose, one center-ray per element vs all visible
+  element geometry — keeps POC cost out of frame timing; POC-A owns timing). Self-exclusion path
+  exercised for real (selfFirst up to 776/pose); `noCenter=0` — full coverage.
+- **Run 2 (frustum-split, the honest one), `§POCB_SUMMARY`: occluded fraction of the ACTIVE set
+  mean=99.4% median=100.0% min=95.9% max=100.0%; of the IN-FRUSTUM active subset (the estimate's
+  own phrasing) mean=99.6% min=97.8% max=100.0%.** Active sets 19,983-36,720/pose; in-frustum
+  14,186-36,457; clear-LOS elements were literally 1-826 per pose — an interior camera in LTU truly
+  sees a few hundred elements; the ceilings/coverings (24,321 IfcCovering) wall off the 74k MEP
+  elements above them.
+- **Bucket-level ceiling — the number §15 said matters more — is NOT much smaller: objects whose
+  EVERY active element is occluded = mean 98.5% (all-active rule) / 99.1% (in-frustum rule)**
+  (`§POCB_BUCKET`, objWithActive 3,291-5,812/pose vs rendererCalls 3,755-5,885 — same magnitude, so
+  bucket-emptying maps ~1:1 onto real draw calls). Run 1 (pre-frustum-split, higher-mismatch
+  settle) independently agrees: raw 99.8%/bucket 99.5% — the conclusion is insensitive to the
+  settle imperfection (audit mismatch was still 21-18,009 at pose freeze even with forced-dirty
+  settle; both runs bracket it and agree).
+- **Caveats, stated plainly:** (1) the POC's per-element CPU raycast took **91-279 s PER POSE** —
+  this measurement method is ~4 orders of magnitude off real-time and is NOT the mechanism; any
+  implementation needs GPU occlusion queries (the doc's own WebGL2 suggestion) temporally amortized,
+  or a precomputed room/portal visibility structure — never per-frame CPU rays. (2) Center-ray
+  granularity can misclassify a partially-visible element as occluded (Stage-0-pinned rule), so the
+  raw % is a shade optimistic — but the margin over 60-70% is ~30 points; the conclusion survives
+  any plausible correction. (3) One-ray-per-element ≠ pixel truth; bbox-corner rays would tighten
+  it (documented option, not needed to answer the gate question). (4) Incidental code finding:
+  `streaming.js:748-752` calls `window.computeBatchedBoundsTree` but NOTHING ever defines it — the
+  BatchedMesh-BVH step in §15's premise has been a silent no-op guard all along (Mesh BVH via
+  `loader.js:203` is real; batched raycast used three r184's native per-instance-visible path,
+  which is what made this POC correct w.r.t. hidden slots anyway).
+
+**OVERALL VERDICT: YES — real occlusion culling merits a §16 IMPLEMENTATION DESIGN spec.** The
+measured ceiling is ~99% of active elements / ~98.5-99.1% of draw-call buckets during interior
+legs — not the 60-70% guessed, and nothing like §13's ~3% room-mismatch cut (room-occlusion only
+catches OTHER-room elements; this measures true line-of-sight). Emptying ~98% of buckets would take
+interior frames from ~3,300-5,900 draw calls to a few hundred at most — a regime change POC-A says
+attacks the RIGHT axis (object/submission count, not triangles). Honesty requirement for §16: §13
+proved a 3% call cut moved nothing, so the spec's witness must A/B the actual frame time, not just
+the call count — the win is plausible but only the implementation's own W-perf run can prove the
+~99% visibility ceiling converts to frame-time. §16 must also pick a real-time mechanism up front
+(GPU occlusion query w/ N-frame reuse, or compiled-room portal visibility) — the POC's raycast
+method is measurement-only by construction.
