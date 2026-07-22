@@ -32,17 +32,27 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
 - `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — G6, Ph3, Pt1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` — first-touch flicker.
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
-- DiscWalk: `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §STOREY-UNKNOWN
-  (source of truth) + `DISC_WALKER_BRANCH_CLOSEOUT.md` (3 stale PRs #722/#724/#725 + guide-
-  screenshot camera bug). Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
+- DiscWalk: §STOREY-ZBAND fix is DONE+GREEN (07-13, `witness_dw_storey_band.js`, fleet-clean) but
+  STRANDED — pushed `bim-ootb:fix/xray-fixture-classification`, 5 commits ahead of main, no PR ever
+  opened, 9 days idle. Land it (open PR, re-verify fresh, merge) — see
+  `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s 2026-07-22 entry point (bottom
+  of file) for the exact steps. Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
 - `prompts/SPARSE_WALL_ROOM_INFERENCE.md` Phase 1 — sparse-wall fusion (HHS), 4-step follow-up.
+  Related, not duplicate: HHS's room compile is ALSO just stale (pre-dates a shipped fix) —
+  `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP, next line below.
 - `prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` — SampleCastle walls
   misclassified as glowing fixtures, root-caused, POC-gated.
 - `prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` — HHS's 2 remaining islands (storey='Unknown').
 - `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 — large-group Find-panel filter-cheap opt;
   §14 — Hospital's real per-tab-switch number never captured (263MB DB wouldn't stream in sandbox).
-- `prompts/PHOTOREAL_STILL_RENDER.md` — Time Machine high-quality movie export, explicit
-  next-session ask, not started.
+- `prompts/PHOTOREAL_STILL_RENDER.md` — Alt+C cinema-orbit: §CINEMA_ORBIT_V2 (#907/921/923/925)
+  live-tested 2026-07-21, found real (not the already-witnessed) bugs — bim-ootb PR #931 (ghost/
+  x-ray stuck through orbit) + PR #933 (candidate-skip, fixes Duplex-class only — Terminal/Hospital/
+  HHS need the room-compile fix below, not more cinema-code changes) shipped, both awaiting merge.
+- `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP — version-stamp + self-heal
+  room compile (economics: newbies' own uploaded buildings must self-heal, not need per-building dev
+  re-patching). Staged 1-2-3 plan written, NOT started. Blocks HHS's Alt+C fix from shipping (see
+  PHOTOREAL_STILL_RENDER.md's own pointer) — do this sub-task first, HHS should self-heal after.
 - HBA IoT items 1/2/0 (CCTV double-click, camera-POV fly-to ⛔ needs facing vector, mobile
   card-stack) — `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -53,24 +63,20 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY+§RENDER_FIDELITY, bim-ootb PR #908
-  UNMERGED, all 8 residents REAL/100% geo coverage. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
-- ✅ SampleCastle blocky — CLOSED 2026-07-20 (RESOLVED→RETRACTED→re-closed same day, chain kept for
-  the lesson): root cause = stale client IndexedDB cache, not a code/data regression.
-  `prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED.
-- ✅ Posting-tail CLOSED, 20/20 factory posters resolved (2026-07-17/18), ledger stays 52.
-  `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
-- ✅ ERPUserGuide core S&D chapter (2026-07-18). `docs/ERPUserGuide.md`.
-- ✅ ERP multi-user concurrency PoC (2026-07-19/20) — real two/ten-tab witnesses, N-User spec.
-  `prompts/ERP_MULTIUSER_CONCURRENCY_POC.md`.
+- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (07-20), bim-ootb PR #908 UNMERGED, 8/8 residents REAL. `GEOMETRY_TRUTH_CHAIN.md`.
+- ✅ SampleCastle blocky CLOSED (07-20) — root cause: stale client IndexedDB, not a regression.
+  `Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED.
+- ✅ Posting-tail CLOSED 20/20 (07-17/18). `HARDEN_MATRIX.md §W-POST-TAIL`. ✅ ERPUserGuide S&D
+  chapter (07-18). `docs/ERPUserGuide.md`.
+- ✅ ERP multi-user concurrency PoC (07-19/20), real two/ten-tab witnesses. `ERP_MULTIUSER_CONCURRENCY_POC.md`.
+- ✅ ERP O2C Sales cycle CLOSED (07-20/22) — Sales Order→Shipment→Invoice now closes end-to-end via the
+  real UI, real signed documents (`verifyChain=ok`), 9 fixes (bim-ootb PR #928,#938,#944,#948,#953,#955,
+  #956,#960,#968). `prompts/ERP_BUSINESS_CYCLE_E2E.md §Closed`. Stock-effect/Material-Receipt/Vendor-3way
+  remain SEPARATE, not this lane's continuation.
 - ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
   #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
-- ✅ Fly Tour route cache re-fixed (2026-07-20) — cache's own un-evicted stale keys filled
-  localStorage quota, killing the 41× win; self-heal shipped bim-ootb PR #926, W-TOUR-CACHE-EVICT
-  PASS. `prompts/done/TOUR_ROUTE_CACHE.md` §4. ⛔ Follow-up GATED at §8, not started: general-nav
-  DLOD/occlusion for ≥LTU-scale buildings — this problem class has failed 4× before (S258/259/261/
-  262, hysteresis alone insufficient); Fable is authorized to investigate+report only, no
-  implementation without user sign-off. `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md`.
+- ✅ Fly Tour route cache re-fixed (2026-07-20), bim-ootb PR #926. `prompts/done/TOUR_ROUTE_CACHE.md`
+  §4. ⛔ Follow-up GATED §8 (general-nav DLOD, failed 4× before, report-only). `Viewer/FLY_TOUR_DLOD_SCALE.md`.
 - 2026-07-05 through 2026-07-16 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md`.
 - Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
   Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
