@@ -120,3 +120,28 @@ same largest-room guid as step (a); (d) `Home` while Find Panel has focus still 
 to the top (existing behavior preserved, not stolen); (e) `Home` while `A._nav.active` still resets
 corridor-nav to route start (existing behavior preserved). No screenshots — log values and DB
 cross-check only, per the FUNDAMENTAL LAW.
+
+## RESULT — ✅ CLOSED (2026-07-22/23)
+Implemented in `/tmp/wt-room-cycle-home` (branch `feat/room-cycle-home-shortcut`), bim-ootb
+[PR #969](https://github.com/red1oon/bim-ootb/pull/969) — MERGED to `main` (squash), branch deleted
+both sides, worktree pruned. `viewer/scene.js`: `_buildRoomAreaList()`, `_graphEntrance()`,
+`_roomOwnDoor()`, `_faceRoom()`, `_cycleRoom()` (wired into `_shortcuts['r']`), `_homeFillFrame()` +
+`_homeResetAndFrame()` (inserted after the `_focusedPanel` block, guarded exactly as specced above).
+`room_guid` lookups are schema-tolerant (falls back to bare `guid`, matching the rest of
+`navigate_find.js`/`room_graph.js`). Home's fill-frame reuses `streaming.js`'s load-time `§CAMERA`
+elevation/azimuth ratio (0.6, 0.8, 0.6), padding multiplier dropped 1.5→1.0 for the zero-margin ask
+(the `Math.max(80, …)` floor stayed — that's a degenerate-envelope safety clamp, not margin).
+
+**Open design point resolved as shipped:** room #2+ faces its own doorway (door-carrying-room tag,
+`bim-ootb#03a6cb7`), falling back to the global entrance if untagged — this was the one call not
+explicitly user-confirmed before implementation. Flip point if wrong: one ternary in `_cycleRoom()`.
+
+**Witness: 15/15 assertions pass**, `viewer/tests/witness_room_cycle_home_2026-07-22.js`, real
+`HHS_Office_Federated_extracted.db`, headless Chromium, verified independently against the live log
+(not just the implementing agent's summary) — first-`R` guid matched a separately-written DB
+aggregation query, 3-press sequence strictly non-increasing with no duplicate guids, `Home`-then-`R`
+returned to the same largest room, Find-panel-focused `Home` still routed to the panel's own list-nav
+(not stolen), active-corridor-nav `Home` still fired the real `resetToStart()` with `stepIdx` genuinely
+1→0. No regressions: `witness_find_panel_hidden_onload_2026-07-11.js` all pass;
+`witness_room_box_purple_2026-07-12.js`'s 2 failures confirmed pre-existing on unmodified `origin/main`
+via `git stash` (unrelated color-drift, not introduced here). `eslint viewer/scene.js` clean.
