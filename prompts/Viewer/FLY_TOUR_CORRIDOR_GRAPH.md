@@ -276,3 +276,45 @@ building's measured top (`lookAround` gained `lookAtY`). tour.js v6, sw v766. Wi
 unchanged. NOTE for headless re-runs: geo sidecars are now symlinked in the worktree —
 Terminal/Hospital stream 10×+ slower under swiftshader; witness on the geo-less
 `Terminal_norooms.db` or wait for `!APP.streaming` before pressing Fly.
+
+## §VOCABULARY_NOT_REALTIME — vision note (2026-07-21, user framing, read before extending routing)
+**User's own words:** "My plan is to eventually transform Fly thru and routing to be perfect as a
+human walks into a building to carry out functions... when we plan a route it is less realtime work
+but prepared vocabulary to work on." Said while discussing why `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md`
+§ROOM_WALKER_VERSION_STAMP (self-healing, versioned room-compile) matters beyond fixing one building's
+stale data.
+
+**What this means for Fly tour / routing work specifically:** the occupant graph this file already
+depends on (`common/room_graph.js`'s E1-E5 edges, `common/hallway_backbone.js`'s corridor centerlines,
+`getStairGroups()`) is exactly the "prepared vocabulary" — routing (`shortestPath()`, `escapeRoute()`,
+the Fly tour's stop-sequencing) should stay a THIN CONSUMER of that vocabulary, not grow its own
+real-time pathfinding/geometry-interpretation logic. When a future routing feature needs something the
+current vocabulary doesn't have (e.g. "which room is the reception/check-in point," "which corridor
+leads most directly to an exit for THIS function," a task-oriented "walk to do X" primitive), the
+right move is almost always **extend the compiled vocabulary** (a new edge type, a new room/corridor
+tag, a new `rooms_meta`-style stamped artifact) so every future routing/fly-thru feature gets it for
+free — not bolt a one-off real-time computation onto the specific feature that needed it first. This is
+the same "ONE shared gate, not N point-fixes" discipline `WalkerDoctrine.md §10` already names for the
+disc-walker side — same principle, applied to the Viewer's occupant-graph side.
+
+**Concretely, before adding a new capability here:** ask "does this belong in the compiled graph
+(room_graph.js/hallway_backbone.js, versioned + self-healing per §ROOM_WALKER_VERSION_STAMP), or is it
+genuinely per-session/per-camera state (current pose, which pill is active)?" Only the latter belongs
+as real-time logic in tour.js/effects.js itself. The economics argument is the same one that motivated
+the version-stamp spec: vocabulary compiled once (self-healing on version bump) serves every building
+and every future routing feature for free; real-time logic re-derived per feature/per building does not.
+
+### §ROOM_WALKER_VERSION_STAMP shipped (2026-07-21) — caller list above is stale
+The version-stamp spec this section discusses is no longer aspirational — all 3 stages shipped this
+session; see `ROOM_INJECTOR_NEEDLE.md`'s own "Stage 1+2 — DONE" / "Stage 3 — DONE, HHS-only pilot"
+sections for the live-verification detail (bim-ootb PRs #934, #939). Don't re-derive it here.
+
+S1's own line above ("navigate_find.js and tour.js both call it") was already stale before this
+session — `cinema_maxq.js`/`effects.js` were ALSO calling `A.ensureRooms({})` pre-Cinema/MaxQ-orbit,
+undocumented here. This session added a fourth real caller: `dlod_nav.js`'s `'o'`-shortcut nav-LOD
+toggle now warms rooms the same way (idle-deferred, PR bim-ootb#942) — a >50k-element building
+crossing that gate is the same "about to navigate seriously" signal this file already treats as
+"make sure rooms are fresh." Current full caller set: `tour.js` (Fly Tour prepare + §THIN-GRAPH-RECURE),
+`cinema_maxq.js`/`effects.js` (Cinema/MaxQ orbit prep), `navigate_find.js` (the needle button itself),
+`dlod_nav.js` ('o' nav-LOD toggle). Keep this list current when adding a new caller — it's the fastest
+way for a future session to know what already depends on this shared core before changing it.

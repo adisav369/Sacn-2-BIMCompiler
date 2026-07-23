@@ -62,25 +62,21 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22) — version-stamped compile
-  self-heals every building (#947), Find Panel wired as 5th `ensureRooms()` caller (#954), utility-room
-  routing penalty (#959/#961), Terminal raster fix + A*-on-raster polyline routing (#964/#967, un-merged).
-  Hard-fail-illegal-chords tried, measured harmful, reverted (honest negative). Log-precision follow-up
-  NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md` + `.../VIEWER_FIND_PANEL_ROOM_ACCURACY.md §9-§14`.
-- ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (07-20), bim-ootb PR #908 UNMERGED, 8/8 residents REAL. `GEOMETRY_TRUTH_CHAIN.md`.
-- ✅ SampleCastle blocky CLOSED (07-20) — root cause: stale client IndexedDB, not a regression.
-  `Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §CLOSED.
-- ✅ Posting-tail CLOSED 20/20 (07-17/18). `HARDEN_MATRIX.md §W-POST-TAIL`. ✅ ERPUserGuide S&D
-  chapter (07-18). `docs/ERPUserGuide.md`.
-- ✅ ERP multi-user concurrency PoC (07-19/20), real two/ten-tab witnesses. `ERP_MULTIUSER_CONCURRENCY_POC.md`.
-- ✅ ERP O2C Sales cycle CLOSED (07-20/22) — Sales Order→Shipment→Invoice now closes end-to-end via the
-  real UI, real signed documents (`verifyChain=ok`), 9 fixes (bim-ootb PR #928,#938,#944,#948,#953,#955,
-  #956,#960,#968). `prompts/ERP_BUSINESS_CYCLE_E2E.md §Closed`. Stock-effect/Material-Receipt/Vendor-3way
-  remain SEPARATE, not this lane's continuation.
-- ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
-  #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
-- ✅ Fly Tour route cache re-fixed (2026-07-20), bim-ootb PR #926. `prompts/done/TOUR_ROUTE_CACHE.md`
-  §4. ⛔ Follow-up GATED §8 (general-nav DLOD, failed 4× before, report-only). `Viewer/FLY_TOUR_DLOD_SCALE.md`.
+- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22), #947/#954/#959/#961/#964/#967.
+  Log-precision follow-up NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md`.
+- 🟡 P2P Material Receipt UNBLOCKED, real signed M_MatchPO proven (2026-07-23), bim-ootb PR #972 (open) —
+  extracted from real iDempiere Java first; InOutGenerate/InvoiceGenerate's SO-only gates confirmed
+  faithful, not bugs. M_MatchInv (Vendor Invoice side) NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
+- 2026-07-17 through 2026-07-20 DONE items (GEOMETRY_TRUTH_CHAIN, SampleCastle blocky, Posting-tail,
+  ERPUserGuide S&D, ERP multi-user concurrency, ERP O2C Sales cycle, TM DLOD Phase 3, Fly Tour route
+  cache): `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md`.
+- ✅ nav-DLOD root-caused + real perf fix, LTU_AHouse 122k (2026-07-23), bim-ootb PR #973-#977 — bbox
+  mode's empty-Set filter had silently blocked nav-DLOD; ~4.5→~11.5fps mean during flight, measured not
+  felt. §17 (BVH-occl-query) separate, parked. `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19`.
+- ✅ R room-cycle + Home fill-frame shortcuts (2026-07-22/23), bim-ootb PR #969 MERGED — `R` cycles to
+  Nth-largest room (no schema change), `Home` resets cycle + tight exterior fill-frame, same keypress,
+  verified not to regress existing `Home` claims. 15/15 witnesses, real HHS fixture.
+  `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
 - 2026-07-05 through 2026-07-16 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md`.
 - Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
   Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".

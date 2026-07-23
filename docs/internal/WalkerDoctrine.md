@@ -447,3 +447,43 @@ follow-up script, not optional.
   `disc_walker.js`'s schedule-mode `spacesOf()` (which already correctly excludes `≈` rows).
 - Applies to every building, no exceptions: 7 of today's 8 embedded `_ARC.db` have zero rooms (only Terminal
   has real ones baked in) — this rule closes that gap going forward, for extraction and import alike.
+
+## §15 — Room/space compile is VERSIONED and self-healing, not "automatic once" (2026-07-21, extends §14)
+
+**§14 established rooms must be auto-infused, always, no manual follow-up.** This section adds the part
+§14 didn't cover: what happens when the COMPILE ALGORITHM itself improves after a building already has
+rooms baked in. Found live (Viewer session, HHS_Office_Federated): a building's compiled rooms can be
+correct-for-their-time and still go stale — HHS's spatial_structure held 14 rooms from before the
+§SUSPECT-LARGE fix (this doc's own compile_rooms.py history); the CURRENT compiler produces 73-96 real
+rooms (including a genuine 150-280m² hall) for the exact same building. Nothing re-ran it, because
+nothing WAS SUPPOSED to — the only trigger was a manual, per-building "needle" press.
+
+**Rule:** every compiled room/space artifact carries a VERSION STAMP (the compiler's own version string
+at the moment it ran), and every consumer checks that stamp against the CURRENT compiler version before
+trusting it — a missing or stale stamp means self-heal (recompute), automatically, no human needing to
+remember which of N buildings needs re-running after an algorithm change. Full mechanism spec:
+`prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP (Viewer/JS side — `room_walker.js`'s
+`ROOM_WALKER_V` + a `rooms_meta` stamp row, `_ensureRoomsCore()`'s trust check). `compile_rooms.py` (this
+repo's server-side/dev counterpart) should carry the same version string in lockstep, same py/js parity
+discipline §7's mini-BOM RosettaStone precedent already holds this project to elsewhere.
+
+**Why this belongs in doctrine, not just a Viewer prompt file (user's own framing, 2026-07-21):** "As
+newbies bring in their IFCs extracted to DB thus gets injected on the fly, saved locally. It's their
+game not ours." A self-service user's own uploaded building must get the CURRENT compile quality
+automatically, forever, without a dev ever touching that specific building — the version-stamp mechanism
+is what makes "auto-infused, always" (§14) actually hold up over TIME, not just at first extraction.
+
+**Extends to DiscWalk / MEP-walk work directly:** the same staleness risk applies to anything
+disc_walker.js compiles and caches (walked MEP routes, room-derived classification, any future
+occupant/graph artifact) — if the walk algorithm improves, a previously-walked building should not
+silently keep serving the OLD walk forever. Same fix shape: version-stamp whatever gets compiled/cached,
+check-and-self-heal on load, never rely on a human remembering to re-walk a specific building.
+
+**Companion principle — vocabulary, not real-time work (user, same session):** "when we plan a route it
+is less realtime work but prepared vocabulary to work on." Routing/path-finding features (Fly tour,
+future "walk like a human to accomplish a task" navigation) should stay thin CONSUMERS of a compiled,
+versioned vocabulary (room graph, corridor graph, door adjacency, stair groups — §10's "ONE shared gate"
+applied to occupant-graph data, not just disc-walk placement) — never grow their own real-time
+geometry-interpretation logic per feature. When a routing feature needs something the vocabulary doesn't
+have yet, the correct move is extending the compiled vocabulary (versioned, self-healing, shared by every
+future consumer) — not bolting one-off real-time logic onto whichever feature asked for it first.
