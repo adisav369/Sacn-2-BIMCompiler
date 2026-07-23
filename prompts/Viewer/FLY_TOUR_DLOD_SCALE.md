@@ -1760,3 +1760,40 @@ index).
    size, to box more aggressively and close the ~30-60ms gap to full-ghost speed while still keeping
    nearby real geometry visible. Not started.
 2. The general (non-nav-DLOD) camera-teleport jank above — separate investigation, not scoped here.
+
+## 19. Distances tightened + same-room protection (2026-07-23, bim-ootb PR #976, `dlod_nav.js`)
+
+**Change (item 1 above, now done):** `PROMOTE_DIST` 50→38, `DEMOTE_DIST` 80→60 (~25% cut). User
+condition: "tightening distances are OK as long as in-room remain solid." To honor that, `_wantedReal`
+now exempts elements in the camera's CURRENT room from the distance gate entirely (frustum/hysteresis
+still applies) — without this, the tighter distances would box out whatever room the user is standing
+in. This requires the existing room-mismatch criterion (§13) live at all times rather than
+console-only-off — `roomOcclEnabled` flips from default `false` to default `true` (still flippable to
+`false` from the console to fall back to plain distance/frustum, no other behavior change).
+
+**Measured result, same session, real flight on LTU_AHouse — a further, real win on top of §18:**
+clean post-burst `dlod=on` samples averaged **87.25ms mean (~11.5fps)**, down from §18's 118.4ms
+(~8.4fps) baseline at the old 50/80 distances — another ~26% reduction, landing near the upper end of
+the 8.4–13.4fps bound estimated before this was implemented (13.4fps = the full-ghost ceiling, itself
+unchanged by this PR). Progression this whole investigation: **~4.5fps (pre-session) → ~8.4fps (§18:
+chunked restore + honest tag) → ~11.5fps (§19: tightened distances)**.
+
+**Caveat, not glossed over:** the `§DLOD_NAV` log's `room=` field (added by this same change, for
+exactly this reason) read `leg-off` or `none` for the ENTIRE captured run — the camera never settled
+inside a resolved room. So the same-room *protection* mechanic was never actually exercised in this
+test; the full 87ms→118ms improvement measured above is attributable to the tightened distances ALONE.
+The condition the tightening was made safe for ("in-room stays solid") has NOT yet been verified live —
+next capture needs a longer interior hold with `room=` showing an actual room name, confirming nearby
+same-room elements stay real past 60m, before treating that part as proven.
+
+**New anomaly found, unrelated to this PR, not yet fixed:** `§DLOD_NAV active=0 boxed=204250` — boxed
+count EXCEEDED the total element count (122,330) after a disengage→re-engage cycle. Not a rendering
+bug (per-element real/box state looked correct), a counter bug — `_passReal`/`_passBoxed` most likely
+aren't reset when `_buildBoxes` reruns after a prior scan pass was interrupted mid-pass by a disengage,
+so stale counts from the interrupted pass carry into the fresh engagement's first completed pass. Open,
+not yet root-caused with certainty, not yet fixed.
+
+**Open for next session:** (1) verify same-room protection with a real in-room hold, (2) fix the
+boxed-count-overflow anomaly, (3) discuss why frame time appears to floor around ~65-87ms (~12-15fps)
+rather than continuing to drop with further tightening — user flagged this as the next real question
+("why the ceiling is at 12fps"), not yet investigated.
