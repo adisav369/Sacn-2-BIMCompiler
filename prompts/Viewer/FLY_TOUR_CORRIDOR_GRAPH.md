@@ -727,3 +727,71 @@ falls back to slow OCI) — use `npx http-server -c-1 --cors` or equivalent inst
 - Not authorized to implement from this section alone — per this project's Spec-First rule, the
   investigation in the numbered items above needs real data/citations added to this file before any
   code changes to `tour.js`'s interior route-building or pacing.
+
+## §TOUR_TIMELINE_SCRUB — SPEC ONLY, not yet implemented (2026-07-26, user directive verbatim)
+
+**User's own words, verbatim, the actual scope:** "introduce a new feature which is the tour
+timeline where it can be scrubbed... It is separate from the history/timeline which is dots of
+events. This tour timeline be smooth to play forward backward while maintaining the overlay ie
+n,Alt-G/o."
+
+**Explicitly NOT the existing History Bar** (`common/history_bar.js`/`universal_history.js`/
+`history_tap.js`) — that system is a discrete EVENT log (`§HIST_LIST`/`§HIST_PUSH`, dots per
+recorded `§act`: "Opened LTU_AHouse", "Alt+G → GI preview", etc.), navigable by jumping between
+event dots, not a continuous playback position. This new feature is a CONTINUOUS scrubber over the
+Fly Tour's own playback time — drag a handle, camera position/gaze update live, both directions —
+closer to a video seek bar than an event timeline. Two different mechanisms, two different files;
+this one belongs in `tour.js`, not the history system.
+
+**What the engine already has, real code citations, not assumed:**
+- The tour is `A.walkActions[]` (22 actions this session: orbit, moveTo, flyPath×6, pause,
+  lookAround, interleaved) — each with its own `duration`/`_duration`, known once `buildTour()`
+  completes. A GLOBAL scrub position is naturally "cumulative time across all actions in order,"
+  computable once (prefix-sum the durations) — no new data needed, just a derived table.
+- Per-action pose-from-progress is MOSTLY already a pure function of a 0-1 fraction: `flyPath` uses
+  `act._curve.getPointAt(t)` (real arc-length parameterized spline — already random-access, not
+  iterative); `orbit` computes position from `angTt`/`radius`/height formulas at a given `tt`
+  (`tour.js` orbit block, also already pose-from-fraction); `moveTo` lerps `_startPos`→destination
+  by a t fraction. **This is good news for scrubbing** — the POSITION side of every action type
+  already supports "give me the pose at fraction t," which is exactly what a scrubber needs.
+
+**What does NOT already support random access — the real open design question, not decided here:**
+- **Look-at smoothing is frame-history-dependent, not pure-from-t.** `flyPath`'s gaze
+  (`act._prevLook.lerp(lookPt, 0.08)`, `tour.js` ~line 1354) and `lookAround`'s pan both blend from
+  the PREVIOUS frame's target, not compute fresh from `t` alone — correct for forward playback
+  (smooths track-switches, §SOFTEN), but undefined for an arbitrary scrub jump (there is no "previous
+  frame" to lerp from at a fresh seek position). Needs a decision: snap `_prevLook` directly to the
+  raw target on a hard/large jump, keep the lerp only for small in-place drag deltas (the user's own
+  "smooth to play forward backward" wording suggests the drag-scrub case specifically wants the
+  smoothing kept, just not broken by big jumps) — a threshold-based hybrid, not a full redesign.
+- **Per-action lazy-init runs once at `A.walkActionT === 0`** (`flyPath` builds `_curve`/
+  `_paceRemap`; `moveTo` captures `_startPos`/`_startTarget`; `orbit` similar) — a scrubber jumping
+  INTO the middle of an action that hasn't run its init yet would read `undefined` curve/remap
+  objects. Needs either: precompute/cache every action's init eagerly once at tour-build time (all
+  the real geometry/points needed already exist then — nothing here depends on live camera state
+  except `moveTo`'s `_startPos`, which is only used for the FIRST `moveTo`; every OTHER action's
+  init uses already-known waypoints, not live camera position, so this is likely cheap and safe to
+  precompute for all 22 actions up front, not lazily) — or a small per-action "ensure inited" guard
+  called from the scrub-seek path, reusing the SAME init code forward-playback already uses.
+- **DLOD/streaming systems tick incrementally, not from-scratch per seek** (`§DLOD_NAV_BUDGET`
+  ramps up over many ticks, `§ROOM_OCCL_INDEX`/`§ROOM_OCCL_ROOM` tracks room transitions with
+  `stableN` hysteresis) — a large scrub jump changes camera position discontinuously, which these
+  systems don't currently expect (they assume gradual, tick-by-tick movement). Needs checking
+  whether a big scrub jump should force an immediate DLOD re-evaluation at the new position (most
+  correct) vs. just letting the existing budget ramp catch up over the next few frames (cheaper,
+  possibly a visible pop). Not decided here — a real perf/correctness tradeoff, not a UI detail.
+
+**"Maintaining the overlay ie n, Alt-G/o" — stated as an INVARIANT, not new work.** Night mode
+(`toggleNightMode`), GI preview (`Alt+G`, `N8AO` composer toggle), and DLOD nav (`toggleDlodNav`)
+are independent scene/render-state toggles, orthogonal to tour playback today — scrubbing must not
+call anything that resets them. This is a regression risk to explicitly TEST once built (drag the
+scrubber with each toggle on, confirm it survives), not a mechanism to build — the scrub
+implementation should touch camera/gaze/DLOD-state only, never re-run whatever code path those
+toggles live in.
+
+**Not authorized to implement from this section alone** — per this project's Spec-First rule, the
+three open items above (look-at smoothing at arbitrary seek, eager vs. lazy per-action init, DLOD
+re-evaluation on discontinuous jumps) need resolving — by further investigation citing real code, or
+by the user's own call on the tradeoffs — before any `tour.js`/UI changes. Likely a real, if small,
+new UI element too (a draggable scrub bar) — not specified here, follows once the engine-side
+seek() mechanism above is settled.
