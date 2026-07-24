@@ -11,6 +11,10 @@ frame numbers on real hardware before any % target is claimed anywhere in a PR o
 line — no claim without one. Target session: **Fable** (execution), NOT Sonnet — this file is
 self-contained per `feedback_model_allocation_mastermind_vs_execution.md`; do not rediscover, do not
 re-litigate `TM_DLOD_SCALE.md` §1's settled DLOD-naming history.
+**COMPANION FILE:** `FLY_TOUR_CORRIDOR_GRAPH.md` owns the SAME file's (`viewer/tour.js`) routing
+concerns (WHICH points/order — room selection, storey sequencing, stairs, the §HIGHLIGHTS_FIRST_ROUTING
+spec) — this file owns HOW FAST and WHICH WAY THE CAMERA LOOKS along whatever points exist (pacing,
+§21-§24, §TARGET_BOUNDED_LOOKAHEAD, §BASE_SPEED_REGRESSION). Read BOTH before touching tour.js.
 **Status:** OPEN, filed 2026-07-20. Triggered by a live user question ("how to get true DLOD to
 scale LTU above sizes") asked immediately after `prompts/done/TOUR_ROUTE_CACHE.md` §4's fix — the
 user's own framing tied the two together ("perhaps it is just the FlyTour isolated case... delve
@@ -2711,3 +2715,59 @@ if that's what the numbers show, don't force the room-boundedness explanation to
 (`0587956`) are local-only in `/tmp/wt-merged-test` (`bim-ootb`, branch
 `local/merged-occl-aerial-test`, no upstream configured) — NOT pushed anywhere. Verify TM/picking/
 storey-filter against `8ee7aa6` before pushing (§22's own open item), independent of this task.
+
+## §24 — this section's hypothesis picked up + live-measured, real code fix shipped elsewhere
+(2026-07-26; full writeup lives in `FLY_TOUR_CORRIDOR_GRAPH.md`'s
+`§TARGET_BOUNDED_LOOKAHEAD` section, not duplicated here — that file owns `flyPath`/pacing
+implementation history)
+
+§23's room-boundedness hypothesis was real but the actual mechanism was a MaxQ/Clash-vs-flyPath
+TARGETING difference, not (only) frustum triangle exposure at a fixed pose: MaxQ/Clash both derive
+their look-at target + distance from something bounded (room extent / clash overlap size); `flyPath`
+used a fixed 0.05-of-total-arc-length lookahead fraction, which stayed meters-scale for MaxQ/Clash's
+own short bounded beats but blew out to tens of meters ahead on `flyPath`'s full-storey routes. Fixed
+by capping the lookahead to an absolute arc-length distance (`LOOKAHEAD_M=5`) instead of a fraction of
+total path length. Live-measured on LTU_AHouse (real browser, `renderer.info.render.triangles`,
+position held constant, only look-at orientation changed): mean triangles across one interior leg
+dropped 18% (5.11M→4.18M), worst single point 6.7x (9.41M→1.40M). §23's own still-unmeasured "MaxQ
+pose vs Fly Tour pose triangle count" comparison was superseded by this more direct A/B (same building,
+same leg, isolating the lookahead variable itself) rather than run separately — don't re-run it unless
+a reason emerges to distrust this result specifically.
+
+## §25 — CLOSED this round (2026-07-26, user: "the perf is pretty good now... focus on the path
+for next session, clean up here, close")
+
+**Shipped to `bim-ootb` main, all live** (PRs #985→#988, `viewer/tour.js`):
+- `§TARGET_BOUNDED_LOOKAHEAD` — flyPath gaze capped to an absolute look-ahead distance, not a
+  fraction of total path length (§23/§24 above).
+- `§PACE_SWING`/split fast-slow caps — the LOS/height/distance inverse-pacing clamp, tuned across
+  several live-review rounds down to `PACE_FACTOR_MIN=1/3` (courtyard hasten, user's explicit X3),
+  `PACE_FACTOR_MAX=1.6` (near-object slowdown, validated against small rooms).
+- `§BASE_SPEED_REGRESSION` — `INTERIOR_PACE_FACTOR` 0.3→1.0, the real root cause of "cannot be a
+  whole 2 minutes" (a flat dampener silently reintroduced a multi-minute crawl that an earlier
+  §R6-PACE round had already fixed once).
+- `§CRUISE_CAP`/`§ENTRANCE_LOOKAHEAD` — the entrance moveTo's base duration was distance-INDEPENDENT
+  (a real bug: dist=10/50/100/300m all gave the identical 1.5s), so no near-target deceleration
+  could ever be felt regardless of pacing-curve tuning; fixed at the root (capped cruise speed) not
+  patched at the curve.
+
+**Measured result this session:** ~10.6 fps sustained during interior Fly Tour with DLOD nav-culling
+on (mean frame time 94.7ms, real RTX 4060, LTU_AHouse, `§FPS_MODE` log) — matches the already-shipped
+§22 baseline (86.7ms/~11.5fps) closely. **Stated plainly: raw rendering FPS did NOT move this
+session** — every fix here touches camera position/gaze/timing, never triangle or draw-call counts,
+so none of it could move that number. What changed is motion FEEL (no more multi-minute crawls,
+graceful accel/decel near objects, no more staring through doorways/down corridors). The remaining
+~85-95ms/frame floor is real GPU/triangle cost (12.9M triangles, LTU_AHouse) — §17's occlusion-culling
+domain, already CLOSED as a 4-times-failed-correctness architectural problem (§17.12-§17.16), not a
+free win sitting on the table. A code-level pass over `dlod.js`/`helpers.js`/`navigate_find.js`/
+`time_machine.js` this session found no NEW unshipped low-hanging fruit beyond what §17.15/§17.16
+already named (the `addUpdateRange` partial-buffer-upload fix, still correctly reverted — unsafe
+standalone across 4 `setMatrixAt` call sites without the full DLOD consolidation).
+
+**Next session: `FLY_TOUR_CORRIDOR_GRAPH.md` §HIGHLIGHTS_FIRST_ROUTING** (biggest hall/room first,
+turn around, stairs when present, before touring the rest) — a routing/ordering change, orthogonal
+to everything closed here (this file owns pacing/speed/gaze; that file owns which points/what order).
+Confirmed no interaction: whatever stop order that spec settles on inherits this session's fixed
+base speed and bounded look-ahead for free. Do not re-open this pacing thread without a new,
+specific, live-reproduced complaint — the four rounds of tuning above are validated against real
+user live-review, not guesses.
