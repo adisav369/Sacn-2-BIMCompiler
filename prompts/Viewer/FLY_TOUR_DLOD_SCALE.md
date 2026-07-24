@@ -1690,6 +1690,340 @@ identified — this implementation just doesn't correctly identify it yet), same
 result is reportable" discipline already used for §13/§15/§16, and ship §16's PVS alone as the
 practical stopping point.
 
+### §17.13 — depth-buffer exclusion probe, negative result (2026-07-23, Sonnet agent,
+`bim-ootb` branch `feat/occl-bvh-gpu-query` @ `92581e2`, committed locally, NOT pushed)
+
+User directive: invest in §17.12's own named fix shape (exclude box-proxy geometry from the
+occlusion queries' depth source), normal-effort probe, stop if too hard unless there's something
+to ship on top of §19's already-shipped 11.5fps baseline.
+
+**Built exactly as specced:** offscreen `WebGLRenderTarget`, all box-proxy meshes (steady-state
+`_boxMeshes` + in-flight fade `boxCopy` overlays) hidden for one `render()` call, real geometry
+only, then the raw-GL occlusion queries bind that render target instead of the default
+framebuffer — fully decoupled from the visible canvas. W-OCCL-BVH-EQUIV re-verified PASS
+(byte-identical off-path). Live diagnostic confirmed the pre-pass wired correctly: render target
+bound at query time, all box meshes verified `visible=false` during the pass, zero GL errors.
+
+**W-OCCL-BVH-CORRECT: FAIL, effectively unchanged from §17.12** —
+`meanFalseHideRate=31.48%` (per-pose 18.46%/8.48%/82.32%/16.67%, worst case 135/164), hidden-count
+still oscillates by tens of thousands at a frozen camera (real RTX 4060, fresh-browser-per-pose,
+LTU_AHouse, 4 poses). The fix works as designed but doesn't move the number — **rules out
+box-proxy depth contamination as the dominant cause.**
+
+**Root cause REVISED, not just retested:** dumped the BVH's top-of-tree node extents — root spans
+~426×18×287m, its two children (where traversal starts, §17.3) still span ~289×287m and
+~245×190m — most of the multi-floor building. A coarse `ANY_SAMPLES_PASSED_CONSERVATIVE` query
+against a box that large can return "hidden" whenever its screen-space silhouette happens to sit
+fully behind SOME near occluder, even though the volume is mostly empty space containing real,
+visible geometry elsewhere. A loose-bounding/early-out granularity problem, independent of what's
+in the depth buffer.
+
+**Stopped per the task's own stop condition:** fixing granularity needs deeper restructuring
+(tighter/smaller top-of-tree nodes, or abandoning whole-subtree hide on large early nodes) than a
+bounded pre-pass — out of scope for this probe. PERF A/B (§17.6/17.11) not run — correctness gate
+not met, so it doesn't matter per this file's decisive-witness discipline.
+
+**Net result: nothing to ship.** `occlBvhEnabled` stays default `false`; §9/§10/§19
+distance-frustum and §16 room-PVS untouched; §19's shipped 87ms/~11.5fps baseline is the standing
+result. §17 (object-grain GPU occlusion) is now CLOSED as a proven-opportunity/twice-failed-
+implementation — the causal claim from §17.10-17.11 stands (object-grain occlusion demonstrably
+moves frame_ms when correctly identified) but two independent implementation attempts (§17.12
+box-proxy-as-occluder, §17.13 depth-exclusion) both failed on correctness before reaching perf.
+Any future attempt needs the granularity fix as a prerequisite, not a repeat of either of these two.
+
+### §17.14 — size gate on top-level BVH nodes ("skip top-level nodes"), partial improvement,
+still FAIL (2026-07-23, Sonnet agent, `bim-ootb` branch `feat/occl-bvh-gpu-query` @ `e91f24d`,
+committed locally, NOT pushed — DeepSeek-suggested next step on §17.13's own finding)
+
+**Fix:** `OCCL_MAX_HIDE_DIAG=30` (meters, matching this file's own existing sense of "oversized
+proxy" scale — `DEPTH_MAX_RADIUS=25`, §9's slab-exclusion, not an arbitrary new number). A BVH
+node whose AABB diagonal exceeds 30m is never trusted with a "hidden" verdict — the query is
+skipped and the node is force-descended into its children instead (same outcome as a "visible"
+result), including nodes that re-enter the cut via the existing upward hidden-sibling collapse. An
+oversized leaf (rare — sparse/far-apart elements, up to 194m diag as deep as depth 10) is left
+visible permanently (safe/conservative, §17.5 pitfall 2). Per-depth diagonal distribution logged
+once per build (`§OCCL_BVH_BUILD_OVERSIZED`) confirmed a plain depth cutoff would NOT generalize
+(deep-tree outliers still hit ~194-210m) — only a direct per-node size gate does.
+
+**W-OCCL-BVH-CORRECT re-run (real RTX 4060, LTU_AHouse, fresh-browser-per-pose, same 4 persisted
+poses as §17.12/§17.13):**
+
+| pose | falseHideRate (was §17.13) | gtClear | falseHide |
+|---|---|---|---|
+| 0 | 4.72% (was 18.46%) | 127 | 6 |
+| 1 | 4.94% (was 8.48%) | 162 | 8 |
+| 2 | 61.22% (was 82.32%) | 49 | 30 |
+| 3 | 18.18% (was 16.67%) | 77 | 14 |
+
+`meanFalseHideRate=22.27%` (was 31.48%) — real, uneven improvement (poses 0/1/2 better, pose 3
+flat-to-slightly-worse on a small sample) but decisively still far from the ~0 bar (§17.6). **Not
+a pass.** Oscillation is UNFIXED: every pose still reports `settled=timeout`, hidden-count still
+swings by tens of thousands at a frozen camera (e.g. pose 0: 73834→98739→98361→…→81170→97867→
+76415) — the size gate reduces false-hide rate at some poses but doesn't touch whatever drives the
+query-result churn itself.
+
+**Correctness gate: FAIL.** Per this file's decisive-witness discipline, the perf A/B against
+§19's 87ms/~11.5fps baseline was NOT run (moot when correctness already fails). `occlBvhEnabled`
+stays default `false`; §9/§10/§19 and §16 untouched; nothing shipped is affected.
+
+**Net result: a real, worth-keeping partial fix (roughly halves the false-hide gap at 3 of 4
+poses) that does not clear the bar to ship.** The broader BVH-construction redesign (tighter
+internal-node bounds, or a different early-out shape entirely) that §17.13 named as follow-up work
+is still the prerequisite for a pass — not attempted here, out of scope for this dispatch. §17
+remains CLOSED as a proven-opportunity/repeatedly-failed-implementation (three attempts now:
+§17.12 raw build, §17.13 depth-exclusion, §17.14 size gate — none clear the correctness bar); any
+further attempt should start from the BVH-construction redesign, not another patch on the
+traversal/query logic.
+
+### §17.15 — oscillation root-caused (feedback loop, confirmed), fix attempted, ARCHITECTURAL
+DEAD END (2026-07-23, Sonnet agent, `bim-ootb` branch `feat/occl-bvh-gpu-query` @ `27edc82`,
+committed locally, NOT pushed — user: "plan out and go for it now")
+
+Unlike §17.12-§17.14, which only tracked false-hide rate, this attempt diagnosed the oscillation
+itself first, per MEASURE BEFORE ESTIMATING.
+
+**Diagnosis (instrumented, not guessed):** added `window.__dlodNav.occlDebugTrace` (`§OCCL_BVH_FLIP`
+per-node trace) and traced 868 verdict flips at a frozen camera (pose 0, real RTX 4060).
+**Confirmed:** hiding a guid for display also removes it from the occlusion queries' own depth
+source, since the depth-only pre-pass (§17.13) only draws whatever's currently real —
+`meanGenDelta=32.83` (other hide-set mutations mid-flight of a single query), `maxHiddenCountDelta
+=18,162` guids churning within the SAME single-frame window one query was in flight, `859/868`
+flips were `hid→vis` (an occluder vanishing, not camera movement). **Disconfirmed:** async
+staleness — `latencyFrames` was exactly 1 for every sampled flip, no growing backlog.
+
+**Fix attempted:** restore each `_occlHidden` guid's cached-matrix real geometry into the
+depth-only pre-pass for that one `render()` call, so occl-BVH demoting a guid can never erase its
+own ability to occlude something else. Gated behind its own `occlDepthDecoupleEnabled` lever
+(default false) so `occlBvhEnabled` alone stays byte-identical to §17.14.
+
+**Result: FAILED, worse not better.** `meanGenDelta` rose 32.83→42.49, `meanAbsHiddenCountDelta`
+rose 3669.72→4501.58, hidden-count still swung ~95k-112k (same magnitude as before). Cost
+130-172ms per depth-pre-pass call — ≥8× the ~16.6ms frame budget, disqualifying on its own. The
+run also hit the standing §16.8 headless-Chrome long-run crash before reaching settle.
+
+**Root cause of the fix's own failure (real architectural finding, not a bug):** the fix only
+restores occl-BVH's OWN hidden subset (~95-112k of ~120k boxed) — the remaining ~8-25k guids
+boxed by the independent, already-shipped §9/§13/§16 distance/room criteria (plausibly the actual
+dividing walls between rooms) stay excluded from the depth source regardless, so the same
+"occluder vanished" event keeps happening through that door. A complete version would need to
+decouple ALL demoted geometry from ALL DLOD layers — arithmetically equivalent to rendering ~100%
+of the building's real geometry every occlusion-query frame, which **directly conflicts with
+DLOD's own reason to exist.** This is a genuine architectural dead end for the "restore into a
+shared depth pre-pass" fix shape, not an implementation bug to iterate past.
+
+**Stopped per the attempt-4 discipline** — did not re-run the formal 4-pose correctness witness
+or the perf A/B (the diagnostic run already falsifies the fix on both correctness and cost;
+re-running risked another §16.8 crash for no new information). `W-OCCL-BVH-EQUIV` re-verified
+PASS (byte-identical off-path). `occlBvhEnabled`/`occlDepthDecoupleEnabled` both stay default
+`false`; §9/§10/§19 and §16 untouched; nothing shipped is affected.
+
+**§17 status: CLOSED, four attempts, all failed correctness** (§17.12 raw build, §17.13
+depth-exclusion, §17.14 size gate, §17.15 depth-decouple) — the last one closing not with "needs
+more tuning" but with a structural reason further tuning of this fix shape can't work. The
+diagnostic instrumentation (`§OCCL_BVH_FLIP`, `occlDebugTrace`) is kept in the tree, inert by
+default, for any future attempt that wants to start from a different mechanism entirely (e.g.
+§16.5's originally-spec'd GPU-occlusion-query fallback done as its own dedicated depth pass
+independent of any DLOD layer, or abandoning per-element occlusion queries for something coarser).
+§16's room-PVS remains the practical, shipped stopping point for occlusion — see §17.12's own
+framing, now borne out four times over.
+
+## §17.16 — IMPLEMENTATION DESIGN, structural occluder decouple (2026-07-23, design only, NOT
+built — user + DeepSeek co-design, pivot not a patch, per §17.15's finding that a shared
+occluder/occludee depth source is the actual failure mode of all 3 prior attempts)
+
+**Core principle (DeepSeek, confirmed against §17.15's own evidence):** one scene for display,
+one separate, static depth source for occlusion — they never share geometry state. §17.15 built a
+half-version of this (restored ONE layer's hidden geometry back into a shared source) and it
+failed on both correctness and cost, because the source was still "whatever's currently real," a
+population every DLOD layer keeps mutating. The fix isn't restoring more into that shared source —
+it's replacing it with a set that was never subject to DLOD state in the first place.
+
+### 17.16.1 Occluder selection — verified schema, `elements_rtree JOIN elements_meta`
+Confirmed against the REAL schema (`build/Duplex_mep_extracted.db`, `extract.py:266-273/633-641`
+— checked directly, not assumed from another context):
+- `elements_meta (id, guid, discipline, ifc_class, element_name, element_type, storey, ...)` —
+  `ifc_class` is a stored, first-class column, not derived. Unlike room boundaries (which need
+  `room_walker.js`'s walking algorithm because no IFC entity gives pre-computed room polygons),
+  structural type needs no geometric computation.
+- `elements_rtree (id, minX, maxX, minY, maxY, minZ, maxZ)` — numeric-only rtree module, NO
+  `type`/`guid`/`bbox` column of its own (an earlier draft of this section assumed otherwise —
+  caught and corrected against the real schema before landing here, not after).
+- **Join key verified real, not assumed:** `extract.py:617-641` inserts both tables from the SAME
+  `eid` in the same per-element loop iteration — `elements_rtree.id = elements_meta.id` is a sound
+  join, confirmed from the actual extraction source.
+- **The real selection query, using the rtree for its precomputed bounds (this is the genuine win —
+  the BVH builder below skips recomputing AABBs from geometry/`element_transforms` entirely):**
+  ```sql
+  SELECT r.id, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ, m.guid
+  FROM elements_rtree r JOIN elements_meta m ON r.id = m.id
+  WHERE m.ifc_class IN (...)   -- exact class list per the prerequisite step below
+  ```
+- **Prerequisite step, do not skip (MEASURE BEFORE ESTIMATING):** run
+  `SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class ORDER BY 2 DESC` on LTU_AHouse's
+  real DB first — confirms the actual class strings (do not assume `IfcWall`/`IfcSlab`/`IfcRoof`/
+  `IfcCovering` spelling without checking) and gives a real occluder-set-size number before any
+  "this is small/cheap" claim is made in code comments or a commit message. §5's SQL (line ~160)
+  already proved storey-slabs are strong occluders structurally; this is the analogous real-number
+  check for the wall/slab/roof/ceiling filter specifically.
+- **Lightweight schema guard, cheap insurance:** the build step should confirm `elements_rtree`'s
+  actual columns before relying on them (e.g. read `sqlite_master` or `PRAGMA table_info` once at
+  build time, fail loud with a clear message if a differently-shaped DB is ever loaded) — not because
+  today's schema is in doubt (it's now verified above), but because this file's own §DB-snapshot
+  divergence lessons elsewhere in this project's memory are exactly about assuming schema shape
+  holds across every building/DB without checking.
+
+### 17.16.2 Occluder set build — static, no hide-state, built once
+- Fetch occluder elements via 17.16.1's verified join query — AABBs come directly from
+  `elements_rtree`, no separate bounds computation needed.
+- Build a BVH over ONLY this subset (reuse §17.2's median-split builder, or simpler if 17.16.1's
+  real count is small enough that a flat list beats a tree — measure, don't assume). This BVH has
+  no `res`/`pending`/`hiddenMarked`/hold-window fields — it never changes after build, because its
+  members are never subject to DLOD promote/demote. This is the "lightweight spatial model kept
+  intact, independent of transient visibility state" the R-tree/BVH principle actually calls for —
+  §17.12-15's BVH conflated "spatial index" with "live visibility state machine"; this one is pure
+  spatial index, full stop.
+- **Never re-touched by any DLOD layer's demote/promote logic.** A wall being distance-boxed by
+  §9/§19 or room-boxed by §13 in the DISPLAY scene has zero effect on this structure or on what
+  gets rendered into the occlusion depth target below — the two are architecturally unaware of
+  each other's state, by construction, not by a per-frame patch.
+
+### 17.16.3 Separate depth target — occluders render unconditionally, every cycle
+- New dedicated offscreen `WebGLRenderTarget`, occluder-set-only, opaque real geometry
+  (`colorWrite:false`, depth-only, same technique §17.13 already proved works and is cheap for a
+  SMALL set — §17.13's version was correctly wired, it was just excluding the wrong thing at the
+  wrong granularity, applied to the whole active set instead of a small static occluder set).
+- Rendered EVERY query cycle, unconditionally, regardless of what the main display scene currently
+  shows for those same wall/slab/roof/ceiling guids (real mesh or wireframe box proxy in the
+  visible frame — irrelevant to this pass). No hide/restore logic needed at all — the occluder set
+  has no "hidden" concept.
+- Resolution: consider a smaller target than the main canvas (e.g. half-res) if 17.16.6's perf
+  numbers show it matters — named as a lever, not decided here without data.
+
+### 17.16.4 Query subjects — unchanged population, occluder identity now fully separate
+- The elements being TESTED for occlusion are whatever's already eligible per the existing
+  §9/§19/§13/§16 gating (distance/frustum/room-mismatch) — no change to that population or its own
+  hysteresis/hold-window logic (§17.3/§17.4 already gives it anti-flicker; keep it as a secondary
+  defense, not the primary fix — the primary fix is that the thing being queried can no longer make
+  its own occluder vanish, because it was never an occluder to begin with unless it's also
+  wall/slab/roof/ceiling, in which case IT participates in 17.16.2's static set independent of its
+  own display-boxed state).
+- Async `ANY_SAMPLES_PASSED_CONSERVATIVE` queries issued against 17.16.3's target, same
+  poll-never-block discipline as §17.3.
+- **Structural elimination of §17.15's feedback loop, not a mitigation of it:** a query subject
+  being hidden in the display scene cannot remove anything from the occlusion depth source, because
+  the occlusion depth source is never built from the display scene's current state at all.
+
+### 17.16.5 Integration — replaces §17.12-15's mechanism, does not layer onto it
+- **No new pill/UI toggle** — same pattern already used for §13 and §16, neither of which got a
+  separate pill: both are internal criteria OR'd into the SAME existing `'o'`-toggled nav-DLOD
+  system, gated by an internal flag that defaults off during testing/witnessing then flips to
+  default-on once proven (`roomOcclEnabled` did exactly this in §19). This layer follows the
+  identical pattern — a code-level lever, not a user-facing surface.
+- New lever (name TBD by implementer, e.g. `occlStructEnabled`), default `false`. This REPLACES the
+  old whole-building-BVH occlusion path (§17.2-17.4's original design) rather than adding a third
+  parallel occlusion system — `occlBvhEnabled`/`occlDepthDecoupleEnabled` (§17.12-15, both already
+  default false and already proven failed) can be retired/removed once this is built and witnessed,
+  per this project's no-dead-code-left-around discipline, but only after 17.16.6 passes — do not
+  delete the failed attempts' code before a working replacement is proven, in case this pivot also
+  needs to fall back to what was learned from them.
+- §9/§10/§19 (distance/frustum, shipped default) and §16 (room-PVS, shipped default) are OR'd
+  criteria for boxing, same integration point as before — untouched, independent, still run first/
+  alongside. This design only replaces the THIRD, most-precise layer's internal mechanism.
+
+### 17.16.6 Prebake/cache — lazy, client-side, mirrors `room_walker.js`'s proven pattern
+- Matches this codebase's own established precedent (§10's correction: `A.ensureRooms()` compiles
+  client-side on demand from whatever DB is loaded, cached, version-stamped self-heal via
+  `ROOM_WALKER_V`) — not a new architecture, a reuse of one already proven here.
+- Build occluder set (17.16.1 query + 17.16.2 BVH) once per building, first engage or on load;
+  cache the fetched element list (guid+transform+geometry ref — small per 17.16.1's real count) to
+  IndexedDB keyed by `building + a version constant` (e.g. `OCCL_STRUCT_V`). Whether to also
+  serialize the built BVH itself (vs cheaply rebuilding client-side each session from the cached
+  element list) is a measure-first call for the implementer — log the build cost first, decide
+  after seeing the real number, same discipline as everywhere else in this file.
+- Version-stamp self-heal on bump, identical mechanism to `ROOM_WALKER_V` — no new pattern to
+  design, port the existing one.
+
+### 17.16.7 Witnesses — same rigor as §17.6/17.11/17.12-15, oscillation stays an equal-weight gate
+- **W-OCC2-SELECT:** real `ifc_class` distinct-value + count query result logged
+  (`§OCCL_STRUCT_SELECT`), confirms 17.16.1 before any code assumes a specific class spelling.
+- **W-OCC2-EQUIV:** lever off → byte-identical to shipped §13+§16 (off-path), mirrors every prior
+  EQUIV witness in this file.
+- **W-OCC2-CORRECT:** same 4 persisted poses as §17.12-15 for direct comparability —
+  `meanFalseHideRate` ~0 AND hidden-count `settled` (not `timeout`) at a frozen camera. BOTH bars,
+  same equal weight §17.15 established — this is not optional this time either.
+- **W-OCC2-CACHE:** cold load builds + caches; warm reload (same building, same session or a fresh
+  one) hits the IndexedDB cache and skips the SQL+build cost — log both timings.
+- **W-OCC2-PERF:** ONLY if W-OCC2-CORRECT passes — real-flight A/B against §19's shipped
+  87ms/~11.5fps baseline (PR #976), same discipline as every prior PERF witness in this file — do
+  not regress it.
+
+### 17.16.8 Non-goals (v1, same discipline as §3/§7/§11.3)
+- No occluder mesh simplification (convex hulls, merged geometry) — start with real wall/slab/roof
+  geometry as-is, already loaded via the existing `element_transforms` join; only add simplification
+  if 17.16.7's real numbers show the occluder pass itself is a cost problem, not assumed upfront.
+- No cross-building occluder sharing/precompute-at-extraction-time — this stays a client-side, lazy,
+  per-loaded-building cache, same scope boundary `room_walker.js` already established (§10's
+  correction: no OCI redistribution, no per-building server-side action).
+- **NOT claiming as settled fact (named here to head off re-litigation, per Anti-Drift):** whether
+  `elements_rtree` could usefully accelerate §9/§19's existing PER-FRAME distance/frustum test
+  (re-querying SQLite every eval cycle vs the current in-memory JS `_boxIndex` walk) is an
+  UNVERIFIED idea, not accepted debt — the current approach avoids a repeated JS↔WASM-SQLite
+  boundary crossing, and there is no measurement showing SQL re-query would be faster, only that it
+  is theoretically possible. If this is ever investigated, it is a separate, measure-first task, not
+  part of 17.16's scope, and should not be assumed a win going in.
+
+### §17.16 PRODUCTION RESULT — 2026-07-24, `bim-ootb` branch `feat/occl-bvh-gpu-query` @ `2b51e17`,
+committed locally, NOT pushed. Lever `occlStructEnabled` stays default `false` — PARTIAL result.
+
+**Oscillation: SOLVED**, first time in 6 attempts — all 4 persisted poses settled `stable`, never
+`timeout`, confirmed in the real production path (not just the sandbox). **False-hide bar: NOT
+met** — mean 12.33% (5.23/8.64/8.16/27.27% per pose) vs the ~0 bar. Root-caused, not just measured:
+false-hides concentrate on `IfcDoor`/MEP-in-opening elements — LTU_AHouse's extracted walls have no
+boolean door/window cutouts (confirmed: box-proxy vs real wall geometry as occluder gave
+byte-identical results), a real data characteristic of this building, not a mechanism bug. Absolute
+count is tiny (58/79,263 = 0.07%) but the metric's small per-pose denominator (49-363 truly-clear
+elements) inflates the %. W-OCC2-SELECT/EQUIV/CACHE all PASS; W-OCC2-PERF skipped per its own gate
+(correctness didn't pass). §17.12-15's old dead code NOT retired (gated on a clean pass). Next
+step, not yet done: extend the occluder set or add a door/opening-aware exemption so cutout-bearing
+walls don't produce this class of false-hide.
+
+### 17.16.9 SANDBOX POC — before the full build (2026-07-23, user + DeepSeek: "build the sandbox
+first," same methodology §17.10/17.11 already proved decisive for this exact file)
+
+De-risk 17.16's four core assumptions with the smallest real test, before committing to the full
+build (cache/prebake, DLOD-layer integration, cross-fade, UI pill) — same "does the idea work,
+decoupled from whether we can build a fast enough production version" split §17.10 already used.
+
+**Four measurements, sequenced cheap-to-expensive, real LTU_AHouse data/schema throughout:**
+1. **Structural subset size** — 17.16.1's prerequisite SQL (`SELECT ifc_class, COUNT(*)...`), no
+   browser needed. Report the real count and % of 122,330 — no assumed pass/fail threshold (an
+   assumed "<15k" wasn't derived from anything in this file); the number informs interpretation of
+   #3 below, it doesn't gate on its own.
+2. **BVH top-level bounds tightness** — build the JS BVH over the real subset from #1 (no rendering
+   needed, pure JS over the join query's AABBs), log the same per-depth diag distribution §17.14
+   already logs (`§OCCL_BVH_BUILD_OVERSIZED`-style). Pass bar: root/near-root diag materially
+   smaller than the whole-building BVH's measured ~289-408m (§17.13) — a relative improvement
+   check against a real prior number, not an arbitrary new one.
+3. **Depth-only render cost** — render the real subset into an offscreen depth target (real RTX
+   4060, same harness pattern as §17.13's pre-pass), measure ms/call. Pass bar: small relative to
+   the ~16.6ms/frame (60fps) budget, and nowhere near §17.15's disqualifying 130-172ms/call finding
+   — that comparison is the real bar, not a percentage pulled from nowhere.
+4. **Oscillation elimination** — wire real occlusion queries (async, `ANY_SAMPLES_PASSED_CONSERVATIVE`)
+   against #3's target for a fixed candidate list (reuse the 4 persisted poses' active sets, same as
+   every prior W-OCCL-BVH-CORRECT run). Pass bar: identical to the established one — hidden-count
+   `settled` (not `timeout`) at a frozen camera. No cache/prebake, no DLOD-layer OR-integration, no
+   cross-fade, no pill — sandbox only tests whether the mechanism itself is sound.
+
+**Scope boundary — sandbox, not production:** no IndexedDB cache (17.16.6), no integration with
+§9/§13/§16 (17.16.5), no cross-fade/UI. Throwaway/scratch code acceptable, mirrors §17.10's own
+"local only, not pushed" convention.
+
+**Decision gate:** if all four measurements pass their stated bars, proceed to the full 17.16 build
+with confidence (same "cheap gate passed, real build justified" language §17.11 used). If any
+measurement fails, STOP — report which one and the real numbers, do not proceed to the full build,
+same negative-result discipline as §17.12-15. This sandbox is expected to take a small fraction of
+the full build's effort, same ratio §17.10/17.11 already demonstrated for this file.
+
 ## 18. nav-DLOD root-cause + real-frame_ms wins on LTU_AHouse (2026-07-23, separate from §17's occl-bvh work — this is `dlod_nav.js`, the older distance-based box-proxy system §9/§10 shipped, not §16/§17's occlusion work)
 
 **Starting observation (user):** flying LTU_AHouse (122,330 elements) with `'o'` (nav-DLOD) on, solid
@@ -1797,3 +2131,430 @@ not yet root-caused with certainty, not yet fixed.
 boxed-count-overflow anomaly, (3) discuss why frame time appears to floor around ~65-87ms (~12-15fps)
 rather than continuing to drop with further tightening — user flagged this as the next real question
 ("why the ceiling is at 12fps"), not yet investigated.
+
+## 20. IMPLEMENTATION DESIGN — adaptive mesh-budget distance boost (2026-07-24, design only, NOT
+built — user + DeepSeek, orthogonal to §17.16's occlusion track, dispatched in parallel)
+
+**Problem this solves, and what it does NOT solve:** aerial/wide-orbit views already run fast today
+(§10: fully-boxed aerial = 16 draw calls, 17.3ms) but look boxy — the fixed §19 distance cutoff
+(`PROMOTE_DIST=38`, `DEMOTE_DIST=60`) boxes almost everything from a wide vantage regardless of how
+much spare frame-time budget exists. This is a VISUAL fix (spend idle budget to look less boxy when
+there's headroom), not a correctness or interior-perf fix — §17.16's occlusion track remains the
+lever for the actual interior room-level frame-time cost (§18/19's own finding: aerial is already
+fast, interior is where the real cost lives). The two tracks are independent and can ship separately.
+
+### 20.1 Mechanism — closed-loop distance boost, not a ranking system
+No new priority/ranking machinery needed: distance is already the existing promote/demote axis, so
+widening the effective distance cutoff naturally admits the nearest-first candidates in the exact
+order the shipped mechanism already orders them. The design is a small closed-loop controller added
+to the existing eval cycle (150ms throttle per §18/19), not a new subsystem:
+- State: a single persisted `_budgetBoost` (meters), starts at 0 — at `_budgetBoost=0` this is
+  byte-identical to shipped §19 behavior (`PROMOTE_DIST`/`DEMOTE_DIST` unmodified).
+- Effective thresholds become `PROMOTE_DIST + _budgetBoost` / `DEMOTE_DIST + _budgetBoost`.
+- **Cross-track safeguard, required if §17.16 ships alongside this (user caught this gap
+  2026-07-24):** the count this controller reads MUST be measured immediately after distance/
+  frustum/room-mismatch (§9/§13's population, the same input §17.16.4 defines as occlusion's query
+  subjects) — NOT after §17.16's occlusion further prunes it. Reading a post-occlusion count would
+  create a cross-track feedback loop: boost sees a low count → widens distance → occlusion hides
+  most of the new candidates anyway → count still low → boost widens further, chasing a target
+  occlusion keeps eating, unbounded. Pre-occlusion count keeps the two closed loops decoupled —
+  boost fills the distance-based candidate pool to its own target; occlusion independently prunes
+  that pool for real visibility, with no awareness of or reaction to boost's state.
+- Each eval cycle: read current active/real count.
+  - If count < `BUDGET_LOW` watermark: increase `_budgetBoost` by a small fixed step, capped at
+    `MAX_BOOST`.
+  - If count > `BUDGET_HIGH` watermark: decrease `_budgetBoost` by a small fixed step, floored at 0.
+  - Between the two watermarks: hold `_budgetBoost` steady — this dead band IS the hysteresis
+    (same anti-oscillation shape as §19's own PROMOTE/DEMOTE band, applied one level up).
+- **This is self-limiting by construction, no separate aerial/interior mode detection needed:**
+  §18 already found interior flight keeps ~20k elements real most of the time (mesh-level
+  `visible=false` rarely triggers), so an interior-scoped budget check would naturally sit at or
+  above the high watermark most of the time anyway — boost stays near 0 exactly when it should,
+  without any explicit "am I aerial" test.
+
+### 20.2 The 20k figure is a starting guess, not a measured constant — verify before shipping
+Per this file's own MEASURE BEFORE ESTIMATING discipline (applied to every other constant here —
+`PROMOTE_DIST`/`DEMOTE_DIST`, `DLOD_NAV_MIN_ELEMENTS`, §17.14's `OCCL_MAX_HIDE_DIAG`): before
+picking real `BUDGET_LOW`/`BUDGET_HIGH`/step/`MAX_BOOST` values, run a real frame-time sweep on
+LTU_AHouse across a range of active-element counts (e.g. 5k/10k/15k/20k/25k/30k, using the existing
+close-in numbers as anchor points — §10 already measured 52.1ms at 29,815 promoted) to find where
+frame time actually starts climbing meaningfully above the ~17.3ms fully-boxed aerial floor. Set the
+watermarks from that real knee, not from the 20k figure named in conversation.
+
+### 20.3 Known, explicit tradeoff — state it, don't hide it
+Boosting distance at aerial views deliberately trades away some of §10's 16-draw-call/17.3ms win for
+better visuals — this is intentional (spending real headroom under the ~16.6ms/60fps budget) but
+must be measured and reported honestly, not assumed free, same discipline §3/§7 already established
+elsewhere in this file for other tradeoffs.
+
+### 20.4 Witnesses
+- **W-BUDGET-EQUIV:** boost lever off (or `_budgetBoost` forced 0) → byte-identical to shipped §19.
+- **W-BUDGET-STABLE:** frozen aerial camera with headroom — `_budgetBoost` converges and holds
+  within the dead band, does not perpetually ramp or oscillate.
+- **W-BUDGET-PERF:** the real frame-time-vs-active-count sweep from 20.2 — sets the real watermark
+  numbers from measured data.
+- **W-BUDGET-DELTA (numeric, not visual, per this project's FUNDAMENTAL LAW):** log active-element
+  count with boost on vs off at the same aerial pose — quantifies "less boxy" as a real number
+  (elements promoted), not a screenshot or a feel.
+
+### §20 RESULT — 2026-07-24, Sonnet agent, `bim-ootb` branch `feat/nav-dlod-budget-boost` @
+`71cbaac`, committed locally, NOT pushed. All 4 witnesses PASS.
+
+**Real knee measured (§20.2's own warning confirmed — 20k was wrong, not just unverified):**
+frame time is flat to ~3,700 active, then climbs steadily — +15% by 7,795 active, +39% by 11,094,
++75% by 15,616. Real knee is **~10-12k active**, well below the 20k guessed in conversation.
+Watermarks set from this data: `BUDGET_LOW=6000`, `BUDGET_HIGH=12000`, `BUDGET_STEP=2m`,
+`MAX_BOOST=60m` (PROMOTE 38→98, DEMOTE 60→120 at cap).
+
+**W-BUDGET-EQUIV PASS** (boost off, byte-identical to shipped — mutation count 244675 both, 6
+poses). **W-BUDGET-STABLE PASS** (frozen aerial camera, boost converges to ≈44 in ~6s, zero drift
+for 10s more — dead band holds, no oscillation). **W-BUDGET-PERF** = the sweep above.
+**W-BUDGET-DELTA PASS** (same pose: off_real=16 → on_real=7795-10154, real numeric proof).
+
+**Honest tradeoff, as required by §20.3:** boosted aerial costs ~19-29ms (1.1-1.7×) above the
+17.3ms/16-draw-call floor across the dead band, up to ~34ms at the BUDGET_HIGH edge — a deliberate,
+self-limiting spend of idle budget, not free, matching the design intent.
+
+**Real bug found and fixed during build, not just a tuning note:** the 150ms controller tick could
+fire mid-pass (a full 122k-element pass takes ~130ms, nearly the same cadence), smearing thresholds
+across a pass and permanently stranding 1000+ elements once the ramp stopped. Fixed by freezing
+thresholds per-pass and re-arming a follow-up pass whenever a completed one was evaluated under a
+now-stale boost value — a real, non-obvious race worth remembering if this pattern (periodic
+controller tick vs a scan whose duration approaches the tick period) recurs elsewhere.
+
+At `_budgetBoost=0`, byte-identical to shipped `PROMOTE_DIST=38`/`DEMOTE_DIST=60`/room-mismatch
+exemption/150ms throttle. `feat/occl-bvh-gpu-query`/`/tmp/wt-occl-bvh` untouched, confirmed.
+
+### §20 addendum — 2026-07-24, live-user real-tour finding: boost is INEFFECTIVE at true wide orbits
+Live browser log from the merged local test branch (`local/merged-occl-aerial-test`) caught this
+directly, not inferred: during the tour's own opening orbit leg (`[WALK] Orbit: r=255 from 143°`),
+`§DLOD_NAV_BUDGET` ramps boost all the way to `MAX_BOOST=60` while `active=0` stays zero the ENTIRE
+climb. Not a bug — the math is exact: at `boost=60`, effective `PROMOTE_DIST=38+60=98m`, and the
+orbit radius is 255m — 98m cannot reach anything at 255m regardless of cap. **The boost mechanism
+as built only helps at moderate aerial distances, not genuinely wide orbits** — "aerial coverage"
+is not uniformly solved, only the closer end of it. Worth stating plainly rather than letting the
+earlier "good enough" read stand unqualified.
+
+**What FPS is achievable if pursued further (raising `MAX_BOOST` or redesigning to reach 255m+
+orbits) — answered from real anchor data already measured, NOT a new measurement, explicit caveat
+below:** §20.2's real sweep found frame time flat to ~3,700 active (~16.5-16.7ms), +15% by 7,795
+(19.2ms), +39% by 11,094 (23.1ms), +75% by 15,616 (29.1ms). Separately, §10/§19 already measured
+20-30k active costing 52-87ms+ (interior-flight-scale numbers). **A 255m-radius orbit plausibly
+brings a MUCH larger population within reach than the 10-12k knee this sweep was tuned around** —
+the building is 425m×286m, so a wide-enough boost could plausibly sweep in tens of thousands of
+elements at once, landing well past the cheap zone and into the same cost regime as interior flight
+(52-87ms+, i.e. ~11-19fps) rather than the current fast aerial floor (~17-29ms, ~34-58fps).
+**This is an extrapolation from real numbers, not a real measurement at 255m-scale distances
+specifically — that measurement has not been done.** The honest, MEASURE-BEFORE-ESTIMATING-correct
+statement: pushing `MAX_BOOST` further to actually cover true wide orbits is NOT a free visual win
+per the cost curve already on record — it could easily trade away most or all of the aerial speed
+advantage this whole track was built to preserve. Before raising the cap, the real next step is
+measuring active-element count and frame time AT an actual 255m-scale orbit pose specifically
+(not extrapolated from the 5-16k sweep), to find out whether there's a usable middle ground or
+whether wide-orbit boxiness and aerial speed are a genuine tradeoff with no free lunch at this
+building's scale.
+
+### §20 addendum 2 — 2026-07-24, user: Fly Tour lags even in wireframe mode — rules out pure
+render/GPU cost, points at Fly Tour's own JS-side path-follower or its render-loop interaction
+
+User-reported, not yet instrumented: perceived Fly Tour lag persists even in wireframe display
+mode. Significant because wireframe should remove nearly all fill-rate/shading GPU cost — if lag
+survives that, the bottleneck is unlikely to be primarily GPU rendering cost (DLOD box/real draw
+calls, material shading, etc.) and more likely CPU-side: either the per-frame DLOD eval/scan work
+itself (§18's `chunk_ms`/`§DLOD_TICK` cost, unaffected by display mode), or — per the still-open
+question from the same conversation — Fly Tour's own `walkActionT += dt` spline path-follower
+(`tour.js` ~line 940) interacting with the render loop differently than manual OrbitControls'
+damping does. A same-session log comparison (manual mouse-wheel zoom vs Fly Tour) found comparable
+`§DLOD_TICK flips_mean` and `§FPS_MODE` aggregate numbers between the two, which undercut a simple
+"translation churns DLOD, rotation doesn't" story — the wireframe finding narrows it further, away
+from render cost, without yet confirming the path-follower hypothesis. **Not investigated further
+this session per explicit user instruction ("just document it") — real next step, not done:**
+instrument `§FPS_MODE`/`§DLOD_TICK` specifically in wireframe mode during Fly Tour vs manual
+translation at matched speed, to see whether the gap (if any) is in CPU eval cost, the path-follower
+itself, or something else not yet named.
+
+### 20.5 Scope, worktree
+Separate from §17.16 — new worktree `/tmp/wt-aerial-budget`, branch `feat/nav-dlod-budget-boost`,
+off `origin/main` (post-PR-#976/#977, NOT off `feat/occl-bvh-gpu-query` — different problem, avoids
+two parallel agents touching `dlod_nav.js` in the same branch). Runs in parallel with §17.16's own
+track, dispatched the same session.
+
+### §20 addendum 3 — 2026-07-24, real user log (Clash-zoom, not Fly Tour): budget-boost is
+room-blind, and active-count does not predict frame_ms the way §20.2's sweep assumed
+
+**Context:** user pasted a real `§`-tagged console capture of clicking a Clash-list item (`_flyToClash`,
+`measure.js:619-785` — a 2-second two-point tween to the clash overlap centroid, NOT Fly Tour) on
+`local/merged-occl-aerial-test` (`/tmp/wt-merged-test` @ `ac04c47`, served at `localhost:8407`,
+combining §20's budget-boost with §17.16's structural occluder work). Two findings, read from the
+log, not inferred:
+
+**1. `§DLOD_NAV_BUDGET`'s ramp is room-blind — it chased an unreachable target the entire session.**
+The log shows `boost` climbing every ~150ms tick from 2 all the way to `MAX_BOOST=60`
+(`dlod_nav.js:98`), while `active` stayed pinned in the 2,257–2,844 range throughout — nowhere near
+`BUDGET_LOW=6000` (`dlod_nav.js:92`), the low-watermark that would tell the controller to stop
+widening. §20's `_budgetControl()` (`dlod_nav.js:289-296`) has no way to distinguish "active is low
+because this is a wide-open aerial view that just needs a bigger radius" (the case it was designed
+for) from "active is low because this is a small interior room/clash-adjacent spot and there simply
+aren't 6000 elements within reach no matter how far `PROMOTE_DIST`/`DEMOTE_DIST` stretch" (this
+case). It ramped to its hard cap and sat there, same failure shape already named for wide orbits in
+§20's own earlier addendum (`r=255`, `active=0` the entire climb) — this is the SAME blind spot
+surfacing in the opposite geometric regime (too-occluded, not too-far). Not yet fixed — only
+observed, at a stationary camera (post-clash-zoom idle), so its cost during actual MOVING Fly Tour
+legs (where the loop can't idle-park anyway, per Clue 1 upthread) is still unmeasured, not assumed.
+
+**2. `active` count does not predict `frame_ms` on its own — `§FPS_MODE` settled at mean 88-90ms
+with only ~2,800 active, far worse than §20.2's own measured "flat ~16.5ms up to ~3,700 active"
+region.** This is NOT a new mechanism — it's consistent with, and reinforces, §16/§17's already-
+closed conclusion that frame cost tracks **BatchedMesh bucket occupancy** (how many buckets go
+FULLY empty and get skipped), not raw active-element count (§13/§16 both found draw-call cuts with
+zero frame_ms movement; only §17's object-grain oracle, §17.11, moved frame_ms, because it was
+precise enough to fully empty buckets rather than just thin scattered elements within them). The
+hypothesis, not yet confirmed: the ~2,800 active elements near this clash point are scattered across
+many different discipline buckets rather than concentrated, so few buckets ever go fully-empty.
+
+**Logging added to test both, without new spam (2026-07-24, `viewer/main.js` on
+`/tmp/wt-merged-test`, served at `localhost:8407` — NOT yet ported to any other worktree/branch,
+NOT pushed):** `§FPS_MODE`'s existing 2-second-throttled line (`main.js:677-687`, no new timer) now
+also carries `calls=`/`tris=` (`APP.renderer.info.render`, the exact same counters POC-A already used
+in §15 — reused, not a new measurement method) and `active=`/`boxed=`/`boost=` (read straight from
+nav-DLOD's own published `window.__dlodNav` stats, `dlod_nav.js:266`). One line, still 2s-throttled,
+now lets `frame_ms`, draw-call count, and nav-DLOD's own state be read together without manually
+matching timestamps across `§FPS_MODE` and `§DLOD_NAV_BUDGET` lines. **Caveat before testing: this
+worktree serves a service worker (`viewer.html:1018`, `sw.js?v=532`) — a plain refresh may serve a
+cached `main.js`; hard-refresh (Ctrl+Shift+R) or clear the SW registration in DevTools before
+trusting a capture.**
+
+**Not yet a fix, not yet a measured speed claim — per this file's own MEASURE BEFORE ESTIMATING
+discipline.** Next step (user to capture, not yet done): run the SAME enriched `§FPS_MODE` capture
+during an actual moving Fly Tour interior leg (not just a stationary Clash zoom), to see whether (a)
+budget-boost churns uselessly there too, and (b) whether `calls=`/`tris=` move in step with
+`frame_ms` or stay flat while `frame_ms` climbs anyway (the latter would mean the bottleneck isn't
+rendering at all, reopening the CPU-side question from addendum 2 on firmer evidence than a felt
+"still lags in wireframe" report). Only once both Fly Tour and Clash-zoom captures exist side by
+side, with these fields, is there enough to decide whether fixing budget-boost's room-blindness
+would actually move Fly Tour's frame time — right now it's a real, real-and-documented bug, not yet
+a proven lever.
+
+### §20 addendum 4 — 2026-07-24, THREE fixes shipped to `/tmp/wt-merged-test` (localhost:8407),
+all three VERIFIED against real live Fly Tour logs, not assumed
+
+Per addendum 3's own "not yet a fix" caveat, three targeted changes went in, each isolated to its
+own file/region so none could interfere with the others:
+
+1. **Budget-stall guard** (`dlod_nav.js` `_budgetControl()`): new `BUDGET_STALL_TICKS=3`/
+   `BUDGET_STALL_EPS=50` — after 3 consecutive 150ms ticks where `activeElig` doesn't move beyond
+   tolerance, the ramp freezes (logs `§DLOD_NAV_BUDGET_STALL` once) instead of climbing to
+   `MAX_BOOST=60` for zero gain. Resumes instantly once `activeElig` genuinely moves.
+2. **`calls=`/`tris=` reliability fix** (`main.js` `_renderFrame()`): root cause was
+   `EffectComposer`'s multiple internal `renderer.render()` calls each resetting `info.render` under
+   default `autoReset`, so only the last pass's tiny stats ever survived. Fix wraps the one real
+   render call with a synchronous `autoReset=false` → reset → render → capture → restore, touching
+   no other code path.
+3. **Fly-Tour DPR parity** (`main.js` `_syncDPR()`): manual-orbit-drag has always gotten a
+   resolution discount on heavy scenes (S260b); Fly Tour never did, because it moves the camera by
+   direct write (`tour.js`), never firing OrbitControls' `'start'`/`'end'` events. `_syncDPR()` now
+   drops resolution whenever EITHER reason wants it, checked once per `animate()` tick.
+
+**Verification, real LTU_AHouse flight, same session, `activeElig=`/`stallN=` added to
+`§DLOD_NAV_BUDGET` specifically to make this checkable (not assumed):**
+- **Stall guard CONFIRMED working**, first at the opening `r=255` orbit — `boost=2 activeElig=0
+  stallN=0` → `boost=4 stallN=1` → `boost=6 stallN=2` → `§DLOD_NAV_BUDGET_STALL frozen boost=6
+  activeElig=0` (3 ticks, not the pre-fix 30-tick climb to 60). Repeated correctly mid-interior-leg
+  (froze at boost=12 when `activeElig` genuinely plateaued at 3122), and correctly UN-froze and rode
+  the ramp down to 0 the instant `activeElig` jumped to 13309 (crossed `BUDGET_HIGH`) — distinguishes
+  real movement from stall exactly as designed, not a blanket freeze.
+- **DPR-parity fix compounding with the stall guard**: the frozen-boost aerial stretch (`boxed=
+  122330` pinned) ran a stable **67-98ms**, better than addendum 3's pre-fix 94.8ms floor for the
+  same fully-boxed state.
+- **New finding, not previously this clean: `'o'` DOES substantially help INTERIOR legs too** — a
+  clean same-flight A/B at essentially the same point in the route: `dlod=on` (`active=9540
+  boxed=112790`) ran **mean=95-107ms**; seconds later, right after toggling `'o'` off
+  (`§DLOD_NAV_DISENGAGE`), the same leg with the FULL scene rendered (`calls=16033
+  tris=11348093`) ran **mean=200-213ms**. Roughly a 2× win, interior, same route position — this
+  updates (does not confirm) the earlier working assumption that nav-DLOD "doesn't really
+  contribute inside" — per user direction, this stays its own live thread, not dropped, heading
+  toward 1M-element scalability.
+- **Confound flagged, not misattributed:** `Alt+G` (GI/N8AO preview) and `'n'` (Night mode) were
+  toggled mid-flight in this capture and each add real, unrelated cost (one spike hit mean=249.7ms
+  right after `Alt+G`) — noted so a future reader doesn't blame nav-DLOD for those specific spikes.
+
+**Where this leaves the numbers — real measured FPS, this session, LTU_AHouse (122,330 elements),
+real RTX 4060, `local/merged-occl-aerial-test` + these 3 fixes:**
+
+| Leg | dlod | frame_ms mean | ~fps |
+|---|---|---|---|
+| Aerial orbit, fully boxed, stall-frozen | on | 67-98 | ~10-15 |
+| Interior flyPath | on | 95-107 | ~9.3-10.5 |
+| Interior flyPath, SAME spot | off | 200-213 | ~4.7-5 |
+
+This lands close to — not dramatically past — the file's own best prior shipped numbers (§18:
+~8.4fps interior; §19: ~11.5fps at the tightened-distance aerial point). That's expected and
+honest: today's three fixes are hygiene/parity fixes (stop wasted work, close a missing discount),
+not a new culling mechanism — they were never going to multiply the win the way §19's distance
+retuning or a working occlusion mechanism would.
+
+**What's actually left for a further "sure" win, stated plainly:** the only mechanism in this whole
+file ever PROVEN to move interior frame_ms substantially is §17.10-17.11's oracle POC (up to 60%
+reduction, object-grain occlusion, a PERFECT zero-cost stand-in for the real mechanism). Every real
+attempt to build that mechanism (§17.12 raw BVH, §17.13 depth-exclusion, §17.14 size-gate, §17.15
+depth-decouple, §17.16 structural-occluder-decouple) either failed correctness outright or landed
+PARTIAL (§17.16: oscillation solved, false-hide 12.33% vs the ~0 bar, not shipped). So the honest
+expectation, not a guess:
+- **Without solving §17.16's remaining false-hide gap:** further gains from here are small,
+  incremental (tens of %, not a multiplier) — things like tuning `EVAL_CHUNK`/throttle cadence,
+  extending the DPR discount more aggressively, or trimming composer/effects cost specifically
+  during Fly Tour. None of these are proven yet either — MEASURE BEFORE ESTIMATING still applies.
+- **If §17.16's false-hide gap gets closed** (door/opening-aware exemption for cutout-bearing
+  walls, named as the next step in that section, not yet done): the ~99% occlusion ceiling §15
+  measured and the oracle's up-to-60% frame_ms reduction become reachable — that is the one
+  currently-known path to a genuinely large multiplier on interior legs, not just a modest tightening.
+- Anything claimed beyond this needs its own real measurement before being stated as expected —
+  this file's own standing rule, restated because it's the honest answer here too.
+
+### §20 addendum 5 — 2026-07-24, SESSION CLOSEOUT: pivot away from DLOD-side theories, camera-math
+ruled out, one open question left for next session — read this before resuming
+
+**User directive driving this pivot, stated plainly, do not re-litigate:** "I don't think occlusion
+or DLOD is the issue... During Clash Analysis I can turn everything on, no experience of lag. Even
+if is, the cost is too little." After addendum 4's confirmed fixes, two more theories were floated
+this same session and should be treated as **considered, not settled — deprioritized by user
+direction, not disproven**, so a future session doesn't either blindly chase them OR blindly assume
+they were ruled out:
+
+1. **`§WALK_TICK_COST` instrumentation** — added to `main.js` (wraps `APP.walkTick()` alone, isolates
+   its own execution time — spline eval, per-tick `A.status.textContent` write — from render/DLOD
+   cost entirely). **Never actually queried** — the user redirected before a capture was taken. It's
+   live, inert until `walkMode` is on, 2s-throttled, zero risk left sitting there. If a future session
+   wants the CPU-path-follower question closed with a real number, this is already in place — just
+   run a Fly Tour leg and read `§WALK_TICK_COST`. Do not re-add it if it's still there.
+2. **Re-partition "snap burst" spike theory** (max/mean jitter, e.g. `mean=101.9 max=457.6`,
+   correlated with large `started=` counts in `§DLOD_NAV` lines — `FADE_CAP=128` caps smooth
+   cross-fades, everything past the cap snaps synchronously in one frame) — **user does not accept
+   this as the real driver of remaining lag**, given Clash tolerates "everything on" with no felt
+   lag. Not implemented, not measured further, explicitly set aside per user direction — do not pick
+   this back up without a fresh reason to.
+
+**What WAS closed this session, by reading real code, not guessing — safe to build on:**
+- **Camera-path math is NOT the differentiator.** `tour.js`'s own `'orbit'` action
+  (`tour.js:1068-1121`) is pure trig/smoothstep per frame (`cos`/`sin`, `t*t*(3-2t)` easing, one
+  `controls.update()` call) — structurally identical in cost-character to MaxQ's analytic beat plan
+  (`effects.js`'s `_cinemaPathPlan`). Neither has anything the other lacks; there is no code trick to
+  port from one to the other. This closes the "maybe Fly Tour's orbit math itself is expensive"
+  question — it isn't.
+- **The one unifying variable across every smooth-vs-laggy comparison made this session is SCOPE,
+  not mechanism:** Clash's zoom never renders more than a few meters around a clash point; MaxQ's
+  beats stay inside ONE room (§5: "always dives into the largest interior space"); Fly Tour's own
+  opening/closing `'orbit'` action is the one case that deliberately sweeps 255m out around the
+  WHOLE 425×286m building — nothing else in this app ever attempts that. This is consistent with
+  every prior finding in this file (§5's storey-occlusion origin story, §15's ~99% interior-occlusion
+  measurement, §18/§19's aerial-vs-interior split) — not a new mechanism, a restated confirmation of
+  the same axis from a fresh angle.
+- **Real numbers already on record for that ONE wide-orbit case, same session, same building:**
+  335-360ms mean without nav-DLOD engaged, 63-98ms with it (stall-guard-frozen). Whether this
+  constitutes "the DLOD win that matters" or is beside the point of the user's remaining complaint
+  is the open question below — stated as fact here, not as an argument either way.
+
+**OPEN QUESTION for next session — this is where the session ended, answer it before doing anything
+else DLOD-side:** does felt roughness now concentrate in the **aerial open/close orbit legs** (where
+tonight's own numbers show a large, measured DLOD win: 335→63-98ms) or in the **interior middle**
+of the flight (where an early session finding — Fly Tour with `'o'` fully off — already called
+interior "hardly noticeable," and this session's clean on/off A/B found nav-DLOD helping there too,
+~1.3-2×, smaller than the aerial win but real)? The user has not yet answered this directly. Do not
+guess — ask, or get a fresh log capture with the user narrating which leg felt rough. This single
+answer determines whether remaining work is "accept the current numbers as the practical floor for
+this session's fixes" or "something in this file's own diagnosis is still incomplete."
+
+**File state, not committed, not pushed — same convention as every other entry in this file:**
+`/tmp/wt-merged-test` (branch `local/merged-occl-aerial-test` @ `ac04c47`, served live at
+`localhost:8407`) has THREE uncommitted fixes from this session: `viewer/dlod_nav.js` (budget-stall
+guard + `activeElig=`/`stallN=` logging), `viewer/main.js` (calls/tris reliability fix, Fly-Tour DPR
+parity, `§WALK_TICK_COST` instrumentation) — all syntax-checked, all verified against real logs in
+addendum 4 except `§WALK_TICK_COST` (added, unqueried, see above). `viewer/tour.js`'s own uncommitted
+diff (`§FLY_INTERIOR_SLOWDOWN`, a 0.4× interior-speed experiment) predates this session, is
+untouched, and is NOT part of this session's work — do not attribute it to these fixes or revert it
+without checking whose work it is first.
+
+## §21 — MaxQ/Clash-vs-FlyTour smoothness comparison, walkTick damping bug found+fixed, ray-blast
+DLOD upload race found+NOT-shipped (2026-07-24, real logs + live browser, `local/merged-occl-aerial-
+test` @ `0587956`, committed locally, NOT pushed)
+
+**Trigger:** user pushback that MaxQ preview and Clash `_flyToClash` both feel "supersmooth" while
+Fly Tour doesn't, even with nav-DLOD on/off making no felt difference — "have we isolated the factor
+beyond features and occlusion (which I admit their impact)."
+
+**1. MaxQ is not a fair comparison at all — confirmed in code, not assumed.** `effects.js:3893-4061`
+(`A.startCinemaOrbit`) pipes the canvas through `captureStream()`/`MediaRecorder` and downloads a
+`.webm` — what reads as "smooth" is a **played-back video file**, decoupled from render cost by the
+decoder's fixed playback rate, not a live interactive path. `cinema_maxq.js`'s own 10s live preview
+(`§MAXQ_PREVIEW`, lines 389-424) IS live, though, and runs at a LARGER radius (`envelope×2.5`, i.e.
+~1062m on LTU) than Fly Tour's own measured r=255 orbit, with nav-DLOD fully disengaged
+(`dlod_nav.js:348`) — i.e. 100% real geometry, wider than Fly Tour ever goes, and it's fine. This
+directly disproves "too much real geometry in view at range" as sufficient explanation on its own.
+(One in-code correction made as part of this: `cinema_maxq.js`'s own `§MAXQ_STREAM_FIRST` comment
+previously stated the disproven "boxes were for speed" theory as fact — corrected in place.)
+
+**2. Frame_ms magnitude is not the differentiator either — proven by the user's own Clash capture.**
+Real `§FPS_MODE` during Clash-list navigation (full scene, `dlod=off` by Clash's own design):
+`mean=99.1-106.4ms` sustained, same or worse than Fly Tour's own "acceptable" states (63-116ms). Yet
+Clash reads as smooth. Ruled out: frame cost itself.
+
+**3. What actually differs: exposure duration, not cost.** Clash's `_animFly` (`measure.js:619-771`)
+is a single 2s tween then a **static** camera while the user reads the clash detail. A human eye
+can't register judder in a hop that short, and a static frame looks identical at any fps. MaxQ's live
+preview and Clash's tween are both brief/discontinuous; Fly Tour is the only thing in this app asking
+for continuous tracked motion over **minutes**. Same per-frame cost, only one of them gives a human
+eye long enough exposure to perceive it as stutter.
+
+**4. A genuine, geometry-independent cost floor was found, not yet fully proven.** Best-case sample
+in a real capture (nav-DLOD on, fully boxed aerial orbit, `calls=16`): frame_ms still **63.9-101.5ms**
+— cutting draw calls 15,981→16 only bought ~200-300ms→~65ms, not the ~1000x reduction geometry-driven
+cost would predict. Something costs ~60ms/frame independent of what's drawn. **Not yet isolated to a
+cause** — the decisive test (empty-scene `§FPS_MODE`) was proposed but not run this session.
+
+**5. `walkTick` vs `pvStep`/`_animFly` line-by-line: one real bug found, fixed, shipped.**
+`tour.js`'s `walkTick` (927-1216) ran an "adaptive smoothing" epilogue **unconditionally** after every
+action, re-lerping the already-eased position back toward the previous frame at `SMOOTH=0.6` even in
+steady cruise — throttling real travel speed to ~60% of intended every frame while `walkActionT`
+advanced the full `dt` regardless. `pvStep`/`_animFly` have no equivalent second pass. **Fixed**: now
+a no-op below the 0.5m/frame jump threshold; real transition-jump damping (the epilogue's actual,
+stated purpose) untouched. **Confirmed via live `§WALK_TICK_COST` capture that this was never a
+frame-rate factor** (mean 0.03-0.14ms throughout, negligible next to 60-200ms frame times) — this
+fixes motion *feel* (a permanent lag-behind in steady cruise), not fps. User's own follow-up capture
+after this fix confirmed sluggishness persists unchanged — expected, since the bug never touched
+frame cost. Committed (`0587956`).
+
+**6. Ray-blast DLOD (`dlod.js`, §6.8, separate from `dlod_nav.js`/the `'o'` key, always-on above 5000
+elements) — a real upload-cost mechanism found, a real fix explored and verified correct, REVERTED
+before shipping because it's unsafe standalone.** `dlodTick()`'s per-instance flip
+(`obj.setMatrixAt(...)` + `instanceMatrix.needsUpdate=true`) triggers a **full InstancedMesh buffer
+re-upload** on any flip (confirmed against the vendored three.js source: empty `updateRanges` ⇒ full
+`bufferSubData`) — already suspected in-code by a prior session (`dlod.js:26-29`, dated 2026-07-23,
+one day before this file existed) and never resolved. User's real Clash capture showed `flips_mean`
+in the thousands per tick continuously. Fix explored: `instanceMatrix.addUpdateRange(idx*16,16)` per
+flip — verified correct against the vendored three.js source (`addUpdateRange`/`updateRanges` on
+`BufferAttribute`, inherited by `InstancedBufferAttribute`), applied, syntax-checked, and live-tested
+in the real browser (patch confirmed loaded via `dlodTick.toString().includes('addUpdateRange')`) —
+live orbit looked smooth to the user, but the synthetic drag-test numbers were noisy/inconclusive
+(same 100-270ms range as before), so no numeric win is claimed. **Reverted before commit**: found
+`helpers.js` (`filterInstancedMesh` — Find isolate/room-isolate/storey+discipline filters),
+`navigate_find.js`, and `time_machine.js`'s own DLOD ALL call `setMatrixAt`+`needsUpdate` on the SAME
+InstancedMesh objects without ever calling `addUpdateRange`. Before this exploration, every plain
+`needsUpdate=true` always forced a full upload, so no caller could ever starve another's write;
+partial ranges from dlod.js alone would silently drop any of those other callers' changes if both
+fire on the same mesh in the same frame — a real, not hypothetical, regression risk. Left reverted,
+documented in-code (`dlod.js`) for **the planned DLOD consolidation** (dlod.js/dlod_nav.js/
+time_machine.js DLOD/Find's filter, unified — user's own stated motivation: incoming 1M-element-scale
+testing makes this fragmentation a correctness liability, not just a perf one). Do not re-attempt the
+addUpdateRange fix in dlod.js alone without also fixing the other three call sites in the same change.
+
+**7. Open question from §20's own closing addendum — STILL UNANSWERED, not addressed this session:**
+does felt roughness concentrate in aerial legs or interior legs? This session pursued a different,
+real thread instead (walkTick, ray-blast DLOD) and found real things, but did not close that question.
+Next session: still the first thing to resolve before further DLOD-side work.
+
+**Net position after this session:** one real motion bug shipped (walkTick). One real, evidenced,
+geometry-independent cost-floor candidate named but not proven (needs the empty-scene test). One
+real upload-cost mechanism found and a correct fix designed, explicitly held back pending the
+consolidation because shipping it alone is unsafe. The core comparison (why MaxQ/Clash read smooth
+and Fly Tour doesn't) is now understood as an exposure-duration effect on top of a floor that isn't
+yet explained — not a code bug, not solved by more occlusion work alone.
