@@ -533,6 +533,57 @@ the same crawl bug this session just fixed.
 1-5 above need the user's resolution (or a follow-up investigation citing real code/data) before any
 `tour.js` route-building changes.
 
+### RESOLVED 2026-07-25 by the user — items 1–5 answered, implementation authorized
+**User's own words, verbatim:** "but remember the first task in correcting the path.. explore main
+hall/space first.. climb stairs, main highlights to capture initial user impression".
+
+Item-by-item, against the open questions above:
+1. **Building-wide, not per-storey.** "main hall/space" is singular and building-wide — ONE highlight
+   opens the tour. The existing per-storey §S3 pause+lookAround beats stay exactly as they are for
+   every other storey (they are beat PLACEMENT, not route order) — this prepends a highlight block,
+   it does not replace per-storey behaviour.
+2. **Stairs are actively PREFERRED early, not incidental.** "climb stairs" is named as part of the
+   opening impression, so the highlight block must force a storey change near the start even when
+   the entrance storey still has unvisited large rooms. Mechanism: after the main hall, the next
+   highlight is the largest stop on a HIGHER storey. The existing §S2.4/§R6-STAIR-FLIGHT expansion
+   handles the climb itself unchanged — this changes SELECTION ORDER only.
+3. **Measured by the same rect area already used** (`n.rects` sum, `_buildGraphRouteInner:449-450`).
+   No new signal. Corridor-class nodes (`Hall / Corridor`, SUSPECT_ELONGATED) ARE eligible to be the
+   main hall — in real data a "main hall" is frequently exactly that class; other `SUSPECT_*` stay
+   excluded as destinations, unchanged.
+4. **"Turn around" = the existing `lookAround` action at a fuller sweep, not a new camera grammar.**
+   `tour.js:886` already maps pause kind → degrees (`'storey'`→180, room→270). A third kind
+   `'hall'`→**360** is the whole change — a genuine full turn-around in the main space. No orbit/MaxQ
+   grammar port; §S3's own beat machinery is reused verbatim.
+5. **"The rest" keeps today's S2 ordering** — the default assumption in item 5 above, now confirmed
+   by "before touring the rest". Highlights are PREPENDED; the remainder walks storey-by-storey
+   lowest→highest exactly as today, minus stops already spent in the highlight block.
+
+**§HL-FIRST — the spec (stop ORDER only; stop SELECTION, budgets, dedupe, legality gates and the
+descent finale are all untouched):** in `_buildGraphRouteInner`, after `stops[]` is built by today's
+per-storey rules and isolated nodes are dropped, reorder it:
+- `mainHall` = max-area stop across ALL storeys → index 0, pause kind `'hall'` (360° turn-around).
+- `ascent` = max-area stop on any storey ABOVE mainHall's → index 1 (this is what makes the stair
+  climb happen in the first leg-pair). If no higher storey carries a stop, it is skipped and the
+  tour degrades to "main hall first, then the rest" — no invented climb.
+- `HL_EXTRA` further top-area stops (any storey) follow, capped so the opening block stays an
+  impression, not the whole tour.
+- Everything else follows in today's storey-sequential order, already-picked stops removed.
+Log `§FLY_HL_FIRST mainHall=<name> area=<m²> storey=<s> ascent=<name>/<storey> extras=<n>`.
+Gates (`§MAJORITY-LEGAL`, visitedStops coverage, thin-path) are unchanged and still authoritative —
+a highlight-first order that measures worse must still fall back to legacy.
+
+**WITNESS PLAN (§-log + numbers, no screenshots):** run the REAL `_buildGraphRouteInner` (loaded
+verbatim from `viewer/tour.js`, not reimplemented) in a Node harness against real building DBs
+(Hospital_ARC, HHS_Office_Federated_extracted, Terminal_meta, Clinic_ARC), BEFORE vs AFTER:
+- **W-HL-MAINHALL:** stop[0] area == max area over all stops (exact equality, computed independently
+  in the harness from the graph, not read back from the log).
+- **W-HL-STAIRS-EARLY:** the storey of some stop within the first 3 is ≠ the main hall's storey, AND
+  a `stairwp` node appears in `pathGuids` measurably earlier than in the BEFORE route (report both
+  indices as a fraction of route length).
+- **W-HL-NOREGRESS:** `visitedStops`, `illegalChords/checkedChords` and the reject gates are no worse
+  than BEFORE on every building tested; any building that flew before still flies.
+
 ## ✅ IMPLEMENTED 2026-07-25 — 3-tier pacing, `bim-ootb` `fix/fly-tour-interior-pacing`
 (worktree `/tmp/wt-fly-interior-pacing`, off `origin/main` @ `8d12254`; shared-tree hook blocked
 editing `~/bim-ootb` directly, per Worktree Hygiene in this project's CLAUDE.md)
