@@ -1186,8 +1186,9 @@ not authorized to change `room_graph.js`/`navigate_find.js` from this section al
 ## §16 — LIVE REPRO, 2026-07-26 (user, real screenshots + real console log) — DOCUMENTATION ONLY,
 ## not assigned as a task here (a separate Opus session already owns the Fly Tour/room-pathing lane)
 
-**Evidence:** `~/Pictures/Screenshots/RoomsPathView.png` / `RoomsPathTopView.png` /
-`RoomsPathSideView.png` (renamed from the three most recent captures, 2026-07-25 05:32-05:35) + the
+**Evidence:** `~/Pictures/Screenshots/RoomsPathTopView.png` (aerial X-ray) / `RoomsPathFrontView.png`
+(straight-on facade) / `RoomsPathSideView.png` (angled along the building's length) — renamed from
+the three most recent captures, 2026-07-25 05:32-05:35 — + the
 real browser console log for the same session, saved to
 `~/Pictures/Screenshots/logs/RoomsPath_2026-07-25_console.log`.
 
@@ -1218,8 +1219,8 @@ would still be open by design, not a new regression. This log is consistent with
 6 same-storey legality checks on this route's own storeys FAILED to find a legal detour** (`legalized=7
 detoured=1` against 5 logged `DETOUR_FAIL` events) — i.e. the A* raster-constrained polyline fix
 (§13, PR #967) is not rescuing this route on Hospital, which lines up with what the three screenshots
-show visually: `RoomsPathView`/`RoomsPathTopView` both show the yellow line crossing open
-rooftop/atrium space rather than hugging real floor, and `RoomsPathSideView` shows the same
+show visually: `RoomsPathTopView`/`RoomsPathSideView` both show the yellow line crossing open
+rooftop/atrium space rather than hugging real floor, and `RoomsPathFrontView` shows the same
 vertical-then-horizontal zigzag shape §11 Task 2 originally described.
 
 **Not concluded here, left for whoever picks up this lane next (explicitly NOT this session — Opus
