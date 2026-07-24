@@ -607,8 +607,16 @@ per-storey rules and isolated nodes are dropped, reorder it:
   impression, not the whole tour.
 - Everything else follows in today's storey-sequential order, already-picked stops removed.
 Log `§FLY_HL_FIRST mainHall=<name> area=<m²> storey=<s> ascent=<name>/<storey> extras=<n>`.
-Gates (`§MAJORITY-LEGAL`, visitedStops coverage, thin-path) are unchanged and still authoritative —
-a highlight-first order that measures worse must still fall back to legacy.
+Gates (`§MAJORITY-LEGAL`, visitedStops coverage, thin-path) are unchanged and still authoritative.
+~~a highlight-first order that measures worse must still fall back to legacy.~~ **CORRECTED
+2026-07-25 (§WATCHDOG-HL-FIRST, agreed): that sentence is FALSE.** The `:635` gate is an ABSOLUTE
+threshold (`visitedStops < 2 || visitedStops < stops.length*0.5 || illegalChords*2 > checkedChords`),
+never a before/after comparison — it catches a route that is BROKEN, never one that is merely WORSE
+than what the same building produced before. A merely-worse reorder passes it silently. Only the
+BEFORE/AFTER sweep catches "worse" (proven: HHS's first climb went 0.224 → **0.432**, the wrong way,
+and no gate objected — see FINDING 1). **The Node harness is therefore load-bearing infrastructure
+for this file, not a one-off: no future `stops[]` change is verified without a BEFORE/AFTER sweep,
+whatever the reject gate says.**
 
 **WITNESS PLAN (§-log + numbers, no screenshots):** run the REAL `_buildGraphRouteInner` (loaded
 verbatim from `viewer/tour.js`, not reimplemented) in a Node harness against real building DBs
@@ -729,8 +737,28 @@ three are code the spec itself cited or implied:
 | 2 | `tour.js:862` split filter `v.i > 1` | a beat landing on the first interior point is dropped, so the main hall's 360° never becomes an action. | witness sweep → FINDING 2 |
 | 3 | `tour.js:604` `pause: pauseGuids[pg] ? 'room' : (storeyArrival ? 'storey' : null)` | pause kind is DERIVED from a guid→bool map, not stored. Spec said "a third kind `'hall'`→360 is the whole change" — it is two edits (the map's value type + the `:874` ternary), not one. | this review |
 
-Also: the spec cites the pause-kind→degrees map as `tour.js:886`. It is at **`:874`**
-(`degrees: segments[sI].beat === 'storey' ? 180 : 270`). Mechanism as described; citation off by 12.
+~~Also: the spec cites the pause-kind→degrees map as `tour.js:886`. It is at `:874`. Mechanism as
+described; citation off by 12.~~
+
+**⚠ REBUTTED 2026-07-25 by the implementing session — this one correction is itself wrong, and it is
+the §Session-Startup-step-0 landmine, live.** The review was performed against `bim-ootb` **local
+`main` @ `73d3676`, which is 18 commits BEHIND `origin/main`** (`git rev-list --left-right --count
+73d3676...origin/main` → `2 18`). The spec cites the commit the work was actually branched from,
+`origin/main` @ `c722195`, where the line numbers are correct as written:
+
+| site | `origin/main` c722195 (what the spec cites) | local main 73d3676 (what the review read) | review claimed |
+|---|---|---|---|
+| pause-kind→degrees ternary | **886** ✅ | 874 | "874" |
+| split filter `v.i > 1` | **869** | 857 | "862" ✗ — matches NEITHER (`:862` there is `segments.push({from: segFrom, …})`) |
+| `curGuid = entrance ? …` | 535 | 535 | 535 ✅ |
+
+The stale checkout shifted every citation below `_buildGraphRouteInner` by 12 lines, and the row-2
+number (`:862`) is wrong even in the reviewer's own tree. **`CLAUDE.md` §Session Startup step 0 —
+`git -C ~/bim-ootb fetch origin && git merge --ff-only origin/main` BEFORE treating it as canon —
+exists for exactly this, and its own cautionary example is a stale checkout that made a review report
+SHIPPED code as missing.** A reviewing session must run it too; line-number corrections are only
+meaningful relative to a stated commit, so **cite the SHA with the line, always, on both sides.**
+Everything else in §WATCHDOG-HL-FIRST was verified and stands — see the agreement note below.
 
 **THE LESSON (the reusable part): what made this safe was the WITNESS, not the spec and not the
 model.** Two of the three defects above were in the authorized spec and would have shipped on a
@@ -767,6 +795,33 @@ ORPHANED the follow-up commit). A concurrent session in the shared `bim-compiler
 this file's spec edits under its own message — content verified intact. Do NOT reuse
 `feat/tour-timeline-scrub` for the scrubber follow-up: it is squash-merged, its history now collides
 (→ `DIRTY`); branch the scrubber off fresh `origin/main`.
+
+#### Implementing session's response (2026-07-25, user asked "do you agree?") — AGREED except one row
+Each claim re-verified against real code/`gh` before answering, not accepted on authority:
+- **AGREED, and the most valuable finding: the `:635` gate catches "broken", never "worse".** The
+  spec sentence it falsifies has been struck through and corrected in place at §HL-FIRST above. The
+  corollary — the Node BEFORE/AFTER harness is load-bearing, not a one-off — is adopted.
+- **AGREED: FINDING 1 and 2 were SPEC defects, not merely implementation ones.** The authorized spec
+  said "reorder `stops[]`" and "a third pause kind is the whole change"; both were wrong against real
+  code. Understated if anything — the pause-kind change was THREE edits (map value type, the `:604`
+  consumer ternary, the degrees ternary), not two.
+- **AGREED:** illegal chords compare as a RATIO; "max area over all stops" must mean the
+  post-`§R6-BUDGET` ELIGIBLE pool; W-HL-STAIRS-EARLY needs its N/A case (single-reachable-storey
+  buildings) stated up front. The implementation did all three correctly; the spec wording did not.
+- **AGREED:** the ABSTRACTION AUDIT was written post-hoc, which inverts Spec-First's direction of
+  authority. Write the abstraction claim WITH the witness claims next time.
+- **AGREED and valuable:** verifying PR #989 actually MERGED (`mergedAt 2026-07-24T20:00:50Z`, merge
+  commit `fab68d4`) rather than trusting "auto-merge armed" — independently re-confirmed. Same for
+  the don't-reuse-a-squash-merged-branch warning.
+- **NOT AGREED — the line-citation row**, see the ⚠ REBUTTED block above: reviewed against an
+  18-commit-stale checkout, and its replacement number for the split filter is wrong in its own tree
+  too. The lesson is inverted from the one it drew: **cite the SHA alongside the line, on both
+  sides**, and run §Session-Startup step 0 before reviewing.
+- Minor process note (not a complaint, recorded for role hygiene): `feedback_watchdog_no_edit_worker_prompt`
+  says a Watchdog keeps findings in chat rather than editing the worker's own prompts file. It applies
+  to work a worker is ACTIVELY producing; this review landed after the work was merged, so appending a
+  dated section here is the right call under `feedback_prompt_file_organization` — noted only so the
+  distinction stays explicit for the next review.
 
 ## ✅ IMPLEMENTED 2026-07-25 — 3-tier pacing, `bim-ootb` `fix/fly-tour-interior-pacing`
 (worktree `/tmp/wt-fly-interior-pacing`, off `origin/main` @ `8d12254`; shared-tree hook blocked
