@@ -801,6 +801,19 @@ are `deadend=194 / orphan=185`. Best case, a better metric swaps a 3.3m corridor
 independent causes, one symptom — fix the metric in this lane, but expect the visible win only after
 the pool has real rooms in it.
 
+### ✅ SHIPPED 2026-07-25 — §SUSPECT-OPEN-ELIGIBLE (PR #994, tour.js v14, auto-merge armed)
+FINDING 4's metric question turned out NOT to be the cause. Measured on the user's Save-DB export
+(`~/Projects/BIM_DB/Hospital.db`, an exact repro of the live console): the walker FINDS a 315.7 m²
+hall — larger than the shipped offline compile's 294 m² — and flags it `SUSPECT_OPEN`; §S2's blanket
+"never SUSPECT_* as destinations" then hid it, along with 62 of 214 rooms. `SUSPECT_OPEN` means low
+enclosure, i.e. *the space is open* — the exact property that makes a hall worth visiting. Now
+eligible; `SUSPECT_NO_DOOR` stays excluded (genuine reachability doubt). Witness: 7 buildings
+BEFORE/AFTER, `suspectOpenAdmitted=10` on Hospital, all six others byte-identical.
+**Did not fix the symptom, and that is recorded honestly in the PR:** the 315.7 m² hall has `edges=0`
+— isolated, so `§CONNECTED-STOPS` drops it before ranking. Blocked on the graph, see below.
+**FINDING 4's metric change (area → area×minDim etc.) is now PARKED, not rejected** — re-measure only
+once the pool contains reachable halls, or it will be tuned against corridors.
+
 ### ⛔ BLOCKED ON GRAPH SUBSTRATE — filed for another session 2026-07-25
 The user's live question ("is it getting to the big hall?") is answered: **the tour reaches the
 biggest space the GRAPH offers; the graph is the limit, not the ordering.** Hospital's live

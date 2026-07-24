@@ -716,6 +716,28 @@ better" is partly "A never applied the filter."
   whether 52 `SUSPECT_NO_DOOR` rooms on a hospital with 440 doors indicates a door-binding gap rather
   than 52 genuinely doorless rooms.
 
+**§G3-SHARPEST-TARGET 2026-07-25 — the Fly Tour half SHIPPED (bim-ootb PR #994, tour.js v14) and it
+was NOT sufficient. The result names the graph task more precisely than anything above:**
+`SUSPECT_OPEN` is now an eligible destination — witnessed `suspectOpenAdmitted=10` on Hospital, every
+other building in the 7-building corpus byte-identical (none has a SUSPECT_OPEN room). But the main
+hall did NOT change, and the reason is the single most useful number in this file:
+```
+⚠ Level 1 R14   area=315.7 m²   edges=0     ← the building's LARGEST room, ISOLATED
+⚠ Level 1 R21   area= 92.1 m²   edges=2
+… 9 of 10 SUSPECT_OPEN rooms are connected; the BIGGEST one is not.
+```
+`§CONNECTED-STOPS` drops any node absent from the edge set, so the hall is discarded before ranking.
+**The two facts are causally linked, and that is the insight:** the low enclosure that earns
+`SUSPECT_OPEN` is the same property that stops any door binding to it. A space open enough to be a
+grand hall is, to the current door-binding rule, a space with no doors.
+**Therefore the acceptance test for G1/G3 is now concrete and single-line, on a fixture that exists:**
+> On `~/Projects/BIM_DB/Hospital.db`, make `⚠ Level 1 R14` (315.7 m², bbox 9.7×34.1) carry **≥1 edge**
+> without regressing Terminal/HHS/Clinic/Duplex/SampleHouse in the 7-building sweep.
+That is a better target than "raise `edges=61`" because it is falsifiable, tied to a user-visible
+symptom, and reproducible offline. Related and probably the same rule: **52 `SUSPECT_NO_DOOR` rooms on
+a building with 440 doors** — a door-binding gap is far more likely than 52 genuinely doorless rooms.
+Start there.
+
 ### The four gaps, in dependency order (G1/G2 first — they unblock the most per unit of work)
 **G1 — `exits=0`. Hospital has NO entrance node at all.** `nonRoomDoors=0` too, so the E4 exit
 extractor found nothing on a 63k-element hospital that obviously has doors to the outside. Blocks:
