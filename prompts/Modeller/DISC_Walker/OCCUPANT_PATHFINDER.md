@@ -598,6 +598,38 @@ DB.** Restate the claim in those terms rather than deleting it.
 **Do NOT `oci os object put` without asking** — that bucket is production (`deploy/OCI_UPLOAD.md`
 §RULES; every upload needs `--content-type`, here `application/sql`).
 
+**§G2-FALSIFIED 2026-07-25 — applying the raster does NOT fix Hospital's path legality. Measured,
+locally, before any upload. The earlier hypothesis in this section (that §15's Hospital "tie" was
+caused by the missing raster) is WRONG and must not be carried forward.**
+Method: copied `deploy/buildings/Hospital_meta.db`, applied `buildings/patches/Hospital_extracted.db.sql`
+to the copy with `sqlite3` (52ms, +72KB, storeys `Level 1`–`Level 7` all present with real bitsets),
+then ran the REAL `_buildGraphRouteInner` against BOTH copies through the same Node harness.
+| | rastersLoaded | DETOUR_FAIL | illegalChords | pts | route len |
+|---|---|---|---|---|---|
+| meta, no raster | **0** | **22** | 16/123 | 136 | 1940.8m |
+| meta + raster | **7** | **22** | 16/121 | 134 | 1937.4m |
+**Test validity checked before believing the negative** (this project's own GIGO rule): `rastersLoaded`
+0→7 proves the table really was read into `graph.rasters` — the raster loaded and simply did not help.
+`room_graph.js` has NO `§`-log on the raster load path, which is why this needed a direct probe; **worth
+adding one** so a future session can see raster presence from a live console alone.
+So Hospital's chord-illegality has a DIFFERENT root cause than raster absence. Do not spend the OCI
+upload on the expectation that it fixes paths — it may still be worth shipping for other reasons, but
+this specific claim is dead.
+
+**§G3-ROOT-CAUSE-CANDIDATE 2026-07-25 (the strongest lead in this whole file — the walker recompile
+COLLAPSES connectivity on a building that already has good authored rooms):**
+| source of rooms | IfcSpace | nodes | **edges** |
+|---|---|---|---|
+| `Hospital_meta.db`'s own AUTHORED rooms (142, all human-named) | 142 | 156 | **500** |
+| LIVE, after the needle recompiles (`§NEEDLE_INJECT source=walker rooms=214`) | 317 rows | 224 | **61** |
+Same building. **500 edges → 61.** `deadend` goes to 194 and `orphan` to 185 live. This is not a
+graph-algorithm gap — the graph is being fed strictly worse rooms than the DB already contained.
+It also explains, in one stroke: why the live "main hall" is a 3.3m-wide corridor (with authored rooms
+the top candidate is `≈ Level 1 R13`, a real **294 m²** room), why the live candidate pool collapses to
+~24 mostly-corridor nodes, and the user's own instinct that room injection "is not foolproof."
+**Investigate FIRST, before any edge-rule work** — an edge fix measured against walker rooms would be
+tuning against degraded input.
+
 **G3 — `edges=61` across `nodes=224`, `deadend=194`, `orphan=185/orphanRescued=172`, plus
 `§ISLAND_BRIDGE` ×16 spanning up to 51.97m.** The graph is mostly disconnected islands stitched by
 long synthetic links, which is why routes lurch. Compare against this file's own G1 baseline

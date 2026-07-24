@@ -629,3 +629,41 @@ confirm with the user before treating it as a bug.
 
 Full context, and the three room-GRAPH gaps this sits beside, in
 `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION (G5).
+
+
+## ⚠ OPEN 2026-07-25 — §NEEDLE-OVERWRITES-AUTHORED: recompiling a building that already has real rooms
+**Measured (bim-compiler Node harness, real DBs, not inferred).** `Hospital_meta.db` ships **142
+authored `IfcSpace`s, every one human-named** (`nonR-named=142`) and yields a room graph of
+`nodes=156 edges=500`. Live, the needle fires `§NEEDLE_VERSION_STALE stored=null … — recompiling`,
+the walker replaces them with 214 compiled `R<n>` rooms, and the SAME building's graph becomes
+`nodes=224 edges=61 deadend=194 orphan=185`. **500 edges → 61.**
+
+**The trigger looks like a policy gap, not a walker bug:** `stored=null` means "no `rooms_meta` stamp,"
+which is treated as STALE. But a DB with authored IfcSpaces was never compiler-produced, so it has no
+stamp and never will — the version-stamp self-heal cannot tell "un-stamped because never compiled" from
+"un-stamped because authored by a real modeller." Hospital is the second case and gets recompiled anyway.
+**Question to settle (do not assume the answer):** should the needle skip/merge rather than replace when
+the DB already carries authored spaces — and if it must compile, should the result be additive
+(compiled rooms only where authored ones are absent) instead of a wholesale replace? Downstream
+consequences are real and visible: the Fly Tour's "big hall" becomes a 3.3m corridor instead of the
+authored **294 m²** `≈ Level 1 R13`.
+Full numbers + the graph-side framing: `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`
+§G3-ROOT-CAUSE-CANDIDATE.
+
+### §META-GEO-SPLIT — standing pre-flight, this keeps costing sessions time (user 2026-07-25:
+### "Hospital meta/geo exists. Always a headache to miss it")
+Hospital is a SPLIT building: the viewer loads `Hospital_meta.db` (22MB) + `Hospital_geo.db` (229MB),
+confirmed live by `§DB_SPLIT_DETECT … found=true`. A 252MB `Hospital_extracted.db` monolith ALSO exists
+on disk, and the split path wins whenever it is detected. Consequences that have already bitten:
+- **Patches are named per DB FILE.** The boot loader requests `patches/<meta-db-name>.sql`
+  (`streaming.js:1787`, `metaUrl`) while the needle requests `patches/<DB_URL-name>.sql`
+  (`navigate_find.js`). Live Hospital 404s on BOTH — `Hospital_meta.db.sql` exists nowhere, and
+  `Hospital_extracted.db.sql` exists in-repo but not on OCI. Terminal ships BOTH variants; copy that.
+- **A browser "Save DB" produces a MERGED monolith**, which the split path will then ignore in favour of
+  the meta+geo pair. Save-DB is an excellent persistence DEMO, but it is not automatically the upload
+  artifact — shipping it means either replacing the meta+geo pair or retiring the split for that building.
+- **Anything targeting the raster/rooms should target `_meta`**, which is where `elements_meta` /
+  `spatial_structure` live and is 22MB rather than 252MB — geo (229MB) never needs to move.
+**Pre-flight, every session, before choosing a Hospital-like building for testing or deployment:**
+`ls buildings/<Name>_{extracted,meta,geo}.db` and state WHICH artifact your claim covers. See
+[[project_db_snapshot_divergence_landmine]] and [[feedback_dont_suggest_incomplete_split_db_for_testing]].
