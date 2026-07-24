@@ -1183,6 +1183,51 @@ not authorized to change `room_graph.js`/`navigate_find.js` from this section al
    void-cut/zigzag bug is still open for it BY DESIGN (documented, not a new finding), and extending
    raster coverage to it is the real next task (a data/pipeline job, not a routing-logic change).
 
+## §16 — LIVE REPRO, 2026-07-26 (user, real screenshots + real console log) — DOCUMENTATION ONLY,
+## not assigned as a task here (a separate Opus session already owns the Fly Tour/room-pathing lane)
+
+**Evidence:** `~/Pictures/Screenshots/RoomsPathView.png` / `RoomsPathTopView.png` /
+`RoomsPathSideView.png` (renamed from the three most recent captures, 2026-07-25 05:32-05:35) + the
+real browser console log for the same session, saved to
+`~/Pictures/Screenshots/logs/RoomsPath_2026-07-25_console.log`.
+
+**Building CONFIRMED Hospital** (not assumed — all 4 door guids in the log's `§ROOM_PATH` line were
+verified present in `Hospital_extracted.db`'s `elements_meta`, and the storey list — `Level 1`
+through `Level 7` — matches exactly). This directly answers §15's open item 1 (building was
+previously unidentified).
+
+**Route:** `≈ Level 1 R35 → ≈ Level 4 R8`, 6 hops, 124.69m, real `§ROOM_PATH` line:
+```
+§ROOM_PATH from=≈ Level 1 R35 to=≈ Level 4 R8 hops=6
+  rooms=[≈ Level 1 R35, Corridor — Level 1, Corridor — Level 1, M_Single-Flush:0915x2134mm_Wood:668663,
+         Corridor — Level 1, Corridor — Level 1, Stair(upper)×3, Corridor — Level 4, ≈ Level 4 R9, ≈ Level 4 R8]
+  doors=[3O_8dIhBP9AxIGElgUmdrE,1wrNt7GW19tOpUaBLGwvsc,1wrNt7GW19tOpUaBLGwvsc,1wrNt7GW19tOpUaBLGwvsc,
+         1ftA4aHx9FbOC5jIIu_g57,0X5AvQ9gP4TRYnhNSEodzV] distance=124.69m
+```
+Preceded by, same console session:
+```
+§PATH_LEGAL_DETOUR_FAIL storey=Level 1 no legal detour among 128 doors   (×2)
+§PATH_LEGAL_DETOUR_FAIL storey=Level 4 no legal detour among 97 doors    (×3)
+§PATH_LEGAL legalized=7 detoured=1
+```
+
+**Reading the numbers against §15's prediction:** §15 flagged Hospital as a "tie" building in §12's
+raster-coverage summary (unlike Terminal/HHS's 99-100% illegal-point reduction) and predicted that,
+if the screenshot building turned out to be one of the tie/no-raster cases, the zigzag/void-cut bug
+would still be open by design, not a new regression. This log is consistent with exactly that: **5 of
+6 same-storey legality checks on this route's own storeys FAILED to find a legal detour** (`legalized=7
+detoured=1` against 5 logged `DETOUR_FAIL` events) — i.e. the A* raster-constrained polyline fix
+(§13, PR #967) is not rescuing this route on Hospital, which lines up with what the three screenshots
+show visually: `RoomsPathView`/`RoomsPathTopView` both show the yellow line crossing open
+rooftop/atrium space rather than hugging real floor, and `RoomsPathSideView` shows the same
+vertical-then-horizontal zigzag shape §11 Task 2 originally described.
+
+**Not concluded here, left for whoever picks up this lane next (explicitly NOT this session — Opus
+already owns Fly Tour/room-pathing):** whether Hospital's raster genuinely has no usable coverage on
+Level 1/Level 4 specifically, or whether (like Terminal's §12 Stage A case) there's a fixable
+plumbing gap behind the "tie" result that was never root-caused the way Terminal's split-DB issue
+was. That root-cause work was never done for Hospital — §12 only ever explains Terminal's gap.
+
 ### §15 CROSS-REF 2026-07-25 — a live contradiction to settle FIRST (from the Fly Tour lane)
 §15 records raster coverage for 5 of ~29 buildings, **Hospital among them**. But the LIVE served
 `Hospital_extracted.db` logs `§HELPERS_QUERY_ERR no such table: storey_walkable_raster` on every
