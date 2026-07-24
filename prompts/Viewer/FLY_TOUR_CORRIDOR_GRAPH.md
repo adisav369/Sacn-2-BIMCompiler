@@ -528,10 +528,47 @@ scoped away from DLOD/render-perf work another session owns:**
 4. **Not changed:** stop-selection order, `shortestPath` chaining, any DLOD/render/occlusion code
    — scope held to pacing only per the user's explicit boundary.
 
-**Status:** implemented + `node --check` clean; NOT pushed (needs `git worktree add`'s PR flow —
-push permission is ON per this project's standing note, but this hasn't been proposed/reviewed
-yet). Browser/witness verification intentionally skipped per user direction — flag if a live check
-is wanted before merge.
+**Status:** merged. PR #980 shipped the 0.3x-baseline + turn-angle version; live-testing it on LTU
+(real courtyards + open-plan house, not a toy case) exposed two real bugs that a synthetic-only
+check couldn't have caught, both user-reported live from actual §-log output:
+
+## ✅ CORRECTED 2026-07-25/26 — v2/v3, PR #984 (`fix/fly-tour-interior-pacing-v2`, auto-merge armed)
+- **Bug 1 — orbit's dynamic pacing did nothing.** Live log: `§INTERIOR_PACING orbit clearancePace
+  min=0.35 max=0.35` — flat, for the entire aerial sweep. Root cause: `A.cinemaFan`'s BVH ray fan
+  is HORIZONTAL only (effects.js's own header comment already says so — "cannot see 'no roof,'
+  only 'no walls'"), so a mostly-VERTICAL descent never registers anything nearby and reads as
+  permanently wide open. **Fix: stopped raycasting for orbit/moveTo entirely** — both already know
+  exactly what they're approaching (real ground height / real destination point), so pace off that
+  known geometry directly: orbit off `|camY - groundY|`, entrance moveTo off remaining distance to
+  the target. Only `flyPath` (interior, no single known target) still uses the BVH fan.
+- **Bug 2 — courtyards still read as slow despite a "fast" factor.** User: "the inverse distance
+  speed law is not proper... it is a simple maths, no overthink." Root cause: the v1 remap only
+  REDISTRIBUTES a segment's already-fixed total duration — it can never make a point average
+  faster than that segment's own duration allows, and the flat `INTERIOR_PACE_FACTOR=0.3` capped
+  that duration low regardless of how open the segment measured. Multiplying clearance by a
+  separate turn-angle term made it worse, not better (live log: `combinedFactorRange=[0.35,16.00]`,
+  a runaway 16x with no matching improvement to the actual complaint). **Fix: dropped the
+  turn-angle term** (clearance alone already reads a dead-end spur as tight — walls close on every
+  side, redundant signal) **and now rescale each action's own total duration by its real mean pace
+  factor** (`meanFactor`), not just redistribute within an unchanged one — a genuinely open stretch
+  now takes less real time outright.
+- **Fully dynamic, not LTU-specific** (user asked directly): every constant (`PACE_FACTOR_MIN/MAX`,
+  the 15m/10m/3m reference distances) is a generic scale, not a per-building value: orbit/moveTo
+  read real geometry already known for ANY building's camera path, `flyPath` reads
+  `A.cinemaFan`'s live BVH raycast against whatever geometry is actually loaded. LTU was this
+  session's test building, not a special case in the code.
+- Re-verified in isolation against reconstructed real LTU numbers before pushing: orbit factor now
+  varies 0.35–4.0 across the descent (was pinned flat); a 48m open courtyard run's duration drops
+  from 35.6s (1.35 m/s) to 12.4s (3.86 m/s) — genuinely faster, not just relatively so within an
+  unchanged budget. Scripts kept at `/tmp/claude-*/scratchpad/diag_pacing2.js`/`diag_pacing3.js`
+  (session-local, not committed).
+- **Merge landmine hit and recovered (per this file's own CLAUDE.md-documented risk):** PR #980
+  auto-merged (squash) between this session's first push and its follow-up pushes, orphaning the
+  v2/v3 commits on the old branch — exactly the "squash-merge + late push orphans the new commit"
+  pattern this project's CLAUDE.md already names. Recovered by fetching current `origin/main`
+  (which had ALSO gained an unrelated PR #981 walkTick change in the meantime — confirmed
+  non-overlapping via diff before touching anything), cherry-picking the two orphaned commits
+  cleanly onto a fresh branch, and opening PR #984 rather than trying to force the old one.
 
 ### Non-goals (this spec)
 - Exterior/aerial (`moveTo`/`orbit`) pacing: untouched, out of scope, already correctly separated in
