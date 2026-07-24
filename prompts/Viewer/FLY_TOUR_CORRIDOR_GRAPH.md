@@ -795,3 +795,32 @@ re-evaluation on discontinuous jumps) need resolving — by further investigatio
 by the user's own call on the tradeoffs — before any `tour.js`/UI changes. Likely a real, if small,
 new UI element too (a draggable scrub bar) — not specified here, follows once the engine-side
 seek() mechanism above is settled.
+
+**"Similar to TM" (2026-07-26, user's own framing) — real, confirmed precedent, not a loose
+analogy, and it likely makes this feature cheaper than the open items above suggest on their own.**
+`viewer/time_machine.js` already ships exactly this shape of control, proven and shipping:
+- A time cursor (`_cursor`, ms into the project timeline) that state/rendering is a function OF,
+  plus a real HTML range-input scrub bar (`#tm-slider`, `time_machine.js:2523`) wired on the `input`
+  event (`onSlide`, `:2595`) — the UI chrome, drag mechanics, and slider styling this feature needs
+  are not new, they already exist and work.
+- A progress bar synced to cursor fraction (`pbar.style.width`, `:2335-2336`) — the same "where in
+  the sequence am I" display the tour scrubber needs.
+- **TM already has cursor-driven CINEMATIC CAMERA behavior, not just element-visibility toggling**
+  — `_cineTransitFrom`/`_cineTransitTo` (`:1567-1742`) move the camera smoothly as `_cursor` scrubs,
+  including obstruction-peeling and distance-based easing. This is the closest existing precedent to
+  Fly Tour's own camera-pose-from-position problem — study THIS code before assuming Fly Tour needs
+  a bespoke mechanism (the walkTick-replay-via-virtual-clock idea floated earlier in this same
+  session is a reasonable fallback, but TM's own approach should be checked first — it may already
+  solve the "smooth scrub, either direction" problem in a way that's directly portable).
+- **Concretely, next session's first move:** read `time_machine.js`'s cursor→state→camera pipeline
+  end to end (not just the citations above), then decide whether Fly Tour's scrubber wraps THAT
+  same kernel abstraction (cursor→pose function, shared UI slider pattern) rather than building a
+  parallel one. If BIM Compiler's kernel already has one general "scrub a cursor across time, drive
+  visible state and camera from it" concept serving BOTH 4D construction playback and now the Fly
+  Tour, that's a real, reusable, and (per the user's own words) "free" architectural asset — worth
+  stating plainly in whatever session picks this up, since it changes the scope from "build a
+  scrubber" to "wire Fly Tour into the existing scrub kernel."
+
+**Session closed here (2026-07-26, user: "clean close new session on that").** Spec above is
+sufficient for a fresh session to start from a running start — investigate `time_machine.js`'s
+cursor/camera pipeline first, decide reuse-vs-bespoke, then implement. Not started this session.
