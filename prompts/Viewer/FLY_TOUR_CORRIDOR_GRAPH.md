@@ -711,6 +711,55 @@ Explicitly NOT used anywhere in this change: building names, storey-name strings
 area/length/height threshold. The only per-building input is measured geometry from the compiled
 graph, per §VOCABULARY_NOT_REALTIME.
 
+### ⚠ FINDING 3 (2026-07-25, USER LIVE LOG) — §HL-FIRST shipped INVISIBLE: `TOUR_CACHE_VER` not bumped
+**User: "is it live? I checked didn't notice."** It was live and correct; a stale cache hid it.
+`tour.js`'s `TOUR_CACHE_VER` — whose own comment reads *"keep in lockstep with the §TOUR_VERSION
+banner above"* — was left at `'v12'` while the banner went to `v13`. The cache key is
+`tmTourCache:<bld>:<VER>:<elements-doors-spaces>:<renderedSet>`; **every other component is a DB
+count, so it busts on a re-extraction or a room recompile but NEVER on a code change.**
+`TOUR_CACHE_VER` is the only thing that invalidates a cached route when the routing ALGORITHM
+changes — which is exactly what §HL-FIRST was. Any building toured before the deploy replayed its
+OLD route from IDB. Fixed in `bim-ootb` PR **#991** (`fix/tour-cache-ver-v13`, off fresh
+`origin/main` @ `fab68d4`; `tour.js?v=14`, sw v843) + a ⚠ LOCKSTEP comment at the constant.
+
+**The user's log also PROVES the feature works where the cache missed** (Hospital, live GH Pages,
+walker had just injected 214 fresh rooms → miss → recompute):
+`§FLY_HL_FIRST mainHall="≈ Level 1 Hall/Corridor 2" area=219.4 storey=Level 1 ascent="≈ Level 4
+Hall/Corridor 2"/Level 4 extras=1 stops=18` → `§FLY_ROUTE storeys=7 stops=18/18 skipped=0
+corridorStops=9 circWps=62 stairUp=…Level_2::hi stairDown=- pts=91 illegalChords=18/74`, and the
+`§TOUR_PATH` dump reads exactly as specced: i=0 Entrance → **i=1 the 219 m² main hall** → i=3,4,5 a
+real 3-point stair climb (y −5.6 → −0.9 → 4.1) → i=8/i=10 the Level 4 highlight → i=11–13 back down
+→ then the Level 1/2/3/4/5 sweep. **First real end-to-end live confirmation of §HL-FIRST.**
+
+**THE LESSON — this is FINDING 1's lesson repeating in a different layer, and it is the more general
+one:** the 7-building Node sweep exercised `_buildGraphRouteInner` directly and therefore could not
+see the cache in front of it. **A witness that calls the engine directly cannot prove the FEATURE
+reaches a user** — caches, service workers, `?v=` query strings and IDB all sit between the two.
+Binding rule for this file: **any change to route ORDER, waypoint SELECTION or beat structure must
+bump `TOUR_CACHE_VER` in the same commit as the `§TOUR_VERSION` banner**, and the ship checklist is
+banner + `TOUR_CACHE_VER` + `tour.js?v=` + `sw.js CACHE_VERSION` — four versions, not two. Missing
+one made a fully-witnessed, correctly-implemented feature invisible to the only person who matters.
+
+### Two live observations from the same log, NOT yet acted on (numbers, for whoever picks them up)
+1. **The Hospital tour is ~19 minutes of interior flight.** Summing the 13 `flyPath` durations in the
+   user's own `§TOUR_PATH`: **1145.9s (19.1 min)** over 1547m — mean **1.35 m/s**, with a single
+   322s (5.4 min) leg. Separately the first leg logs `§TIGHT_TURN_PACING verts=3
+   losRange=[0.63,1.60] mean=1.60 dur=38.3s` — the LOS pace factor pinned at its MAX (slowest) for
+   a 71.6m entrance→hall run that should read as open. Belongs to `FLY_TOUR_DLOD_SCALE.md`'s pacing
+   lane, not routing, but it is now the dominant felt problem: the highlight lands in the first
+   ~60s, and then there are 18 more minutes. Worth asking whether §R6-BUDGET should scale with
+   ROUTE LENGTH, not just storey count.
+2. **`stairDown=-` and `exits=0`.** `§ROOM_GRAPH … circ=7 stairs=6 (skipped=1) exits=0` — Hospital's
+   graph has no exit node at all, so there is no return-to-entrance descent leg (§S2.5 can't run).
+   Also `illegalChords=18/74` (24%, passes the majority gate) with many
+   `§PATH_LEGAL_DETOUR_FAIL storey=Level N no legal detour among <N> doors`.
+
+**Correction to the witness table above:** it records "Hospital_ARC → REJECTED both, pre-existing."
+That is true of `modeller/Hospital_ARC.db` and FALSE of the building users actually load — the live
+`Hospital_extracted.db` + walker-injected 214 rooms routes fine (**18/18 stops**). Same building
+name, different DB, opposite outcome — `project_db_snapshot_divergence_landmine.md` again. State
+WHICH DB a fallback claim applies to; a harness DB is not evidence about the shipped one.
+
 ### Not done / follow-ups
 - **Hospital_ARC and SampleCastle_extracted still fall back to legacy** — pre-existing, unchanged by
   this work (`visited 3/15` and `2/9` fail the §MAJORITY-LEGAL/coverage gate in BOTH before and after).
