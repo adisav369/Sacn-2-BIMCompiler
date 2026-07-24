@@ -570,6 +570,23 @@ check couldn't have caught, both user-reported live from actual §-log output:
   non-overlapping via diff before touching anything), cherry-picking the two orphaned commits
   cleanly onto a fresh branch, and opening PR #984 rather than trying to force the old one.
 
+## ✅ CORRECTED 2026-07-26 — v4, PR #985, LOS not omnidirectional min
+Even after v2/v3, live LTU log still showed a courtyard leg computing `mean=2.47` (SLOWER than
+baseline) despite the sightline ahead being wide open. User: "Measure by LOS - what is in front of
+the middle in the frame, if it is far, fast. Near, slow." Root cause: `_clearancePace` took the
+MIN across `A.cinemaFan`'s 8-ray omnidirectional fan — one nearby object in ANY direction (off to
+the side, behind) forced the point "close" regardless of what was actually ahead. Fixed by adding
+`A.cinemaLookDist(pos, dirX, dirZ)` (effects.js, single forward raycast, same mesh set/raycaster
+`_cinemaFan` already uses) and switching `flyPath`'s interior pacing to measure LOS toward the
+NEXT waypoint instead of the fan's min — an open sightline ahead now genuinely hastens even with
+clutter off to the side. Orbit/moveTo untouched (already correct per #984's live log — height/
+distance to a known target, not a raycast at all). PR #985, auto-merge armed.
+
+**Not fully closed — handed off.** User: "another session will smoothen out the path for reason
+of tour speeding up calculation" — further path-smoothing/speed-calc work is a known follow-on,
+not done in this session. Don't re-litigate the LOS-vs-fan decision above without re-reading this
+entry; it was arrived at from 3 rounds of live-log-verified correction, not a guess.
+
 ### Non-goals (this spec)
 - Exterior/aerial (`moveTo`/`orbit`) pacing: untouched, out of scope, already correctly separated in
   the current code (own `WALK_SPEED` constant, not `flySpd`).
