@@ -318,3 +318,73 @@ crossing that gate is the same "about to navigate seriously" signal this file al
 `cinema_maxq.js`/`effects.js` (Cinema/MaxQ orbit prep), `navigate_find.js` (the needle button itself),
 `dlod_nav.js` ('o' nav-LOD toggle). Keep this list current when adding a new caller — it's the fastest
 way for a future session to know what already depends on this shared core before changing it.
+
+## §INTERIOR_PACING_NOT_A_SPEED_FACTOR — SPEC ONLY, not yet implemented (2026-07-24, user directive
+verbatim, filed from `FLY_TOUR_DLOD_SCALE.md` session — read before touching `flySpd`/interior pacing)
+
+**User's own words, verbatim, the actual scope:** "I still want it to be 0.4x slower speed for within
+building inside rooms, not so when outside walls as they are further distance. It is in room that it
+can be too flashy. In fact really in rooms set the flight pathing to 0.3 even, but not use X factor,
+but rewire from scratch the flight path, to really avoid tight small confinements as we see nothing
+going thru attic types."
+
+**Two separate asks, do not collapse into one:**
+1. **Interior legs should read as noticeably slower/calmer than exterior/aerial legs** — confirmed
+   intent, exterior (`moveTo`/`orbit`) stays untouched, only interior (`flyPath`) changes.
+2. **The mechanism must NOT be a flat multiplier bolted onto the existing speed formula.** A stray,
+   uncommitted experiment already exists in `tour.js` (`flySpd = (pathLen > 300 ? 4.5 : 3.5) * 0.4`,
+   tagged `§FLY_INTERIOR_SLOWDOWN`, predates this spec, untested) — **this is exactly the "X factor"
+   shape the user is now explicitly rejecting.** Do not build on it, do not bump its constant to 0.3.
+   It's superseded by this section; whoever picks this up should remove it once the real rewire lands,
+   not tune it further.
+
+**Why a flat factor is the wrong shape (the user's own reasoning, made explicit):** slowing the WHOLE
+interior leg uniformly treats "too flashy" as a pacing problem. The user's actual complaint names a
+SPATIAL cause instead — the route flies through "tight small confinements," explicitly "attic types"
+— i.e. the existing stop/point selection (§REVIEW R1/R2 above — corridor backbone + room centroids via
+`common/room_graph.js`/`common/hallway_backbone.js`) is choosing candidate rooms/corridors without any
+filter for enclosure tightness or "is there anything worth seeing here." A global speed multiplier
+would make flying through a boring attic slower, not stop the tour from flying through it. The right
+fix is upstream of pacing: **don't route through those spaces in the first place** — which, per
+§VOCABULARY_NOT_REALTIME above, means extending the compiled vocabulary (room_graph.js/
+hallway_backbone.js candidate scoring), not adding real-time logic to `tour.js` itself.
+
+### What needs real investigation before any design (MEASURE BEFORE ESTIMATING — do not guess a
+threshold):
+1. **What actually distinguishes an "attic type" space in the real data?** Candidates to check against
+   a real building's DB before assuming any of them: `elements_meta`/`spatial_structure`'s IfcSpace
+   `LongName`/`name` (does IFC authoring actually label attics/voids distinctly — check real strings,
+   don't assume "Attic" appears literally), room floor-area (`rel_contained_in_space`-derived or
+   `spatial_structure` footprint — tight spaces should measure small), ceiling height / storey band
+   (attics are typically low-headroom under a roof pitch, may need `elements_meta.storey` + a Z-extent
+   check rather than a single number), aspect ratio (a long thin service void vs a normal room), or
+   IfcSpace `ifc_class`/type distinctions if the schema carries one. Run the real SQL against at least
+   two real buildings (LTU_AHouse + one other with a labeled attic/roof void, if one exists) before
+   picking a signal — the same discipline `CONTAINMENT_LTU_STOREY_ALIAS.md` and this file's own
+   `§REVIEW` used, not an assumed threshold.
+2. **Where does this filter plug into the existing scoring?** The room-selection logic already has a
+   working PATTERN for "is this space worth going to" — `effects.js`'s `_cinemaPathPlan`
+   (§CINEMA_SPACE, area/centrality `score = ar / (1 + dCtr/...)`) and this file's own R1/R2 corridor+
+   room-centroid selection both already rank candidate spaces. The tightness/attic filter is most
+   likely a DISQUALIFYING check or a scoring penalty applied at the SAME point, reusing the same
+   candidate-ranking shape — not a new parallel system. Whether it belongs as a hard exclude (never
+   route there) or a heavy score penalty (route there only if nothing better exists) is an open
+   design question, not decided here.
+3. **What produces the "0.3x slower, in rooms" FEEL once bad spaces are already excluded?** Once the
+   route no longer detours through tight/attic spaces, re-measure whether interior still feels "too
+   flashy" at the existing `flySpd` formula. If it does, the fix should come from the path's own
+   geometry (point spacing/segment density on the Catmull-Rom curve — `act._curve.getPointAt(t)`,
+   `tour.js:1155-1200`) producing naturally slower perceived motion through interior legs, or a pacing
+   term that's a function of local path/room characteristics (e.g. proximity to walls, corridor width)
+   — not a single flat constant multiplied over 100% of every interior leg regardless of what's around
+   the camera. This is the concrete meaning of "rewire from scratch," per the user's own words — the
+   speed number is a symptom to re-check AFTER the routing fix, not the thing to tune first.
+
+### Non-goals (this spec)
+- Exterior/aerial (`moveTo`/`orbit`) pacing: untouched, out of scope, already correctly separated in
+  the current code (own `WALK_SPEED` constant, not `flySpd`).
+- Not a DLOD/render-cost fix — unrelated to `FLY_TOUR_DLOD_SCALE.md`'s occlusion/frame-cost work,
+  filed here specifically because this is a routing/pathing concern, not a rendering one.
+- Not authorized to implement from this section alone — per this project's Spec-First rule, the
+  investigation in the numbered items above needs real data/citations added to this file before any
+  code changes to `tour.js`'s interior route-building or pacing.
