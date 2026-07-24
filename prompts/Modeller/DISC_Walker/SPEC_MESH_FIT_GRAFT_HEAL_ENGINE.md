@@ -363,7 +363,9 @@ box-fallback path is fixed for the well-defined (yaw-only, clean-90°-multiple) 
 unsolvable oblique/tilted case is unchanged and separately flagged, not silently left ambiguous.
 
 ## §10 — OFFLINE ONE-TIME BAKE: a demo-only DB copy with Terminal's sprinkler grafted onto Hospital's
-## SPEC ONLY (2026-07-26, user directive) — nothing built yet, do not touch OCI or any deployed DB
+## BUILT + VERIFIED (2026-07-25, worktree `/tmp/wt-sprinkler-graft-demo`, branch
+## `demo/sprinkler-graft-hospital` in bim-ootb) — Steps 0-4 all done, real numbers below. Nothing pushed;
+## worker/reviewer split, this session commits locally only. OCI/deployed DBs untouched throughout.
 
 ```
 # ⚠ DO NOT REMOVE
@@ -475,3 +477,122 @@ can reproduce it without re-deriving Steps 0-3 from scratch.
   `witness_meshfit_thirdtier.js`, `witness_mesh_graft_placement.js`) unchanged/green — this task must not
   touch `mesh_graft.js`/`real_geometry.js` themselves, only call the already-proven functions from a new
   offline script.
+
+### RESULTS (2026-07-25) — Steps 0-3 run once on real Hospital data, all logged, no invented numbers
+
+**Step 0 (candidate, MEASURED not assumed):** Hospital's `IfcFireSuppressionTerminal` class has exactly 9
+distinct geometry shapes across 1354 instances — ALL of them the SAME degenerate 192-vert/140-face thin rod
+(local bbox 0.01265×0.01265×0.05397 m, aspect ratio 4.27:1), the dominant hash (`6b484e5d051c6d06`) alone
+covering 1287/1354 instances. The reference-distribution check (§0's "use OTHER buildings' bboxes", satisfied
+via `component_library.db`'s `SJTII_Terminal`-provenanced rows, itself a real other building) found 892 real
+sprinkler-head geometries under that same IFC class — `"jkrME18_spr_sprinkler head_pendent"`, 683 distinct
+hashes, 1996 verts/3930 faces each, a plausible bulb+arm shape — roughly **10× denser** than Hospital's rod.
+That density/shape gap against real cross-building data, not an invented constant, is the outlier signal.
+Picked: guid `0HuLVU0hf5gxwY8y9yDwpi` (the dominant-hash shape, most representative case).
+
+**Step 1 (donor template):** `mesh_templates.db` already had this shape clustered — probing one reference
+hash (`f7c10955669deb64`) resolved to `template_hash=68b9e844bb61459f`, `member_count=554`,
+`source_building=SJTII_Terminal`, `rms_confidence≈1.16e-4` (excellent match). No `build_mesh_templates.js`
+re-run needed.
+
+**Step 2 (bake):** `axis_permutation=[0,1,2]` (picked by minimum per-axis-scale-variance across all 6
+permutations — a data-driven, non-hardcoded choice; here it also happens to be the geometrically obvious one
+since the target's X/Y axes are equal), `scale_factors=0.3985,0.4767,0.9337`,
+`compareToGroundTruth.maxDelta=5.467e-6` (tolerance 0.031) → `pass=true`. Hash-sharing check:
+`old_hash_shared_by=1287 instances` → correctly chose INSERT-new-hash + update only the target guid (spec
+§2.4's rule), leaving the other 1286 sprinklers completely untouched. Provenance: additive
+`source_status='GRAFTED'`/`source_template_hash`/`source_building='SJTII_Terminal'` columns added to
+`component_geometries` (ALTER TABLE, first bake on a given `--out` only) AND a sidecar
+`<out>.graft_manifest.json` — both, belt-and-braces, per §1.
+
+**Step 3 (verify), three independent layers, ALL logged clean:**
+1. **Module-level open-test** (`§DEMO_GRAFT_OPEN_TEST`, inside `bake_demo_graft.js`, automatic): fresh
+   re-open of `--out` from disk (new sql.js handle, real file I/O) → target guid resolves through
+   `real_geometry.js`'s **normal `MEASURED` code path** (`resolves_normal_MEASURED_path=true`, 1996 verts) —
+   not the dynamic graft tier, not box-fallback, confirming §10's whole "why this shape" premise. Re-derived
+   `placeInWorld`/`compareToGroundTruth` from the reopened file's own `element_transforms` row: `maxDelta=
+   5.467e-6 pass=true`.
+2. **Op-log survival test** (`§DEMO_GRAFT_OPLOG_TEST`, inside `bake_demo_graft.js`, automatic): a REAL signed
+   `bonsai_oplog.js`+`kernel_ops.js` chain (node-shimmed, same pattern as `witness_modeller_redo_order.js`) —
+   one commit, `restore()`, `verify()` — against the baked file as the open building: `oplog_length_grew=true
+   chain_verify.ok=true pass=true`. The baked file's own bytes are BYTE-IDENTICAL before/after this whole
+   cycle (`baked_file_untouched_by_oplog_cycle=true`, same md5 both sides) — the honest, narrow proof that
+   "Modeller's save is a signed op-log replayed on top of the base DB, geometry tables are never rewritten."
+3. **Real-Chrome wiring check** (`verify_demo_graft_browser_open.js`, SECONDARY evidence per this project's
+   own "§-log first, browser second, wiring-only" testing doctrine — the numeric claims above are already
+   proven at the module level, this only asks "does the real app choke loading this file"): a real headless
+   Chrome boots the actual `modeller.html`, calls the REAL production `window.STRWalkerOutliner._openBuffer`
+   (the exact function drag-and-drop uses) against the 263MB baked file's bytes (streamed, not base64'd
+   through `page.evaluate`) — `app_booted=true openBuffer_returned=true elapsed_ms≈8500
+   total_page_errors=0 target_guid_check={"found":true,"vertCount":1996} RESULT PASS`. Zero screenshots
+   used anywhere in this verification (this project's FUNDAMENTAL LAW) — every claim above is a real,
+   independently-checkable number.
+
+**Regression:** `witness_mesh_graft_terminal.js` (383/383 within 1% RMS), `witness_meshfit_thirdtier.js`,
+`witness_mesh_graft_placement.js` (CASE1/2/3) all still PASS, unmodified. `witness_mesh_graft.js` fails with
+the SAME pre-existing `ENOENT .../library/component_library.db` error in the ORIGINAL `feat/mesh-fit-graft-
+engine` branch's own worktree too (independently re-confirmed this session) — a missing-data-file environment
+gap, not a regression this task caused. `mesh_graft.js`/`real_geometry.js` were read-only throughout — only
+their already-proven exports were called, nothing in either file was edited.
+
+### Step 4 — how to run this for a different building/element
+
+**Files:** `modeller/tests/bake_demo_graft.js` (the CLI — `scan` + `bake` subcommands) and
+`modeller/tests/verify_demo_graft_browser_open.js` (the optional SECONDARY real-Chrome wiring check). Both
+call, unmodified: `mesh_graft.js` (`graftFit`/`applyMeshTransform`/`placeInWorld`/`compareToGroundTruth`),
+`real_geometry.js` (`buildGeometryIndex`), and — only inside `bake`'s own automatic Step 3.2 —
+`bonsai_oplog.js`+`kernel_ops.js` (the real signed op-log chain).
+
+**1. Find the malformed element (Step 0) — `scan` subcommand:**
+```
+node modeller/tests/bake_demo_graft.js scan \
+  --source-db <path-to-Building_extracted.db> \
+  --ifc-class IfcFireSuppressionTerminal \
+  --reference-lib <path-to-component_library.db> \
+  --templates-db modeller/mesh_templates.db \
+  --probe-hash <a-reference-lib-geometry_hash-you-want-to-check>
+```
+Read `§DEMO_GRAFT_CANDIDATE` lines: one per distinct geometry shape actually used by that IFC class in the
+source db (sorted by vertex count), with `bbox`/`verts`/`faces`/`aspect_ratio`/`reason`. Read
+`§DEMO_GRAFT_REFERENCE` lines for real donor candidates from a reference library, grouped by name. Compare
+the two: a shape whose vertex/face count is far below a real reference shape of the same class (§0's
+"MEASURED not assumed" rule) is your candidate — not an eyeballed guess.
+
+**2. Pick the donor template (Step 1):** `--probe-hash <a-reference-hash>` prints `§DEMO_GRAFT_TEMPLATE
+probe_hash=... -> template_hash=...` — whether `mesh_templates.db` already clustered that shape into a
+confirmed (`member_count>1`) family, and its `rms_confidence`/`source_building`. If your class isn't covered
+cleanly yet, re-run `build_mesh_templates.js <library.db> <out_templates.db>` (cheap, class-filter
+`component_geometries` first) rather than accept a poor cross-class donor.
+
+**3. Bake it — `bake` subcommand** (runs Step 2 AND Step 3.1/3.2's module-level verify automatically, single
+command, always-verify — "no deploy without proof"):
+```
+node modeller/tests/bake_demo_graft.js bake \
+  --source-db <path-to-Building_extracted.db> \
+  --target-guid <a-guid-from-step-1's-scan-output> \
+  --template-hash <the-template_hash-from-step-2> \
+  --templates-db modeller/mesh_templates.db \
+  --out <path-OUTSIDE-the-repo, e.g. /tmp/.../MyDemo.db>
+```
+Read, in order: `§DEMO_GRAFT_BAKE` (copy/target/hash-sharing-decision/permutation/scale/
+`compareToGroundTruth.pass`), `§DEMO_GRAFT_OPEN_TEST` (fresh reopen resolves through the NORMAL `MEASURED`
+path), `§DEMO_GRAFT_OPLOG_TEST` (real signed op-log survives + baked file untouched by the cycle).
+`§DEMO_GRAFT_RESULT PASS` means every check passed — anything else exits 1 and does NOT leave a bad/partial
+file (the write only happens after `compareToGroundTruth.pass` is confirmed).
+
+**4. (Optional) real-Chrome wiring check:**
+```
+node modeller/tests/verify_demo_graft_browser_open.js <path-to-baked.db> <target-guid>
+```
+Real headless Chrome, real `modeller.html`, real `_openBuffer` — proves the app doesn't choke/error loading
+the file (WIRING only; the values were already proven in step 3). Look for `total_page_errors=0` and
+`RESULT PASS`.
+
+**Provenance on the output file:** every grafted row gets an additive `source_status`/`source_template_hash`/
+`source_building` column set on `component_geometries` (§1, non-optional, applies to a demo copy the same as
+production) AND a sidecar `<out>.graft_manifest.json` with the full numeric record.
+
+**What this does NOT do** (repeated so it isn't mis-read from the guide alone): does not touch
+`real_geometry.js`'s dynamic `templateIndex` tier, does not upload/ship anything anywhere, does not change
+Hospital's live/OCI-served file — `--source-db` is read-only, `--out` is a brand-new, separately-named, local
+file. No binary `.db` is committed to git; the baked demo file and its manifest stay local/untracked.
