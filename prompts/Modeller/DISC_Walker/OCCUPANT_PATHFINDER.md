@@ -650,6 +650,37 @@ same grounds.
 runs; the error was semantic, not arithmetic. When comparing a live console `§` line against a
 harness value, confirm the harness reads the SAME expression the log builds — not a same-named field.
 
+**§G3-RESOLVED 2026-07-25 — the real finding, measured on a TRUE LOCAL REPRO. It is not authored-vs-
+compiled and not a connectivity loss: it is OFFLINE-COMPILER vs IN-BROWSER-WALKER, and the browser
+walker loses the large spaces.**
+The user saved the live browser state (inject → Save DB) to `~/Projects/BIM_DB/Hospital.db`, 250MB.
+**It reproduces the live console EXACTLY** — `nodes=224 doors=440 nonRoomDoors=0 edges=61 deadend=194
+orphan=185 orphanRescued=172` — so Hospital is now locally reproducible; stop inferring from console
+logs. Provenance checked on BOTH sides before concluding (the step whose absence caused the retraction
+above): `spatial_structure.object_type` is **`COMPILED` in both**. Neither DB carries authored IfcSpaces.
+| | rooms | rects | E1 | TOTAL edges | exits | largest space | widest space |
+|---|---|---|---|---|---|---|---|
+| `Hospital_meta.db` as SHIPPED (offline compile, **no `rooms_meta` stamp**) | 142 | 142 | 17 | **500** | 0 | **294 m² (19.6×15.0)** | **15.0 m** |
+| after the in-browser walker v3 recompiles it (the saved live DB) | 214 | 317 | 61 | **496** | 0 | 219 m² corridor (3.3m wide) | **5.9 m** (49 m²) |
+- **Connectivity is a wash** (500 vs 496 total; walker binds MORE doors, 61 vs 17 E1). The retracted
+  "collapse" claim stays retracted — nothing is degraded here.
+- **Large spaces are annihilated.** The shipped compile contains a genuine 294 m² hall 15 m wide and a
+  270 m² room 12.4 m wide. After the walker recompile the widest space in the WHOLE building is 5.9 m
+  and the biggest open room is 49 m² — 317 rects for 214 rooms vs 142/142 suggests the walker is
+  fragmenting big volumes into many small pieces (or classifying them `SUSPECT_*`, which excludes them
+  as destinations). **This, not ranking, is why the Fly Tour cannot find a big hall.**
+- **The trigger is the missing stamp.** `Hospital_meta.db` has NO `rooms_meta` table, so
+  `§NEEDLE_VERSION_STALE stored=null` fires and the walker replaces a BETTER offline compile with a
+  worse in-browser one, every load.
+- **This is the py↔js parity thread, unfinished.** `FLY_TOUR_CORRIDOR_GRAPH.md`'s §WALKER-PHASE-
+  SENSITIVITY correction established `py = js = 54` on **Terminal** post-#832. Hospital was never
+  checked, and on Hospital they clearly disagree. **Next bounded task: diff the two compiles on
+  Hospital storey by storey** — which enclosures does `compile_rooms.py` close that `room_walker.js`
+  fragments — with the saved DB as the fixture.
+- **Interim policy question (now on a correct basis):** should the needle stamp-and-keep a shipped
+  compile it cannot prove stale, rather than recompiling over it? A shipped-but-unstamped compile is
+  currently indistinguishable from "never compiled", and here that costs the building its halls.
+
 ### The four gaps, in dependency order (G1/G2 first — they unblock the most per unit of work)
 **G1 — `exits=0`. Hospital has NO entrance node at all.** `nonRoomDoors=0` too, so the E4 exit
 extractor found nothing on a 63k-element hospital that obviously has doors to the outside. Blocks:
