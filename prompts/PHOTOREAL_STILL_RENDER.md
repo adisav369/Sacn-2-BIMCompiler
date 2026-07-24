@@ -4382,3 +4382,165 @@ project's own hardened rule, extract real camera-position time-series numbers fr
 instead (see `feedback_geometry_hell_math_discipline` discipline — camera paths are code-and-maths
 truth). Test on at least 2 buildings/start-poses (one genuinely inside, one genuinely outside) to
 confirm the gate doesn't fire when it shouldn't.
+
+**STALE NUMBERS (2026-07-24 flag, plan direction unchanged):** `CINEMA_OUT_SEC` is now `6` (not
+`4`) and the exterior orbit itself now shrinks to ~8s instead of ~12s — see §CINEMA_TIMING_672
+below. `CINEMA_RISE_SEC` is still `2`. The "halve when starting inside" arithmetic above still
+applies, just against the new value (6→3, not 4→2) — re-read the current constants at the L3139/
+L3144 area before implementing, don't copy the numbers quoted above verbatim.
+
+## ✅ §CINEMA_TIMING_672 — dive/out 6/6s, symmetric smooth ease, real-path HDRI fix, exit-gaze fix (2026-07-24, SHIPPED bim-ootb#978 + #979)
+User-dictated timing pass on the Alt+C/MaxQ film, done via two PRs (the first squash-merged before
+the second was ready — see #979's own commit message for the recovery, same "start a fresh branch
+off origin/main" pattern this file's Concurrent-Branches doctrine already names for the PR #138
+precedent). Both merged clean, live-verified, no code left in this repo's shared prompts/# copy —
+only this closing record. Details:
+
+**Beat timing (bim-ootb#978):**
+- `CINEMA_DIVE_SEC` 4→6, `CINEMA_OUT_SEC` 4→6 ("give more ease and ensure smooth transitions...
+  no sharp switch of frame pov"). `CINEMA_SPIN_SEC`/`CINEMA_RISE_SEC` unchanged at 2/2.
+- Total clip held at 24s, NOT extended — user was explicit and corrected the assistant twice on
+  this ("NO! I DID NOT SAY EXTEND... keep 24secs" / "External orbit giving way was made clear from
+  first request"). The exterior orbit absorbs the dive/out growth by shrinking, ~12s→~8s
+  (`CINEMA_N_FRAMES`/`CINEMA_FPS` untouched at 576/24).
+- `CINEMA_END_DECEL_SEC` (roll-to-stop) 2→3s, with its clamp raised 0.25→0.4 so the full 3s
+  survives the now-shorter ~8s loop instead of silently truncating to 2s — a real, easy-to-miss
+  side effect of shrinking `loopSec`: several OTHER beat-timing clamps in this same function
+  (`flatHoldU`'s 0.45, `descentMinU`/`climbMinU`'s 0.30) also tighten as `loopSec` shrinks — those
+  were deliberately LEFT UNTOUCHED because raising them would let `CINEMA_FLAT_HOLD_SEC`(5s) +
+  `CINEMA_DESCENT_MIN_SEC`(3s) consume the entire 8s orbit with zero time left for the actual
+  look-down cruise — i.e. those caps are a load-bearing safety valve for a short loop, not a bug.
+  Only raise a clamp when the request is specific AND the arithmetic still leaves room for
+  everything else the loop needs to do.
+
+**Symmetric smooth ease (bim-ootb#979, supersedes an earlier same-session miss):** the assistant's
+first attempt added a SEPARATE `CINEMA_START_EASE_SEC=2` constant/mechanism mirroring the end-decel
+— user rejected this explicitly ("thus u are adding, which i am against" / "why need to ease when
+it is roll to a stop?" / "in short, all throughout must be smooth, no jerks"). Correct shape: reuse
+the SAME `CINEMA_END_DECEL_SEC`(3s) value symmetrically at both ends of the orbit's angular-rate
+easing — one "smooth in, smooth out" behavior, not two independently-tunable ones. Log tag renamed
+`§CINEMA_START_EASE`→`§CINEMA_SMOOTH_ORBIT`. **Lesson for future timing asks on this file:** when a
+user states a general principle ("no jerks," "smooth throughout"), the DEFAULT shape is "reuse an
+existing constant/mechanism symmetrically," not "add a new named constant" — ask only if reuse
+genuinely can't satisfy the ask, don't default to inventing a parallel system.
+
+**The actual flicker fix (bim-ootb#979) — landed in the wrong file first, corrected same session:**
+user reported "the scene capture also has some flicker or snapping at the wrong frame, before the
+Alt-S fully applied." Root cause: `_applyPhotoStaging()` kicks off an async HDRI envMap load
+(`_ensureHdriEnvMap()`, real photographed reflections) fire-and-forget; the live capture used to
+start recording immediately after, so early frames baked the OLD procedural-sky envMap and popped
+to the real HDRI mid-recording whenever the fetch happened to resolve. **First attempt fixed this
+in `effects.js`'s `A.startCinemaOrbit`** — which turned out to be DEAD CODE: `scene.js`'s `§KBD_ROUTE`
+always finds `A.startMaxQualityOrbit` (cinema_maxq.js) defined and never falls through to it,
+confirmed directly from a REAL user's pasted browser console log (`§KBD_ROUTE Alt+C → MaxQ movie`).
+MaxQ's own warm-up fold (`_waitFoldDone`) only polls the TAA/AO accumulate-fold's busy flag — a
+SEPARATE async load from the HDRI fetch+PMREM-generate — confirmed by the same pasted log
+(`§STILL_REFINE done` fired at `elapsedMs=2221`, `§LAYER2_HDRI_READY` only arrived later). Fix:
+`effects.js` now exposes `A.ensureHdriEnvMapReady` (the same cached promise, wired for reuse);
+`cinema_maxq.js`'s warm-up awaits it too, 20s cap (vs the dead path's 5s — MaxQ is an offline bake,
+not latency-sensitive, and the cost is one-time per session since the promise is cached after the
+first successful load). **Lesson: when a fix targets a keyboard-shortcut entry point, grep the
+actual key-routing table (`scene.js` `§KBD_ROUTE`) for what really gets called BEFORE trusting a
+function's own "this is the live path" comment** — the dead-code comment here was accurate about
+being dead, the assistant just didn't act on its own finding the first time through.
+
+**Exit-walk gaze corner fix (bim-ootb#979):** user: "no chasing interim targets when exiting
+building mostly." Root cause: Beat 3's look-at target is `_outPos(e3 + 0.06)` — a fixed 6%-of-path
+lookahead point recomputed every frame. Camera POSITION already moves at constant speed along the
+route (arc-length parameterized polyline through `outWp`), so this was purely a GAZE issue: on a
+multi-waypoint room-graph route (a corridor with turns — "mostly" in the user's report, since a
+direct-line exit has no interior corners to snap at), the instant the lookahead window crossed a
+waypoint corner, the look-at direction swung hard onto the next segment in one frame. Fix: widened
+0.06→0.15 so the direction change spreads over more of the approach instead of snapping at the
+corner. No new mechanism — a single constant retune, same spirit as the smooth-ease lesson above.
+
+**Verification, per this file's own hardened rule for this specific beat-timing area (search "R1
+STILL BROKEN"/"R2 recurrence"/"R3 swoop" above — 3 prior live-trial-only regressions):**
+- `node --check` both files before every commit.
+- `A.cinemaPathPlan(24)` called live (headless, real DB/geometry, Hospital + Duplex) after every
+  edit — confirmed `diveSec=6.00 outSec=6.00 loopSec=8.00` and, after the symmetry fix,
+  `easeSec(bothEnds)=3.00`, both buildings, both rounds.
+- A REAL `A.startMaxQualityOrbit()` invocation (not just the synchronous plan) on Duplex, confirmed
+  `§MAXQ_HDRI_RACE` logs and resolves before frame capture begins, no page errors.
+- **A live-caught regression, not just a clean run reported**: the symmetric-ease refactor left one
+  stray `endDecelU` reference (the pullback/ellipticity damping in `_orbitPose`) undefined — every
+  `cinemaPathPlan()` call threw. Caught by the SAME synchronous witness above (`planResult:
+  {"err":"plan threw: endDecelU is not defined"}`), fixed, re-verified clean before pushing. Exactly
+  the kind of thing "don't overthink" pressure makes easy to skip — worth naming that the cheap
+  synchronous witness caught a real bug a "just ship it" pace would have pushed straight to #979.
+- **Not done**: a real-GPU, non-headless live trial of the finished feel (the file's own standing
+  caveat for this area — headless/SwiftShader numeric verification proves the MATH, not the
+  cinematic FEEL of a real capture). Flagged in both PR descriptions, not silently skipped.
+
+## SPEC ONLY, NOT IMPLEMENTED — borrowing nav-scope DLOD's idea to speed up Cinema/MaxQ frame prep+capture (2026-07-24)
+User question: "did u get also how to speed up frame prep and capture with 'o' dlod idea? Dont fix
+just spec out." This is a DESIGN NOTE for a future session — no code touched for this section.
+
+### What nav-scope DLOD ('o' key, `FLY_TOUR_DLOD_SCALE.md` §1-§4) actually is, and why it can't be
+### reused directly for Cinema/MaxQ
+Distance+frustum classification of the CURRENT live camera: near/on-screen elements render as real
+mesh, far/off-screen ones swap to a cheap wireframe box proxy — reduces DRAW cost only (not resident
+GPU memory, `FLY_TOUR_DLOD_SCALE.md` §3 Non-goals). `FLY_TOUR_DLOD_SCALE.md`'s own §SCOPE DECISION
+(2026-07-21, user-dictated, settled — do not re-litigate) explicitly EXCLUDES Alt+C Cinema Orbit
+from this mechanism: *"a wireframe proxy box must never appear in a movie frame... Cinema pays full
+render cost on LTU-scale buildings — if a Cinema run is slow there, that is this decision working
+as intended, not a bug."* So the box-proxy swap ITSELF is not on the table — nothing here proposes
+resurrecting that exclusion.
+
+### Where the underlying IDEA still helps — Cinema knows its whole path in advance, nav-DLOD doesn't
+Free navigation must classify near/far reactively, camera-position by camera-position, because it
+has no idea where the user will look next. Cinema/MaxQ is the OPPOSITE case: `plan.poseAt(tNorm)`
+for `tNorm` 0..1 is a pure, fully-known function BEFORE a single frame is captured (that's the whole
+`_cinemaPathPlan()` design). Nothing today exploits that. Three concrete, code-and-maths-groundable
+opportunities, all lossless for the actual recorded frame (nothing simplified or hidden from any
+frame that would show it — the opposite character from the box-proxy swap, which is why these don't
+reopen the settled §SCOPE DECISION):
+
+1. **Path-aware streaming priority.** Today, geometry streams in whatever order it naturally
+   arrives (DB/positions-file order), and Cinema/MaxQ's own warm-up (`§MAXQ_STREAM_FIRST`) waits on
+   top of that. Sample `poseAt(u)` at a modest number of points across the WHOLE path up front
+   (before or alongside the room/exit-selection pass `_cinemaPathPlan()` already does its own BVH
+   fan work for), run the SAME distance+frustum test nav-DLOD already has, take the UNION of
+   near/on-screen elements across every sampled pose, and prioritize streaming that set first. Live-
+   measured this session (Hospital, headless): the gap between page load and the plan even being
+   computable ran well past 15s of background streaming/room-graph work before `A.startMaxQualityOrbit`
+   could usefully start — prioritized streaming attacks exactly that wait, without changing what
+   ends up in any frame (everything still streams in eventually; only the ORDER changes).
+2. **Shadow-caster set culling for THIS bake, from the same path-sampled union.** Live-measured this
+   session: `§PHOTO_SHADOW enabled casters=1135` (Hospital) took long enough to visibly block the
+   main thread for several real seconds (confirmed via a 9-second gap with zero other console
+   activity in one witness run) — and the user's OWN pasted log showed `casters=11235` on a
+   different building/moment, an order of magnitude more. Shadow-map generation currently includes
+   every caster in the ENTIRE building regardless of whether the planned orbit ever gets near it.
+   Idea 1's same path-sampled frustum+distance union — WITH a margin/pad (a caster just outside the
+   sampled frustum could still throw a visible shadow into a frame between samples, so this needs a
+   real measured pad, not a guessed one) — could size the shadow-casting set to "only what this
+   specific film could ever show a shadow from," which is lossless for THIS render (those casters
+   genuinely never mattered for this exact camera path) in a way the box-proxy swap is not. This is
+   the single biggest lead from today's own live numbers — shadow-map generation was the dominant
+   one-time block measured, bigger than the HDRI load or the per-frame render cost.
+3. **Overlap independent warm-up costs instead of serializing them.** Today: full streaming wait →
+   shadow-map generation → HDRI load → AO fold → THEN start capturing, each one blocking the next.
+   If idea 1 can identify "the initial useful subset" fast, the HDRI/AO warm-up (which don't need
+   the FULL geometry set, just a reasonable scene) could start CONCURRENTLY with the remaining
+   streaming instead of strictly after it — pure wall-clock win from parallelizing independent async
+   work, no visual change either way.
+
+### What does NOT transfer, explicitly
+- The box-proxy mechanism itself — never usable for a recorded frame, full stop, per the existing
+  settled §SCOPE DECISION. Nothing here proposes touching that decision.
+- PER-FRAME render cost during actual capture (SSAA 4×, N8AO, per-frame shadow sampling) — every
+  idea above is about the ONE-TIME PREP phase before frame 0. Whatever's actually visible in a given
+  frame still has to render at full fidelity; none of this makes any single captured frame cheaper.
+
+### Explicitly open, not resolved here (spec only, per the user's own instruction — don't fix)
+- How many path samples are enough for a safe/complete union without the sampling pass itself
+  costing more than it saves (needs a real measured number, not a guess).
+- Where this hooks in given the chicken-and-egg with `_cinemaPathPlan()` itself needing SOME
+  streamed geometry already (the enclosure ray-fan that picks the dive room) — a coarse first pass
+  refined once more geometry lands, or a hard prerequisite ordering? Undecided.
+- The shadow-caster margin/pad in idea 2 needs to be sized from real geometry (max shadow-throw
+  distance for this project's typical light setup), not assumed.
+- No implementation, no witness, no live numbers beyond what this session already measured
+  incidentally while verifying the timing fix above — next session should treat those numbers as a
+  starting hypothesis, not proof, and re-measure specifically for whichever idea gets picked up.
