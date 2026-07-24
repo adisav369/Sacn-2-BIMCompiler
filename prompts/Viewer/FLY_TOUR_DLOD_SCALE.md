@@ -31,6 +31,64 @@ already tried and was insufficient alone. §8 authorizes Fable to INVESTIGATE a 
 in an isolated prototype and REPORT BACK ONLY — no implementation, no live wiring, no PR, until the
 user reviews the findings and explicitly says to proceed.
 
+## VERDICT — read this first, everything below is the archived investigation trail (2026-07-25)
+
+**Symptom:** Fly Tour felt sluggish/laggy on LTU_AHouse (122,330 elements); MaxQ preview and Clash
+`_flyToClash` both felt smooth on the same building. §9-§20 spent this file's whole lifetime chasing
+nav-DLOD/occlusion tuning as the fix; it helped (real, aerial-only win) but never closed the gap.
+
+**Investigated and RULED OUT as the primary cause (real findings, kept for the record, not the
+answer):**
+- nav-DLOD box-proxy inadequacy — real win, aerial-distance only, never touched interior legs (§10,
+  §19, §22's live re-test: `'o'` gave no improvement inside the building, 67.7ms→77.5ms).
+- `walkTick`'s double position-damping bug — real bug, FIXED AND SHIPPED (bim-ootb `0587956`), but
+  confirmed via `§WALK_TICK_COST` to cost 0.03-0.14ms — negligible. Fixes motion *feel*
+  (a permanent lag-behind), not frame rate. Don't confuse the two axes again (§20 addendum 5 already
+  made this mistake once).
+- Ray-blast DLOD's (`dlod.js`) full-buffer `instanceMatrix` re-upload per flip — real mechanism, a
+  correct fix was designed and verified against the three.js source, then **explicitly NOT shipped**:
+  `helpers.js`/`navigate_find.js`/`time_machine.js` all mutate the same InstancedMesh buffers via
+  `setMatrixAt`+`needsUpdate` without the same `addUpdateRange` convention — shipping it only in
+  `dlod.js` risks silently dropping their writes. Documented in-code, held for the planned DLOD
+  consolidation (dlod.js/dlod_nav.js/time_machine DLOD/Find's filter, unified) — NOT done.
+- Raw frame_ms magnitude — Clash reads smooth at 99-106ms, same or worse than Fly Tour's "acceptable"
+  states. The real reason MaxQ/Clash feel smooth isn't lower cost, it's shorter exposure — brief or
+  discontinuous camera motion vs Fly Tour's sustained minutes-long continuous tracking, the only thing
+  in this app that gives a human eye long enough to perceive judder at a given frame cost (§21).
+
+**ROOT CAUSE, confirmed live (§22):** LTU_AHouse's scene held **13,453 separate InstancedMesh scene
+objects averaging 2.7 instances each** (of 15,946 total scene objects) — `streaming.js`'s own routing
+rule sent any geometry hash with 2+ instances to its own object. Three.js's native per-object
+frustum-cull traversal cost scales with OBJECT COUNT, independent of draw calls — this is why
+box-proxy (draw-call reduction only) hit a floor around 64-100ms even with almost nothing left to
+draw. Proven by comparison: a light building (Duplex, ~150 scene objects) ran 4-8x faster than LTU at
+a *matching* draw-call count.
+
+**FIX SHIPPED** (bim-ootb, local commit `8ee7aa6`, **NOT pushed**): `streaming.js` §S280e —
+geometry hashes with ≤3 instances now fold into the same BatchedMesh bucketing already used for
+single-instance elements, instead of spawning their own InstancedMesh. Verified live: scene objects
+15,946→4,706, draw calls 15,981→4,698, sustained real-rotation frame time **200-270ms→86.7ms
+(~4-5fps→~11.5fps)**. User watched it live and confirmed smooth (visual + the SFX cue both read
+clean).
+
+**STILL OPEN, do not claim more than this:**
+1. **Not verified against TM/picking/storey-filter** — the changed routing rule is explicitly marked
+   "sacred — do NOT change without testing" in `streaming.js` itself, with 16 documented consumers.
+   Contract shape is unchanged (every element still lands in exactly one of `_batchMeta`/
+   `_instanceMeta`), which is *why* this is expected safe — that's an expectation, not a witness.
+2. **The remaining ~86ms is real triangle/GPU cost** (12.9M triangles) — §17's occlusion domain,
+   still unsolved, still gated on the false-hide gap. This fix and §17's work are complementary, not
+   substitutes for each other.
+3. **DLOD consolidation is still needed, and matters MORE at 1M-element scale, not less** — the
+   shared-buffer race (`setMatrixAt`/`addUpdateRange` across 4 independent systems) is a correctness
+   risk, and this object-count fix doesn't touch it. Do NOT read "the floor is explained" as "the
+   system is scale-ready."
+4. **Interior route-pacing/pathing** ("avoid tight/attic-type confinements") is a separate, filed
+   spec — `FLY_TOUR_CORRIDOR_GRAPH.md` §INTERIOR_PACING_NOT_A_SPEED_FACTOR — not started, not part of
+   this verdict.
+5. Nothing in this session is pushed to `bim-ootb` origin. Commits: `0587956` (walkTick),
+   `8ee7aa6` (streaming.js object-count fix). Push after TM/picking/storey-filter re-test, not before.
+
 ## 0. What already exists — reuse, do not reinvent (all shipped, all proven)
 - **`viewer/time_machine.js`'s DLOD proxy** (`_dlodEngaged`, `_dlodBuildBoxes`, `_dlodUpdateBoxes`,
   `_dlodBoxIndex[guid].pos/.radius`, `_dlodFrustum`/`_dlodPSM`/`_dlodSphere` reused scratch objects):
