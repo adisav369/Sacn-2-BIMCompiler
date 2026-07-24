@@ -760,6 +760,47 @@ That is true of `modeller/Hospital_ARC.db` and FALSE of the building users actua
 name, different DB, opposite outcome — `project_db_snapshot_divergence_landmine.md` again. State
 WHICH DB a fallback claim applies to; a harness DB is not evidence about the shipped one.
 
+### ⚠ FINDING 4 (2026-07-25, user live) — §HALL-IS-A-CORRIDOR: area ranks LENGTH, not spaciousness
+**User, watching the live Hospital tour: "initially still does not show large space… i stopped it to
+verify the stair case showing is perfect."** The staircase is confirmed good (real 3-point climbs,
+`§FLYPATH_INIT pts=2 len=4.8/5.0` flights). The main-hall beat is not.
+
+**MEASURED, not guessed** (scratchpad `hall_rank.js`, real graphs from real DBs; for each eligible
+candidate: `area` = Σ rect area, `w` = the widest rect's SHORT side — "how wide is the space you're
+standing in"):
+
+| building | top by AREA | top by MIN-WIDTH | same pick? |
+|---|---|---|---|
+| Hospital_ARC | `≈ Level 1 Hall/Corridor 2` **a=219 m² w=3.3m** | `≈ Level 1 Hall/Corridor 8` a=124 **w=4.8m** | **NO** |
+| Clinic_ARC | `≈ First Floor Hall/Corridor 3` a=125 **w=3.2m** | `≈ First Floor Hall/Corridor 12` a=53 **w=5.6m** | **NO** |
+| HHS | `≈ Level 3 Hall/Corridor 1` a=204 **w=3.6m** | same | yes |
+| Terminal_meta | `≈ Aras 02 R2` a=85 **w=7.0m** | same | yes |
+
+**The diagnosis, in one line: Hospital's "main hall" is 219 m² and 3.3 m WIDE — a ~66 m long
+corridor.** Area is large because the space is LONG, not because it is open. The 360° turn-around
+beat fires with the camera standing in a hallway, which is precisely "does not show large space."
+Terminal reads correctly only because its winner is a genuine 7.0m-wide room — the metric has been
+getting the right answer there for the wrong reason.
+
+**Candidate metrics (a decision, not yet taken — all are scale-free, no tuned threshold, per the
+user's standing "keep it abstract, no hardcoded custom cases"):**
+- `minDim` alone — picks the widest space, but Clinic's winner drops to 53 m²; width without size.
+- `minDim²` (largest inscribed square) — "the biggest open square you could stand in". Pure
+  spaciousness, one real geometric property, no constants.
+- `area × minDim` — balances big AND open; a long corridor is penalised by its own narrowness.
+A hard width THRESHOLD (e.g. "≥6m counts as a hall") is explicitly rejected: it is exactly the
+hardcoded custom case the user ruled out, and it would behave differently on a house vs a hospital.
+
+**⚠ But changing the metric alone will NOT produce a hall on Hospital, and that must not be
+oversold.** Hospital's connected candidate pool is **24 nodes, essentially ALL of them
+`Hall/Corridor`** — its 142 authored `IfcSpace`s (`§HBA_FOOTPRINT bound 142 rooms→real IfcSpace
+footprint`) are not in the pool at all after the walker recompile, and most of the 214 compiled rooms
+are `deadend=194 / orphan=185`. Best case, a better metric swaps a 3.3m corridor for a 4.8m corridor.
+**There is no grand space in the candidate set to find** until connectivity lands
+(`OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G3) and/or authored rooms stop being displaced. Two
+independent causes, one symptom — fix the metric in this lane, but expect the visible win only after
+the pool has real rooms in it.
+
 ### ⛔ BLOCKED ON GRAPH SUBSTRATE — filed for another session 2026-07-25
 The user's live question ("is it getting to the big hall?") is answered: **the tour reaches the
 biggest space the GRAPH offers; the graph is the limit, not the ordering.** Hospital's live
