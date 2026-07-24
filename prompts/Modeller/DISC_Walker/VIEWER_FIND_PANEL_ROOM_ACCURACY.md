@@ -1110,3 +1110,75 @@ Do NOT use this task to go diagnose Terminal's actual discipline-list symptom ye
 live-browser question, deliberately deferred until the logging fix above lands and can be read from a
 fresh capture first. Log fix → re-capture → read the (now self-diagnosing) summary line → only open a
 browser if it genuinely still can't resolve it.
+
+## §15 — RE-REVIEW 2026-07-26 (user doubts §10-§13 actually closed the loop on the original
+## screenshots) — REVIEW ONLY, no fix, no code touched this session
+
+```
+# ⚠ DO NOT REMOVE
+User re-raised `MIssBehindCutThruAir.png`/`MissCOback2doors.png` (2026-07-22, §10's own evidence),
+skeptical that §10-§13's shipped fixes actually resolved what those two screenshots show. This
+section is a re-audit of the FULL §9-§13 trail plus live PR-merge state (checked via `gh api`, not
+assumed from this file's own prior claims) — conclusion: the doubt is well-founded, not paranoia.
+Read this before dispatching anyone to re-fix anything — the mechanism is real and merged; what's
+missing is closing the loop on the two SPECIFIC reported cases, which nobody has done yet.
+```
+
+**Confirmed MERGED to `bim-ootb` `main`** (`gh pr view <n> --json state,mergedAt`, live-checked
+2026-07-26, not re-derived from this file's text):
+- **#959** (utility-room Dijkstra penalty, §10) — merged 2026-07-21 20:31 UTC
+- **#961** (§10 door-exemption gap closed) — merged 2026-07-21 21:05 UTC
+- **#964** (§12 Stage A — Terminal split-DB raster fix) — merged 2026-07-21 23:46 UTC
+- **#967** (§13 Stage B — A* raster-constrained polyline) — merged 2026-07-22 01:03 UTC — this is the
+  mechanism that directly targets "straight chord cuts through open air" (MIssBehindCutThruAir) AND
+  replaces the door-visibility-detour splice §11 Task 2 root-caused as the zigzag's mechanism
+  (MissCOback2doors) — not a partial/abandoned fix, a real shipped redesign.
+
+So the underlying claim in §12/§13 is real: not vaporware, not still-open PRs, not reverted like
+§11 Task 1 was. Aggregate witnesses are substantial — Terminal illegal-points 1152→0 (100%
+reduction), HHS 11866→90 (99.2%), zero regression on path/doors/distance across Terminal/HHS/JKR/
+Duplex (§13's own `witness_room_path_raster_polyline.js`, 7/7 green).
+
+**What is NOT actually closed — why the user's doubt survives this audit:**
+1. **Neither §11 nor §13 ever re-ran the two SPECIFIC screenshot cases end-to-end against the
+   shipped fix.** Every number in §12/§13 is an aggregate statistic (illegal-point reduction %,
+   byte-identical pair counts) over batch test pairs — nobody took the EXACT route from either
+   screenshot (`Level 1 Hall/Corridor 1 → Level 3 R6`, 10 doors, 107.9m; and the door-zigzag case)
+   and confirmed it now renders clean. The loop was closed on an aggregate proxy, never on the
+   literal reported repro.
+2. **The screenshot building was never identified/recorded anywhere in §10-§13.** §10 says
+   "Screenshot evidence" but names no building. This session tried to pin it down and could not
+   confirm: HHS's base `spatial_structure` (checked locally, `buildings/HHS_Office_Federated_extracted.db`)
+   has no room literally named `Hall/Corridor` or `R6`/`R7`/`R13` — those are runtime-compiled
+   labels assembled by `navigate_find.js`/`room_walker.js`, not stored strings, so a static grep
+   can't confirm or rule out HHS this way. Searched the exact door family
+   (`M_Single-Flush:0915 x 2134mm_Wood`) across the only two building DBs available in the local
+   worktree (HHS, warehouse_gardenworld) — no match, inconclusive. Terminal/Hospital/HITOS/
+   WBDG_Office and the other ~25 gallery buildings aren't downloaded locally to check further.
+3. **Raster coverage is only 5 buildings** (Clinic/HHS/JKR/Hospital-tie/Terminal, per §12's own
+   "For Stage B" line). If the screenshot building isn't one of these five, it has NO raster today,
+   and §11 Task 2's diagnosed zigzag mechanism (`_legalizePath`/`_detourForChord`'s door-visibility
+   fallback) is completely UNCHANGED for it — §13's A* polyline is explicitly additive and degrades
+   honestly back to that same old mechanism whenever there's no raster or A* verification fails.
+4. **MissCOback2doors' specific symptom — the route revisiting the same door pair — was never
+   explicitly re-tested as its own check.** §13's witnesses measure illegal-point counts and
+   path/doors/distance regression, not "does the rendered route double back through a door pair,"
+   which is a qualitative shape §11 Task 2 described but §13 never re-measured directly.
+
+**Bottom line:** the mechanism fix is genuine, substantial, and live in production for 5 buildings —
+this is not a stalled or abandoned task. But whether THESE TWO REPORTED CASES are actually clean now
+is UNVERIFIED, not proven. That gap is real and explains the doubt precisely — no code claim in this
+section should be read as "still broken," only as "never confirmed fixed."
+
+**Next task for whoever picks this up (investigation first, per this project's Spec-First rule —
+not authorized to change `room_graph.js`/`navigate_find.js` from this section alone):**
+1. Identify the exact building — ask the user directly which building/route the two screenshots are
+   from, or mechanically fetch each of the 5 raster-covered buildings' extracted DBs from OCI and
+   grep for the visible room/door-family signatures until one matches.
+2. Re-run that EXACT Room→Room Find-Panel path against current `origin/main` (§-log + real computed
+   numbers, no screenshots — this project's FUNDAMENTAL LAW) and report: the rendered polyline's
+   illegal-point count (should be 0 or near-0 if the building has raster coverage), and whether the
+   door sequence still backtracks through the same pair.
+3. If the building turns out to have NO raster coverage: that is the honest, complete answer — the
+   void-cut/zigzag bug is still open for it BY DESIGN (documented, not a new finding), and extending
+   raster coverage to it is the real next task (a data/pipeline job, not a routing-logic change).
