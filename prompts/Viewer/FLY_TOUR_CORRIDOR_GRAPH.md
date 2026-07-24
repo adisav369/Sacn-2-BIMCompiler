@@ -380,6 +380,159 @@ threshold):
    the camera. This is the concrete meaning of "rewire from scratch," per the user's own words — the
    speed number is a symptom to re-check AFTER the routing fix, not the thing to tune first.
 
+### Investigation findings (2026-07-24) — items 1 & 2 answered with real DB/code citations, item 3 confirmed still deferred
+
+**Item 1 — what signals "tight/attic-type" in the real data: NONE of the assumed candidates hold up.
+The right signal is "nothing worth seeing inside," not geometric "atticness."** Checked against 3 real
+buildings, not assumed:
+- **LTU_AHouse (the building the user's own example most plausibly names) has ZERO `IfcSpace` data at
+  all — name-based and geometry-derived-from-authoring signals are both impossible here.**
+  `internal/UNMERGED/LTU_AHouse_ARC.ifc` (the architecture discipline file) contains **0** `IFCSPACE(`
+  entities. `deploy/buildings/LTU_AHouse_extracted.db` and `deploy/dev/buildings/LTU_AHouse_meta.db`
+  both have an empty `spatial_structure` table. Matches R4 above (rooms only exist post-walker-compile)
+  but sharpens it: there is no authored space to borrow a name/type from even in principle. **Red
+  herring ruled out:** `internal/UNMERGED/LTU_AHouse_VOID.ifc` looked promising by filename ("VOID") but
+  its ~30+ `IFCBUILDINGELEMENTPROXY` rows are all `'MagiCAD provision for void'` / `ProvisionForVoid` —
+  MEP sleeve openings cast through slabs for pipe runs, unrelated to attic/roof spaces. Do not chase this
+  file again.
+- **Ceiling height (`spatial_structure.size_z`) is NOT a per-room measurement for compiled buildings —
+  it's a per-storey average, identical for every room on a floor.** Traced in
+  `scripts/compile_rooms.py`: `bz = sum(w[5] for w in walls) / len(walls)` (lines 595, 763 — `walls` is
+  the WHOLE storey's wall list, not the room's own walls) then `"sz": max(bz, 2.0)` (lines 666, 846).
+  Confirmed empirically on `deploy/buildings/Hospital_meta.db`: every "Level 4" room has `size_z=3.91`,
+  every "Level 1" room `size_z=5.87`, every "Level 7" room `size_z=3.23` — no per-room variance at all.
+  An attic tucked under a roof on a storey that otherwise has normal-height rooms would get the SAME
+  `size_z` as its neighbours. This signal cannot see low headroom under current extraction; it would
+  need a real per-room Z-extent (from the room's own bounding walls/roof, not a storey-wide mean) to
+  ever work, and that's new extraction work, not a read-time fix.
+- **IFC-authored naming/typing (object_type) IS sometimes literal and clean, but doesn't correlate with
+  low headroom, and compiled buildings overwrite it anyway.** `deploy/buildings/Duplex_extracted.db`
+  (a building with real authored `IfcSpace`s, not compiler-derived) has a space literally named `R301`,
+  `object_type='Roof'`, area 135.2 m² (by far the largest single space in the building — every other
+  room is 1.4–27.7 m²), aspect ratio 0.47 (unremarkable — `Foyer` at 0.23 and `Hallway` at 0.37 are
+  MORE elongated), **and `size_z=3.0` — actually TALLER than `Living Room` (2.58), `Kitchen` (2.59), or
+  `Hallway` (2.88).** So even where a literal "Roof" label exists, none of height, aspect ratio, or a
+  fixed threshold would have flagged it — only the object_type string itself and the outlier area do.
+  Worse: this signal isn't available on compiled buildings at all — `compile_rooms.py` always writes
+  `object_type='COMPILED'` (line ~1281 comment: "object_type stays 'COMPILED' either way"); the real
+  per-room classification for those buildings lives in `predefined_type`
+  (`INTERNAL`/`INTERNAL_SMALL`/`INTERNAL_DOORPART`/`SUSPECT_OPEN`/`SUSPECT_ELONGATED`/`SUSPECT_NO_DOOR`/
+  `SUSPECT_LARGE`), already computed from area (`MAX_AREA_ABS=150.0`, line 31),
+  aspect (`SUSPECT_ELONGATED_ASPECT_MIN=10.57`, line 709), and enclosure fraction
+  (`SUSPECT_OPEN_ENCLOSURE=0.50`, line 870) — this is the closest thing to an existing "is this room
+  trustworthy" signal, but it was tuned for room-DETECTION confidence, not "is there anything inside
+  worth flying through," and an attic can easily be a normal-shaped, fully-enclosed, door-having
+  `INTERNAL` room by this vocabulary's own tests.
+- **Also separately confirmed live: `deploy/buildings/Duplex_meta.db` and `deploy/buildings/
+  Duplex_extracted.db` disagree on the SAME building's `object_type` — populated ("Living Room", "Roof",
+  …) in `_extracted.db`, blank in `_meta.db` for identical guids.** Another instance of
+  `project_db_snapshot_divergence_landmine.md` — flag which DB the live viewer actually loads before
+  trusting `object_type` as a signal anywhere.
+- **What the user's own words actually point at ("we see nothing going thru attic types") is a
+  CONTENT signal, not a geometric one: does the space contain anything real?** `rel_contained_in_space`
+  (element→space containment, already populated by both `compile_rooms.py` and the live extractor) is
+  already queried per-candidate in `viewer/effects.js`'s `_cinemaMepFraction()` (lines 3439–3451) to
+  compute what FRACTION of contained elements are MEP/plant classes. The same query without the
+  class filter — raw `COUNT(*)` of `rel_contained_in_space` rows for a candidate — directly measures
+  "is there furniture/fixtures/anything here," which is both (a) available on every building that has
+  rooms at all (compiled or authored) and (b) the actual thing the user described, rather than a proxy
+  for it. This reframes the ask: stop trying to detect "attic," detect "empty."
+
+**Item 2 — where the filter plugs in: the pattern exists and is reusable, but two small wiring gaps
+must close first — this is NOT a new parallel system, it's completing what's already there.**
+- **`viewer/effects.js`'s `_cinemaPathPlan()` (lines 3284–3466) is the working pattern to copy.** It
+  ranks `spaceCands` once by `score = ar / (1 + dCtr / (envelope*0.5))` (line 3384), then walks the
+  top `CINEMA_SPACE_TRY_MAX=6` candidates in rank order (line 3453) applying disqualifiers in sequence
+  — enclosure ray-fan (`scEv.frac >= CINEMA_ENCLOSED_THRESHOLD`) and MEP-fraction
+  (`mepFrac >= CINEMA_SPACE_MEP_SKIP_FRACTION` → skip, lines 3458–3465) — first candidate that passes
+  both wins, `chosenCand`/`chosenEv`, with a full `console.log('§CINEMA_SPACE cand=...')` line per
+  candidate tried either way. A containment-count (or predefined_type) disqualifier is the same shape:
+  one more boolean ANDed into `okCand` at line 3460, one more `§CINEMA_SPACE` log field. No new loop,
+  no new data structure.
+- **Gap 1 — `common/room_graph.js`'s `buildGraph()` SELECTs `predefined_type` and `object_type`
+  (lines 229–232, `r[2]`/`r[3]`) but only folds them into the display `label` string (line 240) —
+  neither is kept as its own field on the room node.** `size_z` (`spatial_structure.size_z`) isn't
+  selected at all. Before ANY tightness/attic/suspect filter can reuse room-graph nodes (as §2's own
+  instruction says it should), the SELECT needs `s.size_z` added and the node object (lines 238–242)
+  needs `g.predefinedType = r[3]` (or similar) carried through — a small, additive change to an
+  existing query, not new plumbing.
+- **Gap 2 — this file's own S2 spec (line 66) already says "never SUSPECT_* as destinations" for
+  tour.js's future itinerary builder, but that logic doesn't exist yet (S2 is unimplemented) and
+  `effects.js`'s `_cinemaPathPlan` candidate loop currently has no SUSPECT/predefined_type awareness at
+  all** (confirmed by the grep in this session: `predefined_type`/`SUSPECT` do not appear anywhere in
+  `room_graph.js` outside the one label-building line). So the disqualifying check belongs at the SAME
+  point `_cinemaPathPlan` already disqualifies MEP rooms — reusing Gap 1's newly-exposed fields — and,
+  separately, S2's own "top-K by rect area, confirmed rooms only" step should apply the identical
+  containment-count/predefined_type check when it's eventually implemented. One vocabulary, two
+  call sites, not two systems.
+
+**Item 3 — speed re-check stays deferred, nothing new to add** *(superseded below — user gave an
+explicit 3-tier pacing directive before the S2 routing fix landed; implemented directly per that
+directive rather than waiting)*.
+
+## ✅ IMPLEMENTED 2026-07-25 — 3-tier pacing, `bim-ootb` `fix/fly-tour-interior-pacing`
+(worktree `/tmp/wt-fly-interior-pacing`, off `origin/main` @ `8d12254`; shared-tree hook blocked
+editing `~/bim-ootb` directly, per Worktree Hygiene in this project's CLAUDE.md)
+
+**Trigger — a real, reproduced bug, not a guess.** Live-testing the tour, the user reported "the
+beginning part of the path seems to repeat a few times before moving on; later part is OK" and,
+separately, "slow down in tight corners as it flashes too fast." Reproduced BOTH with real data
+before writing any code (project rule: math/log is the proof, not a screenshot) — ran the actual
+`A._buildGraphRouteInner` from `viewer/tour.js`, loaded verbatim (not reimplemented) via a Node
+harness against two real buildings' room graphs:
+- **Duplex** (`modeller/Duplex_ARC.db`): 6-point route visits room `B101`, then `B102`, then
+  **`B101` again** — a literal repeat, 180° direction reversal.
+- **HHS Office** (`deploy/buildings/HHS_Office_Federated_extracted.db`): 38-point route has 8
+  separate ≥120° reversals, several exact there-and-back spurs (fly 9.5m into a room, fly 9.5m
+  back out, turn=180°) — recurring on every storey, not just the first; matches "later part is OK"
+  because early legs are short (rooms cluster near the entrance) so a 4m dead-end spur is a huge
+  fraction of a short leg and reads as an immediate loop, while a 30m later leg swallows the same
+  defect proportionally.
+
+**Root cause:** stops are ranked by room AREA only (`_buildGraphRouteInner`'s own comment: "Drama
+over travel economy"), then chained leg-by-leg via independent `shortestPath()` calls with no
+lookahead — a room with exactly one door (most rooms) is a graph dead end, so the very next leg
+must retrace the same corridor out. `§SOFTEN`'s existing comment ("spur-room reversals — walk in,
+walk out — sweep instead of whip") already NAMES this pattern but only softened the camera's LOOK
+direction, never the SPEED — the gap this session closed.
+
+**User's fix directive (verbatim, 2026-07-25), NOT a topology change — pacing only, and explicitly
+scoped away from DLOD/render-perf work another session owns:**
+> "1. Outside orbit is fine. 2. Zoom into building can hasten up 2X. 3. within building X0.3 and
+> even slower when too close to object or spaces as they will simply flash by meaninglessly" /
+> "fix just the flight path not touch DLOD perf stuff handled by another session"
+
+**Implementation (`viewer/tour.js`, 3 independent, additive changes — no routing/topology touched):**
+1. **PART 1 (orbit): untouched**, confirmed by inspection — no edit made.
+2. **PART 2 (entrance approach) — 2x speed.** The `moveTo` push for the outside→entrance zoom now
+   carries `speedMul: 2`; the generic `moveTo` handler (~line 968) divides duration by
+   `act.speedMul || 1` — opt-in per action, so the 3 other `moveTo` calls (finale bird's-eye/
+   centre/final) are untouched.
+3. **PART 3 (interior flyPath) — 0.3x baseline + real-geometry tight-turn extra slowdown:**
+   - `INTERIOR_PACE_FACTOR = 0.3` multiplies the existing `flySpd` formula (~line 863) — the
+     user's own explicit number, applied as a floor/baseline, not the whole mechanism.
+   - **§TIGHT_TURN_PACING** (new, in the `flyPath` action's init block, ~line 1184): for each
+     original waypoint, computes a `tight` score (0–1) from the REAL turn angle between the
+     incoming/outgoing legs AND how short those legs are (`shortness = max(0, 1 - min(l1,l2)/4)`)
+     — a dead-end spur is both sharp-angled and short, a corridor cruise is neither. Builds a
+     monotonic time→curve-parameter remap (`_paceT`/`_paceU`) so more of the segment's FIXED
+     duration is spent near tight vertices (up to `PACE_K=3` → 4x local slowdown) and less on
+     straight stretches — camera position (`curve.getPointAt(u)`) is untouched, only the pacing
+     of `u` advancing through it changes. `§TIGHT_TURN_PACING` console.log reports
+     `maxTightness`/`paceKFactorRange` per segment for inspection.
+   - Verified the math in isolation (not the full browser — user directed "leave to logging, need
+     not test"): a synthetic dead-end-spur point sequence shaped exactly like the real Duplex/HHS
+     cases gets **1.7x more wall-clock time** than uniform speed would give it, with local
+     `paceFactor` hitting the 4.0x cap at the sharpest vertex — script kept at
+     `/tmp/claude-*/scratchpad/diag_pacing.js` (session-local, not committed).
+4. **Not changed:** stop-selection order, `shortestPath` chaining, any DLOD/render/occlusion code
+   — scope held to pacing only per the user's explicit boundary.
+
+**Status:** implemented + `node --check` clean; NOT pushed (needs `git worktree add`'s PR flow —
+push permission is ON per this project's standing note, but this hasn't been proposed/reviewed
+yet). Browser/witness verification intentionally skipped per user direction — flag if a live check
+is wanted before merge.
+
 ### Non-goals (this spec)
 - Exterior/aerial (`moveTo`/`orbit`) pacing: untouched, out of scope, already correctly separated in
   the current code (own `WALK_SPEED` constant, not `flySpd`).
