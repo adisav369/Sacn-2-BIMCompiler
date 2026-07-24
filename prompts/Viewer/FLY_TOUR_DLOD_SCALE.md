@@ -2558,3 +2558,53 @@ real upload-cost mechanism found and a correct fix designed, explicitly held bac
 consolidation because shipping it alone is unsafe. The core comparison (why MaxQ/Clash read smooth
 and Fly Tour doesn't) is now understood as an exposure-duration effect on top of a floor that isn't
 yet explained — not a code bug, not solved by more occlusion work alone.
+
+## §22 — the §21 cost floor, ROOT-CAUSED AND FIXED live (2026-07-25, real browser, `local/merged-
+occl-aerial-test` @ `8ee7aa6`, committed locally, NOT pushed)
+
+**§21's "unexplained ~60ms floor" is explained — it was never geometry-independent, the earlier
+test just hadn't controlled for scene-object count.** Live comparison, same session: a light
+building (Duplex, ~150 total scene objects) sustained ~11-27ms/frame; LTU_AHouse reduced to a
+similarly tiny draw-call count via nav-DLOD (`calls=16`) still cost 63.9-101.5ms — proving the
+floor tracks something OTHER than draw calls. Direct live count (`scene.traverse()`,
+`isInstancedMesh`/`isBatchedMesh`) found it: **LTU_AHouse had 13,453 separate InstancedMesh scene
+objects averaging only 2.7 instances each** — `streaming.js`'s own routing rule
+(`elements.length >= 2 → InstancedMesh`, `streaming.js:970-972`, marked "sacred — do NOT change
+without testing TM, picking, storey/disc filter") sent every low-count geometry hash to its own
+scene object. Each pays three.js's native per-object frustum-cull traversal every frame regardless
+of visibility — a cost that scales with OBJECT COUNT, independent of draw calls, and independent of
+anything nav-DLOD/dlod.js/box-proxy ever touched (all of which only ever reduced draw calls).
+
+**Fix (`streaming.js` §S280e):** hashes with `LOW_INSTANCE_BATCH_MAX=3` or fewer instances now fold
+into the same multi-geometry BatchedMesh bucketing already used for single-instance elements
+(bucketed by storey|disc|rgba|matVariant — a bucket already holds many different geometries, so a
+few instances of the same geometry is not a new capability, just a wider net). `_batchMeta`/
+`_instanceMeta` contract shape unchanged — every element still lands in exactly one, via the same
+`_registerBatchSlot`/`_registerInstanceSlot` calls the 16 documented consumers already read.
+
+**Verified live, LTU_AHouse, real RTX 4060:**
+| metric | before | after |
+|---|---|---|
+| scene objects (`scene.traverse()` count) | 15,946 | 4,706 |
+| InstancedMesh objects | 13,453 | 1,997 |
+| draw calls (full load) | 15,981 | 4,698 |
+| sustained-rotation frame time (continuous rAF, not synthetic drag) | 200-270ms (~4-5fps) | **86.7ms (~11.5fps)** |
+
+Draw-call reduction is a side effect of consolidation (fewer, bigger BatchedMesh buckets), not the
+target — the object-count/traversal fix is the actual lever. User watched the live rotation and
+confirmed "very smooth" — consistent with, not just asserted alongside, the measured number.
+
+**What this does NOT fix, stated plainly:** 12.9M triangles are still real geometry cost — the
+remaining gap to 60fps (~16ms) is now legitimate GPU/rasterization cost, the domain §17's occlusion
+work was already aimed at, not object-count overhead. This fix and §17's occlusion work are
+complementary, not competing — this removed a JS-side traversal tax that was independent of and
+additive to whatever occlusion eventually ships.
+
+**NOT YET VERIFIED, do not treat as fully shipped:** this changes the exact routing rule
+`streaming.js` itself flags as sacred, with 16 documented consumers (`time_machine`, `picking`,
+`helpers`, `walk`, `dlod`, `ghostglass`, `grid_views`, `scene`, `doc_canvas`, `city`,
+`wizard_classify`, `nlp`, `tools`, `main`). **Time Machine, picking, and storey/discipline filtering
+have NOT been re-tested against this change.** The contract shape is unchanged (every element still
+in exactly one of `_batchMeta`/`_instanceMeta`), which is why this is *expected* to be safe — but
+that is a reasoned expectation, not a witness. Re-test those three specifically before calling this
+done, same discipline as every other change in this file's history.
