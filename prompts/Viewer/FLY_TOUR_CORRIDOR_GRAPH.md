@@ -821,6 +821,26 @@ analogy, and it likely makes this feature cheaper than the open items above sugg
   stating plainly in whatever session picks this up, since it changes the scope from "build a
   scrubber" to "wire Fly Tour into the existing scrub kernel."
 
+**Two more real design points added post-close (2026-07-26, user, before actually ending):**
+
+1. **Discovery/reveal interaction, user's own words:** "a movie record button icon flashing when
+   it is playing, and when pressed it pauses and a timeline appears with the control knobs." I.e.
+   the scrub UI is HIDDEN by default during normal cinematic playback (keeps the view clean) —
+   a single recognizable icon (record-dot style, flashing while playing) is the only visible
+   control; pressing it pauses the tour AND reveals the full scrub bar/knobs. Not "always-on
+   timeline UI" — a two-state reveal, discoverable via one familiar icon language (record/pause),
+   not a persistent control bar competing with the cinematic view.
+2. **Confirmed, real architectural distinction — "ours quite on the fly" vs. baked (user's own
+   framing, verified accurate, not just asserted):** this codebase already has a genuinely BAKED
+   system to contrast against — `cinema_maxq.js`'s own cinema export pipes the canvas through
+   `MediaRecorder`/`captureStream()` to produce an actual `.webm` file (real wall-clock pre-render
+   time proportional to length, nothing scrubbable until that finishes). The Fly Tour scrubber is
+   the opposite: every seek recomputes the LIVE 3D scene at that exact pose in real time — no
+   pre-render step, any window size, and it keeps respecting whatever's toggled on screen (night
+   mode/GI/DLOD nav) because it's a real render, not a video-frame lookup. Worth stating in the
+   eventual implementation's own comments, not just here — it's the reason a live-replay-based seek
+   (§ above) is the right shape, not "bake then let the user scrub the recording."
+
 **Session closed here (2026-07-26, user: "clean close new session on that").** Spec above is
 sufficient for a fresh session to start from a running start — investigate `time_machine.js`'s
 cursor/camera pipeline first, decide reuse-vs-bespoke, then implement. Not started this session.
