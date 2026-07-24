@@ -681,6 +681,41 @@ above): `spatial_structure.object_type` is **`COMPILED` in both**. Neither DB ca
   compile it cannot prove stale, rather than recompiling over it? A shipped-but-unstamped compile is
   currently indistinguishable from "never compiled", and here that costs the building its halls.
 
+**§G3-FINAL 2026-07-25 — the walker does NOT lose the large spaces. It FINDS them and flags them
+`SUSPECT_*`, and the Fly Tour's own candidate filter then excludes them. Classification + an
+exclusion rule, not geometry.** Verified by direct query on both fixtures:
+| | largest room | its `predefined_type` |
+|---|---|---|
+| A — shipped offline compile | `≈ Level 1 R13` 294.0 m² | `INTERNAL` |
+| B — in-browser walker v3 | `⚠ Level 1 R14` **315.7 m²** (bbox 9.7×34.1) | **`SUSPECT_OPEN`** |
+B's largest space is BIGGER than A's. B's next two (105.5 m², 92.1 m²) are `SUSPECT_NO_DOOR` /
+`SUSPECT_OPEN`. Whole-building classification split:
+| | INTERNAL | INTERNAL_SMALL | SUSPECT_NO_DOOR | SUSPECT_OPEN |
+|---|---|---|---|---|
+| A (142) | **142** | 0 | 0 | 0 |
+| B (214) | 85 | 67 | **52** | **10** |
+`_buildGraphRouteInner` excludes every `SUSPECT_*` node as a destination (§S2, "never SUSPECT_* as
+destinations"), so 62 of B's 214 rooms — including the three biggest — are invisible to the tour, and
+the largest ELIGIBLE candidate falls back to the 219 m² × 3.3 m corridor. That is the whole
+"doesn't show a large space" symptom.
+**Two corrections to the delegated diff that produced this section** (both the same error class as the
+retraction above — mixing per-rect and per-room units):
+1. Its width table compared A per-ROOM against B per-RECT. Re-derived per-ROOM (union bbox over
+   `room_guid`): **A 7 rooms ≥8m wide, B 7** — identical, not "A 7 / B 2".
+2. Its "deletion" verdict came from a centre-inside-footprint test; a 9.7×34.1 room's centre can sit
+   outside a 19.6×15.0 footprint, so the big space read as absent when it exists under another shape.
+**`SUSPECT_OPEN` is a DETECTION-CONFIDENCE flag being used as a QUALITY filter, and it penalises
+exactly the spaces a tour wants.** A grand hall/atrium is *by definition* low-enclosure — the taxonomy
+flags it for the very property that makes it worth visiting. Note also A has ZERO suspect rows of any
+kind, which is itself suspicious: the shipped compile likely predates the SUSPECT taxonomy, so "A is
+better" is partly "A never applied the filter."
+**Actionable, split by owner — no walker change needed for the first:**
+- **Fly Tour lane (small, mine):** allow `SUSPECT_OPEN` as a highlight DESTINATION (keep excluding
+  `SUSPECT_NO_DOOR`, which is a genuine reachability doubt). Openness is the signal, not the defect.
+- **Walker lane:** ask whether `SUSPECT_OPEN_ENCLOSURE=0.50` is right for atrium-scale volumes, and
+  whether 52 `SUSPECT_NO_DOOR` rooms on a hospital with 440 doors indicates a door-binding gap rather
+  than 52 genuinely doorless rooms.
+
 ### The four gaps, in dependency order (G1/G2 first — they unblock the most per unit of work)
 **G1 — `exits=0`. Hospital has NO entrance node at all.** `nonRoomDoors=0` too, so the E4 exit
 extractor found nothing on a 63k-element hospital that obviously has doors to the outside. Blocks:
