@@ -596,3 +596,39 @@ production) AND a sidecar `<out>.graft_manifest.json` with the full numeric reco
 `real_geometry.js`'s dynamic `templateIndex` tier, does not upload/ship anything anywhere, does not change
 Hospital's live/OCI-served file — `--source-db` is read-only, `--out` is a brand-new, separately-named, local
 file. No binary `.db` is committed to git; the baked demo file and its manifest stay local/untracked.
+
+### Second real run (2026-07-26) — user's own saved copy, `Hospital_sprinklers_fixed.db`
+
+Re-ran `scan` + `bake` (same worktree, `feat/mesh-fit-graft-engine` @ `dc83dad`, tool unchanged) against
+`/home/red1/Projects/BIM_DB/Hospital.db` — the user's own separately-saved copy (Modeller-exported, carries
+`kernel_ops`/`tasks`/`schedules` tables the original `Hospital_extracted.db` didn't), NOT the file used in
+the first run above. Confirms the tool generalizes past the one scratchpad file it was built against.
+
+**`scan`** reproduced the identical candidate/donor pair from the first run — same building data under a
+different filename: `guid=0HuLVU0hf5gxwY8y9yDwpi hash=6b484e5d051c6d06 member_count=1287
+bbox=0.01265,0.01265,0.05397 verts=192 faces=140 aspect_ratio=4.27`, donor
+`template_hash=68b9e844bb61459f rms_confidence=0.000116 verts=1996 source_building=SJTII_Terminal
+member_count=554`.
+
+**`bake`** output `/home/red1/Projects/BIM_DB/Hospital_sprinklers_fixed.db` (262,164,480 bytes, +73,728
+bytes over the 262,090,752-byte source — exactly one new geometry blob):
+```
+§DEMO_GRAFT_BAKE source_untouched=true
+§DEMO_GRAFT_BAKE old_hash_shared_by=1287 instances -> NOT 1:1, inserting a NEW hash + updating ONLY the target guid
+§DEMO_GRAFT_BAKE axis_permutation=[0,1,2] scale_factors=0.3985,0.4767,0.9337
+§DEMO_GRAFT_BAKE guid=0HuLVU0hf5gxwY8y9yDwpi maxDelta=5.467e-6 tolerance=0.031 compareToGroundTruth.pass=true
+§DEMO_GRAFT_BAKE wrote out=.../Hospital_sprinklers_fixed.db size_bytes=262164480 new_hash=7017b733b1d0986b old_verts=192 new_verts=1996
+§DEMO_GRAFT_OPEN_TEST resolved_source_status=MEASURED resolved_verts=1996 resolves_normal_MEASURED_path=true
+§DEMO_GRAFT_OPEN_TEST fresh_placement maxDelta=5.467e-6 pass=true
+§DEMO_GRAFT_OPLOG_TEST oplog_length_grew=true chain_verify.ok=true pass=true
+§DEMO_GRAFT_OPLOG_TEST baked_file_untouched_by_oplog_cycle=true md5_before=db52880969a6afd2b5864d50a9a60119 md5_after=db52880969a6afd2b5864d50a9a60119
+§DEMO_GRAFT_RESULT PASS
+```
+**Independently re-verified outside the tool's own log** (the reviewing session, not the tool self-reporting):
+source `Hospital.db` mtime unchanged (`Jul 25 06:18` before and after) and its md5
+(`0f79a9623310c6d7e22a4d1cbf36282a`) recorded post-run for future comparison. Manifest at
+`Hospital_sprinklers_fixed.db.graft_manifest.json`, same shape as the first run's.
+
+Both output files (`/tmp/.../scratchpad/Hospital_sprinkler_graft_demo.db` from the first run,
+`/home/red1/Projects/BIM_DB/Hospital_sprinklers_fixed.db` from this one) remain local-only, untracked,
+never uploaded — per the standing rule above.
