@@ -274,6 +274,21 @@ stair flights it uses, and the rooms along the way stay highlighted.
 legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
 it passes through.
 
+![Aerial X-ray view of Hospital with a Find-panel path drawn from ≈ Level 1 R35 to ≈ Level 4 R8 — the yellow route line zigzags across open rooftop/atrium space between wings instead of following a corridor](img/viewer/find-room-path-hospital-topview.png)
+
+![Straight-on facade view of the same Hospital route — the yellow line rises vertically then runs horizontally in front of the building mass, a visible zigzag rather than a corridor-hugging path](img/viewer/find-room-path-hospital-frontview.png)
+
+![Angled view along the Hospital building's length, same route — the yellow line floats outside/above the real floor plates rather than tracking the walkable interior](img/viewer/find-room-path-hospital-sideview.png)
+
+*Known limitation, reported not fixed (2026-07-26):* on some buildings — confirmed on Hospital — a
+room-to-room path can currently draw as a straight line that cuts through open air or atrium space
+instead of hugging the real walkable floor, and/or zigzag through a door pair it didn't need to use,
+rather than the clean corridor-hugging route described above. A real route on Hospital
+(`≈ Level 1 R35 → ≈ Level 4 R8`, 124.69m) reproduced this live: 5 of its 6 same-storey legality checks
+failed to find a valid detour, which is why the drawn line doesn't hug the floor in the screenshots
+above. This is a known, tracked issue, not newly discovered here — the full technical trail is in
+`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §9–§16 for anyone who wants it.
+
 *Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the
 path list — one tap from any room to the nearest building exit.
 
