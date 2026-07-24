@@ -631,24 +631,16 @@ Full context, and the three room-GRAPH gaps this sits beside, in
 `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION (G5).
 
 
-## ⚠ OPEN 2026-07-25 — §NEEDLE-OVERWRITES-AUTHORED: recompiling a building that already has real rooms
-**Measured (bim-compiler Node harness, real DBs, not inferred).** `Hospital_meta.db` ships **142
-authored `IfcSpace`s, every one human-named** (`nonR-named=142`) and yields a room graph of
-`nodes=156 edges=500`. Live, the needle fires `§NEEDLE_VERSION_STALE stored=null … — recompiling`,
-the walker replaces them with 214 compiled `R<n>` rooms, and the SAME building's graph becomes
-`nodes=224 edges=61 deadend=194 orphan=185`. **500 edges → 61.**
-
-**The trigger looks like a policy gap, not a walker bug:** `stored=null` means "no `rooms_meta` stamp,"
-which is treated as STALE. But a DB with authored IfcSpaces was never compiler-produced, so it has no
-stamp and never will — the version-stamp self-heal cannot tell "un-stamped because never compiled" from
-"un-stamped because authored by a real modeller." Hospital is the second case and gets recompiled anyway.
-**Question to settle (do not assume the answer):** should the needle skip/merge rather than replace when
-the DB already carries authored spaces — and if it must compile, should the result be additive
-(compiled rooms only where authored ones are absent) instead of a wholesale replace? Downstream
-consequences are real and visible: the Fly Tour's "big hall" becomes a 3.3m corridor instead of the
-authored **294 m²** `≈ Level 1 R13`.
-Full numbers + the graph-side framing: `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`
-§G3-ROOT-CAUSE-CANDIDATE.
+## ~~OPEN — §NEEDLE-OVERWRITES-AUTHORED~~ WITHDRAWN 2026-07-25 (same day it was filed)
+This entry claimed the needle's recompile of Hospital's 142 authored IfcSpaces collapsed the room
+graph from 500 edges to 61, and asked whether the needle should skip/merge instead of replace.
+**The measurement was invalid** — it compared `graph.edges.length` (TOTAL, E1–E5) against the
+`§ROOM_GRAPH` console line's `edges=`, which counts **E1 door↔room edges only** (`room_graph.js:737`).
+Like-for-like the walker set has **61** E1 edges against the authored set's **17**: on door binding the
+recompile is BETTER, not worse. No needle policy change is justified by this data, and
+`stored=null → recompile` is not shown to be harmful. Full corrected table:
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §G3-RETRACTED. Left in place rather than deleted
+so the next session does not re-derive the same wrong conclusion from the same two log lines.
 
 ### §META-GEO-SPLIT — standing pre-flight, this keeps costing sessions time (user 2026-07-25:
 ### "Hospital meta/geo exists. Always a headache to miss it")

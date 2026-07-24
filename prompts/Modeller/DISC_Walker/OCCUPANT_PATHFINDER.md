@@ -616,6 +616,113 @@ So Hospital's chord-illegality has a DIFFERENT root cause than raster absence. D
 upload on the expectation that it fixes paths — it may still be worth shipping for other reasons, but
 this specific claim is dead.
 
+**§G3-RETRACTED 2026-07-25 — an earlier version of this section claimed the walker recompile
+collapses connectivity "500 edges → 61". THAT CLAIM WAS WRONG and is withdrawn. It compared two
+different metrics.**
+`room_graph.js:737` logs `edges=` as **E1 (door↔room) edges ONLY**
+(`edges.filter(e => e.kind === 'E1').length`), while `graph.edges.length` is the TOTAL across E1–E5
+(door, circulation, stair, exit, spine). The retracted claim put a local TOTAL (500) beside the live
+E1 count (61). Like-for-like, on the E1 metric:
+| rooms from | nodes | **E1 edges** | deadend | orphan (rescued) | nonRoomDoors | exits |
+|---|---|---|---|---|---|---|
+| `Hospital_meta.db` AUTHORED (142 IfcSpace) | 156 | **17** | 191 | 232 (219) | 0 | **0** |
+| LIVE, walker-recompiled (214 rooms) | 224 | **61** | 194 | 185 (172) | 0 | **0** |
+**On door-binding the walker is BETTER, not worse (61 vs 17).** There is no measured evidence that
+recompiling degrades the graph, and no needle policy change is justified by this data. The related
+`§NEEDLE-OVERWRITES-AUTHORED` entry in `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` is withdrawn on the
+same grounds.
+
+**WHAT DOES SURVIVE, and it is worth more than the retracted claim:**
+1. **`exits=0` AND `nonRoomDoors=0` in BOTH configurations.** G1 is therefore NOT a consequence of room
+   quality or of the walker — it is in the exit/door rule itself, on a 63k-element hospital with 440
+   doors. That narrows G1 usefully and removes a whole branch of investigation.
+2. **`§GIVEN-2026-07-25` above cites `edges=61` — read it as E1-only.** Total connectivity is NOT
+   logged anywhere. **Add `totalEdges` to the `§ROOM_GRAPH` line**; a graph that is well connected
+   through circulation/spine edges but sparse on doors currently reads as "broken" from the console
+   alone. This mis-read is exactly what produced the retracted claim.
+3. **Room COUNTS still differ hugely** (142 authored vs 214 compiled) and the compiled set is what the
+   Fly Tour ranks. Whether authored rooms would give a better "main hall" is UNRESOLVED — an earlier
+   probe reported the authored-DB top candidate as `≈ Level 1 R13` at 294 m², but the `≈`/`R<n>`
+   naming is compiled-style, so that node's provenance is unclear and the comparison was not run
+   cleanly. **Do not cite the 294 m² figure until it is re-measured.**
+
+**Method note, recorded because it caused a wrong published finding:** both numbers came from real
+runs; the error was semantic, not arithmetic. When comparing a live console `§` line against a
+harness value, confirm the harness reads the SAME expression the log builds — not a same-named field.
+
+### The four gaps, in dependency order (G1/G2 first — they unblock the most per unit of work)
+**G1 — `exits=0`. Hospital has NO entrance node at all.** `nonRoomDoors=0` too, so the E4 exit
+extractor found nothing on a 63k-element hospital that obviously has doors to the outside. Blocks:
+the Fly Tour's descent finale (`stairDown=-` on every run), `escapeRoute()` entirely, and any future
+"enter through the grand entrance" beat — there is nothing to aim at. Also forces the tour's walk to
+start at an arbitrary interior stop (see §HL-ORIGIN in the Fly Tour file). **Investigate:** why the
+exit rule that yields `nonRoomDoors=5` on Terminal yields 0 here — curtain-wall/glass entrance doors
+are the first suspect, exactly the family C1's rescue already fixed for Clinic/HHS
+("Türelement…Glas"). This may be the same bug one layer over.
+
+**G2 — `no such table: storey_walkable_raster`.** Without the raster, `_legalizePath` cannot compute
+visibility detours: sixteen `§PATH_LEGAL_DETOUR_FAIL … among 128 doors`, and `illegalChords=18/74`
+(24%) on the shipped route. **Known and already owned:** a 2026-07 review of
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §15` established raster coverage exists for only **5 of ~29
+buildings** (Clinic/HHS/JKR/Hospital/Terminal) — and note Hospital is ON that list yet the LIVE
+`Hospital_extracted.db` still has no such table, so either the coverage claim is about a different
+DB snapshot or the raster never shipped into the served artifact. **That contradiction is the first
+thing to settle** — it is a `project_db_snapshot_divergence_landmine.md` shape. Coordinate with §15;
+do not fork a second raster effort.
+
+**§G2-RESOLVED 2026-07-25 — it is a DEPLOYMENT gap, not a pipeline or doc gap. Diagnosis complete;
+what remains is an upload + one missing artifact, both needing user authorization (OCI = production).**
+Verified directly, after a delegated lookup got the mechanism wrong (it reported "no apply_patch
+mechanism exists anywhere in bim-ootb" — false, see below; its other findings held):
+- **The patch loader EXISTS and runs on every page load.** `A._applyPendingPatch` is defined at
+  `viewer/scene.js:803` and called on BOTH the meta DB and the main DB —
+  `viewer/streaming.js:1787` (`metaBuf`, `metaUrl`) and `:1933` (`dbBuf`, `A.DB_URL`). The needle has
+  its own equivalent at `navigate_find.js:999`.
+- **The raster patch EXISTS in the repo and holds real data.**
+  `bim-ootb/buildings/patches/Hospital_extracted.db.sql` is 145KB with 8 `storey_walkable_raster`
+  statements — a real `CREATE TABLE` + per-storey `INSERT` (e.g. `'Level 1', res=0.25, x0=-0.0147,
+  y0=58.2806, cols=304, rows=332` + BLOB). Patches also exist for HHS/JKR/Terminal.
+- **ZERO `.db` files anywhere on disk contain the table** — BY DESIGN. The offline builder
+  `bim-ootb/scripts/build_storey_walkable_raster.js:194` emits a self-heal patch SQL fragment rather
+  than mutating a binary, exactly this project's "DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER"
+  architecture. Nothing is broken about that half.
+- **The failure is that the patch was never uploaded to the OCI bucket the viewer serves from.** The
+  user's live log shows the loader asking for it and getting 404 twice on one page load:
+  `…/o/buildings/patches/Hospital_meta.db.sql → 404` → `§PATCH_NONE Hospital_meta.db (404)`, and
+  `…/o/buildings/patches/Hospital_extracted.db.sql → 404` → `§PATCH_NONE Hospital_extracted.db (404)
+  [needle]`. The mechanism worked perfectly; the file simply is not there.
+- **Second, separate gap — the split-DB path has no Hospital patch at all.** Terminal ships BOTH
+  `Terminal_extracted.db.sql` AND `Terminal_meta.db.sql`; Hospital ships only the `_extracted`
+  variant. The split loader reads `Hospital_meta.db`, so uploading the existing file alone will NOT
+  fix the served path — a `_meta` variant must be generated by the offline builder too. Check
+  HHS/JKR the same way before assuming one upload closes this.
+- **`common/storey_raster.js` is pack/unpack/lookup only**, no runtime rebuild fallback (its own
+  header: rasterization happens ONCE, offline). `room_graph.js:748-750` try/catches the missing table
+  and silently degrades to pre-raster straight-line legalization — which is why this failed quietly
+  for so long: no error, just worse paths everywhere.
+**So §15's "5 buildings have raster coverage" is true of the PATCH ARTIFACTS and false of every served
+DB.** Restate the claim in those terms rather than deleting it.
+**Do NOT `oci os object put` without asking** — that bucket is production (`deploy/OCI_UPLOAD.md`
+§RULES; every upload needs `--content-type`, here `application/sql`).
+
+**§G2-FALSIFIED 2026-07-25 — applying the raster does NOT fix Hospital's path legality. Measured,
+locally, before any upload. The earlier hypothesis in this section (that §15's Hospital "tie" was
+caused by the missing raster) is WRONG and must not be carried forward.**
+Method: copied `deploy/buildings/Hospital_meta.db`, applied `buildings/patches/Hospital_extracted.db.sql`
+to the copy with `sqlite3` (52ms, +72KB, storeys `Level 1`–`Level 7` all present with real bitsets),
+then ran the REAL `_buildGraphRouteInner` against BOTH copies through the same Node harness.
+| | rastersLoaded | DETOUR_FAIL | illegalChords | pts | route len |
+|---|---|---|---|---|---|
+| meta, no raster | **0** | **22** | 16/123 | 136 | 1940.8m |
+| meta + raster | **7** | **22** | 16/121 | 134 | 1937.4m |
+**Test validity checked before believing the negative** (this project's own GIGO rule): `rastersLoaded`
+0→7 proves the table really was read into `graph.rasters` — the raster loaded and simply did not help.
+`room_graph.js` has NO `§`-log on the raster load path, which is why this needed a direct probe; **worth
+adding one** so a future session can see raster presence from a live console alone.
+So Hospital's chord-illegality has a DIFFERENT root cause than raster absence. Do not spend the OCI
+upload on the expectation that it fixes paths — it may still be worth shipping for other reasons, but
+this specific claim is dead.
+
 **§G3-ROOT-CAUSE-CANDIDATE 2026-07-25 (the strongest lead in this whole file — the walker recompile
 COLLAPSES connectivity on a building that already has good authored rooms):**
 | source of rooms | IfcSpace | nodes | **edges** |
