@@ -24,35 +24,35 @@ LIFTED 2026-07-17 project-wide (see bim-compiler CLAUDE.md). Push permission is 
 fast-forward pushes / PRs are fine (not force-push, not skipping localhost witness verification).
 ```
 
-## ▶ NEXT TASK (corrected 2026-07-26 — §HL-FIRST is CODED, just not landed)
-**Do not re-implement §HL-FIRST — it is already done.** Commit `eccfd9b` "feat(viewer): Fly Tour
-highlight-first routing — main hall → stairs → the rest" sits on branch `feat/tour-timeline-scrub`
-in worktree `/tmp/wt-tour-scrub` (1 commit ahead of `origin/main`, clean tree, NOT yet pushed). Full
-spec, 7-building witness sweep (W-HL-MAINHALL/W-HL-STAIRS-EARLY/W-HL-NOREGRESS all ✅), and two real
-bugs found+fixed (§HL-ORIGIN, the `v.i>0` beat-drop) are written below at `✅ IMPLEMENTED 2026-07-25
-— §HL-FIRST highlight-first routing` — read that block, not the older `§HL-FIRST — the spec` block
-above it (that one predates the implementation and is superseded).
+## ▶ NEXT TASK (corrected 2026-07-26 — §HL-FIRST is SHIPPED; next is the scrubber)
+**§HL-FIRST is DONE and LANDED — do not re-implement it, do not re-verify it.** PR **#989**
+"feat(viewer): Fly Tour highlight-first routing — main hall → stairs → the rest" is **MERGED**
+(squash, auto-merge; merge confirmed via `gh pr view 989`, not assumed from "auto-merge armed").
+`tour.js` v13, `sw.js` v842. The full spec, the 7-building witness sweep
+(W-HL-MAINHALL/W-HL-STAIRS-EARLY/W-HL-NOREGRESS all ✅) and two real bugs found+fixed (§HL-ORIGIN,
+the `v.i>0` beat-drop) are below at `✅ IMPLEMENTED 2026-07-25 — §HL-FIRST highlight-first routing`,
+followed by `§WATCHDOG-HL-FIRST` (independent review — read it before ANY future `stops[]` change).
+The older `§HL-FIRST — the spec` block predates implementation and is superseded.
 
-**This is a WORKER task in a Worker/Reviewer split — do NOT push, open a PR, or merge yourself.**
-Commit locally (if any fix is needed), report branch + commit SHA, and stop at "ready for review."
-The reviewing session pushes/PRs/merges after sign-off (`feedback_worker_no_push_watchdog_pushes`).
+⚠ **Do NOT reuse branch `feat/tour-timeline-scrub` / worktree `/tmp/wt-tour-scrub`.** It carried the
+§HL-FIRST commit and has been squash-merged — its history now collides with `origin/main` (→
+`DIRTY`), per this project's concurrent-branch rule. Branch the scrubber off **fresh `origin/main`**.
 
-**What's actually left (the real next task):**
-1. `cd /tmp/wt-tour-scrub` (reuse this worktree — do NOT create a new one, per this project's
-   Worktree Hygiene rule), confirm still clean/1-ahead of `origin/main` at commit `eccfd9b`.
-2. **Live-review the feel**, not just the route geometry — the implementation note says explicitly
-   "not live-watched by the user yet." Serve the worktree locally, open the real Fly Tour on a
-   multi-storey building (HHS or Terminal — both showed the early climb in the witness sweep), and
-   confirm the highlight-first opening actually reads well, same bar `§TARGET_BOUNDED_LOOKAHEAD`
-   used (§-log + measured numbers, no screenshots — this project's FUNDAMENTAL LAW). If a real issue
-   surfaces, fix it on this same branch, re-run the witness sweep, and document it in this file.
-3. Two buildings (Hospital_ARC, SampleCastle_extracted) still fall back to legacy routing — named
-   as pre-existing and OUT OF SCOPE for this task (their graphs fail the coverage gate before
-   ordering ever applies) — do not try to fix this as part of landing §HL-FIRST.
-4. Report back: branch name, commit SHA(s), live-review witness log. The reviewer pushes/PRs/merges
-   from there.
-Non-goal for this task: `§TOUR_TIMELINE_SCRUB` (the scrubber) is a separate, fully-specced-but-
-unstarted feature lower in this file — do not start it under this task.
+**The real next task: `§TOUR_TIMELINE_SCRUB`** — fully specced lower in this file (search
+`§TOUR_TIMELINE_SCRUB`), never started, with the user's UI decisions (cyan pulsing dot — NOT red,
+avoids collision with the real `.webm` export; all four knob groups) already recorded there. The
+design conclusion to start from: bespoke seek in `tour.js`, borrowing `time_machine.js`'s doctrine
+and look but not its code; the unlock is chaining each action's end pose at BUILD time so tour pose
+= f(T).
+
+**Still open on §HL-FIRST (small, do NOT block the scrubber on these):**
+1. **Not live-watched by the user yet.** Route geometry and the action list are measured; whether
+   the highlight-first opening FEELS like a good opening is a live-review question, same caveat
+   §TARGET_BOUNDED_LOOKAHEAD closed with. Same bar if reviewed: §-log + measured numbers, never
+   screenshots (this project's FUNDAMENTAL LAW).
+2. Hospital_ARC and SampleCastle_extracted still fall back to legacy routing — pre-existing, IDENTICAL
+   before and after (their graphs fail the coverage gate before ordering ever applies). A
+   room-compile/graph-connectivity task, not a routing-order one. Worth its own bounded task.
 
 ## §REVIEW — findings verified 2026-07-16, do not re-derive
 - **R1 — the Fly tour is pre-room-intelligence.** `viewer/tour.js` (bim-ootb main 57c0720;
@@ -714,6 +714,59 @@ graph, per §VOCABULARY_NOT_REALTIME.
 - **§TOUR_TIMELINE_SCRUB remains unimplemented** — the session started there, then the user redirected
   ("correct the initial tour journey first"). Its design was discussed and the user's UI choices are
   recorded in the next section.
+
+### §WATCHDOG-HL-FIRST — independent review of the §HL-FIRST plan + witness (2026-07-26)
+Reviewing session, read-only (did not edit `tour.js`). Reviewed the SPEC block above (`§HL-FIRST —
+the spec`) against the real `viewer/tour.js` @ `bim-ootb` `73d3676`, BEFORE reading the
+implementation report. Recorded here because the finding is about METHOD, reusable on the next
+`stops[]` change — not about this one change.
+
+**Verdict: plan sound, scope correct (order-only), but the spec was wrong in three places.** All
+three are code the spec itself cited or implied:
+| # | site | what the spec missed | caught by |
+|---|---|---|---|
+| 1 | `tour.js:535` `curGuid = entrance ? entrance.guid : stops[0].guid` | `stops[0]` carries a SECOND, unwritten meaning — the walk's ORIGIN for entrance-less buildings. "Reorder `stops[]`" silently relocates the tour's start. | witness sweep → FINDING 1 (§HL-ORIGIN) |
+| 2 | `tour.js:862` split filter `v.i > 1` | a beat landing on the first interior point is dropped, so the main hall's 360° never becomes an action. | witness sweep → FINDING 2 |
+| 3 | `tour.js:604` `pause: pauseGuids[pg] ? 'room' : (storeyArrival ? 'storey' : null)` | pause kind is DERIVED from a guid→bool map, not stored. Spec said "a third kind `'hall'`→360 is the whole change" — it is two edits (the map's value type + the `:874` ternary), not one. | this review |
+
+Also: the spec cites the pause-kind→degrees map as `tour.js:886`. It is at **`:874`**
+(`degrees: segments[sI].beat === 'storey' ? 180 : 270`). Mechanism as described; citation off by 12.
+
+**THE LESSON (the reusable part): what made this safe was the WITNESS, not the spec and not the
+model.** Two of the three defects above were in the authorized spec and would have shipped on a
+spec-follows-code reading; they were caught only because the 7-building BEFORE/AFTER sweep *could
+produce a bad number, and did* (HHS's first climb went 0.224 → **0.432**, the wrong way, before
+§HL-ORIGIN). Corollaries, binding on any future reorder of `stops[]`:
+- **`stops[]` has two concerns sharing one array index — ORDER and ORIGIN. Preserve them
+  separately.** This is FINDING 1 generalised and is the single most reusable fact here.
+- **The `:635` reject gate catches "broken," never "worse."** It is an ABSOLUTE threshold
+  (`visitedStops < 2 || visitedStops < stops.length * 0.5 || …`), not a before/after comparison. The
+  spec's claim that "an order that measures worse must still fall back to legacy" is FALSE as
+  written — only the sweep catches "worse." **The Node harness is therefore load-bearing
+  infrastructure for this file, not a one-off**; a future `stops[]` change without a BEFORE/AFTER
+  sweep is unverified regardless of what the reject gate says.
+- **Compare illegal chords as a RATIO, not a count.** Highlight-first grows route length 0–6%, so
+  the denominator moves (HHS `9/62 → 9/69` reads as flat but is 14.5% → 13.0%, an improvement).
+- **Witness wording to tighten if reused:** "max area over all stops" must mean the post-`§R6-BUDGET`
+  ELIGIBLE pool (`:459`), not all graph nodes, or it false-fails on tall buildings; and
+  W-HL-STAIRS-EARLY's "measurably earlier" has no pass threshold and is vacuous on single-reachable-
+  storey buildings — state the N/A case up front (the implementation did both correctly; the SPEC
+  did not say so).
+
+**Process note, worth not repeating:** the ABSTRACTION AUDIT table above was written AFTER the
+code, at the user's prompting. Good outcome — it killed a real tuned constant (the `+0.5m` "higher
+storey" epsilon, removed after a re-sweep proved all 7 routes byte-identical without it). But the
+direction of authority flipped: a post-hoc audit describes the code, where Spec-First requires a
+claim that could have FAILED before the code existed. Write the abstraction claim with the witness
+claims, not after the sweep.
+
+**Outside-the-loop checks a session cannot self-certify** (verified by this review, all clean):
+PR #989 is genuinely **MERGED** (`gh pr view 989` — squash auto-merge landed; the report said only
+"auto-merge armed", and this project's own `CLAUDE.md` records PR #138 where a squash + late push
+ORPHANED the follow-up commit). A concurrent session in the shared `bim-compiler` checkout committed
+this file's spec edits under its own message — content verified intact. Do NOT reuse
+`feat/tour-timeline-scrub` for the scrubber follow-up: it is squash-merged, its history now collides
+(→ `DIRTY`); branch the scrubber off fresh `origin/main`.
 
 ## ✅ IMPLEMENTED 2026-07-25 — 3-tier pacing, `bim-ootb` `fix/fly-tour-interior-pacing`
 (worktree `/tmp/wt-fly-interior-pacing`, off `origin/main` @ `8d12254`; shared-tree hook blocked
