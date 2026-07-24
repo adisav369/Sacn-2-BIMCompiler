@@ -2677,3 +2677,37 @@ ON (`active=20-36k boxed=87-102k`) settled to a tight, consistent **86-96ms** (`
 **`'o'` does help indoors too, post-fix — modestly, and more importantly it makes frame time far
 more stable, not just lower on average.** Aerial remains the larger win; this doesn't overturn that,
 it corrects "interior gets nothing" to "interior gets a real, smaller, stabilizing benefit."
+
+## §23 — NEXT TASK: MaxQ's live preview is smooth at full geometry; find out why before assuming
+interior needs another draw-call optimization (2026-07-25, not started)
+
+**The contradiction §21's "exposure duration" theory left unresolved, user re-raised it directly:**
+today's object-count fix gave interior only ~10-15% (95-107ms→86-96ms with `'o'` on) — real, but not
+what makes Fly Tour feel smooth. Meanwhile `cinema_maxq.js`'s **live 10-second preview** (`pvStep`,
+BEFORE the recorded-video bake — not the MediaRecorder path §21 already ruled out as a fair
+comparison) is: continuous real-time rendering, full geometry, nav-DLOD fully disengaged, a *wider*
+dive/orbit radius than Fly Tour's own orbit, running a full 10 seconds — long enough that "too brief
+to judge" doesn't cover it either. And it reads smooth. Same building, same renderer, same
+post-today's-fix scene. That's a real, unexplained gap, not a solved one — do not close this file
+believing the MaxQ comparison is settled.
+
+**The concrete, checkable difference, not yet measured:** MaxQ's interior dive targets and centers
+on the **single largest room** (`§CINEMA_SPACE`, `effects.js` `_cinemaPathPlan`) — bounded to one
+enclosure's contents. Fly Tour's `flyPath` legs travel **through** a sequence of rooms/corridors —
+at any given point it can be looking down a corridor or through an open doorway into adjacent spaces,
+exposing more geometry to the frustum than a single centered room ever would, even at similar overall
+triangle budgets.
+
+**Task:** measure `renderer.info.render.calls`/`.triangles` at (a) MaxQ's actual interior dive pose
+and (b) several of Fly Tour's `flyPath` interior poses, same building (LTU_AHouse), same session,
+post-object-count-fix. If MaxQ's pose has substantially fewer triangles actually in frustum, that
+confirms room-level occlusion (§17, already the named remaining lever, still gated on the false-hide
+gap) is what actually closes this gap — not another draw-call/object-count optimization, which is
+what §21/§22 already exhausted. If the triangle counts are comparable and MaxQ is still smoother,
+that reopens the mechanism question entirely and this section's hypothesis is wrong — say so plainly
+if that's what the numbers show, don't force the room-boundedness explanation to fit.
+
+**Prerequisite state for whoever picks this up:** the object-count fix (`8ee7aa6`) and walkTick fix
+(`0587956`) are local-only in `/tmp/wt-merged-test` (`bim-ootb`, branch
+`local/merged-occl-aerial-test`, no upstream configured) — NOT pushed anywhere. Verify TM/picking/
+storey-filter against `8ee7aa6` before pushing (§22's own open item), independent of this task.
