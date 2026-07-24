@@ -880,3 +880,76 @@ is a VOCABULARY problem, not a topology one, and survives a perfect connectivity
   human-named lobby. **Worth verifying as its own question: does the recompile DISPLACE authored
   spaces, and should it?** If authored names survive, "main hall" could be chosen from real
   semantics instead of area alone. That is a genuine candidate for a follow-up spec, not this task.
+
+---
+
+## ▶ RESUME HERE (2026-07-25) — §ROOM-SPINE-BRIDGE: the validated next fix, fixture ready
+**State in one line: room pathing is NOT solved (Hospital room-pair pathability 14035/24976 = 56.2%,
+42 stranded deg-0 rooms); the Fly Tour's ORDER is solved and shipped, its DESTINATIONS are blocked
+on this file.**
+
+### Fixture + harnesses — a new session can start measuring in one command, no browser
+- `~/Projects/BIM_DB/Hospital.db` (250MB, user's Save-DB export) **reproduces the live console
+  exactly** (`nodes=224 doors=440 nonRoomDoors=0 edges=61 deadend=194 orphan=185 orphanRescued=172`).
+  Stop inferring from console logs — iterate on this.
+- Node harnesses in the 2026-07-25 session scratchpad (`hl_witness.js` loads the REAL `viewer/tour.js`
+  verbatim into a `vm`; `hall_rank.js`, `adj.js`, `circ.js`, `verify.js`). Pattern to copy:
+  `initSqlJs({wasmBinary})` + `require('common/room_graph.js')` (node-aware) + a `dbQuery` returning
+  value-rows. 7-building regression corpus: Terminal_meta, HHS_Office_Federated_extracted, Clinic_ARC,
+  Duplex_ARC, SampleHouse_extracted, SampleCastle_extracted, + the Hospital fixture.
+
+### MEASURED by the review session (not re-derived here — attributed, with its own correction applied)
+- **Pathability 56.2%** — nearly half of all Find room-pairs have no route.
+- **All 42 stranded rooms fail the SAME predicate: no ARC door within buffer on their own storey**
+  (`inRange=0`). Not discipline (440/440 are ARC), not the lift-name filter, not `cands>=2`.
+- **Its own correction, keep it:** an earlier "R11 has 7 doors at 0.2m" reading was an artifact of a
+  looser proximity test — those doors are on Levels 3/4 at the same XY and `rectDist` is 2D. **The
+  storey filter is CORRECT; do not remove it** (removing it binds doors three floors up).
+- Gap buckets (nearest same-storey door minus its buffer): `≤0.5m` 10 rooms / 536 m² (R14 at 0.25m);
+  `0.5–2m` 10 rooms / 224 m²; `>2m` **22 rooms** / 538 m², nearest door 8–10m away.
+- **Slack widening is the wrong fix, proven by its own numbers:** it cannot reach the 22 "far" rooms at
+  all, and R14 only gains an edge at `SLACK=1.00` (5×) because `cands>=2` needs that same door within
+  buffer of a SECOND room. A constant that must move 5× to catch one room is exactly what the
+  abstraction audit exists to reject. Agreed, fully.
+
+### VERIFIED HERE — the review's proposed fix does NOT work, and the working one is next to it
+The review proposed **room-to-room opening adjacency** ("rect boundaries within the raster
+resolution"). **Falsified on the fixture: 0 of 42 stranded rooms have a same-storey neighbour room
+rect within `RES=0.20m`.** R14's nearest same-storey ROOM is **3.007m** away. Compiled rooms do not
+tile the floor — there are metres of unclaimed space between them, which is where the connections
+live. Do not implement room-to-room adjacency; it would produce zero edges here.
+**What IS there — validated:**
+```
+R14 nearest same-storey NON-room node: 1.31m  (kind=spine)  "Corridor — Level 1"
+all 42 deg-0 rooms, distance to nearest same-storey spine/circ/stairwp/doorwp node:
+   ≤0.5m: 0     0.5–2m: 18     2–5m: 18     >5m: 6     none: 0
+```
+**Every stranded room has a circulation node in reach; none is truly isolated.** The corridor spine
+runs 1.31m from the atrium's own rect.
+**→ §ROOM-SPINE-BRIDGE (recommended, reuses an existing mechanism rather than adding a rule):** bridge
+a deg-0 room to its nearest same-storey `spine`/`circ` node, exactly as `§ISLAND_BRIDGE` /
+`§CIRC_SPINE_BRIDGE` already bridges corridor CHAINS to spines. That mechanism is live and already
+tolerates **51.97m** bridges on this very building (`§ISLAND_BRIDGE … dist=51.97m`); R14 needs
+**1.31m — 40× shorter than bridges the engine already makes**. It generalises the review's own
+insight correctly: an open space connects through an OPENING onto circulation, not through a door to
+another room. No new constant, no name matching, no threshold move.
+**Keep the review's third-bucket caution:** the 22 "far" rooms average ~24 m² with no door within 8m —
+triage whether they are real rooms or walker artifacts BEFORE counting them as a connectivity target.
+
+### Acceptance test (falsifiable, offline, one line)
+> On `~/Projects/BIM_DB/Hospital.db`: `⚠ Level 1 R14` (315.7 m², bbox 9.7×34.1) carries **≥1 edge**,
+> room-pair pathability rises from **56.2%**, and the 7-building sweep shows no regression
+> (Terminal/HHS/Clinic/Duplex/SampleHouse byte-identical or better).
+Then re-press ✈ on Hospital: `§FLY_HL_FIRST mainHall` should become the 315.7 m² space instead of the
+219 m² × 3.3m corridor — the user's original "it doesn't show a large space", closed end to end.
+
+### ⚠ UNIT DISCIPLINE — three wrong findings were published in ONE day, all the same error class
+Each was real data compared against a differently-scoped field. Check the scope of BOTH sides before
+publishing any comparison:
+1. `graph.edges.length` (TOTAL, E1–E5) vs the `§ROOM_GRAPH` log's `edges=` (**E1 only**,
+   `room_graph.js:737`) → produced a bogus "500 → 61 collapse".
+2. Per-**rect** vs per-**room** width/area (multi-rect rooms share `room_guid`) → produced a bogus
+   "walker has no wide rooms" (per-room it has 7, same as the offline compile).
+3. **`graph.nodes` holds ROOMS ONLY; `graph.nodesByGuid` holds all kinds** (room 224, spine 43,
+   doorwp 427, circ 7, stairwp 12) → produced a bogus "no circulation nodes exist near R14", when the
+   spine is 1.31m away. **This one nearly killed the correct fix.**
