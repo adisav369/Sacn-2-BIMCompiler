@@ -19,7 +19,34 @@ this file owns WHICH points/order (routing); that one owns HOW FAST and WHICH WA
 LOOKS along whatever points exist (pacing). Read BOTH before touching tour.js — they're
 orthogonal concerns but share one file, and a routing change can silently regress a pacing fix
 (or vice versa) if only one side's spec is checked.
+PUSH STATUS (correction, 2026-07-26): the "PUSH PAUSE" line above is STALE — push pause was
+LIFTED 2026-07-17 project-wide (see bim-compiler CLAUDE.md). Push permission is ON: normal
+fast-forward pushes / PRs are fine (not force-push, not skipping localhost witness verification).
 ```
+
+## ▶ NEXT TASK (corrected 2026-07-26 — §HL-FIRST is CODED, just not landed)
+**Do not re-implement §HL-FIRST — it is already done.** Commit `eccfd9b` "feat(viewer): Fly Tour
+highlight-first routing — main hall → stairs → the rest" sits on branch `feat/tour-timeline-scrub`
+in worktree `/tmp/wt-tour-scrub` (1 commit ahead of `origin/main`, clean tree, NOT yet pushed). Full
+spec, 7-building witness sweep (W-HL-MAINHALL/W-HL-STAIRS-EARLY/W-HL-NOREGRESS all ✅), and two real
+bugs found+fixed (§HL-ORIGIN, the `v.i>0` beat-drop) are written below at `✅ IMPLEMENTED 2026-07-25
+— §HL-FIRST highlight-first routing` — read that block, not the older `§HL-FIRST — the spec` block
+above it (that one predates the implementation and is superseded).
+
+**What's actually left (the real next task):**
+1. `cd /tmp/wt-tour-scrub` (reuse this worktree — do NOT create a new one, per this project's
+   Worktree Hygiene rule), confirm still clean/1-ahead, push `feat/tour-timeline-scrub`, open a PR
+   to `bim-ootb` `main`, verify CI (fast-checks/e2e-tests — branch protection requires both), merge.
+   Push permission is ON project-wide (lifted 2026-07-17) — normal fast-forward push/PR is fine.
+2. **Live-review the feel**, not just the route geometry — the implementation note says explicitly
+   "not live-watched by the user yet." Open the real Fly Tour on a multi-storey building (HHS or
+   Terminal — both showed the early climb in the witness sweep) after deploy and confirm the
+   highlight-first opening actually reads well, same bar `§TARGET_BOUNDED_LOOKAHEAD` used.
+3. Two buildings (Hospital_ARC, SampleCastle_extracted) still fall back to legacy routing — named
+   as pre-existing and OUT OF SCOPE for this task (their graphs fail the coverage gate before
+   ordering ever applies) — do not try to fix this as part of landing §HL-FIRST.
+Non-goal for this task: `§TOUR_TIMELINE_SCRUB` (the scrubber) is a separate, fully-specced-but-
+unstarted feature lower in this file — do not start it under this task.
 
 ## §REVIEW — findings verified 2026-07-16, do not re-derive
 - **R1 — the Fly tour is pre-room-intelligence.** `viewer/tour.js` (bim-ootb main 57c0720;
@@ -559,6 +586,10 @@ Item-by-item, against the open questions above:
    by "before touring the rest". Highlights are PREPENDED; the remainder walks storey-by-storey
    lowest→highest exactly as today, minus stops already spent in the highlight block.
 
+**[SUPERSEDED — this is the pre-implementation spec draft, kept for design-rationale history only.
+The actual shipped mechanism is below at `✅ IMPLEMENTED 2026-07-25 — §HL-FIRST highlight-first
+routing` (commit `eccfd9b`, branch `feat/tour-timeline-scrub`) — read that block for current state.]**
+
 **§HL-FIRST — the spec (stop ORDER only; stop SELECTION, budgets, dedupe, legality gates and the
 descent finale are all untouched):** in `_buildGraphRouteInner`, after `stops[]` is built by today's
 per-storey rules and isolated nodes are dropped, reorder it:
@@ -583,6 +614,100 @@ verbatim from `viewer/tour.js`, not reimplemented) in a Node harness against rea
   indices as a fraction of route length).
 - **W-HL-NOREGRESS:** `visitedStops`, `illegalChords/checkedChords` and the reject gates are no worse
   than BEFORE on every building tested; any building that flew before still flies.
+
+## ✅ IMPLEMENTED 2026-07-25 — §HL-FIRST highlight-first routing, `bim-ootb` `feat/tour-timeline-scrub`
+(worktree `/tmp/wt-tour-scrub`, off `origin/main` @ `c722195`. Branch name predates the scope switch —
+the user redirected mid-session from the scrubber to "correcting the initial tour journey first".)
+
+**Files:** `viewer/tour.js` (v13 banner), `viewer/viewer.html` (`tour.js?v=13`), `viewer/sw.js` (v842).
+Three logic changes, all inside `_buildGraphRouteInner`/`_buildTourInner` — no new module, no new
+data source, no change to `RoomGraph`'s API or to stop SELECTION:
+1. **§HL-FIRST** — reorder `stops[]` after today's per-storey selection: mainHall (max rect area
+   building-wide) → ascent (max-area stop on a higher storey) → `HL_EXTRA` further top-area stops →
+   everything else in today's storey-sequential order.
+2. **§HL-ORIGIN** — `curGuid` for entrance-less buildings pins to the PRE-reorder `stops[0]` instead
+   of the new `stops[0]`. Found by witness, see FINDING 1 below.
+3. **`'hall'` beat** — third pause kind → `lookAround(360)` + a longer `pause` (0.8s vs 0.4s), and the
+   split filter relaxed `v.i > 1` → `v.i > 0`. Found by witness, see FINDING 2 below.
+
+**Harness (no browser, no screenshots — per this project's FUNDAMENTAL LAW).** Scratchpad
+`hl_witness.js` loads the REAL `viewer/tour.js` verbatim into a Node `vm` context (stub `document`/
+`window` only), builds the REAL graph via `common/room_graph.js` (node-aware, `module.exports` at
+:1475) from a real building DB through sql.js, then runs `A._buildGraphRoute()` AND `A.buildTour()`.
+BEFORE = `git show origin/main:viewer/tour.js` through the identical harness. Logs kept in the
+session scratchpad (`logs/<bld>_{before,final}.log`). Route quality is measured from the route's OWN
+geometry in the harness (first y-rise >1m; max-area node recomputed independently from the graph) —
+NOT parsed back out of the engine's own log lines.
+
+**Results — 7 real buildings, BEFORE → AFTER:**
+
+| building | route | mainHall = independent max-area? | first climb (idx/frac) | illegal chords | visited stops | len |
+|---|---|---|---|---|---|---|
+| Terminal_meta | flies both | ✅ 85.4 = 85.4 | **15/0.224 → 7/0.096** | 16/53 → **14/53** | 11/11 → 11/11 | 910→964m |
+| HHS_Office_Federated | flies both | ✅ 203.8 = 203.8 | **15/0.224 → 3/0.037** | 9/62 → 9/69 (ratio 14.5%→13.0%) | 13/15 → 13/15 | 693→726m |
+| Clinic_ARC | flies both | ✅ 125.0 = 125.0 | none (single reachable storey) | 0/9 → 0/9 | 3/6 → 3/6 | 87→87m |
+| Duplex_ARC | flies both | ✅ 27.7 = 27.7 | none (thin graph) | 2/5 → 2/5 | 3/6 → 3/6 | 30.6→30.6m |
+| SampleHouse_extracted | flies both | ✅ 52.6 = 52.6 | none (2 storeys, 1 reachable) | 0/3 → 0/3 | 3/3 → 3/3 | 21.3→21.3m |
+| Hospital_ARC | REJECTED both | — | — | gate: visited 3/15 | unchanged | — |
+| SampleCastle_extracted | REJECTED both | — | — | gate: visited 2/9 | unchanged | — |
+
+- **W-HL-MAINHALL ✅** — on all 5 flying buildings the engine's `§FLY_HL_FIRST mainHall` area is
+  EXACTLY the harness's independently recomputed max over the eligible pool. No tie-breaking needed.
+- **W-HL-STAIRS-EARLY ✅** — the two multi-storey buildings with a reachable upper storey both climb
+  far earlier: Terminal 0.224→0.096 of the route, HHS 0.224→**0.037**. Buildings whose graph has only
+  one reachable storey correctly produce no climb rather than an invented one.
+- **W-HL-NOREGRESS ✅** — no building lost its route; illegal-chord ratio improved or held everywhere;
+  `visitedStops` identical on all 7. Route length grows 0–6% (Terminal +5.9%, HHS +4.8%) — the
+  measured cost of visiting the highlight first, consistent with this file's standing "drama over
+  travel economy" stance, and gated the same as before.
+
+### FINDING 1 (real bug, caught only by the multi-building sweep) — §HL-ORIGIN
+Buildings with **no graph exit node** (measured: HHS federated, Clinic) start the walk at `stops[0]`.
+Under the old storey-sequential order that was implicitly the LOWEST storey's first pick; reordering
+silently moved the tour's ORIGIN to the main hall. On HHS — whose main hall is on Level 3 — the tour
+then *began* on the top floor and walked DOWN, and the first climb got **worse** (0.224 → 0.432).
+The fix pins the origin to the pre-reorder `stops[0]`, restoring "start low, climb to the highlight."
+HHS then went to 0.037. **Generalisable lesson: `stops[0]` carried an unwritten invariant (lowest
+storey = the walk's start). Any future reordering of `stops[]` must preserve the ORIGIN separately
+from the ORDER** — they are two different concerns that happened to share one array index.
+
+### FINDING 2 (real bug) — a beat at the first interior point was silently dropped
+`_buildTourInner`'s split filter required `v.i > 1`. When the main hall IS the first interior stop
+(measured: Clinic — no exit node, so the hall is `flyPts[1]`), its 360° turn-around never became an
+action at all. Relaxed to `v.i > 0`; `flyPts[0]` is always the entrance point, so index 1 is a real
+2-point approach segment. Witnessed end-to-end through `buildTour()`: Clinic's action list went
+`…flyPath(11p) → moveTo` (one look-around, 90° at the finale) to
+`…flyPath(2p) → pause → lookAround(360) → flyPath(10p) → moveTo` — same total flight time
+(126.5s → 43.6+82.8s), one real turn-around gained.
+
+### ABSTRACTION AUDIT (user directive 2026-07-25: "we wana review that it remains abstract and not
+hardcode custom cases") — every value this change introduces, and why none is building-specific
+| value | what it is | why it is not a custom case |
+|---|---|---|
+| `HL_EXTRA = 1` | how many highlights follow mainHall+ascent | a COUNT of beats in the opening block, not a measurement of any building. Bounds tour length; no threshold semantics. |
+| `'hall'` → **360°** | the turn-around sweep | an angle from the user's own words ("turn around in them"), in the same unit as the existing 180/270 beats. Independent of building size. |
+| `pause 0.8s` (vs 0.4s) | dwell before the hall sweep | a time constant of the CAMERA grammar, same family as the existing 0.4s. |
+| `v.i > 0` | split-filter bound | an ARRAY INDEX bound (index 0 = entrance point), not a tuned number. |
+| "higher storey" test | `storey !== mainHall.storey && meanZ(storey) > meanZ(mainHall.storey)` | **deliberately has no metre threshold.** An earlier draft used `> mhZ + 0.5`; removed and re-swept — all 7 buildings produced byte-identical routes, so the epsilon was doing nothing and is gone. Storey identity comes from the data; the comparison is between two measured means. |
+| main hall selection | `max(rect area)` over the already-eligible stop pool | reuses the area the file already ranks by (§S2/§R6). No new signal, no threshold, no name matching — nothing that could encode one building's vocabulary. |
+
+Explicitly NOT used anywhere in this change: building names, storey-name strings (`"Level 3"`,
+`"Aras 02"`…), room-name matching (no `/hall/i` regex — corridor-class detection reuses the EXISTING
+`Hall / Corridor` backprop label from `hallway_backbone.js`, unchanged), and any absolute
+area/length/height threshold. The only per-building input is measured geometry from the compiled
+graph, per §VOCABULARY_NOT_REALTIME.
+
+### Not done / follow-ups
+- **Hospital_ARC and SampleCastle_extracted still fall back to legacy** — pre-existing, unchanged by
+  this work (`visited 3/15` and `2/9` fail the §MAJORITY-LEGAL/coverage gate in BOTH before and after).
+  Their graphs are mostly unreachable stops; that is a room-compile/graph-connectivity problem, not a
+  routing-order one. Worth its own bounded task.
+- **Not live-watched by the user yet.** The measurements above are route geometry and the real action
+  list; whether the highlight-first order FEELS like a good opening is a live-review question, same
+  caveat §TARGET_BOUNDED_LOOKAHEAD closed with.
+- **§TOUR_TIMELINE_SCRUB remains unimplemented** — the session started there, then the user redirected
+  ("correct the initial tour journey first"). Its design was discussed and the user's UI choices are
+  recorded in the next section.
 
 ## ✅ IMPLEMENTED 2026-07-25 — 3-tier pacing, `bim-ootb` `fix/fly-tour-interior-pacing`
 (worktree `/tmp/wt-fly-interior-pacing`, off `origin/main` @ `8d12254`; shared-tree hook blocked
@@ -895,3 +1020,60 @@ analogy, and it likely makes this feature cheaper than the open items above sugg
 **Session closed here (2026-07-26, user: "clean close new session on that").** Spec above is
 sufficient for a fresh session to start from a running start — investigate `time_machine.js`'s
 cursor/camera pipeline first, decide reuse-vs-bespoke, then implement. Not started this session.
+
+### 2026-07-25 — reuse-vs-bespoke ANSWERED (TM pipeline read), + the user's UI decisions
+Still NOT implemented (the user redirected this session to §HL-FIRST routing first), but the open
+question at the top of this section is now settled with real citations, so the next session need not
+re-investigate `time_machine.js`.
+
+**VERDICT: bespoke seek in `tour.js`; borrow TM's DOCTRINE and VISUAL LANGUAGE, not its code.** Why,
+from the actual file (`viewer/time_machine.js`, line numbers real):
+- `renderAtTime(cursorMs)` (`:1110`) IS a clean absolute seek — sole writer of `_cursor` (`:1118-19`,
+  enforced by its own `§PERF_INCR_FIX` comment `:3002-3007`), scene state fully re-derived from `_ops`
+  each call (`:1132-1145`), direction-agnostic (`_dLo/_dHi` via min/max, `:1237`), so backward scrub
+  is symmetric and free. **But it is private to the TM IIFE and TM-specific** — no
+  `window.TimeMachine` namespace exists; the only public handles are diagnostics
+  (`window.__tmSetCursor` `:4842`, `window.tmGetState` `:4817`). `renderAtTime`/`onSlide`/
+  `configSlider` are NOT exported.
+- Its slider is **not a 0–1 position** — `#tm-slider` (`:2523`) is mode-relative (DAY = index into
+  `_days`, HR = 0–23, MIN = 0–59; `configSlider` `:2912`, `onSlide` `:2934`), reconstructing an
+  absolute cursor from `_anchorDay`/`_anchorHr`. Nothing to reuse for a tour playhead.
+- Its cinematic camera is **only pose-pure in 2 of 5 beats.** `transit` (`:1774-1789`,
+  `lerpVectors(_cineTransitFrom, _cineTransitTo, easeInOut(t))`) and `opening` (`:1597-1611`) are
+  `f(t)`; `closeup`/`establishing` are damped chases with accumulators (`_camAngle` `:1693`,
+  `_camTarget` `:1665`) — scrubbing backward would keep rotating FORWARD. Also `_cineTransitFrom` is
+  captured from the LIVE camera at beat entry (`:1568`), i.e. frame-history dependent.
+- Worth copying: the **single-writer + full-recompute discipline** (with TM's own bounded delta-skip
+  fallback, `_INCR_MAX_SPAN_MS` `:1039`), and the **look** — 376px glass panel (`:2489-2497`),
+  `#4fc3f7` accent, `<input type=range>` with `accent-color`, 3px progress bar with
+  `transition:width 0.2s` (`:2523-2526`, driven at `:2336`).
+
+**Why Fly Tour's own version is genuinely simpler than TM's:** its cursor is a scalar `T` in seconds
+over `prefix-sum(walkActions[].duration)`. `seek(T)` = binary-search the action, set
+`walkActionIdx`/`walkActionT`, evaluate that action's pose.
+
+**The one architectural move that collapses all three open items above into one:** at the end of
+`buildTour()`, walk the actions once and have each report its END pose, feeding the next one's start.
+Today `moveTo` captures `_startPos` from the LIVE camera at action entry and `flyPath`/`orbit`
+lazy-init at `walkActionT === 0` — that is precisely what makes a mid-action seek undefined. Chaining
+the pose at build time makes every action eagerly inited with a static start, and the whole tour
+becomes a deterministic `pose = f(T)` — a TIMELINE rather than a playback side-effect. This is
+§VOCABULARY_NOT_REALTIME applied to the camera (prepare once, don't re-derive live), and it costs
+nothing at runtime (~22 actions, all waypoints already known at build time). The two remaining items
+then shrink to: (a) keep the `_prevLook` lerp for small drag deltas, snap it to the raw target on a
+large jump; (b) re-evaluate DLOD once on scrub RELEASE, not per `input` event (per-event re-eval
+would jank the drag; TM has no debounce at all on its own input path, `:2595` — do not copy that).
+
+**User's UI decisions (2026-07-25, answered directly when asked):**
+1. **Reveal icon = a pulsing dot in the viewer accent `#4fc3f7`, NOT red.** Reason recorded so it
+   isn't "fixed" back later: a flashing RED record-dot collides with `cinema_maxq.js`'s genuine
+   `MediaRecorder`/`captureStream()` → `.webm` export. Same glyph, two meanings, one app. The
+   INTERACTION is unchanged from the user's original wording — one icon visible during playback,
+   pressing it pauses AND reveals the panel.
+2. **Knobs: all four** — chapter ticks on the bar (labelled from `walkActions[]`: orbit / approach /
+   corridor / stair / room beat), play-pause + restart + `mm:ss / mm:ss`, a speed knob
+   (0.5x/1x/2x, a `dt` multiplier in `walkTick`), and step-by-beat `◀◀ / ▶▶` buttons that jump the
+   cursor to the previous/next action boundary.
+3. Sequencing: the user's own call — **"We have to correct the initial tour journey first"** — hence
+   §HL-FIRST shipped this session and the scrubber did not start. Note the two interact usefully:
+   chapter ticks become more meaningful now that the opening block is main-hall → stairs → highlights.
