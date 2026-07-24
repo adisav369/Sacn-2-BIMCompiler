@@ -1182,3 +1182,16 @@ not authorized to change `room_graph.js`/`navigate_find.js` from this section al
 3. If the building turns out to have NO raster coverage: that is the honest, complete answer — the
    void-cut/zigzag bug is still open for it BY DESIGN (documented, not a new finding), and extending
    raster coverage to it is the real next task (a data/pipeline job, not a routing-logic change).
+
+### §15 CROSS-REF 2026-07-25 — a live contradiction to settle FIRST (from the Fly Tour lane)
+§15 records raster coverage for 5 of ~29 buildings, **Hospital among them**. But the LIVE served
+`Hospital_extracted.db` logs `§HELPERS_QUERY_ERR no such table: storey_walkable_raster` on every
+load, followed by sixteen `§PATH_LEGAL_DETOUR_FAIL … no legal detour among 128 doors` and
+`illegalChords=18/74` on the shipped route. So either the coverage claim refers to a different DB
+snapshot, or the raster never made it into the served artifact.
+
+That is a `project_db_snapshot_divergence_landmine.md` shape and it is cheap to settle — and it
+matters beyond Find, because `_legalizePath` is shared: the same missing raster is degrading the Fly
+Tour's routes on the same building right now. **Settle WHICH DB has the raster before re-running the
+screenshot cases**, or the re-test will measure the wrong artifact. See
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION (G2).

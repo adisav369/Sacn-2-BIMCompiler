@@ -499,3 +499,122 @@ Verified live on Clinic: `rescued=5`, `edges 332->337 (+5)`. `witness_room_graph
 "Türelement...Glas" curtain-wall doors) to **100% fully connected** — the same fix that was scoped for
 Clinic's 3 glass doors turned out to close a real gap on a completely different building.
 - Not tested on JKR/Terminal this session (Clinic + Duplex are this lane's own named acceptance corpora).
+
+---
+
+## ▶ NEXT TASK (2026-07-25) — §GRAPH-FOUNDATION: connectivity is the bottleneck, not routing
+**Filed by the Fly Tour lane (`prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`) after the user live-tested
+highlight-first routing on Hospital and asked the right question: "is it getting to the big hall?"
+It is getting to the biggest space the GRAPH offers. The graph is the limit, not the ordering.**
+
+### Why this file, and why this is infrastructure rather than a feature
+`A.getRoomGraph` is defined ONCE (`viewer/navigate_find.js:1218`) and consumed by **seven** modules —
+verified by grep, not assumed: `main.js`, `navigate_find.js` (Find panel's room Path), `cinema_maxq.js`,
+`scene.js`, `tour.js` (Fly Tour route), `effects.js` (Cinema/MaxQ space planning), `dlod_nav.js`
+(room-PVS occlusion culling). `navigate_find.js:1347` and `tour.js:601` call the SAME
+`RG.shortestPath()` primitive.
+
+Consequence, and the sequencing argument in one line: **a building whose graph is thin does not "fail
+the tour" — it fails the graph**, so Find's room path is degraded on that same building for that same
+reason, and `dlod_nav`'s PVS culling loses FRAME RATE, not a feature. Something that isn't even
+user-facing gets faster when this improves — that is the test for infrastructure. Routing polish lifts
+one face; connectivity lifts seven, including surfaces not built yet.
+
+**Reusable rule this gives us for "which first":** push the thing more than one already-built surface
+depends on and that currently caps all of them at the same number.
+
+**The thing to defend hardest:** `room_graph.js` is genuinely ONE vocabulary today, and
+`dlod_nav.js`'s own "never a second graph build" comment shows the discipline is being enforced in
+code review rather than only in docs. Semantics accreted per-feature drifts into per-feature
+vocabularies — Find growing its own notion of "room," cinema another — and reconciling four
+definitions of adjacency later is far more expensive than keeping one now. Any fix below goes into
+the shared graph, never into a consumer.
+
+### §GIVEN-2026-07-25 — measured from the user's own live GH Pages console (Hospital_extracted.db,
+### RTX 4060, ghost=1). Do NOT re-derive; these are real production numbers, not a harness.
+```
+§ROOM_GRAPH nodes=224 doors=440 nonRoomDoors=0 edges=61 deadend=194 orphan=185
+            orphanRescued=172 ambiguous=0 circ=7 stairs=6 (skipped=1) exits=0 e2=194
+§CORRIDOR_ROOM_BACKPROP injected=10 skippedOverlap=33 / 43 joined buckets
+§HALLWAY_BACKBONE buckets=241 joined=43 chains=16 crossings=37 openEnds=12 stairTerminated=11
+§ISLAND_BRIDGE circ-per-chain … ×16, spans 1.98m … 51.97m   → §CIRC_SPINE_BRIDGE bridged=16
+§HELPERS_QUERY_ERR no such table: storey_walkable_raster
+§PATH_LEGAL_DETOUR_FAIL storey=Level 1 no legal detour among 128 doors   (×16 across storeys)
+[TOUR] §FLY_ROUTE … pts=91 illegalChords=18/74
+```
+
+### The four gaps, in dependency order (G1/G2 first — they unblock the most per unit of work)
+**G1 — `exits=0`. Hospital has NO entrance node at all.** `nonRoomDoors=0` too, so the E4 exit
+extractor found nothing on a 63k-element hospital that obviously has doors to the outside. Blocks:
+the Fly Tour's descent finale (`stairDown=-` on every run), `escapeRoute()` entirely, and any future
+"enter through the grand entrance" beat — there is nothing to aim at. Also forces the tour's walk to
+start at an arbitrary interior stop (see §HL-ORIGIN in the Fly Tour file). **Investigate:** why the
+exit rule that yields `nonRoomDoors=5` on Terminal yields 0 here — curtain-wall/glass entrance doors
+are the first suspect, exactly the family C1's rescue already fixed for Clinic/HHS
+("Türelement…Glas"). This may be the same bug one layer over.
+
+**G2 — `no such table: storey_walkable_raster`.** Without the raster, `_legalizePath` cannot compute
+visibility detours: sixteen `§PATH_LEGAL_DETOUR_FAIL … among 128 doors`, and `illegalChords=18/74`
+(24%) on the shipped route. **Known and already owned:** a 2026-07 review of
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §15` established raster coverage exists for only **5 of ~29
+buildings** (Clinic/HHS/JKR/Hospital/Terminal) — and note Hospital is ON that list yet the LIVE
+`Hospital_extracted.db` still has no such table, so either the coverage claim is about a different
+DB snapshot or the raster never shipped into the served artifact. **That contradiction is the first
+thing to settle** — it is a `project_db_snapshot_divergence_landmine.md` shape. Coordinate with §15;
+do not fork a second raster effort.
+
+**G3 — `edges=61` across `nodes=224`, `deadend=194`, `orphan=185/orphanRescued=172`, plus
+`§ISLAND_BRIDGE` ×16 spanning up to 51.97m.** The graph is mostly disconnected islands stitched by
+long synthetic links, which is why routes lurch. Compare against this file's own G1 baseline
+(Terminal `nodes=59 edges=10 deadend=62`) — the deadend/orphan ratio is the SAME pathology this lane
+was opened to fix, still dominant at hospital scale. **Investigate:** whether E2 circulation rescue
+(`e2=194`) is producing edges that connect anything, and whether a 52m island bridge should exist at
+all or is masking a missing corridor chain.
+
+**G4 — `§CORRIDOR_ROOM_BACKPROP injected=10 skippedOverlap=33 / 43`.** Three-quarters of the
+detected corridor buckets are discarded for overlap before any consumer sees them. Corridors are the
+tour's spine (§R6-CORRIDOR-SPINE) and the occupant's actual route. **Investigate:** what "overlap"
+means here and whether a merge/clip is possible instead of a drop.
+
+### G5 (adjacent, different owner — hand to `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md`)
+**The injection never accumulates: every load recompiles all 214 rooms from scratch.** Run 1 wrote
+meta 21.4MB + geo 228.6MB + ad_seed 25.8MB and `§NEEDLE_PERSIST idb=ok bytes=22482944`; run 2 opened
+with `§QUOTA used=3MB` and MISSED all three (`§CACHE_MISS_READ url=Hospital_meta.db`), re-downloading
+~275MB and hitting `§NEEDLE_VERSION_STALE stored=null` → full recompile. **Checked before filing:** it
+is NOT the needle's persist key (a plausible mismatch — the needle persists under the
+`_extracted.db` url while the split loader reads `_meta.db`); the misses are UNIFORM across files the
+needle never touches, so it is whole-cache eviction. `navigator.storage.persist()` is the first thing
+to check. (Caveat stated honestly: a manual "clear browsing data" between runs would produce the same
+log — confirm with the user before treating it as a bug.)
+
+### Witness plan (numbers, never screenshots — this project's FUNDAMENTAL LAW)
+Reuse this file's own established shape: a calculation-only Node harness on real DBs, logging the
+numbers, BEFORE/AFTER, gate on the deltas — plus `witness_room_graph_path.js` (`pass=15 fail=0`) as
+the non-regression floor. Minimum acceptance per gap: G1 `exits>0` on Hospital AND Terminal's 5 exits
+unchanged; G2 the raster present in the SERVED artifact, `PATH_LEGAL_DETOUR_FAIL` → 0 on Hospital;
+G3 `edges` up and `deadend` down with `fullConnectivity()` reported per building; G4 `skippedOverlap`
+down without new cross-room overlaps (`§NO-OVERLAP` invariant must hold).
+**Corpus caution from the §15 review: aggregate statistics are not proof of a specific reported
+case.** That review found 99–100% aggregate illegal-point reduction shipped while the user's two
+actual screenshot routes were never re-run against the fix. Name the specific buildings and re-run
+the specific cases.
+
+### Out of scope for this task
+Route ORDER, stop selection, camera grammar and pacing — those are the Fly Tour lane's
+(`FLY_TOUR_CORRIDOR_GRAPH.md` §HL-FIRST, `FLY_TOUR_DLOD_SCALE.md`). That lane is a pure CONSUMER of
+this graph and is explicitly waiting on G1/G2; it will not build scoring heuristics on top of data
+that is about to change. Do not "fix" the tour from inside this task.
+
+### One thing this task will NOT solve, stated so nobody expects it
+The user's actual opening question — does the tour reach the space a human would call the big hall —
+is a VOCABULARY problem, not a topology one, and survives a perfect connectivity fix:
+- Ranking is by floor AREA only. A grand space reads as grand by VOLUME and light. Per-room height
+  does not exist in the data: `compile_rooms.py` sets `size_z` from a storey-wide wall-height mean
+  (documented in `FLY_TOUR_CORRIDOR_GRAPH.md` §INTERIOR_PACING investigation item 1), so an atrium
+  and a cupboard on one floor measure identical heights.
+- Hospital ships **142 authored `IfcSpace`s** (`§HBA_FOOTPRINT bound 142 rooms→real IfcSpace
+  footprint`) and the needle press replaces/overlays them with **214 compiled rooms**, so the tour
+  ranked `≈ Level 1 Hall/Corridor 2` — a compiled corridor chain — rather than any authored,
+  human-named lobby. **Worth verifying as its own question: does the recompile DISPLACE authored
+  spaces, and should it?** If authored names survive, "main hall" could be chosen from real
+  semantics instead of area alone. That is a genuine candidate for a follow-up spec, not this task.

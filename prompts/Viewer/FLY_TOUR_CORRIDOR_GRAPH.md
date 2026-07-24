@@ -760,6 +760,33 @@ That is true of `modeller/Hospital_ARC.db` and FALSE of the building users actua
 name, different DB, opposite outcome — `project_db_snapshot_divergence_landmine.md` again. State
 WHICH DB a fallback claim applies to; a harness DB is not evidence about the shipped one.
 
+### ⛔ BLOCKED ON GRAPH SUBSTRATE — filed for another session 2026-07-25
+The user's live question ("is it getting to the big hall?") is answered: **the tour reaches the
+biggest space the GRAPH offers; the graph is the limit, not the ordering.** Hospital's live
+`§ROOM_GRAPH` reads `nodes=224 edges=61 deadend=194 orphan=185 exits=0`, with
+`no such table: storey_walkable_raster` (→ 16 `§PATH_LEGAL_DETOUR_FAIL`, `illegalChords=18/74`) and
+`§CORRIDOR_ROOM_BACKPROP injected=10 skippedOverlap=33 / 43`. Full task, in dependency order, with
+the seven-consumer sequencing argument and the witness plan:
+**`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION.**
+
+This lane is a pure CONSUMER of that graph and should NOT build scoring heuristics on top of data
+about to change. Specifically waiting on: `exits>0` (G1 — needed for the user's proposed
+grand-entrance beat AND for the descent finale, `stairDown=-` on every Hospital run) and the
+walkable raster (G2 — legal paths). Two things that stay ours regardless: routing ORDER, and the
+fact that "big hall" is chosen by floor AREA over compiled rooms — a vocabulary limit no
+connectivity fix removes (per-room height doesn't exist; authored `IfcSpace` names are displaced by
+the compile). Do not re-derive those here — they are stated once in §GRAPH-FOUNDATION's closing
+section.
+
+**User's proposed opening grammar, NOT built, recorded verbatim so it isn't lost (2026-07-25):**
+"Perhaps a preamble nearer view thru its glass windows all round until noticing its bigger insides,
+going thru the glass or grand entrance, sweeping to its stairs if it is adjoining another
+attraction." Mapping to existing parts, so whoever picks it up knows the real cost: the closer
+facade pass is a second `orbit` action at smaller radius with the gaze tilted up (`lookAround`
+already gained `lookAtY` for the ENDING beat — parameter change, not new mechanism); "adjoining" is
+measurable today as graph distance from the hall to each stair group; **the one genuinely missing
+piece is the entrance itself — G1.** User's own framing: "I know this needs foundational layering."
+
 ### Not done / follow-ups
 - **Hospital_ARC and SampleCastle_extracted still fall back to legacy** — pre-existing, unchanged by
   this work (`visited 3/15` and `2/9` fail the §MAJORITY-LEGAL/coverage gate in BOTH before and after).

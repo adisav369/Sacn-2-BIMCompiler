@@ -612,3 +612,20 @@ the recompiled sets carry that fix too.
 
 **Cache-bust:** `navigate_find.js?v=54 → ?v=55` (main.js). `sw.js` `CACHE_VERSION` NOT bumped
 (`navigate_find.js` not in `PRECACHE_ASSETS`). Builds on #947 (Stage 4).
+
+## ⚠ OPEN 2026-07-25 — §NEEDLE-NO-ACCUMULATE: every load recompiles from scratch (filed by the Fly Tour lane)
+From the user's live GH Pages console, Hospital, two consecutive runs. Run 1 wrote the full cache
+(meta 21.4MB, geo 228.6MB, ad_seed 25.8MB) and `§NEEDLE_PERSIST idb=ok bytes=22482944`. Run 2 opened
+at `§QUOTA used=3MB` and MISSED all three (`§CACHE_MISS_READ url=Hospital_meta.db — not in IDB`),
+re-downloaded ~275MB, and hit `§NEEDLE_VERSION_STALE stored=null` → recompiled all 214 rooms again.
+**So the version stamp's self-heal is working as designed; what is not working is persistence.**
+
+**Already ruled out before filing:** the obvious suspect — the needle persisting under the
+`_extracted.db` url while the split loader reads `_meta.db` — is NOT it. The misses are UNIFORM
+across files the needle never touches, so this is whole-cache eviction, not a key mismatch.
+`navigator.storage.persist()` is the first thing to check on the shared `github.io` origin.
+**Honest caveat:** a manual "clear browsing data" between the two runs produces an identical log —
+confirm with the user before treating it as a bug.
+
+Full context, and the three room-GRAPH gaps this sits beside, in
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION (G5).
