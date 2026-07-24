@@ -2666,3 +2666,14 @@ have NOT been re-tested against this change.** The contract shape is unchanged (
 in exactly one of `_batchMeta`/`_instanceMeta`), which is why this is *expected* to be safe — but
 that is a reasoned expectation, not a witness. Re-test those three specifically before calling this
 done, same discipline as every other change in this file's history.
+
+**§22 correction, 2026-07-25, real user capture, `meshAggs=4532` confirmed (post-fix, verified real
+version — a stale-cached `viewer.html` cost one earlier false reading, resolved via close-tab + SW
+unregister + hard-reload):** the earlier "'o' gives no additional win inside the building" claim
+(single static point, 67.7ms off vs 77.5ms on) was too small a sample and caught a bad moment.
+**Corrected with sustained real Fly Tour interior motion, same session:** `'o'` OFF interior legs
+ranged 89-180ms (`calls` 2100-4600, swinging with view openness); the same interior legs with `'o'`
+ON (`active=20-36k boxed=87-102k`) settled to a tight, consistent **86-96ms** (`calls` 970-1700).
+**`'o'` does help indoors too, post-fix — modestly, and more importantly it makes frame time far
+more stable, not just lower on average.** Aerial remains the larger win; this doesn't overturn that,
+it corrects "interior gets nothing" to "interior gets a real, smaller, stabilizing benefit."
