@@ -38,11 +38,10 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
-  Usage-verified on Hospital+LTU from live logs. **ALL detail + all still-open items are in
-  `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — read its last 6 §-sections, do NOT re-derive; both
-  `§WATCHDOG-TOUR-SCRUB` reviews are there.** Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s hitch,
-  ROOT-CAUSED = one `cinemaLookDist` raycast/waypoint, made eager by `_tourPrepare`) · watchdog
-  D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid — needs a dimensionless ratio**).
+  **ALL detail + open items are in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — read its last 6
+  §-sections, do NOT re-derive; both `§WATCHDOG-TOUR-SCRUB` reviews are there.** Next: ⛔
+  `§SCRUB_PREPARE_STALL` (1.67s hitch, ROOT-CAUSED = one `cinemaLookDist` raycast/waypoint made
+  eager by `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
