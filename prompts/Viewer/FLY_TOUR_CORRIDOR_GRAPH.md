@@ -1947,6 +1947,17 @@ Terminal and HHS are unaffected (their area-winner is already the width-winner).
 - Witness plan: same shape as the `§HL-FIRST` sweep — real graphs from real DBs, BEFORE/AFTER per
   candidate metric, independently recomputed in the harness (not read back from the engine's own log).
 
+## ▶ §TOUR_HIGHLIGHT_LANE — WORKED TO ZERO 2026-07-26: T1 ✅ shipped, T2 ✅ + T3 ✅ closed no-change, T4 ⛔ G1
+**Read this line before the four tasks below — they are ANSWERED, and their premises were partly wrong.**
+- **T1 ✅** bim-ootb #1012 `§TOUR-POLYLINE` — the tour flies the A* on-floor polyline. Terminal 8/92 → 2/91
+  illegal chords (186 → 18 samples), nothing worse anywhere, live-browser numbers identical to the harness.
+- **T2 ✅ / T3 ✅** bim-ootb #1013 `W-TOUR-MAINHALL-SELECTION` — **no production change needed, measured on 7
+  buildings.** Raw area already elects the real hall everywhere a real hall exists; the champion always
+  survives selection. The defect FINDING 4 described was a PRE-raster artefact, fixed by #1006, not a
+  ranking bug. Do NOT implement a new metric or a reserved slot without a fresh failing measurement.
+- **T4 ⛔** blocked on `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1 — exits re-measured 2026-07-26:
+  Hospital 0, Clinic 0, HHS 0, Terminal 5.
+
 ## ▶ §TOUR_HIGHLIGHT_LANE — the parked metric gate is RELEASED; 4 bounded tasks, ordered (2026-07-26)
 ```
 # ⚠ DO NOT REMOVE
@@ -2041,7 +2052,7 @@ territory, the same gate Task 4 waits on — not a tour defect.
 - Both logged `§TOUR_VERSION v18` and stored `§TOUR_CACHE … key=…:v17:…` — the cache bump landed, so no returning
   user replays the old centroid route.
 
-### Task 2 — re-measure FINDING 4's metric on the post-raster pool (the actual "largest hall" fix)
+### Task 2 — ✅ CLOSED (witness) 2026-07-26 — NO CHANGE NEEDED: raw area already elects the real hall
 Candidates unchanged and still scale-free: `minDim`, `minDim²` (biggest inscribed square),
 `area × minDim`. Current ranking is raw rect area (`tour.js:545-546`, `byArea[0]` at `:588`), which
 ranks LENGTH — a 219m²×3.3m corridor beats a 124m²×4.8m room on Hospital.
@@ -2053,7 +2064,31 @@ ranks LENGTH — a 219m²×3.3m corridor beats a 124m²×4.8m room on Hospital.
   `spatial_structure` but nothing in the fleet has been shown to populate it reliably — check before
   considering it, do not assume.
 
-### Task 3 — reserve the highlight slot BEFORE the per-storey budget (depends on Task 2's metric)
+#### ✅ VERDICT — bim-ootb `witness_tour_mainhall_selection.js` (W-TOUR-MAINHALL-SELECTION, 22/22, PR #1013)
+Pool re-dump done first, as the gate demanded. `area = Σ rect areas` (today), `minDim = max over rects of
+min(w,h)` (the widest place an occupant can actually stand — scale-free, no threshold), `minDim²`,
+`area × minDim`. Elected `mainHall` per metric, 7 buildings:
+
+| building | area | minDim | minDim² | area×minDim |
+|---|---|---|---|---|
+| Hospital | R13 294m²/15.0m | R13 | R13 | R13 |
+| Clinic | R20 323m²/17.2m | R20 | R20 | R20 |
+| Terminal | R1 660m²/20.8m | R18 576m²/23.7m | R18 | R1 |
+| HHS | Hall/Corridor 1 204m²/3.6m ⚠ | same ⚠ | same ⚠ | same ⚠ |
+| LTU_AHouse | R5 564m²/16.4m | R126 276m²/16.6m | R126 | R5 |
+| JKR | R1 72m²/8.0m (all four identical) | | | |
+| Duplex | R1 43m²/6.0m (all four identical) | | | |
+
+**Buildings where a metric change would swap a CORRIDOR for a real ROOM: 0.** HHS (the only ⚠) elects that
+same corridor under EVERY metric — its federated model contains no room larger than 204 m², so this is a
+DATA limit, not a ranking bug. Terminal/LTU swap between two REAL halls either way (660m² vs 576m²) — no
+better answer, just a different one. **FINDING 4's premise is dead:** the "219m²×3.3m corridor beats a
+124m²×4.8m room" case does not exist post-raster — Hospital's champion is now a real 294m²/15.0m room and
+that corridor sits 3rd. Keep raw area. Changing it would be tuning with no defect to tune against, which
+is exactly what `§ABSTRACTION-AUDIT-2` fences off. `scene.js:946`'s `SUM(size_x*size_y)` ranking is
+consistent with this (both rank by plan area); no alignment change needed.
+
+### Task 3 — ✅ CLOSED (witness) 2026-07-26 — NO CHANGE NEEDED: the champion already survives selection
 `const K = storeys.length >= 4 ? 2 : storeys.length === 3 ? 3 : 4;` (`tour.js:512`) plus 3 corridors
 per storey (`:549`) means on 7-storey Hospital the real hall competes for one of **two** slots on its
 own floor — and loses to longer corridors under the current metric. §HL-FIRST can only reorder what
@@ -2064,13 +2099,37 @@ selection already admitted, which is why "largest first" can still miss the larg
 - **Fence:** `§WATCHDOG-HL-FIRST` corollary — any change to `stops[]` must not silently relocate the
   walk's origin (`seqOriginGuid`, `:585`/`:643`). Re-assert `§HL-ORIGIN` in the witness.
 
-### Task 4 — the descent finale needs G1 (exits), and `escapeRoute()` is sitting unused
+#### ✅ VERDICT — same witness (PR #1013). The task's premise is FALSE; do not implement it.
+`survivesSelection=YES` on all 7 buildings, under all 4 metrics: the pool champion is in `stops[]` AND is
+what §HL-FIRST elects. Two structural reasons, both now ASSERTED in the witness rather than assumed:
+1. **Rooms and corridors never compete.** `§R6-CORRIDOR-SPINE` gives corridors their OWN budget
+   (`b.corridors.slice(0,3)`) BEFORE the `K` room picks — the task text ("the real hall competes for one of
+   two slots and loses to longer corridors") misread the code. Measured: Hospital rooms=10/≤14,
+   corridors=12/≤21 — two separate budgets.
+2. **A storey's largest room is always pick #1 of K**, because `b.rooms` is sorted by area descending. The
+   ONLY way a champion can be dropped is `§R6-TYPE-DEDUPE` — which fired **0 times across all 7 buildings**
+   (every candidate is a `COMPILED` room, and the dedupe exempts those by design), or `§CONNECTED-STOPS`
+   dropping an edge-less node, which is deliberate (an unroutable stop can't be flown to anyway).
+**If this ever regresses** (a fleet with real IfcSpace names where dedupe drops a champion), the witness
+fails with `survivesSelection=** NO **` — THAT is the moment to reserve the slot, not before.
+
+### Task 4 — ⛔ BLOCKED (re-verified 2026-07-26): G1 exits still absent on 3 of 4 buildings
 `common/room_graph.js` exports `escapeRoute()` (nearest EXIT by the same Dijkstra) and **no viewer file
 calls it** (verified across `viewer/`, `common/`, `modeller/`: only `room_graph.js` itself and
 `hallway_backbone.js` mention it). Hospital has `exits=0`, so there is no exit to route to yet — that
 is `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1, still open. Sequence: land G1 (real exit nodes), then
 wire `escapeRoute()` as the tour's closing leg. Until G1, this task is BLOCKED and must not be faked
 with "fly to the lowest storey's biggest door".
+
+**Blocker re-measured 2026-07-26 (post-raster, patches applied):** `exit`-kind nodes per building —
+**Hospital 0, Clinic 0, HHS 0, Terminal 5**. `RG.escapeRoute` is exported and callable; still zero viewer
+callers. So the block is real and unchanged for the buildings this lane cares about. One nuance worth
+knowing before someone re-derives it: **Terminal alone could host a partial validation today** (it has 5
+exits, and its §S2.5 descent already targets the single LOWEST one — `escapeRoute()` would instead pick the
+NEAREST exit to the last stop). That is a one-building trial, not the feature; the sequence in this task
+(G1 first, then wire it fleet-wide) stands. **⛔ The one open question for the user/G1 owner:** is an
+`exit` node supposed to come from a real `IfcDoor` to outside, or does G1 intend to synthesise them from
+the ground-storey envelope? Everything else here is measured and ready.
 
 ### Out of scope for this lane (named so nobody re-discovers them)
 - `Hospital_ARC` / `SampleCastle_extracted` fall back to the LEGACY Euclidean nearest-neighbour tour
