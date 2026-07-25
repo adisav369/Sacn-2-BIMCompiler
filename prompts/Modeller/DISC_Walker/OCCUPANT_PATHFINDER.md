@@ -1495,9 +1495,22 @@ were a cost finding. It never was. **Retracted.**
 §BENCH_COMPILE Hospital_63k elements=63415 rooms_before=142 rooms_after=214 open=27ms compile=444ms total=475ms
 ```
 **444ms.** Not 7 seconds — Terminal's `l1ms=6937` is the WHOLE load (boot + patch + compile + write),
-not the compile. Against `Duplex l1ms=60` / `HHS l1ms=2228` / `Terminal l1ms=6937`, Hospital's *compile*
-is sub-half-second on the largest building in the fleet. **There is no cost case for an exception, and
-none should be written.** *(Caveat: node, not a browser tab — no DOM, no competing render loop. Treat
+not the compile.
+
+**⚠ CORRECTION (user, same day): "Largest is LTU" — Hospital is NOT the largest building, and the
+conclusion had to be re-tested on the one that is.** `LTU_AHouse` is **125,698 elements, ~2x Hospital's
+63,415**. Fleet compile costs, measured the same way, so the claim rests on the real worst case:
+| building | elements | rooms | compile |
+|---|---|---|---|
+| **LTU_AHouse** (extracted) | **125,698** | 369 → 422 | **760ms** |
+| LTU_AHouse (meta) | 122,667 | 332 → 394 | 568ms |
+| Hospital | 63,415 | 142 → 214 | 444ms |
+| Clinic | 16,114 | 118 → 207 | 234ms |
+| JKR | 8,985 | 79 → 62 | 149ms |
+**The largest building in the fleet compiles in 760ms**, and cost scales roughly linearly with element
+count — 2x the elements for 1.7x the time, no cliff. **There is no cost case for an exception on ANY
+building, and none should be written.** (JKR 79 → 62 is a DECREASE — v3 merging over-split rooms.
+Noted, not investigated; it is not this lane's question.) *(Caveat: node, not a browser tab — no DOM, no competing render loop. Treat
 as a floor. The margin is ~15x before it could matter, and production already ran it — see 3.)*
 
 **3. It is REDUNDANT — the client-side self-heal ALREADY did this to Hospital, in production.**
