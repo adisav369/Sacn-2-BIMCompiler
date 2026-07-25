@@ -120,7 +120,13 @@ All panels collapse with **−/+**.
 
 - 3D orbit, pan, zoom (mouse or touch)
 - Click any element → IFC class, GUID, storey, discipline, material
-- Fly-tour — auto-orbits rendered buildings, click to stop
+- Fly-tour — plays a routed flight through the building (entrance → highlight room → storey-by-storey);
+  drag the scrub bar to seek anywhere in the tour, `◀◀`/`▶▶` to step beat-by-beat, `0.5x`/`1x`/`2x` speed,
+  pause/resume and loop — every position is deterministic (same timestamp always gives the same camera
+  pose), so scrubbing back and forth never drifts
+
+  ![Fly Tour's scrub bar — beat counter ("Entrance 2/43"), elapsed/total time, tick marks per beat,
+  play/pause/step controls, and speed toggles](img/viewer/fly-tour-scrub-bar.png)
 - Indoor walk-through — follows IfcSpace/door graph through the building
 - X-Ray mode (Alt+Z) — a 3-state cycle: **Off → X-Ray → Bounding Boxes → Off**. X-Ray is the transparent
   see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
