@@ -35,16 +35,16 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 ·
   §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER BUILT+WITNESSED 5/5, PR #1015 — viewer UNTOUCHED (Alt+C unchanged); left: local agent, Shift+Alt+C POST, installer assets. Read its 🧭 PICK-UP BRIEF.**
-- **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
-  `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
-  #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
-  **ALL detail + open items are in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — read its last 6
-  §-sections, do NOT re-derive; both `§WATCHDOG-TOUR-SCRUB` reviews are there.** Next: ⛔
-  `§SCRUB_PREPARE_STALL` (1.67s hitch, ROOT-CAUSED = one `cinemaLookDist` raycast/waypoint made
-  eager by `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
+- **Fly-Tour lane — ALL detail in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT
+  re-derive** (scrubber #999/#1000/#1002 shipped 07-25, suite 11/11; both §WATCHDOG-TOUR-SCRUB reviews there).
+  Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED = eager `cinemaLookDist` raycast/waypoint in
+  `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
+- ⛔ **R5-A deploy leg — USER CALL:** OCI `sandbox/index.html` is **68 days stale** (2026-05-19, `tour.js?v=3`)
+  and matches NEITHER local tree (599 lines vs `deploy/dev`, 293 vs `deploy/live`). Publishing dev = a full
+  68-day viewer refresh, not 5 script tags. Freeze it, or refresh with its own verification? `§R5-A DEPLOY LEG`.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); Duplex injector overwrites named IFC spaces; `docs/userguide-roompath-fixed` no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
@@ -61,6 +61,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   Terminal 8/92→2/91) + #1013 T2/T3 NO-CHANGE on 7 buildings + #1014 `exit` node was a LIFT-door name filter
   (egress would route TO A LIFT) → removed, Terminal 2/91→**0/84**, exits=0 fleet-wide by design.
   T4 still ⛔ pending a REAL exit — `OCCUPANT_PATHFINDER.md §G1-EXTERIOR-DOOR-LANE` (raster coverage gates it).
+- ✅ §R5-A dev-viewer port (07-26): deploy/dev now flies the graph tour — Clinic `§FLY_HL_FIRST mainHall
+  R20 323m²`, un-roomed buildings degrade to legacy. W-R5A 10/10. `FLY_TOUR_CORRIDOR_GRAPH.md §R5-A`.
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
