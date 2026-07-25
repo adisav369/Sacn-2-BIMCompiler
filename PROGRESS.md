@@ -36,11 +36,14 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
 - `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 filter-cheap opt; §14 Hospital per-tab-switch number.
 - `PHOTOREAL_STILL_RENDER.md` — Alt+C §CINEMA_ORBIT_V2, PR #931/#933; self-heal blocker now CLOSED.
-- **NEXT (user-named 2026-07-25): `§TOUR_TIMELINE_SCRUB`** — spec complete, never started, in
-  `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` (its own `▶ NEXT TASK`, line 27). Settled: bar APPEARS
-  when the tour begins (TM-style, no reveal icon), draggable handle on a LINEAR bar (never a rotary
-  dial — that was built and rejected, PR #230), speed 0.5/1/2×, `mm:ss / mm:ss`, chapter ticks,
-  step-by-beat. Purpose is live PRESENTATION. Read `time_machine.js`'s cursor→pose pipeline first.
+- **`§TOUR_TIMELINE_SCRUB` ✅ SHIPPED 2026-07-25** — bim-ootb PR #999 MERGED (verified), `e8689e9`,
+  `tour.js` v17 / `sw.js` v847. Deterministic `pose = f(T)` timeline: `_tourPrepare` eager chain,
+  `tourSeek(T,soft)`, all four knob groups, linear thumb. 9/9 numeric witnesses on real LTU_AHouse
+  (drift 0, overlay state identical). Spec + `§WATCHDOG-TOUR-SCRUB` review in
+  `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`. **NEXT there = its `▶ NEXT SESSION` block (usage +
+  testing review: Duplex legacy tour, touch, `deploy/dev` port) and the scoped
+  `§OPENING_BEAT_SEEK_GAP` (39.8m playback-vs-seek gap on §HL-FIRST's opening orbit — pre-existing,
+  not a scrubber bug, but it sits on the first beat a presenter scrubs back to).**
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
