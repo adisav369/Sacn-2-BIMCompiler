@@ -552,6 +552,11 @@ start at an arbitrary interior stop (see §HL-ORIGIN in the Fly Tour file). **In
 exit rule that yields `nonRoomDoors=5` on Terminal yields 0 here — curtain-wall/glass entrance doors
 are the first suspect, exactly the family C1's rescue already fixed for Clinic/HHS
 ("Türelement…Glas"). This may be the same bug one layer over.
+> ⚠ **ANSWERED 2026-07-26 — and the suspect above was WRONG. Read `§G1-EXIT-IS-A-LIFT-DOOR` at the
+> end of this file BEFORE touching G1.** Short version: there is no exterior-door rule to fix. The
+> `exit` node is produced by a LIFT/ELEVATOR NAME filter, so Terminal's `exits=5` are five elevator
+> doors and Hospital's `0` just means "no door with 'lift' in its name". Glass entrance doors are
+> not the cause. The decision (user/watchdog, 2026-07-26) and a measured feasibility probe are there.
 
 **G2 — `no such table: storey_walkable_raster`.** Without the raster, `_legalizePath` cannot compute
 visibility detours: sixteen `§PATH_LEGAL_DETOUR_FAIL … among 128 doors`, and `illegalChords=18/74`
@@ -747,6 +752,11 @@ start at an arbitrary interior stop (see §HL-ORIGIN in the Fly Tour file). **In
 exit rule that yields `nonRoomDoors=5` on Terminal yields 0 here — curtain-wall/glass entrance doors
 are the first suspect, exactly the family C1's rescue already fixed for Clinic/HHS
 ("Türelement…Glas"). This may be the same bug one layer over.
+> ⚠ **ANSWERED 2026-07-26 — and the suspect above was WRONG. Read `§G1-EXIT-IS-A-LIFT-DOOR` at the
+> end of this file BEFORE touching G1.** Short version: there is no exterior-door rule to fix. The
+> `exit` node is produced by a LIFT/ELEVATOR NAME filter, so Terminal's `exits=5` are five elevator
+> doors and Hospital's `0` just means "no door with 'lift' in its name". Glass entrance doors are
+> not the cause. The decision (user/watchdog, 2026-07-26) and a measured feasibility probe are there.
 
 **G2 — `no such table: storey_walkable_raster`.** Without the raster, `_legalizePath` cannot compute
 visibility detours: sixteen `§PATH_LEGAL_DETOUR_FAIL … among 128 doors`, and `illegalChords=18/74`
@@ -1689,3 +1699,85 @@ note before touching this.
 Independently verified this session (not relayed): the pathab.js/poc_raster_cover.js numbers above,
 the disc_walker.js exclusion grep, the `rooms_meta`/`spatial_structure` contents of the saved DB, the
 tour.js citations Opus gave for the scrubber's three open items.
+
+---
+
+## 🔎 §G1-EXIT-IS-A-LIFT-DOOR — G1 investigated + decided (2026-07-26, watchdog decision + measurement)
+```
+# ⚠ DO NOT REMOVE
+SCOPE: the G1 gap above ("exits=0, investigate why Terminal yields 5 and Hospital 0") is ANSWERED
+here, and the answer invalidates the glass-entrance-door suspect. Watchdog set the direction; this
+section carries the measured evidence behind it. Read before writing any exit-node code.
+```
+
+### The decision (watchdog, 2026-07-26) — real IfcDoor-to-outside FIRST, synthesis only as a narrow fallback
+Verbatim intent, recorded so it is not re-litigated:
+- Same doctrine this file already commits to (§VOCABULARY_NOT_REALTIME). **A synthesised envelope exit is
+  invented geometry** — not something IFC asserted — and this project does not set that precedent per feature.
+- A real exit door is **checkable against ground truth** (does it open to outside: no room on the far side /
+  adjacent to an unbounded face). Synthesis has no such check, so a wrong synthetic exit fails SILENTLY and
+  would only be caught by eyeballing a tour — which this project's rules forbid as verification.
+- Therefore: spend the work on **why doors aren't classifying as exterior**, not on synthesis. Any fallback
+  stays narrow and is logged **distinctly (`§EXIT_SYNTH`)** so a witness can never confuse it with a measured exit.
+
+### Finding 1 — there is no exterior-door rule to fix. `exit` means "a door named like a LIFT".
+`common/room_graph.js:107` — `NON_ROOM_DOOR_NAMES = ['liftdeur','lift','elevator','aufzug','fahrstuhl','hoist']`.
+E4 (`:711`) turns **every door whose name matches that list** into an `EXIT::` node. Nothing anywhere tests
+whether a door faces outside. Measured over the fleet's ARC doors (`discipline='ARC'`, transform present):
+
+| building | ARC doors | lift-name hits (= today's `exits`) | doors whose name says exit/escape/entrance/external |
+|---|---|---|---|
+| Hospital | 440 | **0** | 0 |
+| Clinic | 254 | **0** | 0 |
+| Terminal | 135 | **5** | 0 |
+| HHS | 133 | **0** | 0 |
+| LTU_AHouse | 606 | **0** | 0 |
+| JKR | 65 | **0** | 0 |
+
+So `exits=0` is not a bug in an exterior rule — **no such rule exists**. And the glass-entrance-door
+suspect recorded at G1 above is disproven: `nonRoomDoors` counts lifts, not glass doors.
+
+### Finding 2 — Terminal's five "exits" are ELEVATOR doors, and that is an active defect
+Terminal's exit sample: `Side_opening_ElevatorLift_Door_with_Call_buttons_9478:12000 x 2290 Opening`.
+Consequences already visible in shipped behaviour, not hypothetical:
+- The Fly Tour's `entrance` = the **lowest `exit` node**, so **Terminal's tour "entrance" is a lift door**.
+- That is exactly the residual #1012 measured: the tour's only 2 remaining wall-illegal chords are the leg to
+  and from that node, logged `§PATH_LEGAL_DETOUR_FAIL cause=ENDPOINT_OFF_FLOOR aWalkable=false` — a lift car
+  is not walkable floor, so A* correctly declines to route there (`§ON-FLOOR-GUARANTEE`).
+- `escapeRoute()` (still zero viewer callers) would, if wired today, route occupants **to a lift** — the one
+  thing fire egress must never do. **Wiring it before G1 would ship a wrong answer, not a missing one.**
+This makes T4 of `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §TOUR_HIGHLIGHT_LANE` correctly blocked, for a sharper
+reason than that file assumed: not "no exits yet" but "the exits that exist mean something else".
+
+### Finding 3 — the measured exterior test is FEASIBLE, and G2 is what made it possible
+Probe (scratchpad, method reproducible from this description): for each ARC door, sample a point either side
+along its **through-axis** (perpendicular to the long bbox side) and ask the shipped per-storey walkable
+raster (G2, #1006) whether each side is floor. Both sides walkable = interior; exactly one = EXTERIOR
+CANDIDATE; neither = off-raster. Nothing invented — raster is measured floor, door pose is measured geometry.
+
+| building | ARC doors | storeys w/ raster | interior | EXTERIOR candidates (d=1.0m / 1.5m) | off-raster |
+|---|---|---|---|---|---|
+| HHS | 133 | 4 | 130 | **3 / 3** | 0 |
+| Hospital | 440 | 7 | 220 | 80 / 137 | **133** |
+| Clinic, Terminal, LTU | — | **0 (no `storey_walkable_raster` table)** | — | — | — |
+
+- **HHS is the clean case and it works:** 3 candidates out of 133, stable across both sample distances, and the
+  first one is `Türelement 1-flg - Drehflügel - Glas:Tür` — a glass revolving-leaf **entrance** door. That is a
+  plausible, checkable answer produced with zero synthesis.
+- **Hospital shows the real prerequisite:** 133 of its 440 doors sit off-raster entirely, so the naive
+  two-side test cannot distinguish "outside the building" from "a hole in the raster" — hence 80–137 false
+  candidates. **G1's blocker is raster COVERAGE + a stricter side test** (require the non-walkable side to be
+  outside the storey footprint, not merely an uncovered cell), NOT the absence of exterior doors.
+- **Clinic/Terminal/LTU ship no raster table at all** — #1006 regenerated Hospital's only. Any G1 work on
+  those buildings needs their raster built first (`scripts/build_storey_walkable_raster.js`).
+
+### The G1 work order this implies (ordered, each independently checkable)
+1. **Stop calling a lift an exit.** Split the vocabulary: `NON_ROOM_DOOR_NAMES` stays the *room-test* filter it
+   was ported from (`compile_rooms.py`), but it must NOT be the exit source. Expect `exits` to go to 0 fleet-wide
+   — that is the honest state, and it removes Terminal's wrong lift-door "entrance".
+2. **Add the measured exterior test** (side-sample vs raster + footprint), gated to storeys with real raster
+   coverage; log candidates distinctly so a witness can count them per building.
+3. **Build the missing rasters** (Clinic/Terminal/LTU/JKR…) — this is the coverage prerequisite, already
+   half-owned by `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §15`'s "5 of ~29 buildings" finding.
+4. **Only then** wire `escapeRoute()` as the tour's closing leg (that lane's T4), and only then consider a
+   narrow `§EXIT_SYNTH` fallback for buildings with genuinely no exterior door data.
