@@ -1433,3 +1433,44 @@ first harness cut got all three wrong and reported four false NO-ROUTEs while th
 **Not measurable here:** `§FPS_MODE` / `§DLOD_TICK` are viewer render-loop logs with no headless
 analogue; they need a live session, and per this project's FUNDAMENTAL LAW a recording is not evidence.
 Harness: `ab_path.js` (A/B) + `ab_leg.js` (per-leg attribution), both in `prompts/Modeller/DISC_Walker/`.
+
+### ⛔ OPTION 2 IS THE PATTERN §ROOM_WALKER_VERSION_STAMP REJECTED — user caught this (2026-07-25)
+User: *"is Opus asking to inject room topology results into hospital DB for OCI? Isn't it supposed to
+be pristine and the Walker injects into its IndexDB to save locally approach?"* **Yes. They are right.**
+Verified verbatim at `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md:267-271`:
+> *"Regenerating HHS's DB server-side and re-uploading to OCI (the path explored just before this spec)
+> only fixes buildings WE curate, one at a time, forever, by hand — the exact maintenance burden this
+> spec eliminates. It was shelved… no OCI upload was performed."*
+
+Option 2 — a server-regenerated `spatial_structure` destined for `buildings/patches/` on OCI — is the
+literal shape of that shelved path. **It was never uploaded** (only Option 1, the raster, shipped),
+but it was being held for the WRONG reason: "pending the provenance gate." The gate answers *is it
+verified*; this asks *should it exist at all*, and that question comes first. **Correct the ordering.**
+
+**The two options differ in kind, and the difference is factual, not a category argument:**
+| | client-side self-heal exists? | OCI push avoidable? |
+|---|---|---|
+| rooms (Option 2) | **yes** — `viewer/lib/room_walker.js` ships; the whole §ROOM_WALKER_VERSION_STAMP mechanism | **yes → pushing to OCI IS the rejected pattern** |
+| raster (Option 1) | **no** — viewer only READS `storey_walkable_raster` (`main.js`/`navigate_find.js`/`effects.js`); the builder is node-only (`#!/usr/bin/env node`, fs/path) | no alternative exists today |
+
+**Do not use that table to declare Option 1 clean.** It is still server-generated derived data pushed
+to OCI; the only thing making it defensible is the absence of a client-side raster builder. That is an
+**unexamined gap, not a principled exemption** — "should the raster self-heal client-side too" has
+never been asked, and this file is where it is now on record.
+
+**The doctrine does not close itself** — `ROOM_INJECTOR_NEEDLE.md:274-278` leans toward *never touching
+the OCI files at all, letting every user's first load self-heal*, but says **"worth confirming rather
+than assuming."** Its second open question names the *"old 12-column `spatial_structure`, no
+`room_guid`"* vintage — **that is exactly Hospital's served schema**, so this building is the case the
+doctrine already anticipated and did not resolve. Counter-consideration is real: Hospital is ~63k
+elements and client-side recompute on every visitor's first load may be expensive at that scale.
+
+**⛔ BLOCKED on the user, one question, deliberately not answered by default:**
+> Is Hospital's SIZE a deliberate, written-down exception to client-self-heal — recompute too costly
+> for every first load, so its rooms ship pre-compiled — or is it not, in which case Hospital self-heals
+> into IndexedDB like any other building and **Option 2 never goes to OCI at all**?
+
+Answer (a) → Option 2 ships, with the exception and its cost stated in `ROOM_INJECTOR_NEEDLE.md`, not
+here. Answer (b) → **delete Option 2**; the real work becomes backfilling `rooms_meta` so Hospital's
+missing stamp triggers the client-side recompute the spec already built. `mkpatch.sh` stays either way
+— it is also how a DRY-run baseline gets generated — but its OUTPUT stops being an upload candidate.
