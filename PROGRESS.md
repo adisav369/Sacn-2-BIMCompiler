@@ -35,9 +35,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   re-derive** (scrubber #999/#1000/#1002 shipped 07-25, suite 11/11; both §WATCHDOG-TOUR-SCRUB reviews there).
   Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED = eager `cinemaLookDist` raycast/waypoint in
   `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
-- **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
-  — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
-  land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
+- **`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`** log-precision-first (self-diagnosing computed-vs-rendered +
+  coverage logs) MUST land BEFORE live-diagnosing Terminal's "disciplines disappeared".
 - ▶ **NEXT, spec'd + ordered: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL`** — tour = a stroll,
   not a survey (user 2026-07-26, supersedes §R6-BUDGET). S1 R5-B injector port (⚠ must not clobber authored
   room names) → S3 scene budget (Hospital 22 stops→≤10) → S2 lift shafts (Terminal: 5 lift doors = 1 shaft,
@@ -50,10 +49,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding
-  `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
-- Modeller polish: PBR textures (9); SSAO (needs EffectComposer). ARC occupancy drift 99%→92-95%
-  low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
+- Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
+- Modeller polish: PBR textures (9); SSAO (needs EffectComposer); ARC occupancy drift 99%→92-95% low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26), bim-ootb #1004/#1005/#1011, user-CONFIRMED live
