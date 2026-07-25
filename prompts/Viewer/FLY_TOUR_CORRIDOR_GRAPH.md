@@ -2249,10 +2249,14 @@ failed to load — the opposite of this port's contract).
 
 **Two fixture facts, measured — do not re-derive, and do not "fix" the witness by pointing it at the
 local copy:**
-1. `deploy/dev/buildings/Clinic_extracted.db` is a **stale mirror with no `spatial_structure` table at
-   all**. The DB the deployed sandbox actually fetches (OCI `bim-ootb/buildings/Clinic_extracted.db`,
-   128 MB, last-modified 2026-06-05) carries **118 IfcSpace rooms**. The witness runs against the
-   production-equivalent DB (`CLINIC_DB` env / `_ocitest_*` symlink), never the stale local one.
+1. **The room-bearing DBs are LOCAL — `~/bim-ootb/buildings/` — and OCI must never be fetched for them**
+   (user, 2026-07-26: *"instead of going to OCI, why not here locally? All source DBs lie here. But u
+   usually lost track."*). Measured: `~/bim-ootb/buildings/Clinic_extracted.db` = **118 rooms** (identical
+   to what OCI serves); `deploy/buildings/` = the PRE-room extraction, no `spatial_structure` at all;
+   `deploy/dev/buildings/` = a stale mirror, sometimes a 0-byte stub. Same for Hospital (142), Terminal
+   (53), LTU (369). The witness now **symlinks the local room-bearing DB into the served tree per run and
+   removes it after** — no OCI, no hand-made fixture, repo tree left as found. Full map + the rule:
+   memory `project_db_snapshot_divergence_landmine` (2026-07-26 section).
 2. The first port copied from `~/bim-ootb`'s **main checkout, 38 commits behind**, and silently
    produced a pre-v19 `tour.js` with no `§HL-FIRST` — the witness caught it (`§FLY_ROUTE` present,
    `§FLY_HL_FIRST` absent), re-copied from `origin/main`, green. **PROGRESS.md's "never measure from

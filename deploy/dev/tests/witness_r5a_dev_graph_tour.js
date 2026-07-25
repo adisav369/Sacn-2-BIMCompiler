@@ -32,18 +32,33 @@ let pass = 0, fail = 0;
 const chk = (n, c, x) => { if (c) { pass++; console.log('  ✅ ' + n + (x ? '  ' + x : '')); } else { fail++; console.log('  ❌ ' + n + (x ? '  ' + x : '')); } };
 
 // Buildings: one that ships real rooms, one that ships none — the two halves of the contract.
-// ⚠ FIXTURE NOTE (measured 2026-07-26, do not "fix" by pointing at the local copy):
-// deploy/dev/buildings/Clinic_extracted.db is a STALE dev-staging mirror with NO spatial_structure
-// table at all, while the DB the deployed sandbox viewer actually fetches — OCI
-// bim-ootb/buildings/Clinic_extracted.db, 128 MB, last-modified 2026-06-05 — carries 118 IfcSpace
-// rooms. Testing the graph route against the stale local copy would prove nothing about production.
-// So CLINIC_DB defaults to a path the runner is expected to provide as the production-equivalent DB
-// (env CLINIC_DB, or a symlink named _ocitest_Clinic_extracted.db under deploy/dev/buildings/).
-const CLINIC_DB = process.env.CLINIC_DB || '_ocitest_Clinic_extracted.db';
+// ⚠ FIXTURE RULE (measured 2026-07-26, user correction: "instead of going to OCI, why not here
+// locally? All source DBs lie here"). THE ROOM-BEARING LOCAL COPY IS `~/bim-ootb/buildings/`:
+//   ~/bim-ootb/buildings/Clinic_extracted.db      118 IfcSpace rooms   (= what OCI serves)
+//   bim-compiler/deploy/buildings/Clinic_...db    NO spatial_structure (pre-room extraction)
+//   deploy/dev/buildings/Clinic_...db             NO spatial_structure (stale mirror, 0-byte stub)
+// So this witness SYMLINKS the room-bearing local DBs into the served tree itself and never touches
+// OCI — OCI is a deploy TARGET, not a source. Symlinks are created before the run and removed after,
+// so the repo tree is left exactly as found. Same principle as the standing localhost:8399 sandbox
+// (memory: reference_bim_ootb_sandbox) — resolve buildings LOCALLY, by symlink, per run.
+const LOCAL_SRC = process.env.LOCAL_DB_SRC || '/home/red1/bim-ootb/buildings';
 const CASES = [
-  { label: 'Clinic (production-equivalent DB, 118 rooms)', db: CLINIC_DB, expectGraph: true },
-  { label: 'SampleHouse (no rooms)', db: 'SampleHouse_extracted.db', expectGraph: false },
+  // { label, src: room-bearing local DB (symlinked in), expectGraph }
+  { label: 'Clinic (118 rooms, local ~/bim-ootb/buildings)', src: path.join(LOCAL_SRC, 'Clinic_extracted.db'), expectGraph: true },
+  { label: 'SampleHouse (no rooms)', src: path.join(DEV, 'buildings', 'SampleHouse_extracted.db'), expectGraph: false },
 ];
+// Serve each fixture under a clearly temporary name so a leftover can never be mistaken for real data.
+const linkName = c => '_wr5a_' + path.basename(c.src);
+function linkFixtures() {
+  for (const c of CASES) {
+    const dest = path.join(DEV, 'buildings', linkName(c));
+    try { fs.unlinkSync(dest); } catch (e) {}
+    if (fs.existsSync(c.src)) { fs.symlinkSync(c.src, dest); c.db = linkName(c); }
+  }
+}
+function unlinkFixtures() {
+  for (const c of CASES) { try { fs.unlinkSync(path.join(DEV, 'buildings', linkName(c))); } catch (e) {} }
+}
 
 function serve() {
   return new Promise(resolve => {
@@ -55,15 +70,15 @@ function has(logs, re) { return logs.some(l => re.test(l)); }
 function line(logs, re) { return logs.find(l => re.test(l)) || ''; }
 
 (async () => {
+  linkFixtures();
+  process.on('exit', unlinkFixtures);
   const srv = await serve();
   const browser = await puppeteer.launch({ headless: 'new',
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--no-sandbox', '--enable-unsafe-swiftshader'] });
   console.log('══ W-R5A-DEV-GRAPH-TOUR — deploy/dev flies the graph route (code-only port) ══\n');
 
   for (const c of CASES) {
-    if (!fs.existsSync(path.join(DEV, 'buildings', c.db)) && !fs.existsSync(path.join(DEV, '..', 'buildings', c.db))) {
-      console.log('— ' + c.label + ': db not in deploy/dev/buildings, skipped'); continue;
-    }
+    if (!c.db) { console.log('— ' + c.label + ': source db absent (' + c.src + '), skipped'); continue; }
     const page = await browser.newPage();
     const logs = [];
     page.on('console', m => logs.push(m.text()));
@@ -111,6 +126,7 @@ function line(logs, re) { return logs.find(l => re.test(l)) || ''; }
   }
   await browser.close();
   try { srv.kill(); } catch (e) {}
+  unlinkFixtures();
   console.log('\n' + (fail ? '❌ FAIL ' : '✅ PASS ') + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('ERR ' + e.message); process.exit(1); });
