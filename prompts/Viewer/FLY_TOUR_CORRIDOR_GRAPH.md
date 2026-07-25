@@ -1843,3 +1843,75 @@ looking at zero real building.
 LTU `illegalChords=1/100` (99% wall-legal) vs Hospital `illegalChords=14/81`. Correlates with graph
 density: LTU `nodes=397 edges=278 orphanRescued=91/91`, Hospital `nodes=224 edges=61 deadend=194`.
 Hospital is the outlier; fix the Hospital graph, not the router.
+
+## §SCRUB_BAR_LIFECYCLE — SPEC + FIX for §WATCHDOG-2 D1/D3 (user-reported live, 2026-07-25)
+**User report, verbatim:** *"the scrubber panel cannot reappear when user interupts canvas and drag
+freely at the spot it finds interesting. Pressing L continues the tour but the panel remains hidden."*
+This is exactly `§WATCHDOG-TOUR-SCRUB-2` **D1**, predicted from code and now REPRODUCED IN THE FIELD.
+
+**Field evidence** (user's live GH Pages log, LTU_AHouse, `§TOUR_VERSION v17` + `§SCRUB_PANEL_DRAG`):
+```
+§PICK hits=3 chosen=0 … §PICK no guid for mesh.id=29537   ← canvas tap → picking.js:108 _scrubHide()
+§SHORTCUT_FIRE key=l
+[WALK] RESUMED at action 6                                 ← NO §SCRUB_UI show after it
+[WALK] PAUSED at action 8 → RESUMED at action 8 → PAUSED   ← bar never returns for the rest of the run
+```
+Same log independently confirms §SCRUB_PANEL_DRAG shipped and works live: `§SCRUB_PANEL_POS restore
+left=1051.2 top=97.0 clamped=false` and two `§SCRUB_PANEL_DRAG … (timeline untouched)`.
+
+**Root cause (already traced in D1, re-confirmed at `tour.js:21-32`):** the resume branch sets
+`walkMode=true; flyActive=true` and RETURNS without ever calling `A._scrubShow()`. `_scrubShow` is
+called from exactly ONE place — `:339`, the fresh-tour path — which the resume branch never reaches.
+
+**THE INVARIANT (this is the fix, not a patch):** *the bar is visible whenever a tour is running or
+resumable, and its play/pause button always reflects the real `_tourPaused`.* The shipped comment at
+`:83` already ASSERTED this ("bar lives exactly as long as the tour"); the code did not implement it.
+
+1. **Resume branch (`:21-32`) → call `A._scrubShow()`.** This also closes **D3**'s frozen-resume for
+   free: `_scrubShow` calls `tourTogglePause(false)`, so a `_tourPaused=true` left behind by pressing
+   ▶ on a stale bar can no longer make `walkTick:1443` early-return forever.
+2. **✈-pause branch (`:11-19`) → `A.tourTogglePause(true)`, keep the bar VISIBLE.** Previously it
+   left the bar showing ⏸ (= playing) while nothing played — D3's "live, lying bar". Keeping it
+   visible and honest is better than hiding it: the presenter paused on purpose and may still want to
+   scrub. Do NOT `_scrubHide()` here — that would throw away the control the user just chose to stop at.
+3. **`picking.js:108` unchanged.** A canvas tap is a deliberate grab of the camera; hiding the bar
+   there is correct. Fix 1 is what guarantees it comes back on the next `L`.
+
+**Witness — `W-SCRUB-RESUME-BAR` (suite 10/10 → 11/11):** drive the REAL user path, not a seam —
+dispatch a genuine `pointerdown` on `A.canvas` to trigger picking.js's own abort, then call
+`A.toggleFlyAround()`, and assert: bar `display==='flex'`, `walkMode===true`, `_tourPaused===false`,
+and the restored panel position survives the abort→resume round trip. Also assert the ✈-pause branch
+leaves the bar visible with `_tourPaused===true` (the D3 half).
+
+### §SCRUB_BAR_LIFECYCLE — ✅ IMPLEMENTED 2026-07-25 (bim-ootb `fix/scrub-bar-resume`), suite 11/11
+`viewer/tour.js`: resume branch → `A._scrubShow()`; ✈-pause branch → `A.tourTogglePause(true)` with
+the bar kept VISIBLE; new `A._scrubVisible()` + a narrow `§SCRUB_BAR_REVEAL` guard (user: *"L should
+check if bar panel is present, be careful not to break discovery otherwise"*) — a RUNNING tour whose
+bar is off-screen gets the control restored by `L` instead of being paused; it never fires when the
+bar is visible, so ordinary `L`-pause and free canvas discovery are untouched. `picking.js` unchanged.
+```
+PASS W-SCRUB-RESUME-BAR — abortedAtIdx=11 bar before/after canvasTap=true/false
+  walkModeAfterTap=false | AFTER ✈-RESUME bar=true walkMode=true paused=false panelPosKept=true
+  | ✈-PAUSE bar=true paused=true | REVEAL bar=true walkModeStillRunning=true (discovery not broken)
+```
+**D1 and D3 are now CLOSED.** D2/D5/D6/D7 remain open in `§WATCHDOG-TOUR-SCRUB-2`.
+
+**Two witness-quality defects found while verifying (both were in the harness, not the product):**
+1. `W-SCRUB-PANEL-DRAG` measured its pose/cursor invariant ACROSS a `_scrubHide()`→`_scrubShow()`,
+   and `_scrubShow` calls `tourTogglePause(false)` which revives the rAF chain — so frames landing in
+   that window advanced the cursor legitimately. Flaky by construction: `0/0` on two runs,
+   `poseDelta=0.26 cursorDelta=0.116` on a third. Now measured across the drag only.
+2. `W-SCRUB-HOLD` asserted EXACT-zero pose drift, but the pose passes through `A.controls.update()`
+   and `scene.js:130` sets `enableDamping=true`, so OrbitControls round-trips
+   position→spherical→position every frame of its 3s rAF wait — not an identity (§WATCHDOG-2 Q1.2).
+   **Verified pre-existing, NOT a regression, by direct experiment:** every run that built an
+   `833.341719s` tour passed with `drift=0` (three runs, two of them on the NEW code), and the single
+   failure came on the one run that built an `828.358772s` tour — a different pose at `T*0.42`, hence
+   different float rounding. `4.44e-16 = 2^-51`, one double ULP. Tolerance is now `1e-9` m on the
+   POSE ONLY; `cursorDrift` must still be exactly 0, and the raw number stays in the claim string.
+
+**Also settled: `§SHORTCUT_AUDIT MISS action=xray key=Alt+Z` is an AUDIT BLIND SPOT, not a broken
+shortcut.** User confirmed by hand 2026-07-25: *"while L paused, alt-z works."* The audit only walks
+`scene.js`'s shortcut table, so `§KBD_ROUTE`-handled combos (Alt+Z, Alt+G, F11 — all observed firing
+in live logs) read as missing. **Do NOT "fix" these four — fix the audit's coverage instead.** The
+five `deadKeys=+,-,z,w,r` are a separate question and still unverified.
