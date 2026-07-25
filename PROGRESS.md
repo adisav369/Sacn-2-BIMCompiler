@@ -16,74 +16,66 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
-▶ **PUSH PAUSE LIFTED (2026-07-17, user: "push permission is ON")** — push freely (normal
-fast-forward/PRs, verification habits unchanged) until the user pauses again. `CLAUDE.md` §⏸ PUSH PAUSE.
+▶ **PUSH PAUSE LIFTED (2026-07-17)** — push freely; `CLAUDE.md` §⏸ PUSH PAUSE.
 
 ▶ **In-flight work is NOT listed here — read it from git, it is authoritative and never stale.**
-Branch state is deliberately not hand-copied into this file (every hand-written copy has been wrong:
-"10 commits" when it was 336, "55 .txt" when it was 6). To see what is in flight, in `bim-ootb`:
+Every hand-written copy has been wrong ("10 commits" when it was 336). In `bim-ootb`:
 `gh pr list --state open` · unmerged-with-no-PR: `git for-each-ref --format='%(refname:short)' refs/heads/ | while read b; do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`
-**Verified 2026-07-20: 0 commits exist only on this disk** (48 were single-copy, now pushed; 1 —
-`feat/component-catalog-dedup` — awaits an LFS-quota window). ~40 branches carry unmerged work with
-no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed up, but undelivered**.
+**Verified 2026-07-25: 0 commits exist only on this disk.** Branches carrying unmerged work with no
+open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane/teams-overlay`).
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — A/B/C bugs + E decision.
-- `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — G6, Ph3, Pt1 parked.
-- `prompts/PILL_DRAWER_REORGANIZATION.md` — first-touch flicker.
-- `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
-- DiscWalk: §STOREY-ZBAND fix is DONE+GREEN (07-13, `witness_dw_storey_band.js`, fleet-clean) but
-  STRANDED — pushed `bim-ootb:fix/xray-fixture-classification`, 5 commits ahead of main, no PR ever
-  opened, 9 days idle. Land it (open PR, re-verify fresh, merge) — see
-  `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s 2026-07-22 entry point (bottom
-  of file) for the exact steps. Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
-- `prompts/SPARSE_WALL_ROOM_INFERENCE.md` Phase 1 — sparse-wall fusion (HHS), 4-step follow-up.
-  Related, not duplicate: HHS's room compile is ALSO just stale (pre-dates a shipped fix) —
-  `prompts/Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP, next line below.
-- `prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` — SampleCastle walls
-  misclassified as glowing fixtures, root-caused, POC-gated.
-- `prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` — HHS's 2 remaining islands (storey='Unknown').
-- `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 — large-group Find-panel filter-cheap opt;
-  §14 — Hospital's real per-tab-switch number never captured (263MB DB wouldn't stream in sandbox).
-- `prompts/PHOTOREAL_STILL_RENDER.md` — Alt+C cinema-orbit: §CINEMA_ORBIT_V2 (#907/921/923/925)
-  live-tested 2026-07-21, found real (not the already-witnessed) bugs — bim-ootb PR #931 (ghost/
-  x-ray stuck through orbit) + PR #933 (candidate-skip, fixes Duplex-class only) shipped. Room-compile
-  self-heal blocker (below) is now CLOSED — this should render correctly on Hospital/Terminal/HHS now.
-- **NEXT session, resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
+- `RESUME_HR_BIM_ASSET.md` §07-06c (A/B/C bugs + E) · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06
+  (G6/Ph3/Pt1 parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) ·
+  `OPEN_BUTTON_IFC_BCF_MERGE.md` (not started).
+- DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification`
+  (5 ahead, no PR). Land it — steps in `Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`
+  §2026-07-22. Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
+- `prompts/SPARSE_WALL_ROOM_INFERENCE.md` Phase 1 — sparse-wall fusion (HHS). Related, not duplicate:
+  HHS's room compile is ALSO stale — `Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP.
+- `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
+  root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
+- `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 filter-cheap opt; §14 Hospital per-tab-switch number.
+- `prompts/PHOTOREAL_STILL_RENDER.md` — Alt+C cinema-orbit §CINEMA_ORBIT_V2, PR #931/#933 shipped;
+  room-compile self-heal blocker now CLOSED, should render on Hospital/Terminal/HHS.
+- **NEXT (user-named 2026-07-25): `§TOUR_TIMELINE_SCRUB`** — spec complete, never started, in
+  `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` (its own `▶ NEXT TASK`, line 27). Settled: bar APPEARS
+  when the tour begins (TM-style, no reveal icon), draggable handle on a LINEAR bar (never a rotary
+  dial — that was built and rejected, PR #230), speed 0.5/1/2×, `mm:ss / mm:ss`, chapter ticks,
+  step-by-beat. Purpose is live PRESENTATION. Read `time_machine.js`'s cursor→pose pipeline first.
+- **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- HBA IoT items 1/2/0 (CCTV double-click, camera-POV fly-to ⛔ needs facing vector, mobile
-  card-stack) — `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
+- HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
+  `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- Kernel op-log T4+T5 (unify 3 kernel copies) — BROWSER-GATED. `prompts/KERNEL_HARDENING_BATCH1_SPEC.md §STATUS`.
-- Modeller onboarding — Hospital/Clinic/LTU/HHS_Office + SH/DX/SC into `IFC/`. `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2.
-- ⛔ BLOCKED: `migration/DV_*_rules.sql` EXEMPT from append-only, or enforce? `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
-- Modeller polish: PBR textures (item 9); SSAO (needs EffectComposer). ARC occupancy drift (99%→92-95%,
-  `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
+- Kernel op-log T4+T5 — BROWSER-GATED, `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding,
+  `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `migration/DV_*_rules.sql` append-only exempt or enforce?
+  `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
+- Modeller polish: PBR textures (9); SSAO (needs EffectComposer). ARC occupancy drift 99%→92-95%
+  unexplained, low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22), #947/#954/#959/#961/#964/#967.
-  Log-precision follow-up NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md`.
-- 🟡 P2P Material Receipt UNBLOCKED, real signed M_MatchPO proven (2026-07-23), bim-ootb PR #972 (open) —
-  extracted from real iDempiere Java first; InOutGenerate/InvoiceGenerate's SO-only gates confirmed
-  faithful, not bugs. M_MatchInv (Vendor Invoice side) NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
-- 2026-07-17 through 2026-07-20 DONE items (GEOMETRY_TRUTH_CHAIN, SampleCastle blocky, Posting-tail,
-  ERPUserGuide S&D, ERP multi-user concurrency, ERP O2C Sales cycle, TM DLOD Phase 3, Fly Tour route
-  cache): `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md`.
-- ✅ nav-DLOD root-caused + real perf fix, LTU_AHouse 122k (2026-07-23), bim-ootb PR #973-#977 — bbox
-  mode's empty-Set filter had silently blocked nav-DLOD; ~4.5→~11.5fps mean during flight, measured not
-  felt. §17 (BVH-occl-query) separate, parked. `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19`.
-- ✅ R room-cycle + Home fill-frame shortcuts (2026-07-22/23), bim-ootb PR #969 MERGED — `R` cycles to
-  Nth-largest room (no schema change), `Home` resets cycle + tight exterior fill-frame, same keypress,
-  verified not to regress existing `Home` claims. 15/15 witnesses, real HHS fixture.
+- ✅ Occupant-pathfinder lane CLOSED (2026-07-25), bim-ootb #997 §BRIDGE-ROUTED-LEGAL (A*-gated room→
+  spine bridges; Hospital 59.6→61.7%, other 6 buildings unchanged) + #998 §PATCH-PROVENANCE-GATE
+  (mechanical pre-upload check, now `deploy/OCI_UPLOAD.md` §RULES 6). Hospital raster patch LIVE on
+  OCI under both filenames, fetch-back verified. Option "push room compilation to OCI" DELETED — the
+  client self-heal already does 142→214 in 444ms (LTU, the largest at 126k, is 760ms). F1-F4 follow-ups
+  logged. `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+- ✅ Branch hygiene (2026-07-25): bim-ootb 507→347 local / 590→424 remote, 0 merged-PR branches left.
+- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22), #947-#967. Log-precision
+  follow-up NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md`.
+- 🟡 P2P Material Receipt UNBLOCKED, real signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT
+  closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
+- 2026-07-17→20 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md`.
+- ✅ nav-DLOD root-caused + perf fix, LTU_AHouse 122k (07-23), PR #973-#977, ~4.5→~11.5fps measured.
+  §17 BVH-occl-query parked. `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19`.
+- ✅ R room-cycle + Home fill-frame (07-22/23), PR #969 merged, 15/15 witnesses.
   `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
-- 2026-07-05 through 2026-07-16 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md`.
-- Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
-  Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
+- Older DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md` / `_pre_2026-07-05.md` /
+  `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
-## OCI Deployment
-Live: `bim-ootb-live` (SYSNOVA landing+viewer+single DBs, `buildings/{Name}_extracted.db`). Always
-upload here — `deploy/dev/` is canonical, `deploy/sandbox/` stale. SOP: `deploy/OCI_UPLOAD.md`.
-
-## Reference
+## OCI Deployment · Reference
+Live: `bim-ootb-live` (SYSNOVA landing+viewer+single DBs). `deploy/dev/` canonical, `deploy/sandbox/`
+stale. SOP: `deploy/OCI_UPLOAD.md` — **§RULES 6: patches go through `scripts/oci_patch_gate.js`.**
 Docs: https://red1oon.github.io/BIMCompiler/ · `docs/SPATIAL_COMPILATION_PAPER.md` · `internal/OCI_SETUP.md`
