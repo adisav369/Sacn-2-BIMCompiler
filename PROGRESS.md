@@ -25,11 +25,9 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 (both repos). Unmerged-no-PR branches are backed up but undelivered (`lane/hr-overlay`, `lane/teams-overlay`).
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `RESUME_HR_BIM_ASSET.md` §07-06c (A/B/C+E) · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 (G6/Ph3/Pt1
-  parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) · `OPEN_BUTTON_IFC_BCF_MERGE.md`.
-- DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification` (5 ahead,
-  no PR) — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt
-  `_hostAxis` swap or R-DOOR-SCORE (disproven).
+- `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 (G6/Ph3/Pt1 parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) · `OPEN_BUTTON_IFC_BCF_MERGE.md`.
+- DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification` (5 ahead, no PR)
+  — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; room compile ALSO stale) · `XRAY_FIXTURE_CLASSIFICATION_FIX.md`
   (SampleCastle walls as fixtures, root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: local agent, Shift+Alt+C POST, installer assets. Read its 🧭 PICK-UP BRIEF.**
@@ -40,9 +38,14 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
+- ▶ **NEXT, spec'd + ordered: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL`** — tour = a stroll,
+  not a survey (user 2026-07-26, supersedes §R6-BUDGET). S1 R5-B injector port (⚠ must not clobber authored
+  room names) → S3 scene budget (Hospital 22 stops→≤10) → S2 lift shafts (Terminal: 5 lift doors = 1 shaft,
+  all 5 storeys; `IfcTransportElement`=0 fleet-wide) → S4 scenic glazing metric → S5 jerk softener (profile
+  first, gate = 95th-pct jerk −50%).
 - ⛔ **R5-A deploy leg — USER CALL:** OCI `sandbox/index.html` is **68 days stale** (2026-05-19, `tour.js?v=3`)
-  and matches NEITHER local tree (599/293 diff lines). Publishing dev = a full 68-day viewer refresh, not 5
-  script tags. Freeze it, or refresh with own verification? `§R5-A DEPLOY LEG`.
+  and matches NEITHER local tree (599/293 diff). Publishing dev = a full 68-day viewer refresh, not 5 script
+  tags. Freeze it, or refresh with own verification? `§R5-A DEPLOY LEG`.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); Duplex injector overwrites named IFC spaces; `docs/userguide-roompath-fixed` no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
@@ -59,8 +62,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   Terminal 8/92→2/91) + #1013 T2/T3 NO-CHANGE on 7 buildings + #1014 `exit` node was a LIFT-door name filter
   (egress would route TO A LIFT) → removed, Terminal 2/91→**0/84**, exits=0 fleet-wide by design.
   T4 still ⛔ pending a REAL exit — `OCCUPANT_PATHFINDER.md §G1-EXTERIOR-DOOR-LANE` (raster coverage gates it).
-- ✅ §R5-A dev-viewer port (07-26): deploy/dev flies the graph tour — Clinic `§FLY_HL_FIRST mainHall R20
-  323m²`; un-roomed buildings degrade to legacy. W-R5A 10/10. `FLY_TOUR_CORRIDOR_GRAPH.md §R5-A`.
+- ✅ §R5-A dev-viewer port (07-26): deploy/dev flies the graph tour — Clinic `§FLY_HL_FIRST mainHall R20 323m²`;
+  un-roomed → legacy. W-R5A 10/10. Room-bearing DBs are LOCAL in `~/bim-ootb/buildings` (never curl OCI).
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
