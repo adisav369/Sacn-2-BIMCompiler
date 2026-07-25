@@ -883,7 +883,33 @@ is a VOCABULARY problem, not a topology one, and survives a perfect connectivity
 
 ---
 
+## ✅ SHIPPED 2026-07-25 — §ROOM-SPINE-BRIDGE implemented, PR #995 (auto-merge armed)
+`common/room_graph.js`, right after the existing `§CIRC_SPINE_BRIDGE` block. A deg-0 ROOM now bridges
+to its nearest same-storey spine point by RECT distance, as an `E6` edge — same shape as the
+circ-per-chain bridge above it. Measured, BEFORE = `origin/main`:
+| building | deg0 | room-pair pathability |
+|---|---|---|
+| **Hospital** (live fixture) | **42 → 2** | **56.2% → 86.2%** (R14 deg 0 → 1) |
+| **Terminal** | **6 → 1** | **75.9% → 95.7%** |
+| HHS / Clinic / Duplex / SampleHouse / SampleCastle | unchanged | unchanged |
+**Hospital's Fly Tour now opens in the 315.7 m² atrium** (`mainHall="⚠ Level 1 R14"`) instead of the
+219 m² × 3.3m corridor — the user's original "it doesn't show a large space", closed.
+Independent confirmation: this harness reproduced the review session's 56.2% baseline exactly.
+**Cost recorded, not hidden:** Terminal's illegal-chord ratio rose 14/53 (26.4%) → 20/61 (32.8%) —
+newly reachable rooms add chords and a bridge is a graph EDGE, not a validated walk. Inside the
+`§MAJORITY-LEGAL` gate; no building lost its route.
+**FOLLOW-UP (open):** prefer the nearest spine point whose chord is WALL-LEGAL rather than simply the
+nearest. Needs the chord test available inside `buildGraph` (today it is applied later, in
+`shortestPath`'s legalization). That is the principled fix for the ratio above.
+**STILL OPEN:** the 2 remaining deg-0 rooms on Hospital (storeys with no spine at all), and the
+review's third bucket — 22 "far" rooms averaging ~24 m² with no door within 8m, which may be walker
+artifacts rather than real rooms. Triage before treating them as a connectivity target.
+
+---
+
 ## ▶ RESUME HERE (2026-07-25) — §ROOM-SPINE-BRIDGE: the validated next fix, fixture ready
+**(SUPERSEDED by the SHIPPED block above — kept for the falsification record: two alternative fixes
+were measured and rejected before the working one. Do not re-propose them.)**
 **State in one line: room pathing is NOT solved (Hospital room-pair pathability 14035/24976 = 56.2%,
 42 stranded deg-0 rooms); the Fly Tour's ORDER is solved and shipped, its DESTINATIONS are blocked
 on this file.**
