@@ -1583,3 +1583,35 @@ back in. `compile_rooms.py` is the same shape (bare `--write`, no argparse/confi
 `patches/<dbFile>.sql` mechanism is a DATA-level self-heal, not threshold config; `ensureRooms({force,
 skipPatch})` is two booleans. **So any "disclosed-exception JSON" idea is clean-slate work that would
 SET the convention, not a rename of something already present.** Fact, not a proposal.
+
+## ▶ NEXT SESSION — §TOUR_TIMELINE_SCRUB (user, 2026-07-25). Ranked-item 4, now the named task.
+**Owner file is `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — its own `▶ NEXT TASK` block (line 27)
+is current and correct. Work there, not here.** This file's items 1/2/3 are closed and F1–F4 are
+logged; the scrubber is independent of all of them.
+
+**Verified against the repo, not relayed on trust:**
+- PR **#989** (`§HL-FIRST` highlight-first routing) — `state=MERGED, mergedAt=2026-07-24T20:00:50Z`.
+  **Do not re-implement or re-verify it.**
+- ⚠ **The branch trap is STILL LIVE.** Worktree `/tmp/wt-tour-scrub` is already gone, but branch
+  `feat/tour-timeline-scrub` **still exists both locally and on `origin`** — so the footgun is
+  reachable by anyone who checks it out by name. Content-diff vs `origin/main`: 11 files,
+  **476 deletions / 10 insertions** — i.e. the branch is well BEHIND main (it predates #994–#998),
+  and it was squash-merged, so its history collides → `DIRTY`. **Branch the scrubber off fresh
+  `origin/main`.** Left in place deliberately rather than deleted: a squash-merged branch cannot be
+  proven content-complete from a stat alone, and deleting someone else's ref is not a call to make
+  from a session that does not own it.
+
+**Settled — do NOT re-litigate (all recorded in the owner file, verified present):**
+- **UI:** cyan pulsing dot, viewer accent `#4fc3f7` — *deliberately not red*, avoiding collision with
+  the real `.webm` export indicator. All four knob groups already specced.
+- **Mechanism:** bespoke seek built into `tour.js`, borrowing `time_machine.js`'s doctrine and look
+  but **not its code**.
+- **The unlock:** chain each action's end pose at BUILD time so tour pose becomes `f(T)` — precompute
+  pose-as-a-function-of-time once when the tour is built, rather than recomputing live while scrubbing.
+
+**Harnesses that transfer** (this folder): `hl_witness.js` loads the REAL `viewer/tour.js` into a `vm`
+and runs the real `_buildGraphRoute` — it is how `§FLY_HL_FIRST` was measured numerically, and a
+scrubber is exactly the kind of continuous/time-varying behaviour this project's FUNDAMENTAL LAW says
+must be proven by `§`-logged pose values over T, never by watching a recording. Its `WT` is now an env
+var (`WT=<worktree> node hl_witness.js <tour.js> <db> <label>`), so it points at a fresh worktree
+without editing.
