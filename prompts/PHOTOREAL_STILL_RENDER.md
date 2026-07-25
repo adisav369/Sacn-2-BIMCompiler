@@ -5163,6 +5163,28 @@ Exit codes: **0** playable film · **1** real failure · **3** software-renderer
 | W1 | §RUNNER_GPU_ASSERT refuses software rendering | **exit 3**, aborts *before* even loading the viewer |
 | W2 | §RUNNER_BUDGET_ABORT refuses an over-budget job | **exit 4**, measured `1087ms/frame → projected 6m31s > 0.5m`, terminates in **7s** |
 | W3 | SIGINT cancel still yields a playable partial | **exit 0**, `§MAXQ_CANCEL_PARTIAL stitching 29 frames`, `h264 High frames=29`, decode **clean** |
+| W4 | `--camera` restores an arbitrary opening scene | **exit 0**, `§RUNNER_POSE cam=(30.5,42,-18.25) target=(1.5,2,3.5)` echoed exactly, `h264 High 960x540 frames=6`, decode **clean** |
+
+### ⚠ WHAT ALT+C DOES TODAY — **NOTHING CHANGED IN THE VIEWER.** Read this before telling anyone it is wired up
+No viewer file was touched. Alt+C behaves exactly as before: 10s preview → bake **in your tab** → mp4
+to Downloads, tab held for the duration. The runner is a **separate CLI**; there is no Alt+C → runner
+handoff yet (that is the unbuilt agent + Shift+Alt+C POST). Do not describe this feature as
+"Alt+C and forget" until that wiring exists — today it is "run a command and forget".
+
+**The manual bridge that DOES work today** (this is the honest current workflow, W4-witnessed):
+1. Frame the opening scene in your tab, then in DevTools console:
+   ```js
+   copy([APP.camera.position.x, APP.camera.position.y, APP.camera.position.z,
+         APP.controls.target.x, APP.controls.target.y, APP.controls.target.z]
+        .map(n => n.toFixed(3)).join(','))
+   ```
+2. Paste it into the runner and walk away — your tab is free immediately:
+   ```
+   node maxq_offline_runner.js --db buildings/LTU_AHouse_extracted.db --frames 360 --fps 15 \
+        --w 1852 --h 960 --serve-root ~/bim-ootb --out ./out --camera <pasted>
+   ```
+The film is identical to what the tab would have baked — constant staging seed, no `Math.random` in
+the plan (proven above), pose restored verbatim (W4).
 
 ### TWO REAL BUGS the witnesses caught — neither was findable by reading
 1. **§RUNNER_TERMINAL — polling `§MAXQ_DONE` alone hangs forever.** A cancel with under 1s of footage
