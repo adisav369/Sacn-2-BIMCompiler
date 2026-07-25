@@ -1629,3 +1629,63 @@ Safe by construction: a merged PR's content is in `main`, and the ref is recover
   batch the deletes (~15/push) — 165 individual pushes will outrun a 2-minute tool timeout, chunked
   ones do not. No LFS hang was hit (4.2s for the first chunk of 10), but the risk from
   `CLAUDE.md §DB CHANGES` is real, so the loop is timeout-guarded per push.
+
+## 🐕 §WATCHDOG — session closeout (2026-07-25, same reviewer role, continuing the handoff above)
+User closing this session (Chrome update reboot). Updating the two things the `§WATCHDOG` section
+above left stale, then indexing everything else this session touched so a fresh session isn't
+re-deriving it.
+
+**⛔ Item 1 (raster deploy) is CLOSED, not blocked anymore.** The watchdog section above still reads
+"BLOCKED on the user." It shipped: Option 1 (raster only) is live in production, verified against the
+served bucket's own bytes (etag/md5-matched), `poc_raster_cover.js` 100% own-footprint both variants.
+Option 2 (rooms+raster server patch) was investigated further and correctly **shelved as redundant**,
+not merely deferred — the client-side self-heal already delivers the identical room set (142→214,
+matches `rooms_meta` exactly) fleet-wide for free, benchmarked fast on the real worst case
+(LTU_AHouse 125k elements, 760ms, no scaling cliff). No cost case for a server-push exception exists
+anywhere in the fleet. `mkpatch.sh`'s 856KB patch survives only as a dry-run baseline generator.
+
+**A provenance gate now exists and is doctrine, not a manual habit** — `#998` merged
+(`deploy/OCI_UPLOAD.md` rule 6): every OCI upload of this data is checked on two axes (served DB's
+actual bytes, verifying worktree's actual commit), refuses on either mismatch, caught its own first
+real defect (an unreconstructable patch) before publication.
+
+**One number that needs re-checking, not re-trusted:** independently re-ran `pathab.js` against a
+user-saved `Hospital.db` (self-heal output, dated *before* the raster patch shipped) — got
+**pathable=61.7%** (15407/24976, deg0=34, R14 atrium reachable), not the 86% figure this thread and
+conversation had been repeating. That 86% traces to PR #995, which this file's own commit history
+records as corrected twice (#996, #997) — plausible it never actually survived as the real number.
+**Next session: save Hospital fresh (post-raster-patch, post-#997/#998) and re-run `pathab.js` +
+`poc_raster_cover.js` against that file** — whichever number comes back is the one to carry forward;
+stop citing 86% until then.
+
+**DiscWalker (Modeller) does not and should not consume this graph for containment** — confirmed
+live against current `disc_walker.js` (excludes `RM_%`/`≈` rows by design, per `WalkerDoctrine.md`
+§14/§15, re-verified not re-derived). A real, separate, *unaddressed* opportunity was corroborated —
+not newly found, already on record 2026-07-18 in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md:3-25` — for
+routed-network MEP placement (PLB/ACMV) specifically, which honestly refuses on zero-MEP buildings
+today rather than fabricating; real corridor connectivity is a categorically different trust class
+than the room-boundary approximation §14/§15 correctly excludes. See that file's added corroboration
+note before touching this.
+
+**Other files touched this session, not duplicated here:**
+- `prompts/Viewer/SAVE_DB_SCENE_STATE.md` — new, idea-only spec: Save-As-DB persisting camera/view
+  state, a cut/join/heal tour EDL, versioned "Save As Tour" cuts (reusing the existing
+  `versions[]`/`latestVersion` shape from `LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`), a Loop option.
+  Video export explicitly ruled out of scope — existing `.webm`/Record stays untouched.
+- `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — gained a small pointer addendum to the file above
+  (additive only, doesn't touch the builder's own `§TOUR_TIMELINE_SCRUB` narrative) — **and
+  separately, that scrubber shipped**: bim-ootb PR #999 (`tour.js` v17, `sw` v847), 9/9 real-building
+  witnesses (LTU_AHouse, determinism/hold/drag-release/overlay all exact-zero deltas). One flagged,
+  unresolved item: a pre-existing 39.8m playback-vs-seek gap during the tour's new opening high-radius
+  orbit (adaptive-jump smoothing, not caused by this PR, doesn't affect seek determinism) —
+  recommended as its own named follow-up given `§HL-FIRST` made that beat the very first thing seen,
+  not something to leave as an ambient "worth deciding."
+- `docs/internal/WalkerDoctrine.md` §15 — dated re-verification addendum (not new doctrine) confirming
+  the Viewer/Modeller substrate split still holds against today's current code.
+- `docs/StrategicIndustryPositioning.md` — new Tier 3 (Frontier) entry documenting this whole
+  topology-substrate thread publicly, honestly caveated, explicitly held out of the Moats list pending
+  further maturity.
+
+Independently verified this session (not relayed): the pathab.js/poc_raster_cover.js numbers above,
+the disc_walker.js exclusion grep, the `rooms_meta`/`spatial_structure` contents of the saved DB, the
+tour.js citations Opus gave for the scrubber's three open items.

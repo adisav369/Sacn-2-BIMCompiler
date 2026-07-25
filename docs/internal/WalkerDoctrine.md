@@ -487,3 +487,20 @@ applied to occupant-graph data, not just disc-walk placement) — never grow the
 geometry-interpretation logic per feature. When a routing feature needs something the vocabulary doesn't
 have yet, the correct move is extending the compiled vocabulary (versioned, self-healing, shared by every
 future consumer) — not bolting one-off real-time logic onto whichever feature asked for it first.
+
+**Re-verified against current code, 2026-07-25 — the two tracks are still deliberately separate, not a
+gap.** Same-day Viewer-side session hardened the occupant-graph track further: `room_walker.js` v3
+(`§LOCAL-FRAME + §RASTER-EPS + §CONTAINMENT-ALIAS, post-§SUSPECT-LARGE`) self-heals fast and correctly
+(measured, not assumed — Hospital 444ms→214 rooms, LTU_AHouse worst-case 760ms→422 rooms, `rooms_meta`
+stamp confirmed written), and is confirmed the single shared trigger behind the Viewer's Find-panel
+Room-Path feature, Fly Tour, and Cinema/MaxQ orbit prep (`navigate_find.js`'s own comment names it "the
+ONE shared injection core"). **Checked whether this now-verified walker output ever reaches
+`disc_walker.js`'s placement substrate — it does not, exactly as §14 already prescribed**: current
+`disc_walker.js` (`spacesOf()`, ~line 249-265) reads real `IfcSpace` rows first, falls back to
+`spatial_structure` only when needed, and explicitly filters out `compile_rooms.py`/`room_walker.js`
+synthetic rows (`guid NOT LIKE 'RM\_%'`, `name NOT LIKE '%≈%'`) with its own comment calling them
+"guesses, not extraction." No dependency exists in either direction — Modeller/DiscWalker never calls
+`ensureRooms()`/`RoomWalker`, and the Viewer's self-heal never feeds DiscWalk. An algorithm quality
+improvement on the Viewer side (however well-benchmarked) does not change this epistemic boundary, by
+design — worth a session not assuming the two have converged just because the Viewer-side walker got
+measurably better.

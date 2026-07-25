@@ -22,6 +22,20 @@
 #      independent of when/whether DiscWalk gets wired to it.
 # Not scoped as a task here — flagging the connection for whoever next touches class-3 routing or a
 # substrate-quality gate, per the design intent already on record.
+#
+# ▶ CORROBORATION (2026-07-25, independent re-derivation, Viewer-side session — same conclusion, sharper
+# scope, still not scoped as a task): generative MEP placement onto a zero-MEP building already works
+# fine WITHOUT this graph — density/single/array placement host-bound to real ARC surfaces (SH: 38 ELEC
+# outlets; SC: 151 FP sprinklers borrowed from Terminal rules) needs no connectivity data at all. The
+# gap this note's items 1-2 actually target is narrower: ROUTED-NETWORK placement (PLB pipes, ACMV
+# ducts) on a zero-MEP building refuses outright today — `WALKER_GUARDS_ROSETTASTONE_SPEC.md:398-401`
+# and this file's own SC section below ("`routeChains` cannot walk a network that isn't there, and
+# fabricating one is forbidden") — because it has no real evidence to route through. `RoomGraph`'s
+# connectivity edges (real doors/corridors, not guessed room shapes) are a categorically different kind
+# of evidence than the room-BOUNDARY approximations `WalkerDoctrine.md` §14/§15 correctly excludes from
+# placement — worth keeping that distinction explicit if this is ever picked up, so "DiscWalker doesn't
+# trust approximate rooms" doesn't get mis-read as "DiscWalker shouldn't trust real corridor connectivity
+# either." Still just a flagged connection, not scoped.
 
 # ▶▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 LATER STILL — supersedes every block below, including the one right
 # under it). MANAGER-verified + MERGED. Read this first, one task remains.

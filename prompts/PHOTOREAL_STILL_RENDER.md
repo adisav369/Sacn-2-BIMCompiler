@@ -4544,3 +4544,80 @@ reopen the settled §SCOPE DECISION):
 - No implementation, no witness, no live numbers beyond what this session already measured
   incidentally while verifying the timing fix above — next session should treat those numbers as a
   starting hypothesis, not proof, and re-measure specifically for whichever idea gets picked up.
+
+## SPEC ONLY, NOT IMPLEMENTED — same DLOD idea, now for Alt+S Still Refine's own canvas burden (2026-07-25)
+User ask: "look into the frame alt-s and snap process... if using what we learned in recent DLOD can
+reduce the canvas burden and speed things up." Investigation only, grounded by reading `effects.js`
+directly — no code touched.
+
+### Confirmed: Alt+S and Cinema/MaxQ share the EXACT SAME shadow-setup function, not two problems
+`A.startStillRefine()` (effects.js:2855) calls `_applyPhotoStaging()` (effects.js:2883), which calls
+`_enablePhotoShadows()` (effects.js:2534). The Cinema activation path (effects.js:3972) calls the
+SAME `_applyPhotoStaging()` — its own comment says so directly: *"Reuse the exact still-refine
+staging setup (ground/shadow/sky/sun/fog/addons/sparkle)"* (effects.js:3935). `_enablePhotoShadows()`
+(effects.js:2183-2226) does `A.scene.traverse` over every `isMesh/isInstancedMesh/isBatchedMesh` in
+the loaded scene and sets `castShadow=receiveShadow=true` on each, regardless of position or camera
+view, chunked 5000/tick — this is the identical code that logged `casters=1135` (Hospital) and
+`casters=11235` (the other building) cited in the 2026-07-24 SPEC ONLY section above. **Any
+caster-set-culling fix built for one lands for both — this is one optimization point, not two.**
+
+### Where Alt+S is actually a BETTER fit for the DLOD idea than Cinema was
+Cinema/MaxQ needed a margin for camera MOTION along a swept path (a caster just outside one sampled
+pose's frustum could still matter for the next pose). Alt+S has zero camera motion while it runs:
+`step()`'s `A._composer.render()` (effects.js:2934) renders the exact same frozen frustum on every
+one of the 16 accumulation samples — `_stillSig`/`_camSig()` (effects.js:2914-2933) restart the
+whole accumulation from scratch on ANY pose change, so a still can only ever finish from a genuinely
+static camera. The "swept union across sampled poses" problem that made Cinema's idea 1/2 open
+questions hard doesn't exist here — one frustum test, not N samples along a path. The margin that
+DOES still apply is spatial, not temporal: a caster physically outside the frustum can still throw a
+shadow INTO frame (sun-angle dependent) — so the Cinema section's still-open question ("shadow-caster
+margin/pad needs to be sized from real geometry, not assumed") is the SAME unresolved question here,
+not a new one — solving it once serves both consumers, since it's the same function.
+
+### A cost the Cinema section didn't have to consider: repeated, not one-time, for Alt+S
+Cinema's spec framed all three ideas as ONE-TIME prep-phase costs. Alt+S's own `step()` loop
+(effects.js:2905-2938) additionally calls `_reassertPhotoShadowCoverage()` (effects.js:2128) — another
+full `A.scene.traverse` over every mesh in the entire scene — on EVERY accumulation RAF frame, up to
+16 times per Alt+S press (comment at effects.js:2907-2908 names this `§PHOTO_STREAMING_RACE`:
+re-catching meshes that streamed in after the initial push). That's the initial `_enablePhotoShadows`
+traverse PLUS up to 16 more — around 17 full-scene traversals for one still, all scoped to the WHOLE
+building regardless of what's actually in frame. Scoping BOTH the initial enable and the reassert to
+a frustum+margin-limited candidate set would cut cost on every one of those 16 frames, not just once
+before frame 0 — a bigger multiplier than anything measured in the Cinema numbers. (The 24-frame N8AO
+fold that runs after, `_startStillAOPhase`, does NOT re-traverse or re-render the scene per its own
+design comment at effects.js:2672 — "no further scene renders at all, depth is primed once" — so this
+repeated-traversal cost is confined to the 16-sample TAA phase, not the AO phase.)
+
+### Where the DLOD idea is LESS certain to help for Alt+S — streaming order
+Cinema's idea 1 (path-aware streaming priority) assumed geometry streams in whatever order it
+naturally arrives. Confirmed true for the async range-stream path large buildings use
+(streaming.js:60-118 — inserts rows in raw DB order, `A._useDlodPath=false`, no distance sort). A
+DIFFERENT, already-existing distance sort (`§S260`, streaming.js:144-151) exists on the smaller-building
+local/non-range-stream path — nearest-to-camera-at-load-time first. Neither path does a frustum test,
+only distance. For Alt+S specifically this transfers with LESS confidence than idea 2 did: Alt+S is a
+user keypress after they've typically already navigated the scene, not a capture that starts the
+instant a building loads — by the time someone presses Alt+S, nearby geometry has often already
+streamed in via ordinary navigation-triggered streaming. Two existing code comments in this exact file
+give conflicting anecdotes on Hospital's streaming speed that this review does not reconcile:
+effects.js:2120-2121 says Hospital's rooftop content "may stream/load lazily and not exist yet" at
+Alt+S time, while effects.js:2140-2141 says Hospital's 63,182 elements "finish streaming almost
+immediately on page load, long before Alt+S." Both are real comments from different sessions — flagged
+as open, not resolved here. Idea 1's payoff for Alt+S needs a real measurement (does a still on a
+freshly-loaded, not-yet-navigated view actually wait on streaming?) before assuming it transfers the
+way it did for Cinema.
+
+### What does NOT transfer, explicitly
+- Box-proxy swap — same exclusion as Cinema: a still is a captured/exported frame, never a proxy box
+  in it.
+- Per-frame SSAA/N8AO/TAA-sample render cost of whatever genuinely IS in frame — unaffected. This is
+  about trimming shadow-caster set size and traversal count, not lowering visible-geometry quality.
+
+### Explicitly open, not resolved here (spec only, per the same "look into it, don't fix" framing)
+- Real measurement needed: wall-clock cost of `_enablePhotoShadows` + the up-to-16x
+  `_reassertPhotoShadowCoverage` traversals on Hospital/a large building, isolated from streaming
+  wait — the 1135/11235 caster counts and the 9-second gap are the closest existing numbers, and
+  they were measured for Cinema, not yet for the Alt+S step() path specifically.
+- The shared shadow-throw margin/pad sizing question carried over unresolved from the Cinema section.
+- Whether Alt+S actually experiences a meaningful streaming wait in practice, given its different
+  (usually post-navigation) trigger pattern vs Cinema's — needs a real witness on a large building,
+  not assumed from the Cinema numbers or either of the two conflicting Hospital comments above.

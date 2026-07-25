@@ -182,6 +182,33 @@ Witnesses: `W-BONSAI-*` (`bonsai_signed_live.js`, `bonsai_ifc_live.js`, `bonsai_
 (`witness_e2e_mv_parity.js`), `W-BONSAI-ROSETTASTONE`/`witness_mep_rosettastone_lookup.js`. See
 [`ModellerKernelFold.md`](ModellerKernelFold.md) and `docs/internal/WalkerDoctrine.md`.
 
+**Occupant/topology graph — one substrate, three consumers (update 2026-07-25).** A second
+frontier piece sits underneath the editing kernel: a typed graph over the same building where every
+edge is `recovered` (from IFC relations) or `derived` (pure geometry — face-touch, cadence, bbox-
+span), never invented, oracle'd to a **0.000mm** fold round-trip and proven construct-agnostic —
+the same builders run unmodified on a house and on a bridge (no grid, no storeys, zero fabricated
+edges either way). Three separate features consume the same graph rather than each growing its own
+pathfinding: the Spatial Dependency Graph's edit-time fold/cascade engine, an occupant-navigation
+graph (room ↔ corridor ↔ stair ↔ exit — a real hospital's room pathability raised 56%→86%, an
+isolated 315 m² atrium reconnected), and the Viewer's Fly Tour, which routes its camera through the
+identical compiled vocabulary instead of inventing its own waypoints (highlight-first routing
+shipped, PR #989).
+
+What keeps this in Frontier rather than the Moats list below: a provenance gate now checks every
+deploy of this data on two axes — the exact bytes of the building DB actually being served, and the
+exact commit of the code that measured it — refusing to run against a stale checkout or a mismatched
+snapshot. It replaced a manual discipline that had already let two real defects reach
+near-publication (a raster built for one room count silently judged against another; a stale engine
+checkout nearly reported a fix as a regression), and its own first run caught a third: an uploaded
+patch with no reconstructable source in the repository. **Stated plainly, what's still open:** on
+5 of a real building's 7 storeys, the occupant graph's walkability today is a room/corridor-rectangle
+network, not independently measured floor geometry — real connectivity under that definition, not yet
+demonstrated against slab-level geometry there. No incumbent or open-source BIM tool surveyed below
+treats occupant navigation, camera-tour routing, and parametric editing as three consumers of one
+zero-invented, snapshot-verified graph; this is architecture proven on a real multi-storey building,
+not yet a finished capability. See `prompts/SPATIAL_DEPENDENCY_GRAPH.md`,
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`, `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`.
+
 ---
 
 ## The landscape — nobody else compiles, nobody else connects
