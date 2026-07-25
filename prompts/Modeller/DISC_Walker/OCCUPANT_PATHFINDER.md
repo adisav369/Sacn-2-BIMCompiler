@@ -1772,12 +1772,48 @@ CANDIDATE; neither = off-raster. Nothing invented — raster is measured floor, 
   those buildings needs their raster built first (`scripts/build_storey_walkable_raster.js`).
 
 ### The G1 work order this implies (ordered, each independently checkable)
-1. **Stop calling a lift an exit.** Split the vocabulary: `NON_ROOM_DOOR_NAMES` stays the *room-test* filter it
-   was ported from (`compile_rooms.py`), but it must NOT be the exit source. Expect `exits` to go to 0 fleet-wide
-   — that is the honest state, and it removes Terminal's wrong lift-door "entrance".
+**Watchdog split (2026-07-26): step 1 is an ACTIVE-CORRECTNESS fix and ships alone — it is not blocked on
+steps 2-4. Steps 2-4 are a separate multi-session lane (fleet raster coverage is the gating work there).**
+
+1. ✅ **DONE — bim-ootb #1014 `§G1-EXIT-IS-A-LIFT-DOOR` step 1, W-EXIT-NOT-A-LIFT 45/45.**
+   E4's exit-node creation removed; `isRoomDoor()`/`NON_ROOM_DOOR_NAMES` stay the *room-test* filter they were
+   ported from (`compile_rooms.py`) and nothing else. **Measured:** Terminal `exits 5 → 0` (all 5 confirmed
+   lift-named) and its Fly Tour `illegalChords 2/91 → 0/84` — **zero**, the last wall-cutting chord in the
+   fleet's tour gone with the lift-door entrance. On all 7 buildings the routing graph is byte-identical
+   (room/circ/stairwp/spine/doorwp counts, non-E4 edges, room→room pathability) and visited stops are
+   unchanged. Risk was low for a measurable reason, not a hopeful one: **6 of 7 buildings already had
+   `exits=0`**, so every consumer's no-exit path (`tour.js` §HL-ORIGIN, `scene.js` `_graphEntrance`→`'none'`,
+   `effects.js` §CINEMA_EXIT→`exitSrc=db-doors`) was already the common path — this moved Terminal onto it
+   rather than opening a new one. Live browser confirmed identical numbers (`§ROOM_GRAPH exits=0`,
+   `§FLY_ROUTE illegalChords=0/84`). Versions bumped in lockstep: `room_graph.js?v=12`, `§TOUR_VERSION v19`,
+   `TOUR_CACHE_VER v18`.
+   ⚠ **Intended side effect:** Terminal now logs `stairDown=-` — it has no descent finale, because it no
+   longer has a lift door to misname as an entrance. Step 2 is what gives it a real one. Do not "restore"
+   the finale by relaxing the exit rule.
 2. **Add the measured exterior test** (side-sample vs raster + footprint), gated to storeys with real raster
    coverage; log candidates distinctly so a witness can count them per building.
 3. **Build the missing rasters** (Clinic/Terminal/LTU/JKR…) — this is the coverage prerequisite, already
    half-owned by `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §15`'s "5 of ~29 buildings" finding.
 4. **Only then** wire `escapeRoute()` as the tour's closing leg (that lane's T4), and only then consider a
    narrow `§EXIT_SYNTH` fallback for buildings with genuinely no exterior door data.
+
+### ▶ §G1-EXTERIOR-DOOR-LANE — steps 2-4 as a dispatchable lane (opened 2026-07-26, NOT started)
+Step 1 shipped; this is what remains, sized honestly as multi-session work rather than one task.
+- **Entry state (measured, do not re-derive):** `exits=0` on every building, by design. `RG.escapeRoute` is
+  exported, callable, zero callers. Raster coverage is the bottleneck — `storey_walkable_raster` exists for
+  Hospital + HHS in the fleet DBs checked; **Clinic, Terminal, LTU_AHouse ship no such table at all**, and
+  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §15` already put fleet coverage at ~5 of ~29 buildings.
+- **The test to implement** (feasibility already measured, §Finding 3 above): for each ARC door, sample a
+  point either side along its through-axis (perpendicular to the long bbox side) against the storey's
+  walkable raster. Both sides walkable = interior; exactly one = exterior candidate. **HHS: 3 candidates of
+  133 doors**, first is a glass revolving-leaf entrance — plausible and checkable. **Hospital: 80-137**,
+  because 133 of its 440 doors sit off-raster — so the test needs a second condition (the non-walkable side
+  must be outside the storey FOOTPRINT, not merely an uncovered raster cell) before it can be trusted there.
+- **Order:** (a) raster builds for the uncovered buildings, (b) the two-condition exterior test + a witness
+  counting candidates per building against hand-checkable expectations, (c) wire `escapeRoute()` as the tour
+  finale (`FLY_TOUR_CORRIDOR_GRAPH.md §TOUR_HIGHLIGHT_LANE` T4), (d) `§EXIT_SYNTH` ONLY if a building with
+  real raster coverage still yields zero candidates — logged distinctly, never indistinguishable from a
+  measured exit.
+- **Fences:** no name-based exit rule ever again (that is what step 1 removed); no synthesised envelope exit
+  as a primary source (watchdog, §The decision above); a candidate set that is a large fraction of a
+  building's doors is a FAILED test, not a result — a real building has a handful of exterior doors.
