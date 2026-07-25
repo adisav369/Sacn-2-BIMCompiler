@@ -280,20 +280,34 @@ stair flights it uses, and the rooms along the way stay highlighted.
 legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
 it passes through.
 
-![Aerial X-ray view of Hospital with a Find-panel path drawn from ≈ Level 1 R35 to ≈ Level 4 R8 — the yellow route line zigzags across open rooftop/atrium space between wings instead of following a corridor](img/viewer/find-room-path-hospital-topview.png)
+![Aerial X-ray view of Hospital with the Find panel open on the same ≈ Level 1 R35 to ≈ Level 4 R8 route, the yellow line now hugging the real corridors and stair flights on both levels instead of cutting across the open roof between wings, the panel listing three numbered room stops with each hop labelled through door: / via stair: / along Corridor — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-topview.png)
 
-![Straight-on facade view of the same Hospital route — the yellow line rises vertically then runs horizontally in front of the building mass, a visible zigzag rather than a corridor-hugging path](img/viewer/find-room-path-hospital-frontview.png)
+![Straight-on facade view of the same Hospital route with the Find panel still open, the yellow line now tracking the real ground-floor corridor and climbing through the stair flight against the building mass instead of floating in front of it, the same three numbered stops and through door: / via stair: / along Corridor hop labels visible in the list — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-frontview.png)
 
-![Angled view along the Hospital building's length, same route — the yellow line floats outside/above the real floor plates rather than tracking the walkable interior](img/viewer/find-room-path-hospital-sideview.png)
+![Angled view along the Hospital building's length, same route — the yellow line now runs along the real corridor windows and through the doorways it uses on its way up the stair instead of floating outside the floor plates — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-sideview.png)
 
-*Known limitation, reported not fixed (2026-07-26):* on some buildings — confirmed on Hospital — a
-room-to-room path can currently draw as a straight line that cuts through open air or atrium space
-instead of hugging the real walkable floor, and/or zigzag through a door pair it didn't need to use,
-rather than the clean corridor-hugging route described above. A real route on Hospital
-(`≈ Level 1 R35 → ≈ Level 4 R8`, 124.69m) reproduced this live: 5 of its 6 same-storey legality checks
-failed to find a valid detour, which is why the drawn line doesn't hug the floor in the screenshots
-above. This is a known, tracked issue, not newly discovered here — the full technical trail is in
-`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §9–§16 for anyone who wants it.
+*Fixed and verified live (2026-07-26):* the drawn-line defect shown in earlier versions of the
+screenshots above — a room-to-room path cutting straight through open air or atrium space instead of
+hugging the real walkable floor — is fixed. The same Hospital route (`≈ Level 1 R35 → ≈ Level 4 R8`,
+124.69m, same 3 doors and 1 stair as before) reproduced this live after the fix: 5 same-storey legality
+checks that used to fail to find a valid detour now find one every time — **zero**
+`§PATH_LEGAL_DETOUR_FAIL` remain, and all 15 same-storey legs measure **0 illegal sample points** (was
+265 across 3 unroutable legs). The extra waypoints in the drawn line (`polyPts` 15 → 19) are the fix's
+fingerprint, not a longer route — the 124.69m distance and the doors used did not change, deliberately,
+because the fix only changes the drawn line, never which rooms or doors a route uses. Fleet-wide on
+Hospital, a detour-failure sweep over 3023 real room pairs went **63.3% → 0.0%** with zero newly-broken
+pairs, room-pair pathability rose **69.4% → 91.2%**, and unreachable (deg-0) rooms fell **26 → 7**;
+Terminal's off-floor sampling went 352 → 0, Clinic's 49 → 0. Root cause, plainly: (a) the walkable-floor
+raster was consulted *instead of* the room data rather than *together with* it, so rooms compiled in the
+browser after the raster was built had no floor under them; (b) doorways and stairs — the only ways
+through a wall or between floors — weren't counted as walkable at all; (c) the raster builder picked
+floor slabs in a fixed height window that missed Hospital's real floor plates by 5cm, dropping an
+8270m² Level 4 plate entirely. Still imperfect, worth saying plainly: on Level 4 two chords needed a
+wider-than-local detour search (`§PATH_LEGAL_DETOUR_NONLOCAL`), and the line passes one door twice — a
+real ~3m back-step out of room R9 — so the drawn route is on real floor but not always the tidiest
+line. Full technical trail, for anyone who wants it:
+`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §17 (supersedes §9–§16), shipped in
+bim-ootb PRs #1006–#1009.
 
 *Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the
 path list — one tap from any room to the nearest building exit.
