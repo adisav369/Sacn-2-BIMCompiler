@@ -22,11 +22,11 @@
 (dlod_nav/main/sw.js), tried+aborted 07-26. Its 2 local commits are NOT unique (`86b096b` = #971), so
 nothing is at risk — but **never measure from it**, use a fresh `origin/main` worktree.
 
-▶ **In-flight work is NOT listed here — read it from git, it is authoritative and never stale.**
-Every hand-written copy has been wrong ("10 commits" when it was 336). In `bim-ootb`:
-`gh pr list --state open` · unmerged-with-no-PR: `git for-each-ref --format='%(refname:short)' refs/heads/ | while read b; do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`
-**Verified 2026-07-25: 0 commits exist only on this disk.** Branches carrying unmerged work with no
-open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane/teams-overlay`).
+▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong ("10
+commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git for-each-ref
+--format='%(refname:short)' refs/heads/ | while read b; do n=$(git rev-list --count origin/main..$b);
+[ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`. **Verified 2026-07-26: 0 commits only on this disk**
+(both repos). Unmerged-no-PR branches are backed up but undelivered (`lane/hr-overlay`, `lane/teams-overlay`).
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
 - `RESUME_HR_BIM_ASSET.md` §07-06c (A/B/C+E) · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 (G6/Ph3/Pt1
