@@ -1251,13 +1251,13 @@ analogy, and it likely makes this feature cheaper than the open items above sugg
 
 **Two more real design points added post-close (2026-07-26, user, before actually ending):**
 
-1. **Discovery/reveal interaction, user's own words:** "a movie record button icon flashing when
-   it is playing, and when pressed it pauses and a timeline appears with the control knobs." I.e.
-   the scrub UI is HIDDEN by default during normal cinematic playback (keeps the view clean) —
-   a single recognizable icon (record-dot style, flashing while playing) is the only visible
-   control; pressing it pauses the tour AND reveals the full scrub bar/knobs. Not "always-on
-   timeline UI" — a two-state reveal, discoverable via one familiar icon language (record/pause),
-   not a persistent control bar competing with the cinematic view.
+1. ⚠ **SUPERSEDED 2026-07-25 — see "User's UI decisions" §1 below: the tour line simply APPEARS when
+   the Tour begins, TM-style. No reveal interaction, no record-style icon.** Kept verbatim for the
+   falsification record only: *"a movie record button icon flashing when it is playing, and when
+   pressed it pauses and a timeline appears with the control knobs"* — i.e. the scrub UI hidden by
+   default during cinematic playback, one record-dot-style icon as the only visible control, pressing
+   it pauses AND reveals the panel. **Do not implement this.** The simpler always-visible bar replaced
+   it and removed the icon-collision problem entirely rather than solving it.
 2. **Confirmed, real architectural distinction — "ours quite on the fly" vs. baked (user's own
    framing, verified accurate, not just asserted):** this codebase already has a genuinely BAKED
    system to contrast against — `cinema_maxq.js`'s own cinema export pipes the canvas through
@@ -1317,11 +1317,23 @@ large jump; (b) re-evaluate DLOD once on scrub RELEASE, not per `input` event (p
 would jank the drag; TM has no debounce at all on its own input path, `:2595` — do not copy that).
 
 **User's UI decisions (2026-07-25, answered directly when asked):**
-1. **Reveal icon = a pulsing dot in the viewer accent `#4fc3f7`, NOT red.** Reason recorded so it
-   isn't "fixed" back later: a flashing RED record-dot collides with `cinema_maxq.js`'s genuine
-   `MediaRecorder`/`captureStream()` → `.webm` export. Same glyph, two meanings, one app. The
-   INTERACTION is unchanged from the user's original wording — one icon visible during playback,
-   pressing it pauses AND reveals the panel.
+1. ✅ **SETTLED (user, 2026-07-25, SUPERSEDES the reveal-icon design below): the whole tour line
+   simply APPEARS when the Tour begins — same as TM.** Verbatim: *"i think when Tour begins the whole
+   tour line simply appears similar to TM.. no further confusion."* So: **no hidden state, no reveal
+   press, no record-style icon.** Tour starts → the bar with its draggable handle is on screen, exactly
+   the way `time_machine.js` shows `#tm-slider` when TM is active. This is the simplest thing that
+   works and it dissolves the whole icon-collision problem rather than solving it.
+   ⚠ **Consequence — drop these, do not carry them forward:** the two-state reveal interaction, the
+   pulsing dot, and the cyan-vs-red colour reasoning are all MOOT. There is no record-style glyph to
+   collide with `cinema_maxq.js`'s `.webm` export because there is no glyph at all.
+   ⚠ **Revisit only if:** an always-on bar proves to compete with the cinematic view during a real
+   presentation (the §4 purpose above). That is a live-review question, not a reason to pre-build the
+   hidden mode — build the simple one first.
+
+   ~~**SUPERSEDED — kept for the falsification record, do not implement:**~~ *Reveal icon = a pulsing
+   dot in the viewer accent `#4fc3f7`, NOT red — a flashing RED record-dot collides with
+   `cinema_maxq.js`'s genuine `MediaRecorder`/`captureStream()` → `.webm` export; same glyph, two
+   meanings, one app. One icon visible during playback, pressing it pauses AND reveals the panel.*
 2. ⚠ **TERMINOLOGY — "knob" means TWO different things here. Read this before building any UI.**
    - **The scrub HANDLE** (user, 2026-07-25: *"there is a 'knob' to drag along the tour line right?"*)
      — **YES, and it is the primary control**: a draggable thumb travelling along a LINEAR tour-time
@@ -1356,8 +1368,9 @@ would jank the drag; TM has no debounce at all on its own input path, `:2595` �
      the thing that makes a tour *citable* between sessions. It is not chrome.
    - **step-by-beat `◀◀ / ▶▶`** is "go back and show that again" — the single most likely live action,
      and the reason beat boundaries must be exact, not approximate scrub positions.
-   - **the hidden-by-default reveal matters MORE here, not less:** during a presentation the audience
-     should see the building, not a control bar. One pulsing dot, controls on demand.
+   - ~~the hidden-by-default reveal~~ — **SUPERSEDED by decision 1**: the bar simply appears when the
+     tour begins, TM-style. If an always-on bar turns out to compete with the view in a real
+     presentation, that is the one thing to re-open — as a live-review finding, not a pre-built mode.
    Design consequence, stated so it is not discovered late: a tour must be **inspectable**, not merely
    seekable — pause and HOLD a pose indefinitely without drift, step back to an exact beat, and land on
    the same pose every time for a given T. That is a correctness requirement on `pose = f(T)` (the
