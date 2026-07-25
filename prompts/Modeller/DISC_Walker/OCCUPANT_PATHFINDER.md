@@ -1350,3 +1350,50 @@ and verified above) is deliberately deferred: it replaces production's room comp
 highest-blast-radius item in this lane, in the same week two of six wrong findings came from exactly
 this lane's provenance failures. Ship it after the snapshot-stamp work, not before. The patch itself
 needs no rework — `mkpatch.sh` regenerates it byte-for-byte.
+
+### ✅ §PATCH-PROVENANCE-GATE built (2026-07-25) — Option 2's precondition, now mechanical
+Watchdog named the bounded item instead of an open-ended "snapshot stamp someday", and was right that
+**§ROOM_WALKER_VERSION_STAMP does not cover this** — verified independently at
+`prompts/Viewer/ROOM_INJECTOR_NEEDLE.md:228-266`, whose own point 5 reads: *"Write-back stays 100%
+client-side/local … this spec never touches OCI or a canonical DB file."* It answers "is this browser
+trusting a stale compile forever." Different layer. Do not let either be cited as covering the other.
+
+`scripts/oci_patch_gate.js` (bim-ootb, PR below) + `scripts/verify_raster_provenance.js`. It records
+the two axes the week's failures moved along and refuses the upload if either is unproven:
+- **Served-object snapshot** — live `etag` / `content-md5` / size / `content-encoding`, headed from the
+  bucket at gate time, never inferred from a local file of the same name.
+- **Engine snapshot** — verifying worktree SHA + `behind`/`ahead` `origin/main` + clean state. A SHA
+  alone is insufficient: a checkout can sit on a valid SHA that is behind, or carry a local merge that
+  will never fast-forward — which is exactly what `/home/red1/bim-ootb` does.
+- **The verifier is never handed a caller-chosen path.** The gate downloads the served object itself,
+  gunzips when the bucket serves gzip, applies the patch to a throwaway copy, exposes it as `$GATE_DB`.
+  A caller pointing the check at a local file with the right *name* is precisely how a 156-room raster
+  came to judge a 224-room DB called `Hospital.db`.
+- Target-collision (ADD vs OVERWRITE) stated explicitly, `--upload` does put + fetch-back verify only
+  past a PASS, and a `<patch>.manifest.json` is written either way.
+
+**The invariant it enforces** (`verify_raster_provenance.js`): `build_storey_walkable_raster.js` unions
+every room rect into the bitset, so *a raster built from its own DB is 100% own-footprint walkable for
+every room*. Anything less is proof of foreign evidence. Checkable today, no redesign needed.
+
+**Negative tests — a gate that never refuses proves nothing (both are the REAL historical failures):**
+| test | reproduces | result |
+|---|---|---|
+| NEG-1 | #996's foreign raster: 156-room patch judged against the 224-room DB | `§RASTER_PROVENANCE worst_room_own_footprint=0.0% rooms=224 verdict=FAIL` exit 1 |
+| NEG-2 | today's stale engine: gate run from `/home/red1/bim-ootb` | `FAIL — upload refused: engine is 25 commit(s) BEHIND origin/main` |
+| POS | today's shipped patch, clean fresh `origin/main` worktree | `worst_room_own_footprint=100.0% rooms=156 verdict=PASS` → `§GATE_VERDICT PASS` |
+
+**Caught a real gap in this session's own deploy:** the gate's first run failed with *"patch unreadable"* —
+the object uploaded as `patches/Hospital_meta.db.sql` had **no in-repo source**. Added (identical bytes
+to `Hospital_extracted.db.sql`), so the deployed object is now reproducible from the repo.
+Also added as `deploy/OCI_UPLOAD.md` §RULES rule 6.
+
+**⚠ `/home/red1/bim-ootb` is 25 commits behind `origin/main` and 2 ahead** (a local merge, will not
+fast-forward). It is the shared checkout, so this is not safe to rewrite from a session — but never
+measure from it. Use a fresh `origin/main` worktree; the gate now enforces this rather than trusting it.
+
+**Option 2 remains held.** Its blast radius is categorically larger than Option 1's — Option 1 was
+additive into a table nothing reads yet and is trivially reversible, whereas Option 2 replaces
+`spatial_structure`, which the pathfinder graph, Fly Tour routing and DiscWalker/MEP walk all consume
+downstream. The gate is its precondition, not its approval. Nothing is lost by holding: `mkpatch.sh`
+regenerates the 856KB patch byte-for-byte whenever it is wanted.
