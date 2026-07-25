@@ -5143,3 +5143,62 @@ Flow:
    the failure correlates with the user switching/backgrounding the tab, and a headless bake has no
    user to do that. Flagged as a HYPOTHESIS worth testing, not a claim; it is not a reason to close
    the detection work.
+
+## ✅ BUILT + WITNESSED — §MAXQ_OFFLINE_RUNNER shipped as `bim-ootb:feat/maxq-offline-runner` (2026-07-26)
+User: *"this be a good upgrade fix right? Then do it here"*. Built, witnessed, pushed. One file:
+**`bim-ootb/maxq_offline_runner.js`** — `witness_maxq_mp4.js` upgraded from a SwiftShader witness into
+a usable offline baker. Not a spec any more; it runs.
+
+```
+node maxq_offline_runner.js --db buildings/LTU_AHouse_extracted.db --frames 360 --fps 15 \
+     --w 1852 --h 960 --serve-root /home/red1/bim-ootb --out ./out [--camera px,py,pz,tx,ty,tz]
+     [--budget-min 30] [--force-software] [--allow-software] [--keep-open]
+```
+Exit codes: **0** playable film · **1** real failure · **3** software-renderer refusal · **4** budget refusal.
+
+### Witnesses — all four green, Duplex_extracted, RTX 4060 via `--use-angle=gl`
+| # | Proves | Result |
+|---|---|---|
+| full | a real headless bake produces a PLAYABLE film | exit 0, `h264 High 1280x720 frames=16`, `ffmpeg -f null -` **clean**, 1061ms/frame, 22s wall |
+| W1 | §RUNNER_GPU_ASSERT refuses software rendering | **exit 3**, aborts *before* even loading the viewer |
+| W2 | §RUNNER_BUDGET_ABORT refuses an over-budget job | **exit 4**, measured `1087ms/frame → projected 6m31s > 0.5m`, terminates in **7s** |
+| W3 | SIGINT cancel still yields a playable partial | **exit 0**, `§MAXQ_CANCEL_PARTIAL stitching 29 frames`, `h264 High frames=29`, decode **clean** |
+
+### TWO REAL BUGS the witnesses caught — neither was findable by reading
+1. **§RUNNER_TERMINAL — polling `§MAXQ_DONE` alone hangs forever.** A cancel with under 1s of footage
+   takes `cinema_maxq.js`'s `else if (_cancel)` branch, which only calls `_status()` — it logs
+   `§MAXQ_CANCEL i=N` and then **nothing**, no `§MAXQ_DONE` ever. W2 hung until the 24h ceiling before
+   this was found. Fix: `A._maxqActive` is cleared on every exit path, so it — not a log line — is the
+   reliable terminal state. **Anyone writing another agent against MaxQ must not repeat this.**
+2. **`handleSIGINT:false` is load-bearing.** Puppeteer installs its OWN SIGINT/SIGTERM/SIGHUP handlers
+   by default, which kill the browser and `process.exit(130)` **before** a user handler can dispatch
+   the graceful cancel. W3 first ran exit=130 with 30 cooked frames thrown away and no film — the exact
+   opposite of the `§MAXQ_PARTIAL` behaviour being reused. The runner now owns the signals.
+
+### Answered: "injection is automatic on first chance during Find or Fly — does your code use the injected topology?" → **YES**
+Verified three ways, not assumed:
+- `cinema_maxq.js:367-371` — `start()` awaits `loadNavigate()` then **`ensureRooms({})` BEFORE**
+  `cinemaPathPlan()`. Same trigger Find/Fly use; the module version string says so outright:
+  `§MAXQ_LOADED v10 (§CINEMA_SIMPLE path; room-graph warmed before planning)`.
+- Proven live in a **headless** Clinic load: `[NEEDLE] §NEEDLE_INJECT bld=Clinic source=walker
+  rooms=207 rects=304` and `§ROOM-WALKER §ROOMS_META stamped version=v3 … room_count=207`.
+  So a headless instance injects exactly as an interactive tab does.
+- ⚠ **`source=walker` = COMPUTED LIVE, not loaded from a shipped patch.** `Clinic_extracted.db` has
+  **0 `IfcSpace` rows and no rooms table** (tables: `elements_meta`, `element_transforms`,
+  `component_geometries`, `element_instances`, `project_metadata`, `schedules`, `tasks`,
+  `task_elements`, `task_sequences`), no `Clinic*.sql` exists in `viewer/buildings/patches/` (only
+  HHS/Hospital/JKR/Terminal), and the headless run logs `§HELPERS_QUERY_ERR no such table: rooms_meta`.
+  ⇒ **The open fidelity question is now precisely: is the room-walker deterministic across runs?**
+  If two runs on the same DB both yield `rooms=207 rects=304`, headless == tab and "Alt+C and forget"
+  holds for walker-sourced buildings too. NOT yet measured — cheap, no user time (run the probe twice,
+  diff the counts). Until then, treat forget-fidelity as PROVEN for the camera/staging path (constant
+  seed, no `Math.random` in the plan) and UNPROVEN for walker-injected topology.
+
+**Correction to an earlier reading in this session:** a probe reported `roomCount=null` for Clinic's
+room graph. That was a PARSE ERROR in the probe, not an empty graph — `getRoomGraph()` returns
+`{nodes, edges, nodesByGuid, rasters, roomRectsByStorey, corridorRectsByStorey, stats}`, and the probe
+looked for a `rooms` array. No conclusion about room counts should be drawn from that number.
+
+### Still not built (unchanged from the spec above)
+The local agent + `/bake` endpoint, the Shift+Alt+C POST, and installer asset packaging. The runner is
+the piece those wrap — it takes the job spec on argv today, so the agent is a thin HTTP shell over it.
