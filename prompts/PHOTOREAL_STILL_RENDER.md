@@ -4896,3 +4896,24 @@ affects the bake. Not fixed in this session.
 2. **Deprecated PWA meta tag** — `<meta name="apple-mobile-web-app-capable" content="yes">` is
    deprecated; Chrome asks for `<meta name="mobile-web-app-capable" content="yes">`. One-line
    `viewer.html` addition (keep BOTH — the apple- form is still what iOS Safari reads).
+
+### VERDICT on "is there a clear bug/landmine worth resolving in this log?" — **NO.** Measured, not eyeballed (2026-07-26)
+Asked directly by the user (who does not want to spend more testing time). Everything below is
+derived from the log arithmetic + the local DB, so it does NOT need another user run. Scored:
+
+| # | Candidate | Measured | Verdict |
+|---|---|---|---|
+| 1 | `_calcGroundY()` re-runs an UNCACHED 122k-row scan **3× per MaxQ frame = 1,080× per bake**, identical answer every time | `EXPLAIN QUERY PLAN` = `SCAN m` (full `elements_meta` scan, 122,330 rows; no index on `ifc_class`/`storey`) + temp B-tree sort. Native sqlite3 **12ms** warm (5 runs: 15/12/8/12/13ms) → sql.js WASM ≈25–50ms → **~27–54s of the 19m24s bake (2–5%)** | Real waste, **not a bug.** Memoize-able but 5 call sites + a `CITY_URL` branch; low payoff |
+| 2 | Full staging teardown+restage every frame (night 5735 fixtures ×2, shadow 4578 casters, ground texture, material boost/restore) | residual = `perFrameMs 3666 − refine ~1550 − AO ~1350 − SETTLE_MS 250` ≈ **500ms/frame** | **DO NOT TOUCH.** `SETTLE_MS`'s own comment + `§PHOTO_DOUBLE_APPLY_GUARD` + `§PHOTO_FOG_ORDER_FIX` + `§GROUND_WETNESS_REFIRE_FIX` are all scar tissue from removing/reordering exactly this. 500ms/frame is the price of not re-opening 4 fixed flicker bugs |
+| 3 | Patch-probe 404s ×2, deprecated PWA meta (finds 1–2 above) | n/a | Cosmetic. Fix only if someone is already in those files |
+| 4 | `§FPS_MODE mean=105610.6 n=1` right after `§MAXQ_DONE` | = the 8.5s `§MAXQ_MP4 encoded ... ms=8489` + mux blocking one frame, reported as a frame time | **Not a bug** — the known ms-not-fps reading gotcha |
+| 5 | One outlier frame: `§PHOTO_AO totalMs=2320` while `avgRenderMs=55.6` (24×55.6=1334 → ~1s stall), `§STILL_REFINE cancelled elapsedMs=4157` | single occurrence in ~50 logged frames, self-recovered | Not actionable at n=1 |
+
+**Ground truth cross-check (proves the log is trustworthy, not just internally consistent):** ran the
+real `§GROUND_Y` query against local `LTU_AHouse_meta.db` — returns `bottom=2.39999999`, `area=548.1`,
+`storey=VÅNING 1`, matching the log's `§GROUND_Y src=gf-storey-slab(VÅNING 1) z=2.40` exactly.
+`LTU_AHouse_extracted.db` agrees (`2.39999961`, 548.109) — no meta/extracted divergence here.
+
+**Conclusion: the 360/360 clean bake has no defect worth building against.** The only genuine open
+problem remains §MAXQ_SURFACELESS_FRAMEBUFFER, and it needs an *attended-tab repro* (cheap, and a
+session can drive it itself by backgrounding the tab) — not more user testing.

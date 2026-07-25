@@ -225,3 +225,77 @@ When scoping ANY future installer/onboarding work: ask "is this needed for the F
 IFC, see it work, offline-persisted), or is it something a converted, invested user would opt INTO later?"
 The former is Part 1 — keep it minimal, fix what's actually broken (mesh.db, bonsai_kernel.js), don't add.
 The latter is Part 2 — real, valuable, but never a blocker on Part 1 shipping/being "done."
+
+## §2026-07-26 AUDIT PART 5 — the FULL Part 1 sphere, user-defined: drop IFC → blank Viewer → merge →
+## Modeller ARC-remodel → Find → ERP → Project Order → Time Machine Budget-vs-Actual. Checked leg by leg.
+
+User expanded the Part 1 definition to the whole journey, not just install+import. Checked each leg against
+real code (not memory-on-trust, per this doc's own standing discipline) — 6 legs, verdicts below, ranked by
+what actually blocks the journey today.
+
+**LEG 1 — blank Viewer as the first-touch entry: ⛔ NOT BUILT.** Confirmed again: the drop-zone lives on the
+LANDING PAGE's import hub (`#m-import-zone`, opened as a hub overlay), not inside an empty `viewer.html`/
+`modeller.html` canvas. Today's flow is land → open hub → drop → NEW TAB opens already populated. The
+user's ask is "first touch IS the empty Viewer" — a real, un-built navigation change (§10 in
+`prompts/Modeller/COMPETITIVE_FREECAD_INTEROP.md`, DB-format question already resolved = our own `.db`).
+
+**LEG 2 — scoop all IFCs at one go, merged: ✅ REAL, code-confirmed + partially e2e-witnessed.**
+`import_own.js` wires `input.multiple=true` and passes the WHOLE native multi-file `dataTransfer.files`
+FileList straight to `handleImportFiles` → `importMultiIFC` when 2+ IFCs are present — a single drop
+gesture, not sequential drops. The e2e witness that passed (§9 in the interop doc) drove sequential/paired
+drops to prove the merge+version-popup LOGIC; it did not specifically drive one N-file simultaneous drop.
+Logic is the same code path either way (code-confirmed), but flagging the residual gap honestly rather than
+claiming full e2e coverage of that exact gesture.
+
+**LEG 3 — later diff IFC → variance treatment: ⛔ CONFIRMED BROKEN for the general case, not a rumor.**
+`viewer/diff.js` (S222: real GUID-set diff, added/removed/changed colour overlay, `› VO — fold to ERP
+amendment` button) is real and Playwright-tested — but its trigger in `import_own.js`'s `openProject()`
+(line 180) is `if (/revised/i.test(record.versions[vi].key || ''))` — and **nothing that creates a new
+version ever sets that key to contain "revised."** Both merge-accept code paths (`import_own.js:384` single-
+file, `:701` multi-file) push `{key: file.name, ...}` — literally the dropped file's own name. So dropping a
+genuinely updated IFC and accepting the version-merge does **not** reliably open the diff/variance view —
+only if the user's own filename happens to contain "revised". This is the single most consequential finding
+this session: it silently breaks the chain into Leg 5's `› VO` ERP-amendment button too (that button only
+appears when `A.diffDb` is populated — same broken trigger). **This is almost certainly the "older landing
+page" behavior the user remembers** — a real feature that survived a landing-page redesign in code but lost
+its live wiring, same shape as the multimerge branch that had to be re-verified in §9 (except this one is
+confirmed still-broken, not confirmed-fine).
+
+**LEG 4 — Modeller: extract ARC-only from a freshly user-imported DB, to remodel: ✅ REAL, robust even to
+arbitrary files.** `modeller/arc_editable.js`'s `buildSeedOps` filters `discipline='ARC'` when a discipline
+column is populated, but — checked the fallback, not just the happy path — **falls back to filtering by
+known architectural `ifc_class` names when no discipline tag exists at all**, which is exactly the case for
+a user's plain-named IFC (discipline tagging in `import_own.js` is filename-convention-only —
+`_discFromFilename`, e.g. `_ARC` suffix — and returns nothing for an ordinary filename). This fallback is a
+sound, non-invented heuristic (`ARC_CLASSES` membership), not a broken path. Also confirmed the Modeller's
+own Open panel (`modeller.html` `pickLocal()`) accepts a raw local `.ifc` file directly and routes it through
+the SAME `_openIfcFile()` path as the curated sample IFCs — "no separate code path for 'our' buildings vs a
+user's own file" (the code's own comment). **Caveat found:** that direct picker takes `files[0]` only — no
+multi-file merge. So today, multi-IFC merge (Leg 2) and direct-to-Modeller open are two SEPARATE paths; to
+get a multi-merged building into the Modeller for ARC editing requires the existing Save (Ctrl+S, real per
+`LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`) → then Open-from-disk in the Modeller — a working but manual
+two-step bridge, not one seamless click.
+
+**LEG 5 — Find → ERP → Project Order: ✅ REAL, shipped live (spot-checked, not re-litigated).** Per
+`project_bim_to_project` memory (2026-06-14/15, PRs #316/#318/#321, live on GH Pages) — spot-checked
+existence + wiring on current code rather than trusting 19-day-old memory outright: `viewer/proj_fold.js`,
+`viewer/vo_fold.js`, `erp/bim_orders_overlay.js`, `viewer/proj_control.js`, `viewer/vo_approve.js` all
+present; `navigate_find.js`'s `_pushToErp`/`› ERP` button and `diff.js`'s `_voToErp`/`› VO` button both still
+wired. This leg is real. Its `› VO` half is the one that depends on Leg 3's broken trigger, though — see above.
+
+**LEG 6 — back to Time Machine, Budget-vs-Actual diff timeline: ✅ REAL, shipped live (spot-checked).** Per
+`project_tm_4d5d_variance_lane` memory — W0/S5 "earn-the-actual" shipped 2026-06-22 (PR #492), real AC folded
+from atomic `PP_Order_Cost` rows, not a hashed factor. Spot-checked: `viewer/time_machine.js` (4878 lines),
+`viewer/whatif.js`, `viewer/whatif_panel.js`, `erp/tests/earn_gw_hospital_actual.js` all present on current
+tree. This leg is real.
+
+### Bottom line — what actually blocks the "whole sphere" from working end-to-end today
+Legs 4, 5, 6 are genuinely solid (built, live, spot-verified). Leg 2 is solid at the code level. **The two
+real blockers are Leg 1 (blank-canvas entry point, simply not built yet) and Leg 3 (the diff/variance
+trigger, built but disconnected — a real bug, not a missing feature).** Leg 3 is the higher-priority fix of
+the two: it's not a new build, it's reconnecting an existing, tested mechanism (`diff.js`) to the existing,
+tested mechanism (`_confirmVersionMerge`) — the fix is almost certainly small (stamp SOME marker — not
+necessarily literally "revised" — onto a pushed version when it's accepted as a merge over an existing
+project, and have `openProject` key off that marker instead of sniffing the filename). Not fixed here —
+this was a check-first pass, per the user's own request; flagging precisely so a build session doesn't have
+to re-discover it.
