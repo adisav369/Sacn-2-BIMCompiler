@@ -37,13 +37,12 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 filter-cheap opt; §14 Hospital per-tab-switch number.
 - `PHOTOREAL_STILL_RENDER.md` — Alt+C §CINEMA_ORBIT_V2, PR #931/#933; self-heal blocker now CLOSED.
 - **`§TOUR_TIMELINE_SCRUB` ✅ SHIPPED 2026-07-25** — bim-ootb PR #999 MERGED (verified), `e8689e9`,
-  `tour.js` v17 / `sw.js` v847. Deterministic `pose = f(T)` timeline: `_tourPrepare` eager chain,
-  `tourSeek(T,soft)`, all four knob groups, linear thumb. 9/9 numeric witnesses on real LTU_AHouse
-  (drift 0, overlay state identical). Spec + `§WATCHDOG-TOUR-SCRUB` review in
-  `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`. **NEXT there = its `▶ NEXT SESSION` block (usage +
-  testing review: Duplex legacy tour, touch, `deploy/dev` port) and the scoped
+  `tour.js` v17 / `sw.js` v847: deterministic `pose = f(T)`, all four knob groups, 9/9 numeric
+  witnesses on real LTU_AHouse (drift 0). **NEXT in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` = its
+  `▶ NEXT SESSION` block (usage+testing: Duplex legacy tour, touch, `deploy/dev` port) + scoped
   `§OPENING_BEAT_SEEK_GAP` (39.8m playback-vs-seek gap on §HL-FIRST's opening orbit — pre-existing,
-  not a scrubber bug, but it sits on the first beat a presenter scrubs back to).**
+  not a scrubber bug, but on the first beat a presenter scrubs back to). `§WATCHDOG-TOUR-SCRUB`
+  review is recorded there — do not re-audit.**
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
