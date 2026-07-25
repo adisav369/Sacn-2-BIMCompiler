@@ -38,12 +38,13 @@ The older `§HL-FIRST — the spec` block predates implementation and is superse
 §HL-FIRST commit and has been squash-merged — its history now collides with `origin/main` (→
 `DIRTY`), per this project's concurrent-branch rule. Branch the scrubber off **fresh `origin/main`**.
 
-**The real next task: `§TOUR_TIMELINE_SCRUB`** — fully specced lower in this file (search
-`§TOUR_TIMELINE_SCRUB`), never started, with the user's UI decisions (cyan pulsing dot — NOT red,
-avoids collision with the real `.webm` export; all four knob groups) already recorded there. The
-design conclusion to start from: bespoke seek in `tour.js`, borrowing `time_machine.js`'s doctrine
-and look but not its code; the unlock is chaining each action's end pose at BUILD time so tour pose
-= f(T).
+~~**The real next task: `§TOUR_TIMELINE_SCRUB`**~~ — ✅ **SHIPPED 2026-07-25**, `bim-ootb`
+`feat/tour-timeline-scrub2` commit `e8689e9`, PR #999. Built exactly as the design conclusion here
+predicted: bespoke seek in `tour.js`, borrowing `time_machine.js`'s doctrine and look but not its
+code; the unlock was chaining each action's end pose at BUILD time so tour pose = f(T). All four
+knob groups, linear bar (no dial), bar simply appears when the tour begins — the "cyan pulsing dot"
+line above is STALE, that reveal design was superseded before implementation and was not built.
+Full record + 9 witnesses at the end of this file.
 
 **Still open on §HL-FIRST (small, do NOT block the scrubber on these):**
 1. ~~**Not live-watched by the user yet.**~~ ✅ **CLOSED 2026-07-25 by direct user review:** *"the Fly
@@ -1156,7 +1157,11 @@ falls back to slow OCI) — use `npx http-server -c-1 --cors` or equivalent inst
   investigation in the numbered items above needs real data/citations added to this file before any
   code changes to `tour.js`'s interior route-building or pacing.
 
-## §TOUR_TIMELINE_SCRUB — SPEC ONLY, not yet implemented (2026-07-26, user directive verbatim)
+## §TOUR_TIMELINE_SCRUB — ✅ SHIPPED (see `✅ IMPLEMENTED 2026-07-25 — §TOUR_TIMELINE_SCRUB` at the
+## end of this file: `bim-ootb` `feat/tour-timeline-scrub2`, commit `e8689e9`, PR #999, 9 witnesses).
+## The spec below is kept VERBATIM as the design record — read it for WHY, read the block at the end
+## for WHAT SHIPPED and the three measured deviations. Original heading: "SPEC ONLY, not yet
+## implemented (2026-07-26, user directive verbatim)".
 
 **User's own words, verbatim, the actual scope:** "introduce a new feature which is the tour
 timeline where it can be scrubbed... It is separate from the history/timeline which is dots of
@@ -1379,6 +1384,123 @@ would jank the drag; TM has no debounce at all on its own input path, `:2595` �
 
 ---
 
+## ✅ IMPLEMENTED 2026-07-25 — §TOUR_TIMELINE_SCRUB, `bim-ootb` `feat/tour-timeline-scrub2`
+(worktree `/tmp/wt-tour-scrub2`, branched fresh off `origin/main` @ `9f18562`. The older
+`feat/tour-timeline-scrub` / `/tmp/wt-tour-scrub` was NOT reused — it carried the since-squash-merged
+§HL-FIRST commit, PR #989, and shows DIRTY against `origin/main`.)
+**Commit `e8689e9` · PR https://github.com/red1oon/bim-ootb/pull/999.**
+
+**Files:** `viewer/tour.js` (v17 banner, engine + UI), `viewer/picking.js` (hide bar on canvas-tap
+abort), `viewer/viewer.html` (`tour.js?v=17`, `picking.js?v=29`), `viewer/sw.js` (`v847`), new
+`witness_tour_scrub.js`. `common/history_bar.js`/`universal_history.js`/`history_tap.js` untouched —
+different system, as this section always said.
+
+### What was built — the resolved verdict, implemented as written
+The §"one architectural move" is what shipped: `A._tourPrepare()` walks `walkActions[]` once at tour
+start, and each action reports its END pose which becomes the next action's START pose. Three
+functions carry it:
+- **`_actInit(act, sPos, sTgt, nextAct)`** — the SAME init code forward playback already used, with
+  every live-camera read (`moveTo`'s `_startPos`, `orbit`'s `_startAngle`, `flyPath`'s prepended
+  `camPos`) replaced by the chained start pose. Idempotent via `act._inited` — `flyPath`'s
+  `meanFactor` rescale of `act.duration` must never apply twice.
+- **`_actPose(act, tLinear)`** — PURE `{pos, tgt}` for all 7 action types, no frame history, no side
+  effects. The pace remaps are applied exactly where `walkTick` applied them before.
+- **`A.tourSeek(T, soft)`** — binary-search `A._tourStarts`, set `walkActionIdx`/`walkActionT`,
+  evaluate, apply. Sole writer of the cursor triple.
+
+`walkTick` is now a thin driver over the same two functions, so playback and seek **cannot** diverge —
+this is the section's own "reusing the SAME init code forward-playback uses", taken literally rather
+than as a parallel guard path.
+
+**Two conversions were needed to make every action fraction-based** (both exact, not approximations):
+`lookAround` integrated a CONSTANT `PAN_SPEED` rate into `walkPanAngle` and never advanced
+`walkActionT` at all → `_duration = totalDeg / PAN_SPEED`, progress = `t`; `rise` stepped a constant
+1.0 m/s until `|dy| < 0.05` → `_duration = |dy| / 1.0`, linear in `t`. Both are the same integral.
+
+**The three open items, resolved as the 2026-07-25 verdict proposed:**
+- *Look-at smoothing* — hard seeks SNAP `flyPath._prevLook` to the raw curve target; the §SOFTEN
+  `lerp(…, 0.08)` is kept untouched for playback, and a gentler `lerp(…, 0.35)` for small in-drag
+  deltas (same beat, `|ΔT| < 0.5s`). Drag RELEASE always re-seeks HARD, so the resting pose after a
+  drag is pure `f(T)` — proved by W-SCRUB-DRAG-RELEASE below, not assumed.
+- *Eager vs lazy init* — fully eager, measured at **9.7 ms for 37 actions** on LTU_AHouse. The
+  section guessed "likely cheap"; that is the number.
+- *DLOD on discontinuous jumps* — re-evaluated ONCE on RELEASE (`A._dlodFrame = -1; A.dlodTick()`,
+  forcing past `dlodTick`'s own frame-modulo throttle), never per `input` event. TM's undebounced
+  `onSlide` (`:2595`) was deliberately not copied, as this section instructed.
+
+### UI — all four knob groups, as decided
+Bar simply APPEARS when the tour begins (decision 1). **No reveal icon, no pulsing dot, no
+record-style glyph** — the superseded design was not built. **No rotary dial** — the
+`common/history_knob.js` / PR #230 rejection precedent holds; `#tour-scrub-slider` is a native
+`<input type=range>` linear thumb. TM's visual language borrowed, not its code: 376px glass panel,
+`#4fc3f7` accent, `accent-color` on the range, 3px progress bar with `transition:width 0.2s`.
+1. **Chapter ticks** — one clickable mark per action boundary, `title` labelled from `walkActions[]`
+   via `_beatName()` (action `name`, else `flyPath`'s first `names[]` entry, else a per-type label).
+2. **Play/pause + restart + `mm:ss / mm:ss`** — pause sets `A._tourPaused`; `walkTick` early-returns
+   before touching the camera, so a held frame is held by construction, not by a damping race.
+3. **Speed 0.5x / 1x / 2x** — a `dt` multiplier in `walkTick`. Durations are baked at 1x so
+   `_tourTotal` and the `mm:ss` total stay stable regardless of playback speed.
+4. **Step-by-beat `◀◀ / ▶▶`** — `A.tourStepBeat(dir)` seeks the nearest `_tourStarts[]` entry strictly
+   before/after the cursor. Exact boundaries, never approximate scrub positions.
+
+### Witnesses — real `LTU_AHouse`, real 37-action tour (18:10), all PASS
+Harness `witness_tour_scrub.js` (puppeteer, headless, `PORT=8467` static server on the worktree).
+Every assertion reads REAL numeric object state — camera position, `controls.target`, `_tourT`,
+`_tourStarts` — out of the live page. No screenshots, per this project's FUNDAMENTAL LAW.
+Log: `/tmp/wt-tour-scrub2/witness_scrub3.log`, exit 0.
+
+| Witness | Issue it proves | Evidence (verbatim) |
+|---|---|---|
+| W-SCRUB-PREPARE | is the timeline complete + monotonic? | `actions=37 sum=1090.597263s total=1090.597263s monotonic=true allEagerlyInited=true` |
+| W-SCRUB-DETERMINISM | is `pose = f(T)` actually pure? | `probes=6 worstComponentDelta=0` — 6 probes seeked, then re-seeked in REVERSE order with random decoy seeks interleaved; all 6 pose components bit-identical |
+| W-SCRUB-BEAT | exact boundaries, not approximations? | `prev@544.5186[idx20] prev@541.5186[idx19] prev@541.1186[idx18] next@541.5186[idx19] next@544.5186[idx20] next@626.5466[idx21]` — every landing is an exact `_tourStarts[]` member; `sameBeatFromBothDirections_posDelta=0` |
+| W-SCRUB-OVERLAY | the "maintaining the overlay ie n, Alt-G/o" invariant | `before={"night":true,"gi":true,"dlodOn":true,"dlodEngaged":true}` → `after={…identical…}` across a full drag + release |
+| W-SCRUB-HOLD | can a presenter hold a frame? | `paused=true walkTickCalls=1200 maxPoseDrift=0 cursorDrift=0` over 3000ms wall-clock |
+| W-SCRUB-DRAG-RELEASE | does a drag leave residue? | drag rest pose vs cold seek at T=697.9822 → `maxComponentDelta=0` |
+| W-SCRUB-SPEED | is speed a `dt` multiplier, not a rescale? | `total=1090.5973s unchanged across 0.5x → 2x → 1x` |
+| W-SCRUB-PLAYBACK | did the `walkTick` rewrite break forward playback? | `cursorMonotonic=true pathTravelled=722.455m endT=2.648s` |
+| W-SCRUB-UI | four knob groups present, no dial | `barVisible=true linearRangeThumb=true chapterTicks=37 play/prev/next/restart=true/true/true/true speedBtns=3 mmss="0:02 / 18:10" rotaryDials=0` |
+
+Key §-log lines from the live page:
+```
+[TOUR] §SCRUB_PREPARE actions=37 total=1090.597s prepMs=9.7 endPose=-231.8069,-2.7599,-107.0892
+[TOUR] §SCRUB_BEATS orbit:7.95 | moveTo:1.15 | flyPath:80.22 | pause:0.40 | lookAround:2.00 | … | pause:1.00
+[TOUR] §SCRUB_TICKS n=37 total=1090.60s
+[TOUR] §SCRUB_UI show actions=37 total=1090.60s bar=linear-thumb dial=none
+[TOUR] §SCRUB_SEEK T=676.1703 idx=23 t=0.423832 mode=hard pos=-53.9440,0.5351,10.1796 tgt=-50.1225,0.5351,13.1731
+[TOUR] §SCRUB_SEEK T=676.1703 idx=23 t=0.423832 mode=hard pos=-53.9440,0.5351,10.1796 tgt=-50.1225,0.5351,13.1731   ← re-seek, identical
+[TOUR] §SCRUB_BEAT dir=prev from=545.2986 to=544.5186 idx=20
+[TOUR] §SCRUB_PAUSE paused=true T=458.0509 pos=-49.7466,-3.4149,11.1685
+[TOUR] §SCRUB_SPEED mult=0.5x totalUnchanged=1090.60s
+```
+
+### Deviations from this section's spec — measured, not invented
+1. **Prepare runs at the `A.walkActions = tour` assignment in `_startFlyTour`, not literally "at the
+   end of `buildTour()`".** Reason found in the real code, not chosen for convenience: the
+   §TOUR_CACHE fast path (`A._tourCachedRoute`, `tour.js:288`) never calls `buildTour` at all — a
+   cached route is plain JSON — so a `buildTour`-only hook would leave every cached tour unprepared.
+   It must also run AFTER the cache store (`:312-321`) so the stored JSON stays free of the runtime
+   remaps/curves.
+2. **Speed multipliers no longer bake into durations.** Consequence, stated because it is a real
+   behaviour change: `orbit` previously ignored `A.walkSpeedMult` entirely (it was the only action
+   type that never consulted `spd`) and now honours it like every other type. This is required —
+   a timeline whose total length changes with the speed knob cannot carry an `mm:ss` total.
+3. **`W-SCRUB-PLAYBACK` measures a 39.8m playback-vs-pure pose gap** during the opening high-radius
+   aerial orbit. This is the PRE-EXISTING adaptive-jump smoothing block (unchanged by this work,
+   `maxDelta >= 0.5` → `lerp` at 0.12/0.3) lagging behind genuinely fast motion; it is playback-only
+   by design and `tourSeek` never runs it, which is exactly why re-seeks are bit-identical. Reported
+   as a measured number, NOT fixed — fixing it would be a separate scoped change to a shipped
+   easing behaviour, and this section did not authorise one.
+
+### Not done / deliberately out of scope
+- **No port to `bim-compiler`'s `deploy/dev/tour.js`** — bim-ootb is implemented first; the port is
+  its own task (§R5 repo seam).
+- **The "revisit only if" clause on decision 1 stands untested**: whether an always-on bar competes
+  with the cinematic view during a REAL presentation is a live-review question, and this session
+  deliberately did not pre-build the hidden mode to hedge it.
+
+---
+
 ## ▶ ADDENDUM (Sonnet-side, 2026-07-25) — a related idea, parked in its own file, NOT this task's scope
 Recorded here only as a pointer so a future session resuming the scrubber sees it exists — this does
 **not** change `§TOUR_TIMELINE_SCRUB`'s spec above, and is not something to fold into the current build.
@@ -1395,3 +1517,59 @@ the natural render step downstream of an edited EDL, not something to rebuild.
 
 None of this is authorized to build. If picked up, it's a separate task from `§TOUR_TIMELINE_SCRUB` —
 read `SAVE_DB_SCENE_STATE.md` in full first, it has its own open questions not repeated here.
+
+---
+
+## ▶ NEXT SESSION — REVIEW USAGE + TESTING of the shipped scrubber (opened 2026-07-25, nothing started)
+The scrubber is BUILT and PUSHED (`✅ IMPLEMENTED 2026-07-25` above — bim-ootb `e8689e9`, PR #999,
+`tour.js` v17, `sw.js` v847, 9/9 numeric witnesses green). **Do NOT re-implement it and do NOT
+re-derive its design** — the three formerly-open items (`_prevLook` at arbitrary seek, eager-vs-lazy
+per-action init, DLOD on discontinuous jump) are all resolved IN CODE and cited below. This section
+is the follow-on task: **use it, then test what usage exposes.**
+
+### 0. First, verify it actually landed
+PR #999 was open at hand-off, not confirmed merged. `gh pr view 999` — do not assume auto-merge
+landed it (this project has a recorded squash-merge-orphans-a-late-push incident, PR #138). If it
+merged, start any follow-up off **fresh `origin/main`**, never off `feat/tour-timeline-scrub2`.
+
+### 1. Where the mechanism lives (so review reads code, not the summary)
+- `A._tourPrepare()` `tour.js:1328` — the build-time chain, hooked on the `A.walkActions = tour`
+  assignment (`:338`), **deliberately not** on the end of `buildTour()`: the §TOUR_CACHE fast path
+  never calls `buildTour`, so a `buildTour`-only hook leaves every cached tour unprepared. Deviation 1.
+- `_actInit` `:1130` / `_actPose` — the SAME code forward playback uses, live-camera reads replaced by
+  the chained start pose. `walkTick` `:1436` is now a thin driver over both, so playback and seek
+  cannot structurally diverge.
+- `A.tourSeek(T, soft)` `:1357` — single writer of `(walkActionIdx, walkActionT, _tourT)`; `soft`
+  keeps the flyPath gaze lerp for small drag deltas, every other seek SNAPS `_prevLook` (`:1373`).
+- DLOD re-eval ONCE on release `:1546-1550` (`change`/`pointerup`/`touchend`), never on `input`.
+- UI `:1524-1615` — `<input type="range">`, `accent-color:#4fc3f7`, visible from tour start. No dial,
+  no reveal icon (both explicitly rejected — see decisions 1 and 2 above).
+- Witness harness: `witness_tour_scrub.js` in the same worktree; log `/tmp/wt-tour-scrub2/
+  witness_scrub3.log`. Re-run it after ANY change here — it is the regression gate for `pose = f(T)`.
+
+### 2. The three things usage should actually interrogate (ranked)
+1. **`W-SCRUB-PLAYBACK`'s measured 39.8m playback-vs-pure pose gap** during the opening high-radius
+   orbit — the pre-existing adaptive-jump smoothing is playback-only by design, so live playback and a
+   seek to the SAME T differ during that one fast beat. It does NOT affect seek determinism (seek is
+   pure `f(T)`; `W-SCRUB-DETERMINISM worstComponentDelta=0`). Open question for a real user: is that
+   divergence noticeable when you pause mid-orbit and the frame shifts? If yes it is its own bounded
+   task (narrowing a shipped easing behaviour), NOT a scrubber bug — do not widen scope silently.
+2. **Does the always-on bar compete with the cinematic view in a real presentation?** This is the ONE
+   thing decision 1 above named as re-openable, explicitly as a live-review finding. If it does, the
+   answer is still not the old hidden/reveal-icon design (rejected) — bring back a measured proposal.
+3. **Do the four knob groups earn their place in actual use** (§4 PURPOSE: presentation, not just
+   playback)? 0.5x for narration, `mm:ss` as an audience-facing citation, `◀◀/▶▶` as "show that
+   again". Usage is the only way to find out which is dead weight or which is missing a beat label.
+
+### 3. Testing gaps this session did not cover (all real, none blocking)
+- **One building only.** Every witness ran on real LTU_AHouse (37 actions, 18:10). Buildings with a
+  different action mix — Terminal/Hospital (corridor+stair heavy), Duplex (legacy-fallback tour, which
+  never builds a graph route at all) — are untested. **Duplex is the important one**: confirm the bar
+  behaves on a LEGACY tour, not just a CINE-GRAPH one.
+- **Overlay invariant tested programmatically, not by hand** (`W-SCRUB-OVERLAY` before/after state
+  identical for night/GI/DLOD) — a human should still drag the bar with `n` and `Alt+G` on.
+- **No mobile/touch pass.** `touchend` is wired for release; nothing verified on a real touch device.
+- **`deploy/dev/` (bim-compiler viewer) port not done** — §R5 repo seam, its own task, needs the
+  room-stack copy first.
+Per the FUNDAMENTAL LAW: any pose/timing claim from this review must come from `§`-log numbers or the
+witness harness. A screenshot or "looks smooth" is not evidence, even as a supplement.
