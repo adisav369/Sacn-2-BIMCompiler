@@ -71,6 +71,32 @@ scope above, not yet decided in detail — recorded so they aren't lost, not aut
    is the natural render step downstream of an edited EDL if anyone wants a final video later. Nothing
    in this spec should grow new video-export machinery.
 
+## ▶ §1-4 DECIDED (2026-07-25, user reviewed, proceed) — held back until §TOUR_TIMELINE_SCRUB landed
+1. **Scene state = the full candidate list**, not a trimmed subset: camera position/target, display
+   mode (x-ray/shadow/DLOD on-off), orbit-vs-walk mode, which panel was open (Find/Inspect/etc.),
+   active Find query + selection (GUIDs), Time Machine playhead. **Cost check requested by the user
+   before committing to this** — spot-checked against real code (`bim-ootb` `viewer/scene.js`):
+   camera position/target are two `THREE.Vector3` (6 floats), display/nav-mode flags are scalars/short
+   strings, `_focusedPanel` is a panel id string. The one open-ended field is the Find selection (an
+   array of GUIDs, ~22 chars each) — even a few hundred selected elements is low single-digit KB, next
+   to a `.db` that runs tens of MB. **Verdict: every candidate is cheap; nothing here needs trimming
+   for size.** No further profiling needed before implementation.
+2. **New metadata table**, same shape/convention as `rooms_meta` — one row per building, columns for
+   each state field above (or a single JSON blob column, implementer's call at code-review time — not
+   a decision that needs re-litigating here).
+3. **Open Building always restores scene state.** No checkbox/toggle in v1 — simplest behavior, matches
+   "wow feature there!" from the origin conversation. (An opt-out can be added later if it turns out to
+   be wanted; not blocking v1.)
+4. **The `.db`'s saved scene state wins over an existing IndexedDB History-Persist entry** for the same
+   building, if both exist on reopen. Explicit/portable/deliberately-saved beats incidental session
+   state.
+
+**Addendum's Loop question (§50-65 above) — NOT decided here, still open.** Whoever implements the
+Loop refinement asks the user directly: restart from the highlight-first opening every cycle, or play
+that once and loop only the remainder. Everything else in the addendum (EDL shape, versioned "Save As
+Tour", video export staying out of scope) stands as written above, unchanged.
+
 ## ▶ NEXT STEP
-Discuss §1-4 (and the addendum's 4 refinements) with the user before writing an implementation spec.
-Not authorized to build yet.
+§1-4 are decided; write the implementation spec (file layout, migration script, save/restore call
+sites in `A.saveModelDb()`/`A.openModelDb()`) and build. Loop's remaining question stays open until
+asked live. Witness plan before code, per this project's Spec-First rule.

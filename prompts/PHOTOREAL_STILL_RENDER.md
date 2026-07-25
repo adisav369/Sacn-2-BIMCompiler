@@ -4621,3 +4621,56 @@ way it did for Cinema.
 - Whether Alt+S actually experiences a meaningful streaming wait in practice, given its different
   (usually post-navigation) trigger pattern vs Cinema's — needs a real witness on a large building,
   not assumed from the Cinema numbers or either of the two conflicting Hospital comments above.
+
+## ✅ §PHOTO_SHADOW_FINALCAPTURE — user-reported Alt+C movie-clip flicker, traced + fixed (2026-07-25, bim-ootb PR #1004)
+User report (this session, no code touched — diagnose-here/fix-in-bim-ootb split, per
+`feedback_diagnose_in_session_fix_in_other_session`): the Alt+C/MaxQ movie clip is flickering,
+following the "Alt+S improvement." User's own framing: *"it has improved with better DLOD, and
+faster, but as result it must have missed the right frame to snap."*
+
+**Traced to bim-ootb PR #983** (`perf(viewer): skip redundant shadow-reassert traversals in Alt+S/
+Alt+C`, `origin/main@0760a2b`, merged earlier today) — explicitly modeled on the nav-DLOD change-
+detection pattern (its own code comment names this: "borrowing nav-DLOD's change-detection idea").
+Confirms the user's own read of the cause.
+
+**Mechanism (`viewer/effects.js`):**
+- `_reassertPhotoShadowCoverage()` (L2128-2137) is called every `step()` RAF tick (L2909) during
+  BOTH Alt+S's 16-sample TAA accumulation AND MaxQ's per-baked-frame `startStillRefine()` call
+  (MaxQ does `stopStillRefine(true)` + fresh `startStillRefine()` per frame — `cinema_maxq.js`
+  L452/460). #983 gates the traversal on 3 signals (`A.streamIdx`, `A.scene.children.length`,
+  `A._visibilityGen`) and skips the full-scene traverse when none changed since the last check.
+- `A.streamIdx` (verified via `streaming.js` L938, `A.streamIdx += batch`) reliably tracks active
+  geometry streaming, so the gate should behave correctly while a building is still loading — this
+  is NOT where the risk is.
+- The risk is **capture-timing, not signal-coverage**: `_finishStillRefine()` (L2637) hands off to
+  the AO/SSGI fold the instant `accumulateIndex>=16`, using whichever tick's reassert result was
+  live at that moment — under the OLD unconditional-traverse code, EVERY tick re-ran the traversal,
+  so the tick that produced the finishing render always had a maximally-fresh shadow-caster set as
+  an incidental side effect of the extra work, not by design. #983 removes that incidental
+  guarantee: the finishing tick may now be a *skipped* tick, relying entirely on the 3 signals
+  having fired at the right moment. MaxQ's own per-frame capture (`cinema_maxq.js` L459-462:
+  `startStillRefine()` → `_waitFoldDone` → `_raf2()` → `_captureFrame()`) inherits whatever
+  shadow-caster state was current when accumulation froze — a one-tick-early skip there is exactly
+  "missed the right frame to snap."
+
+**Fix shipped (user said "proceed to fix," same session):** `_reassertPhotoShadowCoverage(force)` —
+`force=true` bypasses the skip-gate; `_finishStillRefine()` (L2637) now calls it forced, once,
+before the SSGI/AO handoff. One extra full-scene traverse per CAPTURED frame (not per accumulation
+tick) — preserves ~all of #983's savings. Added a `forcedSaves` counter (logged in the existing
+`§PHOTO_SHADOW disabled reassertRuns=/reassertSkips=/forcedSaves=` summary) so the fix's own effect
+is directly observable per frame, not just inferred.
+
+**Witnessed live** (`witness_photo_shadow_finalcapture.js`, headless, `HHS_Office_Federated`) — the
+gap `witness_photo_shadow_skip.js` left (only proved skip-counts + zero pageerrors, never
+frame-to-frame consistency) is closed by baking WHILE streaming was still in flight (idx=0/6839 at
+bake start), the actual race #983's own witness never exercised (it waited for streaming to finish
+first): **`forcedSaves=4` on 4/4 baked frames** — direct, non-inferred proof the stale-final-tick
+race fires under real timing and the fix catches it every time. `reassertSkips=56/64` (87.5%)
+confirms #983's perf win is intact. `pageErrors=0`. `node --check` clean.
+
+**Shipped:** bim-ootb PR [#1004](https://github.com/red1oon/bim-ootb/pull/1004),
+`fix/photo-shadow-finalcapture`, pushed clean (no LFS-probe hang).
+
+**Not done:** a real-GPU, non-headless live trial of an actual Alt+C clip (before/after) — this
+file's own hardened math/log-over-screenshot rule still applies, so this isn't a required gate, but
+flagging as open per that rule rather than silently calling the feel confirmed.

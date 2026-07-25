@@ -34,7 +34,7 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933, Alt+C flicker traced to #983 shadow-skip gate (spec only, fix in bim-ootb next).
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933. ✅ Alt+C flicker (#983 shadow-skip gate) fixed 07-25, bim-ootb PR #1004, witnessed.
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
