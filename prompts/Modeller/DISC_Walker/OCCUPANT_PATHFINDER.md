@@ -883,6 +883,14 @@ is a VOCABULARY problem, not a topology one, and survives a perfect connectivity
 
 ---
 
+## ⚠ READ FIRST — #995's HEADLINE NUMBERS WERE WRONG; #996 CORRECTS THEM
+The block below reports Hospital 86.2% / Terminal 95.7%. **Those figures included 40 UNVALIDATED
+bridges** — 37 longer than 2m, 17 over 15m, longest **45.7m**, each stored as
+`doorName:'Opening onto corridor'`, `doorGuid:null`. The graph was asserting passages nobody
+measured, and Find would have drawn a user's route through 45.7m of solid wall. Caught by review,
+accepted in full, fixed in **PR #996 §BRIDGE-WALL-LEGAL**. Real numbers are in the #996 block below.
+Quote those, never 86.2%.
+
 ## ✅ SHIPPED 2026-07-25 — §ROOM-SPINE-BRIDGE implemented, PR #995 (auto-merge armed)
 `common/room_graph.js`, right after the existing `§CIRC_SPINE_BRIDGE` block. A deg-0 ROOM now bridges
 to its nearest same-storey spine point by RECT distance, as an `E6` edge — same shape as the
@@ -979,3 +987,74 @@ publishing any comparison:
 3. **`graph.nodes` holds ROOMS ONLY; `graph.nodesByGuid` holds all kinds** (room 224, spine 43,
    doorwp 427, circ 7, stairwp 12) → produced a bogus "no circulation nodes exist near R14", when the
    spine is 1.31m away. **This one nearly killed the correct fix.**
+
+
+## ✅ SHIPPED 2026-07-25 — §BRIDGE-WALL-LEGAL, PR #996 (auto-merge armed) — the honest numbers
+`common/room_graph.js`. The bridge block moved to AFTER `rasters` / `roomRectsByStorey` are built
+(it was above them — that is why the test could not run there), and each candidate spine point is
+tried nearest-first with the segment **room-centre → spine** sampled through the engine's own
+`_chordIllegalCount` (raster where the storey has one, room/corridor rects otherwise — the same
+predicate `shortestPath`'s legalizer already trusts). First LEGAL candidate wins; if none is legal
+the room **stays deg-0 on purpose**, logged as `§ROOM_SPINE_BRIDGE_REJECT` so every refusal is
+auditable.
+| fixture | bridged / rejected | room-pair pathability |
+|---|---|---|
+| Hospital, **no raster** | 5 / 35 | 56.2% → **59.6%** |
+| Hospital, **+ raster patch applied** | 9 / 31 | 56.2% → **62.4%** |
+| Terminal | — | 75.9% → **79.6%** (deg0 6→5) |
+| HHS / Clinic / Duplex / SampleHouse / SampleCastle | — | unchanged |
+
+**The atrium win is REVERSED, and that is the correct outcome.** With the real raster, R14's straight
+chord to its nearest spine point is NOT walkable → the 315.7 m² atrium is refused an edge and stays
+unreachable → the Fly Tour reverts to the 219 m² × 3.3m corridor. Without raster data the rect
+fallback accepts the same chord (`R14 deg=1`). **That difference is precisely the difference between
+asserting and measuring**, and it is why the gate exists.
+
+**Consequence that changes priority: the raster is better evidence in BOTH directions** — it accepts
+9 bridges where the rect fallback accepts only 5, while correctly rejecting R14. **G2 raster
+deployment is therefore a CORRECTNESS dependency, not an optimisation.** Re-rank it accordingly.
+
+## ▶ NEXT SESSION — resume here, nothing dangling
+State of the two questions the user asked:
+1. **Room pathing: NOT solved.** Honest Hospital figure is **59.6%** (no raster) / **62.4%** (with
+   raster), up from 56.2%. Terminal 79.6%, up from 75.9%. 31–35 rooms per building still refuse a
+   legal bridge.
+2. **Tour route: ORDER solved and shipped** (highlight-first, visible stair climbs, `SUSPECT_OPEN`
+   eligible, pacing/look-ahead — all live-confirmed by the user's own console). **DESTINATIONS still
+   blocked**: the building's best space is unreachable, so the tour opens in a corridor.
+
+**Open items, ranked — each has a number and an owner:**
+1. **Deploy the raster patches (G2).** They exist in-repo (`buildings/patches/*.sql`, Hospital's is
+   145KB / 7 storeys of real bitsets) and 404 on OCI. Now a correctness dependency (above). Note the
+   split-DB trap: the boot loader wants `Hospital_meta.db.sql`, which does not exist — Terminal ships
+   BOTH `_extracted` and `_meta` variants, Hospital only `_extracted`. **Needs user authorisation —
+   production bucket.**
+2. **Connect the atrium honestly.** A straight room→spine chord is not walkable. Needs a short
+   *routed* connection (multi-segment through walkable space) rather than one bridge edge, or a
+   door-binding fix that gives the atrium a real E1. Acceptance test unchanged: `⚠ Level 1 R14`
+   carries ≥1 edge on `~/Projects/BIM_DB/Hospital.db` AND the chord is wall-legal.
+3. **Triage the 22 "far" rooms** (review's third bucket): ~24 m² average, no door within 8–10m. May
+   be walker artifacts, not real rooms — confirm before treating them as a connectivity target.
+4. **§TOUR_TIMELINE_SCRUB** — designed, never started; user's UI decisions recorded in
+   `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`. Independent of all the above; branch off fresh
+   `origin/main`.
+5. **FINDING 4 metric (area → spaciousness)** — parked deliberately. Re-measure only once the
+   candidate pool contains reachable halls, or it gets tuned against corridors.
+
+**Fixtures + harnesses (a new session starts measuring in one command, no browser):**
+`~/Projects/BIM_DB/Hospital.db` (user's Save-DB export — reproduces the live console EXACTLY);
+`/tmp/hosp-local/Hospital_RASTER.db` (same + raster patch applied, for the with/without comparison).
+Harness pattern: `initSqlJs({wasmBinary})` + `require('common/room_graph.js')` (node-aware) + a
+`dbQuery` returning value-rows. `pathab.js` measures deg-0 + room-pair pathability via BFS;
+`hl_witness.js` loads the REAL `viewer/tour.js` into a `vm` and runs `buildTour()`. 7-building
+corpus: Terminal_meta, HHS_Office_Federated_extracted, Clinic_ARC, Duplex_ARC, SampleHouse_extracted,
+SampleCastle_extracted, + the Hospital fixture.
+
+**Method warnings earned the hard way this session — read before publishing any comparison:**
+four wrong findings were published in one day, every one a real number compared against a
+differently-scoped field. (1) `graph.edges.length` (total E1–E5) vs the `§ROOM_GRAPH` log's `edges=`
+(**E1 only**). (2) per-**rect** vs per-**room** area/width (multi-rect rooms share `room_guid`).
+(3) `graph.nodes` holds **rooms only**; `graph.nodesByGuid` holds all kinds — this one nearly killed
+the correct fix. (4) reporting pathability that included unvalidated edges as if it were measured
+connectivity. **Check the scope of BOTH sides, and re-derive a delegated agent's headline before
+relaying it.**
