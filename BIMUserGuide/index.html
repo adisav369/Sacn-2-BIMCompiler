@@ -2578,6 +2578,17 @@ stair flights it uses, and the rooms along the way stay highlighted.</p>
 <p><em>Verified live (2026-07-12):</em> a real route across Terminal's floors returns several stair-crossing
 legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
 it passes through.</p>
+<p><img alt="Aerial X-ray view of Hospital with a Find-panel path drawn from ≈ Level 1 R35 to ≈ Level 4 R8 — the yellow route line zigzags across open rooftop/atrium space between wings instead of following a corridor" src="../img/viewer/find-room-path-hospital-topview.png" /></p>
+<p><img alt="Straight-on facade view of the same Hospital route — the yellow line rises vertically then runs horizontally in front of the building mass, a visible zigzag rather than a corridor-hugging path" src="../img/viewer/find-room-path-hospital-frontview.png" /></p>
+<p><img alt="Angled view along the Hospital building's length, same route — the yellow line floats outside/above the real floor plates rather than tracking the walkable interior" src="../img/viewer/find-room-path-hospital-sideview.png" /></p>
+<p><em>Known limitation, reported not fixed (2026-07-26):</em> on some buildings — confirmed on Hospital — a
+room-to-room path can currently draw as a straight line that cuts through open air or atrium space
+instead of hugging the real walkable floor, and/or zigzag through a door pair it didn't need to use,
+rather than the clean corridor-hugging route described above. A real route on Hospital
+(<code>≈ Level 1 R35 → ≈ Level 4 R8</code>, 124.69m) reproduced this live: 5 of its 6 same-storey legality checks
+failed to find a valid detour, which is why the drawn line doesn't hug the floor in the screenshots
+above. This is a known, tracked issue, not newly discovered here — the full technical trail is in
+<code>prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md</code> §9–§16 for anyone who wants it.</p>
 <p><em>Future feature — fire escape:</em> the same routing will pin a <strong>Fire Escape</strong> entry at the top of the
 path list — one tap from any room to the nearest building exit.</p>
 <p><em>Future feature — mobile:</em> scan a QR code posted beside a door to fetch that building's lightweight
@@ -2608,12 +2619,23 @@ one icon:</p>
 <li><strong>Clash Matrix</strong> (key <strong>C</strong>) opens the clash-detection engine (discipline-pair grid, tolerance, Review /
   Resolve / Accept status, HTML + CSV export) — full coverage: <strong><a href="../CLASH_DETECTION/">Clash Detection guide</a></strong>.</li>
 <li><strong>Time Machine</strong> (key <strong>T</strong>) opens the 4D construction timeline — author a schedule, play it back,
-  try a What-if slip, share a <code>?tm=play</code> link. Full authoring/playback walkthrough already lives in
-  <strong><a href="../ERPUserGuide/">Kernel-ERP User Guide → Time Machine</a></strong> (not re-documented here — same building,
-  same feature, reached from either app).</li>
-<li><strong>4D / 5D</strong> (key <strong>4</strong>) opens the analytics dashboard (<code>boq_charts.html</code>) for the loaded building in a
-  new tab — full coverage: <strong><a href="../4D5DAnalysis/">4D/5D Analysis guide</a></strong>.</li>
+  try a What-if slip, share a <code>?tm=play</code> link. On a large building (100K+ elements), a box-cube pill
+  in the panel header trims GPU cost by rendering already-built-but-out-of-view elements as lightweight
+  wireframe boxes, keeping whatever you're actually looking at full LOD400.</li>
 </ul>
+<figure style="margin: 12px 0;">
+  <a href="https://youtu.be/juwOrpqKhFE" target="_blank"><img src="https://img.youtube.com/vi/juwOrpqKhFE/hqdefault.jpg" alt="Time Machine box-proxy demo" style="width:100%; max-width:480px; border:1px solid #333; border-radius:8px;"/></a>
+  <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:6px;"><a href="https://youtu.be/juwOrpqKhFE">Watch on YouTube</a> — Time Machine playback on a large building with the box-cube proxy toggle.</figcaption>
+  </figure>
+
+<p>Full authoring/playback walkthrough already lives in
+  <strong><a href="../ERPUserGuide/">Kernel-ERP User Guide → Time Machine</a></strong> (not re-documented here — same building,
+  same feature, reached from either app), including the
+  <strong><a href="../ERPUserGuide/#author-the-4d5d-schedule--build-it-up-from-the-model-live">ERP-side entry point</a></strong> —
+  picking an element in 3D (or a red <strong>Zoom Across</strong> pill on an ERP record) jumps the Time Machine
+  straight to that element's construction moment.
+- <strong>4D / 5D</strong> (key <strong>4</strong>) opens the analytics dashboard (<code>boq_charts.html</code>) for the loaded building in a
+  new tab — full coverage: <strong><a href="../4D5DAnalysis/">4D/5D Analysis guide</a></strong>.</p>
 <h3 id="camera-view-drawer">Camera / View drawer<a class="headerlink" href="#camera-view-drawer" title="Permanent link">&para;</a></h3>
 <p>The <strong>Camera / View</strong> drawer (camera icon) bundles three camera-control toggles:</p>
 <p><img alt="The Camera / View drawer open — Precision (Fine), Reset Camera, and Auto-Pivot, each with its shortcut key" src="../img/viewer/pill-camview-drawer.png" /></p>

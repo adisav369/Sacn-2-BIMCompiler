@@ -1016,6 +1016,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Playing back a large building — the box-cube LOD toggle (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2741,6 +2752,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Playing back a large building — the box-cube LOD toggle (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3831,18 +3853,26 @@ hands back logs — it holds no business logic and makes no accounting decisions
 person its URL, and everyone keeps logging in as their own real user. The relay carries only the <em>log</em>;
 the accounting still folds from that log on each device, identical to single-user.</p>
 <blockquote>
-<p><strong>One honest limit — read this before you rely on it for approvals.</strong> Cross-device Sync is proven today
-for <strong>field edits</strong> (change a value → save → sync). It does <strong>not yet</strong> carry full per-person, per-step
-attribution of <strong>document actions</strong> — <em>Complete / Void / Close</em> and similar workflow steps — <em>across
-devices</em>: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
-<strong>single device</strong> is unaffected. So if you need a multi-person <strong>approval trail that holds up across
-machines</strong>, that is the next piece we are building (opt-in per-step signing) — not this one. We would
-rather tell you here than have you find it during an audit.</p>
+<p><strong>Where the attribution trail stands — read this before you rely on it for approvals.</strong> Every device
+now signs its own edits with its own device key, and that signature survives a cross-device sync intact
+— proven with two real devices, real edits, real sync: each edit is independently verifiable back to
+the device that actually made it, and a forged attribution is rejected, not silently accepted. Two
+honest limits remain, both about <em>reach</em>, not the signing mechanism itself:
+1. <strong>Checking a signature today means comparing it against a roster of device public keys you assemble
+   yourself</strong> — there is no built-in "share my device with the team" step yet, so this is a capability
+   proven to work, not yet a one-click feature in the app.
+2. This has been proven on <strong>field edits</strong> (change a value → save → sync). <em>Document actions</em> —
+   <em>Complete / Void / Close</em> and similar workflow steps — use the identical signing mechanism, so we
+   expect it to carry the same guarantee, but that specific case has not yet been separately confirmed
+   live (blocked by an unrelated rendering issue on the Complete button in this build, not by the
+   signing mechanism).
+Everything on a <strong>single device</strong> is, and always was, unaffected by either limit. We would rather tell
+you where the edge of what's proven sits than have you find it during an audit.</p>
 <p><strong>For auditors &amp; compliance officers.</strong> How this serverless, hash-chained model maps to <strong>SOX §404 /
 PCAOB, COSO (2013), and ISO/IEC 27001:2022</strong> control objectives — what is <em>strengthened</em>, what
-<em>relocates</em>, and the <em>open</em> items disclosed above — is set out in a companion control-objective map:
-<a href="../AssuranceControlMap.html"><strong>Times Have Changed — And So Must ISO for ERP</strong></a> (a control-mapping
-position paper, not a certification).</p>
+<em>relocates</em>, and the <em>open</em> items disclosed above (including the two limits just above) — is set out
+in a companion control-objective map: <a href="../AssuranceControlMap.html"><strong>Times Have Changed — And So Must ISO for ERP</strong></a>
+(a control-mapping position paper, not a certification).</p>
 </blockquote>
 <hr />
 <h2 id="spatial-bim-erp-find-a-selection-project-order-live">Spatial BIM → ERP — Find a selection → Project Order  <em>(LIVE)</em><a class="headerlink" href="#spatial-bim-erp-find-a-selection-project-order-live" title="Permanent link">&para;</a></h2>
@@ -3929,6 +3959,38 @@ element (from <strong>Find</strong>, or a <strong>Zoom-Across</strong> from a re
 element's construction moment</strong> instead of only lighting it in 3D — the Time Machine <em>consumes</em> the
 pinpoint. With the Time Machine closed, the pinpoint goes to <strong>Find</strong> as before (cost/location first).</p>
 </blockquote>
+<h3 id="playing-back-a-large-building-the-box-cube-lod-toggle-live">Playing back a large building — the box-cube LOD toggle <em>(LIVE)</em><a class="headerlink" href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" title="Permanent link">&para;</a></h3>
+<p>On a big model (LTU-scale, 100K+ elements), scrubbing or playing the Time Machine forward keeps
+every already-built element rendered at full detail forever, even the parts nowhere near your
+camera — that's real GPU cost paid on every frame for geometry you can't currently see. The
+box-cube pill trims exactly that, without ever hiding or degrading anything you're actually
+looking at.</p>
+<p><strong>Where the button is:</strong></p>
+<ol>
+<li>Open a building with more than <strong>50,000 elements</strong> and open the <strong>Time Machine</strong> (the clock
+   pill, or press <strong><code>t</code></strong>).</li>
+<li>A small <strong>cube-wireframe pill</strong> appears in the panel's header row, next to the Day/Night and
+   Drone-Pilot icons — it only shows up at all on large buildings; smaller ones never need it.</li>
+<li>Click it to turn the proxy <strong>on</strong>. Click again to go back to today's full-detail rendering.</li>
+</ol>
+<p><strong>What it does:</strong></p>
+<ul>
+<li>Anything <strong>currently under construction</strong> (the active build) or <strong>just finished</strong> (the short
+  amber "just placed" glow) always renders in full — the toggle never touches those.</li>
+<li>Anything else that's already built stays <strong>full detail (LOD400)</strong> as long as it's <strong>close to the
+  camera and inside your view</strong> — so whatever you're actually looking at never loses quality.</li>
+<li>Anything already built that's <strong>far away or off to the side of what you're looking at</strong> collapses
+  to a lightweight <strong>wireframe box</strong> in its discipline's colour — the same "not yet detailed" visual
+  language the model already uses while a building is still streaming in.</li>
+</ul>
+<p><img alt="Time Machine mid-playback (Day 64/200) on a 122,000-element building with the box-cube LOD pill turned on — the storey directly in view stays full solid LOD400 geometry, while the surrounding structural frame and far bays, already built but outside the camera's immediate view, render as lightweight cyan wireframe boxes coloured by discipline." src="../img/viewer/time-machine-dlod-wireframe.png" /></p>
+<ul>
+<li>Boxes are <strong>never pickable</strong> as real elements — clicking one does nothing, the same as clicking
+  an ordinary loading placeholder.</li>
+<li>Turning it off is instant and exact: every element goes back to its normal full-detail rendering,
+  nothing about the model itself ever changes — it's a display choice only, made per-session, never
+  saved into the model or the schedule.</li>
+</ul>
 <h3 id="what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live">What-if schedule — slip a phase, watch the chain re-fold <em>(LIVE)</em><a class="headerlink" href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" title="Permanent link">&para;</a></h3>
 <p>Once a building is folded into a project, you can ask <strong>"what if this phase slips?"</strong> without touching the
 real plan.</p>
