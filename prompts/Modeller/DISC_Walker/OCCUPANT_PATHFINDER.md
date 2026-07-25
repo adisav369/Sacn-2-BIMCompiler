@@ -1397,3 +1397,39 @@ additive into a table nothing reads yet and is trivially reversible, whereas Opt
 `spatial_structure`, which the pathfinder graph, Fly Tour routing and DiscWalker/MEP walk all consume
 downstream. The gate is its precondition, not its approval. Nothing is lost by holding: `mkpatch.sh`
 regenerates the 856KB patch byte-for-byte whenever it is wanted.
+
+### §AB-PATH — apples-to-apples path A/B across #997 (2026-07-25, headless, numeric)
+Same fixture (`Hospital_meta.db` served bytes + shipped raster patch, md5 `e89ce9b7934cc79…`), same
+four room pairs, only the engine moves: `290c6be` (#996) vs `abc48cd` (#997). **Pairs are chosen by a
+deterministic rule — lexical guid sort, fixed ordinals — not hand-picked**, because a pair picked from
+the post-change graph and then looked up in the pre-change one biases the comparison.
+
+| pair | PRE-997 | POST-997 |
+|---|---|---|
+| CTRL-A | **NO-ROUTE** | dist=128.60 doors=6 hops=13 |
+| CTRL-B | dist=190.29 doors=7 hops=15 illegal=216 worstLeg=147 | **identical** |
+| CTRL-C | dist=101.44 doors=5 hops=13 illegal=77 worstLeg=58 | **identical** |
+| CTRL-D | dist=55.95 doors=3 hops=7 illegal=18 worstLeg=18 | **identical** |
+
+**Reads as designed: #997 is inert for already-routable pairs (3/3 byte-identical, same distance,
+doors, hops, polyPts, illegal counts AND identical node-kind sequences) and converts one NO-ROUTE pair
+to routed.** Graph edges 518 → 526; `E1=17` unchanged, as it must be — E6 bridges are not doors.
+
+**The one number that needed chasing, and its answer.** CTRL-A's new route carries `illegal=238`,
+worse than any pre-existing control. Drill-down: it is **one leg — `stairwp→spine`, 72.5m on Level 5**
+— and the engine's own legalizer names that exact storey in the same run:
+`§PATH_LEGAL_DETOUR_FAIL storey=Level 5 no legal detour among 82 doors`. That is the **pre-existing**
+`DETOUR_FAIL` condition this file's `§GIVEN` already records (×16 across storeys), not something #997
+introduced — and CTRL-B carries `illegal=216 worstLeg=147` **pre-**997 and is unchanged after, which
+is the control proving long spine legs were already like this.
+
+**⚠ Limitation of this measure, stated so nobody over-reads it:** `§AB` counts illegal samples on the
+STRAIGHT chord between consecutive path-node centres. The rendered route is not those chords —
+`_buildPolyline` splices A* interior points per same-storey pair. **These counts are an upper bound on
+route illegality, not the drawn route's illegality.** Also, `shortestPath` returns `{path, doors,
+distance, polyline}` — no `.ok`, `doors` is an ARRAY not a count, and `path` holds GUIDs not nodes; a
+first harness cut got all three wrong and reported four false NO-ROUTEs while the engine's own
+`§PATH_LEGAL legalized=8` was printing right above it. Read the log, not the return shape you assumed.
+**Not measurable here:** `§FPS_MODE` / `§DLOD_TICK` are viewer render-loop logs with no headless
+analogue; they need a live session, and per this project's FUNDAMENTAL LAW a recording is not evidence.
+Harness: `ab_path.js` (A/B) + `ab_leg.js` (per-leg attribution), both in `prompts/Modeller/DISC_Walker/`.
