@@ -58,9 +58,9 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26), bim-ootb #1004/#1005/#1011, user-CONFIRMED live
   ("no more flicker"). `PHOTOREAL_STILL_RENDER.md` bottom sections.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 `§TOUR-POLYLINE` (tour flies the A* on-floor polyline,
-  Terminal 8/92→2/91) + #1013 T2/T3 closed NO-CHANGE on 7 buildings. T4 ⛔ G1: `exit` node = a LIFT-door name
-  filter (Terminal's 5 "exits" are elevators) so `escapeRoute()` would route egress TO A LIFT; never synthesise
-  exits, measured door-side test only — `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`.
+  Terminal 8/92→2/91) + #1013 T2/T3 NO-CHANGE on 7 buildings + #1014 `exit` node was a LIFT-door name filter
+  (egress would route TO A LIFT) → removed, Terminal 2/91→**0/84**, exits=0 fleet-wide by design.
+  T4 still ⛔ pending a REAL exit — `OCCUPANT_PATHFINDER.md §G1-EXTERIOR-DOOR-LANE` (raster coverage gates it).
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
