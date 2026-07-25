@@ -1418,3 +1418,21 @@ avgPolyPts=13.1`; one route on the injected 214-room set 45→66ms; predicate he
   baseline is 0 (HHS); guarded. G2 sharpened from byte-identical `path` to route identity.
 - Green throughout, unchanged: `witness_room_graph_path.js` 15/15, `witness_backbone_routing.js`,
   `witness_corridor_room_backprop.js`, `witness_occupant_pathfinder.js`.
+
+### §17 SHIPPED + DEPLOYED (2026-07-25) — nothing left pending for this route
+- **bim-ootb #1006 MERGED** (`8356978`) — engine + panel + log + raster builder + regenerated Hospital
+  patch. CI `fast-checks`/`e2e-tests` green.
+- **bim-ootb #1007 MERGED** (`491413f`) — `§ROOM_PATH` `stops=[]`/`via=[]` split. ⚠ This commit was
+  pushed to #1006's branch moments before auto-merge fired and was **orphaned by the squash** (exactly
+  the trap `CLAUDE.md` §Concurrent branches names); caught by grepping `origin/main` for the change
+  rather than trusting the merge, then re-landed off fresh `origin/main`. Verify, don't assume.
+- **OCI DEPLOYED, both filenames** (the loader keys on the served `_meta` name): `bim-ootb`
+  `buildings/patches/Hospital_meta.db.sql` + `…/Hospital_extracted.db.sql`, 226962 bytes,
+  md5 `7e97413cd546d4065de67a8565a17b22`, `Content-Type: application/sql`. Through
+  `scripts/oci_patch_gate.js` (§RULES 6) from a CLEAN worktree at `origin/main` `491413f`
+  (`behind_origin_main=0`, `clean=true`) with the provenance check as `--verify`
+  (`connected_rooms_below_30pct=0/149`) → `§GATE_VERDICT PASS` → `UPLOAD_VERIFIED`. Re-fetched over
+  HTTPS: `http=200`, 226962 bytes, md5 matches the repo file, 7 raster rows.
+  **This was an OVERWRITE** of the 144960-byte raster uploaded earlier the same day (00:49) — the
+  previous bytes are saved (md5 `b78752414fbaaf06d27373bb802dedde`, also recoverable from
+  `git show 8356978~1:buildings/patches/Hospital_meta.db.sql`), so a rollback is one gated upload.

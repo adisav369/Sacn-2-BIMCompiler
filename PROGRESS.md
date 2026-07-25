@@ -45,13 +45,13 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- **Room→Path FIXED 07-25 (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`, bim-ootb PR #1006)** — §16's
-  screenshot route: illegal samples 312→0, DETOUR_FAIL 5→0, Hospital pathability 69.4%→91.2%,
-  deg-0 26→7. ⛔ NEXT: the regenerated `buildings/patches/Hospital_{meta,extracted}.db.sql` must go
-  to OCI via `scripts/oci_patch_gate.js` from a CLEAN fresh-`origin/main` worktree AFTER merge —
-  until then the live viewer still loads the old raster. Also open: Terminal Aras 03/04 raster
-  refresh; the room injector REPLACES named IFC spaces with `≈ Level N Rk` on Duplex (names lost in
-  the Find picker — injector lane, not Find).
+- ✅ **Room→Path FIXED + LIVE 07-25 (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`)** — bim-ootb #1006 +
+  #1007 merged, Hospital raster patch deployed to OCI under both filenames (gated, fetch-back
+  verified). §16's screenshot route: illegal samples 312→0, DETOUR_FAIL 5→0, Hospital pathability
+  69.4%→91.2%, deg-0 26→7, DETOUR_FAIL sweep 63.3%→0.0%. Suite green (room_path_ui 6/13→13/13).
+  Still open, both small: Terminal Aras 03/04 raster refresh; and the room injector REPLACES named
+  IFC spaces with `≈ Level N Rk` on Duplex, so real room names are lost from the Find picker
+  (injector lane, not Find).
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
