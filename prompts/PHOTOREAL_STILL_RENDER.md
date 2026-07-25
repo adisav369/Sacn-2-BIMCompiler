@@ -5023,6 +5023,85 @@ So the entire handoff payload is ~10 numbers:
 needed.** Restore those 6 camera floats + the seed in the headless page and `startMaxQualityOrbit`
 reproduces the identical film.
 
+### UX semantics answered from the code — "Alt+C and forget?", "preview still there?", "cancellable?"
+User's three follow-up questions. All three answered YES, each verified in code, not assumed:
+
+**1. "Alt+C and forget" — YES, and the two things that could have silently broken it both check out.**
+The dispatched film must be IDENTICAL to the one the user's own tab would have baked, or "forget" is a
+lie. Two randomness sources could have broken that:
+- `_freezeRandom()` uses a **hardcoded constant seed** (`_seed = 987654321`, LCG
+  `s*1664525+1013904223 >>> 0`) — not time-, machine- or session-derived. Computed its first draw
+  independently in node: **0.0653**, exactly matching the user's live log
+  `§PHOTO_PAINT_SEED seed=0.0653`. So staging variation is byte-reproducible on any machine.
+  ⇒ `seed` does not even need to be in the job spec (keep the field only for a future
+  user-chosen/`_photoVariationLocked` variant).
+- `_cinemaPathPlan()` runs BEFORE `_freezeRandom()` in `start()`, so a `Math.random` in there would
+  have made the path differ between tab and headless. Grepped its body: **no `Math.random`** — only a
+  `performance.now()` for its own timing log. The plan is a pure function of camera pose + DB.
+⚠ The ONE residual fidelity risk to verify when building: the plan reads the room graph +
+`§CINEMA_EXIT` door nodes via `ensureRooms`/`loadNavigate`, so a headless instance whose
+room-injector state differs from the tab's (e.g. a `buildings/patches/*.sql` self-heal applied in one
+and not the other — note the LTU patch-probe 404s above) could plan a DIFFERENT path. Verify by
+diffing the `§CINEMA_*` plan log lines between tab and headless, not by watching the video.
+
+**2. The 10s preview — KEEP it, but it belongs in the USER'S tab, and the headless job passes
+`preview:false`.** `opts.preview !== false` gates the existing 10s real-time rehearsal, which restores
+the camera afterwards (`camSave`) and lets Alt+C during it cancel the whole run for free. A preview
+inside a headless bake is pure waste — nobody is watching, and it burns 10s of real-time GPU. So the
+offline flow is: **Shift+Alt+C → 10s preview in your tab (the only place there is an eye) → then
+dispatch the job with `preview:false`.** The user keeps both the rehearsal AND a free
+nothing-queued-yet cancel window, and the preview genuinely rehearses the dispatched film because of
+the determinism proven in (1).
+
+**3. Cancellable — YES, and the existing code already does the right thing remotely.** `start()`
+opens with `if (_active) { _cancel = true; console.log('§MAXQ_CANCEL requested'); return; }` — so
+**re-invoking `startMaxQualityOrbit()` IS the cancel**, and it works just as well through
+`page.evaluate` as through a keypress. The agent's `/cancel/<jobId>` endpoint therefore does exactly
+that, and MaxQ's existing `§MAXQ_PARTIAL` path takes over: `framesDone >= fps` (≥15 frames = 1s of
+footage) still stitches and saves, logging `§MAXQ_CANCEL_PARTIAL stitching N frames`. **A cancelled
+offline job still yields a playable mp4, not nothing** — that behaviour already exists and is reused,
+not invented.
+⛔ Do NOT implement cancel as `browser.close()` / killing the process — that discards every cooked
+frame and throws away the one graceful-partial behaviour the module already has.
+
+### §MAXQ_OFFLINE_PREFLIGHT — user ask: "if there is a timeout, then it can tell user such, ie only smaller buildings easily done"
+Agreed on the mechanism, **but the premise needs correcting** (stated plainly rather than built on):
+
+⚠ **"only smaller buildings" is not what the measurements show.** The user's OWN attended LTU_AHouse
+run — 122k elements, the largest building tested — baked **360/360 frames in 19m24s at 3666ms/frame
+on this same RTX 4060**. Headless uses that same GPU (proven above: `ANGLE (NVIDIA … RTX 4060 Laptop
+GPU, OpenGL 4.5.0)`). So there is no measured basis for excluding large buildings; the expected
+headless LTU cost is ~20 min, not hours. What is NOT yet measured is whether headless per-frame cost
+matches attended per-frame cost — that is the single named next measurement, and it needs no user
+time. **Do not ship a "small buildings only" restriction based on an assumption the data contradicts.**
+
+**A timeout ceiling already exists in the code** — the agent does not need a new one invented:
+- `var ok = await _waitFoldDone(30000)` per frame; on expiry it does NOT abort, it logs
+  `console.warn('§MAXQ_FRAME_TIMEOUT i=' + i + ' — capturing as-is')` and **captures an
+  under-accumulated frame**. That is a silent QUALITY loss, not a failure — the film still completes,
+  a few frames just have less TAA convergence than the rest.
+- Headroom check: LTU's observed `§STILL_REFINE done elapsedMs` was 1520–1711ms against that 30000ms
+  ceiling — ~18× margin. The per-frame timeout is nowhere near binding even on the biggest building.
+- ⚠ `§MAXQ_FRAME_TIMEOUT` is a `console.warn`, which is easy to miss in a DevTools filter
+  ([[feedback_console_warn_filter_blindspot]]) — but puppeteer's `page.on('console')` receives warns
+  too, so **the agent sees it even when a human in a tab would not.** That is an argument FOR the
+  offline runner reporting quality, not against it.
+
+So the preflight/reporting design is:
+1. **Report an ETA before committing, from real measurement not a guess.** The agent already gets
+   `§MAXQ_FRAME i=0 … perFrameMs=…` after the first frame, and `perFrameMs` is a rolling-15 mean
+   thereafter. Project `perFrameMs × frames`, surface it immediately ("LTU_AHouse 360 frames ≈ 22
+   min"), and only warn/ask if it exceeds a budget the user sets — never refuse by building size.
+2. **Surface `§MAXQ_FRAME_TIMEOUT` count as a quality result**, not a crash: "done, but N of 360
+   frames were captured under-converged." This is information the tab-based flow effectively hides.
+3. **Fail loudly on the real failure modes** the agent can already see on the console:
+   `§MAXQ_FAIL <msg>` (prerequisites/exception), `§MAXQ_IDB_*` (store unusable),
+   `§WEBGL_CONTEXT_LOST`, and — the one currently invisible to the app —
+   `GL_INVALID_FRAMEBUFFER_OPERATION … surfaceless` (§MAXQ_SURFACELESS_FRAMEBUFFER above). The agent
+   reading raw console output is strictly better placed to catch that last one than the app is,
+   since it sees driver messages the page cannot intercept. **Worth wiring as the cheapest available
+   detection for that open bug.**
+
 ### Handoff mechanism — and why this genuinely belongs in the Part-2 INSTALLER, not the web app
 A static page cannot spawn a process, so a small local agent is required. The real constraint:
 **an `https://` page (GH Pages) `fetch`ing `http://localhost:PORT` is mixed content and is BLOCKED
