@@ -34,7 +34,7 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933. ✅ Alt+C flicker: #1004 (shadow-skip) + #1005 (env-map stomp), both witnessed 07-25.
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933.
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
@@ -45,21 +45,11 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- ✅ **Room→Path FIXED + LIVE, confirmed in the browser (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`)** —
-  bim-ootb #1006/#1007/#1008 merged + #1009 (SW served `patches/*.sql` CACHE-FIRST, so an updated DB
-  patch could never reach an installed client — the delivery half of the doctrine) + #1010 (detour
-  bounding, auto-merge armed). Hospital raster live on OCI, gated + fetch-back verified. Route
-  `R35→R8`: illegal samples 312→0, DETOUR_FAIL 5→0, NONLOCAL 2→0, latency 64→37ms; Hospital
-  pathability 69.4%→91.2%, deg-0 26→7, DETOUR_FAIL sweep over 3023 pairs 63.3%→0.0%. Witnesses 11/11.
-  ⚠ MORE waypoints + UNCHANGED distance is the success signal here — misread once, see §17.
-  ▶ **Fly-Tour follow-on is SPEC'D and ready to dispatch cold: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`
-  §TOUR_HIGHLIGHT_LANE** — 4 ordered tasks (task 1 = tour.js ignores `result.polyline` entirely,
-  hence illegalChords=14/81 while Find's line is clean; FINDING 4's parked metric gate is now
-  RELEASED by §17's raster). Task 4 stays ⛔ on G1 `exits=0`.
-  Still open, small: Terminal Aras 03/04 raster refresh; the room injector REPLACES named IFC spaces
-  with `≈ Level N Rk` on Duplex, so real room names vanish from the Find picker (injector lane);
-  `docs/userguide-roompath-fixed` branch has the refreshed guide pics + text, no PR yet (user's call),
-  and a docs publish still needs `scripts/safe_gh_deploy.sh`.
+- ▶ **Fly-Tour follow-on SPEC'D, ready to dispatch cold: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`
+  §TOUR_HIGHLIGHT_LANE`** (4 ordered tasks; task 1 = tour.js ignores `result.polyline`; task 4 ⛔
+  on G1 `exits=0`) — released by Room→Path's §17 raster (below). Small opens: Terminal Aras 03/04
+  raster refresh; room injector replaces named IFC spaces with `≈ Level N Rk` on Duplex, real names
+  vanish from Find; `docs/userguide-roompath-fixed` branch has refreshed guide pics, no PR yet.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -70,22 +60,19 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   unexplained, low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ Occupant-pathfinder lane CLOSED (2026-07-25), bim-ootb #997 §BRIDGE-ROUTED-LEGAL (A*-gated room→
-  spine bridges; Hospital 59.6→61.7%, other 6 buildings unchanged) + #998 §PATCH-PROVENANCE-GATE
-  (mechanical pre-upload check, now `deploy/OCI_UPLOAD.md` §RULES 6). Hospital raster patch LIVE on
-  OCI under both filenames, fetch-back verified. Option "push room compilation to OCI" DELETED — the
-  client self-heal already does 142→214 in 444ms (LTU, the largest at 126k, is 760ms). F1-F4 follow-ups
-  logged. `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
-- ✅ Branch hygiene (07-25): bim-ootb 507→347 local / 590→424 remote, 0 merged-PR branches left.
-- ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22), #947-#967. Log-precision
-  follow-up NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md`.
-- 🟡 P2P Material Receipt UNBLOCKED, real signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT
-  closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
+- ✅ Alt+C flicker + MaxQ salvage (07-25/26), bim-ootb #1004/#1005/#1011, user-CONFIRMED live
+  ("no more flicker"). `PHOTOREAL_STILL_RENDER.md` bottom sections.
+- ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
+  pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
+- ✅ Occupant-pathfinder lane CLOSED (07-25), #997/#998 (§BRIDGE-ROUTED-LEGAL + the OCI patch gate,
+  `deploy/OCI_UPLOAD.md` §RULES 6); F1-F4 logged — `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+- ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 — `Viewer/ROOM_INJECTOR_NEEDLE.md`.
+- ✅ nav-DLOD perf, LTU 122k (07-23) #973-#977 — `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R
+  room-cycle + Home fill-frame (07-22/23) #969 — `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
+- ✅ Branch hygiene (07-25): bim-ootb 347 local / 424 remote, 0 merged-PR branches left.
+- 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed —
+  `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
 - 2026-07-17→20 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md`.
-- ✅ nav-DLOD root-caused + perf fix, LTU_AHouse 122k (07-23), PR #973-#977, ~4.5→~11.5fps measured.
-  §17 BVH-occl-query parked. `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19`.
-- ✅ R room-cycle + Home fill-frame (07-22/23), PR #969 merged, 15/15 witnesses.
-  `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
 - Older DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md` / `_pre_2026-07-05.md` /
   `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
