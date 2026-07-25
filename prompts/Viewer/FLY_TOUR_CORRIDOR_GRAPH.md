@@ -1447,7 +1447,8 @@ record-style glyph** — the superseded design was not built. **No rotary dial**
 Harness `witness_tour_scrub.js` (puppeteer, headless, `PORT=8467` static server on the worktree).
 Every assertion reads REAL numeric object state — camera position, `controls.target`, `_tourT`,
 `_tourStarts` — out of the live page. No screenshots, per this project's FUNDAMENTAL LAW.
-Log: `/tmp/wt-tour-scrub2/witness_scrub3.log`, exit 0.
+Log: `~/bim-ootb/.witness_scrub3.log` (copy preserved at closeout; the `/tmp/wt-tour-scrub2`
+worktree was pruned once PR #999 merged), exit 0.
 
 | Witness | Issue it proves | Evidence (verbatim) |
 |---|---|---|
@@ -1544,8 +1545,10 @@ merged, start any follow-up off **fresh `origin/main`**, never off `feat/tour-ti
 - DLOD re-eval ONCE on release `:1546-1550` (`change`/`pointerup`/`touchend`), never on `input`.
 - UI `:1524-1615` — `<input type="range">`, `accent-color:#4fc3f7`, visible from tour start. No dial,
   no reveal icon (both explicitly rejected — see decisions 1 and 2 above).
-- Witness harness: `witness_tour_scrub.js` in the same worktree; log `/tmp/wt-tour-scrub2/
-  witness_scrub3.log`. Re-run it after ANY change here — it is the regression gate for `pose = f(T)`.
+- Witness harness: **`witness_tour_scrub.js`, now on `origin/main`** (re-runnable from any fresh
+  checkout — the `/tmp/wt-tour-scrub2` worktree was pruned at closeout, PR #999 having merged). The
+  original log is preserved at `~/bim-ootb/.witness_scrub3.log`. Re-run the harness after ANY change
+  here — it is the regression gate for `pose = f(T)`.
 
 ## §OPENING_BEAT_SEEK_GAP — NAMED BOUNDED TASK, not an open question (opened 2026-07-25)
 **Not a §TOUR_TIMELINE_SCRUB bug and NOT a reason to have blocked PR #999** — it is pre-existing
@@ -1555,7 +1558,7 @@ reverse-order probes with decoy seeks interleaved. Blocking a well-verified isol
 unrelated bug it merely EXPOSED is the conflation this project already has a rule against
 (`feedback_separation_of_concern.md`, the S280b regression). Filed separately, on purpose.
 
-**The measurement:** `W-SCRUB-PLAYBACK` (log `/tmp/wt-tour-scrub2/witness_scrub3.log:9`) —
+**The measurement:** `W-SCRUB-PLAYBACK` (log `~/bim-ootb/.witness_scrub3.log:9`) —
 `playback-vs-pure pose gap=39.7768m` during the opening high-radius orbit; the smoothing is
 playback-only by design, so live playback and a seek to the SAME T land ~40m apart at that beat.
 
