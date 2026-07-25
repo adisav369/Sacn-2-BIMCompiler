@@ -4831,3 +4831,68 @@ any standard event. The only known ways to detect it programmatically are more i
 3. On detection, salvage the SAME way as `§MAXQ_IDB_SALVAGE`/`§MAXQ_CONTEXT_LOSS` — stop, keep
    frames captured before the bad window, clear user-facing status message — reuse the existing
    `_idbLost`/`_glLost`-style pattern in `cinema_maxq.js` rather than inventing a third mechanism.
+
+### ⚠ SEVERITY DOWNGRADE — measured counter-evidence: LTU Alt+C completes 360/360 clean when the tab is LEFT ALONE (2026-07-26, same day)
+User report + **full console log of the clean run** (pasted, read in full — not a verbal claim):
+**"when left alone, my LTU Alt-C went thru successfully"**, mp4 confirmed saved in Downloads. The
+numbers from that log, same building (LTU_AHouse, 122k), same Alt+C path:
+
+```
+§MAXQ_FRAME i=345/360 elapsedMs=1112355 perFrameMs=3644 etaSec=51 (rolling-15)
+§MAXQ_FRAME i=359/360 elapsedMs=1163650 perFrameMs=3666 etaSec=0   (rolling-15)
+§MAXQ_MP4 probe codec=avc1.640034 supported=true
+§MAXQ_MP4 configured codec=avc1.640034 size=1852x960 bitrate=5333760 fps=15 frames=360
+§MAXQ_MP4 encoded chunks=360 bytes=15861311 avcCBytes=38 ms=8489 (no real-time replay — 24.0s of footage)
+§MAXQ_MP4 mux samples=360 avcC=encoder ctts=no timescale=15000
+§MAXQ_DONE frames=360 bytes=15864916 type=video/mp4 codec=avc1.640034
+```
+
+- **360/360 frames, zero dropped** — `chunks=360`, `samples=360`, `frames=360`, one 15.86MB mp4.
+- **19m 24s wall clock** (`elapsedMs=1163650`), `perFrameMs≈3666` flat from i=345→i=359 (3644→3666,
+  no degradation across the tail).
+- **`avgRenderMs` stayed in a tight 49.7–65.2ms band for the ENTIRE run** — every `§PHOTO_AO done`
+  line in ~50 consecutive MaxQ frames sits in that range. No burst, no collapse, no recovery
+  transient anywhere.
+- **Zero `GL_INVALID_FRAMEBUFFER_OPERATION` / "surfaceless" lines. Zero `§WEBGL_CONTEXT_LOST`.**
+  Absence across a 19-minute 122k-element bake, not across a short window.
+
+Two things follow, and only these two — no root cause is claimed:
+
+1. **The `§TAB_VISIBILITY`/compositor lead is now user-corroborated, not just plausible.** The bug
+   appeared in a session where the tab was being switched/interacted with mid-bake and did NOT
+   appear in an unattended one. That is a real correlation from two real runs, but it is still NOT
+   a controlled experiment (one run each, different sessions, GPU/driver state uncontrolled) — do
+   not write it up as confirmed causation. It does promote the "visibility/blur as heuristic proxy
+   trigger" option (3rd bullet under detection approaches) from cheapest-but-weakest to the
+   likeliest-correct mechanism, and it means step 1's forcing mechanism to try FIRST is simply
+   **background the tab during a bake** — no ANGLE/SwiftShader research needed to attempt a repro.
+2. **This is a transient, self-recovering, attended-only artifact — not a correctness bug in the
+   bake.** Consistent with what the log already showed (`avgRenderMs` recovered on the next cycle,
+   frames kept coming, `§MAXQ_DONE` produced a valid mp4): the unattended run producing a clean
+   result means the output pipeline is sound and nothing is being silently corrupted into the
+   finished video. Treat this as **cosmetic/robustness hardening, not a blocker** — it does not
+   gate MaxQ, and the honest user-facing guidance today is "leave the tab alone during a bake,"
+   which is already true of any long GPU capture.
+
+**What this does NOT change:** the failure is still invisible to the app (`§WEBGL_CONTEXT_LOST`
+never fires, `A._webglContextLost` stays `false`), so an attended bake can still no-op frames
+without the app knowing. Detection is still worth building — at lower priority, and via the
+visibility-heuristic route first rather than per-frame `checkFramebufferStatus()` polling. Do NOT
+close this as "not a bug" on the strength of one clean unattended run.
+
+### Two unrelated small findings extracted from that same clean-run log (both NEW, neither is §MAXQ_*)
+Recorded here because the log is the only place they've been seen; both are cosmetic, neither
+affects the bake. Not fixed in this session.
+
+1. **LTU_AHouse patch-probe 404s ×2** — `buildings/patches/LTU_AHouse_meta.db.sql` and
+   `buildings/patches/LTU_AHouse_extracted.db.sql` both return **404** from OCI. This is
+   `viewer/scene.js`'s `_applyPendingPatch()` self-heal loader (the 2026-07-11 port) probing for a
+   patch that legitimately doesn't exist for this building — expected-absent, harmless, and the
+   viewer proceeded to a full 360-frame bake right after. But it prints two red console 404s on
+   EVERY LTU load, which is noise that makes real load failures harder to spot. Fix is either a
+   HEAD-then-GET, or accept-404-silently in the loader — **do not "fix" it by uploading empty
+   `.sql` stubs** (that would defeat the "is there a pending patch?" question the probe exists to
+   answer).
+2. **Deprecated PWA meta tag** — `<meta name="apple-mobile-web-app-capable" content="yes">` is
+   deprecated; Chrome asks for `<meta name="mobile-web-app-capable" content="yes">`. One-line
+   `viewer.html` addition (keep BOTH — the apple- form is still what iOS Safari reads).
