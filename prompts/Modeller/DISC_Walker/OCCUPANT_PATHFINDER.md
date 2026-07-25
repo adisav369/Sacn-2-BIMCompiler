@@ -1251,3 +1251,70 @@ measured median 12.90 m / max 45.70 m with `doorGuid: null`.
   8/1 is stated as identical to baseline; quote both runs and `audit_specs.js` exit 0 explicitly.
 - **`⛔ Item 1 (raster deploy) is BLOCKED on the user** — production bucket authorisation. It is the
   only open decision in the chain; everything else is work.
+
+---
+
+## 🔧 ITEM 1 (deploy) — INVESTIGATED + PATCH BUILT, one decision left (2026-07-25, user authorised)
+User authorised the production-bucket deploy, then correctly steered the target: *"u not working off
+the saved Projects/BIM_DB/Hospital.db which is resolved further?"* They were right, and the
+investigation reversed my own precondition from the block above. **Corrections first:**
+
+**❌ "Rebuild the raster patch against the served DB before deploying" — WRONG, retracted.**
+Rebuilt it (`node scripts/build_storey_walkable_raster.js /tmp/hosp-oci/Hospital_meta.db "" out.sql`,
+geo resolved from the sibling `Hospital_geo.db` via `§RASTER_SPLITDB`) and the output is
+**md5-identical** to the shipped `buildings/patches/Hospital_extracted.db.sql`
+(`b78752414fbaaf06d27373bb802dedde`, 144960 bytes). **That patch was never stale for what is served.**
+It was only foreign to the 224-room fixture #996 measured against. The #996 cross-snapshot finding
+stands; the "needs a rebuild" corollary I drew from it does not.
+
+**The real gap is the SERVED ROOM COMPILATION, two generations behind.** Verified against the actual
+OCI bytes (`oci os object get` — note `_meta`/`_geo` come down **gzipped**, `_extracted` does not):
+
+| DB | IfcSpace rows | `room_guid` | graph rooms | deg0 | pathability | Fly Tour opens in |
+|---|---|---|---|---|---|---|
+| OCI `Hospital_extracted.db` / `Hospital_meta.db` (byte-identical to local checkout) | 142 | ✗ | 156 | 26 | 69.4% | `≈ Level 1 R13` 294.0 m² |
+| user's `~/Projects/BIM_DB/Hospital.db` (Modeller-exported) | 317 | ✓ | 224 | 34 | 61.7% | `⚠ Level 1 R14` **315.7 m²** |
+
+**⚠ Those two percentages are NOT comparable — different denominators (12090 vs 24976 pairs).** The
+finer compilation exposes 68 more rooms, mostly `SUSPECT_NO_DOOR` pockets, which drags the *ratio*
+down while raising absolute reachable pairs **8385 → 15407**. Sixth instance of the day's error class;
+do not quote "69.4% → 61.7%" as a regression.
+
+**Also corrected: "the tour opens in a corridor" is a property of the 224-room compilation, not of
+production.** Live today already opens in a 294 m² space. The atrium fix is a 294 → 315.7 m² refinement,
+not a rescue from a corridor.
+
+### The patch is built, verified, and NOT deployed
+`mkpatch.sh` → `Hospital_rooms_raster.sql` (856KB): the resolved `spatial_structure` (317 rows,
+`room_guid` + `SUSPECT_*`) + `rel_contained_in_space` (6943) + `rooms_meta` + the raster built against
+**that** room set. `DROP…CREATE…INSERT` / `INSERT OR REPLACE` throughout, so it satisfies
+`A._applyPendingPatch`'s idempotency contract.
+- **Grafts cleanly — proven, not assumed:** element sets are IDENTICAL (63415 elems / 63182 transforms
+  both ways, **0** guids only-in-user, **0** only-in-served) and **all 6943** room→element links resolve
+  against the served `elements_meta`. Same extraction, better room compilation — not a different building.
+- **Applied twice to the served DB → identical result** (317 spaces / 6943 links / 7 rasters). Idempotent.
+- **`poc_raster_cover.js` on the patched DB: 100.0% own-footprint, every room, connected and deg-0**
+  (182 + 42) — the provenance check passes, i.e. this raster belongs to this room set.
+- Names needed: **BOTH** `patches/Hospital_extracted.db.sql` AND `patches/Hospital_meta.db.sql`. The
+  loader keys on the db's own filename and split-mode serves `_meta` — which is why Hospital has never
+  had a patch apply in production at all (`§PATCH_NONE Hospital_meta.db (404)`). Terminal ships both; that
+  is the split-DB trap this file already flagged, now confirmed as the reason, not a guess.
+- `--content-type application/sql` on every upload (`deploy/OCI_UPLOAD.md` §RULES). Target does not yet
+  exist — OCI currently holds only HHS + Terminal×2 patches, so this ADDS, never overwrites.
+
+### ⛔ THE ONE OPEN DECISION — deploy scope, user's call
+This is no longer "ship the raster." Deploying the room compilation **replaces production's spatial
+tables**, and the profile is mixed, so it should not be decided by a session:
+1. **Rooms + raster** (the 856KB patch above) — live matches the compilation you actually develop and
+   test against, ending the cross-snapshot class of error at its source; finer rooms, `SUSPECT_*`,
+   multi-rect, atrium. Cost: 68 more rooms in every picker, many of them suspect pockets; pathability
+   *ratio* falls even though absolute connectivity nearly doubles.
+2. **Raster only, under both filenames** (145KB, bytes already verified correct for the served rooms) —
+   strictly additive, no room-set change, and it makes Hospital's chord legality real for the first
+   time. Leaves live two compilations behind.
+3. **Neither yet** — the room compilation lives in a Modeller export, not in a repeatable pipeline step;
+   a session could not re-derive it from the IFC today. That is a real argument for fixing provenance
+   before shipping the artifact.
+
+**Nothing is uploaded.** Everything above is local and reproducible from
+`prompts/Modeller/DISC_Walker/` + the fixtures named there.
