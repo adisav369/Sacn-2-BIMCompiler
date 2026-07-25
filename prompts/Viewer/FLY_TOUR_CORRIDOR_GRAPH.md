@@ -1329,3 +1329,20 @@ would jank the drag; TM has no debounce at all on its own input path, `:2595` �
 3. Sequencing: the user's own call — **"We have to correct the initial tour journey first"** — hence
    §HL-FIRST shipped this session and the scrubber did not start. Note the two interact usefully:
    chapter ticks become more meaningful now that the opening block is main-hall → stairs → highlights.
+4. **PURPOSE (user, 2026-07-25): live PRESENTATION, not just playback.** Verbatim: *"a scrubber can be
+   useful for user review"* and *"For user easy reference during presentation."* The four knobs above
+   were already the right set — this states WHY each earns its place, so none gets value-engineered
+   away later as decoration:
+   - **speed 0.5x** is narration pacing — a presenter talking over a beat needs it slower than
+     cinematic default; **2x** is skipping to the part being discussed.
+   - **`mm:ss / mm:ss`** is the audience-facing reference ("we're 2:10 in, the atrium is at 3:40") and
+     the thing that makes a tour *citable* between sessions. It is not chrome.
+   - **step-by-beat `◀◀ / ▶▶`** is "go back and show that again" — the single most likely live action,
+     and the reason beat boundaries must be exact, not approximate scrub positions.
+   - **the hidden-by-default reveal matters MORE here, not less:** during a presentation the audience
+     should see the building, not a control bar. One pulsing dot, controls on demand.
+   Design consequence, stated so it is not discovered late: a tour must be **inspectable**, not merely
+   seekable — pause and HOLD a pose indefinitely without drift, step back to an exact beat, and land on
+   the same pose every time for a given T. That is a correctness requirement on `pose = f(T)` (the
+   build-time end-pose chaining), not a UI nicety: a presenter re-running the same seek in front of an
+   audience must get the same frame.
