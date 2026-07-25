@@ -1436,3 +1436,47 @@ avgPolyPts=13.1`; one route on the injected 214-room set 45→66ms; predicate he
   **This was an OVERWRITE** of the 144960-byte raster uploaded earlier the same day (00:49) — the
   previous bytes are saved (md5 `b78752414fbaaf06d27373bb802dedde`, also recoverable from
   `git show 8356978~1:buildings/patches/Hospital_meta.db.sql`), so a rollback is one gated upload.
+
+### §17 CONFIRMED LIVE IN THE BROWSER (2026-07-26 00:0x, user's own session) + the two residuals
+The user reloaded after #1009 and captured the route again. The live `§ROOM_PATH` line matches, field
+for field, the fingerprint predicted from `Hospitalv3.db` + the live patch — this is the end-to-end
+proof, from the real app, that both halves (engine AND raster) are delivered:
+```
+§PATH_LEGAL_DETOUR_NONLOCAL storey=Level 4 no local detour within 6m margin, used a wider one   (x2)
+§PATH_LEGAL legalized=9 detoured=3
+§ROOM_PATH from=≈ Level 1 R35 to=≈ Level 4 R8 hops=6 portals=4
+  anchors={room:3 doorwp:9 spine:4 stairwp:3} polyPts=19
+  stops=[≈ Level 1 R35,≈ Level 4 R9,≈ Level 4 R8]
+  via=[…737178, …646876, Corridor L1 x3, Stair (upper) x3, …529900, …580257, Corridor L4,
+       …582380, …528097, …531444, …775497, …531444]  distance=124.69m
+  repeatedPortals=[1wrNt7GW19tOpUaBLGwvsc x3]
+```
+**Zero `§PATH_LEGAL_DETOUR_FAIL`** (was 5 at the 05:32 baseline, 3 after the engine landed but before
+the raster reached the browser). `doorwp` 5→9, `polyPts` 15→19, `distance` unchanged at 124.69m — the
+anchor sequence is byte-identical to the fixture measured at **legs=15 illegal=0** (was 265 illegal
+across 3 unroutable legs). Panel reads `3 doors · 1 stair · 124.7m`, three numbered stops, every hop
+labelled by kind.
+
+⚠ **A note on what "improved" looks like here, because it is counter-intuitive and was misread once:**
+MORE waypoints and an UNCHANGED distance is the success signal. The scope fence freezes which rooms
+and doors a route uses (`doors[]`/`distance` untouched); the fix only adds turn points so the drawn
+line follows real floor. Fewer waypoints on this route would mean the raster had gone stale again.
+
+#### Two residuals — cosmetic, NOT correctness, both visible in the log above. Not fixed, not urgent.
+1. **`§PATH_LEGAL_DETOUR_NONLOCAL x2` on Level 4** — `_detourForChord`'s local pass
+   (`DETOUR_LOCALITY_MARGIN = 6.0m`) found nothing for two chords, so the unrestricted storey-wide
+   Dijkstra supplied the waypoints. Legal by measurement (those legs sample 0 illegal), but a
+   storey-wide pick has no sense of overall direction — the exact failure mode §DETOUR-LOCALITY was
+   written to bound (2026-07-14: a route walked to the far end of a 13m room before doubling back).
+   Worth a look ONLY as line-tidiness: which two chords, and would a slightly larger local margin (or
+   a direction-biased candidate order) find a nearer legal detour? Do NOT widen the margin without
+   re-measuring — the 6m value was chosen against real Clinic data.
+2. **`…531444` appears twice in `via=`** (positions 14 and 17) — the legalizer inserts that door as a
+   detour waypoint for the `spine → 775497` chord, then the logical route leaves R9 through the SAME
+   door into R8. A real ~3m back-step: geometrically honest (0 illegal), but it renders as a wiggle
+   and it is the shape once reported as `MissCOback2doors`. Note `repeatedPortals=` correctly
+   attributes the OTHER repeat (the stair, x3) to three flights of one stair rather than a revisit —
+   that distinction is now readable from the log alone, which was §15's open item 4.
+   Possible fix, unproven: when a detour waypoint equals an anchor that appears later in the same
+   path, prefer a different legal waypoint. Must be measured, not assumed — collapsing the span is
+   NOT allowed (R9 is a real intermediate room stop).
