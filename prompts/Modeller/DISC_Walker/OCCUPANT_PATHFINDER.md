@@ -1318,3 +1318,35 @@ tables**, and the profile is mixed, so it should not be decided by a session:
 
 **Nothing is uploaded.** Everything above is local and reproducible from
 `prompts/Modeller/DISC_Walker/` + the fixtures named there.
+
+### ✅ OPTION 1 DEPLOYED (2026-07-25) — raster only, both filenames, condition satisfied first
+Watchdog's condition was to re-run the provenance check against **whatever the production bucket is
+serving right now**, not a local worktree or a cached snapshot, and stop the deploy on anything but
+100%. Done in that order:
+- **Currency of the served bytes proven, not assumed:** re-fetched `buildings/Hospital_meta.db` and
+  matched the bucket's own `content-md5` (`cTpK9OHSgS1SDXGvbPPkHA==`) → inner
+  `06bbbdfcbc339207f1a9b670036a2b3e`, identical to the copy under test. `Hospital_extracted.db`
+  etag/size/mtime unchanged (`b95cabb6…`, 263307264, Jun 5). ⚠ `_meta`/`_geo` are served
+  **gzipped** (`content-encoding: gzip`) — `oci os object get` returns the gzip stream, so `gunzip`
+  before opening or sqlite reports "file is not a database". `_extracted` is not gzipped.
+- **`poc_raster_cover.js` on the SERVED bytes + patch: `100.0%` median and mean, every room —
+  130 connected + 26 deg-0, `connected_rooms_below_30pct=0/130`** — for BOTH `Hospital_meta.db` and
+  `Hospital_extracted.db`. The raster provably belongs to the room set in production.
+  *(An earlier run of this same check printed `104 + 52`; same 156 rooms, different connected/deg-0
+  split, because it ran against the stale `/home/red1/bim-ootb` main checkout at `73d3676` — pre-#997.
+  That checkout has a local merge and will not fast-forward; measure from a fresh `origin/main`
+  worktree instead. Seventh instance of the day's error class, caught before it was published.)*
+- Uploaded, one at a time, `--content-type application/sql`, targets confirmed absent first (ADD, never
+  overwrite): `buildings/patches/Hospital_extracted.db.sql` and `buildings/patches/Hospital_meta.db.sql`,
+  **identical bytes**, 144960, md5 `b78752414fbaaf06d27373bb802dedde` / `t4dSQU+6rwbSc3O7gC3t3g==`.
+- **Fetched back over HTTPS and re-verified end to end:** both `http=200`, 144960 bytes, md5 matches,
+  `Content-Type: application/sql`; the fetched-back bytes re-applied to the served db still give
+  `100.0%`. The loader's exact URL shape (unencoded slashes, dir derived from the db url) resolves
+  `200` for both — so `§PATCH_NONE Hospital_meta.db (404)` is closed and Hospital gets a patch applied
+  in production for the first time.
+
+**Options 2 and 3 remain open and are NOT superseded.** Option 2 (the 856KB rooms+raster patch, built
+and verified above) is deliberately deferred: it replaces production's room compilation, which is the
+highest-blast-radius item in this lane, in the same week two of six wrong findings came from exactly
+this lane's provenance failures. Ship it after the snapshot-stamp work, not before. The patch itself
+needs no rework — `mkpatch.sh` regenerates it byte-for-byte.
