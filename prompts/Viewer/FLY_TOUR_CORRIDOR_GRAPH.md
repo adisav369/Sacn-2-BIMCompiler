@@ -1636,3 +1636,145 @@ the evidence chain** — which is the FUNDAMENTAL LAW this project runs on, not 
 **The one thing NOT closed** is `§OPENING_BEAT_SEEK_GAP` above — deliberately filed as its own task
 rather than folded in. Everything else in §2/§3 of the NEXT SESSION block is usage-review work that
 genuinely needs a human driving the bar, not another code audit.
+
+## §SCRUB_USAGE_HOSPITAL — first real usage review, ✅ PASS on a second building (2026-07-25)
+**Closes §3's "one building only" testing gap.** Source: user's own hand-driven session on the LIVE
+GH Pages viewer (`red1oon.github.io/bim-ootb/viewer/`, `§TOUR_VERSION v17`, `§BUILD_VERSION v847`),
+Hospital loaded from OCI (`Hospital_extracted.db`), full console log read per the Log Mandate.
+**No harness run was needed** — the log alone reproduces three of the nine witnesses in the field.
+
+### What the log PROVES (numbers, not impressions)
+- **Prepare, different action mix from LTU:** `§SCRUB_PREPARE actions=43 total=807.122s prepMs=3.2`
+  — 43 beats / 13:27 vs LTU's 37 / 18:10. Corridor+stair-heavy route, 7 storeys, prepared in 3.2ms.
+- **W-SCRUB-DETERMINISM, reproduced by hand:** `T=531.8935 idx=29 t=0.088958` seeked THREE separate
+  times across a reverse scrub, with seeks to `486.69 / 481.04 / 484.27 / 508.49 / 522.21 / 530.28`
+  interleaved as decoys, returning `pos=-4.3693,3.6707,-21.1933 tgt=-4.7713,3.5259,-16.2074`
+  identically every time, all six components. `T=585.1635` likewise twice →
+  `pos=25.8303,2.9972,1.6164`. `pose = f(T)` holds on real hand input, not just scripted probes.
+- **W-SCRUB-DRAG-RELEASE:** `§SCRUB_RELEASE T=531.8935 pos=-4.3693,3.6707,-21.1933` — identical to
+  the seek pose at the same T. No settle, no drift.
+- **W-SCRUB-HOLD:** `§SCRUB_PAUSE paused=false T=531.8935 pos=-4.3693,3.6707,-21.1933` — same again.
+- **W-SCRUB-SPEED:** `mult=2x totalUnchanged=807.12s`, `mult=0.5x totalUnchanged=807.12s`.
+- **Self-heal fired as designed:** `§PATCH_APPLY` TWICE (144,960 bytes into both `Hospital_meta.db`
+  and `Hospital_extracted.db`), `§NEEDLE_INJECT rooms=214 rects=317`, `§NO-OVERLAP: 0 cross-room
+  overlaps`. The 142→214 room injection confirmed in the field, client-side, from OCI.
+
+### Findings — ranked, ONE is the scrubber's, three belong to other lanes
+1. **[SCRUBBER] One beat is 181.20s of 807.12s — 22.4% of the tour in a single chapter.**
+   `§SCRUB_BEATS ... flyPath:181.20` (the 15-pt / 425.3m Level-1→4 leg,
+   `§FLYPATH_INIT pts=15 len=425.3`). `◀◀/▶▶` cannot help inside it; only dragging can. This is the
+   concrete answer to §2 item 3 (do the knob groups earn their place): they do, but that beat needs
+   sub-division or a mid-beat label. Also explains the tick clustering seen on screen.
+2. **[CORRIDOR-GRAPH lane, NOT the scrubber] The Hospital route flies through walls:**
+   `§FLY_ROUTE ... illegalChords=14/81`. Upstream: `§ROOM_SPINE_BRIDGE bridged=15 rejected=25`,
+   `§ROOM_GRAPH nodes=224 doors=440 edges=61 deadend=194 orphan=185 orphanRescued=172`, and
+   `§PATH_LEGAL_DETOUR_FAIL` on every storey (L1 128 doors / L2 62 / L3 106 / L4 97 / L5 82 — no
+   legal detour found on any). Level 2 worst: only 5 spine candidates, rooms rejected at
+   `nearest=44.69m`. Belongs with `OCCUPANT_PATHFINDER.md`'s F1-F4 follow-ups.
+3. **[SHORTCUTS] `§SHORTCUT_AUDIT total=28 ok=23 inline=0 dead=5 deadKeys=+,-,z,w,r`** — `r →
+   _cycleRoom` reports **dead**, yet shipped as PR #969 with 15/15 witnesses
+   (`ROOM_CYCLE_HOME_SHORTCUTS.md`). Also `z`/`w → toggleOpen`, `+`/`-` → `_zoomStep`. May be a
+   lazy-load timing artifact in the audit rather than four broken features — NEEDS ONE CHECK, do not
+   assume either way.
+4. **[DLOD lane] `§DLOD_NAV_ROOMS status=present source=none rooms=-`** — nav-DLOD reports rooms
+   present but no source and no count, and stays `room=leg-off`/`room=none` for the whole tour,
+   despite 214 rooms being injected BEFORE it engaged. Room-scoped DLOD looks unbound.
+
+### Checked and explicitly NOT issues (do not re-raise)
+- **`tmTourCache:Hospital:v16` vs `§TOUR_VERSION v17`** is CORRECT. That key versions tour
+  *building*; §TOUR_TIMELINE_SCRUB changed playback/seek only and deliberately never touches
+  `buildTour` (see `_tourPrepare` hooking the `A.walkActions = tour` assignment instead).
+- **Closing `§FPS_MODE mean=11.9–12.7ms`** is ~80fps on a PARKED static scene (`§IDLE_GATE park`),
+  not a collapse. During the tour: 29–105ms with `dlod=on fly=1`, in line with LTU's §22 baseline.
+
+## §SCRUB_PANEL_DRAG — SPEC (user ask 2026-07-25: "can u make that scrub tour panel draggable?")
+**Why:** §2 item 2 asked whether the always-on bar competes with the cinematic view. A movable panel
+answers that WITHOUT reopening the rejected hidden/reveal-icon design (decisions 1 and 2 above stay
+rejected) — the presenter moves it off whatever they are showing, and it stays where they put it.
+
+**Behaviour:**
+1. **Handle = the panel background**, not the controls. A `pointerdown` whose `target.closest(
+   'input,button,#tour-scrub-ticks')` is non-null does NOT start a panel drag — the timeline slider,
+   the four knob groups and the clickable chapter ticks keep their exact current behaviour.
+2. **No jump on first grab.** The shipped panel is centred via `left:50%;transform:translateX(-50%)`.
+   On first drag, convert to explicit `left/top` px from `getBoundingClientRect()` and clear the
+   transform in the SAME frame, so the panel does not shift under the cursor.
+3. **Clamp fully on-screen:** `left ∈ [0, innerWidth-w]`, `top ∈ [0, innerHeight-h]`. A drag aimed
+   off-viewport parks it at the edge; it can never be lost.
+4. **Persist** to `localStorage['bim.tourScrub.pos']` = `{left,top}`; restore on `_scrubShow()`,
+   re-clamped (the viewport may have changed size since). Survives tour stop/restart and reload.
+5. **Reset** on double-click of the panel background → back to the shipped bottom-centre default and
+   the stored position is cleared.
+6. **Pointer capture** so a fast drag that leaves the panel keeps tracking.
+
+**Witness — `W-SCRUB-PANEL-DRAG` in `witness_tour_scrub.js` (the regression gate, must stay 9/9 → 10/10):**
+- moves by the EXACT synthesized delta (rect before/after, ±1px);
+- clamps inside the viewport when dragged far off-screen;
+- position survives `_scrubHide()`→`_scrubShow()`;
+- **`A._tourT` and the camera pose are UNCHANGED by a panel drag** — this is the "nothing broken"
+  assertion: moving the panel must never scrub the timeline;
+- a slider drag still seeks after the panel has been moved.
+
+### §SCRUB_PANEL_DRAG — ✅ IMPLEMENTED 2026-07-25 (bim-ootb `fix/opening-beat-seek-gap`)
+`viewer/tour.js`: `_scrubWireDrag()` + `_scrubClampPos`/`_scrubFreezePos`/`_scrubApplyPos`/
+`_scrubSavePos`/`_scrubRestorePos`/`_scrubResetPos`; `_scrubRestorePos()` called from `_scrubShow`.
+All six spec behaviours built as written. **Witness: `W-SCRUB-PANEL-DRAG` added to
+`witness_tour_scrub.js` — the suite is now 10/10 ALL PASS** (log `.witness_paneldrag.log`):
+`movedBy=-120.0,-90.0 exactDelta=true clampedInView=true parkedAt=0.0,0.0
+persistedAcrossHideShow=true | poseDelta=0 cursorDelta=0 sliderStillSeeks=true`.
+The `poseDelta=0 cursorDelta=0` pair is the "nothing broken" assertion: moving the chrome does not
+write the timeline.
+
+## §WATCHDOG-TOUR-SCRUB-2 — second independent review, verdict SOUND-WITH-CAVEATS (2026-07-25)
+Commissioned because the user asked "let Watchdog review if all is ok nothing broken." Reviewed the
+MERGED code via `git show 12ef411:viewer/tour.js` against its v16 parent `9f18562`. **It found five
+things the first `§WATCHDOG-TOUR-SCRUB` review missed** — that review is therefore NOT the last word;
+prefer this one. Two defects below were independently re-verified against the real code before being
+recorded here (D1 and D4 — cited files read directly, not taken from the reviewer's summary).
+
+**The timeline math is sound and stands:** `_actPose` reads only `act._*` + `tLinear` for all 7 types;
+the eager chain is complete; `tourSeek` never runs the smoothing block, which is genuinely why hard
+re-seeks are bit-identical. Nothing here retracts §TOUR_TIMELINE_SCRUB's shipped capability.
+
+| # | Sev | Defect | Trigger → wrong behaviour |
+|---|-----|--------|---------------------------|
+| D1 | Med | **Resume after canvas-tap abort never re-shows the bar.** `picking.js:108` hides it and leaves `walkActionIdx` untouched; the resume branch `tour.js:21-32` sets `walkMode=true` and returns WITHOUT `A._scrubShow()`. **RE-VERIFIED in code.** | ✈ → tap canvas → ✈ → tour plays with the scrubber permanently hidden. Falsifies the `:83` comment "bar lives exactly as long as the tour". |
+| D2 | Med | **`_scrubDragging` sticks true** — set at `:1593`, cleared only in `release()` bound to slider `change`/`pointerup`/`touchend` (`:1613-1615`), no `setPointerCapture`. | Grab thumb → drag straight DOWN off the panel → release. Range input ignores vertical → no `change`; `pointerup` lands on canvas → `release()` never runs → `_scrubSync:1679` never writes the slider again → thumb frozen for the rest of the tour. |
+| D3 | Med | **✈-stop leaves a live, lying bar** (`:11-19` never calls `_scrubHide`, never touches `_tourPaused`). | ✈-stop → bar still visible showing ⏸ → press ▶ → `_tourPaused=true` → press ✈ → status says "Walk resumed", `walkTick:1443` early-returns forever. Camera frozen, status bar lying. |
+| D4 | Low-Med | **`pause`/`lookAround` beats now WRITE camera position; in v16 they did not.** `_actPose:1246` sets `pos = act._startPos.clone()`, the pause branch leaves it, `walkTick:1484` copies it every frame. v16's pause (`9f18562:1256-1261`) touched nothing. **RE-VERIFIED in code.** | Every tour, no bar interaction: `pause` beats DRIFT toward the pure pose instead of holding, and every boundary after a fast beat shows a damped catch-up glide. Contrast `W-SCRUB-HOLD` (scrub pause) which IS provably frozen. |
+| D5 | Low | **Soft-seek branch is unreachable.** `small` needs `|ΔT|<0.5s` but one slider step = `_tourTotal/SCRUB_RES`; LTU 1.09s, Hospital 0.81s — both >0.5. Dead on any tour >500s. | The drag-smoothness feature does not exist in practice; its purity claim has never been executed. |
+| D6 | Low | Playback is not suspended during a drag (nothing sets `_tourPaused` on `pointerdown`). | Hold the thumb still 2s → camera creeps, thumb lies, snaps back on release. |
+| D7 | Low | Keyboard seek skips `_scrubAfterJump` (`release()` early-returns when `_scrubDragging` is false). | Focus slider, arrow-key → no DLOD re-eval. |
+
+**Overclaims to fix in the record (Watchdog Protocol — claims without proving log lines):**
+- *"playback and seek cannot diverge"* — **contradicted by our own log**, `.witness_scrub3.log:9`
+  `gap=39.7768m`. Correct form: "cannot diverge in the timeline formulas; the playback-only
+  smoothing filter still does."
+- *"eager init measured at 9.7ms"* — the preserved log says `prepMs=10.7`. Quoted from an
+  unpreserved run.
+- *W-SCRUB-OVERLAY "across a full drag + release"* — the harness dispatches `input` with no prior
+  `pointerdown`, so `release()` early-returns. It tested `input` only.
+- *Deviation 2 "orbit now honours walkSpeedMult like every other type"* — `pause` and `riseAndTilt`
+  changed too. Three types, not one.
+- *`act._inited` idempotence* — the guard is defeated by its only caller (`_tourPrepare:1337` sets
+  `_inited=false` before `_actInit`, which mutates the PERSISTENT `act.duration` at `:1226`). Safe
+  today only because each activation gets a fresh array. Fragile, unwitnessed.
+
+## §OPENING_BEAT_SEEK_GAP — ⚠ GATE INVALIDATED BEFORE IMPLEMENTATION (2026-07-25, read this FIRST)
+**The mechanism is confirmed; the gate proposed above is NOT sound. Do not implement against it.**
+- **CONFIRMED:** the smoothing block IS a first-order lag filter; steady-state lag under continuous
+  (non-jump) motion is `d(1-a)/a` with `a=SMOOTH`; it is playback-only. The fix direction — a lag
+  offset that DECAYS instead of being re-fed by ordinary motion — remains correct, and it also cures
+  D4 above (the boundary catch-up and the pause drift are the same lag seen from the other side).
+- **NOT CONFIRMED:** that `d≈4.4 m/frame` explains the measured 39.7768m. That figure was never in
+  the evidence; the harness's own numbers give a 9.145 m/frame run mean and imply `d≥5.42`, the
+  sample lands in the orbit's blend-in transient (`_actPose:1300-1303`) rather than a steady state,
+  and `purityGap` is a max-COMPONENT, not a norm.
+- **THE GATE IS FRAME-RATE DEPENDENT — this kills "the gap must drop" as a pass condition.**
+  `d = v·dt`, and `W-SCRUB-PLAYBACK` drives `walkTick()` inside `setTimeout(r, 30)`; editing that 30
+  moves the number with ZERO product-code change. **Directly demonstrated this session:** a re-run on
+  a differently-built LTU tour (28 actions / 833.34s vs the original 37 / 1090.60s) reported
+  `gap=4.4447m` against the original `39.7768m` — an 8.9x swing with the smoothing code untouched.
+- **Replacement gate when picked up:** assert the DIMENSIONLESS ratio `gap / perFrameDelta`, which
+  under the current code must equal `(1-a)/a = 7.33`, or drive `walkTick` with a fixed synthetic
+  `dt`. Report that ratio before/after, never the raw metres.
