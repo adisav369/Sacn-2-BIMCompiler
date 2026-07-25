@@ -1241,3 +1241,121 @@ matters beyond Find, because `_legalizePath` is shared: the same missing raster 
 Tour's routes on the same building right now. **Settle WHICH DB has the raster before re-running the
 screenshot cases**, or the re-test will measure the wrong artifact. See
 `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION (G2).
+
+## §17 — §16's REPRO ROOT-CAUSED AND FIXED (2026-07-25) — "did the rooms injection improve the
+## pathing?" answered with measured numbers; bim-ootb `fix/roompath-node-logic`
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: the user's question on §16's evidence — has the client-side room injection (142→214 rooms,
+ROOM_INJECTOR_NEEDLE.md) improved Find-Panel pathing, how, and what is still lacking. Answered by
+re-running the EXACT route from the screenshots headlessly against real fixtures (no screenshot
+judgment — this project's FUNDAMENTAL LAW), then fixing what the numbers exposed. Read the §-log
+lines quoted here before re-deriving anything. The `storey_walkable_raster` patch REGENERATED here
+must reach OCI for the live viewer to see the fix — that upload runs through
+`scripts/oci_patch_gate.js` from a CLEAN fresh-origin/main worktree AFTER the PR merges (the gate
+refuses a dirty/behind engine by design), so a merged PR alone does NOT close this.
+```
+
+### The answer, in one line each
+- **Injection IMPROVED reachability and made the reported route possible at all.** Both endpoints in
+  the screenshots (`≈ Level 1 R35`, `≈ Level 4 R8`) are injector-produced rooms — the served DB
+  compiles 142 spaces, the client self-heal takes it to 214. Route topology was already sound: 4
+  distinct portals, a real 3-flight stair Level 1→4, 124.69m, reproduced byte-for-byte headlessly.
+- **Injection also silently BROKE the drawn geometry, and that is what the screenshots show.** The
+  walkable raster is a build-time snapshot; `_pointWalkable` consulted it EXCLUSIVELY
+  (`if (raster) return raster.contains(...)`), so rooms compiled after the raster was built had no
+  floor under them: `≈ Level 1 R35` measured **0/110 of its own footprint walkable, no walkable cell
+  within 12m**. Every legality test starting there fails at its first sample, which is why the log
+  said `§PATH_LEGAL_DETOUR_FAIL … no legal detour among 128 doors` — the doors were never the
+  problem, the endpoint was off-floor.
+- **A second, bigger data defect was behind the rest** — and it is the "fixable plumbing gap" §16
+  left open. The raster builder selected slabs in a HARDCODED window `[storeyZ−2, storeyZ+1]` around
+  the average ROOM-CENTRE z (mid-height of the occupied volume). On Hospital that missed the real
+  floor plate by **5cm**: `Level 4 window [181.79,184.79]`, floor slab `z=181.74`, **area 8270 m²**,
+  excluded. Same on Level 5 (`186.74`, 8343 m²) and Level 1 (`165.59/165.74`, 8899 m²). So this
+  building's raster was rooms-and-corridors only, its walkable cells were islands, and A* honestly
+  reported "no on-floor route" — the straight chords in `RoomsPathTopView/SideView` are that degrade.
+
+### Measured, real fixtures (`buildings/Hospital_meta.db` = served bytes; `~/Projects/BIM_DB/HospitalV2.db` = post-injector save)
+Route `≈ Level 1 R35 → ≈ Level 4 R8`, per-leg illegal samples @0.25m (`RG.chordIllegalCount`) and
+`RG.astarHop` verdict per leg:
+
+| state | DETOUR_FAIL | legs A*-clean | illegal samples on the drawn legs |
+|---|---|---|---|
+| as captured 2026-07-25 05:32 (production) | 5 | 5/8 | **312** |
+| + engine fixes (this PR), old shipped raster | 3 | 8/11 | 265 |
+| + regenerated raster (this PR) | **0** | **15/15** | **0** |
+
+Room-pair pathability on the SERVED 156-room set (`pathab.js`, 12090 pairs) — a clean 2x2 showing
+which half of the fix does what:
+
+| engine | raster patch | deg-0 rooms | pathable |
+|---|---|---|---|
+| origin/main | shipped | 26 | 69.4% |
+| this PR | shipped | 24 | 71.5% |
+| origin/main | regenerated | 7 | 91.2% |
+| this PR | regenerated | **7** | **91.2%** |
+
+Provenance gate (`poc_raster_cover.js`, the same invariant the 2026-07-25 deploy used): regenerated
+raster is **100.0% own-footprint median AND mean for every one of the 156 rooms** (149 connected +
+7 deg-0, `connected_rooms_below_30pct=0/149`).
+
+### What was actually wrong in the logic (all in this PR, each with its own § comment in-code)
+1. **`§RASTER-UNION-NOT-EXCLUSIVE** (`common/room_graph.js`) — raster is a union MEMBER again, not a
+   short-circuit. §G3-REVISED's own words were "this revision only replaces how the SLAB half of the
+   union is computed"; the implementation made it "raster INSTEAD of rooms", which breaks under any
+   room-set change. Monotone (illegal→legal only); HHS's courtyard still fails correctly (no room
+   rect covers it — 156/194 on this file's own rooms-only diagnostic).
+2. **`§DOOR-THRESHOLD-WALKABLE`** — a door's own measured footprint (`bbox_x/bbox_y` + the existing
+   `DOOR_BUFFER_SLACK`) is walkable. A doorway is the only place you can cross a wall, yet neither
+   slab triangles nor room rects cover it: real doors `737178`/`775497` read `walkable=false` at
+   their own centres, which is ALSO why A* found no route between two rooms that share a doorway.
+3. **`§STAIR-FOOTPRINT-WALKABLE`** — same for each real stair FLIGHT ROW's footprint. All three
+   `stairwp` anchors on this route were off-floor (nearest walkable 2.25–5.25m, far outside
+   `_astarGrid`'s 1.2m snap). ⚠ Per-ROW, never the name-keyed group bbox: on Hospital 61 assembly
+   rows share one key and the group box is **84.1 × 63.9m (5368 m², the whole building)** — using it
+   blanketed every storey and declared every chord legal. Caught by measuring, not by review.
+4. **`§HOP-DOOR-WAYPOINT`** — an E2 edge is literally `{a: room, b: spine, doorGuid: g, wpB: g}`
+   ("leave this room through THIS door"), but `_publicHop` only substituted waypoints for `circ`
+   nodes, so a room→spine hop drew room-centre → corridor-point as ONE 32.6m line and skipped the
+   door it is named after. Now inserted (never substituted — the spine point is real too).
+   `doors[]`/`distance` untouched, per PATH_LEGAL_SEGMENTS.md's scope fence.
+5. **`§ANCHOR-DEDUPE`** — two distinct spine guids at the SAME point (`Corridor — Level 1` at
+   (48.6,110.2) twice) produced a zero-length hop and a duplicated Find-panel row.
+6. **`§PATH_PANEL_KINDS`** (`viewer/navigate_find.js`) — the panel rendered every `res.path` entry as
+   a numbered ROOM stop and zipped it POSITIONALLY with `res.doors[i]`. The two arrays differ in
+   length AND sequence, which is exactly why the screenshots show a DOOR as stop 4,
+   `└─ door: Stair:180mm max riser 280mm going` under corridor rows, the same corridor listed twice,
+   and a "6 doors" header for a route crossing **4 distinct portals, one of them a stair counted once
+   per storey hop**. Now rendered by node KIND (stop / through door / via stair / along corridor) and
+   headed with distinct counts (`3 doors · 1 stair · 124.7m`).
+7. **`§ROOM_PATH_PRECISION` + `§DETOUR_FAIL_CAUSE`** (§14's rule, applied): `§ROOM_PATH` now carries
+   `portals=`, `anchors={room:4 doorwp:8 spine:3 stairwp:3}`, `polyPts=` and `repeatedPortals=[…]`,
+   and a failed detour states `cause=ENDPOINT_OFF_FLOOR|WALKABLE_ISLANDS aWalkable= bWalkable= len=
+   illegal= candidates=` instead of the door-blaming `no legal detour among 128 doors`.
+8. **`§FLOOR-PLANE-NOT-FIXED-WINDOW`** (`scripts/build_storey_walkable_raster.js`) — derive the floor
+   plane (highest slab at/below the occupied centre, 4m lookdown, then everything coplanar within
+   0.35m) instead of guessing a 2m window. Coverage, same building, same source data: Level 1
+   39.8%→**69.3%**, L2 20.9%→**63.5%**, L3 46.2%→63.5%, L4 20.5%→**41.2%**, L5 19.6%→39.1%,
+   L6 27.3%→42.4%.
+9. **`§RECT-INDEX`** (perf) — one lazily-built 4m bucket grid per storey over all rect sources. The
+   union change means off-raster samples no longer short-circuit, and A* calls this predicate millions
+   of times per click: measured 0.01→0.03ms per 5–30m chord with linear scans, back to **0.01ms**
+   with the index. `buildGraph` 171→216ms on Hospital (one-off per load).
+
+### Blast radius, checked not assumed
+`fixedWindowWouldStartAt` in the new `§RASTER_FLOOR_PLANE` log shows HHS (all storeys), JKR (all) and
+Terminal (Aras 01/02/Tanah/Bumbung) already had their floor plane INSIDE the old window — their
+rasters are unchanged by fix 8, so only **Hospital's patch is regenerated in this PR**. Terminal's
+`Aras 03`/`Aras 04` windows widen slightly (15.82→15.75, 20.63→19.75); its raster lives inside a
+1000-statement rooms patch, so regenerating it is left as a separate, small follow-up rather than
+churning that artifact here.
+
+### Still open after this (named, not silently dropped)
+- **The OCI upload of the regenerated Hospital patch** (both filenames — the loader keys on the
+  served `_meta` name). Gate-then-upload, post-merge, from a clean worktree.
+- **Terminal Aras 03/04 raster refresh** (above).
+- **`MissCOback2doors`' door-revisit question is now ANSWERABLE from the log alone** rather than
+  needing a re-shoot: `repeatedPortals=` on `§ROOM_PATH` distinguishes a real double-back from one
+  stair counted per flight — on this route it was always the latter.
