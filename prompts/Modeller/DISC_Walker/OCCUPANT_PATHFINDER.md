@@ -1507,10 +1507,12 @@ conclusion had to be re-tested on the one that is.** `LTU_AHouse` is **125,698 e
 | Hospital | 63,415 | 142 → 214 | 444ms |
 | Clinic | 16,114 | 118 → 207 | 234ms |
 | JKR | 8,985 | 79 → 62 | 149ms |
-**The largest building in the fleet compiles in 760ms**, and cost scales roughly linearly with element
-count — 2x the elements for 1.7x the time, no cliff. **There is no cost case for an exception on ANY
-building, and none should be written.** (JKR 79 → 62 is a DECREASE — v3 merging over-split rooms.
-Noted, not investigated; it is not this lane's question.) *(Caveat: node, not a browser tab — no DOM, no competing render loop. Treat
+**The largest building in the fleet compiles in 760ms**, and cost scales **sub**-linearly with element
+count — 2x the elements for 1.7x the time, no cliff. **There is no cost case for a client-compile
+exception on any building, and none should be written.**
+**⚠ Scope that claim honestly if it is ever quoted outside this file:** it is PROVEN for the fleet
+actually measured (up to 125,698 elements). The sub-linear trend makes extrapolation to a larger
+future or user-dropped building reasonable, but that is an EXTRAPOLATION, not a fifth data point. *(Caveat: node, not a browser tab — no DOM, no competing render loop. Treat
 as a floor. The margin is ~15x before it could matter, and production already ran it — see 3.)*
 
 **3. It is REDUNDANT — the client-side self-heal ALREADY did this to Hospital, in production.**
@@ -1534,3 +1536,50 @@ sent this lane toward an OCI upload it never needed. Exactly what
 **Nothing to do for Hospital.** Missing `rooms_meta` already counts as maximally stale → auto-recompute
 fires on next load, by design. No backfill, no upload, no exception. `mkpatch.sh` and the 856KB patch
 stay ONLY as a DRY-run baseline generator; they are **not** upload candidates. **Item 1 is closed.**
+
+## 📋 FOLLOW-UPS — logged, NOT started (2026-07-25, agreed with watchdog)
+
+### F1 — Should the RASTER self-heal client-side too? **Benchmark before deciding.**
+The one piece of server-generated derived data still pushed to OCI (Option 1, live). Rooms have a
+client-side self-heal; the raster does not — the builder is node-only. **Do not decide by symmetry.**
+The rooms case only closed because someone measured 444ms instead of assuming; deciding "port it
+client-side" without the equivalent number would repeat that mistake mirrored.
+**Not urgent:** #998's provenance gate already covers the raster's current push on both axes, so this
+is architectural consistency, not an active correctness risk the way the room patch was.
+
+**Starting anchor, measured here so F1 doesn't begin cold** — server-side `build_storey_walkable_raster.js`
+on Hospital (`Hospital_meta.db` + sibling geo, 7 storeys):
+```
+3.60 s wall, 786,384 KB peak RSS      §RASTER_GEOM_INDEX guids=63182 resolvedHashes=20609
+```
+**The wall clock is not the finding — the 786MB peak is.** ~8x the rooms compile in time, but a
+*qualitatively* different memory profile, and an earlier run in this session needed
+`--max-old-space-size=6144`. Room compilation walks walls/doors; the raster decodes
+`component_geometries` mesh triangles, which is heavier per element — exactly the "different profile"
+this was flagged for. **786MB peak in node is a serious question for a browser tab, and likely
+disqualifying on mobile.** So F1's real question is memory, not speed:
+1. Measure peak heap for a browser port of the same logic (Hospital AND `LTU_AHouse` at 125,698 elements).
+2. If it cannot fit a mobile tab, "stays server-pushed" is the ANSWER, written down with this number as
+   its justification — not an unexamined gap, and not an exception granted by default.
+3. Only if it fits does the port become the consistent choice.
+Harness to copy: `bench_compile.js` in this folder.
+
+### F2 — JKR room count DECREASED under v3: 79 → 62
+Every other building GAINED rooms (`Hospital 142→214`, `LTU 369→422`, `Clinic 118→207`). A shrink is
+either a real fix (v3 merging genuinely over-split rooms) or a regression on that building's geometry
+— **the two are indistinguishable from the count alone**, which is why this needs a look rather than a
+shrug. Recorded here so it does not evaporate with the session transcript. Not this lane's question.
+
+### F3 — `LTU_AHouse` meta/extracted split: 332 vs 369 spaces (394 vs 422 after compile)
+Same building, two DBs, diverging room counts — the shape already named in
+[[project_db_snapshot_divergence_landmine]]. **Not novel**, logged so it is attached to a specific
+building/number pair rather than remaining a general warning.
+
+### F4 (context only, no decision pending) — there is NO threshold-override surface to reuse
+Confirmed by inspection: `room_walker.js`'s `walk(db, opts)` reads exactly ONE field — `opts.write`;
+every threshold (`RES`, `MIN_AREA`, `SUSPECT_ELONGATED_ASPECT_MIN`, `SUSPECT_OPEN_ENCLOSURE`, `MERGE_*`)
+is a hardcoded module constant, exposed read-only on the API object with nothing reading an override
+back in. `compile_rooms.py` is the same shape (bare `--write`, no argparse/config/env). The per-building
+`patches/<dbFile>.sql` mechanism is a DATA-level self-heal, not threshold config; `ensureRooms({force,
+skipPatch})` is two booleans. **So any "disclosed-exception JSON" idea is clean-slate work that would
+SET the convention, not a rename of something already present.** Fact, not a proposal.
