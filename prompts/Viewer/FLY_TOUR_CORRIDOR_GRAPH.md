@@ -1972,7 +1972,7 @@ Clinic. **G1 (`exits=0`) is still open** and still blocks the descent finale (ta
 (count, labels, area vs minDim winners) — the numbers in FINDING 4 predate the raster and must not be
 carried forward as-is.
 
-### Task 1 — feed the tour the FLOOR-HUGGING polyline it already has (do this first: mechanical, visible)
+### Task 1 — ✅ DONE (witness) 2026-07-26 — feed the tour the FLOOR-HUGGING polyline it already has
 `viewer/tour.js` contains **zero** references to `polyline` (verified `git show origin/main:viewer/tour.js
 | grep -c polyline` = 0). It routes stop→stop with `RG.shortestPath()` (`tour.js:645-653`) and then
 builds camera points from graph-node **centroids** (`tour.js:687-713`), discarding
@@ -1988,6 +1988,58 @@ building's Find route is clean.
 - **Gate:** re-run the same `chordIllegalCount` sweep `tour.js:718-725` already performs and report
   illegal-chord ratio BEFORE/AFTER on Hospital + Terminal + Clinic. Expect Hospital's 14/81 to collapse.
   Also re-check `§SCRUB_PREPARE_STALL`'s timing — more points per leg is more `cinemaLookDist` work.
+
+#### ✅ SHIPPED — bim-ootb `§TOUR-POLYLINE` (`viewer/tour.js`, `witness_tour_polyline_path.js`, 25/25 green)
+`legSteps()` aligns `sp.polyline` back onto the leg's own anchors: a polyline point sitting on the next
+anchor's measured position IS that anchor (keeps its guid → name/pause/stair-flight handling byte-for-byte
+unchanged); every other point becomes an interior TURN point flown at that storey's floor z. No polyline
+(rect-fallback, or A* declined) ⇒ anchors alone = exactly the old centroid path. `§TOUR_VERSION` v17→v18 and
+`TOUR_CACHE_VER` v16→v17 bumped in lockstep (a cached v16 route would replay the OLD geometry forever).
+
+**Measured (BEFORE = `git show origin/main:viewer/tour.js`, run in the same process against the same graph;
+illegal chords recomputed INDEPENDENTLY by the witness from the returned `pts`, not read from tour.js's own
+counter — the two agree exactly, which is itself the cross-check):**
+
+| building | illegal chords | illegal samples | pts | polyLegs |
+|---|---|---|---|---|
+| Terminal | **8/92 → 2/91** | **186 → 18** | 113 → 112 | 2/15 |
+| Hospital | 0/146 → 0/143 | 0 → 0 | 159 → 156 | 0/22 |
+| Clinic | 0/55 → 0/55 | 0 → 0 | 62 → 62 | 3/7 |
+| HHS | 0/68 → 0/62 | 0 → 0 | 80 → 74 | 0/13 |
+| LTU_AHouse | 0/81 → 0/81 | 0 → 0 | 95 → 95 | 2/8 |
+
+Stop set + order byte-identical on every building (`§HL-ORIGIN` re-asserted by the named-waypoint signature).
+
+**Three findings that correct this Task's own premises — carry these forward, do not re-derive:**
+1. **Hospital's `14/81` no longer exists.** Post-raster (#1006 patch applied) the centroid route already
+   measures **0/146** illegal. The 14/81 in the scope block above was a PRE-raster live reading; the
+   remaining wall-cutter in the fleet is **Terminal**, not Hospital.
+2. **The polyline is NOT mostly extra turn points — it is anchor-dropping.** An independent 40-leg sweep
+   per building found `trueInteriorPts` = 0 (Hospital), 3 (Terminal), 3 (Clinic) — the anchor chain
+   (doors + spines + legalizer waypoints) is already so dense that each hop is LOS-direct and
+   `_simplifyLOS` collapses to nothing. The whole gain comes from `§CIRC-NOT-A-WALKPOINT`: the polyline
+   DROPS the synthetic `circ` centroid (it sits on a disconnected raster island), and it is the
+   room→circ→room chord that cut the wall. Safe by construction — `g.nodes` carries **only** `kind='room'`
+   (asserted in the witness), so a dropped `circ` can never be a dropped STOP.
+3. **`§SCRUB_PREPARE_STALL` cannot worsen** — flown point count never GREW on any building (it fell on 3),
+   and planning cost is unchanged by construction: `room_graph.js` already computed the polyline on every
+   `shortestPath()` call before this change; the tour simply threw it away. Witness gates `ma.pts <= mb.pts`.
+
+**Residual (named, not fixed here):** Terminal's remaining 2 chords are the SAME chord flown both ways —
+entrance `exit` node ↔ room `⚠ Aras Tanah R18`, 15.7 m, 9 illegal samples. Log cause:
+`§PATH_LEGAL_DETOUR_FAIL cause=ENDPOINT_OFF_FLOOR aWalkable=false` — the exit node itself (an
+elevator-door opening) is OFF the walkable raster, so A* correctly DECLINES rather than draw a fake line
+(`§ON-FLOOR-GUARANTEE`). That is exit-node placement = `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1
+territory, the same gate Task 4 waits on — not a tour defect.
+
+**Live-browser confirmation (regime-gap guard, not a supplement to the maths):** real user path
+(`A.toggleFlyAround()`, what the ✈ button calls) on the served viewer, §-log values only:
+- **Terminal** — `§FLY_ROUTE … pts=112 illegalChords=2/91 polyPts=2 polyLegs=2/15`, i.e. **identical in every
+  field to the headless harness's AFTER row**, walkMode=true, 49 actions. The harness regime IS the browser regime.
+- **Clinic** — `pts=78 illegalChords=0/71 polyPts=3 polyLegs=2/7` (differs from the harness's 62/55 because the
+  browser compiles its own room set on load), walkMode=true, 19 actions.
+- Both logged `§TOUR_VERSION v18` and stored `§TOUR_CACHE … key=…:v17:…` — the cache bump landed, so no returning
+  user replays the old centroid route.
 
 ### Task 2 — re-measure FINDING 4's metric on the post-raster pool (the actual "largest hall" fix)
 Candidates unchanged and still scale-free: `minDim`, `minDim²` (biggest inscribed square),
