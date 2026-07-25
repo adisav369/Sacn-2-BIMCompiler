@@ -6,21 +6,17 @@
 **Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
 | PFX | EL | GATES | Notes |
 |-----|----|-------|-------|
-| BR | 33 | 9/9 | ALL GREEN |
-| MO | 2791 | 9/9 | ALL GREEN |
-| RL | 1 | 9/9 | ALL GREEN |
-| WI | 1 | 9/9 | ALL GREEN |
+| BR·MO·RL·WI | 33·2791·1·1 | 9/9 | ALL GREEN |
 | DX | 1169 | 8/9 | MetadataMissing (IfcOpeningElement) |
 | SH | 65 | 8/9 | MetadataMissing (generative MEP) |
 | TE | 48428 | 8/10 | C8 mesh diversity, GEO no pairs (federated) |
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
-
 ▶ **PUSH PAUSE LIFTED (2026-07-17)** — push freely; `CLAUDE.md` §⏸ PUSH PAUSE.
 
-⚠ `~/bim-ootb` main checkout = `73d3676`, **38 behind**; `git merge origin/main` CONFLICTS
-(dlod_nav/main/sw.js), tried+aborted 07-26. Its 2 local commits are NOT unique (`86b096b` = #971), so
-nothing is at risk — but **never measure from it**, use a fresh `origin/main` worktree.
+⚠ `~/bim-ootb` main checkout = `73d3676`, **38 behind**, `merge origin/main` CONFLICTS (dlod_nav/main/
+sw.js, tried+aborted 07-26); its 2 local commits are NOT unique (`86b096b`=#971) so nothing is at risk —
+**never measure from it**, use a fresh `origin/main` worktree.
 
 ▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong ("10
 commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git for-each-ref
@@ -78,6 +74,6 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   `_pre_2026-07-05.md` / `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
 ## OCI Deployment · Reference
-Live: `bim-ootb-live` (SYSNOVA landing+viewer+single DBs). `deploy/dev/` canonical, `deploy/sandbox/`
-stale. SOP: `deploy/OCI_UPLOAD.md` — **§RULES 6: patches go through `scripts/oci_patch_gate.js`.**
-Docs: https://red1oon.github.io/BIMCompiler/ · `docs/SPATIAL_COMPILATION_PAPER.md` · `internal/OCI_SETUP.md`
+Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches
+from OCI `bim-ootb`. `deploy/dev/` canonical. SOP `deploy/OCI_UPLOAD.md` — **§RULES 6: patches go via
+`scripts/oci_patch_gate.js`.** Docs: https://red1oon.github.io/BIMCompiler/ · `internal/OCI_SETUP.md`
