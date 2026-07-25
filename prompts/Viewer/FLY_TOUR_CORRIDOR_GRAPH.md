@@ -1946,3 +1946,83 @@ Terminal and HHS are unaffected (their area-winner is already the width-winner).
   first, then re-check against Hospital once G1/G2 land.
 - Witness plan: same shape as the `§HL-FIRST` sweep — real graphs from real DBs, BEFORE/AFTER per
   candidate metric, independently recomputed in the harness (not read back from the engine's own log).
+
+## ▶ §TOUR_HIGHLIGHT_LANE — the parked metric gate is RELEASED; 4 bounded tasks, ordered (2026-07-26)
+```
+# ⚠ DO NOT REMOVE
+SCOPE: user ask — "some buildings it still does not go for the highlights, ie largest hall first then
+stairs as connected." The ORDER is not the bug: §HL-FIRST (#989) already sorts stops so the largest
+space opens the tour and the largest higher-storey stop pulls the stair-climb in. What fails is the
+CANDIDATE POOL and the FLOWN GEOMETRY. Work these four top-to-bottom; each is independently shippable
+and each names its own gate. Do NOT re-litigate what §ABSTRACTION-AUDIT-2 and the §NEXT DEDICATED
+SESSION block above already settled (no width thresholds, no per-building constants). Read the log
+after every run; every claim needs a §-line.
+```
+
+### ⛔→✅ THE GATE THAT PARKED THIS IS NOW PARTLY RELEASED — read before re-reading FINDING 4
+The block above says *"do not re-measure the metric until Hospital's connectivity lands
+(`OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1/G2)"*. **G2 (walkable raster) landed 2026-07-26** —
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §17, bim-ootb #1006-#1009, raster live on OCI and confirmed in a
+real browser session. Measured on the served Hospital room set: deg-0 (unroutable) rooms **26 → 7**,
+room-pair pathability **69.4% → 91.2%**, Hospital's DETOUR_FAIL sweep over 3023 pairs **63.3% → 0.0%**.
+So the "candidate pool is all corridors, a metric tuned there would be tuned against corridors"
+objection no longer holds the same way — Hospital is now a legitimate validation target, not just
+Clinic. **G1 (`exits=0`) is still open** and still blocks the descent finale (task 4 below).
+⚠ FIRST STEP of any metric work is therefore to RE-DUMP the candidate pool on Hospital and Clinic
+(count, labels, area vs minDim winners) — the numbers in FINDING 4 predate the raster and must not be
+carried forward as-is.
+
+### Task 1 — feed the tour the FLOOR-HUGGING polyline it already has (do this first: mechanical, visible)
+`viewer/tour.js` contains **zero** references to `polyline` (verified `git show origin/main:viewer/tour.js
+| grep -c polyline` = 0). It routes stop→stop with `RG.shortestPath()` (`tour.js:645-653`) and then
+builds camera points from graph-node **centroids** (`tour.js:687-713`), discarding
+`result.polyline` — the A*-verified, on-floor geometry the Find panel draws. That is exactly why
+`§SCRUB_USAGE_HOSPITAL` recorded `illegalChords=14/81` (the tour flies through walls) while the same
+building's Find route is clean.
+- **Why now:** before #1006 the polyline was not trustworthy on Hospital (3 legs had no on-floor route
+  at all). It is now: all 15 same-storey legs measure **0 illegal sample points**, and the polyline is
+  built by the same `_astarHop` whose §ON-FLOOR-GUARANTEE returns null rather than a subtly-off line.
+- **Task:** where a leg's `sp.polyline` exists, use its points for the flown path instead of the raw
+  node centroids; keep centroids as the fallback when it is absent (rect-fallback buildings, or a leg
+  A* declined). Do NOT change which stops are visited or their order.
+- **Gate:** re-run the same `chordIllegalCount` sweep `tour.js:718-725` already performs and report
+  illegal-chord ratio BEFORE/AFTER on Hospital + Terminal + Clinic. Expect Hospital's 14/81 to collapse.
+  Also re-check `§SCRUB_PREPARE_STALL`'s timing — more points per leg is more `cinemaLookDist` work.
+
+### Task 2 — re-measure FINDING 4's metric on the post-raster pool (the actual "largest hall" fix)
+Candidates unchanged and still scale-free: `minDim`, `minDim²` (biggest inscribed square),
+`area × minDim`. Current ranking is raw rect area (`tour.js:545-546`, `byArea[0]` at `:588`), which
+ranks LENGTH — a 219m²×3.3m corridor beats a 124m²×4.8m room on Hospital.
+- **Do the pool re-dump first** (see gate above), then A/B the three metrics on Hospital + Clinic +
+  Terminal + HHS, reporting for each: which node wins, its area/minDim/label/storey, and whether the
+  winner is a real hall or a corridor. `viewer/scene.js:946` already has an independent
+  `SUM(size_x * size_y)` room-area ranking for the `R` shortcut — align with it or state why not.
+- **Fence:** no width threshold, ever (`§ABSTRACTION-AUDIT-2`). No `size_z`/volume: `size_z` exists on
+  `spatial_structure` but nothing in the fleet has been shown to populate it reliably — check before
+  considering it, do not assume.
+
+### Task 3 — reserve the highlight slot BEFORE the per-storey budget (depends on Task 2's metric)
+`const K = storeys.length >= 4 ? 2 : storeys.length === 3 ? 3 : 4;` (`tour.js:512`) plus 3 corridors
+per storey (`:549`) means on 7-storey Hospital the real hall competes for one of **two** slots on its
+own floor — and loses to longer corridors under the current metric. §HL-FIRST can only reorder what
+selection already admitted, which is why "largest first" can still miss the largest space.
+- **Task:** pick the building's top-N by the Task-2 metric FIRST, mark them reserved, then fill the
+  remaining per-storey budget as today. `HL_EXTRA = 1` (`:576`) stays the cap on how much of the tour is
+  highlights — this changes WHICH stops exist, not how many beats they get.
+- **Fence:** `§WATCHDOG-HL-FIRST` corollary — any change to `stops[]` must not silently relocate the
+  walk's origin (`seqOriginGuid`, `:585`/`:643`). Re-assert `§HL-ORIGIN` in the witness.
+
+### Task 4 — the descent finale needs G1 (exits), and `escapeRoute()` is sitting unused
+`common/room_graph.js` exports `escapeRoute()` (nearest EXIT by the same Dijkstra) and **no viewer file
+calls it** (verified across `viewer/`, `common/`, `modeller/`: only `room_graph.js` itself and
+`hallway_backbone.js` mention it). Hospital has `exits=0`, so there is no exit to route to yet — that
+is `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1, still open. Sequence: land G1 (real exit nodes), then
+wire `escapeRoute()` as the tour's closing leg. Until G1, this task is BLOCKED and must not be faked
+with "fly to the lowest storey's biggest door".
+
+### Out of scope for this lane (named so nobody re-discovers them)
+- `Hospital_ARC` / `SampleCastle_extracted` fall back to the LEGACY Euclidean nearest-neighbour tour
+  (no door legality at all, `visited 3/15` and `2/9`). No ordering or metric work will help them until
+  their graphs pass `§MAJORITY-LEGAL`. Different lane.
+- `§SCRUB_PREPARE_STALL` (1.67s hitch) and `§DLOD_ALL_BOXED` are pacing/render defects already specced
+  above — Task 1 will interact with the former's timing, so re-measure it, but do not fix it here.
