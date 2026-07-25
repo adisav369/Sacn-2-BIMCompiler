@@ -12,6 +12,13 @@ async function initViewer() {
   // §S276: setupScene is async (WebGPURenderer.init), run first
   if (typeof setupConfig === 'function') setupConfig(APP);
   if (typeof setupScene === 'function') await setupScene(APP);
+  // §R5-A — the bridge installs A.getRoomGraph/A.ensureRooms, the two externals tour.js v19's graph
+  // route needs, so it MUST run before setupTour below. Called through the same `typeof` guard style
+  // as setupDLOD/setupNlp rather than inside _mods: a bare identifier in that array literal would
+  // throw ReferenceError if the script failed to load, which would take the whole viewer down
+  // instead of degrading to the legacy tour — the exact opposite of this port's contract.
+  if (typeof setupRoomGraphBridge === 'function') setupRoomGraphBridge(APP);
+  else console.log('[R5A] §R5A_BRIDGE_ABSENT — legacy tour only (room_graph_bridge.js did not load)');
   var _mods = [setupHelpers, setupStreaming, setupPanels, setupTools,
     setupPicking, setupTour, setupMeasure, setupSitecam, setupShare, setupIssues, setupExcel, setupWalk, setupCity];
   _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });

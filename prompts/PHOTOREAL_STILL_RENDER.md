@@ -5144,6 +5144,38 @@ Flow:
    user to do that. Flagged as a HYPOTHESIS worth testing, not a claim; it is not a reason to close
    the detection work.
 
+## 🧭 PICK-UP BRIEF — §MAXQ_OFFLINE_RUNNER, read THIS first (advanced-dev handoff, 2026-07-26)
+**Everything below this brief is evidence and rationale. If you only read one block, read this one.**
+
+**State:** the offline baker is BUILT, WITNESSED (5/5 green) and PUSHED as
+`bim-ootb:feat/maxq-offline-runner` → `maxq_offline_runner.js`. **The viewer was NOT touched.**
+Alt+C is byte-for-byte unchanged. Today's workflow is *"copy 6 numbers, run a command, forget"*,
+NOT *"Alt+C and forget"* — do not describe it as the latter until step 1+2 below exist.
+
+**What is left to build (both small, in this order):**
+1. **Local agent** — HTTP shell with `POST /bake` + `POST /cancel/<id>` + a serial queue (one GPU).
+   It is a thin wrapper: the runner already takes the whole job on argv and already exposes cancel.
+2. **Shift+Alt+C in the viewer** — capture the 6 pose floats + POST. ~20 lines; every value is
+   already on `A` (`A.camera.position`, `A.controls.target`). Keep plain Alt+C as the in-tab bake.
+3. **Installer asset packaging** — the actual blocker for "completely offline": building DBs +
+   `textures/` + HDRI must be local. See the LFS/codeload landmine note in the spec section above.
+
+**The one open QUESTION, cheap and needing no user time:** is the room-walker deterministic across
+runs? Clinic injects live (`source=walker rooms=207 rects=304`) rather than from a shipped patch, so
+run the probe twice on the same DB and diff the counts. Camera/staging fidelity is already PROVEN
+(constant seed 987654321 → 0.0653; no `Math.random` in `cinemaPathPlan`); topology fidelity is NOT.
+
+**Three landmines already paid for — do not rediscover them:**
+- `page.evaluate(o => APP.startMaxQualityOrbit(o))` **awaits the whole bake** and dies at
+  `protocolTimeout`. Braces, then poll the console. Raising the timeout is NOT the fix.
+- **`§MAXQ_DONE` is not a reliable terminal signal** — a cancel under 1s of footage never logs it.
+  Poll `A._maxqActive` instead.
+- **`handleSIGINT:false` is mandatory** — puppeteer's own signal handlers `exit(130)` before yours
+  run, discarding every cooked frame.
+
+**Do NOT** propose a native/Blender/node-gl re-implementation. It produces a different image than
+Alt+S — reasoning in "Why 'just write a native offline renderer' is the WRONG answer" below.
+
 ## ✅ BUILT + WITNESSED — §MAXQ_OFFLINE_RUNNER shipped as `bim-ootb:feat/maxq-offline-runner` (2026-07-26)
 User: *"this be a good upgrade fix right? Then do it here"*. Built, witnessed, pushed. One file:
 **`bim-ootb/maxq_offline_runner.js`** — `witness_maxq_mp4.js` upgraded from a SwiftShader witness into
