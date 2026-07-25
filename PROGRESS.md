@@ -45,13 +45,21 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- ✅ **Room→Path FIXED + LIVE 07-25 (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`)** — bim-ootb #1006 +
-  #1007 merged, Hospital raster patch deployed to OCI under both filenames (gated, fetch-back
-  verified). §16's screenshot route: illegal samples 312→0, DETOUR_FAIL 5→0, Hospital pathability
-  69.4%→91.2%, deg-0 26→7, DETOUR_FAIL sweep 63.3%→0.0%. Suite green (room_path_ui 6/13→13/13).
-  Still open, both small: Terminal Aras 03/04 raster refresh; and the room injector REPLACES named
-  IFC spaces with `≈ Level N Rk` on Duplex, so real room names are lost from the Find picker
-  (injector lane, not Find).
+- ✅ **Room→Path FIXED + LIVE, confirmed in the browser (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`)** —
+  bim-ootb #1006/#1007/#1008 merged + #1009 (SW served `patches/*.sql` CACHE-FIRST, so an updated DB
+  patch could never reach an installed client — the delivery half of the doctrine) + #1010 (detour
+  bounding, auto-merge armed). Hospital raster live on OCI, gated + fetch-back verified. Route
+  `R35→R8`: illegal samples 312→0, DETOUR_FAIL 5→0, NONLOCAL 2→0, latency 64→37ms; Hospital
+  pathability 69.4%→91.2%, deg-0 26→7, DETOUR_FAIL sweep over 3023 pairs 63.3%→0.0%. Witnesses 11/11.
+  ⚠ MORE waypoints + UNCHANGED distance is the success signal here — misread once, see §17.
+  ▶ **Fly-Tour follow-on is SPEC'D and ready to dispatch cold: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`
+  §TOUR_HIGHLIGHT_LANE** — 4 ordered tasks (task 1 = tour.js ignores `result.polyline` entirely,
+  hence illegalChords=14/81 while Find's line is clean; FINDING 4's parked metric gate is now
+  RELEASED by §17's raster). Task 4 stays ⛔ on G1 `exits=0`.
+  Still open, small: Terminal Aras 03/04 raster refresh; the room injector REPLACES named IFC spaces
+  with `≈ Level N Rk` on Duplex, so real room names vanish from the Find picker (injector lane);
+  `docs/userguide-roompath-fixed` branch has the refreshed guide pics + text, no PR yet (user's call),
+  and a docs publish still needs `scripts/safe_gh_deploy.sh`.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
