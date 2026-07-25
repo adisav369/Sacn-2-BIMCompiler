@@ -1322,7 +1322,24 @@ would jank the drag; TM has no debounce at all on its own input path, `:2595` �
    `MediaRecorder`/`captureStream()` → `.webm` export. Same glyph, two meanings, one app. The
    INTERACTION is unchanged from the user's original wording — one icon visible during playback,
    pressing it pauses AND reveals the panel.
-2. **Knobs: all four** — chapter ticks on the bar (labelled from `walkActions[]`: orbit / approach /
+2. ⚠ **TERMINOLOGY — "knob" means TWO different things here. Read this before building any UI.**
+   - **The scrub HANDLE** (user, 2026-07-25: *"there is a 'knob' to drag along the tour line right?"*)
+     — **YES, and it is the primary control**: a draggable thumb travelling along a LINEAR tour-time
+     bar, dragged left/right, scene following live in both directions. Precedent is
+     `time_machine.js`'s real HTML range-input (`#tm-slider` `:2523` + `onSlide` `:2595`) whose native
+     thumb already does exactly this. **It is NOT one of the "four knob groups" below** — it is the
+     bar itself, and everything below hangs off it.
+   - **"The four knobs"** = the four CONTROL GROUPS listed next. Different sense of the word.
+   🚫 **HARD PRECEDENT — do NOT build a rotary/amp-style dial.** This project already shipped one
+   (`common/history_knob.js`, PR #230) and the user **rejected it outright**: *"hard to control,
+   orange halo useless, no hover."* It was scrapped and replaced by the `‹ dots ›` bar; the file is
+   **deleted (404 on GH Pages)**, along with its `.scrubknob` CSS and five `poc_knob*` harnesses —
+   see [[project_history_knob_dial]]. A future session reading the bare word "knob" must not
+   resurrect that form. **Linear bar + draggable thumb. Not a dial.**
+   (The history `‹ dots ›` bar is adjacent but a DIFFERENT system — discrete event dots, not
+   continuous tour time. Reuse its lesson about form, not its mechanism.)
+
+   **Knobs: all four** — chapter ticks on the bar (labelled from `walkActions[]`: orbit / approach /
    corridor / stair / room beat), play-pause + restart + `mm:ss / mm:ss`, a speed knob
    (0.5x/1x/2x, a `dt` multiplier in `walkTick`), and step-by-beat `◀◀ / ▶▶` buttons that jump the
    cursor to the previous/next action boundary.
