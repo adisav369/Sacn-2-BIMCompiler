@@ -52,12 +52,11 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   vanish from Find; `docs/userguide-roompath-fixed` branch has refreshed guide pics, no PR yet.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
-- Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- Kernel op-log T4+T5 — BROWSER-GATED, `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding,
-  `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `migration/DV_*_rules.sql` append-only exempt or enforce?
-  `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
+- Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
+- Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding
+  `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
 - Modeller polish: PBR textures (9); SSAO (needs EffectComposer). ARC occupancy drift 99%→92-95%
-  unexplained, low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
+  low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26), bim-ootb #1004/#1005/#1011, user-CONFIRMED live
@@ -72,9 +71,8 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - ✅ Branch hygiene (07-25): bim-ootb 347 local / 424 remote, 0 merged-PR branches left.
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed —
   `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
-- 2026-07-17→20 DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md`.
-- Older DONE items: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-17.md` / `_pre_2026-07-05.md` /
-  `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
+- Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` /
+  `_pre_2026-07-05.md` / `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (SYSNOVA landing+viewer+single DBs). `deploy/dev/` canonical, `deploy/sandbox/`
