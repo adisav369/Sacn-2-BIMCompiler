@@ -1014,7 +1014,16 @@ asserting and measuring**, and it is why the gate exists.
 9 bridges where the rect fallback accepts only 5, while correctly rejecting R14. **G2 raster
 deployment is therefore a CORRECTNESS dependency, not an optimisation.** Re-rank it accordingly.
 
+## ⚠ READ FIRST — #996's HEADLINE WAS MEASURED WITH A FOREIGN RASTER (corrected 2026-07-25, below)
+The `62.4% / atrium-win-reversed` block just above applied `buildings/patches/Hospital_extracted.db.sql`
+— a raster built from a **156-room** compilation — to the user's **224-room** `Hospital.db`. With a
+raster rebuilt from that same DB, R14 keeps its edge and the Fly Tour opens in the atrium. See
+`## ✅ SHIPPED 2026-07-25 (later) — §BRIDGE-ROUTED-LEGAL, PR #997` below. Do not quote 62.4% as
+"with raster"; it is a cross-snapshot number.
+
 ## ▶ NEXT SESSION — resume here, nothing dangling
+**(Items 2 and 3 are CLOSED by the §BRIDGE-ROUTED-LEGAL block below; item 1's precondition changed.
+Read that block, then this list.)**
 State of the two questions the user asked:
 1. **Room pathing: NOT solved.** Honest Hospital figure is **59.6%** (no raster) / **62.4%** (with
    raster), up from 56.2%. Terminal 79.6%, up from 75.9%. 31–35 rooms per building still refuse a
@@ -1058,3 +1067,97 @@ differently-scoped field. (1) `graph.edges.length` (total E1–E5) vs the `§ROO
 the correct fix. (4) reporting pathability that included unvalidated edges as if it were measured
 connectivity. **Check the scope of BOTH sides, and re-derive a delegated agent's headline before
 relaying it.**
+
+---
+
+## ✅ SHIPPED 2026-07-25 (later) — §BRIDGE-ROUTED-LEGAL, PR #997 (auto-merge armed)
+Watchdog's correction to #996, accepted in full: **`_chordIllegalCount` samples a STRAIGHT segment —
+that is a visibility test, not a connectivity test.** A person leaving a 9.7 × 34.1 m atrium walks
+through the opening and TURNS. "The straight chord is unwalkable" never established "no walkable
+route exists" — as unmeasured a claim as the unvalidated bridges #996 was written to kill, erring the
+other way.
+
+`common/room_graph.js`: the bridge gate now calls **`_astarHop`** (already in the file, ~:1314) over
+the SAME walkable evidence (`_pointWalkable`, raster-first) the straight test reads, carrying its own
+`§ON-FLOOR-GUARANTEE` end-to-end re-verification. Edge **weight = the ROUTED length**, never the
+straight distance. No route → the room stays deg-0 on purpose (`§ROOM_SPINE_BRIDGE_REJECT`).
+`astarHop` is also exported as a read-only witness helper (same precedent as `chordIllegalCount`).
+**No cap and no new constant were needed** — the whole 10-fixture sweep is 3.6s; `buildGraph` on
+Hospital's 224-room graph goes 335ms → 499ms.
+
+| fixture | deg0 | room-pair pathability |
+|---|---|---|
+| Hospital (user Save-DB, raster **rebuilt from that same DB**) | 37 → **34** | 59.6% → **61.7%** |
+| `Hospital_extracted.db` + its own shipped patch | 34 → **26** | 61.1% → **69.4%** |
+| Terminal / HHS / Clinic / Duplex / SampleHouse / SampleCastle | unchanged | unchanged |
+
+**Acceptance test PASSES end to end:** `§FLY_HL_FIRST mainHall="⚠ Level 1 R14" area=315.7 storey=Level 1`
+— the Fly Tour opens in the **atrium**, not the 219.4 m² corridor. (With the stale foreign raster it
+still opens in the corridor — that is the whole point of the finding below.)
+Witnesses: `witness_room_graph_path.js` 15/0. `witness_room_graph_utility_penalty.js` 8 pass/1 fail —
+**identical to baseline**, pre-existing over-tagging finding, unrelated.
+
+### ⚠ FINDING — #996's raster conclusion was CROSS-SNAPSHOT, not evidence (unit-scope error #5)
+Same error class as the other four, new flavour: the mismatch was between **artifacts**, not fields.
+- `scripts/build_storey_walkable_raster.js` unions **every room rect** (inflated by `DOOR_BUFFER_SLACK`)
+  into the raster. So against a raster built from its own DB, **every room is 100% walkable inside its
+  own footprint, by construction.** That is the check that settles provenance in one run.
+- Against `buildings/patches/Hospital_extracted.db.sql` applied to `~/Projects/BIM_DB/Hospital.db`:
+  rooms measure **median 86.6%**, and R14 just **7.6%**. Against a raster rebuilt from `Hospital.db`:
+  **100.0% median, every room, connected and deg-0 alike.** Against `Hospital_extracted.db` + that same
+  patch: **100.0%** too. The patch is correct — for its own DB.
+- The DBs are different compilations of the same building: `Hospital_extracted.db` **156 rooms**,
+  the user's Save-DB export **224 rooms**. #996 applied one's raster to the other's rooms.
+- **Consequence:** "with the real raster R14's chord is not walkable, and the atrium win is correctly
+  reversed" does not hold. With a matching raster R14 keeps its edge (`R14deg=1`) at 59.6% — the same
+  as no-raster — and #996's `62.4%` "with raster" figure is a cross-snapshot number. This is
+  [[project_db_snapshot_divergence_landmine]] again, one layer down.
+- **The rect-fallback-vs-raster "better evidence in BOTH directions" claim in #996 goes with it.**
+
+### ⚠ SECOND FINDING — on Hospital the raster is NOT independent floor evidence on 5 of 7 storeys
+`§RASTER_SLABS storey=Level 1 slabs=0 … triangles=0` — and the same for Levels 2, 4, 5 (the build
+script's own comment already recorded "measured on Hospital: 5 of 7 storeys had ZERO slabs"). On those
+storeys `walkable ≡ inside a compiled room rect ∪ corridor rect`, i.e. a rasterisation of the very
+rects the fallback already used. A chord test there measures **rect adjacency**, not real floor.
+Levels 3, 6, 7 do have resolved slab meshes (8754 / 304 / 84 triangles) and are genuine evidence.
+
+### ✅ OPEN ITEM 3 CLOSED — the 22 "far" rooms are compiler-flagged pockets, not a connectivity target
+`spatial_structure.predefined_type` already carries the room compiler's own verdict, and it is
+**perfectly correlated with element containment** (so treat them as ONE signal, not two witnesses):
+
+| predefined_type | rooms | with contained elements | zero |
+|---|---|---|---|
+| INTERNAL | 85 | 85 | 0 |
+| INTERNAL_SMALL | 67 | 67 | 0 |
+| SUSPECT_NO_DOOR | 52 | 0 | 52 |
+| SUSPECT_OPEN | 10 | 0 | 10 |
+
+Of the 33 deg-0 rooms: **28 `SUSPECT_NO_DOOR`** (zero contained elements), **1 `SUSPECT_OPEN`** (R14),
+**4 `INTERNAL`** (real: `≈ Level 4 R41` 60.1 m²/180 elements, `≈ Level 5 R2`, `≈ Level 4 R3`,
+`≈ Level 3 R2`). In the "far" bucket (nearest same-storey door > 2m, n=22): **21 of 22 are zero-element
+`SUSPECT_*`**. So the bucket is NOT worth a connectivity mechanism — the real target set is ~5 rooms.
+**But do not turn this into a rule:** R14 is itself `SUSPECT_OPEN` with zero contained elements and is
+a genuine 315.7 m² atrium. `SUSPECT_OPEN` means "open space with no bounded doorway" — which is what
+an atrium IS. The artifact signal is `SUSPECT_NO_DOOR` + small + zero elements, not zero elements alone.
+Corrected in passing: an own-footprint figure of 11.4% for R14 was computed over its 2-rect **bounding
+box**; per-rect it is **7.6%** (same conclusion, different number — bbox vs rects, error class #2).
+
+### Fixtures added this session
+- `/tmp/hosp-local/Hospital_REBUILT.db` — `Hospital.db` + a raster rebuilt from itself. **This is the
+  correct with-raster fixture; `Hospital_RASTER.db` is the cross-snapshot one, keep it only to
+  reproduce the #996 error.** Rebuild: `node scripts/build_storey_walkable_raster.js <db> "" <out.sql>`
+  (~2 min, needs `component_geometries`), then `sqlite3 <copy> < out.sql`.
+- `/tmp/hosp-local/Hospital_EXTR_PATCHED.db` — `Hospital_extracted.db` + its own shipped patch.
+- `corpus.sh <worktree>` (all harnesses now live in `prompts/Modeller/DISC_Walker/`, no longer
+  scratchpad-only — scratchpads vanish) — the 7-building corpus + all four Hospital variants in one command, 3.6s.
+- `triage.js` (deg-0 characterisation), `poc_routed.js` (routed-gate POC), `poc_r14.js` (uncapped
+  reachability probe), `poc_raster_cover.js` (**raster provenance check — run this FIRST on any
+  raster you did not build yourself**).
+
+### Item 1 (deploy the raster patches) — precondition CHANGED, still needs user authorisation
+It is no longer "ship the existing patches." `buildings/patches/Hospital_extracted.db.sql` was built
+against a 156-room compilation; deploying it over whatever DB is actually served will silently apply a
+foreign raster unless the two match. **Rebuild the raster against the served DB, verify with
+`poc_raster_cover.js` (expect 100% own-footprint for every room), then deploy.** And per the second
+finding, on Hospital 5 of 7 storeys it adds no slab evidence at all — so it is worth less than #996
+claimed. Still `⛔ BLOCKED: production bucket, needs user authorisation.`
