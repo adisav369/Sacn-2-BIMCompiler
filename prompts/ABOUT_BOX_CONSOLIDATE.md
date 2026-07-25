@@ -299,3 +299,21 @@ necessarily literally "revised" — onto a pushed version when it's accepted as 
 project, and have `openProject` key off that marker instead of sniffing the filename). Not fixed here —
 this was a check-first pass, per the user's own request; flagging precisely so a build session doesn't have
 to re-discover it.
+
+**§2026-07-26 FOLLOW-UP — Leg 2 clarified: "the Viewer's Open icon" is NOT the multi-merge path, and a
+second dead code path was found.** User asked whether Leg 2 (scoop-all-IFCs-merge) works via the Viewer's
+own Open icon. Checked precisely: **no.** `viewer/panels.js` has two Open-labelled icons — "Open Design"
+(`doc-open-btn`, lists saved freehand sketches via `DocCanvas.listDesigns`, unrelated) and "Open Building"
+(Ctrl+O, `A.openModelDb()`, opens an already-saved `.db` via native OS dialog) — neither imports raw IFC.
+**Found in the process: `viewer/viewer.html` itself loads `viewer/import.js` (a SECOND, independent
+`importMultiIFC` implementation, separate from `import_own.js`'s proven one), which wires a drop-zone via
+`document.getElementById('import-zone')` — but no `id="import-zone"` element exists anywhere in
+`viewer.html`'s markup. This code is dead — it runs, finds nothing, silently no-ops.** The only LIVE
+multi-IFC-merge path today is the landing page (`index.html` → `import_own.js` → `#m-import-zone`), already
+verified in Part 5 above. Full detail + the "don't resurrect the dead path, reuse the proven one" guidance
+for Item 2 now lives in `prompts/RESUME_PART1_JOURNEY_COMPLETION.md` — read that file for the actual build
+spec; this entry is the audit record only.
+
+**Next session: see `prompts/RESUME_PART1_JOURNEY_COMPLETION.md`** — the two real open items (diff-trigger
+fix, blank-canvas entry) are written up there as a ready-to-execute resume spec, not left only as audit
+findings here.
