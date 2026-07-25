@@ -34,9 +34,9 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification` (5 ahead,
   no PR) — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt
   `_hostAxis` swap or R-DOOR-SCORE (disproven).
-- `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
-- `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
-  root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
+- `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; its room compile is ALSO stale) ·
+  `XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures, root-caused) ·
+  `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933.
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
@@ -68,9 +68,9 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
   §RULES 6); F1-F4 logged — `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
-- ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 — `Viewer/ROOM_INJECTOR_NEEDLE.md`.
-- ✅ nav-DLOD perf, LTU 122k (07-23) #973-#977 — `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R
-  room-cycle + Home fill-frame (07-22/23) #969 — `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
+- ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 `ROOM_INJECTOR_NEEDLE.md` · ✅
+  nav-DLOD perf LTU 122k (07-23) #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle + Home
+  fill-frame (07-22/23) #969 `ROOM_CYCLE_HOME_SHORTCUTS.md`.
 - ✅ Branch hygiene (07-25): bim-ootb 347 local / 424 remote, 0 merged-PR branches left.
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed —
   `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
