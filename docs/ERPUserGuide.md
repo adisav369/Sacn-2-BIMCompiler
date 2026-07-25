@@ -286,6 +286,12 @@ the accounting still folds from that log on each device, identical to single-use
 > Everything on a **single device** is, and always was, unaffected by either limit. We would rather tell
 > you where the edge of what's proven sits than have you find it during an audit.
 
+> **For auditors & compliance officers.** How this serverless, hash-chained model maps to **SOX §404 /
+> PCAOB, COSO (2013), and ISO/IEC 27001:2022** control objectives — what is *strengthened*, what
+> *relocates*, and the *open* items disclosed above (including the two limits just above) — is set out
+> in a companion control-objective map: [**Times Have Changed — And So Must ISO for ERP**](AssuranceControlMap.html)
+> (a control-mapping position paper, not a certification).
+
 ---
 
 ## Spatial BIM → ERP — Find a selection → Project Order  *(LIVE)*

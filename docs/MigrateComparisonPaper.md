@@ -522,6 +522,14 @@ Source: `docs/DistributedERP.md` §0 (lines 53–85, server→serverless table) 
   <div class="gm-add"><b>+ the one thing git lacks, we add:</b> invariant enforcement — no double-spend — via the owner-gate + a single compare-and-set op-class</div>
 </div>
 
+**Live now — concurrent editing no longer loses writes.** With no server refereeing saves, the browser
+sidecar op-log is **append-only**: two windows or two people editing the same record each add a signed
+op, none overwriting another (witnessed **10 windows at once → 10/10 edits survive**, chain intact), and
+across machines a shared relay folds every device's log into **one identical signed history** (witnessed
+**10 devices → all converge to the same signed tip, 0 lost**). *Open piece:* cross-device *document-action*
+attribution (Complete/Void/Close re-signed under the merging device's key) awaits opt-in per-step signing
+— field edits are covered, same-device workflows unaffected. See the [Done & Pending map](../migrate_status_panel.html).
+
 Full doctrine + the hard multi-writer cases (shared stock, credit limits, client version skew): [DistributedERP.md](DistributedERP.md) §0, §9.
 
 ---
@@ -644,7 +652,7 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
 | **Bootstrap** (open the books) | re-query the server [^arch] | re-query the server [^arch] | re-query the server [^arch] | **~53× faster from checkpoint** — 0.90 ms vs 47.70 ms genesis replay, same result [^drive] |
 | **Commit throughput** (5000 ops) | n/a — architectural [^arch] | n/a [^arch] | n/a [^arch] | batch `commitGroup` **~22,492 ops/s = 2.4× naive** [^sync] |
 | **Fold/append ceiling** | n/a — architectural [^arch] | n/a [^arch] | n/a [^arch] | **linear to 20,000,000 ops** (~437 B/op; fold ~40M ops/s hot) [^ceiling] |
-| **Storage primitive** (1000 ops, 1 commit) | Postgres WAL+fsync **5.24 ms** (0.0052 ms/op) [^bench] | (same engine) [^arch] | n/a [^arch] | sql.js +sha256 chain **208.45 ms** — slower per-op, buys **no server**; Postgres durability/concurrency DEFERRED to the install [^bench] |
+| **Storage primitive** (1000 ops, 1 commit) | Postgres WAL+fsync **5.24 ms** (0.0052 ms/op) [^bench] | (same engine) [^arch] | n/a [^arch] | sql.js +sha256 chain **208.45 ms** — slower per-op, buys **no server**; Postgres crash-durability DEFERRED to the install — but multi-writer **concurrency is now handled** browser-side (append-only log + relay convergence, no lost writes) [^bench] |
 
 </div>
 
@@ -687,6 +695,12 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
   (`build/erp/period_close_drive.log`, an in-browser drive).
 - Storage primitive sql.js-vs-Postgres (`build/erp/bench_oplog_pg.log`), batch throughput
   (`build/erp/sync_poc_smoke.log`), volume ceiling to 20M ops (`build/erp/poc_volume_ceiling.log`).
+- **Persistence-path caveat (honest):** the storage-primitive figure above is the *batched* engine
+  (1000 ops, one commit, in-memory). The *live per-Save* path is separate: it once re-exported the whole
+  sidecar DB to IndexedDB on every save (O(total size) per Save — an un-benchmarked tax that grew with
+  history), and is now an **O(1) append** of one signed op record as of the append-only fix (erp sw v766,
+  W-OPLOG-APPEND). So the shipped product now tracks the batched curve rather than diverging from it as
+  the log grows.
 - Bloat figures `du`/`wc`/sqlite-measured 2026-06-06 (`internal/BLOAT_MEASUREMENT.md`, summarised in
   the bloat memory).
 - The Odoo fold is against a **running Odoo 17** instance (`build/erp/odoo_fold_live.log`,
