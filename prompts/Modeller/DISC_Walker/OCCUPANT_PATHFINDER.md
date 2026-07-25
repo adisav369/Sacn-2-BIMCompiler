@@ -1474,3 +1474,50 @@ Answer (a) → Option 2 ships, with the exception and its cost stated in `ROOM_I
 here. Answer (b) → **delete Option 2**; the real work becomes backfilling `rooms_meta` so Hospital's
 missing stamp triggers the client-side recompute the spec already built. `mkpatch.sh` stays either way
 — it is also how a DRY-run baseline gets generated — but its OUTPUT stops being an upload candidate.
+
+### ✅ OPTION 2 DELETED (2026-07-25) — architecturally wrong, redundant, AND unjustified by cost
+User's answer: the pristine `extracted.db` stays canonical on OCI; every browser computes its own
+compiled layer into its own IndexedDB. Uniform — our curated buildings get no special treatment.
+Three independent findings, each alone sufficient to kill Option 2:
+
+**1. The "expensive on Hospital/Terminal" concern is about a LOOPING BUG, not one-time cost.**
+Verified at `ROOM_INJECTOR_NEEDLE.md:305-306` — the guarded failure mode is *"(a) a bug in the version
+comparison recomputing on **EVERY load, not just once** — expensive on Hospital/Terminal (48-63k
+elements)."* Different problem, different fix. And **that bug actually happened and was already fixed**
+(`:405-407`): patch-carrying buildings recompiled every load →
+`§STAGE4_RELOAD3 db=Terminal_extracted.db RESULT=FAIL recompute_loads=[1,2,3] l1ms=7376` → fixed →
+`RESULT=PASS recompute_loads=[1] l1ms=6937`. I had repeated "63k elements may be expensive" as if it
+were a cost finding. It never was. **Retracted.**
+
+**2. MEASURED — the missing row in that file's `l1ms` table (`bench_compile.js`, same
+`viewer/lib/room_walker.js` the browser runs, against the SERVED bytes):**
+```
+§BENCH_COMPILE Hospital_63k elements=63415 rooms_before=142 rooms_after=214 open=27ms compile=444ms total=475ms
+```
+**444ms.** Not 7 seconds — Terminal's `l1ms=6937` is the WHOLE load (boot + patch + compile + write),
+not the compile. Against `Duplex l1ms=60` / `HHS l1ms=2228` / `Terminal l1ms=6937`, Hospital's *compile*
+is sub-half-second on the largest building in the fleet. **There is no cost case for an exception, and
+none should be written.** *(Caveat: node, not a browser tab — no DOM, no competing render loop. Treat
+as a floor. The margin is ~15x before it could matter, and production already ran it — see 3.)*
+
+**3. It is REDUNDANT — the client-side self-heal ALREADY did this to Hospital, in production.**
+`ROOM_INJECTOR_NEEDLE.md:561`: *"The v3 recompile (**142→214 rooms**) is the FIRST time Stage 3/4's
+self-heal has reached a building that was this stale."* The benchmark above reproduces **142→214**
+independently. **That is exactly the room set Option 2 would have uploaded** — 214 logical +
+10 `CORRIDOR_ROOM` injections = the 224-room graph. Option 2 was proposing to ship, by hand and
+per-building forever, the thing the shipped mechanism already delivers fleet-wide and for free.
+
+**This also closes the session's original puzzle.** "Why does the served DB have 142 spaces when the
+user's live console shows 224?" — because the client self-healed, and their Save-DB export captured
+the *post*-self-heal state. `~/Projects/BIM_DB/Hospital.db` is not a newer compilation that never
+shipped; it is the shipped mechanism's own output.
+
+**⚠ My own wrong negative, owned:** I grepped `viewer/scene.js` for room-writing, found none, and
+concluded "the viewer reads, doesn't write rooms." The mechanism is `viewer/lib/room_walker.js` +
+`ensureRooms()` — a file my grep never touched. A too-narrow grep produced a confident negative that
+sent this lane toward an OCI upload it never needed. Exactly what
+[[feedback_verify_before_broad_negative_claims]] exists to prevent.
+
+**Nothing to do for Hospital.** Missing `rooms_meta` already counts as maximally stale → auto-recompute
+fires on next load, by design. No backfill, no upload, no exception. `mkpatch.sh` and the 856KB patch
+stay ONLY as a DRY-run baseline generator; they are **not** upload candidates. **Item 1 is closed.**
