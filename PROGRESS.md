@@ -34,8 +34,7 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   `XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures, root-caused) ·
   `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933,
-  §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED — unattended LTU Alt+C ran 360/360 clean, 19m24s, 0 GL
-  errors** → attended-only, visibility-heuristic first; +2 log finds (patch-404s ×2, PWA meta).
+  §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** (unattended LTU Alt+C = 360/360 clean, 0 GL errors).
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
