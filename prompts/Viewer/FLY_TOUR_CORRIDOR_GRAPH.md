@@ -2280,3 +2280,84 @@ one shot. That is beyond what §R5-A authorises and beyond what a witness on R5-
 viewer refresh — needs its own before/after verification, and answers "what else changed in 68 days?"),
 or leave the OCI sandbox frozen and treat `deploy/dev` as the LOCAL test surface only? Everything else
 in R5-A is done and green either way; local testing needs no upload.
+
+---
+
+## ▶ §STAKEHOLDER_STROLL — the tour's PURPOSE, restated by the user, and the 5 tasks it implies (2026-07-26)
+```
+# ⚠ DO NOT REMOVE
+SCOPE: user directive, 2026-07-26 — "a highlight is a nice stroll into the building taking note of
+scenic views. That is purpose of architecture, for humans to appreciate. We can ignore going into all
+small rooms - just a selection or a checklist as this is a STAKEHOLDER's tour." Plus: use lifts when
+they are the only storey connector, mix lift+stairs whichever is graceful, show the lift structure,
+and soften the hard jerks. This SUPERSEDES §R6-BUDGET's per-storey coverage model (user's call, not a
+re-litigation). Work S1→S5 in order; each is independently shippable and names its own gate.
+Read the log after every run; every claim needs a §-line.
+```
+
+### The doctrine, in one line
+**The tour is a stroll, not a survey.** Coverage is not the goal and never was: a 7-storey Hospital
+producing 22 stops and climbing every stairwell is a survey. A stakeholder wants arrival, the main
+hall, a few scenic moments, one honest vertical move, and out.
+
+### S1 — §R5-B: port the room injector, so un-roomed buildings can be strolled at all
+Today `deploy/dev`'s `ensureRooms` REPORTS only (`selfHeal=none(R5-B)`), so SampleHouse and every
+un-roomed building falls to the legacy tour. Port `_applyPendingPatch` + the lazy `lib/room_walker.js`
+walk + IDB persist from bim-ootb's `navigate_find.js` into `room_graph_bridge.js`.
+- **Gate:** SampleHouse goes legacy → `§FLY_ROUTE` with rooms>0; Clinic's 10/10 stays green.
+- **⚠ Fence, a KNOWN live regression — do not port it forward:** the injector currently OVERWRITES
+  authored IFC space names with `≈ Level N Rk` (measured on Duplex, real names vanish from Find).
+  Arbitrary naming is the right stopgap for rooms that have NO name; it must never clobber one that
+  does. Fix that in the port, don't inherit it.
+
+### S2 — lifts as real vertical connectors (measured basis, zero invention)
+`IfcTransportElement` = **0 rows fleet-wide** — there is no lift ELEMENT to read. But the lift DOORS
+are real, and they group: **Terminal's 5 lift-named doors cluster to ONE shaft (x,y within 2 m)
+spanning all 5 storeys, Aras Tanah → Aras 04.** That is a measured vertical connector. (Hospital,
+Clinic, LTU: 0 lift doors — so this is Terminal-only in today's fleet, and that limit gets stated, not
+papered over.)
+- **Build:** `liftwp` nodes per storey at the shaft, edges between consecutive storeys — same shape as
+  `stairwp` lo/hi, weighted as a RIDE (near-zero horizontal effort) not a climb.
+- **Choice rule, per the user:** stairs when both exist and the move is 1 storey; the **lift when (a)
+  no stair connects that storey pair at all, or (b) the climb is ≥3 storeys** — "if the building is a
+  high rise it'd be ridiculous to run all the stairs".
+- **"Show the lift structure":** the beat is lobby → shaft axis → arrival, so the shaft reads as
+  architecture, not a teleport.
+- **Gate:** Terminal routes storey pairs its stair graph cannot serve; no building loses a stair route
+  it already had; `§LIFT_SHAFT storeys=N doors=M` logged per shaft.
+- **Fence:** a shaft exists only where lift-named doors exist on ≥2 storeys. Never synthesise one, and
+  never re-introduce the lift-door-as-EXIT confusion #1014 removed (`§G1-EXIT-IS-A-LIFT-DOOR`).
+
+### S3 — a scene budget, not a per-storey budget (this is the "ignore small rooms" ask)
+Replace `K = storeys>=4 ? 2 : …` per storey with a WHOLE-BUILDING checklist of scenes:
+`arrival → main hall → one ascent highlight → 2-3 scenic stops → finale`, capped ~8-10 stops
+**regardless of storey count**. Storeys stop being the iteration unit; scenes are.
+- **Gate:** Hospital **22 stops → ≤10**, main hall still first (`§HL-FIRST` + `§HL-ORIGIN` re-asserted);
+  Clinic (7 stops today) stays a coherent stroll; no building's stop list becomes empty.
+- Small rooms are simply not scenes. The type-dedupe (`§R6-TYPE-DEDUPE`) stays but stops being the
+  main filter — the scene checklist is.
+
+### S4 — "scenic" is measurable, so measure it (don't hand-pick)
+Glazing is present fleet-wide: **windows** Terminal 236, Hospital 131, Clinic 58, LTU 976; **curtain
+wall** Hospital 178, Clinic 31. Score a room by the fraction of its boundary carrying glazing (window
++ curtain-wall elements whose position lies on the room's rect edge), and prefer high storeys for the
+view beat. Scale-free ratio, no per-building constant (`§ABSTRACTION-AUDIT-2` still holds).
+- **Gate:** the elected scenic stops on Clinic + Hospital are rooms that genuinely carry glazing, and
+  the ratio is reported per candidate so the choice is auditable from the log.
+
+### S5 — the jerk softener (numbers, never eyeballing)
+User: "there are hard jerks needing to pass a softener routine." Suspects, all already in the path:
+stair mid-flight points (`§R6-STAIR-FLIGHT`), pause→resume at beats, storey-arrival look-arounds, and
+now lift rides.
+- **MEASURE FIRST:** sample camera position per frame, derive speed → acceleration → **jerk** time
+  series, and locate the spikes by action index. No softener is written before the profile exists.
+- **Then:** velocity ramp in/out of every beat + curvature-limited turns (C² continuity).
+- **Gate (FUNDAMENTAL LAW — code and maths, never screenshots):** 95th-percentile jerk down ≥50% with
+  path length, stop set and stop ORDER unchanged. A recording is not evidence; the time series is.
+
+### Sequencing and what stays put
+S1 first (it decides how many buildings can be strolled at all), then S3 (the biggest visible change
+for the least code), then S2, S4, S5. **Unchanged and not up for renegotiation here:** highlight-first
+ordering (#1012/#1013 proved the metric is already right), the A* on-floor polyline, and the exit rule
+(`exits=0` until `§G1-EXTERIOR-DOOR-LANE` lands a MEASURED exterior door — the arrival beat and the
+finale both wait on that, and neither is faked in the meantime).
