@@ -31,13 +31,11 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification`
   (5 ahead, no PR). Land it — steps in `Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`
   §2026-07-22. Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
-- `prompts/SPARSE_WALL_ROOM_INFERENCE.md` Phase 1 — sparse-wall fusion (HHS). Related, not duplicate:
-  HHS's room compile is ALSO stale — `Viewer/ROOM_INJECTOR_NEEDLE.md` §ROOM_WALKER_VERSION_STAMP.
+- `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
 - `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 filter-cheap opt; §14 Hospital per-tab-switch number.
-- `prompts/PHOTOREAL_STILL_RENDER.md` — Alt+C cinema-orbit §CINEMA_ORBIT_V2, PR #931/#933 shipped;
-  room-compile self-heal blocker now CLOSED, should render on Hospital/Terminal/HHS.
+- `PHOTOREAL_STILL_RENDER.md` — Alt+C §CINEMA_ORBIT_V2, PR #931/#933; self-heal blocker now CLOSED.
 - **NEXT (user-named 2026-07-25): `§TOUR_TIMELINE_SCRUB`** — spec complete, never started, in
   `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` (its own `▶ NEXT TASK`, line 27). Settled: bar APPEARS
   when the tour begins (TM-style, no reveal icon), draggable handle on a LINEAR bar (never a rotary
@@ -62,7 +60,7 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   OCI under both filenames, fetch-back verified. Option "push room compilation to OCI" DELETED — the
   client self-heal already does 142→214 in 444ms (LTU, the largest at 126k, is 760ms). F1-F4 follow-ups
   logged. `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
-- ✅ Branch hygiene (2026-07-25): bim-ootb 507→347 local / 590→424 remote, 0 merged-PR branches left.
+- ✅ Branch hygiene (07-25): bim-ootb 507→347 local / 590→424 remote, 0 merged-PR branches left.
 - ✅ Room-injector self-heal Stages 1-4 CLOSED fleet-wide (07-21/22), #947-#967. Log-precision
   follow-up NOT done, see OPEN. `Viewer/ROOM_INJECTOR_NEEDLE.md`.
 - 🟡 P2P Material Receipt UNBLOCKED, real signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT
