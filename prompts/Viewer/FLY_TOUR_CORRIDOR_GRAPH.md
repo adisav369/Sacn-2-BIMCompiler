@@ -1376,3 +1376,22 @@ would jank the drag; TM has no debounce at all on its own input path, `:2595` �
    the same pose every time for a given T. That is a correctness requirement on `pose = f(T)` (the
    build-time end-pose chaining), not a UI nicety: a presenter re-running the same seek in front of an
    audience must get the same frame.
+
+---
+
+## ▶ ADDENDUM (Sonnet-side, 2026-07-25) — a related idea, parked in its own file, NOT this task's scope
+Recorded here only as a pointer so a future session resuming the scrubber sees it exists — this does
+**not** change `§TOUR_TIMELINE_SCRUB`'s spec above, and is not something to fold into the current build.
+
+`prompts/Viewer/SAVE_DB_SCENE_STATE.md` (same day) captures three related, separately-discussed ideas
+that sit *upstream* of this scrubber rather than inside it: (1) Save-As-DB also persisting camera/view
+state; (2) a cut/join/heal **EDL** (Edit Decision List — the real film-editing term) that edits which
+stops/actions exist *before* this file's own `pose = f(T)` build-time chaining ever runs on them; (3)
+versioned "Save As Tour" cuts, reusing the `versions[]`/`latestVersion` shape already named in
+`LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md` rather than inventing a new one; (4) a Loop option (cheap —
+`T mod duration` — given pose=f(T) already holds). Video/movie export was explicitly ruled OUT of that
+file's scope — the existing `.webm`/Record feature (this file's own §2 above) stays untouched and is
+the natural render step downstream of an edited EDL, not something to rebuild.
+
+None of this is authorized to build. If picked up, it's a separate task from `§TOUR_TIMELINE_SCRUB` —
+read `SAVE_DB_SCENE_STATE.md` in full first, it has its own open questions not repeated here.
