@@ -34,14 +34,15 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933.
-- **`§TOUR_TIMELINE_SCRUB` ✅ SHIPPED 2026-07-25** — bim-ootb PR #999 MERGED (verified), `e8689e9`,
-  `tour.js` v17 / `sw.js` v847: deterministic `pose = f(T)`, all four knob groups, 9/9 numeric
-  witnesses on real LTU_AHouse (drift 0). **NEXT in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` = its
-  `▶ NEXT SESSION` block (usage+testing: Duplex legacy tour, touch, `deploy/dev` port) + scoped
-  `§OPENING_BEAT_SEEK_GAP` (39.8m playback-vs-seek gap on §HL-FIRST's opening orbit — pre-existing,
-  not a scrubber bug, but on the first beat a presenter scrubs back to). `§WATCHDOG-TOUR-SCRUB`
-  review is recorded there — do not re-audit.**
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933, Alt+C flicker traced to #983 shadow-skip gate (spec only, fix in bim-ootb next).
+- **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
+  `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
+  #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
+  Usage-verified on Hospital AND LTU from live GH-Pages logs. **ALL detail + everything still open
+  is in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` — read its last 6 §-sections, do NOT re-derive; both
+  `§WATCHDOG-TOUR-SCRUB` reviews are there.** Next, ranked: ⛔ `§SCRUB_PREPARE_STALL` (1.67s hitch,
+  ROOT-CAUSED: one `cinemaLookDist` raycast per waypoint, made eager by `_tourPrepare`) · watchdog
+  D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalidated — needs a dimensionless ratio**).
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
