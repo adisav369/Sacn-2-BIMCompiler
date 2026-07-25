@@ -2404,19 +2404,24 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <ul>
 <li>3D orbit, pan, zoom (mouse or touch)</li>
 <li>Click any element → IFC class, GUID, storey, discipline, material</li>
-<li>Fly-tour — auto-orbits rendered buildings, click to stop</li>
-<li>Indoor walk-through — follows IfcSpace/door graph through the building</li>
-<li>X-Ray mode (Alt+Z) — a 3-state cycle: <strong>Off → X-Ray → Bounding Boxes → Off</strong>. X-Ray is the transparent
-  see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle</li>
-<li>Measure tool — tap two points, get distance in metres</li>
-<li>Section cut — horizontal clip plane, slider to cut through floors</li>
-<li>Storey filter — isolate a single floor</li>
-<li>Discipline toggle — show/hide ARC, STR, MEP, ELEC, etc.</li>
-<li>Screenshot — saves current view as PNG</li>
-<li>Deep-link URL — camera + building state encoded in hash, shareable</li>
-<li>IndexedDB cache — download once, instant on revisit</li>
-<li>City mode — 786 building bboxes, click to download + stream on demand</li>
+<li>Fly-tour — plays a routed flight through the building (entrance → highlight room → storey-by-storey);
+  drag the scrub bar to seek anywhere in the tour, <code>◀◀</code>/<code>▶▶</code> to step beat-by-beat, <code>0.5x</code>/<code>1x</code>/<code>2x</code> speed,
+  pause/resume and loop — every position is deterministic (same timestamp always gives the same camera
+  pose), so scrubbing back and forth never drifts</li>
 </ul>
+<p><img alt="Fly Tour's scrub bar — beat counter (&quot;Entrance 2/43&quot;), elapsed/total time, tick marks per beat,
+  play/pause/step controls, and speed toggles" src="../img/viewer/fly-tour-scrub-bar.png" />
+- Indoor walk-through — follows IfcSpace/door graph through the building
+- X-Ray mode (Alt+Z) — a 3-state cycle: <strong>Off → X-Ray → Bounding Boxes → Off</strong>. X-Ray is the transparent
+  see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
+- Measure tool — tap two points, get distance in metres
+- Section cut — horizontal clip plane, slider to cut through floors
+- Storey filter — isolate a single floor
+- Discipline toggle — show/hide ARC, STR, MEP, ELEC, etc.
+- Screenshot — saves current view as PNG
+- Deep-link URL — camera + building state encoded in hash, shareable
+- IndexedDB cache — download once, instant on revisit
+- City mode — 786 building bboxes, click to download + stream on demand</p>
 <h3 id="find-panel-search-voice-query-and-axis-lenses">Find panel — search, voice query, and axis lenses<a class="headerlink" href="#find-panel-search-voice-query-and-axis-lenses" title="Permanent link">&para;</a></h3>
 <p>The <strong>Find</strong> panel is the Viewer's search/navigate surface: a text or voice query box up top, and a
 single axis toggle underneath that re-groups the whole element tree (by storey, discipline, room,
