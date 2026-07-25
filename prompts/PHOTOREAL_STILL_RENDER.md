@@ -4917,3 +4917,124 @@ real `§GROUND_Y` query against local `LTU_AHouse_meta.db` — returns `bottom=2
 **Conclusion: the 360/360 clean bake has no defect worth building against.** The only genuine open
 problem remains §MAXQ_SURFACELESS_FRAMEBUFFER, and it needs an *attended-tab repro* (cheap, and a
 session can drive it itself by backgrounding the tab) — not more user testing.
+
+## 📐 SPEC (feasibility MEASURED, not implemented) — §MAXQ_OFFLINE_RUNNER: bake movies headless on the local machine, freeing the user's browser (2026-07-26)
+User ask: *"is there a way we can do such movie baking completely offline, ie in Part 2 installer …
+as a local machine offline runner, able to have a script to do this without holding the browser.
+Just set the opening scene, hit Alt-C and sends to that script?"*
+
+**Answer: YES, and most of it already exists.** Feasibility was MEASURED this session, end-to-end, on
+this machine — not reasoned about. Evidence first, design second.
+
+### W-MAXQ-OFFLINE-PROBE — measured proof it works headless on the real GPU
+`witness_maxq_mp4.js` (already in `bim-ootb`, written for §MAXQ_MP4) is **already a headless offline
+movie baker**: puppeteer `headless:'new'` → `http://localhost:8477/viewer/viewer.html?db=…` →
+`page.evaluate(o => window.APP.startMaxQualityOrbit(o), {frames, fps, preview:false})` → CDP
+`Browser.setDownloadBehavior` lands the file on disk → `ffprobe` verifies. The bake is ALREADY
+programmatically invokable with no user, no clicks, no visible window.
+
+Its one disqualifying flaw for real work: it launches with `--use-angle=swiftshader
+--enable-unsafe-swiftshader` = **software rendering**. Probed 5 flag combos headless on this box
+(Intel UHD + RTX 4060 Max-Q, `/dev/dri/renderD128`+`129`):
+
+| flags | `UNMASKED_RENDERER_WEBGL` |
+|---|---|
+| *(default headless)* | ANGLE (Google, Vulkan 1.3.0 **SwiftShader** Device (Subzero), SwiftShader driver) |
+| `--use-gl=angle --use-angle=gl --ignore-gpu-blocklist --enable-gpu` | **ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 4060 Laptop GPU/PCIe/SSE2, OpenGL 4.5.0)** ✅ |
+| `--use-gl=angle --use-angle=vulkan --ignore-gpu-blocklist --enable-gpu` | **ANGLE (NVIDIA, Vulkan 1.4.329, RTX 4060 Laptop GPU)** ✅ |
+| `--use-gl=egl --ignore-gpu-blocklist --enable-gpu` | ❌ no WebGL context |
+| `--use-angle=swiftshader --enable-unsafe-swiftshader` | SwiftShader (what the witness uses today) |
+
+⚠ **Do NOT trust a clear+finish microbenchmark to compare these** — one was run and SwiftShader
+"won" (≈400k vs ≈143k clears/sec) because that loop measures driver call overhead with no PCIe
+sync, not fill rate. It is a MEANINGLESS number for this workload and is recorded here only so
+nobody re-derives it and draws the wrong conclusion. The only valid metric is a real bake:
+
+**Real bake, headless, `--use-angle=gl`, Duplex_extracted, 1280×720, 16 frames @15fps:**
+```
+MODE=gpu  renderer=ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 4060 Laptop GPU/PCIe/SSE2, OpenGL 4.5.0)
+  done=true wallMs=23982 (16 frames incl page-load + warm-up fold)
+  §STILL_REFINE done accumulateIndex=16 elapsedMs=3217   <- warm-up fold (once)
+  §MAXQ_FRAME i=0/16 elapsedMs=1063 perFrameMs=1063
+  §STILL_REFINE done accumulateIndex=16 elapsedMs=237    <- steady state, every frame
+  §PHOTO_AO done frames=24 totalMs=379 avgRenderMs=2.9   <- steady state, every frame
+  downloaded: ["BIM_MaxQ_Ifc2x3_Duplex_Federated_1785002150293.mp4"]
+```
+`ffprobe` on that file: `codec_name=h264 profile=High 1280x720 r_frame_rate=15/1
+nb_read_frames=16 duration=1.066667 format_name=mov,mp4…`, and `ffmpeg -f null -` decodes it with
+**exit=0, zero errors**. So a headless, windowless, GPU-accelerated bake produces a REAL, VALID,
+PLAYABLE mp4 on disk. **WebCodecs `VideoEncoder`/`avc1.640034` works in headless Chrome** — that was
+the biggest unknown going in, and it is now settled.
+Steady state ≈ `237ms refine + 380ms AO + 250ms SETTLE_MS` ≈ **870ms/frame on Duplex**.
+
+### Why "just write a native offline renderer" is the WRONG answer (do not propose it again)
+The bake is not a standalone renderer — it is the whole viewer app driven frame by frame. Each frame
+needs `A._composer` (TAA `EffectComposer`), `effects.js` `_applyPhotoStaging()` (HDRI envMap,
+night-mode fixture glow — 5735 fixtures on LTU, photo shadows — 4578 casters, ground puddle shader,
+`§PHOTO_FOG_ORDER_FIX` override, per-facade `§PHOTO_FACING` strengths), the 24-frame `PHOTO_AO`
+accumulation, sql.js for the DB, the geometry-streaming drain (`§MAXQ_STREAM_WAIT`), and
+`A.cinemaPathPlan()` which reads the room graph + `§CINEMA_EXIT` door nodes. A Blender/Cycles or
+node-gl reimplementation would produce **a different image than Alt+S** — a different product, not
+an offline version of this one. Running the SAME JS in a headless browser is the only architecture
+that preserves the look. "Without holding the browser" is satisfied by not holding the USER's
+browser; a headless Chrome the user never sees is the correct reading of the ask.
+
+### The job spec is tiny — because MaxQ is ALREADY a pure function of its inputs
+Read from `cinema_maxq.js` `start()`: the "opening scene" is fully captured by
+`tgt = A.controls.target`, `radius = hypot(dx,dz)`, `height = dy`, `az0 = atan2(dz,dx)` — and
+`plan = A.cinemaPathPlan(nFrames/fps)` is DERIVED from those, synchronously. Staging variation is
+one number (`A._photoPaintSeed` + `_photoVariationLocked`), and `_freezeRandom()` already pins
+`Math.random` for the duration of every frame (that determinism was built for the flicker fixes —
+it is being reused here, not invented). `opts` already accepts `{frames, fps, preview, forceWebm}`.
+
+So the entire handoff payload is ~10 numbers:
+```json
+{ "db": "buildings/LTU_AHouse_extracted.db",
+  "camera": { "px":…, "py":…, "pz":…, "tx":…, "ty":…, "tz":… },
+  "seed": 0.0653, "frames": 360, "fps": 15, "w": 1852, "h": 960 }
+```
+**This is the single most important finding for the design: no new capture/serialisation machinery is
+needed.** Restore those 6 camera floats + the seed in the headless page and `startMaxQualityOrbit`
+reproduces the identical film.
+
+### Handoff mechanism — and why this genuinely belongs in the Part-2 INSTALLER, not the web app
+A static page cannot spawn a process, so a small local agent is required. The real constraint:
+**an `https://` page (GH Pages) `fetch`ing `http://localhost:PORT` is mixed content and is BLOCKED
+by Chrome** — so this cannot be bolted onto the hosted viewer. The Part-2 installer already serves
+the viewer from localhost, making it same-scheme http→http, and it already has a local process to
+host the agent. That is the architectural reason this is a Part-2 feature rather than a web feature.
+
+Flow:
+1. User frames the opening scene in their normal tab, presses **Shift+Alt+C** ("bake offline" —
+   keep plain Alt+C as the in-tab bake; do not steal a working shortcut).
+2. Viewer `POST`s the job JSON above to `http://localhost:PORT/bake`. Tab is free in ~1s.
+3. Agent (node, serial queue — one GPU) launches `puppeteer.launch({headless:'new', args:[
+   '--use-gl=angle','--use-angle=gl','--ignore-gpu-blocklist','--enable-gpu','--no-sandbox']})`,
+   loads the same local viewer URL with `?db=`, waits for `window.APP.startMaxQualityOrbit`,
+   restores the 6 camera floats + seed via `page.evaluate`, then calls
+   `startMaxQualityOrbit({frames, fps, preview:false})`.
+4. CDP `Browser.setDownloadBehavior` drops the mp4 into a local output folder; agent reports
+   progress by tailing the `§MAXQ_FRAME` console lines it is already receiving.
+
+### What actually has to be BUILT (small), vs what is already done
+- ✅ Already done: headless invocation, download-to-disk, mp4/H.264 encode headless, ffprobe
+  verification, seed determinism, `opts` surface, GPU flags now known-good.
+- ⬜ To build: (1) the local agent + serial queue + `/bake` endpoint; (2) Shift+Alt+C → POST +
+  job-spec capture (~20 lines, all values already in `A`); (3) generalise the witness into a
+  reusable runner taking the job JSON; (4) pose restore before the bake.
+- ⚠ Real blocker, and it is a PACKAGING problem not a rendering one: **"completely offline" needs
+  the building DBs + `textures/` + HDRI resident locally.** Per `CLAUDE.md`, extracted/geo DBs ship
+  via OCI, never git/LFS, and there is a live landmine here already —
+  `project_lfs_codeload_zip_landmine` (self-host installer breaks Modeller `mesh.db`). Solve that
+  as installer packaging (fetch-once into a local cache) BEFORE claiming "offline".
+
+### Two honest caveats
+1. **Duplex is tiny; LTU is not.** 870ms/frame was measured on Duplex (`avgRenderMs` 2.2–3.0ms). The
+   user's real LTU run showed `avgRenderMs` 50–65ms — ~20× the per-sample cost, 122k elements. The
+   measured GPU result proves the *mechanism*, NOT that LTU/360 is fast headless. Next measurement,
+   which needs no user time: run this same probe against `LTU_AHouse_extracted.db` and compare
+   `perFrameMs` to the attended run's 3666ms.
+2. **This design plausibly ELIMINATES §MAXQ_SURFACELESS_FRAMEBUFFER as a user-visible problem** —
+   the failure correlates with the user switching/backgrounding the tab, and a headless bake has no
+   user to do that. Flagged as a HYPOTHESIS worth testing, not a claim; it is not a reason to close
+   the detection work.
