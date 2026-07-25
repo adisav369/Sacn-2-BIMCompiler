@@ -2304,11 +2304,22 @@ hall, a few scenic moments, one honest vertical move, and out.
 Today `deploy/dev`'s `ensureRooms` REPORTS only (`selfHeal=none(R5-B)`), so SampleHouse and every
 un-roomed building falls to the legacy tour. Port `_applyPendingPatch` + the lazy `lib/room_walker.js`
 walk + IDB persist from bim-ootb's `navigate_find.js` into `room_graph_bridge.js`.
-- **Gate:** SampleHouse goes legacy → `§FLY_ROUTE` with rooms>0; Clinic's 10/10 stays green.
-- **⚠ Fence, a KNOWN live regression — do not port it forward:** the injector currently OVERWRITES
-  authored IFC space names with `≈ Level N Rk` (measured on Duplex, real names vanish from Find).
-  Arbitrary naming is the right stopgap for rooms that have NO name; it must never clobber one that
-  does. Fix that in the port, don't inherit it.
+- **Gate 1:** SampleHouse goes legacy → `§FLY_ROUTE` with rooms>0.
+- **Gate 2:** Clinic's 10/10 stays green.
+- **Gate 3 — THE ONE THAT TESTS THE FIX THIS PORT SHIPS (added 2026-07-26 after review: the first two
+  gates would not catch a regression of the very bug S1 promises to fix).** Run the injector against
+  `deploy/buildings/Duplex_extracted.db` and assert **all 21 authored IfcSpaces survive by name**:
+  `A101, A102, A103, A104, A105, A201, …`, each keeping its real IFC guid (`0BTBFw6f90Nf…`), and
+  assert **zero** of them are replaced by an `RM_*`/`≈ Level N Rk` row. FAIL = the clobber is back.
+- **⚠ The measured basis for that gate — worse than the one-liner in PROGRESS.md said:**
+  `deploy/buildings/Duplex_extracted.db` (compiler extraction) has **21 authored IfcSpaces with real
+  names and real guids**; `~/bim-ootb/buildings/Duplex_extracted.db` (the viewer copy the injector has
+  run against) has **5 rooms, ALL `RM_*` guids, ALL named `≈ Level 1 R1`-style — zero authored names
+  survive**. So it is not merely a renaming: 21 authored spaces became 5 compiled ones.
+  **Honest limit:** file-comparison alone does NOT prove the injector caused it (these could be two
+  different extraction runs — see `project_db_snapshot_divergence_landmine`, which records Duplex as
+  the fleet's inverted case). Gate 3 settles it either way by running the injector on the 21-room DB
+  and measuring before/after, instead of arguing from archaeology.
 
 ### S2 — lifts as real vertical connectors (measured basis, zero invention)
 `IfcTransportElement` = **0 rows fleet-wide** — there is no lift ELEMENT to read. But the lift DOORS
@@ -2318,15 +2329,31 @@ Clinic, LTU: 0 lift doors — so this is Terminal-only in today's fleet, and tha
 papered over.)
 - **Build:** `liftwp` nodes per storey at the shaft, edges between consecutive storeys — same shape as
   `stairwp` lo/hi, weighted as a RIDE (near-zero horizontal effort) not a climb.
-- **Choice rule, per the user:** stairs when both exist and the move is 1 storey; the **lift when (a)
-  no stair connects that storey pair at all, or (b) the climb is ≥3 storeys** — "if the building is a
-  high rise it'd be ridiculous to run all the stairs".
+- **Choice rule, per the user — expressed as EDGE WEIGHT, not a storey threshold.** The user's intent
+  ("stairs if short, lift if it'd be ridiculous to climb") falls out of the graph's own weights with no
+  constant to tune: a stair edge costs per-storey CLIMB effort, a lift edge costs a near-fixed WAIT +
+  RIDE. Dijkstra then picks stairs for one storey and the lift for many, automatically, on every
+  building — which is what `§ABSTRACTION-AUDIT-2`'s no-threshold fence demands.
+  - **Hard rule (not a preference):** the lift is used when **no stair connects that storey pair at
+    all** — that is a reachability fact, not a cost comparison.
+  - ⚠ **CONFIDENCE TAG (added 2026-07-26 after review — the earlier draft stated "lift when the climb
+    is ≥3 storeys" with no basis, dressed identically to the measured claims around it):** the 3 was a
+    **convention-prior, not measured**, and is therefore REMOVED as a rule. If the weight formulation
+    proves insufficient in measurement, any storey count reintroduced must be labelled a
+    convention-prior explicitly and justified against real climb/effort data, never smuggled in.
+  - The two weights themselves (climb-per-storey, wait+ride) are also priors until measured — state
+    them as such in the code comment, and report the elected connector per storey pair in the §-log so
+    the choice is auditable rather than asserted.
 - **"Show the lift structure":** the beat is lobby → shaft axis → arrival, so the shaft reads as
   architecture, not a teleport.
 - **Gate:** Terminal routes storey pairs its stair graph cannot serve; no building loses a stair route
   it already had; `§LIFT_SHAFT storeys=N doors=M` logged per shaft.
-- **Fence:** a shaft exists only where lift-named doors exist on ≥2 storeys. Never synthesise one, and
-  never re-introduce the lift-door-as-EXIT confusion #1014 removed (`§G1-EXIT-IS-A-LIFT-DOOR`).
+- **Fence:** a shaft exists only where lift-named doors exist on ≥2 storeys. Never synthesise one.
+- **Gate (not a comment — added 2026-07-26 after review, since a prose "don't regress #1014" is weaker
+  than something that fails):** S2's witness must ASSERT that lift-named doors produce `liftwp` nodes
+  and **zero `exit` nodes**, on every building — i.e. re-run `witness_exit_not_a_lift.js` (45/45)
+  unchanged as part of S2's own suite. A lift becoming an "exit" again must turn a run RED, not rely
+  on a reader noticing.
 
 ### S3 — a scene budget, not a per-storey budget (this is the "ignore small rooms" ask)
 Replace `K = storeys>=4 ? 2 : …` per storey with a WHOLE-BUILDING checklist of scenes:
@@ -2357,7 +2384,13 @@ now lift rides.
 
 ### Sequencing and what stays put
 S1 first (it decides how many buildings can be strolled at all), then S3 (the biggest visible change
-for the least code), then S2, S4, S5. **Unchanged and not up for renegotiation here:** highlight-first
+for the least code), then S2, S4, S5.
+**⚠ S3-before-S2 has a known interaction (named 2026-07-26 after review, rather than left silent):**
+S3's scene budget is calibrated against TODAY's stair-only routing, and S2 then adds lift access —
+which can make storeys/rooms reachable that were not, changing which scenes are ELIGIBLE (Terminal is
+the live case: one shaft spans all 5 storeys). S3's cap is on scene COUNT, not identity, so the budget
+itself survives; but **S2 must re-run S3's gate afterwards and report the elected scene list
+before/after**. If the list changes, that is expected and fine — silently not checking is not. **Unchanged and not up for renegotiation here:** highlight-first
 ordering (#1012/#1013 proved the metric is already right), the A* on-floor polyline, and the exit rule
 (`exits=0` until `§G1-EXTERIOR-DOOR-LANE` lands a MEASURED exterior door — the arrival beat and the
 finale both wait on that, and neither is faked in the meantime).
