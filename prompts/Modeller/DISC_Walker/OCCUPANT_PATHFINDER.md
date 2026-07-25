@@ -1619,7 +1619,8 @@ without editing.
 ### 🧹 Branch cleanup done (2026-07-25, user delegated: *"resolve to clean up as i am no git admin"*)
 `bim-ootb` had **507 local / 590 remote** branches. Deleted every branch whose PR is **MERGED**
 (`gh pr list --state merged`), after subtracting the **24** currently checked out in a worktree and
-`main`. Result: **347 local / 435 remote** — **160 local + 165 remote** removed, **0 failures**.
+`main`. Result: **347 local / 424 remote** — **160 local + 166 remote** removed, **0 failures**.
+Re-verified after the last batch drained (`git fetch --prune`): **0 merged-PR branches remain**.
 Safe by construction: a merged PR's content is in `main`, and the ref is recoverable from the PR.
 - **Not touched:** branches with no PR, with an OPEN PR, or checked out in any worktree — those are
   someone's in-progress work, and the same rule that protects `/tmp/wt-*` worktrees protects them.
