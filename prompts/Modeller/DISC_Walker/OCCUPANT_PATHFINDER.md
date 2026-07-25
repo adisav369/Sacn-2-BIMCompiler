@@ -1592,14 +1592,14 @@ logged; the scrubber is independent of all of them.
 **Verified against the repo, not relayed on trust:**
 - PR **#989** (`§HL-FIRST` highlight-first routing) — `state=MERGED, mergedAt=2026-07-24T20:00:50Z`.
   **Do not re-implement or re-verify it.**
-- ⚠ **The branch trap is STILL LIVE.** Worktree `/tmp/wt-tour-scrub` is already gone, but branch
-  `feat/tour-timeline-scrub` **still exists both locally and on `origin`** — so the footgun is
-  reachable by anyone who checks it out by name. Content-diff vs `origin/main`: 11 files,
-  **476 deletions / 10 insertions** — i.e. the branch is well BEHIND main (it predates #994–#998),
-  and it was squash-merged, so its history collides → `DIRTY`. **Branch the scrubber off fresh
-  `origin/main`.** Left in place deliberately rather than deleted: a squash-merged branch cannot be
-  proven content-complete from a stat alone, and deleting someone else's ref is not a call to make
-  from a session that does not own it.
+- ✅ **The branch trap is GONE — deleted, not just warned about** (user: *"resolve to clean up as i am
+  no git admin"*). `feat/tour-timeline-scrub` no longer exists locally OR on `origin`; worktree
+  `/tmp/wt-tour-scrub` was already gone. **Verified safe before deleting, not assumed:** its entire
+  content-diff vs `origin/main` was 11 files / **476 deletions / 10 insertions**, and every one of
+  those 10 insertions was a SUPERSEDED leftover — `CACHE_VERSION 'v842'`, `TOUR_CACHE_VER 'v12'`
+  (main has v13+), `room_graph.js?v=9`, `tour.js?v=13` cache-busters, stale README counts. Zero
+  unique work. **Still branch the scrubber off fresh `origin/main`** — that instruction stands on its
+  own, it just no longer has a footgun behind it.
 
 **Settled — do NOT re-litigate (all recorded in the owner file, verified present):**
 - **UI:** cyan pulsing dot, viewer accent `#4fc3f7` — *deliberately not red*, avoiding collision with
@@ -1615,3 +1615,16 @@ scrubber is exactly the kind of continuous/time-varying behaviour this project's
 must be proven by `§`-logged pose values over T, never by watching a recording. Its `WT` is now an env
 var (`WT=<worktree> node hl_witness.js <tour.js> <db> <label>`), so it points at a fresh worktree
 without editing.
+
+### 🧹 Branch cleanup done (2026-07-25, user delegated: *"resolve to clean up as i am no git admin"*)
+`bim-ootb` had **507 local / 590 remote** branches. Deleted every branch whose PR is **MERGED**
+(`gh pr list --state merged`), after subtracting the **24** currently checked out in a worktree and
+`main`. Result: **347 local / 435 remote** — **160 local + 165 remote** removed, **0 failures**.
+Safe by construction: a merged PR's content is in `main`, and the ref is recoverable from the PR.
+- **Not touched:** branches with no PR, with an OPEN PR, or checked out in any worktree — those are
+  someone's in-progress work, and the same rule that protects `/tmp/wt-*` worktrees protects them.
+- Two mechanics worth reusing: `git push origin --delete` **aborts the whole batch** if one ref is
+  already gone, so `git remote prune origin` FIRST and fall back to per-branch on batch failure; and
+  batch the deletes (~15/push) — 165 individual pushes will outrun a 2-minute tool timeout, chunked
+  ones do not. No LFS hang was hit (4.2s for the first chunk of 10), but the risk from
+  `CLAUDE.md §DB CHANGES` is real, so the loop is timeout-guarded per push.
