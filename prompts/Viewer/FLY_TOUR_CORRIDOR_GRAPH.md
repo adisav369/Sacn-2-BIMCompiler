@@ -1778,3 +1778,68 @@ re-seeks are bit-identical. Nothing here retracts §TOUR_TIMELINE_SCRUB's shippe
 - **Replacement gate when picked up:** assert the DIMENSIONLESS ratio `gap / perFrameDelta`, which
   under the current code must equal `(1-a)/a = 7.33`, or drive `walkTick` with a fixed synthetic
   `dt`. Report that ratio before/after, never the raw metres.
+
+## §SCRUB_PREPARE_STALL — 1.67s blocking hitch at tour start, ROOT-CAUSED (2026-07-25) ⛔ OPEN
+**A real regression introduced by §TOUR_TIMELINE_SCRUB's eager prepare, invisible to all 10 witnesses.**
+Source: user's live GH Pages run on LTU_AHouse (122,330 elements, OCI DB, `§TOUR_VERSION v17`).
+
+**The measurement:** `§SCRUB_PREPARE actions=28 total=1888.823s prepMs=1666.5`.
+Compare: Hospital (63k) `prepMs=3.2`; the ORIGINAL LTU witness run (same building!) `prepMs=10.7`.
+**156x worse than the witnessed number on the same building.** A prior session's claim that "the
+timeline cost is scale-independent" is WRONG and is retracted here.
+
+**Root cause, traced through real code (not inferred from the number):**
+`_tourPrepare:1328` eagerly runs `_actInit` for every action. flyPath's `_actInit:1224` builds its
+pace remap via `_losPace:1069`, which calls `A.cinemaLookDist` — and that is a REAL raycast:
+`effects.js:3978-3989`, `_cineFanRay.intersectObjects(meshes, true)` over `_cinemaFanMeshes()`.
+**One raycast per waypoint** × 105 interior points × a 122k-element mesh set = the 1.67s. Cost scales
+with (waypoints × scene complexity), and the scrubber moved ALL of it to a single blocking moment at
+tour start. Pre-v17 it was amortised lazily, one action at a time, as each beat began.
+
+**WHY NO WITNESS CAUGHT IT — the important part, this invalidates prepMs as a witnessed quantity:**
+in the headless swiftshader harness the LOS rays hit NOTHING — `§TIGHT_TURN_PACING losRange=[0.63,
+0.63] mean=0.63` on every single flyPath, i.e. `cinemaLookDist` returned `CINEMA_FAN_FAR` every time.
+In the live browser it returns real hits: `losRange=[0.63,1.60]` with means 1.06/1.40/1.41/1.46/1.47/
+1.55/1.60. **The harness measures a regime the real browser never enters.** Any future perf claim
+about `_tourPrepare` from that harness is worthless until this is fixed.
+
+**SAME ROOT CAUSE, second symptom — the tour ballooned to 31:28.** `total=1888.823s` vs 18:10 on the
+same building previously. Because the rays now hit something almost everywhere in a dense model, the
+pace factor pins near `PACE_FACTOR_MAX=1.6` instead of the 0.63 hasten, and `_actInit:1226` rescales
+each duration by `meanFactor`. `§SCRUB_BEATS` shows `flyPath:542.31` — **one 9-minute beat**, 518.1m
+at 0.96 m/s. This is the "multi-minute crawl" `FLY_TOUR_DLOD_SCALE.md §25 §BASE_SPEED_REGRESSION`
+claimed to have killed, back through a different mechanism. §25 says do not re-open pacing without a
+specific live-reproduced complaint — **this is one**, with numbers.
+
+**Fix directions (not yet chosen):** (a) cache/limit the LOS raycasts (they are recomputed per
+prepare, and `§FLY_PLAN_DEDUPE memo-hit` shows the ROUTE is already memoised while the pacing is
+not); (b) chunk `_tourPrepare` across frames so the first beat can start immediately; (c) cap the
+number of LOS samples per flyPath instead of one-per-waypoint. Gate must be measured IN A REAL
+BROWSER — the headless harness cannot see this.
+
+## §SCRUB_SCALE_MEASURED — the honest scaling numbers (2026-07-25, both from live GH Pages runs)
+| Building | Elements | Frame time during tour (`dlod=on fly=1`) | ≈ fps | Worst frame |
+|---|---|---|---|---|
+| Hospital | 63,182 | 29–105 ms | 10–34 | 640.2 ms |
+| LTU_AHouse | 122,330 | 80.9–216.1 ms | 4.6–12 | 911.1 ms |
+Roughly HALVES as element count doubles. `§FPS_MODE mean` is frame_ms (`main.js:670`,
+`dt = now - _fpsLastT`), NOT fps — the ~12ms figures elsewhere in these logs are the PARKED static
+scene after `§IDLE_GATE park`, not motion. **Do not claim "no lag" or "scales to high element
+count" from these logs; they say the opposite.** Consistent with `FLY_TOUR_DLOD_SCALE.md` §22/§25
+(~86.7ms/11.5fps) and with §17 occlusion culling being CLOSED as four-times-failed.
+
+## §DLOD_ALL_BOXED — confirmed on BOTH buildings, promote from "finding 4" to a real defect
+`§DLOD_NAV active=0 boxed=122330` held across THIRTY consecutive `§DLOD_NAV_BUDGET boost=` steps
+(2→60) on LTU — every element a wireframe proxy, zero real geometry, for the whole opening beat. Then
+`active=52017 boxed=70313` (42% real), falling back to `active=12926 boxed=109404` (10.6% real).
+Hospital showed the identical pattern (`active=0 boxed=63182`, recovering to ~61% peak).
+`§DLOD_NAV_ROOMS status=present source=none rooms=-` on BOTH, despite 394 (LTU) / 214 (Hospital)
+rooms being injected BEFORE nav-DLOD engaged — room-scoped DLOD never binds. Same bug, two buildings.
+**Presentation impact:** the "X-ray reveal" this produces is well-formed per doctrine (honest
+distinguishable wireframe stand-ins, the Alt+X pattern) — but when `active=0`, the audience is
+looking at zero real building.
+
+**Not all bad news — route quality is building-dependent, not systemically broken:**
+LTU `illegalChords=1/100` (99% wall-legal) vs Hospital `illegalChords=14/81`. Correlates with graph
+density: LTU `nodes=397 edges=278 orphanRescued=91/91`, Hospital `nodes=224 edges=61 deadend=194`.
+Hospital is the outlier; fix the Hospital graph, not the router.
