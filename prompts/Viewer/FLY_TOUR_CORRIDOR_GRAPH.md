@@ -1915,3 +1915,34 @@ shortcut.** User confirmed by hand 2026-07-25: *"while L paused, alt-z works."* 
 `scene.js`'s shortcut table, so `§KBD_ROUTE`-handled combos (Alt+Z, Alt+G, F11 — all observed firing
 in live logs) read as missing. **Do NOT "fix" these four — fix the audit's coverage instead.** The
 five `deadKeys=+,-,z,w,r` are a separate question and still unverified.
+
+## §ABSTRACTION-AUDIT-2 — no hardcoded per-building logic, verified (2026-07-25)
+User asked for a fresh check (independent of the original `§HL-FIRST` table above) that nothing
+building-specific crept into `tour.js` / `room_graph.js` across today's work. Grepped both files for
+every real building name (Clinic, Hospital, Terminal, LTU_AHouse, SampleCastle, HHS, Duplex) and for
+any `if (buildingName === ...)`-shaped conditional. **Zero code branches on building identity.** Every
+hit is a comment citing which building's real data a general fix was root-caused or verified against
+(exit-node handling, stair-flight assembly merge, ambiguous-residual-rescue, rect-fallback doorways,
+etc.) — the code itself only ever branches on measured geometry, never on which building it's looking
+at. Do not re-run this audit from scratch next time; grep the same way and diff against this verdict.
+
+## ▶ NEXT DEDICATED SESSION — pick up FINDING 4's parked metric question
+**`FINDING 4` (§772 above, `§HALL-IS-A-CORRIDOR`) is the one genuinely open Clinic/Hospital topology
+quirk** — not a bug, a parked design decision. Recap: on Hospital and Clinic, ranking candidate "main
+hall" stops by rectangle AREA picks a long narrow corridor over a shorter but WIDER room (Hospital:
+219m²/3.3m-wide corridor beats a 124m²/4.8m-wide room; Clinic: 125m²/3.2m-wide beats 53m²/5.6m-wide).
+Terminal and HHS are unaffected (their area-winner is already the width-winner).
+- **Candidates on the table, all scale-free, none building-specific:** `minDim` alone (Clinic's winner
+  drops to 53m² — width without size), `minDim²` (biggest inscribed square — pure spaciousness),
+  `area × minDim` (balances size and openness, penalises a long corridor by its own narrowness).
+- **A hard width threshold (e.g. "≥6m counts as a hall") is explicitly REJECTED** — that is exactly the
+  hardcoded custom case ruled out by `§ABSTRACTION-AUDIT-2` above and the original `§HL-FIRST` table.
+  Do not introduce one even as a "just for now" measure.
+- **Do not re-measure the metric until Hospital's connectivity lands** (`OCCUPANT_PATHFINDER.md`
+  §GRAPH-FOUNDATION G1/G2) — Hospital's candidate pool today is 24 nodes, almost all `Hall/Corridor`,
+  with the real 142 authored rooms displaced by the walker recompile; a metric change there would be
+  tuned against corridors, not validated against a real hall. **Clinic has no such blocker** and is a
+  clean, small, already-flying building — the cheaper place to prototype `minDim²` vs `area×minDim`
+  first, then re-check against Hospital once G1/G2 land.
+- Witness plan: same shape as the `§HL-FIRST` sweep — real graphs from real DBs, BEFORE/AFTER per
+  candidate metric, independently recomputed in the harness (not read back from the engine's own log).
