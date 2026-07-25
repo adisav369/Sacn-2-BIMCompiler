@@ -4967,6 +4967,32 @@ PLAYABLE mp4 on disk. **WebCodecs `VideoEncoder`/`avc1.640034` works in headless
 the biggest unknown going in, and it is now settled.
 Steady state ≈ `237ms refine + 380ms AO + 250ms SETTLE_MS` ≈ **870ms/frame on Duplex**.
 
+**SwiftShader comparison — NOT cleanly measured, lower bound only (honest partial result):** the same
+16-frame Duplex bake under `--use-angle=swiftshader` **never completed**; it died on
+`ProtocolError: Runtime.callFunctionOn timed out` at puppeteer's default 180s `protocolTimeout`,
+versus **24.0s total on the GPU**. So software rendering is **>7.5× slower — a LOWER BOUND, not a
+measured ratio**; the run aborted rather than producing a per-frame number, and nobody should quote
+a specific multiple. It is enough to settle the design point: **never ship the runner on SwiftShader,
+always pass the GPU flags.** If an exact ratio is ever wanted, re-run with the fix below.
+
+### ⚠ RUNNER DESIGN CONSTRAINT found by making the mistake — `page.evaluate` AWAITS a returned promise
+The SwiftShader abort was compounded by a real bug in the probe harness, and it is exactly the bug
+whoever builds the agent will hit, so it is recorded rather than quietly fixed:
+```js
+await p.evaluate(o => window.APP.startMaxQualityOrbit(o), opts);   // ✗ concise body RETURNS the
+                                                                  //   promise → puppeteer awaits
+                                                                  //   the ENTIRE bake
+await p.evaluate(o => { window.APP.startMaxQualityOrbit(o); }, opts);  // ✓ braces → returns
+                                                                      //   undefined, fires & returns
+```
+`witness_maxq_mp4.js` already gets this right (braces, then polls the console for `§MAXQ_DONE`) —
+the probe dropped the braces and inherited a 180s ceiling on the whole bake. **A real 360-frame LTU
+bake runs 19+ minutes and would blow ANY default protocol timeout**, so the agent MUST use the
+fire-and-poll pattern: call it inside braces, then watch the `§MAXQ_FRAME` / `§MAXQ_DONE` console
+lines it is already receiving. That also hands the agent live progress reporting for free — the
+`etaSec`/`perFrameMs` values are already in those lines. Do NOT "fix" this by raising
+`protocolTimeout`; the poll pattern is the correct architecture.
+
 ### Why "just write a native offline renderer" is the WRONG answer (do not propose it again)
 The bake is not a standalone renderer — it is the whole viewer app driven frame by frame. Each frame
 needs `A._composer` (TAA `EffectComposer`), `effects.js` `_applyPhotoStaging()` (HDRI envMap,
