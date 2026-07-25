@@ -1956,7 +1956,10 @@ Terminal and HHS are unaffected (their area-winner is already the width-winner).
   survives selection. The defect FINDING 4 described was a PRE-raster artefact, fixed by #1006, not a
   ranking bug. Do NOT implement a new metric or a reserved slot without a fresh failing measurement.
 - **T4 ⛔** blocked on `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1 — exits re-measured 2026-07-26:
-  Hospital 0, Clinic 0, HHS 0, Terminal 5.
+  Hospital 0, Clinic 0, HHS 0, Terminal 5. **G1 investigated + decided the same day** — the `exit` node is a
+  LIFT-door name filter, Terminal's 5 "exits" are elevator doors (and are the source of T1's residual illegal
+  chord), so `escapeRoute()` today would route to a lift. Direction: measured exterior-door test, never
+  envelope synthesis. Evidence + work order: `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`.
 
 ## ▶ §TOUR_HIGHLIGHT_LANE — the parked metric gate is RELEASED; 4 bounded tasks, ordered (2026-07-26)
 ```
@@ -2123,13 +2126,25 @@ with "fly to the lowest storey's biggest door".
 
 **Blocker re-measured 2026-07-26 (post-raster, patches applied):** `exit`-kind nodes per building —
 **Hospital 0, Clinic 0, HHS 0, Terminal 5**. `RG.escapeRoute` is exported and callable; still zero viewer
-callers. So the block is real and unchanged for the buildings this lane cares about. One nuance worth
-knowing before someone re-derives it: **Terminal alone could host a partial validation today** (it has 5
-exits, and its §S2.5 descent already targets the single LOWEST one — `escapeRoute()` would instead pick the
-NEAREST exit to the last stop). That is a one-building trial, not the feature; the sequence in this task
-(G1 first, then wire it fleet-wide) stands. **⛔ The one open question for the user/G1 owner:** is an
-`exit` node supposed to come from a real `IfcDoor` to outside, or does G1 intend to synthesise them from
-the ground-storey envelope? Everything else here is measured and ready.
+callers.
+
+**⛔ THE BLOCK IS WORSE THAN THIS TASK ASSUMED — and Terminal is NOT a usable partial trial. Full evidence:
+`Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR` (2026-07-26). Do not re-derive.**
+- An `exit` node is produced by a **lift/elevator NAME filter** (`room_graph.js:107`
+  `NON_ROOM_DOOR_NAMES`), not by any exterior-door test — no such test exists anywhere in the codebase.
+  `exits=0` therefore means "no door named like a lift", not "no way out".
+- **Terminal's 5 exits are 5 ELEVATOR doors**, so the tour's `entrance` on Terminal (= lowest exit node) is a
+  lift door. That is exactly Task 1's measured residual: the only 2 remaining wall-illegal chords are the legs
+  to/from it, `cause=ENDPOINT_OFF_FLOOR` — a lift car is not walkable floor. Wiring `escapeRoute()` today
+  would route occupants **to a lift**, i.e. ship a wrong answer instead of a missing one.
+- **Direction settled (watchdog, 2026-07-26):** real IfcDoor-to-outside first, decided by a MEASURED side
+  test (sample either side of the door against the walkable raster + footprint) — never envelope synthesis,
+  which would be invented geometry that fails silently. Any narrow fallback must log as `§EXIT_SYNTH` so a
+  witness can never mistake it for a measured exit.
+- **Feasibility is proven, not assumed:** on HHS (full raster coverage) the side test yields **3 candidates
+  of 133 doors**, the first a glass revolving-leaf entrance. On Hospital it yields 80–137 because 133 doors
+  sit off-raster — so G1's true prerequisite is **raster coverage** (Clinic/Terminal/LTU ship no
+  `storey_walkable_raster` table at all), plus a stricter side test.
 
 ### Out of scope for this lane (named so nobody re-discovers them)
 - `Hospital_ARC` / `SampleCastle_extracted` fall back to the LEGACY Euclidean nearest-neighbour tour
