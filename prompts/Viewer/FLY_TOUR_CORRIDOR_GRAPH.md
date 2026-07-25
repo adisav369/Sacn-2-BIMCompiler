@@ -2158,3 +2158,73 @@ callers.
   their graphs pass `§MAJORITY-LEGAL`. Different lane.
 - `§SCRUB_PREPARE_STALL` (1.67s hitch) and `§DLOD_ALL_BOXED` are pacing/render defects already specced
   above — Task 1 will interact with the former's timing, so re-measure it, but do not fix it here.
+
+---
+
+## ▶ §R5-A — port the graph-route tour into `deploy/dev` (SPEC, 2026-07-26; R5 finally gets one)
+```
+# ⚠ DO NOT REMOVE
+SCOPE: R5 (line ~96 of this file) has only ever been a one-liner — "porting to deploy/dev is a separate
+later task". Watchdog split it 2026-07-26 into A (code-only, no DB) and B (self-heal loader + raster
+patches) and made A the highest-priority task, because deploy/dev is the surface the user TESTS and it
+has none of the highlight stack. This is A's spec. deploy/dev ONLY — never deploy/live (PRIME RULE).
+Read the log after every run; every claim needs a §-line.
+```
+
+### Why A is worth doing at all — the target is LIVE (verified, not assumed)
+`deploy/dev/` maps to OCI bucket `sandbox/` (`deploy/OCI_UPLOAD.md` §RULES 5) and
+`…/b/bim-ootb-live/o/sandbox/index.html` answers **200, 51106 B** (checked 2026-07-26). The GH-Pages
+viewer (`red1oon.github.io/bim-ootb/viewer/viewer.html`, 200) is a SEPARATE, more advanced surface that
+already has the whole stack. So this port is not busywork on a dead tree — but it is also not the only
+place the feature exists, and the two must not be confused when reading a user report.
+
+### Measured divergence (do not re-derive — this is what makes A a bounded task)
+`deploy/dev` is an older fork of the same app, same `setupTour(A)` shape, same `APP` object:
+
+| file | deploy/dev | bim-ootb viewer | note |
+|---|---|---|---|
+| `helpers.js` `A.dbQuery` | — | — | **byte-identical** (diffed) — the module contract the whole stack needs |
+| `tour.js` | 994 lines | 1561 (v19) | ootb's `A.*` surface is a strict SUPERSET of dev's — no dev-only tour API to preserve |
+| `navigate_find.js` | 1984 | 5252 | diverged beyond a copy — see scope call below |
+| `effects.js` | 92 | 4070 | dev has no cinema stack; `tour.js` already guards `A.cinemaLookDist` absence |
+| room stack | **absent** | `common/*.js` | `room_graph.js`, `hallway_backbone.js`, `storey_raster.js`, `room_habitability.js` |
+
+**tour.js v19's ONLY external gaps in deploy/dev are `A.ensureRooms` and `A.getRoomGraph`** (measured:
+every other `A.*` it touches is either self-defined or already present, incl. `markDirty`/`loadNavigate`
+which live on `APP.` in dev's `main.js`).
+
+### SCOPE CALL — navigate_find.js is NOT ported wholesale (deviation from the dispatch list, stated)
+The watchdog's list named `viewer/navigate_find.js`. Measured, a wholesale port additionally needs five
+externals dev does not have — `activeGuidFilter`, `filterByGuids`, `buildingName`, `_hbaTenancySpec`, and
+`_applyPendingPatch` (which is **R5-B by this very split**). Those belong to the Find panel / HBA / lens
+stack, none of which is on the path to "does Clinic show a highlight". So A ports the **two functions the
+tour actually needs** (`ensureRooms`, `getRoomGraph`) as a small dedicated bridge, and leaves the Find
+panel port as its own future task. If the intent was also to upgrade dev's Find panel, that is a separate
+R5-C — say so and it gets its own spec; it is not folded in silently.
+
+### The work
+1. Copy flat into `deploy/dev/` (dev is a flat tree, no `common/`): `room_habitability.js`,
+   `storey_raster.js`, `room_graph.js`, `hallway_backbone.js` — **verbatim from `bim-ootb/common/`**, no
+   edits (they are already browser-IIFE-wrapped and `module.exports`-guarded, see
+   [[feedback_browser_iife_wrap_engines]]).
+2. Replace `deploy/dev/tour.js` with `bim-ootb/viewer/tour.js` v19 verbatim.
+3. New `deploy/dev/room_graph_bridge.js`: `A.getRoomGraph()` (build once per `activeBuilding`, cache —
+   same body as navigate_find's `_roomGraphFor`) and `A.ensureRooms()` (A-scope: report what exists; the
+   patch/walker self-heal is B).
+4. Wire `<script>` tags in `deploy/dev/index.html` in dependency order — habitability → raster →
+   room_graph → hallway_backbone → bridge — BEFORE `tour.js`, each with a `?v=` and an `onerror` warn
+   like every other tag there.
+5. **Graceful degradation is the gate, not an afterthought:** no `storey_walkable_raster` table ⇒
+   `room_graph` falls back to room rects (its own documented behaviour); no `spatial_structure` rooms ⇒
+   the tour must log `§FLY_ROUTE_REJECT` and fall through to the LEGACY tour unchanged.
+
+### Witness (W-R5A-DEV-GRAPH-TOUR) — what it must prove
+Served from a local `deploy/dev` (the same way the OCI sandbox serves it), real user path (press ✈),
+§-log values only:
+- **Clinic** (ships native IfcSpaces, no patch needed): `§FLY_ROUTE` appears with `stops=N/N`, and the
+  §HL-FIRST main hall is the measured area champion — this is the "does Clinic show a highlight" answer.
+- **A building with no rooms**: `§FLY_ROUTE_REJECT` + the legacy tour still produces actions ⇒ the port
+  cannot make an un-roomed building WORSE than before.
+- **No page errors, no `§LOAD_FAIL`** from the new script tags.
+Deploy only after that passes, via `deploy/OCI_UPLOAD.md` §RULES (every `oci os object put` carries
+`--content-type application/javascript`), then fetch back and verify.
