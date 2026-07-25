@@ -1359,3 +1359,62 @@ churning that artifact here.
 - **`MissCOback2doors`' door-revisit question is now ANSWERABLE from the log alone** rather than
   needing a re-shoot: `repeatedPortals=` on `§ROOM_PATH` distinguishes a real double-back from one
   stair counted per flight — on this route it was always the latter.
+
+### §17 WITNESS PASS — fleet numbers, two self-caught defects, and honest red-attribution
+Everything below is from the real witness suite in the `fix/roompath-node-logic` worktree, not from
+the reported route alone.
+
+**Fleet effect (all measured, all in the improving direction):**
+| building | metric | before | after |
+|---|---|---|---|
+| Hospital | DETOUR_FAIL sweep, 3023 real pairs | 63.3% (1914) | **0.0% (0)**, newlyBroken=0 |
+| Hospital | room-pair pathability / deg-0 rooms | 69.4% / 26 | **91.2% / 7** |
+| Terminal | polyline illegal pts (raster, split-DB) | 352 | **0** (100%), worsePairs=0 |
+| Terminal | DETOUR_FAIL | 55.8% | **52.5%** |
+| HHS | straight-chord illegal pts | 90 | **0 at source** (doorway/stair gaps now covered) |
+| HHS | DETOUR_FAIL (true 105-room set) | 28.7% | **19.3%** |
+| Clinic | polyline illegal pts (rect fallback) | 49 | **0** (100%) |
+| Duplex | route + polyline | unchanged | unchanged (no raster, rect fallback) |
+
+**Route-vs-geometry fence, measured over 436k+ pairs:** `doors[]` and the room-stop sequence are
+**100% identical** to origin/main on Duplex/JKR/HHS/Hospital, zero lost connections, zero newly
+connected, **zero longer** routes. Distance is identical except 50/1281 JKR pairs that got SHORTER —
+same doors, same stops: §BRIDGE-ROUTED-LEGAL (#997) weights a room→circulation bridge by its ROUTED
+walk length, so better floor evidence straightens a bridge that previously needed a 2-turn detour.
+
+**Perf:** `§POLY_TIMING Hospital connectedPathsTimed=300 avgMsPerPath=8.89 maxMsPerPath=63.09
+avgPolyPts=13.1`; one route on the injected 214-room set 45→66ms; predicate held at 0.01ms/chord by
+§RECT-INDEX; `buildGraph` 171→216ms.
+
+**Two real defects this pass caught in MY OWN change before it reached a PR** (both by
+`compare_routes_ab.js`, which is why that harness is now committed next to this file):
+1. `_dedupeAnchors` dropped a real ROOM stop when it sat within 5cm of a corridor waypoint — on HHS
+   (where §CORRIDOR-ROOM-BACKPROP synthesises corridor ROOMS on the spine point) that silently
+   changed the room sequence of 78/210 sampled pairs while doors/distance stayed identical. Now
+   waypoint-only.
+2. Folding door/stair rects into the "is this storey judgeable" test flipped the `null` (cannot
+   judge) contract: a storey with no rooms and no corridors but some doors went from never-penalised
+   to judged against ~1m² slivers. JKR's no-raster baseline went 34.2%→49.6% — a straight regression
+   from a change that is only supposed to turn illegal into legal. Now additive-only
+   (§NULL-CONTRACT-UNCHANGED).
+
+**Witness reds — attribution checked against an UNMODIFIED origin/main worktree, not assumed:**
+- `witness_room_path_ui.js` **6/13 → 13/13**. Its 7 reds pre-existed on origin/main: it picked Duplex
+  rooms by the names `A202/A205/A103/A104`, and the browser's room set no longer contains them — the
+  live picker shows 7 rooms, all injector-compiled (`≈ Level 1 R1 · COMPILED INTERNAL`,
+  `⚠ Roof R1 · COMPILED SUSPECT_NO_DOOR`), while the SAME `Duplex_extracted.db` read in node still
+  yields the real named IFC spaces. **Open item, injector lane not Find lane: the client-side
+  recompile REPLACES named IFC spaces with synthetic `≈ Level N Rk` ones, so real room names are lost
+  from the Find picker on a building that HAS them.** Picks are dynamic now, and the panel is asserted
+  against the engine's own `§ROOM_PATH from=/to=` names.
+- `witness_jkr_walkable_raster.js` (G2/G4) and `witness_terminal_walkable_raster.js` (G2) were
+  **already red on origin/main with identical numbers** — drift from #995-#997's walkability-gated
+  bridges, not from §17. Renumbered/re-specified with that attribution recorded in-file.
+- `witness_room_graph_utility_penalty.js` F compares against a **#959-pinned** engine; origin/main
+  itself scores 178/190 there, so §17 adds zero divergence. Pinned to the measured floor.
+- `witness_hospital_walkable_raster.js` G3 asserted a permanent TIE and now fails BY SUCCEEDING;
+  premise rewritten per its own closing instruction (re-derive, don't bump the floor).
+- `witness_room_path_raster_polyline.js` G1b asserted a ">=95% reduction" that cannot be met once the
+  baseline is 0 (HHS); guarded. G2 sharpened from byte-identical `path` to route identity.
+- Green throughout, unchanged: `witness_room_graph_path.js` 15/15, `witness_backbone_routing.js`,
+  `witness_corridor_room_backprop.js`, `witness_occupant_pathfinder.js`.

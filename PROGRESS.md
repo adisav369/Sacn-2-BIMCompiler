@@ -34,7 +34,7 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933. ✅ Alt+C flicker (#983 shadow-skip gate) fixed 07-25, bim-ootb PR #1004, witnessed.
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933. ✅ Alt+C flicker: #1004 (shadow-skip) + #1005 (env-map stomp), both witnessed 07-25.
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
@@ -45,6 +45,13 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
+- **Room→Path FIXED 07-25 (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`, bim-ootb PR #1006)** — §16's
+  screenshot route: illegal samples 312→0, DETOUR_FAIL 5→0, Hospital pathability 69.4%→91.2%,
+  deg-0 26→7. ⛔ NEXT: the regenerated `buildings/patches/Hospital_{meta,extracted}.db.sql` must go
+  to OCI via `scripts/oci_patch_gate.js` from a CLEAN fresh-`origin/main` worktree AFTER merge —
+  until then the live viewer still loads the old raster. Also open: Terminal Aras 03/04 raster
+  refresh; the room injector REPLACES named IFC spaces with `≈ Level N Rk` on Duplex (names lost in
+  the Find picker — injector lane, not Find).
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
