@@ -1114,12 +1114,30 @@ Same error class as the other four, new flavour: the mismatch was between **arti
   [[project_db_snapshot_divergence_landmine]] again, one layer down.
 - **The rect-fallback-vs-raster "better evidence in BOTH directions" claim in #996 goes with it.**
 
-### ⚠ SECOND FINDING — on Hospital the raster is NOT independent floor evidence on 5 of 7 storeys
-`§RASTER_SLABS storey=Level 1 slabs=0 … triangles=0` — and the same for Levels 2, 4, 5 (the build
-script's own comment already recorded "measured on Hospital: 5 of 7 storeys had ZERO slabs"). On those
-storeys `walkable ≡ inside a compiled room rect ∪ corridor rect`, i.e. a rasterisation of the very
-rects the fallback already used. A chord test there measures **rect adjacency**, not real floor.
-Levels 3, 6, 7 do have resolved slab meshes (8754 / 304 / 84 triangles) and are genuine evidence.
+### ⚠ STANDING LIMITATION (promoted from footnote on watchdog review) — what the gate actually proves
+`§RASTER_SLABS storey=Level 1 slabs=0 … triangles=0`, and the same for Levels 2, 4, 5 (the build
+script's own comment already recorded "measured on Hospital: 5 of 7 storeys had ZERO slabs"). Only
+Levels 3, 6, 7 resolve slab meshes (8754 / 304 / 84 triangles).
+
+**Consequence, and it is a limitation on the result, not a data gap.** On a slabless storey
+`walkable ≡ inside a compiled room rect ∪ corridor rect` — and a room's own footprint is 100% walkable
+*because the builder unions room rects*. So on Level 1 `_astarHop` is **not** testing whether a person
+could walk from the atrium to the spine through real floor. It is testing whether a chain of
+overlapping room/corridor rects connects them.
+
+Not circular enough to be worthless: corridor and spine rects are genuinely separate objects derived
+from walls+doors by `hallway_backbone.js`, and the gate still **refused 30-odd bridges**. But it is
+strictly weaker than "a walkable route through measured floor" — and **R14's rescue happens on exactly
+such a storey**. State it this way, and do not treat it as closed:
+
+> **The atrium win is real under the rect-network definition of walkable, and NOT YET DEMONSTRATED
+> under independent floor evidence.** Levels 3, 6 and 7 are the only places this gate has ever been
+> tested against real geometry.
+
+Falsifiable follow-up, cheap and already tooled: split the accept/reject tally by storey slab-resolution
+(`poc_routed.js` + `§RASTER_SLABS`) and report the gate's behaviour on slab-backed storeys separately
+from rect-only ones. If the gate behaves the same on both, that is evidence the rect network is a fair
+proxy; if it diverges, the rect-only storeys' results need discounting. Neither is assumed here.
 
 ### ✅ OPEN ITEM 3 CLOSED — the 22 "far" rooms are compiler-flagged pockets, not a connectivity target
 `spatial_structure.predefined_type` already carries the room compiler's own verdict, and it is
@@ -1161,3 +1179,75 @@ foreign raster unless the two match. **Rebuild the raster against the served DB,
 `poc_raster_cover.js` (expect 100% own-footprint for every room), then deploy.** And per the second
 finding, on Hospital 5 of 7 storeys it adds no slab evidence at all — so it is worth less than #996
 claimed. Still `⛔ BLOCKED: production bucket, needs user authorisation.`
+---
+
+## 🐕 §WATCHDOG — reviewer-role handoff (2026-07-25, written BY the reviewer session, FOR the next one)
+**Read this if you are resuming as REVIEWER, not as builder.** The builder's resume state is
+`▶ NEXT SESSION` above; this section is the separate reviewer lane and does not duplicate it.
+
+### The role, and why it exists
+Separate session, **review only — do not implement, do not edit engine code** (user directive,
+`feedback_model_allocation_mastermind_vs_execution` §Sonnet-as-reviewer-of-Opus). Read the plan and
+the report, verify claims against real code and real fixtures, agree or flag with line numbers.
+The builder pushes and merges; the reviewer does not.
+
+**The value came from ROLE, not model capability — both sessions this day were Opus 5.** The builder
+had every fact the reviewer had and found most of them itself. What it did not have was a fresh
+context and no stake in the result, which is why "closed end to end" preceded a correction three
+separate times (#995 unvalidated bridges, #996 cross-snapshot raster, the straight-chord gate).
+**A reviewer does not need to be a different or better model. It needs to be a different session.**
+
+### Standing checks — each one caught a real defect this day, run them every time
+1. **Re-derive the headline number yourself before relaying it.** Reviewer's independent 56.2%
+   baseline is what let the builder confirm its own harness; the 86.2% that replaced it was
+   real connectivity *plus unvalidated edges* and had to be retracted.
+2. **Check the SCOPE of BOTH sides of any comparison.** Five error classes so far, all the same
+   family — see `Method warnings` above for 1–4; #5 is *mismatched artifacts, not fields*
+   (a 156-room DB's raster applied to a 224-room DB). **Provenance first: run
+   `poc_raster_cover.js` on any raster you did not build yourself, expect 100% own-footprint.**
+3. **For every new edge/connection, ask what EVIDENCE field it carries.** `doorGuid: null` means
+   the graph is asserting a passage nobody measured. Every pre-existing bridge in
+   `common/room_graph.js` (`§ISLAND_BRIDGE`, `§ORPHAN-SPINE-RESCUE`) is door-anchored and says so
+   in its own comment. `watchdog_bridge_evidence.js` prints the length distribution of new bridges —
+   #995 shipped 40 with median 12.90 m and max 45.70 m, all labelled "Opening onto corridor".
+4. **An absolute gate catches "broken", never "worse".** `tour.js:635`'s reject test is a fixed
+   threshold, not a before/after comparison. Only the multi-building BEFORE/AFTER sweep catches a
+   regression that still passes. The Node corpus harness is therefore load-bearing infrastructure.
+5. **Compare ratios, not counts, whenever the denominator can move.** Route length grows, so
+   `9/62 → 9/69` is an improvement (14.5% → 13.0%), not a flat line.
+6. **"No cap, no new constant" is not automatically a virtue — ask what the removed bound was
+   holding.** In #995 it was the only thing bounding the claim, and its removal was presented as
+   abstraction purity. In #997 the same phrase was correct, because a real test replaced it.
+7. **A test can be too strict as well as too loose.** `_chordIllegalCount` samples a STRAIGHT
+   segment — a visibility test. Connectivity needs a routed test (`_astarHop`). Both errors are
+   the same failure: an unmeasured claim, erring in opposite directions.
+
+### Reviewer harnesses (kept here because scratchpads vanish; read-only, no engine edits)
+- `watchdog_bridge_evidence.js <db>` — loads a CANDIDATE `room_graph.js` (edit the require path to
+  the worktree under review), prints every `§ROOM_SPINE_BRIDGE` distance + buckets + the longest
+  fabricated openings. This is the check that caught #995.
+- `watchdog_binder_attribution.js <db>` — replicates the E1 door-binding predicate exactly
+  (discipline, `isRoomDoor`, strict storey equality, `rectDist <= max(bx,by)/2 + 0.20`,
+  `cands >= 2`) and attributes, per stranded room, WHICH predicate rejected it. Use before
+  accepting any "the binder is broken" or "widen the slack" claim.
+- The builder's `corpus.sh` / `pathab.js` / `poc_raster_cover.js` in this directory cover
+  pathability + provenance; do not re-implement them.
+
+### Verified by this reviewer, independently (not just relayed)
+`nodes=224 edges=496` reproduces the live console · Hospital reachability is **not** the blocker
+(largest component 87.4%, 168/224 rooms) · all 42 deg-0 rooms fail one predicate, `inRange=0`
+(not discipline: 440/440 ARC; not the lift filter; not `cands<2`) · the storey filter is CORRECT
+and must not be relaxed — cross-storey "hits" are 2D `rectDist` artifacts · #995's 40 bridges
+measured median 12.90 m / max 45.70 m with `doorGuid: null`.
+
+### Reviewer's open flags — not yet closed
+- **The atrium win rests on a storey where the raster is not independent floor evidence.**
+  `§RASTER_SLABS slabs=0` on Levels 1, 2, 4, 5 means `walkable ≡ inside a room ∪ corridor rect`
+  there — so on Level 1, `_astarHop` tests **rect-network connectivity**, not measured floor.
+  R14's rescue is real under that definition and **not yet demonstrated against real geometry**.
+  Levels 3, 6, 7 have genuine slab meshes and are the only places the gate has been tested against
+  it. Record as a bounded limitation of `§BRIDGE-ROUTED-LEGAL`, not a closed question.
+- **Post-change witness re-run should be quoted, not assumed** — `witness_room_graph_utility_penalty.js`
+  8/1 is stated as identical to baseline; quote both runs and `audit_specs.js` exit 0 explicitly.
+- **`⛔ Item 1 (raster deploy) is BLOCKED on the user** — production bucket authorisation. It is the
+  only open decision in the chain; everything else is work.
