@@ -1955,11 +1955,12 @@ Terminal and HHS are unaffected (their area-winner is already the width-winner).
   buildings.** Raw area already elects the real hall everywhere a real hall exists; the champion always
   survives selection. The defect FINDING 4 described was a PRE-raster artefact, fixed by #1006, not a
   ranking bug. Do NOT implement a new metric or a reserved slot without a fresh failing measurement.
-- **T4 ⛔** blocked on `OCCUPANT_PATHFINDER.md` §GRAPH-FOUNDATION G1 — exits re-measured 2026-07-26:
-  Hospital 0, Clinic 0, HHS 0, Terminal 5. **G1 investigated + decided the same day** — the `exit` node is a
-  LIFT-door name filter, Terminal's 5 "exits" are elevator doors (and are the source of T1's residual illegal
-  chord), so `escapeRoute()` today would route to a lift. Direction: measured exterior-door test, never
-  envelope synthesis. Evidence + work order: `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`.
+- **T4 ⛔ still blocked, but its live BUG is fixed.** G1 investigated 2026-07-26: the `exit` node was a
+  LIFT-door name filter, so Terminal's 5 "exits" were elevator doors — the tour's entrance was a lift, and
+  `escapeRoute()` would have routed egress into one. **bim-ootb #1014 removed that source (45/45): Terminal's
+  tour illegal chords 2/91 → 0/84, exits now 0 fleet-wide by design.** What remains for T4 is a REAL exit:
+  measured exterior-door test, never envelope synthesis — `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`
+  + its dispatchable `§G1-EXTERIOR-DOOR-LANE` (raster coverage is the gating work).
 
 ## ▶ §TOUR_HIGHLIGHT_LANE — the parked metric gate is RELEASED; 4 bounded tasks, ordered (2026-07-26)
 ```
@@ -2130,13 +2131,18 @@ callers.
 
 **⛔ THE BLOCK IS WORSE THAN THIS TASK ASSUMED — and Terminal is NOT a usable partial trial. Full evidence:
 `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR` (2026-07-26). Do not re-derive.**
-- An `exit` node is produced by a **lift/elevator NAME filter** (`room_graph.js:107`
-  `NON_ROOM_DOOR_NAMES`), not by any exterior-door test — no such test exists anywhere in the codebase.
-  `exits=0` therefore means "no door named like a lift", not "no way out".
-- **Terminal's 5 exits are 5 ELEVATOR doors**, so the tour's `entrance` on Terminal (= lowest exit node) is a
-  lift door. That is exactly Task 1's measured residual: the only 2 remaining wall-illegal chords are the legs
-  to/from it, `cause=ENDPOINT_OFF_FLOOR` — a lift car is not walkable floor. Wiring `escapeRoute()` today
-  would route occupants **to a lift**, i.e. ship a wrong answer instead of a missing one.
+- An `exit` node was produced by a **lift/elevator NAME filter** (`room_graph.js:107`
+  `NON_ROOM_DOOR_NAMES`), not by any exterior-door test — no such test existed anywhere in the codebase.
+  `exits=0` therefore meant "no door named like a lift", not "no way out".
+- **Terminal's 5 exits were 5 ELEVATOR doors**, so the tour's `entrance` on Terminal (= lowest exit node) was a
+  lift door. That was exactly Task 1's measured residual: the only 2 remaining wall-illegal chords were the legs
+  to/from it, `cause=ENDPOINT_OFF_FLOOR` — a lift car is not walkable floor.
+- ✅ **FIXED 2026-07-26, bim-ootb #1014** (watchdog split it out as an active-correctness fix, ahead of the rest
+  of G1): E4 no longer creates exit nodes from that filter. **Terminal's tour `illegalChords` 2/91 → 0/84 —
+  zero.** Routing graph byte-identical on all 7 buildings, visited stops unchanged. `§TOUR_VERSION v19`,
+  `TOUR_CACHE_VER v18`, `room_graph.js?v=12`. ⚠ Terminal now logs `stairDown=-`: no descent finale, because it
+  no longer has a lift door to misname as an entrance. **Do not "restore" the finale by relaxing the exit
+  rule** — a real entrance comes back with the measured exterior test.
 - **Direction settled (watchdog, 2026-07-26):** real IfcDoor-to-outside first, decided by a MEASURED side
   test (sample either side of the door against the walkable raster + footprint) — never envelope synthesis,
   which would be invented geometry that fails silently. Any narrow fallback must log as `§EXIT_SYNTH` so a
