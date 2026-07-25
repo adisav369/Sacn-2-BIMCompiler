@@ -45,8 +45,7 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- Small opens (ex-§TOUR_HIGHLIGHT_LANE): Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster
-  table — blocks G1); Duplex room injector overwrites named IFC spaces; `docs/userguide-roompath-fixed`, no PR.
+- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); Duplex injector overwrites named IFC spaces; `docs/userguide-roompath-fixed` no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -60,8 +59,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   ("no more flicker"). `PHOTOREAL_STILL_RENDER.md` bottom sections.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 `§TOUR-POLYLINE` (tour flies the A* on-floor polyline,
   Terminal 8/92→2/91) + #1013 T2/T3 closed NO-CHANGE on 7 buildings. T4 ⛔ G1: `exit` node = a LIFT-door name
-  filter, Terminal's 5 "exits" are elevators — wiring `escapeRoute()` today routes egress TO A LIFT. Never
-  synthesise exits; measured door-side test only — `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`.
+  filter (Terminal's 5 "exits" are elevators) so `escapeRoute()` would route egress TO A LIFT; never synthesise
+  exits, measured door-side test only — `OCCUPANT_PATHFINDER.md §G1-EXIT-IS-A-LIFT-DOOR`.
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
