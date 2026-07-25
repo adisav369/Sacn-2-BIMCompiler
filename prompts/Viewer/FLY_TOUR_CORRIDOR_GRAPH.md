@@ -2228,3 +2228,51 @@ Served from a local `deploy/dev` (the same way the OCI sandbox serves it), real 
 - **No page errors, no `§LOAD_FAIL`** from the new script tags.
 Deploy only after that passes, via `deploy/OCI_UPLOAD.md` §RULES (every `oci os object put` carries
 `--content-type application/javascript`), then fetch back and verify.
+
+### ✅ §R5-A SHIPPED to the repo 2026-07-26 — W-R5A-DEV-GRAPH-TOUR 10/10 (`deploy/dev/tests/`)
+Ported verbatim from bim-ootb **`origin/main`**: `room_habitability.js`, `storey_raster.js`,
+`room_graph.js`, `hallway_backbone.js`, `viewer/tour.js` v19 → flat into `deploy/dev/`, plus
+`room_graph_bridge.js` (the two externals: `getRoomGraph`, `ensureRooms`). Script tags wired in
+dependency order in `index.html`; `setupRoomGraphBridge` called through a `typeof` guard in `main.js`
+(a bare identifier in the `_mods` array would ReferenceError the whole viewer down if the script ever
+failed to load — the opposite of this port's contract).
+
+**Measured, real user path (press ✈), §-log values only:**
+- **Clinic** — `§FLY_ROUTE storeys=3 stops=7/7 skipped=0 illegalChords=0/55 polyPts=3 polyLegs=3/7`
+  and **`§FLY_HL_FIRST mainHall="≈ First Floor R20" area=323.4 storey=First Floor ascent="≈ Second
+  Floor R22"`**. Highlight-first ordering is now visible in dev, and the elected hall is the same
+  323 m² champion §TOUR_HIGHLIGHT_LANE T2 measured independently. **That is the "does Clinic show a
+  highlight" question, answered.**
+- **SampleHouse** (ships zero rooms) — degrades to the LEGACY tour, `actions=7`. The port cannot make
+  an un-roomed building worse; `§R5A_ENSURE_ROOMS … rooms=0 … selfHeal=none(R5-B)` says why, plainly.
+- Both: all four modules + bridge loaded, no `§LOAD_FAIL`, no `§R5A_BRIDGE_ABSENT`, no page error.
+
+**Two fixture facts, measured — do not re-derive, and do not "fix" the witness by pointing it at the
+local copy:**
+1. `deploy/dev/buildings/Clinic_extracted.db` is a **stale mirror with no `spatial_structure` table at
+   all**. The DB the deployed sandbox actually fetches (OCI `bim-ootb/buildings/Clinic_extracted.db`,
+   128 MB, last-modified 2026-06-05) carries **118 IfcSpace rooms**. The witness runs against the
+   production-equivalent DB (`CLINIC_DB` env / `_ocitest_*` symlink), never the stale local one.
+2. The first port copied from `~/bim-ootb`'s **main checkout, 38 commits behind**, and silently
+   produced a pre-v19 `tour.js` with no `§HL-FIRST` — the witness caught it (`§FLY_ROUTE` present,
+   `§FLY_HL_FIRST` absent), re-copied from `origin/main`, green. **PROGRESS.md's "never measure from
+   that checkout" applies to COPYING from it too.**
+
+### ⛔ §R5-A DEPLOY LEG — NOT uploaded, and this is a user decision, not an oversight
+`OCI_UPLOAD.md` §RULES 1 ("NEVER upload without first downloading and diffing the target") was run
+first, and it stopped the upload for a real reason. Measured 2026-07-26:
+
+| object | size | last-modified | script versions |
+|---|---|---|---|
+| **live** `bim-ootb-live/o/sandbox/index.html` | 51,106 B | **2026-05-19** (68 days stale) | `tour.js?v=3`, `main.js?v=27` |
+| local `deploy/dev/index.html` | 55,692 B | today | `tour.js?v=4`, `main.js?v=36` |
+| local `deploy/live/index.html` | 41,624 B | 2026-05-09 | — |
+
+The live object matches **neither** local tree — 599 diff lines vs `deploy/dev`, 293 vs `deploy/live`.
+So uploading `deploy/dev/index.html` would not "add five script tags": it would replace a two-month-old
+divergent snapshot with 68 days of accumulated unrelated change, on a live outward-facing surface, in
+one shot. That is beyond what §R5-A authorises and beyond what a witness on R5-A alone can vouch for.
+**⛔ The one question for the user:** publish the whole current `deploy/dev` to `sandbox/` (a full
+viewer refresh — needs its own before/after verification, and answers "what else changed in 68 days?"),
+or leave the OCI sandbox frozen and treat `deploy/dev` as the LOCAL test surface only? Everything else
+in R5-A is done and green either way; local testing needs no upload.
