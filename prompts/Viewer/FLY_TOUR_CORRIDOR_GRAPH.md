@@ -1547,8 +1547,36 @@ merged, start any follow-up off **fresh `origin/main`**, never off `feat/tour-ti
 - Witness harness: `witness_tour_scrub.js` in the same worktree; log `/tmp/wt-tour-scrub2/
   witness_scrub3.log`. Re-run it after ANY change here — it is the regression gate for `pose = f(T)`.
 
+## §OPENING_BEAT_SEEK_GAP — NAMED BOUNDED TASK, not an open question (opened 2026-07-25)
+**Not a §TOUR_TIMELINE_SCRUB bug and NOT a reason to have blocked PR #999** — it is pre-existing
+(the shipped adaptive-jump smoothing block, untouched by that PR) and it does not touch what the PR
+claims: seek is pure `pose = f(T)`, `W-SCRUB-DETERMINISM worstComponentDelta=0` across six
+reverse-order probes with decoy seeks interleaved. Blocking a well-verified isolated PR to fix an
+unrelated bug it merely EXPOSED is the conflation this project already has a rule against
+(`feedback_separation_of_concern.md`, the S280b regression). Filed separately, on purpose.
+
+**The measurement:** `W-SCRUB-PLAYBACK` (log `/tmp/wt-tour-scrub2/witness_scrub3.log:9`) —
+`playback-vs-pure pose gap=39.7768m` during the opening high-radius orbit; the smoothing is
+playback-only by design, so live playback and a seek to the SAME T land ~40m apart at that beat.
+
+**Why it still carries urgency despite being pre-existing — the overlap, not the number:**
+§HL-FIRST made the high-radius main-hall orbit **the first thing anyone sees**. That is also the
+single most likely place a presenter scrubs BACK to, given the scrubber's own stated purpose (user,
+verbatim: *"For user easy reference during presentation."*). A visible pose jump at exactly that
+beat reads to an audience as a glitch in the feature shipping alongside it. The number is
+unremarkable in isolation; the placement is what makes it worth scoping now.
+
+**Scope when picked up:** narrow the adaptive-jump smoothing so playback converges to the pure
+`f(T)` pose during high-radius orbits (or exclude `orbit` from that block) WITHOUT widening into a
+general easing rewrite — it is a shipped behaviour, §21-§24 pacing in `FLY_TOUR_DLOD_SCALE.md` owns
+that file's pacing concerns and must be read first. Gate: re-run `witness_tour_scrub.js`, the
+existing 9/9 must stay green AND the `W-SCRUB-PLAYBACK` gap must drop; report the measured
+before/after numbers, not "looks smoother".
+
 ### 2. The three things usage should actually interrogate (ranked)
-1. **`W-SCRUB-PLAYBACK`'s measured 39.8m playback-vs-pure pose gap** during the opening high-radius
+1. ~~**`W-SCRUB-PLAYBACK`'s 39.8m gap**~~ → PROMOTED to its own scoped task,
+   **`§OPENING_BEAT_SEEK_GAP` above** — no longer an open review question. Original note kept:
+   **`W-SCRUB-PLAYBACK`'s measured 39.8m playback-vs-pure pose gap** during the opening high-radius
    orbit — the pre-existing adaptive-jump smoothing is playback-only by design, so live playback and a
    seek to the SAME T differ during that one fast beat. It does NOT affect seek determinism (seek is
    pure `f(T)`; `W-SCRUB-DETERMINISM worstComponentDelta=0`). Open question for a real user: is that
@@ -1573,3 +1601,35 @@ merged, start any follow-up off **fresh `origin/main`**, never off `feat/tour-ti
   room-stack copy first.
 Per the FUNDAMENTAL LAW: any pose/timing claim from this review must come from `§`-log numbers or the
 witness harness. A screenshot or "looks smooth" is not evidence, even as a supplement.
+
+### §WATCHDOG-TOUR-SCRUB — independent review verdict, kept for the next session (2026-07-25)
+**VERDICT: the shipped capability is solidly verified; merge was recommended and taken as-is.** Kept
+here so a future session does NOT re-audit what has already been checked — read this before
+re-verifying anything in `✅ IMPLEMENTED 2026-07-25` above.
+
+**What was checked, and how (method matters — citations were read against the REAL code, not taken
+from the builder's own summary of itself):**
+- `A._tourPrepare()` `tour.js:1328` — eager chain confirmed present, `allEagerlyInited=true`. The
+  lazy guards at `:1365`/`:1470` remain as belt-and-braces, NOT as the mechanism. This was the item
+  flagged as most likely to fail SILENTLY (a mid-action seek reading `undefined` curve/remap) — it
+  does not.
+- `_actInit` `:1130` — same init code forward playback uses, live-camera reads replaced by the
+  chained start pose.
+- `A.tourSeek(T, soft)` `:1357` / `_prevLook` `:1373` — `soft` keeps the lerp for small drag deltas,
+  every other seek snaps to the raw target. The hybrid the spec settled on, not a redesign.
+- DLOD `:1546-1550` — re-eval forced once on `change`/`pointerup`/`touchend`, never on `input`; the
+  comment explicitly names TM's undebounced `onSlide` as the thing NOT copied.
+- Form: `grep` for rotary/dial/record/pulsing returns ONLY comments explaining why they are not
+  built. `<input type="range">` at `:1573`, `rotaryDials=0`, `barVisible=true`.
+- Reuse-vs-bespoke was ANSWERED, not assumed past: TM's `renderAtTime` is private to its IIFE, its
+  slider is mode-relative (not 0–1), and `_cineTransit*` is pose-pure in only 2 of 5 beats
+  (`closeup`/`establishing` are damped accumulators that rotate FORWARD on backward scrub). Bespoke
+  seek, TM's doctrine and look borrowed. Settled — do not re-open.
+
+**Why the proof stands:** real building, real numbers, zero drift across reverse-order probes with
+decoy seeks interleaved, byte-identical overlay state before/after, and **no screenshot anywhere in
+the evidence chain** — which is the FUNDAMENTAL LAW this project runs on, not a stylistic preference.
+
+**The one thing NOT closed** is `§OPENING_BEAT_SEEK_GAP` above — deliberately filed as its own task
+rather than folded in. Everything else in §2/§3 of the NEXT SESSION block is usage-review work that
+genuinely needs a human driving the bar, not another code audit.
