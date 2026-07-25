@@ -34,8 +34,7 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 filter-cheap opt, §14 Hospital per-tab-switch number ·
-  `PHOTOREAL_STILL_RENDER.md` Alt+C §CINEMA_ORBIT_V2, PR #931/#933 (self-heal blocker CLOSED).
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933.
 - **`§TOUR_TIMELINE_SCRUB` ✅ SHIPPED 2026-07-25** — bim-ootb PR #999 MERGED (verified), `e8689e9`,
   `tour.js` v17 / `sw.js` v847: deterministic `pose = f(T)`, all four knob groups, 9/9 numeric
   witnesses on real LTU_AHouse (drift 0). **NEXT in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` = its
