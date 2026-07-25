@@ -33,7 +33,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; its room compile is ALSO stale) ·
   `XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures, root-caused) ·
   `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933.
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933,
+  ⛔ §MAXQ_SURFACELESS_FRAMEBUFFER (LTU real "building disappears", distinct from #1011, spec only).
 - **Fly-Tour scrubber lane — 3 PRs SHIPPED 2026-07-25, all MERGED, suite 9/9→11/11.** #999
   `§TOUR_TIMELINE_SCRUB` (`pose = f(T)`, drift 0) · #1000 `§SCRUB_PANEL_DRAG` (draggable panel) ·
   #1002 `§SCRUB_BAR_LIFECYCLE` (bar returns after canvas interrupt; closes watchdog D1+D3).
@@ -44,11 +45,9 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - **ALSO resume from `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`**
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
-- ▶ **Fly-Tour follow-on SPEC'D, ready to dispatch cold: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`
-  §TOUR_HIGHLIGHT_LANE`** (4 ordered tasks; task 1 = tour.js ignores `result.polyline`; task 4 ⛔
-  on G1 `exits=0`) — released by Room→Path's §17 raster (below). Small opens: Terminal Aras 03/04
-  raster refresh; room injector replaces named IFC spaces with `≈ Level N Rk` on Duplex, real names
-  vanish from Find; `docs/userguide-roompath-fixed` branch has refreshed guide pics, no PR yet.
+- Small opens (ex-§TOUR_HIGHLIGHT_LANE): Terminal Aras 03/04 raster refresh; room injector overwrites named
+  IFC spaces with `≈ Level N Rk` on Duplex (real names vanish from Find); `docs/userguide-roompath-fixed`
+  has refreshed guide pics, no PR yet.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -60,6 +59,9 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26), bim-ootb #1004/#1005/#1011, user-CONFIRMED live
   ("no more flicker"). `PHOTOREAL_STILL_RENDER.md` bottom sections.
+- ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 `§TOUR-POLYLINE` (tour flies the A* on-floor polyline,
+  Terminal 8/92→2/91 illegal chords) + #1013 T2/T3 closed NO-CHANGE on 7 buildings; T4 ⛔ G1 (exits:
+  Hospital/Clinic/HHS 0, Terminal 5). Detail = `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` top block, don't re-derive.
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
