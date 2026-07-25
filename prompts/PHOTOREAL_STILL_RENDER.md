@@ -4674,3 +4674,160 @@ confirms #983's perf win is intact. `pageErrors=0`. `node --check` clean.
 **Not done:** a real-GPU, non-headless live trial of an actual Alt+C clip (before/after) — this
 file's own hardened math/log-over-screenshot rule still applies, so this isn't a required gate, but
 flagging as open per that rule rather than silently calling the feel confirmed.
+
+## ✅ §ENVMAP_STOMP_GUARD — flicker PERSISTED after #1004, second/different mechanism, fixed (2026-07-25, bim-ootb PR #1005)
+User pasted a real live-deploy console log confirming #1004 WAS live (`forcedSaves=` field only
+exists in that patch) — but `casters=3932` was rock-stable every logged frame, proving THAT bug's
+condition (shadow state going stale during active streaming) never fired in this run. So the
+flicker had a different cause. User narrowed it: **"consistently alternating"** bright/dark, and
+**"the way alt-s gets processed."**
+
+**Root cause, found by reading `scene.js`/`effects.js` directly (not inferred):** `updateSky()`
+(`scene.js`) has a 2000ms LEADING-throttle around its procedural sky-reflection PMREM regen — the
+first call in any 2s window schedules `A._envMap = <procedural texture>` via `setTimeout(fn, 2000)`;
+every call inside that window is silently dropped. `_applyPhotoStaging()` (shared by Alt+S and
+Alt+C/MaxQ, called once per still-refine cycle / once per baked movie frame) swaps `A._envMap` to
+the real photographed HDRI, then calls `updateSky()` itself on the very next line to reposition the
+sun — re-arming that same 2s timer EVERY cycle. Since MaxQ's own per-frame cadence sits close to
+2000ms too (confirmed from the user's own pasted log: `perFrameMs=1956`/`2193`), the delayed
+procedural regen frequently lands MID-CAPTURE on a *later* frame, silently swapping every material's
+reflection source back from HDRI to the flatter procedural texture — a periodic, cadence-driven
+clobber, not a random pulse. Same family as #1004 (a staging side-effect racing MaxQ's per-frame
+cadence) but a fully different mechanism (env-map identity vs shadow-caster coverage) — confirms
+this really was "the way Alt-S gets processed," per the user's own hunch.
+
+**Fix:** `A._envMapHdriActive` flag — set true in `_applyPhotoStaging()` when swapping to HDRI, false
+in `_teardownPhotoStaging()`. `scene.js`'s throttled callback skips the procedural regen while true.
+Added `§ENVMAP_STOMP_GUARD` log line so the guard's effect is directly observable, not inferred.
+
+**Witnessed live** (`witness_envmap_stomp.js`, headless, `HHS_Office_Federated`) — drove 10 real
+Alt+S cycles back-to-back at ~1900ms cadence (matching MaxQ's real timing) and measured REAL
+per-cycle canvas luminance (32×32 downsample, BT.601 luma), not log inference: guard fired on
+**10/10 cycles** (`§ENVMAP_STOMP_GUARD skipped procedural regen — HDRI active`) — direct proof the
+race fires virtually every cycle at this cadence. With it blocked, luminance went flat/stable
+cycle-to-cycle (one one-time settling step, then dead-flat 24.27–24.44 for 6 consecutive cycles) —
+no alternating-sign pattern. Zero pageerrors. (An earlier attempt to read frames back from MaxQ's
+own IndexedDB store to measure the REAL baked-movie output hit repeated Puppeteer protocol timeouts
+racing MaxQ's own cancel-triggered MP4 mux — abandoned in favor of driving Alt+S directly, the
+shared underlying mechanism, which is what both this bug and #1004 actually live in.)
+
+**Shipped:** bim-ootb PR [#1005](https://github.com/red1oon/bim-ootb/pull/1005), auto-merge armed
+(blocked only on an in-progress `e2e-tests` check, not a failure).
+
+**CONFIRMED by the user's own real-GPU live trial, same session (2026-07-26):** ran the exact
+localhost build with both #1004 and #1005 on HHS_Office AND Hospital via Alt+C — user's own words,
+"its MP4 just landed, no more flicker." The real-GPU live-trial gap noted above is now closed.
+
+## ✅ §MAXQ_IDB_SALVAGE + §MAXQ_CONTEXT_LOSS — two robustness bugs found DURING that live trial, both fixed (2026-07-26, bim-ootb PR #1011)
+Found live, not from a report — the user ran two long Alt+C bakes back-to-back testing the flicker
+fixes above and hit two SEPARATE, real bugs, both about a multi-minute bake losing everything on a
+mid-run failure instead of degrading gracefully:
+
+1. **Two-tab IDB collision** — user launched Hospital in a second tab while HHS_Office was still
+   baking in the first. Both bakes share one fixed-name IndexedDB store
+   (`bim_ootb_cinema_maxq`); Hospital's own startup `_idbDelete()` wiped the whole store,
+   including HHS's 109 already-`put` frames, via the existing (correct, by-design)
+   `db.onversionchange` auto-close in `_idbOpen()`. HHS's next `_idbPut()` threw
+   `"The database connection is closing"` — outside the loop, past the existing `§MAXQ_PARTIAL`
+   salvage logic, discarding all 109 frames. **Running two bakes in two tabs of the same origin
+   at once is not supported** (pre-existing `§MAXQ_IDB_BLOCKED` warnings already flagged this
+   class of collision) — not something to "fix" further, just don't do it.
+2. **WebGL context loss, single tab, real** — the SAME Hospital bake, retried single-tab, ran
+   ~7 minutes / 360 frames and hit a genuine `GL_CONTEXT_LOST_KHR` (scene.js's existing `§S266`
+   handler, "Chrome background-tab WebGL context kill"). WebGL calls silently become no-ops after
+   context loss (never throw), so MaxQ kept "succeeding" and captured blank/black frames for the
+   rest of the movie — user confirmed: delivered MP4 had a correct front half and "a frozen screen
+   for the rest." Log-side signature: `avgRenderMs` dropped from `2.6-30ms` to `0.0-0.1ms` at the
+   exact point context was lost — that's WebGL no-ops, not faster rendering.
+
+**Fix, same shape for both** (`cinema_maxq.js`): detect the failure inside the per-frame loop,
+`break`, and route to the existing salvage/stitch path instead of letting it discard everything.
+IDB path reopens a fresh connection (old handle is dead once "closing"; already-`put` data is
+untouched by the connection dying). GL path: `scene.js`'s `§S266` handler now sets
+`A._webglContextLost` (cleared on `webglcontextrestored`); MaxQ's loop checks it before each frame.
+Both non-cancel break paths previously fell through the existing `framesDone`-threshold check with
+**zero user-visible feedback** when `framesDone` was too low to stitch — user's own words, "Hospital
+seems hung" — added explicit status messages for both.
+
+**Witnessed:**
+- IDB path: the user's own real two-tab repro IS the witness — `§MAXQ_IDB_LOST i=109` →
+  `§MAXQ_IDB_REOPEN ok` → proceeded to stitch (ultimately lost to finding #1's data wipe, a
+  separate/unrelated cause, not a flaw in the salvage mechanism itself).
+- GL path: `witness_maxq_gl_lost.js`, headless — forced a REAL context loss via
+  `WEBGL_lose_context.loseContext()` (the standard devtools/automated-test mechanism, not a log
+  inference) mid-bake. `§WEBGL_CONTEXT_LOST` fired → `§MAXQ_GL_LOST i=2 salvaging 2
+  already-captured frames` → produced a real valid salvaged MP4 (`§MAXQ_DONE frames=2 bytes=12039
+  type=video/mp4`). Zero pageerrors.
+
+**Shipped:** bim-ootb PR [#1011](https://github.com/red1oon/bim-ootb/pull/1011), auto-merge armed.
+
+**Not done:** `webglcontextrestored` recovery (resuming a bake after the browser restores the
+context, rather than stopping) — spec-only idea, not attempted; salvage-and-stop is the shipped
+behavior and was judged sufficient for now.
+
+## ⛔ SPEC ONLY, NOT IMPLEMENTED — §MAXQ_SURFACELESS_FRAMEBUFFER, a DIFFERENT scene-disappears bug, distinct from §MAXQ_CONTEXT_LOSS (2026-07-26)
+User report, real live session, LTU_AHouse (122k elements) via Alt+C: **"strange scene corruption
+where the building disappears completely."** Real browser console evidence, not a log-tag inference:
+
+```
+[.WebGL-0x3bb41a66f000] GL_INVALID_FRAMEBUFFER_OPERATION: glMultiDrawElementsANGLE: Framebuffer is
+incomplete: Framebuffer is surfaceless.
+... (repeats, many times) ...
+[.WebGL-0x3bb41a66f000] GL_INVALID_FRAMEBUFFER_OPERATION: glDrawElementsInstanced: Framebuffer is
+incomplete: Framebuffer is surfaceless.
+... WebGL: too many errors, no more errors will be reported to the console for this context.
+```
+
+**This is NOT the same bug as §MAXQ_CONTEXT_LOSS above, and the shipped fix does NOT cover it —
+confirmed by absence, not assumption:** `§WEBGL_CONTEXT_LOST` never appears anywhere in the log
+around this burst. `A._webglContextLost` (the flag `cinema_maxq.js`'s loop checks, PR #1011) is
+only ever set by the real `webglcontextlost` DOM event — that event did not fire here, so the flag
+stayed `false` throughout, and MaxQ's loop had zero signal that anything was wrong. This failure
+mode is currently **completely invisible to the app**, not just unhandled.
+
+**What's known, from the log alone (not yet root-caused):**
+- Happened mid-bake, during a `STILL_REFINE`/`PHOTO_AO` cycle (draw calls specifically —
+  `glMultiDrawElementsANGLE`/`glDrawElementsInstanced`, i.e. real geometry draws, not a compositing
+  pass) — a "surfaceless" framebuffer means the GL default framebuffer had no backing drawable
+  surface at the moment those draws fired, so they silently no-op'd: nothing painted for that
+  window, reading exactly as "building disappears."
+- **Self-recovered, not a permanent kill**: `avgRenderMs` returned to its normal 45-86ms range on
+  the very next `STILL_REFINE` cycle after the burst (no `0.0-0.1ms` collapse the way real context
+  loss showed in the Hospital case) — the drawable surface came back on its own. The bake continued
+  to `§MAXQ_FRAME i=15/360` and beyond, and a later MANUAL cancel (unrelated to this bug) correctly
+  stitched 25 real frames into a valid `§MAXQ_DONE ... type=video/mp4`.
+- `§TAB_VISIBILITY visible=false`→`true` flips appear earlier in the SAME session (unrelated
+  earlier moment, not proven causally linked to this specific burst) — a plausible but NOT
+  confirmed correlate: tab-visibility/compositor changes are a known trigger for a browser
+  temporarily detaching a canvas's drawable surface without firing a full `webglcontextlost`.
+  Flagged as a lead, not a finding — the log excerpt available doesn't pin down what preceded this
+  specific burst closely enough to confirm it.
+- Building was LTU_AHouse — the largest/most GPU-loaded building tested this session (122k
+  elements vs Hospital's 63k) — consistent with, but not proof of, a load/driver-pressure trigger
+  similar in spirit to (but mechanically different from) the Hospital context-loss case.
+
+**Why this is genuinely harder than §MAXQ_CONTEXT_LOSS, not just unattempted:** `webglcontextlost`
+is a clean, cheap, purpose-built DOM event — that's why the existing fix could just listen for it.
+`GL_INVALID_FRAMEBUFFER_OPERATION` is a raw driver/ANGLE debug-log message, not exposed to JS by
+any standard event. The only known ways to detect it programmatically are more invasive:
+- Poll `gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE` before/after each
+  frame's real draw — correctness-proving but adds a per-frame cost across up to 16
+  (Alt+S)/360×16 (MaxQ) checks; not yet measured whether that cost is acceptable.
+- The `KHR_debug`/`WEBGL_debug_renderer_info`-style extension route (a custom GL error callback) —
+  untested whether it actually surfaces this specific error class or only Chrome's own internal
+  validation errors.
+- Treat `document.visibilitychange`/window-blur during an active bake as a heuristic proxy trigger
+  for "re-verify the framebuffer before trusting the next capture" — cheap, but a heuristic, not a
+  direct detection, and the visibility-correlation above is unconfirmed.
+
+**Not implemented — next session, in order:**
+1. Reproduce deterministically if possible (headless `WEBGL_lose_context` doesn't create THIS
+   condition — that's a different extension for a different failure mode; needs research into
+   whether ANGLE/SwiftShader exposes any way to force a surfaceless-framebuffer condition for
+   witnessing, the same way `§MAXQ_CONTEXT_LOSS`'s witness forced real context loss).
+2. If no clean forcing mechanism exists, decide whether `gl.checkFramebufferStatus()` polling cost
+   is acceptable for MaxQ specifically (an offline bake, not latency-sensitive — same reasoning
+   already used to justify `§MAXQ_HDRI_RACE`'s longer wait budget for MaxQ vs interactive Alt+S).
+3. On detection, salvage the SAME way as `§MAXQ_IDB_SALVAGE`/`§MAXQ_CONTEXT_LOSS` — stop, keep
+   frames captured before the bad window, clear user-facing status message — reuse the existing
+   `_idbLost`/`_glLost`-style pattern in `cinema_maxq.js` rather than inventing a third mechanism.

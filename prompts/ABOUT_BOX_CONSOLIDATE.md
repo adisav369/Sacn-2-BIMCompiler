@@ -143,3 +143,85 @@ approach), or (b) host `mesh.db` on OCI (matching this project's own DB-distribu
 already) and have the installer/served app fetch it from there directly, independent of the git-zip. Whichever
 direction, this needs an ACTUAL execution witness afterward (per Part 1's finding above — none exists today):
 run the real installer, load a Modeller building, confirm real geometry renders, not just that files exist.
+
+## §2026-07-26 AUDIT PART 3 — real download+serve+headless-load test run (closes PART OF Part 1's gap, not all of it); one new bug found
+
+Triggered from a `bim-compiler` session (`prompts/Modeller/COMPETITIVE_FREECAD_INTEROP.md` §8, moved here —
+that file is FreeCAD-interop scope, this file owns the installer). Ran the FIRST real execution test of this
+flow that Part 1 (2026-07-22) noted was missing:
+
+1. Downloaded the actual zip `_downloadInstaller()` fetches (`archive/refs/heads/main.zip`, 79MB real) into a
+   scratch dir, extracted it, served it via `python3 -m http.server` exactly as the generated script does.
+2. `curl`'d `index.html` (200, 42.6KB), `viewer/sw.js` (200, 16.9KB), `common/about_diy.js` (200, 22.2KB),
+   `viewer/lib/web-ifc-api-iife.js` (200, 6.08MB — confirms local-first IFC parsing survives the zip).
+3. Loaded `index.html` in real headless Chromium (Playwright, not a mock) — title `"BIM / ERP OOTB"` renders,
+   page boots.
+4. **New bug found, not previously recorded:** `index.html:180` — `<script src="viewer/bonsai_kernel.js">`
+   — **404s**. Confirmed the real file lives at `modeller/bonsai_kernel.js`, a stale path in the landing
+   page's own script tag. Did not block boot (title/state still reached), but whatever that script provides
+   on the landing-page context is silently missing on EVERY load of `index.html` — self-hosted or straight off
+   GH Pages, same file, same stale path, not a self-host-specific bug. **Not fixed** — found via a scratch
+   download/serve test, not an edit to the shared `~/bim-ootb` checkout; needs a proper `/tmp/wt-*` session.
+
+**What this test does NOT close — Part 2's bug is still fully open:** this pass never loaded an actual
+Modeller building (SampleHouse/Duplex/etc.) — it only proved the landing shell boots. **The `mesh.db` LFS-
+pointer bug from Part 2 is unverified-as-fixed and should be assumed still live** — nothing in this pass
+touched it either way. Don't read "self-host installer live-tested, works" as covering building geometry —
+it specifically does not. The real gap Part 1 asked for (install → open a Modeller building → confirm real
+geometry renders) is **still the next task**, not this one.
+
+## §2026-07-26 STRATEGY — user-directed: split "install" into Part 1 (minimal, wow-first) vs Part 2 (advanced)
+
+User's explicit framing this session (paraphrased, don't drift from it): ship a Part 1 that's **just enough
+to wow and convince** — Pareto 80% — browser-only, non-native-app, local-first, minimal. Everything heavier
+is **Part 2**, offered only **after** the user is already convinced and invested — the two are deliberately
+**separate**, not one lump to keep polishing indefinitely before shipping. The `mesh.db` LFS-zip bug (Part 2
+audit above) is explicitly **not** being treated as a big lift — user's own words: "temporary, easily
+worked around for repo" — so it stays IN Part 1 scope as a small fix, not deferred.
+
+### Part 1 — what "done" means (redefine against this framing, not gold-plate further)
+- **Mechanism stays as-is**: browser-only zip-download + `python3 -m http.server`, NOT a native
+  Electron/Tauri app — already the settled call (`OFFLINE_GITHUB_RELEASE_BUNDLE.md`, closed 2026-07-06 —
+  the user explicitly rejected the heavier native-installer framing once already; this is the same instinct
+  applied a second time, consistent, not a new call).
+- **Persists on the local machine** — already real (IndexedDB + cache-first SW, confirmed in Part 1's own
+  audit above).
+- **Drop-your-OWN-IFC → straight to work** — already real AND witnessed
+  (`prompts/Modeller/COMPETITIVE_FREECAD_INTEROP.md` §9: `importMultiIFC` + version-merge popup, real
+  headless-Chromium e2e, `pass=true`). This is the actual wow-moment the user is pointing at — already
+  working, just needs the surrounding install path to not be broken underneath it.
+- **ERP seed present** — already real (Part 2 audit above: seed DBs are ordinary git blobs, survive the zip).
+- **Still-open, small, IN-SCOPE-for-Part-1 fix:** `mesh.db`-over-LFS-zip (Part 2 audit above) — host it on
+  OCI instead of relying on the git-zip's broken LFS resolution (matches this project's own existing
+  DB-distribution doctrine, `feedback_db_change_via_sql_migration_not_binary` memory — not a new pattern to
+  invent). This is the ONE concrete thing standing between "the mechanism runs" and "the curated sample
+  buildings actually look real" — prioritize this over any Part 2 item, since it's cheap and it's what
+  actually delivers the promised wow for a first-time visitor clicking a sample building, not just a
+  drop-your-own-IFC user.
+- **`bonsai_kernel.js` 404** (Part 3 audit above) — small, same bucket, worth closing alongside the mesh.db
+  fix since both are "the existing mechanism isn't fully honest yet" bugs, not new scope.
+
+### Part 2 — advanced installation, offered only to the already-convinced
+Explicitly NOT required for Part 1 to ship or be considered "done." Two things already correctly belong here,
+one newly re-filed:
+- **The existing legacy toolchain already IS Part 2, just not named that way.**
+  `docs/SYSTEMS_INSTALLER_GUIDE.md` (Java/Maven/SQLite/Python/Blender/IfcOpenShell, full compiler + back-office
+  from source) already carries almost exactly this framing in its own banner: *"BIM OOTB now runs in the
+  browser — you probably don't need this guide... legacy/advanced path... most users can skip it entirely."*
+  No new doc needed — just recognize this is prior art for the Part 2 concept, not a gap to fill.
+- **ERP native agents** (`odoo_agent.zip`/`idempiere_agent.zip`, per the "Bring your ERP data in" section of
+  the DIY modal) are also naturally Part 2 in spirit — they require running a native Node agent against a
+  real ERP/Docker install, a heavier ask than drop-an-IFC-and-look-at-it. Already correctly gated as opt-in;
+  worth naming as a Part-2 exemplar, not restructuring.
+- **NEWLY RE-FILED (was under debate as "build or don't build" — now just correctly sequenced):** the DXF
+  Tier 2 Python-local-endpoint bridge idea (`prompts/Modeller/COMPETITIVE_FREECAD_INTEROP.md` §7 Tier 2) —
+  full AIA-layer/DIMSTYLE-fidelity DXF export via a local Python bridge into the existing
+  `drawing_writer_dxf.py` pipeline. Not rejected — just belongs here, offered to users who are already
+  self-hosting and want more, not gating Part 1's minimal wow-path on it. Tier 1 (client-side, honest-scoped
+  JS DXF export, zero install) remains the Part-1-appropriate version of that same feature.
+
+### The rule going forward
+When scoping ANY future installer/onboarding work: ask "is this needed for the FIRST wow moment (drop an
+IFC, see it work, offline-persisted), or is it something a converted, invested user would opt INTO later?"
+The former is Part 1 — keep it minimal, fix what's actually broken (mesh.db, bonsai_kernel.js), don't add.
+The latter is Part 2 — real, valuable, but never a blocker on Part 1 shipping/being "done."

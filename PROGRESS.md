@@ -46,8 +46,7 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   — log-precision-first task (self-diagnosing computed-vs-rendered + black-box coverage logs) MUST
   land BEFORE live-browser-diagnosing Terminal's open "disciplines disappeared" question.
 - Small opens (ex-§TOUR_HIGHLIGHT_LANE): Terminal Aras 03/04 raster refresh; room injector overwrites named
-  IFC spaces with `≈ Level N Rk` on Duplex (real names vanish from Find); `docs/userguide-roompath-fixed`
-  has refreshed guide pics, no PR yet.
+  IFC spaces with `≈ Level N Rk` on Duplex (names vanish from Find); `docs/userguide-roompath-fixed` = guide pics, no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
