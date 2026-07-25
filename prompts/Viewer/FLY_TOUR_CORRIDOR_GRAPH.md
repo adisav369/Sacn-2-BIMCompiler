@@ -46,10 +46,18 @@ and look but not its code; the unlock is chaining each action's end pose at BUIL
 = f(T).
 
 **Still open on §HL-FIRST (small, do NOT block the scrubber on these):**
-1. **Not live-watched by the user yet.** Route geometry and the action list are measured; whether
-   the highlight-first opening FEELS like a good opening is a live-review question, same caveat
-   §TARGET_BOUNDED_LOOKAHEAD closed with. Same bar if reviewed: §-log + measured numbers, never
-   screenshots (this project's FUNDAMENTAL LAW).
+1. ~~**Not live-watched by the user yet.**~~ ✅ **CLOSED 2026-07-25 by direct user review:** *"the Fly
+   tour of Hospital seems more elegant also."* That is the live-review question answered — the
+   highlight-first opening FEELS like a good opening. **Attribute it carefully, though:** Hospital's
+   rooms were self-healed 142→214 by `ROOM_WALKER_V` v3 in the same window
+   (`ROOM_INJECTOR_NEEDLE.md:561`, which flags exactly this mis-attribution risk), so the improvement
+   is plausibly §HL-FIRST *plus* a much better room set, not §HL-FIRST alone. Do not quote it as
+   isolated evidence for the ordering change. The measured side stays as it was: route geometry and
+   action list are numeric, per the FUNDAMENTAL LAW — this closes the SUBJECTIVE half only.
+   **It also motivates the scrubber** (user, same message): *"so a scrubber can be useful for user
+   review"* — §TOUR_TIMELINE_SCRUB's purpose is now user REVIEW of a tour, not just playback control.
+   That is a design input for the knob groups: scrubbing must make a tour inspectable (step back to a
+   stop, hold, compare), not merely seekable.
 2. Hospital_ARC and SampleCastle_extracted still fall back to legacy routing — pre-existing, IDENTICAL
    before and after (their graphs fail the coverage gate before ordering ever applies). A
    room-compile/graph-connectivity task, not a routing-order one. Worth its own bounded task.
