@@ -289,8 +289,9 @@ it passes through.
 *Fixed and verified live (2026-07-26):* the drawn-line defect shown in earlier versions of the
 screenshots above — a room-to-room path cutting straight through open air or atrium space instead of
 hugging the real walkable floor — is fixed. The same Hospital route (`≈ Level 1 R35 → ≈ Level 4 R8`,
-124.69m, same 3 doors and 1 stair as before) reproduced this live after the fix: 5 same-storey legality
-checks that used to fail to find a valid detour now find one every time — **zero**
+124.69m, same 3 doors and 1 stair as before) was re-run live after the fix: the 5 legality checks that
+used to fail no longer need rescuing at all — most of those stretches are simply on real floor now, and
+where a detour is still required (3 of 9 same-storey chords) one is found. **Zero**
 `§PATH_LEGAL_DETOUR_FAIL` remain, and all 15 same-storey legs measure **0 illegal sample points** (was
 265 across 3 unroutable legs). The extra waypoints in the drawn line (`polyPts` 15 → 19) are the fix's
 fingerprint, not a longer route — the 124.69m distance and the doors used did not change, deliberately,
