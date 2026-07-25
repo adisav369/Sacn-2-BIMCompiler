@@ -18,6 +18,10 @@
 
 ▶ **PUSH PAUSE LIFTED (2026-07-17)** — push freely; `CLAUDE.md` §⏸ PUSH PAUSE.
 
+⚠ `~/bim-ootb` main checkout = `73d3676`, **38 behind**; `git merge origin/main` CONFLICTS
+(dlod_nav/main/sw.js), tried+aborted 07-26. Its 2 local commits are NOT unique (`86b096b` = #971), so
+nothing is at risk — but **never measure from it**, use a fresh `origin/main` worktree.
+
 ▶ **In-flight work is NOT listed here — read it from git, it is authoritative and never stale.**
 Every hand-written copy has been wrong ("10 commits" when it was 336). In `bim-ootb`:
 `gh pr list --state open` · unmerged-with-no-PR: `git for-each-ref --format='%(refname:short)' refs/heads/ | while read b; do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`
@@ -25,12 +29,11 @@ Every hand-written copy has been wrong ("10 commits" when it was 336). In `bim-o
 open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane/teams-overlay`).
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `RESUME_HR_BIM_ASSET.md` §07-06c (A/B/C bugs + E) · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06
-  (G6/Ph3/Pt1 parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) ·
-  `OPEN_BUTTON_IFC_BCF_MERGE.md` (not started).
-- DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification`
-  (5 ahead, no PR). Land it — steps in `Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`
-  §2026-07-22. Do NOT re-attempt `_hostAxis` swap or R-DOOR-SCORE (both disproven).
+- `RESUME_HR_BIM_ASSET.md` §07-06c (A/B/C+E) · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 (G6/Ph3/Pt1
+  parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) · `OPEN_BUTTON_IFC_BCF_MERGE.md`.
+- DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification` (5 ahead,
+  no PR) — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt
+  `_hostAxis` swap or R-DOOR-SCORE (disproven).
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 — HHS sparse-wall fusion; HHS room compile is ALSO stale.
 - `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (SampleCastle walls as fixtures,
   root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS's 2 islands, storey='Unknown').
@@ -63,8 +66,8 @@ open PR remain **backed up, but undelivered** (largest: `lane/hr-overlay`, `lane
   ("no more flicker"). `PHOTOREAL_STILL_RENDER.md` bottom sections.
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
-- ✅ Occupant-pathfinder lane CLOSED (07-25), #997/#998 (§BRIDGE-ROUTED-LEGAL + the OCI patch gate,
-  `deploy/OCI_UPLOAD.md` §RULES 6); F1-F4 logged — `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+- ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
+  §RULES 6); F1-F4 logged — `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
 - ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 — `Viewer/ROOM_INJECTOR_NEEDLE.md`.
 - ✅ nav-DLOD perf, LTU 122k (07-23) #973-#977 — `Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R
   room-cycle + Home fill-frame (07-22/23) #969 — `Viewer/ROOM_CYCLE_HOME_SHORTCUTS.md`.
