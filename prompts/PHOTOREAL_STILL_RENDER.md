@@ -5524,50 +5524,16 @@ jump *inside* the film.
 
 ---
 
-# ▶ NEXT SESSION — §CINEMA_PATH_EDITOR (2026-07-26 evening handoff, ONE sentence)
+# ▶ NEXT SESSION — §CINEMA_PATH_EDITOR — **moved to its own file**
 
-**Build §CINEMA_PATH_EDITOR as the SIMPLEST FASTEST TOUR MAKER — no new icon, no new panel: Alt+C
-already computes the plan in ~50–100 ms, so put a DIALOG in that existing gap showing the path as a
-graph (reuse the Find panel's route visual — `navigate_find.js:1249 _drawPathHighlight` /
-`:3274 _renderPathResult`) with the per-beat camera angle/Z, and the user either hits OK to proceed
-straight into the recording exactly as today or drags a waypoint / fixes the camera Z that currently
-dives into the attic first, persisting any edit as a `cinema_path` table in the saved DB exactly the
-way `staffage_instances` already round-trips (proven this session) — and while in there land the two
-small already-diagnosed items: restore staffage on LOAD instead of on the first Alt+P press, and stop
-the MP4 path losing one pixel row on odd-height canvases.**
+The tour-maker idea that cropped up after §CINEMA_TURN_SLERP / §CINEMA_DAMPING_BLEED landed now lives
+in **`prompts/CINEMA_PATH_EDITOR.md`** — its own lane, its own gates, with a Foundation table that
+references this file rather than restating it. Start there, not here.
 
-## Why this fits (read before scoping it)
-- **The substrate already exists.** `cinemaPathPlan(duration)` returns `{beats:{dive,spin,out,rise},
-  poseAt(t), pivot, exit, ...}` and every pose is a pure function of `t`. Both consumers — the live
-  capture (`effects.js`) and the MaxQ bake (`cinema_maxq.js`) — read that ONE plan. A panel does not
-  need a new engine; it needs the plan's *inputs* (beat boundaries, `outWp` waypoints, `CINEMA_EYE_M`,
-  the look-down tilt, the orbit radius band) made editable and the plan re-derived on change.
-- **There is already an insertion point, and no new entry point is wanted.** User, scoping this:
-  *"perhaps a dialog box with the graph (similar to Find rooms path visually as idea) and user can OK
-  to proceed or adjust it — thus no need extra icon."* Alt+C already stops to compute the plan;
-  §MAXQ_PREVIEW is already a 10 s rehearsal whose stated purpose is "the user sees what its next
-  10 mins of rendering will be up to". So this is a CONFIRM STEP inside a flow that already pauses —
-  OK behaves exactly like today, which keeps the zero-friction path zero-friction.
-- **The graph is a reuse, not a new renderer.** The Find panel already draws a room route as a line
-  through points (`navigate_find.js:1249 _drawPathHighlight`, `:3274 _renderPathResult`). The cinema
-  plan's `outWp` waypoints are the same shape of data. Draw them with the same thing; do NOT build a
-  second path-drawing system — "simplest fastest tour maker" is the requirement, not a 3D gizmo.
-- **"It goes for the attic" is a real, separate defect, not just an ergonomics gap.** §CINEMA_SPACE
-  picks the largest space nearest the centre and `_cinemaFloorY` raycasts a floor under it; on some
-  buildings that resolves to an attic/roof void. An editor lets the user override it, but the picker
-  should still be looked at on its own — an editor must not become the excuse for a bad default.
-- **The one real caution — determinism.** This project's prime rule is EXTRACT OR COMPILE ONLY. An
-  edited path is *authored* data, not derived, so it must be STORED, never re-guessed: a small
-  `cinema_path` table (beats + waypoints + eye height + tilt) in the building DB, written by
-  `_exportBuildingDb()` and read on load. That is the same pattern as `staffage_instances`, whose
-  full round-trip was measured working this session (`§STAFFAGE_SAVE rows=8` → `§STAFFAGE_RESTORE
-  rows=8`) — reuse it, do not invent a second persistence mechanism.
+This file remains the owner of the cinema PLAN itself (`_cinemaPathPlan`, the beats, §CINEMA_SIMPLE,
+§CINEMA_TURN_SLERP, §CINEMA_DAMPING_BLEED). The editor consumes it; it does not replace it.
 
-## Still open, NOT folded into the sentence above (each already diagnosed, none started)
-- `§STAFFAGE_PAX_REJECT tried=72 placed=3` with `rejFrustum=0 rejOcclude=0 rejDedup=0` — 69 rejections
-  that no counter attributes. A witness blind spot, and the reason only ~3 figures ever appear.
-- **Scene jumping on reopen** — NOT reproduced through `_openDbBytes()` (camera 0.00 m, target 0.00 m).
-  Needs the user's actual repro route before any code is touched.
-- **D2, the walk-out corner whip** (§CINEMA_TURN_SLERP) — 19.8°/frame on current main, pre-existing,
-  printed by the witness every run but not gated.
-- **JKR path-crossing** — `Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §18's 3-step plan.
+**Still open here, each already diagnosed, none started:** the §CINEMA_SPACE attic pick (its own dev
+session, user agreed); D2's walk-out corner whip (19.8°/frame on main, printed by the witness, not
+gated); the MP4 one-lost-pixel-row on odd-height canvases; and — outside this file —
+`§STAFFAGE_PAX_REJECT`'s 69 unattributed rejections and the unreproduced scene-jump-on-reopen.
