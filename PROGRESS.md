@@ -31,16 +31,15 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; room compile ALSO stale) · `XRAY_FIXTURE_CLASSIFICATION_FIX.md`
   (SampleCastle walls as fixtures, root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
-  ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — the look-back was a ONE-FRAME 180° snap (look-at point lerped
-  THROUGH the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED: cut from a stale
-  main, its `CINEMA_OUT_SEC` retime is superseded by §CINEMA_TIMING_672 and would overshoot the user's 15th sec.
-  Left open, both recorded in `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`: **D2** walk-out corner whip
-  (19.8°/frame, pre-existing, printed by the witness every run but not gated) · §CINEMA_HALL_CANDIDATE still parked
-  behind §STAKEHOLDER_STROLL S1.
+  ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — look-back was a ONE-FRAME 180° snap (look-at lerped THROUGH
+  the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED (stale main, retime
+  superseded by §CINEMA_TIMING_672). Left open in `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`: **D2** walk-out
+  corner whip (19.8°/frame, printed every run, not gated) · §CINEMA_HALL_CANDIDATE — now UNPARKED (S1 done), and
+  ⚠ re-read it against Clinic's v3 **207-room** set, not the pre-S1 118-room 323m² figure.
 - **Fly-Tour lane — ALL detail in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT
-  re-derive** (scrubber #999/#1000/#1002 shipped 07-25, suite 11/11; both §WATCHDOG-TOUR-SCRUB reviews there).
-  Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED = eager `cinemaLookDist` raycast/waypoint in
-  `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
+  re-derive** (scrubber #999/#1000/#1002 07-25, 11/11). Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s,
+  ROOT-CAUSED = eager `cinemaLookDist` raycast in `_tourPrepare`) · D2/D5/D6/D7 ·
+  `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
 - **`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`** log-precision-first (self-diagnosing computed-vs-rendered +
   coverage logs) MUST land BEFORE live-diagnosing Terminal's "disciplines disappeared".
 - ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S4** (S1+S2+S3 DONE 07-26,
@@ -54,29 +53,26 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
-- Modeller polish: PBR textures (9); SSAO (needs EffectComposer); ARC occupancy drift 99%→92-95% low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
+- Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 §TOUR-POLYLINE (Terminal 8/92→2/91) + #1013 T2/T3
-  NO-CHANGE on 7 buildings + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**, exits=0
-  fleet-wide by design; T4/exits = its OWN track (`§G1-EXTERIOR-DOOR-LANE`), NOT a blocker.
-- ✅ §R5-A+S1 dev-viewer graph tour + self-heal injector (07-26) **28/28** + W-R5A 10/10 (G4
-  retargeted): Duplex's 21 authored rooms survive by name+guid; Clinic recompile (118→207, hall
-  111.2m²) gate-backed by G2b after a watchdog no-saved-log catch (323.4m² = pre-S1 record, NOT
-  re-measured). `FLY_TOUR_CORRIDOR_GRAPH.md §S1 SHIPPED`.
-- ✅ §STAKEHOLDER_STROLL S2 lift shafts (07-26) **31/31**: `IfcTransportElement`=0 fleet-wide → lift
-  DOORS group into a shaft. Terminal 5 doors/1 shaft/5 storeys (spread 0.19m); 4 others 0 (fence
-  holds). Choice = edge WEIGHT not threshold (4 STAIR/6 LIFT), weights tagged priors. E3 + all
-  pre-existing edge counts unchanged, exit=0 everywhere. S3 gate re-run: 28/28, scene lists
-  IDENTICAL — predicted S3↔S2 interaction did NOT materialise. `§S2 SHIPPED`.
-- ✅ §STAKEHOLDER_STROLL S3 scene budget (07-26) **28/28**: per-storey `K` → whole-building
-  checklist (hall→ascent→spine≤3→scenic≤3). Hospital **18→7**, Terminal **15→8**, Clinic **7→6**,
-  main hall identical before/after. ⚠ spec's "Hospital 22" is PRE-S1, use 18. `§S3 SHIPPED`.
+  NO-CHANGE ×7 + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**; T4/exits = its OWN
+  track (`§G1-EXTERIOR-DOOR-LANE`), NOT a blocker.
+- ✅ §STAKEHOLDER_STROLL S1+S2+S3 → `FLY_TOUR_CORRIDOR_GRAPH.md` §S1/§S2/§S3 SHIPPED (07-26):
+  **S1** injector port **28/28** (+W-R5A 10/10, G4 retargeted) — Duplex's 21 authored rooms survive
+  by name+guid; Clinic recompile 118→207 gate-backed by G2b after a watchdog no-saved-log catch.
+  **S3** scene budget **28/28** — per-storey `K` → whole-building checklist (hall→ascent→spine≤3→
+  scenic≤3): Hospital **18→7**, Terminal **15→8**, Clinic **7→6**, main hall unchanged. ⚠ spec's
+  "Hospital 22" is PRE-S1; use 18. **S2** lift shafts **31/31** — `IfcTransportElement`=0 fleet-wide
+  so lift DOORS group; Terminal 5 doors/1 shaft/5 storeys, 4 others 0 (fence holds). Choice = edge
+  WEIGHT not threshold (4 STAIR/6 LIFT), weights tagged priors; E3 + all edge counts unchanged,
+  exit=0 everywhere. S3 gate re-run after S2: 28/28, scene lists IDENTICAL — predicted S3↔S2
+  interaction did NOT materialise.
 - ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2%
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
-  (§BRIDGE-ROUTED-LEGAL + OCI patch gate §RULES 6) `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+  `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
 - ✅ Room-injector self-heal Stages 1-4 (07-21/22) #947-#967 · ✅ nav-DLOD perf LTU 122k (07-23)
   #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle + Home fill-frame #969 · ✅ Branch
   hygiene (07-25).
