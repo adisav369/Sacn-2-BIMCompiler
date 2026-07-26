@@ -5434,3 +5434,93 @@ The 25 °/frame bar sits ~3.7× above the passing value and ~2× below the faili
 §CINEMA_TIMING_672; 7 s would overshoot the user's 15th second). `CINEMA_TURN_OVERLAP 0.4→0.25` is
 kept: it delays the look-back's opening 11.40 s → 12.04 s and leaves Beat 4 only 87.4° to sweep
 instead of 138.8°.
+
+---
+
+# §CINEMA_DAMPING_BLEED — 2026-07-26, OrbitControls damping bleeds into the film's first second
+
+## The report
+User, on the saved MaxQ mp4s: *"there is a slight twitch at the first second of the movie, where the
+screen size is adjusted slightly narrower. Tested on two buildings it is so."*
+
+## Not a resize — measured first, three ways
+Before touching the camera, the obvious readings were ruled out **by measurement, not by reading code**:
+- Sampling `window.innerWidth`, canvas backing/client size, `camera.aspect`, `camera.fov`,
+  `devicePixelRatio` and the composer render-target size **every animation frame** across the MaxQ
+  10s preview, a full MaxQ bake, and a full live-capture recording, at dpr 1 **and** 2: **zero
+  changes to any of them, ever.**
+- Decoding a produced recording: `1280×713`, `coded 1280×713`, SAR 1:1, constant on every frame.
+- The user's own three films (`BIM_MaxQ_Hospital_…10:12`, `…TerminalMerged_…10:37`, `…10:48`):
+  dimensions constant within each file (1852×960 / 1854×962).
+
+One real but unrelated defect fell out: the mp4 path grabs frames at `w×h` and configures the H.264
+encoder at `w & ~1, h & ~1`, drawing 1:1 — so an odd-height canvas silently **loses one pixel row**.
+Constant across frames, invisible, recorded here for its own fix.
+
+## What the films actually show
+Frames extracted from the user's two 24s films and analysed numerically (brute-force best-fit
+uniform zoom about the centre, then re-fit with each frame contrast-normalised so a lighting step
+cannot masquerade as a scale change):
+
+| | push-in per frame, pre-event | the event | after |
+|---|---|---|---|
+| Hospital | +0.4 → +1.0 % | **f4→5 stalls to +0.0 %, f5→6 breaks** (fit residual 0.907 vs ~0.16) | steady **+2.6 %** |
+| TerminalMerged | +0.2 → +1.0 % | **f9→10 reverses to −0.4 %** (residual 0.184 vs 0.062) | steady **+1.4→1.6 %** |
+
+Brightness confirms it is one event, not a gradual thing: Hospital 78.4→80.2 then **75.4**, then
+re-ramps; Terminal 25.7→27.7 then **25.7** — exactly its own frame-0 value — then re-ramps.
+The signature is: **the first frames advance too slowly, then the film catches up.**
+
+## Root cause — proven, with the decay constant as the fingerprint
+`scene.js` sets `controls.enableDamping = true; controls.dampingFactor = 0.08`. Every camera-authored
+path then does `camera.position.set(pose)` → `controls.target.set(...)` → **`controls.update()`**
+(effects.js `startCinemaOrbit`'s `step()`, and cinema_maxq.js's preview loop AND bake loop).
+`OrbitControls.update()` recomputes the camera position from its own internal spherical state with
+the dampened deltas applied — so it **overwrites the pose the plan just authored**.
+
+Wrapping `controls.update()` during a real recording (with a wheel+drag dispatched first, i.e. the
+user navigating just before pressing Alt+C — the realistic precondition) measured the drift between
+"pose as set" and "pose after update()":
+
+```
+frame 0: 1.637%   frame 4: 1.175%   frame 8: 0.846%   frame 12: 0.608%
+frame 1: 1.497%   frame 5: 1.076%   frame 9: 0.776%   frame 16: 0.436%
+```
+(as a fraction of the camera→target distance). **Ratio between consecutive frames = 0.92 = 1 −
+dampingFactor.** That is the fingerprint: this is the damping residual and nothing else. It starts at
+~1.6 % and needs ~1–2 s to decay below visibility — which is exactly "the first second of the movie",
+and exactly the magnitude of the framing error measured in the films.
+
+It never reproduced in the first probes because those pressed Alt+C from a **clean, untouched
+camera** — no residual state to bleed. A real user always navigates first. **Any witness for this
+must dispatch a real interaction before starting, or it proves nothing.**
+
+## The fix
+A recording/bake is a fully authored camera: the plan owns every pose, and interactive damping has no
+business modifying it. For the duration of an authored run, disable damping and flush the residual
+BEFORE frame 0, then restore the user's setting on every exit path:
+```
+_dampHold():   saved = controls.enableDamping; controls.enableDamping = false; controls.update();
+_dampRelease(): controls.enableDamping = saved;
+```
+`update()` is still called each frame (it has other duties); with damping off it applies zeroed
+deltas and preserves the authored position exactly. Applied to all three authored loops — the live
+capture, the MaxQ preview, and the MaxQ bake — because all three set a pose and call `update()`.
+
+## Witness — `witness_cinema_damping_bleed.js`
+| gate | proves / disproves |
+|---|---|
+| G1 | with a real wheel+drag dispatched immediately before the run, `controls.update()` moves the camera off the authored pose by **0 m on every frame** of the film. |
+| G2 | the SAME measurement on the unfixed tip shows a frame-0 drift > 1 % of look distance — the gate discriminates, and the film's first second really was wrong. |
+| G3 | the decay ratio on the unfixed tip is `1 − dampingFactor` ± 0.01, naming the mechanism rather than just observing a number. |
+
+**Measurement window (matters for reproducing this):** the witness counts only from the
+`§CINEMA_ORBIT start` marker onward. Before that marker the camera is still interactive and damping
+*should* be live. The one-off flush sits deliberately on the other side of that line: with damping
+off, `update()` applies the ENTIRE remaining delta at once (measured 13.3 m on a fresh drag) rather
+than 8% of it per frame — which is exactly what is wanted, and is harmless only because it lands
+before the first authored pose overwrites the position. Doing it one step later would put that whole
+jump *inside* the film.
+
+**Result:** unfixed tip 1.387% frame-0 drift decaying at 0.9200; fixed tip **0.000000 m across 2519
+`update()` calls** spanning the whole film. 3/3.
