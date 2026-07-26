@@ -697,6 +697,139 @@
       _e3Chain(sA, sB, gr, key);
     });
 
+    // ══ §LIFT-SHAFT (FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL S2, 2026-07-26) ═══════════
+    // User: use lifts when they are the only storey connector, mix lift+stairs whichever is
+    // graceful, and SHOW the lift structure.
+    //
+    // MEASURED BASIS, re-verified 2026-07-26 across 6 fleet DBs (do not re-derive):
+    //   `IfcTransportElement` = 0 rows on EVERY building — there is no lift ELEMENT to read.
+    //   Lift DOORS are real and they GROUP. Terminal: 5 lift-named doors, x=693.36 on all five,
+    //   y spread 0.19 m, z 15.91→35.91, storeys Aras Tanah/01/02/03/04 — ONE shaft spanning all 5.
+    //   Hospital, Clinic, LTU_AHouse, HHS, JKR: 0 lift doors. So this is Terminal-only in today's
+    //   fleet, and that limit is STATED, not papered over — every other building no-ops here.
+    //
+    // FENCE (never synthesise a shaft): a shaft exists only where lift-named doors are measured on
+    // ≥2 DISTINCT storeys. One door, or several on one floor, is not a vertical connector.
+    //
+    // The lift door names are exactly the ones `isRoomDoor()` already rejects — NON_ROOM_DOOR_NAMES,
+    // ported verbatim from compile_rooms.py. Reusing that predicate rather than a second name list
+    // is deliberate: #1014 removed the `exit` node these very doors used to become (E4 turned every
+    // non-room door into an "EXIT::" free fire-escape target, so egress would have routed TO A LIFT).
+    // They now become what they physically are — a vertical connector. `exit` nodes are still never
+    // created anywhere in this file, and S2's witness asserts that on every building.
+    var liftDoors = doorRows.filter(function (d) { return !isRoomDoor(String(d[1] || '')); });
+    var shafts = {}, shaftOrder = [];
+    liftDoors.forEach(function (d) {
+      var dx = d[3], dy = d[4], storey = d[2];
+      if (dx == null || dy == null || storey == null) return;
+      // Cluster on horizontal position: a shaft is vertical, so its doors share (x,y) across floors.
+      // 2 m is the spec's own stated grouping distance and is a CONVENTION-PRIOR, not measured —
+      // it is ~one door width, and Terminal's real spread is 0.19 m, two orders inside it. A larger
+      // building could in principle merge two adjacent shafts; the §-log prints each shaft's own
+      // measured spread so that would be visible rather than silent.
+      var hit = null;
+      for (var i = 0; i < shaftOrder.length; i++) {
+        var s = shafts[shaftOrder[i]];
+        if (Math.abs(s.cx / s.n - dx) <= 2 && Math.abs(s.cy / s.n - dy) <= 2) { hit = s; break; }
+      }
+      if (!hit) {
+        var k = 'LIFT::' + shaftOrder.length;
+        hit = shafts[k] = { key: k, cx: 0, cy: 0, n: 0, byStorey: {}, guids: [],
+                            xlo: dx, xhi: dx, ylo: dy, yhi: dy };
+        shaftOrder.push(k);
+      }
+      hit.cx += dx; hit.cy += dy; hit.n++; hit.guids.push(d[0]);
+      hit.xlo = Math.min(hit.xlo, dx); hit.xhi = Math.max(hit.xhi, dx);
+      hit.ylo = Math.min(hit.ylo, dy); hit.yhi = Math.max(hit.yhi, dy);
+      if (!hit.byStorey[storey]) hit.byStorey[storey] = { x: dx, y: dy, guid: d[0], name: d[1] };
+    });
+
+    // ── EDGE WEIGHTS: the user's "stairs if short, lift if it'd be ridiculous to climb" is expressed
+    // as COST, never as a storey threshold. A stair edge already costs |Δz| (metres of rise = climb
+    // effort). A lift edge costs a near-fixed WAIT + a nearly-free RIDE. Dijkstra then picks stairs
+    // for a short hop and the lift for a tall one, automatically, on every building — which is what
+    // §ABSTRACTION-AUDIT-2's no-threshold fence demands.
+    //
+    // ⚠ BOTH NUMBERS ARE CONVENTION-PRIORS, NOT MEASURED — flagged here exactly as §STAKEHOLDER_STROLL
+    // requires of its own numbers, because the earlier draft of this section carried a "lift when the
+    // climb is ≥3 storeys" rule with no basis, dressed identically to the measured claims around it.
+    // These weights have a crossover (with Terminal's 4 m storeys, around 3-4 storeys) and that
+    // crossover is a CONSEQUENCE of two priors — it is NOT evidence for the removed ≥3 rule and must
+    // not be cited as such. If measurement later contradicts them, change the weights, not the shape.
+    // The ELECTED connector per storey pair is printed below so the choice is auditable, not asserted.
+    var LIFT_WAIT = 12;        // prior: equivalent-metres of effort to summon + board
+    var LIFT_RIDE_PER_M = 0.15; // prior: riding is nearly free compared with climbing
+    var liftEdges = 0, liftShafts = 0;
+    shaftOrder.forEach(function (k) {
+      var sh = shafts[k];
+      var sts = Object.keys(sh.byStorey).filter(function (st) { return storeyZ[st] != null; })
+        .sort(function (a, b) { return storeyZ[a] - storeyZ[b]; });
+      if (sts.length < 2) {   // the fence: not a vertical connector
+        log('§LIFT_SHAFT_REJECT ' + k + ' storeys=' + sts.length + ' doors=' + sh.n + ' — needs >=2 storeys, no shaft synthesised');
+        return;
+      }
+      liftShafts++;
+      log('§LIFT_SHAFT ' + k + ' storeys=' + sts.length + ' doors=' + sh.n +
+          ' x=' + (sh.cx / sh.n).toFixed(2) + ' y=' + (sh.cy / sh.n).toFixed(2) +
+          ' spread=' + Math.max(sh.xhi - sh.xlo, sh.yhi - sh.ylo).toFixed(2) + 'm' +
+          ' span=' + sts[0] + '..' + sts[sts.length - 1]);
+      // One `liftwp` node per storey AT THE SHAFT — the lift's real measured door position on that
+      // floor, so the ride renders as a move through the shaft axis rather than a teleport between
+      // storey centroids. Same node/waypoint shape as `stairwp`, incl. the `storey` field that
+      // _legalizePath's same-storey gate needs (§PATH_LEGAL_STAIRWP_STOREY — a waypoint without it
+      // silently skips legality-testing on every chord that touches it).
+      for (var i = 0; i < sts.length; i++) {
+        var st = sts[i], p = sh.byStorey[st];
+        var wp = k + '::' + st.replace(/\W/g, '_') + '::wp';
+        if (!nodes[wp]) nodes[wp] = { guid: wp, kind: 'liftwp', name: 'Lift — ' + st, storey: st,
+                                      cx: p.x, cy: p.y, cz: storeyZ[st] };
+        // Bridge the shaft into the storey's own circulation so the lift is REACHABLE, exactly as
+        // E3 bridges a stair through circNode. Without this the shaft is a perfect island.
+        var cn = circNode(st, p.x, p.y, storeyZ[st]);
+        edges.push({ a: cn, b: wp, doorGuid: p.guid, doorName: p.name, storey: st, kind: 'E11', w: 0.5 });
+      }
+      // ── Ride edges are ALL-PAIRS, not consecutive-only. ⚠ This is a CORRECTED modelling error,
+      // recorded because the first cut got it wrong and the numbers made it obvious: with
+      // consecutive-only edges a Tanah→Aras 04 ride pays FOUR waits, so the lift lost every journey
+      // on the one building that has one — the exact opposite of "lift if it'd be ridiculous to
+      // climb". A real lift is boarded ONCE: you wait, then ride through the intermediate floors.
+      // All-pairs with a single WAIT models that, and it is why the intent falls out of the weights
+      // instead of needing a storey threshold.
+      // ⚠ WORKED NUMBERS BELOW ARE QUOTED FROM THE WITNESS LOG (`§LIFT_CONNECTOR`, Terminal), not
+      // recomputed by hand from the constants — an earlier draft of this comment carried invented
+      // round figures (3.9 m / 20.2 m) that appeared nowhere in any run:
+      //   Aras Tanah -> Aras 01  dz=6.79   wLift=13.02  wStair=6.79            → STAIR(cheaper)
+      //   Aras Tanah -> Aras 04  dz=19.22  wLift=14.88  wStair=NO-DIRECT-STAIR → LIFT
+      // (the consecutive-only bug made that same Tanah→04 journey cost 13.02+12.58+12.59+12.69 =
+      // 50.88 against the chained stair path's 6.79+3.86+3.96+4.60 = 19.21 — hence "four waits")
+      // The per-floor `liftwp` nodes still exist, so the ride renders through the shaft axis at
+      // every floor it passes — an all-pairs EDGE is not a teleport, it is boarding once.
+      for (var j = 0; j < sts.length; j++) {
+        for (var m2 = j + 1; m2 < sts.length; m2++) {
+          var sA = sts[j], sB = sts[m2];
+          var dz = Math.abs(storeyZ[sB] - storeyZ[sA]);
+          var wLift = LIFT_WAIT + LIFT_RIDE_PER_M * dz;
+          var wpA = k + '::' + sA.replace(/\W/g, '_') + '::wp', wpB = k + '::' + sB.replace(/\W/g, '_') + '::wp';
+          edges.push({ a: wpA, b: wpB, doorGuid: sh.guids[0], doorName: 'Lift ride', storey: sA + ' / ' + sB,
+                       kind: 'E10', w: wLift, wpA: wpA, wpB: wpB });
+          liftEdges++;
+          // The audit line the spec asks for: which connector wins this storey pair, and why.
+          // wStair is the DIRECT stair cost for the same rise where a stair edge exists; where none
+          // does, "no stair at all" is a REACHABILITY fact, not a cost comparison, and it needs no
+          // special-case code — with no E3 edge the lift is simply the only path Dijkstra can take.
+          // (A multi-flight stair journey can still beat a direct lift edge; Dijkstra settles that
+          // over the whole graph. This line reports the pairwise comparison, not the final route —
+          // §FLY_ROUTE's own stairUp/liftUp fields are what say which was actually flown.)
+          var stairExists = !!_e3Seen[sA + '|' + sB] || !!_e3Seen[sB + '|' + sA];
+          log('§LIFT_CONNECTOR ' + sA + ' -> ' + sB + ' dz=' + dz.toFixed(2) +
+              ' wLift=' + wLift.toFixed(2) + ' wStair=' + (stairExists ? dz.toFixed(2) : 'NO-DIRECT-STAIR') +
+              ' elected=' + (!stairExists ? 'LIFT(no direct stair)' : (wLift < dz ? 'LIFT(cheaper)' : 'STAIR(cheaper)')));
+        }
+      }
+    });
+    log('§LIFT_SHAFTS shafts=' + liftShafts + ' rideEdges=' + liftEdges + ' liftDoors=' + liftDoors.length +
+        ' wait=' + LIFT_WAIT + ' ridePerM=' + LIFT_RIDE_PER_M + ' (both CONVENTION-PRIORS, not measured)');
+
     // §CIRC-SPINE-BRIDGE (2026-07-14, real regression found via user screenshot + HHS report):
     // E3's stair edges connect circA<->circB (the per-storey CIRC blob, still created here
     // unconditionally for stair-bridging even though E2 now prefers a real spine waypoint over

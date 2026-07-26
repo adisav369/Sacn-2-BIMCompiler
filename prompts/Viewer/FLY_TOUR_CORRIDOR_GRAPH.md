@@ -2420,6 +2420,67 @@ papered over.)
   unchanged as part of S2's own suite. A lift becoming an "exit" again must turn a run RED, not rely
   on a reader noticing.
 
+#### ✅ S2 SHIPPED 2026-07-26 — W-S2-LIFT-SHAFT **31/31** (`deploy/dev/tests/witness_s2_lift_shaft.js`)
+`deploy/dev/room_graph.js` `§LIFT-SHAFT`. **Measured basis RE-VERIFIED across 6 fleet DBs, not quoted:**
+`IfcTransportElement` = **0 on every building** — no lift ELEMENT exists to read. Terminal: **5
+lift-named doors, x=693.36 on all five, y-spread 0.19 m**, z 15.91→35.91, Aras Tanah→Aras 04 = ONE
+shaft over 5 storeys. Hospital / Clinic / LTU_AHouse / HHS / JKR: **0 lift doors** — Terminal-only in
+today's fleet, stated not papered over; every other building no-ops.
+
+Built: one `liftwp` node per served storey at the shaft's real measured door position (carrying
+`storey` — the §PATH_LEGAL_STAIRWP_STOREY bug is that a waypoint without it makes `_legalizePath`
+skip legality-testing on every chord touching it), an `E11` boarding edge into each storey's
+circulation so the shaft is never an island, and `E10` ride edges. Door names come from the existing
+`isRoomDoor()`/`NON_ROOM_DOOR_NAMES` predicate — the same doors #1014 stopped turning into `exit`
+nodes; they now become what they physically are.
+
+- **Fence holds:** a shaft requires lift doors on **≥2 distinct storeys**; below that,
+  `§LIFT_SHAFT_REJECT` and nothing is synthesised. Verified on 3 zero-lift buildings.
+- **Nothing else moved:** E3 stair counts identical pre/post on all four (4/6/2/5), and E1/E2/E5-E9
+  counts identical too; node counts byte-identical on the zero-lift buildings (645/414/1055).
+- **⚠ A MODELLING ERROR I SHIPPED FIRST AND THE NUMBERS CAUGHT.** The first cut used
+  CONSECUTIVE-storey ride edges, so a Tanah→Aras 04 journey paid **four** waits —
+  `13.02+12.58+12.59+12.69 = 50.88` against the chained stair path's `6.79+3.86+3.96+4.60 = 19.21`,
+  so the lift lost every journey on the only building that has one, the exact inverse of "lift if
+  it'd be ridiculous to climb". A real lift is boarded ONCE. Ride edges are now **all-pairs with a
+  single WAIT**; the per-floor `liftwp` nodes still exist, so this is boarding once, not a teleport.
+- **The choice is EDGE WEIGHT, never a storey threshold — worked numbers QUOTED FROM THE LOG**
+  (`§LIFT_CONNECTOR`, Terminal; all 10 storey pairs are printed every run):
+  `Aras Tanah -> Aras 01  dz=6.79  wLift=13.02  wStair=6.79 → STAIR(cheaper)` ·
+  `Aras Tanah -> Aras 04  dz=19.22  wLift=14.88  wStair=NO-DIRECT-STAIR → LIFT`.
+  Measured split: **4 pairs elect STAIR, 6 elect LIFT.**
+  **⚠ WATCHDOG CORRECTION, 2026-07-26 — three disagreeing tellings of this one example.** The first
+  report, the code comment and the actual log each carried DIFFERENT worked numbers (`3.9 m / 12.6`,
+  `20.2 m / 15.0 / 19.2`, and the real `6.79 / 13.02`). The arithmetic was self-consistent in each
+  case — `12 + 0.15·d` — but two of the three were ILLUSTRATIVE figures computed by hand from the
+  constants and matched no run. Worse, the witness was only printing two sample `§LIFT_CONNECTOR`
+  lines, so the full table was not in the saved log to quote from. Both fixed: the witness now prints
+  every connector line, and every number here and in the code comment is quoted from it. Same class
+  of failure as the S1 Clinic figures — hand-computed illustration presented in the same voice as
+  measurement.
+- **⚠ CONFIDENCE TAGS:** `LIFT_WAIT=12`, `LIFT_RIDE_PER_M=0.15` and the 2 m shaft-grouping distance
+  are **convention-priors, NOT measured**, tagged as such in code and in `§LIFT_SHAFTS` every run.
+  Their crossover lands near 3-4 storeys on Terminal's 4 m floors — **that is a CONSEQUENCE of two
+  priors and is NOT evidence for the "≥3 storeys" rule this spec deleted as unbased.** Do not cite it
+  as such. If measurement contradicts them, change the weights, not the shape.
+- **⚠ DEVIATION FROM THE STATED GATE, substituted openly.** The gate said re-run
+  `witness_exit_not_a_lift.js` (45/45) **unchanged**. That witness lives in **bim-ootb** (repo root,
+  `origin/main`) and exercises **bim-ootb's `common/room_graph.js`** — it would pass or fail
+  identically whether or not this change exists, because this change is in bim-compiler's
+  `deploy/dev` copy. Running it would be evidence about the wrong tree. Its load-bearing assertion is
+  reproduced as **G3 here, on the tree S2 modifies**: zero `exit` nodes, all four buildings.
+- **⚠ FORK CREATED — someone must port this back.** `deploy/dev/room_graph.js` was **byte-identical**
+  to `bim-ootb origin/main`'s `common/room_graph.js` before this edit (diffed). S2 forks it. Unlike
+  S3 (tour-local), this is shared engine code.
+- **✅ S3↔S2 INTERACTION CHECKED, as S3's sequencing note requires — and it did NOT materialise.**
+  W-S3-SCENE-BUDGET re-run with lifts present: **28/28, and every building's elected scene list is
+  identical** to the pre-S2 run — Hospital `18→7 hall,ascent,spine,spine,scenic×3` storeysVisited=3;
+  Terminal `15→8 hall,ascent,spine×3,scenic×3` storeysVisited=3; Clinic `7→6 hall,ascent,spine,
+  scenic×3` storeysVisited=2. Terminal's pool is 50 candidates before AND after: the shaft adds
+  vertical connectivity between `circ` nodes, but every room it reaches was already edge-connected
+  via stairs, so no room became newly ELIGIBLE. The spec predicted this might change the scene set;
+  measured, it does not. Checked rather than assumed — which was the point of the note.
+
 ### S3 — a scene budget, not a per-storey budget (this is the "ignore small rooms" ask)
 Replace `K = storeys>=4 ? 2 : …` per storey with a WHOLE-BUILDING checklist of scenes:
 `arrival → main hall → one ascent highlight → 2-3 scenic stops → finale`, capped ~8-10 stops
@@ -2449,9 +2510,12 @@ the main filter) → never-empty fallback.
 | Clinic (3 storeys) | **7** | **6** | hall,ascent,spine,scenic×3 | 2 | `≈ First Floor R48` 111.2 m² |
 
 - **SELECTION changed, ORDER did not.** §HL-FIRST still reorders and still re-derives the hall as the
-  largest of `stops`; because S3 always elects that same node, every building's `§FLY_HL_FIRST` line
-  is identical before and after (see the table's last column). §HL-ORIGIN, the A* on-floor polyline
-  and the exit rule are untouched.
+  largest of `stops`; because S3 always elects that same node, every field of every building's
+  `§FLY_HL_FIRST` line is identical before and after — `mainHall`, `area`, `storey`, `ascent`,
+  `extras`, `suspectOpenAdmitted` — **except `stops=`, which is precisely what S3 changes.** (The
+  commit message and the first report said "byte-identical", which is not literally true for that one
+  field; corrected here, since this file is what a later session reads.) §HL-ORIGIN, the A* on-floor
+  polyline and the exit rule are untouched.
 - **⚠ THE SPEC'S "Hospital 22 stops" IS NOT REPRODUCIBLE — measured pre-S3 baseline is 18**, and the
   cause is known, not hand-waved: Hospital is **142 IfcSpaces, ALL `RM_`, with no `rooms_meta`**, so
   S1's version-stamp check recompiles it exactly as it does Clinic. The 22 was measured PRE-S1; this
