@@ -1531,3 +1531,54 @@ merged into that PR. Orthogonal to the path-crossing question above — differen
 (`_revealCategoryGroup`/`_drawRoomShell` vs `_detourForChord`/`_legalizePath`), noted here only so a
 future session doesn't conflate "the corridor color is wrong" with "the path line crosses itself" —
 they were two separate reports from the same evening, already resolved separately.
+
+### §19 (2026-07-26, session close) — "it also switches scenes abruptly. It should animate between
+### such jumps" — FILED, UN-TRIAGED, ask the clarifying question FIRST next session
+User raised this immediately after the JKR path-crossing discussion above (§18), in the same session,
+but the session ended (unrelated reason) before the clarifying question below got an answer — next
+session's FIRST move on this item should be asking it, not guessing.
+
+**Already checked, so don't re-derive:** the Room-select and Find-Path camera moves in THIS file
+already animate — `_zoomToBoxFill()`/`_lerpCam()` (`viewer/navigate_find.js:2490-2546`) is a real
+RAF-driven eased lerp (`camera.position.lerpVectors(start, end, ease)`, cubic ease-out, cancels
+cleanly if the user grabs the controls mid-flight), not an instant snap. So whatever the user means by
+"switches scenes abruptly," it is very unlikely to be the ordinary Room-tap or Find-Path zoom inside
+this panel — those are already smooth. **Do not spend time re-verifying that fact; it's confirmed.**
+
+**Candidate mechanisms, none investigated yet** (this is the clarifying question that needs asking):
+1. **Switching buildings** — opening a different building (e.g. Hospital → JKR, via Open Building /
+   the building picker, `A._openDbBytes` / the `?db=` reload path in `main.js`/`scene.js`). A full
+   dataset swap — plausibly the most likely candidate given the user's own JKR-right-after-Hospital
+   testing flow this session — but also the hardest to meaningfully "animate" (different coordinate
+   space, different geometry entirely; a cross-fade/loading-transition is a different kind of fix than
+   a camera lerp).
+2. **History Bar jumps** — tapping a dot/session in the shared History Bar (`§HIST_TAP_WIRED` logs
+   list `camera` as one of the fields a tap restores, alongside ghost/xray/section/palette/clash) —
+   plausibly an instant camera restore with no easing.
+3. **Fly Tour room-to-room** — the automated tour (`tour.js`) moving between stops.
+4. Something else in Find/Path not yet named.
+
+**Next session:** ask the user which of these (or something else) they meant, using their own words
+about what they were doing right when they saw the jump — then trace ONLY that mechanism's camera-set
+code (does it write `camera.position`/`controls.target` directly with no lerp, the way the FIXED
+Room/Path case above used to before `_lerpCam` existed?) before proposing an animate-in fix. Reuse
+`_lerpCam`'s existing pattern (RAF, cubic ease-out, controls-grab cancellation) rather than inventing a
+second easing implementation if the target turns out to be another camera-set call site in the same
+file or a sibling one (`tour.js`, `history_tap.js`).
+
+## SESSION STATUS (2026-07-26 close-out, for whoever picks this up next)
+- **DONE, merged, live:** `bim-ootb` PR #1019 — Find-panel close-leak fix (category-reveal doors +
+  Path highlight surviving `closeFindPanel()`), Hall/Corridor category-reveal shell fix (§CATEGORY_REVEAL
+  `rooms=0`→correct), Room-Lens category-color shine-through-in-X-Ray fix. All witnessed, all merged.
+- **DONE, verification-only, no code changed:** the Level-4 door-revisit shortest-path trade-off
+  (§17/§18 residual #2) re-confirmed live and correct on Hospital.
+- **OPEN, handed to §18 above:** does the JKR path-crossing reduce to the same benign
+  detour-revisit-kept mechanism, or is it a new failure mode? Not investigated — filed only.
+- **OPEN, handed to §19 above:** "scenes switch abruptly, should animate" — mechanism not identified,
+  clarifying question not yet answered.
+- **OPEN, filed in `prompts/STAFFAGE_WALKABLE_PLACEMENT.md` §STAFFAGE_PERSIST:** Alt+P staffage
+  placement not surviving a save+reopen — traced the save/reopen code paths, leading hypothesis is a
+  workflow mismatch (reopening the same URL instead of the exact saved file via Ctrl+O) rather than an
+  engine bug, but unconfirmed — needs the user's exact steps before any fix.
+- Branch/worktree cleanup for this session's work is being handled by a separate concurrent session —
+  not part of this file's scope.
