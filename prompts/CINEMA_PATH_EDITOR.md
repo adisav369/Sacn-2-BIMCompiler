@@ -23,6 +23,11 @@ the original sections is SUPERSEDED throughout.
 
 **RESUME AT:** §CPE_PACING_BUILT "what to look at next".
 
+**⚠ 2026-07-27 (later, live user run on Hospital):** OK-after-an-edit CRASHED the bake on shipped
+main — `§CPE_OK_CRASH`, root-caused, fixed and witnessed 6/6 (`witness_cpe_ok_bake.js`, the first
+gate that walks editor → OK → bake instead of the plan seam). Read **§CPE_OK_CRASH** at the end of
+this file before anything else on this lane.
+
 ---
 
 # §CINEMA_PATH_EDITOR — the simplest fastest tour maker
@@ -601,3 +606,89 @@ from the room graph) — not from re-ranking by storey. Re-read that comment blo
   wrong. Details + measurements: `STAFFAGE_WALKABLE_PLACEMENT.md §STAFFAGE_PERSIST` (ANSWERED section).
 - **MP4 loses one pixel row** on odd-height canvases: frames grabbed at `w×h`, encoder configured at
   `(w & ~1, h & ~1)`, drawn 1:1. `cinema_maxq.js` `_stitchMp4`.
+
+---
+
+## §CPE_OK_CRASH — OK after an edit kills the bake (user live run, Hospital, 2026-07-27)
+
+**SPEC FIRST. Do not implement before reading this section.** Reported by the user immediately after
+§CPE_SCREEN_PLANE landed: *"satisfied the 'pipe band 2 waypoints with mid translatable' working..
+however hits error when OK the editor box"*. The grab model itself is fine — the drag worked, the
+editor closed, the plan re-derived. The bake is what died.
+
+### The user's own console, the three lines that matter
+```
+§CPE_CLOSE action=ok edited=true total=54.4s
+§CPE_LOCKS re-claimed for the bake (maxqActive=true)
+§CINEMA_PATH_EDIT authored waypoints=6 (derived route replaced) orbitScale=0.991 orbitDY=-0.90m
+§MAXQ_WAKELOCK acquired (screen stays awake for the bake)
+[S274] §ERR_PROMISE Cannot read properties of undefined (reading 'length')
+Uncaught (in promise) TypeError: ... at Object.start [as startMaxQualityOrbit] (cinema_maxq.js)
+```
+The re-plan SUCCEEDED — `§CINEMA_PATH_EDIT authored waypoints=6` is the edited path being flown. The
+throw is one line later, in the log statement that reports what just happened.
+
+### Root cause — a stale log line, not a stale path
+`cinema_maxq.js:507` (the `§CPE_APPLIED` line) reads `_cpeRes.override.waypoints.length`. That field
+**no longer exists**: §CPE_BANDS changed `cinema_path_editor.js` `_buildOverride()` to return
+`{ bands, diveSec, spinSec, outSec, riseSec, _total, _naturalTotal, _scale, _pathLen }` — bands, not
+waypoints. `effects.js` was ported (it reads `ov.bands` and expands via `_cinemaBandWaypoints`, which
+is why the plan is correct); the one consumer in `cinema_maxq.js` was not.
+
+**Why review missed it and the witnesses missed it:** `witness_cinema_bands.js` drives
+`A.cinemaPathPlan(dur, override)` directly — the plan seam, not the bake. Nothing in the suite ever
+walks the actual user path *editor OK → `start()` continues → bake*. The one line of code between
+those two is exactly where the defect sat. (This is `feedback_test_real_user_path_not_seams` charging
+its rent a second time.)
+
+**Blast radius: total.** Every edited path is unbakeable on shipped main; only the untouched-OK
+guardrail-2 path survives, because that branch never dereferences the override. §CPE_SCREEN_PLANE
+therefore shipped a feature whose entire purpose — edit, then record — cannot complete.
+
+### The fix
+Report the count the plan actually flew, derived from the shape the editor actually returns:
+`bands.length * 2` for a band override (§CPE_BANDS rule: 3 bands fold to 6 waypoints), falling back
+to `waypoints.length` if a legacy loose-waypoint override is ever handed in, and to `?` if neither.
+No behaviour change to the path, the plan or the bake — this is a log line, and it must stay one.
+
+### Witness — `witness_cpe_ok_bake.js`, the missing user path
+Runs Duplex + Terminal. Each gate names what it proves or disproves:
+- **K1 (the reported crash)** — open the real editor, KEY a real band edit (the `y` field, the same
+  state mutation a drag makes), click the real `#cpe-ok`, and let `start()` continue. PASS = zero
+  page errors and the run reaches the bake. FAIL = the `TypeError` above. This gate is RED on
+  `origin/main` by construction; if it is not, the fix is not the fix.
+- **K2 (the log tells the truth)** — `§CPE_APPLIED waypoints=N` must EQUAL the `N` in the
+  `§CINEMA_PATH_EDIT authored waypoints=N` printed by the plan it just built. Not crashing is not
+  enough: a hardcoded `0` would also not crash and would lie in every future bug report.
+- **K3 (guardrail 2 unbroken)** — OK with NO edit still reaches the bake and still logs
+  `§CPE_APPLIED none`. Proves the fix did not move the crash into the other branch.
+- The bake is cancelled at frame 0 (`startMaxQualityOrbit()` re-entry sets `_cancel`) so the gate
+  costs seconds, not the full cook. Reaching `§MAXQ_IDB_READY`/`§MAXQ_CANCEL i=0` IS "reached the
+  bake" — everything past line 507 that the crash denied.
+
+### Measured — RED then GREEN, same rig, same gates (2026-07-27, `fix/cpe-ok-override-crash`)
+Headless ANGLE/SwiftShader, local server on 8402, real editor DOM, real `startMaxQualityOrbit`.
+
+**On `origin/main` (unpatched), Duplex — 1/3:**
+```
+FAIL K1  editorOpened=true edit=-0.47→1.03m reachedBake=false pageErrors=1
+         ← THE REPORTED CRASH: Cannot read properties of undefined (reading 'length')
+         applied: (§CPE_APPLIED never printed)
+FAIL K2  §CPE_APPLIED waypoints=n/a vs §CINEMA_PATH_EDIT authored waypoints=6
+PASS K3  untouched OK reaches the bake — the crash only ever hit EDITED paths
+```
+**With the fix — 3/3 Duplex AND 3/3 Terminal:**
+```
+Duplex    K1 reachedBake=true pageErrors=0 | §CPE_APPLIED total=26.5s frames=26 waypoints=6
+Terminal  K1 reachedBake=true pageErrors=0 | §CPE_APPLIED total=40.1s frames=40 waypoints=6
+both      K2 §CPE_APPLIED waypoints=6 == §CINEMA_PATH_EDIT authored waypoints=6
+both      K3 §CPE_APPLIED none — derived plan unchanged
+```
+K3 passing RED is the diagnosis in one line: only the edited branch dereferenced the dead field.
+Regression: `witness_cinema_bands.js` **6/6** on Duplex, unchanged.
+
+### The bug reporter half — NOT this branch
+The user's next sentence (*"Error submission hits error in Gmail should have send via GH"*) is the
+same defect class — the mailto path had no URL length cap while the GitHub path has capped at 8000
+since §S280 — but it is **owned by another session and already shipped as PR #1028** (cascades the
+log-line count until the URL fits ~1800 chars; measured 8202 → 1561). Do not re-fix it here.
