@@ -5310,12 +5310,8 @@ Answering this may hand the aggregation logic over for free.
 The beat-timing change touches two constants in `viewer/effects.js` that never read the room graph;
 S1 works in `deploy/dev`'s `room_graph_bridge.js` + `lib/room_walker.js`. No overlap, no dependency.
 
-## ▶ NEXT SESSION — chase the movie path (2026-07-26 handoff, ONE sentence)
-**Pick up `bim-ootb:feat/cinema-exit-breathe` (pushed, no PR): the §CINEMA_EXIT_BREATHE beat retime is
-committed but DELIBERATELY NOT LANDED — fix `witness_cinema_exit_breathe.js`'s gaze metric first (G2/G3
-are artifacts: a 2700 deg/s atan2 sign-flip, and a detector threshold taken relative to each run's own
-median, so "the turn is slower / the look-back starts later" is still UNPROVEN), then land it; leave
-§CINEMA_HALL_CANDIDATE parked until `FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S1 lands.**
+## ▶ SUPERSEDED handoff (2026-07-26 morning) — §CINEMA_EXIT_BREATHE
+Done: §CINEMA_TURN_SLERP landed (#1018) and §CINEMA_DAMPING_BLEED landed (#1020). See those sections.
 
 ---
 
@@ -5524,3 +5520,45 @@ jump *inside* the film.
 
 **Result:** unfixed tip 1.387% frame-0 drift decaying at 0.9200; fixed tip **0.000000 m across 2519
 `update()` calls** spanning the whole film. 3/3.
+
+
+---
+
+# ▶ NEXT SESSION — §CINEMA_PATH_EDITOR (2026-07-26 evening handoff, ONE sentence)
+
+**Build §CINEMA_PATH_EDITOR — after `cinemaPathPlan()` runs (Alt+C, ~50–100 ms, before a single frame
+is recorded) pop a graph panel of the plan's path points and per-beat camera angle/Z so the user can
+drag waypoints, fix the camera Z that currently dives into the attic, then accept or cancel, and
+persist the edit as a `cinema_path` table in the saved DB exactly the way `staffage_instances`
+already round-trips (proven this session) — and while in there land the two small already-diagnosed
+items: restore staffage on LOAD instead of on the first Alt+P press, and stop the MP4 path losing one
+pixel row on odd-height canvases.**
+
+## Why this fits (read before scoping it)
+- **The substrate already exists.** `cinemaPathPlan(duration)` returns `{beats:{dive,spin,out,rise},
+  poseAt(t), pivot, exit, ...}` and every pose is a pure function of `t`. Both consumers — the live
+  capture (`effects.js`) and the MaxQ bake (`cinema_maxq.js`) — read that ONE plan. A panel does not
+  need a new engine; it needs the plan's *inputs* (beat boundaries, `outWp` waypoints, `CINEMA_EYE_M`,
+  the look-down tilt, the orbit radius band) made editable and the plan re-derived on change.
+- **There is already an insertion point.** §MAXQ_PREVIEW is a 10 s rehearsal whose stated purpose is
+  "the user sees what its next 10 mins of rendering will be up to". This idea is that intent's next
+  step: don't just preview it, adjust it. The panel replaces/augments that beat.
+- **"It goes for the attic" is a real, separate defect, not just an ergonomics gap.** §CINEMA_SPACE
+  picks the largest space nearest the centre and `_cinemaFloorY` raycasts a floor under it; on some
+  buildings that resolves to an attic/roof void. An editor lets the user override it, but the picker
+  should still be looked at on its own — an editor must not become the excuse for a bad default.
+- **The one real caution — determinism.** This project's prime rule is EXTRACT OR COMPILE ONLY. An
+  edited path is *authored* data, not derived, so it must be STORED, never re-guessed: a small
+  `cinema_path` table (beats + waypoints + eye height + tilt) in the building DB, written by
+  `_exportBuildingDb()` and read on load. That is the same pattern as `staffage_instances`, whose
+  full round-trip was measured working this session (`§STAFFAGE_SAVE rows=8` → `§STAFFAGE_RESTORE
+  rows=8`) — reuse it, do not invent a second persistence mechanism.
+
+## Still open, NOT folded into the sentence above (each already diagnosed, none started)
+- `§STAFFAGE_PAX_REJECT tried=72 placed=3` with `rejFrustum=0 rejOcclude=0 rejDedup=0` — 69 rejections
+  that no counter attributes. A witness blind spot, and the reason only ~3 figures ever appear.
+- **Scene jumping on reopen** — NOT reproduced through `_openDbBytes()` (camera 0.00 m, target 0.00 m).
+  Needs the user's actual repro route before any code is touched.
+- **D2, the walk-out corner whip** (§CINEMA_TURN_SLERP) — 19.8°/frame on current main, pre-existing,
+  printed by the witness every run but not gated.
+- **JKR path-crossing** — `Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §18's 3-step plan.
