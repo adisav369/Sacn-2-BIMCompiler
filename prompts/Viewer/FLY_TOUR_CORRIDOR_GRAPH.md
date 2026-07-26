@@ -2324,6 +2324,49 @@ walk + IDB persist from bim-ootb's `navigate_find.js` into `room_graph_bridge.js
   the fleet's inverted case). Gate 3 settles it either way by running the injector on the 21-room DB
   and measuring before/after, instead of arguing from archaeology.
 
+#### ✅ S1 SHIPPED 2026-07-26 — W-S1-ROOM-INJECTOR **21/21** (`deploy/dev/tests/witness_s1_room_injector.js`)
+Ported from bim-ootb **`origin/main`** (never the local checkout — 41 commits behind at port time;
+§R5-A already got burned once by exactly that): `viewer/lib/room_walker.js` → `deploy/dev/lib/`
+**verbatim** (diffed byte-for-byte), and `navigate_find.js`'s `_ensureRoomsCore()` → the `ensureRooms`
+body in `deploy/dev/room_graph_bridge.js` (v1→v2, `index.html` `?v=` bumped). That one function carries
+the whole R5-B payload: patch source → walker → `rooms_meta` stamp → IDB persist, plus the
+`§PATCH-FRAME-GUARD` and `§ROOM_WALKER_VERSION_STAMP` guards. §-lines renamed `§R5A_*` → `§S1_*`.
+
+- **Gate 1 — SampleHouse (ships zero rooms, no `spatial_structure` table at all): PASS.**
+  `§S1_ENSURE_ROOMS … rooms=0 state=zero` → `§S1_INJECT source=walker rooms=3 rects=3` →
+  `§S1_STAMP version=v3` → `§S1_PERSIST idb=ok bytes=1183744` → `§FLY_INJECT status=injected` →
+  **`§FLY_ROUTE storeys=1 stops=3/3 skipped=0 illegalChords=0/6`**. It flies the GRAPH route now,
+  not the legacy one. That is S1's purpose, met.
+- **Gate 2 — Clinic 10/10: PASS**, the §R5-A witness re-run as a child process (its checks, not a
+  re-implementation). `§FLY_ROUTE storeys=3 stops=7/7` unchanged. **One of its ten checks was
+  RETARGETED, stated not hidden:** G4 asserted the literal `selfHeal=none(R5-B)`, the placeholder
+  §R5-A shipped while the injector was unported — false BY DESIGN once S1 lands. It now asserts the
+  bridge still logs its state classification. Ten checks in, ten out; the reason is in both headers.
+- **Gate 3 — Duplex's 21 authored IfcSpaces: PASS, at two depths.**
+  - **G3a (the state machine, in-browser, `{force:true}` — the harshest call the UI can make):**
+    `§S1_ENSURE_ROOMS rooms=21 compiled=0 state=none` → `§S1_AUTHORED_KEEP authored=21/21`, and
+    `§S1_INJECT` **absent** — the walker is never invoked. All 21 survive by name AND guid, `A101…A205`
+    with their real `0BTBFw6f90Nf…` guids, zero `RM_*`/`≈ Level N Rk` replacements. The `state==='none'`
+    branch returns ABOVE the force check; that single line is what the gate holds up.
+  - **G3b (defence in depth, node-side): `RoomWalker.walk()` called DIRECTLY on the 21-room db,
+    state machine bypassed — all 21 authored rows STILL survive** (21 authored + 0 compiled → 21
+    authored + 11 compiled rect rows; additive, nothing deleted or renamed).
+- **⚠ This SETTLES the spec's own "honest limit" above — and the archaeology answer is: the injector
+  did NOT cause it.** At `ROOM_WALKER_V` v3 neither layer is destructive to authored rooms. So
+  `~/bim-ootb/buildings/Duplex_extracted.db`'s 5 `RM_*` rooms with zero authored names came from
+  something else — a different extraction run, or an older walker — **not from this code path**.
+  `project_db_snapshot_divergence_landmine`'s "Duplex is the fleet's inverted case" stands; the
+  suspicion that the injector clobbers it does not.
+- **⚠ ONE REAL BEHAVIOUR CHANGE, measured, not a regression but not silent either — Clinic's elected
+  main hall moved, 323.4 m² → 111.2 m².** Cause, measured directly: Clinic ships **118 compiled
+  (`RM_*`) rooms with NO `rooms_meta` row**, so the fleet-wide version-stamp check classifies them as
+  stale (`§S1_VERSION_STALE stored=null current=v3`) and recompiles → **207 rooms / 304 rects**. The
+  route itself is unharmed (`stops=7/7`, highlight-first intact) and this is the ported bim-ootb
+  self-heal working as designed ("the inject mechanism exists to cure poor data"), so it is NOT
+  reverted here. But it **directly touches §CINEMA_HALL_CANDIDATE's parked 323 m² open question** —
+  that hall is a pre-v3 artifact of the shipped 118-room set, and the graph session should read it
+  against the v3 207-room set instead of the number recorded earlier.
+
 ### S2 — lifts as real vertical connectors (measured basis, zero invention)
 `IfcTransportElement` = **0 rows fleet-wide** — there is no lift ELEMENT to read. But the lift DOORS
 are real, and they group: **Terminal's 5 lift-named doors cluster to ONE shaft (x,y within 2 m)

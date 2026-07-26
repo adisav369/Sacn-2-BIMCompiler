@@ -5,7 +5,8 @@
  * room-graph stack (R5, line ~96), so its Fly tour was the legacy Euclidean nearest-neighbour one:
  * no highlight-first ordering, no wall-legal legs. This ports the stack (room_habitability,
  * storey_raster, room_graph, hallway_backbone) + tour.js v19 + a two-function bridge
- * (getRoomGraph/ensureRooms) into deploy/dev. CODE ONLY — the patch/self-heal loader is §R5-B.
+ * (getRoomGraph/ensureRooms) into deploy/dev. §R5-A was CODE ONLY; the patch/self-heal loader landed
+ * afterwards as §STAKEHOLDER_STROLL S1 (W-S1-ROOM-INJECTOR) — see the G4 note below.
  *
  * ISSUE IT PROVES/DISPROVES:
  *   (G1) A building that SHIPS rooms (Clinic — native IfcSpaces, no patch needed) now flies the
@@ -15,7 +16,14 @@
  *        §FLY_ROUTE_REJECT and still produce a legacy tour with actions > 0 — the port cannot make
  *        an un-roomed building worse than it was.
  *   (G3) The new script tags load clean: no §LOAD_FAIL, no §R5A_BRIDGE_ABSENT, no page error.
- *   (G4) The bridge is honest about being code-only: §R5A_ENSURE_ROOMS reports selfHeal=none(R5-B).
+ *   (G4) The bridge reports its room-state classification before doing anything, so a log reader can
+ *        always see WHICH branch ran: §S1_ENSURE_ROOMS … state=none|recompute|zero.
+ *        ⚠ RETARGETED 2026-07-26 by §STAKEHOLDER_STROLL S1, deliberately, not silently weakened.
+ *        G4 originally asserted `selfHeal=none(R5-B)` — the placeholder §R5-A shipped while the
+ *        injector was still unported. S1 ported it, so that string is now FALSE BY DESIGN and the
+ *        old G4 would fail forever on a correctly-working viewer. The check was kept (same count,
+ *        one per case) and pointed at what the bridge must still prove: it logs its classification
+ *        rather than injecting silently. W-S1-ROOM-INJECTOR owns the injector's own gates.
  *
  * RUN: node deploy/dev/tests/witness_r5a_dev_graph_tour.js   (serves deploy/dev itself on PORT)
  */
@@ -101,7 +109,7 @@ function line(logs, re) { return logs.find(l => re.test(l)) || ''; }
     const st = await page.evaluate(() => ({ actions: (window.APP.walkActions || []).length, walkMode: !!window.APP.walkMode }));
 
     console.log('── ' + c.label + '  modules ' + JSON.stringify(pre) + '  actions=' + st.actions);
-    const fly = line(logs, /§FLY_ROUTE /), hl = line(logs, /§FLY_HL_FIRST/), er = line(logs, /§R5A_ENSURE_ROOMS/);
+    const fly = line(logs, /§FLY_ROUTE /), hl = line(logs, /§FLY_HL_FIRST/), er = line(logs, /§S1_ENSURE_ROOMS/);
     if (fly) console.log('   ' + fly.slice(0, 200));
     if (hl) console.log('   ' + hl.slice(0, 200));
     if (er) console.log('   ' + er.slice(0, 160));
@@ -111,7 +119,9 @@ function line(logs, re) { return logs.find(l => re.test(l)) || ''; }
     chk(c.label + ': G3 no §LOAD_FAIL / bridge-absent / page error',
       !has(logs, /§LOAD_FAIL|§R5A_BRIDGE_ABSENT|PAGEERROR/),
       line(logs, /§LOAD_FAIL|§R5A_BRIDGE_ABSENT|PAGEERROR/).slice(0, 120) || 'clean');
-    chk(c.label + ': G4 bridge reports code-only (selfHeal=none)', /selfHeal=none\(R5-B\)/.test(er), er ? 'logged' : 'MISSING');
+    chk(c.label + ': G4 bridge logged its room-state classification (§S1_ENSURE_ROOMS state=…)',
+      /§S1_ENSURE_ROOMS .*\bstate=(none|recompute|zero)\b/.test(er),
+      er ? er.replace(/^.*§S1_ENSURE_ROOMS /, '').slice(0, 90) : 'MISSING');
     if (c.expectGraph) {
       chk(c.label + ': G1 graph route built (§FLY_ROUTE)', !!fly, fly ? fly.replace(/^.*§FLY_ROUTE /, '').slice(0, 90) : 'absent');
       chk(c.label + ': G1 a highlight main hall was elected (§FLY_HL_FIRST)', !!hl,
