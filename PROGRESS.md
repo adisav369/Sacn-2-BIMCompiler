@@ -25,11 +25,9 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 (both repos). Unmerged-no-PR branches are backed up but undelivered (`lane/hr-overlay`, `lane/teams-overlay`).
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 (G6/Ph3/Pt1 parked) · `PILL_DRAWER_REORGANIZATION.md` (first-touch flicker) · `OPEN_BUTTON_IFC_BCF_MERGE.md`.
+- `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
 - DiscWalk §STOREY-ZBAND DONE+GREEN but STRANDED on `bim-ootb:fix/xray-fixture-classification` (5 ahead, no PR)
   — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
-- `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; room compile ALSO stale) · `XRAY_FIXTURE_CLASSIFICATION_FIX.md`
-  (SampleCastle walls as fixtures, root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
   ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — look-back was a ONE-FRAME 180° snap (look-at lerped THROUGH
   the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED (stale main, retime
@@ -49,10 +47,7 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   — shared engine code, needs porting back; unlike S3's tour-local change.
 - ✅ **R5-A deploy leg SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` stays frozen (68 days
   stale, unmaintained), `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
-- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); `docs/userguide-roompath-fixed` no PR.
-- HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
-  `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
-- Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
+- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: Modeller prefab dialogue `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
 - Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
