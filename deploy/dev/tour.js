@@ -585,13 +585,60 @@ function setupTour(A) {
       // and anchoring on one sent LTU to a permanent legacy fallback). Corridor-class membership
       // is read from byStorey so the rec objects stay IDENTICAL — the pause logic further down
       // does `byStorey[st].corridors.indexOf(s)`, which only works on the same object identity.
-      const pool = [];
+      let pool = [];
       for (const st of storeys) {
         const b = byStorey[st];
         for (const r of b.corridors) { if (edgeGuids[r.guid]) { r._spine = true; pool.push(r); } else isolatedDropped++; }
         for (const r of b.rooms) { if (edgeGuids[r.guid]) { r._spine = false; pool.push(r); } else isolatedDropped++; }
       }
       pool.sort((a, c) => c.area - a.area);   // one ranking, whole building, measured area only
+
+      // ── §SCENE-COMPONENT (added 2026-07-26 after W-S3-SCENE-BUDGET caught a REAL REGRESSION on
+      // JKR — the fixture that had no coverage until it was asked for). A whole-building area
+      // ranking silently assumes the building is one walkable body. JKR is not: measured, its graph
+      // has **75 components**, and its two largest rooms (72.2 m² and 62.4 m²) each sit ALONE in a
+      // tiny island (component sizes 2 and 1) while the real strollable body is one 70-node
+      // component whose own largest room is 43.4 m². S3 therefore elected 4 mutually-unreachable
+      // scenes, every leg failed, and the tour fell to §FLY_ROUTE_REJECT reason=thin-path pts=1 —
+      // JKR LOST a graph route it had before S3 (pre-S3: stops=4/5, pts=28).
+      //
+      // §CONNECTED-STOPS cannot catch this: it drops nodes with ZERO edges, and an island of two
+      // nodes has edges. The missing constraint is that stops must be mutually REACHABLE, which is
+      // a reachability fact — the same character as §CONNECTED-STOPS, not a new tuned rule.
+      //
+      // So: elect scenes from ONE component — the one carrying the most candidates, i.e. the
+      // building's real walkable body (ties broken by total measured area). This does refine the
+      // main hall from "largest space in the building" to "largest space you can actually walk to",
+      // and that is the correct reading: a hall no occupant can reach is not a tour stop. §HL-FIRST
+      // re-derives the hall as the largest of `stops`, so the two stay consistent by construction.
+      var adj = {};
+      for (const e of g.edges) { (adj[e.a] = adj[e.a] || []).push(e.b); (adj[e.b] = adj[e.b] || []).push(e.a); }
+      var compOf = {}, compN = 0;
+      for (const r0 of pool) {
+        if (compOf[r0.guid] !== undefined) continue;
+        var stack = [r0.guid]; compOf[r0.guid] = compN;
+        while (stack.length) {
+          var nd = stack.pop();
+          for (const nb of (adj[nd] || [])) if (compOf[nb] === undefined) { compOf[nb] = compN; stack.push(nb); }
+        }
+        compN++;
+      }
+      var compStat = {};
+      for (const r0 of pool) {
+        var ci = compOf[r0.guid];
+        if (!compStat[ci]) compStat[ci] = { n: 0, area: 0 };
+        compStat[ci].n++; compStat[ci].area += r0.area;
+      }
+      var bestComp = null;
+      for (const ci in compStat) {
+        if (bestComp === null || compStat[ci].n > compStat[bestComp].n ||
+            (compStat[ci].n === compStat[bestComp].n && compStat[ci].area > compStat[bestComp].area)) bestComp = ci;
+      }
+      var poolAll = pool.length;
+      if (bestComp !== null) pool = pool.filter(r => String(compOf[r.guid]) === String(bestComp));
+      console.log('[TOUR] §FLY_SCENE_COMPONENT comps=' + Object.keys(compStat).length +
+        ' chosen=' + bestComp + ' candidates=' + pool.length + '/' + poolAll +
+        ' droppedUnreachable=' + (poolAll - pool.length));
 
       const taken = {};
       function elect(r, role) {

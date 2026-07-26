@@ -52,7 +52,11 @@ let pass = 0, fail = 0;
 const chk = (n, c, x) => { if (c) { pass++; console.log('  ✅ ' + n + (x ? '  ' + x : '')); } else { fail++; console.log('  ❌ ' + n + (x ? '  ' + x : '')); } };
 
 const S2_MARKER = '§LIFT-SHAFT';
-const BUILDINGS = ['Terminal', 'Hospital', 'Clinic', 'LTU_AHouse'];
+// JKR added 2026-07-26 (watchdog: it was in no witness's fixture list despite being a real local
+// fixture). It is the fleet's UNSEEN-CONVENTION case, not just another building: 21 storeys, 7
+// disciplines (ARC/PLB/MEP/STR/ACMV/FP/ELEC), authored by a different firm with its own naming
+// prefix — i.e. the one fixture that tests whether this generalises past our own modelling habits.
+const BUILDINGS = ['Terminal', 'Hospital', 'Clinic', 'LTU_AHouse', 'JKR'];
 
 // Same technique as W-S3-SCENE-BUDGET, same reason: find the newest revision of room_graph.js that
 // does NOT carry the S2 marker. `HEAD:` would silently become the post-S2 file after the commit,

@@ -2545,6 +2545,52 @@ the main filter) → never-empty fallback.
   green while testing nothing. It now walks `tour.js`'s history and takes the newest revision lacking
   the `§R6-SCENE-BUDGET` marker (resolved this run: `cfc713575`), which is correct at any future date.
 
+#### ⚠ S3 REGRESSION FOUND AND FIXED 2026-07-26 — §SCENE-COMPONENT (W-S3-SCENE-BUDGET **55/55**, 5 buildings)
+**The user asked whether the witnesses covered LTU and JKR. They did not — and JKR was carrying a
+shipped S3 regression.** S3's original witness gated 3 buildings (Hospital/Clinic/Terminal); S2's
+gated 4 (adding LTU_AHouse); **JKR was in neither**, despite being a real local fixture. It is also
+the fleet's UNSEEN-CONVENTION case — 21 storeys, 7 disciplines (ARC/PLB/MEP/STR/ACMV/FP/ELEC),
+different authoring firm and naming prefix — i.e. the only fixture that tests generalisation past
+our own modelling habits rather than just past our own buildings.
+
+**The regression (shipped in `6e8ff5a46`, fixed here):** JKR routed BEFORE S3 (`§FLY_ROUTE stops=4/5
+pts=28`) and REJECTED after it (`§FLY_ROUTE_REJECT reason=thin-path pts=1` → silent fall to the
+LEGACY tour). Strictly worse than pre-S3.
+
+**Root cause, measured:** JKR's graph has **75 components**. Its two largest rooms — **72.2 m² and
+62.4 m²** — each sit ALONE on an island (component sizes 2 and 1), while the real strollable body is
+one 70-node component. S3's whole-building area ranking assumed the building is a single walkable
+body, so it elected four mutually-unreachable scenes and every leg failed. **`§CONNECTED-STOPS`
+cannot catch this** — it drops nodes with ZERO edges, and a two-node island has an edge.
+
+**Fix — `§SCENE-COMPONENT`:** elect scenes from ONE component, the one carrying the most candidates
+(the building's real walkable body; ties broken by total measured area). A reachability fact, the
+same character as §CONNECTED-STOPS — not a new tuned constant. It refines the main hall from
+"largest space in the building" to "largest space you can actually walk to", which is the correct
+reading: a hall no occupant can reach is not a tour stop. §HL-FIRST re-derives the hall from `stops`,
+so the two stay consistent by construction.
+
+| building | comps | candidates kept | dropped | stops | main hall |
+|---|---|---|---|---|---|
+| Terminal | 1 | 50/50 | 0 | 15→8 | `⚠ Aras 01 R1` 660.0 — **unchanged** |
+| Hospital | 8 | 154/168 | 14 | 18→7 | `⚠ Level 1 R14` 315.7 — **unchanged** |
+| Clinic | 7 | 172/199 | 27 | 7→6 | `≈ First Floor R48` 111.2 — **unchanged** |
+| LTU_AHouse | 5 | 354/373 | 19 | 15→7 | `⚠ VÅNING 4 R2` 1254.7 — **unchanged** |
+| JKR | 2 | 45/46 | 1 | 5→**4, ROUTED again** | `≈ 03 …R1` 83.0 → **`≈ 02 Aras Dua R15` 27.9** |
+
+- **Only JKR's hall moved**, and that IS the fix working: the 83.0 m² room was on the island. The four
+  previously-green buildings keep byte-identical halls, so the component filter is not a silent
+  re-election everywhere.
+- **⚠ NEW GATE G6 — "a graph route that existed pre-S3 must still exist post-S3."** This is the second
+  time a COUNT-based check proved structurally blind (the first was the Clinic 7→10 inflation that
+  "≤10 and non-empty" passed). When a route dies the stop count simply goes absent and every
+  count gate still passes; the assertion has to be on the ROUTE's existence, per building.
+- **Honest limits on the two new fixtures, stated not buried:** JKR now strolls 4 stops on **1 storey**
+  with `ascent=-` — it routes, but it is a thin stroll, because its walkable body is largely one
+  floor. LTU_AHouse also reports `ascent=-`: its hall is already on the top storey (VÅNING 4), so no
+  candidate sits above it. Both are data facts, not failures — and both would be worth revisiting if
+  S4's glazing metric changes which rooms are eligible.
+
 ### S4 — "scenic" is measurable, so measure it (don't hand-pick)
 Glazing is present fleet-wide: **windows** Terminal 236, Hospital 131, Clinic 58, LTU 976; **curtain
 wall** Hospital 178, Clinic 31. Score a room by the fraction of its boundary carrying glazing (window

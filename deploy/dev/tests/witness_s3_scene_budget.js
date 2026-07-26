@@ -55,10 +55,18 @@ const line = (logs, re) => logs.find(l => re.test(l)) || '';
 // Hospital and gated the others on "≤10 and non-empty" — which PASSED while the rewrite silently
 // took Clinic 7 → 10, inflating a building that was already a stroll. A one-sided cap check cannot
 // see that; a measured before/after on each building can. See G5.
+// LTU_AHouse + JKR added 2026-07-26 (watchdog: S2 covered LTU but S3 never did, and JKR was in
+// NEITHER witness despite being a real local fixture). Both matter here specifically because S3 is
+// the storey-count gate: LTU_AHouse has 19 storeys and JKR has 21 — far past Hospital's 7, which was
+// the tallest thing the cap had ever been tested against. JKR is also the fleet's unseen-convention
+// case (different authoring firm, own naming prefix, 7 disciplines), so it tests whether the scene
+// checklist generalises past our own modelling habits rather than just past our own buildings.
 const CASES = [
   { key: 'Hospital', src: path.join(LOCAL_SRC, 'Hospital_extracted.db') },
   { key: 'Clinic', src: path.join(LOCAL_SRC, 'Clinic_extracted.db') },
   { key: 'Terminal', src: path.join(LOCAL_SRC, 'Terminal_extracted.db') },
+  { key: 'LTU_AHouse', src: path.join(LOCAL_SRC, 'LTU_AHouse_extracted.db') },
+  { key: 'JKR', src: path.join(LOCAL_SRC, 'JKR_extracted.db') },
 ];
 const linkName = c => '_ws3_' + path.basename(c.src);
 
@@ -127,6 +135,7 @@ async function flyAndRead(browser, port, dbRel) {
     roles: (sb.match(/roles=(\S+)/) || [])[1],
     storeysVisited: (sb.match(/storeysVisited=(\d+)/) || [])[1],
     pool: (sb.match(/pool=(\d+)/) || [])[1],
+    comps: (line(logs, /§FLY_SCENE_COMPONENT/).match(/§FLY_SCENE_COMPONENT (.*)$/) || [])[1],
     reject: line(logs, /§FLY_ROUTE_REJECT/),
     actions: await page.evaluate(() => (window.APP.walkActions || []).length),
     err: line(logs, /PAGEERROR|§LOAD_FAIL/),
@@ -188,6 +197,18 @@ async function flyAndRead(browser, port, dbRel) {
       after.hallName ? after.hallName + ' area=' + after.hallArea : 'MISSING');
     chk('G3 ' + c.key + ': stop list not empty, tour produced actions', after.stops > 0 && after.actions > 0,
       'stops=' + after.stops + ' actions=' + after.actions + (after.reject ? ' REJECT:' + after.reject.slice(0, 60) : ''));
+    // G6 — A GRAPH ROUTE THAT EXISTED BEFORE MUST NOT BE LOST. Added 2026-07-26 after JKR: S3's
+    // whole-building area ranking elected 4 mutually-unreachable scenes on a 75-component graph, so
+    // §FLY_ROUTE became §FLY_ROUTE_REJECT reason=thin-path and the building silently dropped to the
+    // LEGACY tour — strictly worse than before S3, on the one fixture nobody had gated. Stop COUNT
+    // gates cannot see this: the count just goes to -1/absent and every "≤10" style check passes.
+    // The thing to assert is the ROUTE's continued existence, per building.
+    chk('G6 ' + c.key + ': graph route not lost (had one pre-S3 ⇒ still has one)',
+      !(before.stops > 0 && after.stops <= 0),
+      'pre-S3 ' + (before.stops > 0 ? 'ROUTED' : 'no-route') + ' → post-S3 ' +
+      (after.stops > 0 ? 'ROUTED' : 'REJECTED (' + (after.reject.replace(/^.*§FLY_ROUTE_REJECT /, '').slice(0, 50) || 'no §FLY_ROUTE') + ')'));
+    chk('G6 ' + c.key + ': scene election reported its component choice (§FLY_SCENE_COMPONENT)',
+      !!after.comps, after.comps || 'MISSING');
     chk('G4 ' + c.key + ': election auditable (§FLY_SCENE_BUDGET roles + storeysVisited)',
       !!after.roles && !!after.storeysVisited, after.roles ? 'roles=' + after.roles + ' storeysVisited=' + after.storeysVisited : 'MISSING');
     chk('G4 ' + c.key + ': a main hall scene was elected by the checklist', /(^|,)hall(,|$)/.test(after.roles || ''), 'roles=' + (after.roles || '-'));
