@@ -261,6 +261,20 @@ double-click release, the touch double-tap, and ctrl+drag-for-height — height 
 a side view. Mobile works for free, since nothing depends on a modifier key. Item 17 ("the held state
 must be unmistakable, a frozen canvas reads as a hang") is moot: nothing freezes.
 
+### Grab zones — BUILT as specified, with one cosmetic gap
+User check, 2026-07-27: *"touching pipe end will pivot its end. Touching mid will take whole length
+without pivoting."* **That behaviour is in and verified on merged main:**
+`zones = [{p:e[0],z:'a'}, {p:b.c,z:'mid'}, {p:e[1],z:'b'}]`; an end calls `_rotateAbout(b, d.z==='b', p)`
+(pivot about the far end, length invariant), `mid` translates the whole band.
+
+⚠ **Cosmetic gap, NOT behavioural — the only thing outstanding on the editor.** The *band* is drawn as
+a thin line (`_mkLine`); only the *film* is drawn as a tube. So you grab a small sphere sitting at the
+band's end rather than the pipe end itself. Functionally identical today because a band is only
+~1–1.3m, so its three spheres span it — but it does not READ as a pipe with grabbable ends, which is
+how the user describes it. Fix is small: render each band with `TubeGeometry` at a slightly larger
+radius than the film tube, and extend the hit-test from three points to "nearest third of the band's
+screen-space length" so the whole pipe is grabbable rather than three dots on it.
+
 **Inherent cost, accepted by the user:** from a top-down view you cannot change height, and from a side
 view you cannot move along the view axis. Some moves take two steps — orbit, then drag. That IS the
 workflow, not a defect.
