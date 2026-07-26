@@ -5256,3 +5256,56 @@ looked for a `rooms` array. No conclusion about room counts should be drawn from
 ### Still not built (unchanged from the spec above)
 The local agent + `/bake` endpoint, the Shift+Alt+C POST, and installer asset packaging. The runner is
 the piece those wrap — it takes the job spec on argv today, so the agent is a thin HTTP shell over it.
+
+## ⏸ PARKED BEHIND §STAKEHOLDER_STROLL S1 — §CINEMA_HALL_CANDIDATE: why the dive misses the central hall (2026-07-26)
+User: *"Clinic has a large beautiful central hallway, completely missed. So is Hospital. I suggest it
+traverse that hallway and exit the other side."* Investigated, **not implemented** — parked by
+sequencing decision, see PARKED below. Everything here is measured; hand it to whoever picks this up.
+
+### ⚠ A premise I asserted and then DISPROVED — do not rebuild on it
+I first reported the cause as `_cinemaPathPlan`'s candidate filter `rn.kind !== 'room'` excluding
+`kind === 'corridor'`, and a plan was agreed on that basis. **There is no `corridor` node kind.** I
+had inferred it from the graph key `corridorRectsByStorey`. The edit was written, measured as a
+**no-op**, and reverted rather than shipped as dead code that looks like a fix. Measured kinds:
+
+| building | room | spine | doorwp | circ | stairwp |
+|---|---|---|---|---|---|
+| Clinic | 208 (all withRects, max **166 m²**) | 41 (**withRects=0**) | 247 | 2 | 2 |
+| Hospital | 224 (all withRects, max **316 m²**) | 43 (**withRects=0**) | 427 | 7 | 12 |
+
+### The real structure — and why the agreed fix could never have worked
+- **`spine`/`circ` nodes carry ZERO rects.** The candidate loop requires `rn.rects.length` and ranks
+  by summed rect area, so admitting them changes nothing: skipped by the rects guard, and area 0 if
+  they weren't. Corridor AREA is not on nodes at all.
+- It lives in **`corridorRectsByStorey`**: Clinic 41 rects / 2344 m² total / largest single **158 m²**;
+  Hospital 43 rects / 3983 m² / largest **219 m²**.
+- **A single corridor rect LOSES to the largest room on both buildings** (158<166, 219<316). The
+  "central hallway" is a CHAIN of rects forming the spine, never one rect.
+⇒ Targeting it requires **aggregating connected corridor rects per storey into one synthetic hall
+candidate** (sum area, centroid, long axis), then ranking that in the existing area/centrality
+formula. That is real work, and a materially different change from the filter tweak agreed earlier —
+re-agree the approach before building it.
+Once a hall IS the dive target, "traverse it and exit the other side" largely falls out: the hall's
+long axis gives the traverse direction and `§CINEMA_EXIT` already routes to a far-side door.
+
+### ⛔ PARKED — waits on `FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S1 (§R5-B injector port)
+Not a priority call — a correctness one. S1 regenerates the exact artifacts this would rank:
+1. node kinds / rects / `corridorRectsByStorey` all come from the injector S1 ports → every number
+   in the tables above is invalidated when it lands.
+2. S1's **Gate 3** is about authored room identity surviving; if 21 authored IfcSpaces currently
+   collapse to 5 `RM_*` rows, the candidate POOL changes shape, not just labels.
+3. ⚠ **These measurements may be off the wrong DB snapshot.** They were taken through
+   `~/bim-ootb/viewer/buildings/*.db`, which symlink to `bim-compiler/deploy/buildings/`. S1 records
+   the injector as having run against `~/bim-ootb/buildings/` — a DIFFERENT copy (Duplex: 21 authored
+   vs 5 `RM_*`). `project_db_snapshot_divergence_landmine` biting exactly here. **Re-measure on the
+   canonical snapshot after S1 before trusting any figure above.**
+
+### Open question for the S1/graph session (do NOT let the cinema side guess at it)
+`§FLY_HL_FIRST mainHall R20 323m²` (Clinic, shipped §R5-A) reconciles with NOTHING measured here —
+largest room 166 m², largest corridor rect 158 m². Either Fly already aggregates corridor rects (in
+which case the cinema side should REUSE that, not reinvent it) or it read a different topology state.
+Answering this may hand the aggregation logic over for free.
+
+### NOT parked — §CINEMA_EXIT_BREATHE is independent and shippable
+The beat-timing change touches two constants in `viewer/effects.js` that never read the room graph;
+S1 works in `deploy/dev`'s `room_graph_bridge.js` + `lib/room_walker.js`. No overlap, no dependency.
