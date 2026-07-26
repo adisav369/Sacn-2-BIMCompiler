@@ -30,7 +30,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   — land it, steps in `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §2026-07-22. Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; room compile ALSO stale) · `XRAY_FIXTURE_CLASSIFICATION_FIX.md`
   (SampleCastle walls as fixtures, root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS 2 islands, storey='Unknown').
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: local agent, Shift+Alt+C POST, installer assets. Read its 🧭 PICK-UP BRIEF.**
+- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
+  ▶ **NEXT: `bim-ootb:feat/cinema-exit-breathe` — §CINEMA_EXIT_BREATHE retime committed NOT LANDED (fix the witness gaze metric first, G2/G3 are artifacts); §CINEMA_HALL_CANDIDATE parked behind §STAKEHOLDER_STROLL S1.**
 - **Fly-Tour lane — ALL detail in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT
   re-derive** (scrubber #999/#1000/#1002 shipped 07-25, suite 11/11; both §WATCHDOG-TOUR-SCRUB reviews there).
   Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED = eager `cinemaLookDist` raycast/waypoint in

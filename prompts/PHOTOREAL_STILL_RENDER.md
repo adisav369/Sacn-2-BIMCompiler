@@ -5309,3 +5309,10 @@ Answering this may hand the aggregation logic over for free.
 ### NOT parked — §CINEMA_EXIT_BREATHE is independent and shippable
 The beat-timing change touches two constants in `viewer/effects.js` that never read the room graph;
 S1 works in `deploy/dev`'s `room_graph_bridge.js` + `lib/room_walker.js`. No overlap, no dependency.
+
+## ▶ NEXT SESSION — chase the movie path (2026-07-26 handoff, ONE sentence)
+**Pick up `bim-ootb:feat/cinema-exit-breathe` (pushed, no PR): the §CINEMA_EXIT_BREATHE beat retime is
+committed but DELIBERATELY NOT LANDED — fix `witness_cinema_exit_breathe.js`'s gaze metric first (G2/G3
+are artifacts: a 2700 deg/s atan2 sign-flip, and a detector threshold taken relative to each run's own
+median, so "the turn is slower / the look-back starts later" is still UNPROVEN), then land it; leave
+§CINEMA_HALL_CANDIDATE parked until `FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S1 lands.**
