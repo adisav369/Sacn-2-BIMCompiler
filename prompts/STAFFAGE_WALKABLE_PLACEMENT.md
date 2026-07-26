@@ -1223,9 +1223,11 @@ against the live scene BVH — that is the new cost. The user's memory of "preca
   moment) rather than per-press raycasts. Measure build_ms before/after — target back under ~1s.
 - Witness: `§PHOTO_STAFFAGE build_ms` must drop materially with badIndoor/badInMesh STILL 0.
 
-## §STAFFAGE_PERSIST — user report (2026-07-26 evening): "saved this with the Alt-P results but when
-## opening back it is gone." FILED for next session — not investigated this session, do not assume a
-## root cause without reading this file's own §STAFFAGE_PERSIST comment first (below).
+## §STAFFAGE_PERSIST — save/reopen loses the Alt+P placement (2026-07-26 evening)
+User: *"saved this with the Alt-P results but when opening back it is gone."* Filed read-only by a
+parallel session; **do not assume a root cause without reading this file's own §STAFFAGE_PERSIST
+notes below first.** User directive 2026-07-26: *"on Save, Open should retain persist the alt-p
+results"* — i.e. the round-trip is wanted working, not merely explained.
 **Not a guess at a new bug — persistence for this exact case is already a NAMED, existing mechanism**
 (`viewer/effects.js` `A.togglePopulate`, its own comment block, undated but present before this
 report): a building saved WITH staffage carries a `staffage_instances` table, written by

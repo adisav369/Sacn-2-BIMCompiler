@@ -1480,3 +1480,54 @@ line follows real floor. Fewer waypoints on this route would mean the raster had
    Possible fix, unproven: when a detour waypoint equals an anchor that appears later in the same
    path, prefer a different legal waypoint. Must be measured, not assumed — collapsing the span is
    NOT allowed (R9 is a real intermediate room stop).
+
+### §18 (2026-07-26 evening) — residual #2 above is RESOLVED on Hospital; user now reports the SAME
+### crossing shape on a SECOND building (JKR) — generalize the check before touching any code
+**Residual #2 closed, `#1010` (`34c0286`, already merged):** `§DETOUR-NO-REVISIT`/`§NOREVISIT-LENGTH-GUARD`
+does exactly the "possible fix" above — retries with the revisit-causing waypoint vetoed, but only
+swaps to it when the alternative is NO LONGER (measured on Hospital: reject would cost 229.4m→230.9m
+drawn-line-wide, 42.3m→43.8m on the local chord). Independently RE-VERIFIED live this session (not
+just re-reading the commit), via a direct `RoomGraph.shortestPath()` call against the real browser
+state — `viewer/tests/witness_detour_revisit_shortest_2026-07-26.js` — reproducing
+`§PATH_LEGAL_DETOUR_REVISIT_KEPT storey=Level 4 ... (42.3m -> 43.8m)` fresh and confirming `kept <
+rejected`. Both candidates come only from `_detourForChord`'s own Dijkstra over real `doorwp`/`spine`/
+`circ` nodes, so this is a straight shorter-of-two-already-legal-routes comparison — the visible
+crossing on Hospital is what the genuinely shortest real walking path looks like there, not a bug.
+
+**New user report, same evening, DIFFERENT building — JKR, NOT Hospital:** a fresh Path query
+`≈ VÅNING 1 R1 → ≈ VÅNING 2 R68` (6 doors · 1 stair · 183.6m, `hops=7 portals=7 anchors={room:6
+doorwp:8 spine:7 circ:1 stairwp:1} distance=183.57m`) shows a visually similar criss-crossing yellow
+line near a corridor in the user's own screenshot. **Not investigated this session — user explicitly
+said "don't look at this building [now]," this is a filed handoff, not a finding.** Two things worth
+checking next session, in order:
+1. Re-run the SAME verification methodology (§-log first, never the screenshot alone — the FUNDAMENTAL
+   LAW this project already runs on) against JKR's actual route: does it also print a
+   `§PATH_LEGAL_DETOUR_REVISIT_KEPT` or `§PATH_LEGAL_DETOUR_NOREVISIT` line, and if so, do the two
+   compared lengths confirm `kept <= rejected` the same way Hospital's did? If yes, JKR's crossing is
+   ALSO the genuine shortest path and this closes as "confirmed pattern, not a bug, twice."
+2. If JKR's case does NOT reduce to the same log line (e.g., a crossing with no detour-retry log at
+   all, or one where the "kept" side is actually LONGER), that would be a genuinely new failure mode
+   this file hasn't seen yet — investigate `_detourForChord`/`_legalizePath` fresh against JKR's own
+   data, don't assume it's the same mechanism just because it looks the same in a screenshot.
+3. `viewer/tests/witness_detour_revisit_shortest_2026-07-26.js` is currently hardcoded to Hospital's
+   `R35`/`R8` room-name regexes — generalize it to take building file + two room-name substrings as
+   parameters (env vars, same convention `witness_corridor_reveal_shell_2026-07-26.js` already uses
+   for `WITNESS_DB`) so re-running it against JKR is a one-line change, not a rewrite.
+
+**Also unexamined, filed not fixed:** JKR's route stop 5 renders as `⚠ VÅNING 2 R61` — a warning-
+triangle prefix, unlike every other stop's `≈` (compiled-approximate) prefix on this same route. Not
+yet traced to which classifier emits `⚠` vs `≈` (possibly a `SUSPECT_OPEN`/low-enclosure flag, per
+this file's own §ROOM-HAB filtering elsewhere — not confirmed, don't assume) or whether it affects
+routing/legality at all. Check `room_habitability.js`/`room_walker.js`'s naming convention for the
+`⚠` prefix before drawing any conclusion.
+
+**Unrelated fix landed same session, for completeness (not part of the above):** `bim-ootb` PR #1019
+— Hall/Corridor category-reveal drew ZERO shells when the group was entirely
+`§CORRIDOR-ROOM-BACKPROP` synthetic guids (`rooms=0 doors=59` on Hospital, user's own live capture),
+plus every Room-Lens category color (habitable/corridor/restroom/kitchen/bedroom/utilities) failed to
+shine through in X-Ray mode (`_drawRoomShell` never set `depthTest`, same root cause
+`§FILL-SHINE-THROUGH` fixed for the single-room cuboid 11 days earlier). Both fixed, witnessed,
+merged into that PR. Orthogonal to the path-crossing question above — different function
+(`_revealCategoryGroup`/`_drawRoomShell` vs `_detourForChord`/`_legalizePath`), noted here only so a
+future session doesn't conflate "the corridor color is wrong" with "the path line crosses itself" —
+they were two separate reports from the same evening, already resolved separately.
