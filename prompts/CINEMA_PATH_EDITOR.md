@@ -182,10 +182,54 @@ hide which change moved which number.** Named so it is a known state, not a surp
 `witness_cinema_reciprocal` needs `HHS_Office_Federated_extracted.db` present or it reports a
 misleading `PLAN FAILED` that looks like a code fault.
 
+### §CPE_LIVE — first real-browser run, user, Hospital, 2026-07-27 (`b0db992`)
+**The interaction model works end to end in a real browser**, proven by the user's own pasted console:
+`§CPE_OPEN waypoints=3 pathLen=29.0m speed=4.83m/s` → `§CPE_HOLD i=0 controls.enabled=false` →
+`§CPE_DRAG i=1 axis=xz` → `§CPE_RELEASE why=dblclick` → `§CPE_CLOSE action=ok edited=true total=32.6s`
+→ `§CPE_APPLIED total=32.6s frames=489` → bake started. Constant-speed re-timing confirmed live:
+pathLen 29.0→70.4m took the film 24.0→32.6s and the frame count 360→489.
+
+**Why Hospital shows only 3 rows** (user asked): not a limit. `§ROOM_GRAPH … exits=0`, so `§CINEMA_EXIT`
+fell back to `src=db-doors`, and the graph-route branch only runs for `EXIT::` nodes. The derived route
+is therefore `settle → door → outside` — 3 points, 1 corner. A building whose room graph yields exits
+gets the corridor waypoints too. User's verdict: *"3 points is also good, simple just adjust intended
+edges."*
+
+**⚠ The defect the live log exposed that every witness had missed.** `_cinemaFan` returns
+`CINEMA_FAN_FAR` (60) for a ray that hits nothing, so a fan hitting nothing AT ALL reports `min=60.0`:
+```
+§CINEMA_DIVE ... fanMin=60.0 fanMax=60.0 fanMean=60.0 ... enclosed=0%
+§CINEMA_CORNERS ... rMin=15.00 rMax=15.00 maxDeviation=7.50m
+```
+That is **"unknown"**, not "60 metres of space" — but the rounding read it as a measurement, fell
+through to the 40%-of-leg cap, and cut **7.50m inside a hand-placed waypoint**. G8 "passed" only by
+comparing that cut against the same fictional 60m. **Terminal was in the same state (`2/2` corners
+unmeasured), so its earlier G8 pass was vacuous too** — `clear=60.00m` was printed in the run log and
+read past. Fixed: no-hit → UNKNOWN → capped at the existing 3m nudge budget (Terminal's corner radius
+4.80→3.00m, deviation 2.40→1.50m), and G8 hardened so measured corners must fit the measurement while
+unmeasured ones must obey the cap. **Lesson worth keeping: a sentinel value that is numerically
+plausible will pass a gate that compares against it. The live run found it; the headless suite could
+not, because it was grading itself with the same sentinel.**
+
+**Log hygiene fixed in the same pass:** `§CINEMA_CORNERS` fired on every `pointermove` (dozens of
+identical rows/second in the user's paste) — now only on a shape change or once a second, and it names
+`unmeasuredCorners=n/m`. `§CPE_HOLD` no longer re-logs an unchanged hold. `§MAXQ_START` is printed
+before the editor opens, so `§MAXQ_START_REVISED` now prints when an edit changes the frame count.
+
+**UI feedback, user-directed same session** (*"status feedback, the buttons should pulse louder perhaps
+some orange"*): held waypoint is ORANGE and breathes continuously at 12Hz — throttled deliberately, an
+every-frame `markDirty()` would defeat the renderer's idle parking for as long as a point is held (63k
+elements on Hospital). A 300ms settle was wrong here: a frozen canvas with a static dot is exactly the
+state that reads as a hang. Buttons now carry the status — OK turns orange and breathes when an edit is
+queued, "Save this path" lights only when there is something to save, reports `Path saved` and does NOT
+close the editor (staging is not recording), and a state line answers "what happens if I stop now?".
+Blue waypoints kept clearly visible — the user initially read them as non-functional, then corrected
+themselves (*"those 2 blue dots is part of the scene"*), so they are secondary, not de-emphasised away.
+
 ### Still open on this lane
-- The editor has **not been driven by hand in a real browser** — the interaction model (freeze, drag,
-  ctrl+drag, double-click release) is witnessed only through the plan API and the stubbed-editor G11
-  path. The drag maths is geometric, not eyeballed, but the DOM wiring itself is unproven.
+- ~~The editor has not been driven by hand in a real browser~~ — **DONE 2026-07-27, see §CPE_LIVE.**
+  Still unexercised by hand: ctrl+drag (height), the total-seconds field, and "Save this path" →
+  `Ctrl+S` → reopen. Only xz-drag, row-click hold and double-click release have live evidence.
 - `witness_cinema_path_editor.js` runs Duplex + Terminal only. Hospital/JKR/LTU_AHouse unrun.
 
 ## THE FOUNDATION — read these, do NOT re-derive them
