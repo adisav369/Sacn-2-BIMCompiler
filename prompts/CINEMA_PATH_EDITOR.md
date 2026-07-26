@@ -12,9 +12,16 @@ FUNDAMENTAL LAW. Honour this block until this file is DONE.
 NOT implemented)** → **§CPE_PACING (measured, ONE user decision open)**. The "graph dialog" framing in
 the original sections is SUPERSEDED throughout.
 
-**STATUS 2026-07-27 (later):** §CPE_BANDS and the full-film tube are now **BUILT AND WITNESSED** —
-`bim-ootb` `feat/cinema-path-editor` @ `5eb69df`. See §CPE_BANDS_BUILT below. **§CPE_PACING remains the
-only open item and is BLOCKED on one user decision** (dive/spin/orbit fixed vs derived).
+**STATUS 2026-07-27 (session end):** everything specced in this file is BUILT AND WITNESSED.
+- §CPE_BANDS + full-film tube → **merged to main, PR #1026**.
+- §CPE_SCREEN_PLANE + §CPE_PACING → **PR #1027, auto-merge armed, e2e was still running at session
+  end. FIRST THING NEXT SESSION: confirm #1027 landed** (`gh pr view 1027 --json state`); if CI went
+  red, that is the only loose end.
+- The pacing decision is ANSWERED — user: *"I already said derived"* — dive, spin and orbit are all
+  derived. Built. **One thing is left to LOOK AT, not decide: the derived totals do not match the
+  ~15s/~40s expectation** — see §CPE_PACING_BUILT.
+
+**RESUME AT:** §CPE_PACING_BUILT "what to look at next".
 
 ---
 
@@ -237,6 +244,74 @@ themselves (*"those 2 blue dots is part of the scene"*), so they are secondary, 
   Still unexercised by hand: ctrl+drag (height), the total-seconds field, and "Save this path" →
   `Ctrl+S` → reopen. Only xz-drag, row-click hold and double-click release have live evidence.
 - `witness_cinema_path_editor.js` runs Duplex + Terminal only. Hospital/JKR/LTU_AHouse unrun.
+
+## §CPE_SCREEN_PLANE — BUILT (user, 2026-07-27). Supersedes model items 13-17
+> *"Whenever user touch canvas, it reacts without double click... user does that to adjust it to be
+> 'facing' so that the dot when moved is merely facing X/Y ranging. Ie the dot when touched, can only
+> move in that Xy sense."* … *"u only move up/down left/right, thus u merely adjust your canvas to be
+> facing correctly first."*
+
+**The canvas is NEVER frozen.** A drag on a handle moves it in the CAMERA'S OWN VIEW PLANE; everything
+else falls through to OrbitControls. Drag and orbit are told apart by the hit-test on pointerdown, not
+by a mode.
+
+Why this is better than what it replaced: the freeze only ever existed because dragging and orbiting
+competed for one gesture. Resolving that by hit-test instead of by mode **deletes** the freeze, the
+double-click release, the touch double-tap, and ctrl+drag-for-height — height is now just a drag from
+a side view. Mobile works for free, since nothing depends on a modifier key. Item 17 ("the held state
+must be unmistakable, a frozen canvas reads as a hang") is moot: nothing freezes.
+
+**Inherent cost, accepted by the user:** from a top-down view you cannot change height, and from a side
+view you cannot move along the view axis. Some moves take two steps — orbit, then drag. That IS the
+workflow, not a defect.
+
+## §CPE_PACING_BUILT — derived duration, BUILT and MEASURED 2026-07-27
+Every beat is now a measured distance or angle over a stated rate. Frame count follows the plan
+(`cinema_maxq` derives `nFrames` from `plan.naturalTotal`) instead of setting it.
+
+| beat | rate | source quantity |
+|---|---|---|
+| walk | `CINEMA_WALK_MPS` 1.3 m/s | flown path length |
+| pull-back | `CINEMA_PULLBACK_MPS` 6.5 m/s | orbitRadius − exit radius |
+| dive | `CINEMA_DIVE_MPS` 20 m/s | approach distance, **capped at the envelope** |
+| spin | `CINEMA_TURN_DPS` 45°/s | turn angle, **capped at 180°** |
+| orbit | `CINEMA_TURN_DPS` 45°/s | one 360° lap = 8.0s |
+
+Beat FRACTIONS are derived-seconds over the natural total, so they no longer depend on `durationSec`
+at all — which is what makes "set the total and the whole clip scales uniformly" true by construction
+rather than by arithmetic in the editor.
+
+### ⚠ dive distance and spin angle are NOT building properties
+They are properties of **where the user was standing** when Alt+C was pressed. Measured on
+LTU_AHouse: a **746m approach** and a **522° spin**, producing a 93.6s film of which 37.3s was dive and
+11.6s spin. Pacing them raw makes runtime depend on the user's pose, which contradicts the entire
+premise. Hence the caps — approach at the envelope, spin at a half turn (the most ever needed to face
+anywhere). This distinction is the real finding of the pacing work: **walk and pull-back are building
+properties; dive and spin are pose properties; the orbit is a constant lap.**
+
+### Measured derived totals (2026-07-27, warm headless rig)
+| building | total | frames@15 | dive | spin | walk | pull-back | orbit |
+|---|---|---|---|---|---|---|---|
+| Duplex (DX) | **26.1s** | 392 | 2.5 | 0.8 | 9.7 | 5.1 | 8.0 |
+| JKR | 32.8s | 492 | 3.0 | 1.0 | 14.3 | 6.5 | 8.0 |
+| Terminal | 39.1s | 586 | 3.4 | 0.8 | 19.5 | 7.4 | 8.0 |
+| LTU_AHouse (LTU) | **55.4s** | 832 | 6.7 | 4.0 | 23.0 | 13.7 | 8.0 |
+
+### 🔎 WHAT TO LOOK AT NEXT — the totals do not match the ~15s/~40s expectation
+Duplex lands at 26.1s against ~15s; LTU at 55.4s against ~40s. **The ratio is right (2.1× vs the
+expected 2.7×); the offset is not.** The arithmetic says exactly where it goes: walk + pull-back ALONE
+give **14.8s and 36.7s** — almost exactly the expectation. Everything above that is dive + spin +
+orbit, and the **orbit's fixed 8.0s lap is the single largest constant on a small building** (8 of
+Duplex's 26.1s).
+So the open question is not "derived or fixed" — that is settled and built — but **whether the orbit
+lap and the arrival belong inside the number the user was picturing.** Three ways to close it, none
+picked:
+1. The expectation counted only the interior act + recede; the orbit is extra. Nothing to change —
+   just report totals split as "film 14.8s + orbit 8s".
+2. The orbit lap should be faster on small buildings (rate scaled by envelope rather than a constant
+   45°/s).
+3. `CINEMA_WALK_MPS` / `CINEMA_PULLBACK_MPS` want tuning together, which moves both endpoints.
+**Measure before choosing** — the table above is the baseline to move against.
 
 ## §CPE_BANDS_BUILT — implemented and witnessed 2026-07-27 (`feat/cinema-path-editor` @ `5eb69df`)
 All of §CPE_BANDS below is BUILT, plus the full-film tube. New file gates:
