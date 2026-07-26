@@ -128,6 +128,66 @@ without an edit must still be byte-identical to today.**
 - **G11** lock release: while the editor is open `A._maxqActive` is false and the wake-lock is released;
   both are re-claimed on OK. Proves defect (20) is actually fixed rather than described.
 
+## §CPE_BUILT — implemented and witnessed 2026-07-27 (`bim-ootb` `feat/cinema-path-editor` @ `bc242be`)
+**Status: the model above is BUILT. All gates green except where noted.** Files: new
+`viewer/cinema_path_editor.js`; `viewer/effects.js` (corner rounding + override wrapper + persistence
+read); `viewer/scene.js` (`cinema_path` write + `A.three2ifc`); `viewer/cinema_maxq.js` (hook + lock
+release); `viewer/sw.js` v851→v852.
+
+### Measured results — `witness_cinema_path_editor.js` 9/9 on Duplex AND Terminal
+| gate | result |
+|---|---|
+| G1 OK-without-edit byte-identical | `maxPoseDiff=0` (exactly zero, both buildings) |
+| G2 edit changes the path, not the dive before it | `maxDelta=4.30m firstDiffT=0.3375` vs `diveEnds=0.250` |
+| G3 height moves by what was asked | straight path: `[1.5000,1.5000]`, err `0.00e+0` |
+| G5 control, no authored path | `authored=false route=line`, replan diff `0.00e+0` |
+| **G7 no sharp corners** | **7.5°/frame** on a 90° dog-leg, cap 12 — was 19.8 ungated |
+| G8 deviation ≤ measured clearance | `dev=1.70m` vs `clear=7.31m/11.35m` (Duplex), `60.00m` (Terminal) |
+| G9 constant speed | length ×1.371 → time ×1.371 exactly, at 2.10 m/s (Duplex) / 4.16 m/s (Terminal) |
+| G10 LOS aim → next waypoint | `aimErr=0.7°` (Duplex), `5.8°` (Terminal) |
+| G12 elastic orbit | endY −4.14→−0.14; clamp fires and is logged (`requested=31.9 granted=45.0 clamped=true`) |
+
+`witness_cinema_path_persist.js` **7/7**: G4b writes no table without an explicit save; G4 round-trips
+through a REAL page reload (`_openDbBytes` navigates) at `maxPoseDiff=0.0000m`; G11 proves
+`_maxqActive=false` observed from INSIDE the open editor.
+
+### Two real defects the witnesses caught — both were silent, neither was visible in review
+1. **`settle` did not follow waypoint 0.** Beats 1-2 flew to the §CINEMA_SPACE pick while Beat 3
+   started from `outWp[0]`, so editing row 0 teleported the camera at the beat seam. G3 measured it
+   exactly: a 1.5m edit gave `[0.000, 1.508]` — the `0.000` IS the seam.
+2. **`odx/odz` still pointed along the DERIVED exit.** Beat 3's gaze falls back to it in the last
+   half-metre of the walk, and Beat 4 assumes it is the direction Beat 3 ends on. With an authored
+   path the gaze SNAPPED onto the old bearing: **115.2°/frame**, six times worse than the whip this
+   feature set out to retire. Both fixed by re-aiming them at the authored path.
+
+### G3's second-order term, reported not hidden
+On a path WITH corners the same 1.5m height edit lands at `[1.465, 1.508]`, spread 3.5cm. Not a height
+error: raising the path makes the corner fans hit different geometry, so the rounding radius — and with
+it the arc-length parameterization — legitimately shifts. Gated exactly on a straight path; printed as
+`INFO` on a cornered one.
+
+### ⚠ G6 finding — 5 of 6 pre-existing cinema witnesses are ALREADY RED on `origin/main`
+Verified by running each on both the branch and unmodified `origin/main`, and diffing: **byte-identical
+output in every case**, so this feature regresses nothing. But the baseline itself is not green:
+- `witness_cinema_orbit_v2` — **PASS** (6/6) on the branch.
+- `witness_cinema_damping_bleed` — **CRASHES** on both (180s `waitForFunction` timeout at its line 65).
+  This is the §CINEMA_DAMPING_BLEED witness the scope header names as must-stay-green; it cannot
+  currently prove anything either way.
+- `witness_cinema_exit_breathe` — 5/7 on both. Fails its own G0 precondition (`oci 0/1` — one run
+  fetched from object storage, so the two runs are not the same film) and G1.
+- `witness_cinema_flat_ending`, `witness_cinema_reciprocal`, `witness_cinema_glazing` — FAIL identically
+  on both.
+**Not fixed here — out of this file's scope, and fixing a red baseline under a feature branch would
+hide which change moved which number.** Named so it is a known state, not a surprise. Note
+`witness_cinema_reciprocal` needs `HHS_Office_Federated_extracted.db` present or it reports a
+misleading `PLAN FAILED` that looks like a code fault.
+
+### Still open on this lane
+- The editor has **not been driven by hand in a real browser** — the interaction model (freeze, drag,
+  ctrl+drag, double-click release) is witnessed only through the plan API and the stubbed-editor G11
+  path. The drag maths is geometric, not eyeballed, but the DOM wiring itself is unproven.
+- `witness_cinema_path_editor.js` runs Duplex + Terminal only. Hospital/JKR/LTU_AHouse unrun.
+
 ## THE FOUNDATION — read these, do NOT re-derive them
 This feature is only cheap because the substrate already exists and is proven. Referenced, not
 restated; go to the source for detail.
