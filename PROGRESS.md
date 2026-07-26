@@ -42,9 +42,8 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   room names) → S3 scene budget (Hospital 22 stops→≤10) → S2 lift shafts (Terminal: 5 lift doors = 1 shaft,
   all 5 storeys; `IfcTransportElement`=0 fleet-wide) → S4 scenic glazing metric → S5 jerk softener (profile
   first, gate = 95th-pct jerk −50%).
-- ⛔ **R5-A deploy leg — USER CALL:** OCI `sandbox/index.html` is **68 days stale** (2026-05-19, `tour.js?v=3`)
-  and matches NEITHER local tree (599/293 diff). Publishing dev = a full 68-day viewer refresh, not 5 script
-  tags. Freeze it, or refresh with own verification? `§R5-A DEPLOY LEG`.
+- ✅ **R5-A deploy leg SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` stays frozen (68 days
+  stale, unmaintained), `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); Duplex injector overwrites named IFC spaces; `docs/userguide-roompath-fixed` no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
@@ -58,7 +57,7 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 `§TOUR-POLYLINE` (tour flies the A* on-floor polyline,
   Terminal 8/92→2/91) + #1013 T2/T3 NO-CHANGE on 7 buildings + #1014 `exit` node was a LIFT-door name filter
   (egress would route TO A LIFT) → removed, Terminal 2/91→**0/84**, exits=0 fleet-wide by design.
-  T4 still ⛔ pending a REAL exit — `OCCUPANT_PATHFINDER.md §G1-EXTERIOR-DOOR-LANE` (raster coverage gates it).
+  T4/exits = its OWN track (`§G1-EXTERIOR-DOOR-LANE`), **NOT a blocker** — §HL-ORIGIN ships the stroll without it.
 - ✅ §R5-A dev-viewer port (07-26): deploy/dev flies the graph tour — Clinic `§FLY_HL_FIRST mainHall R20 323m²`;
   un-roomed → legacy. W-R5A 10/10. Room-bearing DBs are LOCAL in `~/bim-ootb/buildings` (never curl OCI).
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital

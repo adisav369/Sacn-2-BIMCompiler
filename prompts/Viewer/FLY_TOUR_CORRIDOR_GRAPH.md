@@ -2276,10 +2276,13 @@ The live object matches **neither** local tree — 599 diff lines vs `deploy/dev
 So uploading `deploy/dev/index.html` would not "add five script tags": it would replace a two-month-old
 divergent snapshot with 68 days of accumulated unrelated change, on a live outward-facing surface, in
 one shot. That is beyond what §R5-A authorises and beyond what a witness on R5-A alone can vouch for.
-**⛔ The one question for the user:** publish the whole current `deploy/dev` to `sandbox/` (a full
-viewer refresh — needs its own before/after verification, and answers "what else changed in 68 days?"),
-or leave the OCI sandbox frozen and treat `deploy/dev` as the LOCAL test surface only? Everything else
-in R5-A is done and green either way; local testing needs no upload.
+**✅ RESOLVED 2026-07-26 — no question pending. User directive: the sandbox is LOCAL.** *"Instead of
+going to OCI, why not here locally? All source DBs lie here."* So: the OCI `sandbox/` object stays
+FROZEN, `deploy/dev` served from localhost IS the sandbox, and building DBs resolve from
+`~/bim-ootb/buildings/` (the room-bearing copies — see the fixture rule above). **Do not re-open this
+as "should we deploy R5-A to OCI?"** — the answer is no, and the 68-day divergence is a property of an
+object nobody is maintaining, not a task. If OCI code deploy is ever revived it is its OWN job with its
+own before/after verification, unrelated to R5-A.
 
 ---
 
@@ -2392,5 +2395,9 @@ the live case: one shaft spans all 5 storeys). S3's cap is on scene COUNT, not i
 itself survives; but **S2 must re-run S3's gate afterwards and report the elected scene list
 before/after**. If the list changes, that is expected and fine — silently not checking is not. **Unchanged and not up for renegotiation here:** highlight-first
 ordering (#1012/#1013 proved the metric is already right), the A* on-floor polyline, and the exit rule
-(`exits=0` until `§G1-EXTERIOR-DOOR-LANE` lands a MEASURED exterior door — the arrival beat and the
-finale both wait on that, and neither is faked in the meantime).
+(`exits=0` until a MEASURED exterior door lands).
+**⚠ NOTHING IN THIS LANE WAITS ON THAT (user directive 2026-07-26: "don't wait on those 2 things...
+bottom line go for the highlight").** `§HL-ORIGIN` already starts the walk correctly on buildings with
+no entrance node — every building in the fleet is one today — so the stroll ships end to end without
+exits. `§G1-EXTERIOR-DOOR-LANE` runs on its OWN track and improves the arrival/finale beats WHEN it
+lands; it is not a precondition for S1-S5 and must not be cited as one.
