@@ -7,8 +7,14 @@ do not touch `_cinemaPathPlan`'s §CINEMA_SPACE block (~L3486-3610)**; see §Out
 **Read the log after every run.** Verification on this project is `§`-tagged console output, not
 screenshots — and for anything continuous (camera path, angles, Z) it is the NUMBERS, per CLAUDE.md's
 FUNDAMENTAL LAW. Honour this block until this file is DONE.
-**⚠ The interaction model below (§CINEMA_PATH_EDITOR_MODEL, 2026-07-26) SUPERSEDES the
-"graph dialog" framing in the original sections — read it FIRST.**
+**⚠ READING ORDER for a fresh session:** §CINEMA_PATH_EDITOR_MODEL (settled data model) → §CPE_BUILT
+(what shipped) → §CPE_LIVE (browser run + the defect it caught) → **§CPE_BANDS (next build, spec ready,
+NOT implemented)** → **§CPE_PACING (measured, ONE user decision open)**. The "graph dialog" framing in
+the original sections is SUPERSEDED throughout.
+
+**STATUS 2026-07-27:** the 3-point editor is BUILT, witnessed and merged to `bim-ootb` main
+(#1023 `08bbd3e`, #1025 `15c54a0`). Bands, the full-film tube, and derived pacing are SPECCED AND
+MEASURED but NOT BUILT. Next session starts at §CPE_BANDS.
 
 ---
 
@@ -231,6 +237,132 @@ themselves (*"those 2 blue dots is part of the scene"*), so they are secondary, 
   Still unexercised by hand: ctrl+drag (height), the total-seconds field, and "Save this path" →
   `Ctrl+S` → reopen. Only xz-drag, row-click hold and double-click release have live evidence.
 - `witness_cinema_path_editor.js` runs Duplex + Terminal only. Hospital/JKR/LTU_AHouse unrun.
+
+## §CPE_BANDS — NEXT BUILD, spec settled with the user 2026-07-27, NOT YET IMPLEMENTED
+**Read this before touching the editor again.** Settled in discussion; user quotes inline. Supersedes
+the "3 draggable points" shape in §CINEMA_PATH_EDITOR_MODEL — the *data model* (waypoints only, LOS
+aim, constant speed) is unchanged; what changes is that each anchor becomes a rigid **band**.
+
+### The idea
+> *"Let the first not a point but a band... a stretch say about 5% of the inside... so is the exit...
+> by manipulating that, u can have creative curves"*
+
+A point gives position only. A band gives position **and direction** — its two ends are a tangent, and
+tangents are what actually shape a curve. That is the whole reason this is worth building.
+
+### The rules (all settled, do not re-litigate)
+1. **Three bands, one per existing anchor:** settle, wp1(exit door), stop. No bands added or removed.
+2. **A band is a SHORT STRAIGHT segment.** > *"the bands are short straight parts of the path. When
+   they are moved their length and straightness does not morph.. keep that steady for now."*
+   Rigid. Dragging never bends or resizes one.
+3. **Grab zones:** > *"when clicking on one end it pivots.. in the middle it is the whole length moving
+   as one."* End = pure ROTATION about the far end (not a resize — length is invariant).
+   Middle = translation of the whole band.
+4. **Length is therefore NOT draggable** → it needs a number field on the row. The "5% of the inside"
+   seed is the actual length, not just a starting size (I initially got this wrong and was corrected).
+5. **6 waypoints, folded into 3 rows.** > *"in a way the 3 bands are actually 6 waypoints"* … *"but
+   efficiently folded into 3."* The table stays 3 rows. The flown path expands to 6 points at plan
+   time, flies, and discards them.
+6. **STORE 3 BANDS, NOT 6 POINTS.** `cinema_path` becomes 3 rows of (anchor xyz, direction, length).
+   Rigidity then survives save/reload **structurally** — six free points would just be six points, free
+   to bend apart on the next session. Safe to change the schema: no building in the wild has the table
+   (every restore to date logs `§CINEMA_PATH_RESTORE none`).
+7. **Bands are highly movable, and the path must re-form.** > *"user can drag it to a far end, the path
+   has to bounce back."* No placement limits. Connector curvature scales with its own span, so a 5m gap
+   and a 60m gap both read as one continuous curve.
+8. **Authored is authored.** Drag a band through a wall and the camera goes through the wall — the same
+   settled doctrine that already governs the derived straight-line route, and it applies more strongly
+   to a point placed by hand. Do not add collision fighting.
+
+### Geometry consequences — this REPLACES the corner-fillet approach
+- **No rounding INSIDE a band** — that is the straight part; rounding it is the morphing rule 2 forbids.
+- **The connector between two bands is tangent-matched at BOTH ends**: it leaves a band along that
+  band's own direction and arrives at the next along that one's. A cubic Hermite whose tangents ARE the
+  band directions and whose handle length scales with the span. If the connector arrives from any other
+  direction you get a kink exactly at the band end — the opposite of the goal.
+- The `A.cinemaFan` clearance bound still caps how far a connector may bow. Note it is WEAK outside
+  (the fan sees no geometry there, so the conservative cap applies, not a measurement — see §CPE_LIVE).
+- `_cinemaRoundCorners` (effects.js) is therefore superseded for the authored path; keep it for the
+  derived path or replace both, but do not run it across band interiors.
+
+### Still open on bands
+- **Does the camera TRAVEL the settle band during the spin?** Asked, not answered. Travelling it gives
+  the drift-and-look that the settled *"no robotic abrupt stop and turn"* ruling asks for, but changes a
+  beat that has existing witnesses. My recommendation: travel it, after first confirming no witness
+  asserts a stationary spin.
+- Dive origin and orbit are still NOT authorable. §CPE_LIVE's complaint is only half closed by the tube
+  (visible ≠ editable). Decide later whether they become bands 4 and 5.
+
+### Also asked, also NOT YET BUILT — the full-film tube
+> *"the whole flight path must be visible… Render the FULL path as one continuous highlighted curve —
+> dive origin → settle → wp1 → stop → orbit… Dragging any of the three must re-derive and re-render
+> that whole curve live."* And: *"the flight path should a thicker perhaps blue/yellow pipe depending on
+> background colour to contrast."*
+
+Draw it by sampling `plan.poseAt(t)` across t=0..1 — that curve IS the flown film, so it cannot drift
+from what the bake flies. Tube geometry, colour chosen against background luminance (yellow on dark,
+blue on light), re-checked on background toggle.
+**Perf is NOT a blocker — measured, warm:** re-plan 13ms Duplex, 82ms Terminal; sampling 240 poses
+0.3ms. (The `§CINEMA_PLAN_MS 456.8` in a live log was a COLD first plan — do not design around it.)
+
+### Engineering risk assessment (asked directly: "is the engineering of the 3 bands an issue?")
+Not mathematically. The constrained Hermite is craft, not research. The real risks are process:
+1. **G7/G8/G10 are invalidated by construction** — they assume free waypoints + corner fillets. That
+   green is RE-EARNED, not carried. Rewrite them for band+connector before claiming the feature works.
+2. **Another session owns `_cinemaPathPlan`'s §CINEMA_SPACE block (~L3486-3610)** — keep the footprint
+   outside it, as the current implementation already does.
+3. **Sequence bands and pacing separately.** Both touch timing; landed together it is impossible to say
+   which change moved which number.
+
+## §CPE_PACING — total duration must be DERIVED, not fixed (user, 2026-07-27). MEASURED, ONE DECISION OPEN
+Consolidated user ask, three parts:
+1. **Interior:** slower constant m/s, re-applied on every edit so dragging always retimes to hold it.
+2. **Exterior:** pull back from NEAR to the final orbit distance, rather than starting far.
+3. **Total:** falls out of (1) and (2) applied to each building's real geometry — not one fixed number.
+   Expectation to CHECK, not to hit: small (DX) ≈ 15s, large (LTU) ≈ 40s.
+
+### The current model is inverted — measured, not asserted
+Today total is fixed (360 frames / 15fps = 24s) and speed is whatever makes the derived walk fit
+`CINEMA_OUT_SEC`=6s. So **the bigger the building, the faster the camera**: Duplex 2.10 m/s, JKR 3.10,
+Terminal 4.22, LTU_AHouse 4.99. Exactly backwards. Frames must become a CONSEQUENCE of duration, not
+its cause (`cinema_maxq.js` currently derives duration from `nFrames`).
+
+### Measured geometry (2026-07-27, warm, headless ANGLE rig)
+| building | walk pathLen | envelope | near R | final R | pull-back | lap @finalR |
+|---|---|---|---|---|---|---|
+| Duplex | 12.6m | 50.0 | 11.6 | 45.0 | **33.4m** | 282.7m |
+| JKR | 18.6m | 60.3 | 12.0 | 54.3 | 42.3m | 341.3m |
+| Terminal | 25.3m | 67.8 | 12.9 | 61.0 | 48.1m | 383.3m |
+| LTU_AHouse | 29.9m | 134.6 | 32.1 | 121.1 | **89.0m** | 761.1m |
+
+Duplex→LTU: pull-back 2.7×, envelope 2.7×. The user's 15s→40s expectation is 2.7×. **The ratio is
+already present in the real measurements** — nothing needs inventing to produce it.
+
+### The result that decides the design
+Taking ONLY the two quantities the user named — interior walk at a constant **1.3 m/s**, exterior
+pull-back at **6.5 m/s**:
+
+| | walk | pull-back | sum |
+|---|---|---|---|
+| Duplex | 9.7s | 5.1s | **14.8s** |
+| JKR | 14.3s | 6.5s | 20.8s |
+| Terminal | 19.5s | 7.4s | 26.9s |
+| LTU_AHouse | 23.0s | 13.7s | **36.7s** |
+
+14.8s vs the ~15s expectation, 36.7s vs ~40s. **These constants were not tuned to hit those numbers** —
+they are measured path length and measured pull-back distance over two stated speeds.
+
+### ⛔ THE ONE OPEN DECISION — ask the user first, do not guess
+The three beats above are still FIXED: dive 6s + spin 2s + orbit 8s = **a 16s floor**, which alone
+exceeds the 15s small-building expectation. Add them back unchanged and totals become 30.8s (Duplex)
+and 52.7s (LTU), and the spread collapses from 2.5× to 1.7× — i.e. the expectation is only met if those
+three ALSO stop being fixed seconds.
+**Question put to the user, unanswered at session end:** do dive / spin / orbit become derived too —
+dive paced by its real approach distance, spin by its real turn angle, orbit by a constant angular rate
+— or do they stay fixed and the real totals land nearer 31s and 53s?
+⚠ Note `CINEMA_DIVE_SEC`'s comment says the dive is deliberately time-boxed and *"never clamped, never
+distance-proportional"* (§CINEMA_SIMPLE). Deriving it CONTRADICTS a settled ruling — that is exactly why
+this is a user decision and not an implementation choice.
 
 ## THE FOUNDATION — read these, do NOT re-derive them
 This feature is only cheap because the substrate already exists and is proven. Referenced, not
