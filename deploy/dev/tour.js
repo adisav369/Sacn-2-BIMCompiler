@@ -507,9 +507,48 @@ function setupTour(A) {
       stN[n.storey] = (stN[n.storey] || 0) + 1;
     }
     const storeys = Object.keys(byStorey).sort((a, b) => stZSum[a] / stN[a] - stZSum[b] / stN[b]);
-    // §R6-BUDGET (Hospital live-report: "lingers too long on first floor"): rooms per storey
-    // scale DOWN as storey count grows — tall buildings get a tighter, corridor-dominant tour.
-    const K = storeys.length >= 4 ? 2 : storeys.length === 3 ? 3 : 4;
+    // ═══ §R6-SCENE-BUDGET (FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL S3, 2026-07-26) ═══
+    // SUPERSEDES §R6-BUDGET's per-storey model (user's call, recorded in the spec — not a
+    // re-litigation). The doctrine in one line: **the tour is a stroll, not a survey.** Coverage was
+    // never the goal; a 7-storey Hospital producing 22 stops by sweeping every floor is a survey.
+    // A stakeholder wants arrival, the main hall, a few scenic moments, one honest vertical move,
+    // and out.
+    //
+    // So STOREYS STOP BEING THE ITERATION UNIT — scenes are. The old code did
+    //   `K = storeys>=4 ? 2 : storeys===3 ? 3 : 4` rooms + up to 3 corridors, PER STOREY,
+    // which is unbounded in storey count (Hospital: 7 storeys → 22 stops). The new code elects a
+    // WHOLE-BUILDING checklist capped at SCENE_BUDGET regardless of how tall the building is.
+    //
+    // ⚠ WHAT THIS DOES NOT TOUCH — S3 changes SELECTION (which stops exist), never ORDER. §HL-FIRST
+    // below still does the impression-first reordering and still re-derives the main hall as the
+    // largest of `stops`; because S3 always elects that same node, its log line and §HL-ORIGIN
+    // behave exactly as before on a smaller set. The A* on-floor polyline, the exit rule
+    // (exits=0 until a MEASURED exterior door lands) and the legality gates are likewise untouched.
+    //
+    // ⚠ CONFIDENCE TAG, stated the way §STAKEHOLDER_STROLL S2 demands of its own numbers: the
+    // budget of 10 is a **convention-prior, not measured** — it is the spec's own "capped ~8-10
+    // stops", chosen as the ceiling of that range so the cap binds on Hospital without trimming
+    // Clinic's existing 7-stop stroll. SPINE_MAX=3 is carried over unchanged from
+    // §R6-CORRIDOR-SPINE (it was "up to 3 corridors" there too), only re-scoped from per-storey to
+    // whole-building. Neither is derived from measurement; both are reported in the §-log so the
+    // election is auditable rather than asserted. "Scenic" is NOT scored here — that is S4's
+    // glazing metric; until it lands, scenic == largest measured space, which is the same
+    // EXTRACT-ONLY area ranking this file already used. No new invention.
+    // ⚠ THE BUDGET IS A CEILING, NOT A TARGET (fixed 2026-07-26 after the first witness run: the
+    // first cut filled every building to exactly 10, which took Clinic 7 → 10 — S3 is meant to TRIM
+    // a survey, and inflating a building that was already a stroll is the same mistake pointing the
+    // other way). The spec's checklist is literal and it is what sizes the tour:
+    //   arrival → main hall → one ascent highlight → 2-3 scenic stops → finale
+    // i.e. ~6-9 scenes; the 8-10 cap is the ceiling that catches a pathological pool, not the goal.
+    // So the scenic fill is bounded by SCENIC_MAX (the checklist's own "2-3"), and SCENE_BUDGET only
+    // ever binds if hall+ascent+spine+scenic somehow exceeds it.
+    // "arrival" and "finale" get NO new machinery: exits are 0 fleet-wide by design (§TOUR_HIGHLIGHT
+    // _LANE #1014 — the old `exit` node was a lift-door name filter), so §HL-ORIGIN already starts
+    // the walk low and the last elected scene IS the finale. Inventing an arrival/finale beat
+    // without a MEASURED exterior door is exactly what the exit rule forbids.
+    const SCENE_BUDGET = 10;  // convention-prior (spec: "capped ~8-10 stops"), NOT measured — a CEILING
+    const SPINE_MAX = 3;      // unchanged from §R6-CORRIDOR-SPINE, re-scoped per-building
+    const SCENIC_MAX = 3;     // the checklist's own "2-3 scenic stops" — this is what sizes the tour
 
     // Entrance: the lowest exit node (E4 — a real non-room door), when the building has one.
     let entrance = null;
@@ -540,26 +579,75 @@ function setupTour(A) {
     }
     let isolatedDropped = 0, typeDeduped = 0;
     const stops = [];
-    for (const st of storeys) {
-      const b = byStorey[st];
-      b.corridors.sort((a, c) => c.area - a.area);
-      b.rooms.sort((a, c) => c.area - a.area);
-      // §R6-CORRIDOR-SPINE (user: "stick more to long corridors and hallways"): corridors are
-      // the tour's spine — up to 3 cruise stops per storey (was 1), rooms are brief detours.
-      const picks = b.corridors.slice(0, 3);
-      let roomsTaken = 0;
-      for (const r of b.rooms) {
-        if (roomsTaken >= K) break;
+    {
+      // ── The CANDIDATE POOL is the whole building, not a storey. Isolated nodes are dropped up
+      // front exactly as before (§CONNECTED-STOPS: a stop absent from the edge set is unroutable,
+      // and anchoring on one sent LTU to a permanent legacy fallback). Corridor-class membership
+      // is read from byStorey so the rec objects stay IDENTICAL — the pause logic further down
+      // does `byStorey[st].corridors.indexOf(s)`, which only works on the same object identity.
+      const pool = [];
+      for (const st of storeys) {
+        const b = byStorey[st];
+        for (const r of b.corridors) { if (edgeGuids[r.guid]) { r._spine = true; pool.push(r); } else isolatedDropped++; }
+        for (const r of b.rooms) { if (edgeGuids[r.guid]) { r._spine = false; pool.push(r); } else isolatedDropped++; }
+      }
+      pool.sort((a, c) => c.area - a.area);   // one ranking, whole building, measured area only
+
+      const taken = {};
+      function elect(r, role) {
+        if (!r || taken[r.guid] || stops.length >= SCENE_BUDGET) return false;
+        taken[r.guid] = true; r._role = role; stops.push(r);
+        return true;
+      }
+      // SCENE 1 — the main hall: the largest measured space in the WHOLE building, any class
+      // (a real main hall often IS corridor-class, §R4). Elected first so it can never be
+      // budgeted out by a floor sweep, which is exactly what the per-storey model risked.
+      const mainHall = pool[0];
+      elect(mainHall, 'hall');
+      // SCENE 2 — the ascent highlight: the largest space on a DIFFERENT storey whose own measured
+      // mean z is above the hall's. Same comparison §HL-FIRST already uses — two measured means,
+      // no metre threshold, nothing building-specific. This is the "one honest vertical move":
+      // electing it HERE (rather than hoping a floor sweep reaches it) is what guarantees a capped
+      // tour still climbs. Absent on a single-storey building, and that is logged, not faked.
+      if (mainHall) {
+        const mhZ0 = stZSum[mainHall.node.storey] / stN[mainHall.node.storey];
+        for (const r of pool) {
+          if (taken[r.guid]) continue;
+          if (r.node.storey !== mainHall.node.storey && (stZSum[r.node.storey] / stN[r.node.storey]) > mhZ0) { elect(r, 'ascent'); break; }
+        }
+      }
+      // SCENE 3.. — the spine: up to SPINE_MAX corridor-class cruise stops, largest first
+      // (§R6-CORRIDOR-SPINE, user: "stick more to long corridors and hallways"). Reserved BEFORE
+      // the scenic fill because a pure area ranking loses corridors to rooms on every building
+      // measured so far — without this reservation the spine would silently vanish under the cap.
+      let spineTaken = stops.filter(s => s._spine).length;
+      for (const r of pool) {
+        if (spineTaken >= SPINE_MAX || stops.length >= SCENE_BUDGET) break;
+        if (!r._spine || taken[r.guid]) continue;
+        if (elect(r, 'spine')) spineTaken++;
+      }
+      // SCENE .. — the scenic stops: the checklist's "2-3", largest measured first, NOT a fill to
+      // the ceiling. §R6-TYPE-DEDUPE still applies but is no longer the main filter (the checklist
+      // is): visiting the first of each named function only, tour-wide.
+      let scenicTaken = 0;
+      for (const r of pool) {
+        if (scenicTaken >= SCENIC_MAX || stops.length >= SCENE_BUDGET) break;
+        if (taken[r.guid]) continue;
         const tok = typeToken(r.node);
         if (tok && seenType[tok]) { typeDeduped++; continue; }
         if (tok) seenType[tok] = true;
-        picks.push(r);
-        roomsTaken++;
+        if (elect(r, 'scenic')) scenicTaken++;
       }
-      for (const r of picks) {
-        if (edgeGuids[r.guid]) stops.push(r);
-        else isolatedDropped++;
-      }
+      // Never-empty guard (the spec's own third gate): if every candidate was type-deduped or the
+      // pool was degenerate, fall back to the single largest connected node rather than returning
+      // no stops and dropping the building to the legacy tour.
+      if (!stops.length && pool.length) elect(pool[0], 'fallback');
+
+      console.log('[TOUR] §FLY_SCENE_BUDGET budget=' + SCENE_BUDGET + ' spineMax=' + SPINE_MAX +
+        ' scenicMax=' + SCENIC_MAX +
+        ' storeys=' + storeys.length + ' pool=' + pool.length + ' elected=' + stops.length +
+        ' roles=' + stops.map(s => s._role).join(',') +
+        ' storeysVisited=' + Object.keys(stops.reduce((m, s) => (m[s.node.storey] = 1, m), {})).length);
     }
     if (isolatedDropped || typeDeduped) console.log('[TOUR] §FLY_ROUTE_ISOLATED dropped=' +
       isolatedDropped + ' typeDeduped=' + typeDeduped);

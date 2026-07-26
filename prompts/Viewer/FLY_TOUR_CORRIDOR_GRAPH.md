@@ -2429,6 +2429,58 @@ Replace `K = storeys>=4 ? 2 : …` per storey with a WHOLE-BUILDING checklist of
 - Small rooms are simply not scenes. The type-dedupe (`§R6-TYPE-DEDUPE`) stays but stops being the
   main filter — the scene checklist is.
 
+#### ✅ S3 SHIPPED 2026-07-26 — W-S3-SCENE-BUDGET **28/28** (`deploy/dev/tests/witness_s3_scene_budget.js`)
+`deploy/dev/tour.js`: the per-storey budget (`K = storeys>=4 ? 2 : storeys===3 ? 3 : 4` rooms + up to
+3 corridors, **per storey**, unbounded in storey count) is replaced by a whole-building scene
+checklist — `§R6-SCENE-BUDGET`. Storeys are no longer the iteration unit; scenes are. Election order:
+**hall** (largest measured space building-wide, elected first so a floor sweep can never budget it
+out) → **ascent** (largest space on a storey whose measured mean z is above the hall's — the same
+two-means comparison §HL-FIRST already uses, no metre threshold) → **spine** (≤3 corridor-class
+cruise stops, reserved BEFORE the scenic fill because a pure area ranking loses corridors to rooms on
+every building measured) → **scenic** (≤3, largest measured first, type-dedupe still on but no longer
+the main filter) → never-empty fallback.
+
+**Measured, same fixture, before AND after in one run (G0 — the baseline is measured, not quoted):**
+
+| building | pre-S3 stops | post-S3 stops | roles elected | storeysVisited | main hall (unchanged) |
+|---|---|---|---|---|---|
+| Hospital (7 storeys) | **18** | **7** | hall,ascent,spine×2,scenic×3 | 3 | `⚠ Level 1 R14` 315.7 m² |
+| Terminal (6 storeys) | **15** | **8** | hall,ascent,spine×3,scenic×3 | 3 | `⚠ Aras 01 R1` 660.0 m² |
+| Clinic (3 storeys) | **7** | **6** | hall,ascent,spine,scenic×3 | 2 | `≈ First Floor R48` 111.2 m² |
+
+- **SELECTION changed, ORDER did not.** §HL-FIRST still reorders and still re-derives the hall as the
+  largest of `stops`; because S3 always elects that same node, every building's `§FLY_HL_FIRST` line
+  is identical before and after (see the table's last column). §HL-ORIGIN, the A* on-floor polyline
+  and the exit rule are untouched.
+- **⚠ THE SPEC'S "Hospital 22 stops" IS NOT REPRODUCIBLE — measured pre-S3 baseline is 18**, and the
+  cause is known, not hand-waved: Hospital is **142 IfcSpaces, ALL `RM_`, with no `rooms_meta`**, so
+  S1's version-stamp check recompiles it exactly as it does Clinic. The 22 was measured PRE-S1; this
+  baseline is post-S1/pre-S3. **This is the S3↔S1 interaction, arriving one lane earlier than the
+  spec's predicted S3↔S2 one.** The gate's substance is unaffected (a 7-storey survey gets trimmed),
+  but the number 22 should not be re-quoted — use 18, or re-measure.
+- **⚠ CONFIDENCE TAGS, stated because §STAKEHOLDER_STROLL S2 demands it of its own numbers:**
+  `SCENE_BUDGET=10` is a **convention-prior, not measured** (the spec's own "capped ~8-10", taken at
+  the ceiling) and is a **CEILING, not a target** — see the correction below. `SPINE_MAX=3` is
+  §R6-CORRIDOR-SPINE's existing 3, only re-scoped from per-storey to per-building. `SCENIC_MAX=3` is
+  the checklist's own "2-3 scenic stops". All three are reported in `§FLY_SCENE_BUDGET` every run.
+  **"Scenic" is NOT scored here** — that is S4's glazing metric; until it lands, scenic == largest
+  measured space, the same EXTRACT-ONLY area ranking this file already used. No new invention.
+- **"arrival" and "finale" get NO new machinery, deliberately.** Exits are 0 fleet-wide by design
+  (#1014: the old `exit` node was a lift-door name filter), so §HL-ORIGIN already starts the walk low
+  and the last elected scene IS the finale. Inventing either beat without a MEASURED exterior door is
+  what the exit rule forbids; `§G1-EXTERIOR-DOOR-LANE` improves both WHEN it lands.
+- **⚠ SELF-CORRECTION, recorded because the witness initially passed the bug.** The first cut treated
+  the budget as a TARGET: every building filled to exactly 10, taking **Clinic 7 → 10** — inflating a
+  building that was already a stroll, the mirror image of the survey S3 exists to trim. It passed a
+  "≤10 and non-empty" check, which structurally cannot see inflation. Fixes: `SCENIC_MAX` bounds the
+  fill so the checklist (not the ceiling) sizes the tour; **every** case now measures its own pre-S3
+  baseline (not just Hospital); and new **G5 asserts post-S3 stops ≤ pre-S3 stops on every building**.
+- **⚠ A TRAP REMOVED FROM THE WITNESS ITSELF:** it first resolved the baseline as
+  `HEAD:deploy/dev/tour.js`, which becomes the POST-S3 file the moment S3 is committed — before would
+  equal after, G5 would pass trivially, G1's trim check would never fire, and the comparison would go
+  green while testing nothing. It now walks `tour.js`'s history and takes the newest revision lacking
+  the `§R6-SCENE-BUDGET` marker (resolved this run: `cfc713575`), which is correct at any future date.
+
 ### S4 — "scenic" is measurable, so measure it (don't hand-pick)
 Glazing is present fleet-wide: **windows** Terminal 236, Hospital 131, Clinic 58, LTU 976; **curtain
 wall** Hospital 178, Clinic 31. Score a room by the fraction of its boundary carrying glazing (window

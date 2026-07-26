@@ -43,9 +43,10 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
 - **`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`** log-precision-first (self-diagnosing computed-vs-rendered +
   coverage logs) MUST land BEFORE live-diagnosing Terminal's "disciplines disappeared".
-- ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S3** (S1 injector port DONE 07-26,
-  see Archive) — Hospital 22 stops→≤10 → S2 lift shafts (Terminal 5 lift doors=1 shaft, 5 storeys;
-  `IfcTransportElement`=0 fleet-wide) → S4 glazing metric → S5 jerk softener (95th-pct jerk −50%).
+- ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S2** (S1+S3 DONE 07-26, Archive)
+  — S2 lift shafts (Terminal 5 lift doors=1 shaft, 5 storeys; `IfcTransportElement`=0 fleet-wide;
+  must re-run S3's gate after, per the named S3↔S2 interaction) → S4 glazing metric → S5 jerk
+  softener (95th-pct jerk −50%).
 - ✅ **R5-A deploy leg SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` stays frozen (68 days
   stale, unmaintained), `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); `docs/userguide-roompath-fixed` no PR.
@@ -56,27 +57,25 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - Modeller polish: PBR textures (9); SSAO (needs EffectComposer); ARC occupancy drift 99%→92-95% low-pri — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live ("no more
-  flicker") — `PHOTOREAL_STILL_RENDER.md` bottom sections.
+- ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 §TOUR-POLYLINE (Terminal 8/92→2/91) + #1013 T2/T3
-  NO-CHANGE on 7 buildings + #1014 `exit` was a LIFT-door name filter → removed, 2/91→**0/84**,
-  exits=0 fleet-wide by design; T4/exits = its OWN track (`§G1-EXTERIOR-DOOR-LANE`), NOT a blocker.
-- ✅ §R5-A+S1 dev-viewer graph tour + self-heal injector (07-26): W-S1-ROOM-INJECTOR **28/28**,
-  W-R5A 10/10 (G4 retargeted). Duplex's 21 authored rooms survive by name+guid. Clinic recompile
-  (118→207, hall 111.2m²) gate-backed by G2b after a watchdog no-saved-log catch; the 323.4m² half
-  is the pre-S1 §R5-A record, NOT re-measured. Detail: `FLY_TOUR_CORRIDOR_GRAPH.md §S1 SHIPPED`.
+  NO-CHANGE on 7 buildings + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**, exits=0
+  fleet-wide by design; T4/exits = its OWN track (`§G1-EXTERIOR-DOOR-LANE`), NOT a blocker.
+- ✅ §R5-A+S1 dev-viewer graph tour + self-heal injector (07-26) **28/28** + W-R5A 10/10 (G4
+  retargeted): Duplex's 21 authored rooms survive by name+guid; Clinic recompile (118→207, hall
+  111.2m²) gate-backed by G2b after a watchdog no-saved-log catch (323.4m² = pre-S1 record, NOT
+  re-measured). `FLY_TOUR_CORRIDOR_GRAPH.md §S1 SHIPPED`.
+- ✅ §STAKEHOLDER_STROLL S3 scene budget (07-26) **28/28**: per-storey `K` → whole-building
+  checklist (hall→ascent→spine≤3→scenic≤3). Hospital **18→7**, Terminal **15→8**, Clinic **7→6**,
+  main hall identical before/after. ⚠ spec's "Hospital 22" is PRE-S1, use 18. `§S3 SHIPPED`.
 - ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2%
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
-  (§BRIDGE-ROUTED-LEGAL + OCI patch gate `OCI_UPLOAD.md` §RULES 6), F1-F4 logged
-  (`Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`).
-- ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 `ROOM_INJECTOR_NEEDLE.md` · ✅
-  nav-DLOD perf LTU 122k (07-23) #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle + Home
-  fill-frame (07-22/23) #969 `ROOM_CYCLE_HOME_SHORTCUTS.md`.
-- ✅ Branch hygiene (07-25): bim-ootb 347 local / 424 remote, 0 merged-PR branches left.
-- 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed
-  — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
-- Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` /
-  `_pre_2026-07-05.md` / `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
+  (§BRIDGE-ROUTED-LEGAL + OCI patch gate §RULES 6) `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+- ✅ Room-injector self-heal Stages 1-4 fleet-wide (07-21/22) #947-#967 `ROOM_INJECTOR_NEEDLE.md` ·
+  ✅ nav-DLOD perf LTU 122k (07-23) #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle +
+  Home fill-frame (07-22/23) #969 · ✅ Branch hygiene (07-25): 0 merged-PR branches left.
+- 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
+- Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
 
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches
