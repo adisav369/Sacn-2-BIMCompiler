@@ -202,6 +202,72 @@ function splitCensus(rows) {
     await page.close();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  // G2b — Clinic's ROOM-SET CHANGE, measured and asserted here rather than eyeballed.
+  // ⚠ WHY THIS BLOCK EXISTS (watchdog finding, 2026-07-26): S1's first report cited Clinic moving
+  // 118→207 rooms and its main hall 323.4→111.2 m² from a scratchpad probe and terminal output —
+  // no §-line in any saved log. Under this project's Log Mandate that is not evidence. The numbers
+  // are real, so the fix is to make the witness produce them: measure before/after, capture the
+  // §S1_VERSION_STALE line that causes the recompile, and print the elected hall's area.
+  // The MECHANISM is asserted; the exact counts/areas are PRINTED, not hardcoded — pinning 207 or
+  // 111.2 would make the gate fail on any legitimate walker improvement, which is not what it is
+  // for. The mechanism is the claim: no rooms_meta ⇒ version-stale ⇒ recompile ⇒ a bigger room set.
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  console.log('\n── G2b — Clinic (118 shipped compiled rooms, local ~/bim-ootb/buildings), press ✈');
+  {
+    const CLINIC_SRC = process.env.LOCAL_DB_SRC ? path.join(process.env.LOCAL_DB_SRC, 'Clinic_extracted.db')
+                                                : '/home/red1/bim-ootb/buildings/Clinic_extracted.db';
+    const clinicLink = path.join(DEV, 'buildings', '_ws1_Clinic_extracted.db');
+    if (!fs.existsSync(CLINIC_SRC)) {
+      chk('G2b Clinic fixture present', false, 'ABSENT ' + CLINIC_SRC + ' — cannot measure');
+    } else {
+      try { fs.unlinkSync(clinicLink); } catch (e) {}
+      fs.symlinkSync(CLINIC_SRC, clinicLink);
+      try {
+        const { page, logs } = await openBuilding(browser, 'buildings/_ws1_Clinic_extracted.db');
+        const before = await page.evaluate(() => {
+          const q = s => { try { return window.APP.dbQuery(s); } catch (e) { return null; } };
+          const c = q("SELECT COUNT(*), COUNT(CASE WHEN guid LIKE 'RM\\_%' ESCAPE '\\' THEN 1 END) FROM spatial_structure WHERE type='IfcSpace'");
+          return { total: c ? c[0][0] : -1, compiled: c ? c[0][1] : -1, meta: q("SELECT version FROM rooms_meta WHERE id=1") };
+        });
+        await page.evaluate(() => window.APP.toggleFlyAround());
+        for (let i = 0; i < 240; i++) { if (has(logs, /§FLY_ROUTE |§FLY_ROUTE_REJECT/)) break; await new Promise(r => setTimeout(r, 1000)); }
+        await new Promise(r => setTimeout(r, 3000));
+        const after = await page.evaluate(() => {
+          try { const c = window.APP.dbQuery("SELECT COUNT(*), COUNT(DISTINCT room_guid) FROM spatial_structure WHERE type='IfcSpace'");
+                return { rects: c[0][0], rooms: c[0][1] }; } catch (e) { return { rects: -1, rooms: -1 }; }
+        });
+        const stale = line(logs, /§S1_VERSION_STALE/), inj = line(logs, /§S1_INJECT /),
+              hl = line(logs, /§FLY_HL_FIRST/), fly = line(logs, /§FLY_ROUTE /);
+        // Every line the claim rests on, printed in full so it lands in the saved log verbatim.
+        for (const l of [line(logs, /§S1_ENSURE_ROOMS/), stale, inj, line(logs, /§S1_STAMP /), fly, hl].filter(Boolean)) {
+          console.log('   ' + l.slice(0, 240));
+        }
+        const hallArea = (hl.match(/area=([\d.]+)/) || [])[1];
+        const hallName = (hl.match(/mainHall="([^"]*)"/) || [])[1];
+        console.log('   MEASURED: shipped ' + before.total + ' IfcSpace rows (' + before.compiled + ' compiled, rooms_meta=' +
+          (before.meta && before.meta.length ? before.meta[0][0] : 'ABSENT') + ')  →  after recompile ' +
+          after.rooms + ' rooms / ' + after.rects + ' rects;  elected mainHall=' + (hallName || '?') + ' area=' + (hallArea || '?') + ' m²');
+
+        chk('G2b Clinic ships an all-compiled room set (the recompile precondition)',
+          before.total > 0 && before.total === before.compiled, 'total=' + before.total + ' compiled=' + before.compiled);
+        chk('G2b that shipped set carries NO rooms_meta stamp (this is WHY it is stale)',
+          !before.meta || before.meta.length === 0, before.meta && before.meta.length ? 'stamped=' + before.meta[0][0] : 'absent');
+        chk('G2b the version check fired with stored=null (§S1_VERSION_STALE)',
+          /§S1_VERSION_STALE/.test(stale) && /stored=null/.test(stale),
+          stale ? stale.replace(/^.*§S1_VERSION_STALE /, '').slice(0, 110) : 'MISSING');
+        chk('G2b it recompiled to a LARGER room set than shipped (§S1_INJECT)',
+          !!inj && after.rooms > before.total, before.total + ' → ' + after.rooms + ' rooms / ' + after.rects + ' rects');
+        chk('G2b the tour still routes on the recompiled set (§FLY_ROUTE)', !!fly,
+          fly ? fly.replace(/^.*§FLY_ROUTE /, '').slice(0, 80) : (line(logs, /§FLY_ROUTE_REJECT/).slice(0, 110) || 'absent'));
+        chk('G2b a main hall was still elected, with a measured area (§FLY_HL_FIRST)',
+          !!hallArea && +hallArea > 0, hallName ? hallName + ' area=' + hallArea + ' m²' : 'MISSING');
+        chk('G2b no page error', !has(logs, /PAGEERROR|§LOAD_FAIL/), line(logs, /PAGEERROR|§LOAD_FAIL/).slice(0, 120) || 'clean');
+        await page.close();
+      } finally { try { fs.unlinkSync(clinicLink); } catch (e) {} }
+    }
+  }
+
   await browser.close();
   try { srv.kill(); } catch (e) {}
   await new Promise(r => setTimeout(r, 800));
@@ -215,8 +281,13 @@ function splitCensus(rows) {
   const r5a = spawnSync('node', [path.join(__dirname, 'witness_r5a_dev_graph_tour.js')],
     { encoding: 'utf8', timeout: 900000, env: Object.assign({}, process.env, { PORT: '8433' }) });
   const r5aOut = (r5a.stdout || '') + (r5a.stderr || '');
-  const tail = r5aOut.trim().split('\n').slice(-3).join('\n   ');
-  console.log('   ' + tail);
+  // ⚠ FULL child stdout, not a 3-line tail (watchdog finding, 2026-07-26: the tail dropped every
+  // Clinic-specific §-line the child printed — §FLY_ROUTE, §FLY_HL_FIRST and its area — so the
+  // saved log could not back a single number quoted from this gate). Echoing the whole child run
+  // is the point of running it as a child at all: its evidence must reach THIS witness's log.
+  console.log('   ┌─ child stdout (W-R5A-DEV-GRAPH-TOUR) ─────────────────────────────────────────');
+  for (const l of r5aOut.replace(/\s+$/, '').split('\n')) console.log('   │ ' + l);
+  console.log('   └───────────────────────────────────────────────────────────────────────────────');
   const m10 = r5aOut.match(/(\d+) passed, (\d+) failed/);
   chk('G2 §R5-A witness green', r5a.status === 0 && !!m10 && +m10[2] === 0, m10 ? m10[0] : 'no result line');
   chk('G2 §R5-A witness still 10/10 (no check silently lost)', !!m10 && +m10[1] === 10, m10 ? m10[1] + ' passed' : 'n/a');

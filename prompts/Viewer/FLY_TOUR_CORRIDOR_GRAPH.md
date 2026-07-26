@@ -2324,7 +2324,7 @@ walk + IDB persist from bim-ootb's `navigate_find.js` into `room_graph_bridge.js
   the fleet's inverted case). Gate 3 settles it either way by running the injector on the 21-room DB
   and measuring before/after, instead of arguing from archaeology.
 
-#### ✅ S1 SHIPPED 2026-07-26 — W-S1-ROOM-INJECTOR **21/21** (`deploy/dev/tests/witness_s1_room_injector.js`)
+#### ✅ S1 SHIPPED 2026-07-26 — W-S1-ROOM-INJECTOR **28/28** (`deploy/dev/tests/witness_s1_room_injector.js`)
 Ported from bim-ootb **`origin/main`** (never the local checkout — 41 commits behind at port time;
 §R5-A already got burned once by exactly that): `viewer/lib/room_walker.js` → `deploy/dev/lib/`
 **verbatim** (diffed byte-for-byte), and `navigate_find.js`'s `_ensureRoomsCore()` → the `ensureRooms`
@@ -2357,15 +2357,34 @@ the whole R5-B payload: patch source → walker → `rooms_meta` stamp → IDB p
   something else — a different extraction run, or an older walker — **not from this code path**.
   `project_db_snapshot_divergence_landmine`'s "Duplex is the fleet's inverted case" stands; the
   suspicion that the injector clobbers it does not.
-- **⚠ ONE REAL BEHAVIOUR CHANGE, measured, not a regression but not silent either — Clinic's elected
-  main hall moved, 323.4 m² → 111.2 m².** Cause, measured directly: Clinic ships **118 compiled
-  (`RM_*`) rooms with NO `rooms_meta` row**, so the fleet-wide version-stamp check classifies them as
-  stale (`§S1_VERSION_STALE stored=null current=v3`) and recompiles → **207 rooms / 304 rects**. The
-  route itself is unharmed (`stops=7/7`, highlight-first intact) and this is the ported bim-ootb
-  self-heal working as designed ("the inject mechanism exists to cure poor data"), so it is NOT
-  reverted here. But it **directly touches §CINEMA_HALL_CANDIDATE's parked 323 m² open question** —
-  that hall is a pre-v3 artifact of the shipped 118-room set, and the graph session should read it
-  against the v3 207-room set instead of the number recorded earlier.
+- **⚠ ONE REAL BEHAVIOUR CHANGE — Clinic's elected main hall moved, 323.4 m² → 111.2 m².** Not a
+  regression, and now not an unbacked claim either (see the watchdog note below). Gate **G2b** asserts
+  the mechanism and prints every figure, so all of it is in the saved log:
+  `§S1_ENSURE_ROOMS rooms=118 compiled=118 state=recompute` → `§S1_VERSION_STALE stored=null
+  current=v3` → `§S1_INJECT source=walker rooms=207 rects=304` → `§FLY_ROUTE storeys=3 stops=7/7` →
+  `§FLY_HL_FIRST mainHall="≈ First Floor R48" area=111.2`. Cause: Clinic ships **118 compiled (`RM_*`)
+  rooms with NO `rooms_meta` row**, so the fleet-wide version-stamp check calls them stale and
+  recompiles to **207 rooms / 304 rects**. The route is unharmed (`stops=7/7`, highlight-first intact)
+  and this is the ported bim-ootb self-heal working as designed ("the inject mechanism exists to cure
+  poor data"), so it is NOT reverted here.
+  **Provenance of the two numbers, stated because they do not come from the same place:** 111.2 is
+  measured by G2b in this run; **323.4 is quoted from §R5-A's own record above** (`mainHall="≈ First
+  Floor R20" area=323.4`), taken when `ensureRooms` was still report-only and the shipped 118-room set
+  was therefore used as-is. It has NOT been re-measured, and cannot be without reverting the injector.
+  This **directly touches §CINEMA_HALL_CANDIDATE's parked 323 m² open question**: that hall is a
+  pre-v3 artifact of the shipped 118-room set, so the graph session must re-read it against the v3
+  207-room set rather than the earlier figure.
+- **⚠ WATCHDOG CORRECTION, 2026-07-26 — recorded because the process failure is the lesson, not the
+  numbers.** S1's first report cited the Clinic figures (118→207, 323.4→111.2) from a scratchpad probe
+  and terminal output. They were correct, but **no saved log carried them**: the witness's G2 echoed
+  only the child process's last 3 stdout lines, dropping every Clinic §-line the child printed. Under
+  this project's Log Mandate ("no log line = not done"; an exit code is not evidence) that is not a
+  backed claim, however true it happens to be. Two fixes, both in
+  `deploy/dev/tests/witness_s1_room_injector.js`: (1) **G2b** — a Clinic gate that measures
+  before/after and asserts the mechanism (all-compiled set ⇒ no `rooms_meta` ⇒ `§S1_VERSION_STALE
+  stored=null` ⇒ a larger recompiled set ⇒ a hall still elected with a measured area), printing the
+  exact counts/areas rather than hardcoding them, so a legitimate walker improvement cannot fail the
+  gate; (2) G2 now echoes the child's **full** stdout. Witness went 21/21 → **28/28**.
 
 ### S2 — lifts as real vertical connectors (measured basis, zero invention)
 `IfcTransportElement` = **0 rows fleet-wide** — there is no lift ELEMENT to read. But the lift DOORS

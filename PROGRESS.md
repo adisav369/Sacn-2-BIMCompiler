@@ -38,14 +38,12 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   `_tourPrepare`) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP` (**gate invalid, needs a ratio**).
 - **`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`** log-precision-first (self-diagnosing computed-vs-rendered +
   coverage logs) MUST land BEFORE live-diagnosing Terminal's "disciplines disappeared".
-- ▶ **NEXT, spec'd + ordered: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL`** — tour = a stroll,
-  not a survey (user 2026-07-26, supersedes §R6-BUDGET). S1 R5-B injector port (⚠ must not clobber authored
-  room names) → S3 scene budget (Hospital 22 stops→≤10) → S2 lift shafts (Terminal: 5 lift doors = 1 shaft,
-  all 5 storeys; `IfcTransportElement`=0 fleet-wide) → S4 scenic glazing metric → S5 jerk softener (profile
-  first, gate = 95th-pct jerk −50%).
+- ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S3** (S1 injector port DONE 07-26,
+  see Archive) — Hospital 22 stops→≤10 → S2 lift shafts (Terminal 5 lift doors=1 shaft, 5 storeys;
+  `IfcTransportElement`=0 fleet-wide) → S4 glazing metric → S5 jerk softener (95th-pct jerk −50%).
 - ✅ **R5-A deploy leg SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` stays frozen (68 days
   stale, unmaintained), `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
-- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); Duplex injector overwrites named IFC spaces; `docs/userguide-roompath-fixed` no PR.
+- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1); `docs/userguide-roompath-fixed` no PR.
 - HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) —
   `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb).
 - Held (prove smallest piece first): Modeller prefab dialogue — `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
@@ -59,8 +57,11 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   Terminal 8/92→2/91) + #1013 T2/T3 NO-CHANGE on 7 buildings + #1014 `exit` node was a LIFT-door name filter
   (egress would route TO A LIFT) → removed, Terminal 2/91→**0/84**, exits=0 fleet-wide by design.
   T4/exits = its OWN track (`§G1-EXTERIOR-DOOR-LANE`), **NOT a blocker** — §HL-ORIGIN ships the stroll without it.
-- ✅ §R5-A dev-viewer port (07-26): deploy/dev flies the graph tour — Clinic `§FLY_HL_FIRST mainHall R20 323m²`;
-  un-roomed → legacy. W-R5A 10/10. Room-bearing DBs are LOCAL in `~/bim-ootb/buildings` (never curl OCI).
+- ✅ §R5-A+S1 dev-viewer graph tour + self-heal injector (07-26): un-roomed buildings self-heal via
+  ported `room_walker.js` (W-S1-ROOM-INJECTOR **28/28**; Duplex's 21 authored rooms survive by name+guid).
+  W-R5A 10/10 (G4 retargeted). Clinic mainHall move — watchdog was right that it had no saved log;
+  now gate-backed by G2b (118→207 rooms, `§S1_VERSION_STALE stored=null`, hall 111.2m²) + full
+  child-stdout capture. The 323.4m² half is the pre-S1 §R5-A record, not a re-measured figure.
 - ✅ Room→Path FIXED + LIVE (07-25/26), bim-ootb #1006-#1010, 11/11 witnesses, Hospital
   pathability 69.4%→91.2%. `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`.
 - ✅ Occupant-pathfinder CLOSED (07-25) #997/#998 (§BRIDGE-ROUTED-LEGAL + OCI patch gate, `OCI_UPLOAD.md`
