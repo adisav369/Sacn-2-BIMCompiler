@@ -31,7 +31,12 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 (HHS sparse-wall fusion; room compile ALSO stale) · `XRAY_FIXTURE_CLASSIFICATION_FIX.md`
   (SampleCastle walls as fixtures, root-caused) · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` (HHS 2 islands, storey='Unknown').
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
-  ▶ **NEXT: `bim-ootb:feat/cinema-exit-breathe` — §CINEMA_EXIT_BREATHE retime committed NOT LANDED (fix the witness gaze metric first, G2/G3 are artifacts); §CINEMA_HALL_CANDIDATE parked behind §STAKEHOLDER_STROLL S1.**
+  ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — the look-back was a ONE-FRAME 180° snap (look-at point lerped
+  THROUGH the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED: cut from a stale
+  main, its `CINEMA_OUT_SEC` retime is superseded by §CINEMA_TIMING_672 and would overshoot the user's 15th sec.
+  Left open, both recorded in `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`: **D2** walk-out corner whip
+  (19.8°/frame, pre-existing, printed by the witness every run but not gated) · §CINEMA_HALL_CANDIDATE still parked
+  behind §STAKEHOLDER_STROLL S1.
 - **Fly-Tour lane — ALL detail in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT
   re-derive** (scrubber #999/#1000/#1002 shipped 07-25, suite 11/11; both §WATCHDOG-TOUR-SCRUB reviews there).
   Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED = eager `cinemaLookDist` raycast/waypoint in
