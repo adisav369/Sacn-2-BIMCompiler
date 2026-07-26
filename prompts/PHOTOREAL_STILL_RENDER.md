@@ -5321,112 +5321,116 @@ median, so "the turn is slower / the look-back starts later" is still UNPROVEN),
 
 # §CINEMA_TURN_SLERP — 2026-07-26, the look-back is a ONE-FRAME 180° snap (spec + witness rebuild)
 
+**Landed as `bim-ootb` `feat/cinema-turn-slerp` (off fresh `origin/main`), 7/7 gates green.**
+
 ## What the metric fix uncovered (measured, not inferred)
 Fixing `witness_cinema_exit_breathe.js`'s gaze metric was supposed to be bookkeeping. It was not.
-Frame-by-frame poses were dumped from the real `A.cinemaPathPlan(24)` (Duplex, 360 frames @15fps) for
-both branch tips and analysed offline. **Three defects, not two.**
+Frame-by-frame poses were dumped from the real `A.cinemaPathPlan(24)` (Duplex, 360 frames @15fps)
+and analysed offline. **Four defects, and the branch as handed over would not have fixed the one the
+user reported.**
 
-### D1 (NEW, the important one) — the "turn to face the building" does not rotate at all
+### D0 — the handed-over branch was based on a STALE `main`
+`feat/cinema-exit-breathe` was cut from a local `main` that predates §CINEMA_TIMING_672 (#1013-era,
+2026-07-24), which had already raised `CINEMA_DIVE_SEC` and `CINEMA_OUT_SEC` 4→6 and widened the
+Beat 3 lookahead 0.06→0.15. Its whole premise — *"WAS 4s: the walk-out was 6-10s"* — was dead on
+arrival: on real `main` the walk-out is **8–14 s** and the look-back completes at **16 s**. So the
+user's "more seconds into the 15th sec to exit" half was ALREADY DELIVERED. Raising `CINEMA_OUT_SEC`
+again to 7 would push completion to 17 s, **past** the 15th second the user asked for.
+**`CINEMA_OUT_SEC` is therefore left at 6 and only the overlap moves (0.4 → 0.25).**
+
+### D1 — the "turn to face the building" does not rotate at all
 Beat 3's overlap and Beat 4 both aim the camera by **lerping the look-AT POINT** from "20 m ahead"
 toward `pivot`. On a straight walk-out (`route=line`) the pivot is exactly 180° behind the camera, so
-that lerp segment runs straight back **through the camera**. Measured on the matched pair:
+that lerp segment runs straight back **through the camera**. Measured on current `main`:
 
-| | gaze azimuth during walk-out | min gaze distance | the "turn" |
+| | look-back still owed at `tO` | min gaze distance | the "turn" |
 |---|---|---|---|
-| BEFORE (`main`) | 132.3° held flat 8.3s→10.36s | **1.517 m** @ t=10.43 | 132.3° → −47.7° in **one frame** |
-| AFTER (retime) | 132.3° held flat 11.0s→13.37s | **1.562 m** @ t=13.44 | 132.3° → −47.7° in **one frame** |
+| `main` | **138.8°**, to be swept in Beat 4's 2 s = 69 °/s mean | **1.582 m** @ 14.44 s | **49.3 °/frame** (739 °/s) in one frame |
+| + §CINEMA_TURN_SLERP | **87.4°** = 43 °/s mean | **20.000 m** (constant) | **6.8 °/frame** peak |
 
-The azimuth is *constant* for the whole approach — the target slides down the gaze line from 20 m to
-1.5 m without turning anything — then inverts in a single frame as it passes the camera (horizontal
-gaze distance 0.37 m / 0.55 m at the crossing: the camera is momentarily looking almost straight
-down). 3D gaze rate peaks at 690 / 729 deg/s across that crossing.
-**So the retime does NOT fix the reported rush — it moves the snap from t=10.43s to t=13.44s.**
-This IS the user's "the camera rush and turns too rapidly". It was invisible before because the old
-metric's only turn evidence was the very atan2 flip this singularity produces.
+The gaze azimuth is *constant* through the approach — the target slides down the gaze line from 20 m
+to 1.6 m without turning anything — then inverts in a single frame as it passes the camera.
+**This is the user's "the camera rush and turns too rapidly", and neither the retime nor
+§CINEMA_TIMING_672's wider lookahead touches it**: it is not a corner, it is the look-at point
+crossing the camera. It stayed invisible because the old metric's only turn evidence was the very
+atan2 flip this singularity produces.
 
 ### D2 — a second whip at the walk-path corner
-`_outPos` gives Beat 3 its heading from a 0.06-ahead sample, so the 124° corner between route legs is
-taken in ONE frame: 1868 deg/s (BEFORE, t=7.29) / 1774 deg/s (AFTER, t=8.29), at a full 20 m gaze
-distance so it is NOT the same singularity. Real, pre-existing, and NOT introduced by the retime.
-**Recorded, not fixed here** — it belongs to the walk-out path, not the look-back.
+`_outPos` gives Beat 3 its heading from a lookahead sample, so a route corner is taken fast:
+124 °/frame on the stale base, **19.8 °/frame on current `main`** — §CINEMA_TIMING_672's 0.06→0.15
+widening already spread most of it. Real, pre-existing, lives BEFORE the look-back window opens.
+**Recorded, not fixed here**; the witness prints it every run as a flagged non-gating measurement.
 
 ### D3 — the witness compared two DIFFERENT BUILDINGS' data
 `witness_cinema_exit_breathe.js` serves `__dirname` (a worktree) for AFTER and `~/bim-ootb` for
-BEFORE. The viewer fetches `viewer/buildings/<db>`, which in a worktree **404s and silently falls back
-to OCI** — a thinner Duplex snapshot (5 IfcSpaces vs 21 authored). Measured divergence on the same
-commit: `spaceCands` 21 vs 7, `pathLen` 11.4 m vs 12.6 m, `spinDeg` 32 vs 0, a different door facing.
-`project_db_snapshot_divergence_landmine` biting a witness this time. **Every BEFORE/AFTER gate in the
-previous run was therefore comparing two different films.** Corrected by linking the canonical
-`viewer/buildings/Duplex_*` into the worktree; with that, the two runs agree on exit, path length and
-spin, and differ ONLY in the beats — which is the only way the comparison means anything.
+BEFORE. The viewer fetches `viewer/buildings/<db>`, which in a worktree **404s and silently falls
+back to OCI** — a thinner Duplex snapshot (5 IfcSpaces vs 21 authored). Measured divergence on the
+same commit: `spaceCands` 21 vs 7, `pathLen` 11.4 m vs 12.6 m, `spinDeg` 32 vs 0, a different door
+facing. `project_db_snapshot_divergence_landmine` biting a witness this time. **Every BEFORE/AFTER
+gate in the previous run was comparing two different films.** Fixed by linking the canonical
+`viewer/buildings/Duplex_*` into both worktrees, and gated by G0 from now on.
 
 ## The fix — rotate the DIRECTION, never lerp the point
-Both blends interpolate the **gaze direction in yaw/pitch**, at constant 20 m range, instead of the
-look-at point:
-- yaw and pitch are taken from the ahead-direction and from the camera→pivot direction, interpolated
-  by the same `turnW3`/`turnW4` smoothstep weights that exist today (beat structure untouched);
+Both blends interpolate the **gaze direction in yaw/pitch**, at constant 20 m range:
+- yaw/pitch taken from the ahead-direction and from the camera→pivot direction, interpolated by the
+  same `turnW3`/`turnW4` smoothstep weights that already exist (beat structure untouched);
 - yaw takes the short way, resolved to (−180°, +180°]; at the degenerate |Δyaw| ≥ 179.5° (the exact
-  radial walk-out — the common case) the sign is forced **+**, matching the exterior orbit's own
-  `az = exitAz + u·2π` direction, so the look-back and the orbit rotate the same way;
+  radial walk-out — the common case) it takes the **+** way as a modulo of the RAW delta, matching
+  the exterior orbit's own `az = exitAz + u·2π`. Keeping it a modulo rather than a hardcoded +π is
+  what makes `w=1` land *exactly* on the pivot bearing;
 - the singularity cannot recur: gaze range is constant, so the target never approaches the camera.
-Continuity is preserved at both seams by construction — Beat 3's end direction is `od` (the last leg
-IS the outward push), which is exactly Beat 4's `la` direction; and Beat 4 at `turnW4=1` yields the
-camera→pivot direction, the same orientation `_orbitPose(0)` produces by targeting `pivot`.
+Both seams are continuous by construction — Beat 3 ends on `od` (its last leg IS the outward push),
+which is Beat 4's start direction; and Beat 4 at `turnW4=1` gives the camera→pivot direction, the
+same orientation `_orbitPose(0)` produces by targeting `pivot`.
 
 ## Witness rebuild — what each gate now proves
-`witness_cinema_exit_breathe.js` is rewritten around a singularity-free metric:
-- **gaze rate = angle between consecutive unit gaze vectors** (3D, `acos(dot)`), never `atan2`
-  azimuth. Immune to wrap and to the 180° inversion; it reports the rotation actually rendered,
-  because the renderer only ever consumes the direction.
-- **one FIXED deg/s threshold for both runs** (60 deg/s), never a per-run median, so BEFORE and AFTER
-  are held to the same bar.
+Metric: **gaze rate = angle between consecutive unit gaze vectors** (3D `acos(dot)`), never `atan2`
+azimuth — immune to wrap and to the 180° inversion, and it is exactly the rotation rendered, because
+`camera.lookAt` consumes only the direction. Any fixed threshold applies to **both** runs; the old
+detector used 3× each run's own median (23.7 vs 0.0 °/s), so BEFORE and AFTER were held to
+different bars.
 
 | gate | proves / disproves |
 |---|---|
-| G0 | both runs served the canonical local DB — **zero OCI requests**, and identical `pathLen`/`spinDeg`/exit guid. Without this every other gate is void (D3). |
-| G1 | walk-out ends ~13 s — the +3 s the user asked for, no more. |
-| G2 | the look-back starts ≥ 11 s, detected at a fixed 60 deg/s bar in both runs. |
-| G3 | **no single-frame gaze inversion in the look-back window** (turn-overlap start → end of Beat 4) — max per-frame gaze step < 25° (375 deg/s). This is the gate D1 fails on `main` AND on the retime-only branch, and the one §CINEMA_TURN_SLERP exists to turn green. Scoped to that window on purpose: D2's corner whip lives in the walk-out, *before* the window opens (8.4 s vs a 7.29 s whip on BEFORE; 11.25 s vs 8.29 s on AFTER), and is out of scope here — the witness PRINTS it as a flagged non-gating measurement so it stays visible. |
+| G0 | both runs served the canonical local DB — **zero object-storage fetches** — and planned the same film (same exit guid / `pathLen` / `spinDeg`). Without this every other gate is void (D3). |
+| G1 | the user's clock: walk-out ends 13–15 s, look-back completes 15–17 s, **and is unchanged from `main`** — the evidence that `CINEMA_OUT_SEC` must NOT be raised a second time (D0). |
+| G2 | the look-back blend **cannot open before the doorway is cleared**: `winStart` (12.04 s) > the measured door crossing (10.09 s), and later than `main`'s 11.40 s. Stated on the blend window, not on a heuristic detector — the 60 °/s rate detector fires at 9.43 s on a walk-path *corner* and cannot tell the two apart, so it is printed and NOT gated. |
+| G3 | **no single-frame gaze inversion in the look-back window** — max step < 25 °/frame. The gate D1 fails on `main`, and the one §CINEMA_TURN_SLERP exists to turn green. |
 | G4 | exterior orbit is exactly ONE revolution (360 ± 12°). |
-| G5 | no positional discontinuity (max per-frame step < 3× median). |
-| G6 | still ends flat and decelerating (§CINEMA_FLAT_ENDING / §CINEMA_END_DECEL intact). |
+| G5 | no positional discontinuity — max per-frame step against its **local neighbours** (< 2.5×), not the whole film's median. |
+| G6 | the ending contract of the branch this film actually took, plus §CINEMA_END_DECEL. |
 
-G3 replaces the old "peak deg/s is lower than BEFORE" gate, which was unprovable: peak rate is
-dominated by D2's corner whip, an event that has nothing to do with the turn.
-
-Two more gate definitions were wrong and are corrected here, found only because the gates were
-re-derived from the plan instead of from the commit message:
+Three gate definitions were wrong and are corrected here, found only by re-deriving them from the
+plan instead of from the commit message:
 - **the look-back window was computed 0.7 s too late.** `turnW3` keys off `e3`, which is
   `_cinemaSmoothstep(f)` of the linear walk fraction — so the overlap opens where `smoothstep(f)`
-  crosses `1−overlap`, at f≈0.647, NOT at f=0.75. The commit's own "look-back now starts at
-  6 + 0.75·7 = 11.25 s" ignores the smoothstep; the true window opens at 10.72 s. A snap in that
-  0.7 s gap would have gone unseen.
+  crosses `1−overlap`, at f≈0.647, NOT at f=0.75. The handed-over commit's "look-back now starts at
+  6 + 0.75·7 = 11.25 s" ignores the smoothstep. A snap inside that gap would have gone unseen. The
+  window is now derived per-run from each root's OWN `CINEMA_TURN_OVERLAP` (read from its source;
+  also newly logged on `§CINEMA_BEATS` as `turnOverlap=`), because the two tips differ (0.4 vs 0.25)
+  — hardcoding one value for both is the same class of error as the per-run median bar.
+- **G5 flagged a perfectly smooth frame.** The old "max step < 3× the film's median" fired on a
+  mid-orbit frame at t=20.06 s (3.079 m, ratio 3.03×) purely because the dive, the walk and the
+  orbit run at different speeds by design. The worst **local** ratio in the same film is 1.07×.
 - **G6 asserted the wrong ending contract.** Duplex is a `sunFirst=true` film, and that branch ends
   ELEVATED at the look-down angle by design (§CINEMA_RISE_ENDING); only `sunLast` glides back to
-  flat (§CINEMA_FLAT_ENDING). The old gate demanded flat unconditionally, so the 45° final tilt the
-  previous session logged as "pre-existing, needs its own look" is **not a defect at all** — it is
-  the branch behaving as specified. G6 now reads `sunFirst` from §CINEMA_SUN_ORDER and asserts the
-  contract of whichever branch the film took.
-- **G2 was re-anchored on the doorway**, not a clock reading: the user's constraint is "not turn
-  until ... after exiting a building", so the gate measures the frame of closest approach to the
-  chosen door (8.49 s) and requires the turn to begin after it (10.96 s) and later than before
-  (10.23 s). The old ">= 11 s" bar came from that same off-by-a-smoothstep arithmetic and passed by
-  0.04 s — an accident, not a proof.
+  flat (§CINEMA_FLAT_ENDING). So the 45° final tilt the previous session logged as "pre-existing,
+  needs its own look" is **not a defect at all** — it is the branch behaving as specified. G6 now
+  reads `sunFirst` from §CINEMA_SUN_ORDER and asserts whichever contract applies.
 
 ### Control — the gate discriminates (a gate that only ever passes proves nothing)
-Same metric, same window, three tips, canonical local data throughout:
+Same metric, same window, canonical local data throughout:
 
 | tip | max in-window gaze step | G3 |
 |---|---|---|
-| `main` (no retime) | 46.0 °/frame @ 10.43 s | **FAIL** |
-| retime alone (`e84d63c`) | 48.6 °/frame @ 13.44 s | **FAIL** |
-| retime + §CINEMA_TURN_SLERP | **6.8 °/frame** @ 14.04 s | **PASS** |
+| stale base + retime alone (`e84d63c`) | 48.6 °/frame @ 13.44 s | **FAIL** |
+| current `main` (`dbff9f4`) | 49.3 °/frame @ 14.44 s | **FAIL** |
+| `main` + §CINEMA_TURN_SLERP | **6.8 °/frame** @ 15.04 s | **PASS** |
 
-The middle row is the whole point: **the retime alone does not fix the reported rush**, it moves the
-snap 3 s later. The 25°/frame bar sits 3.7× above the passing value and 2× below the failing one.
+The 25 °/frame bar sits ~3.7× above the passing value and ~2× below the failing one.
 
-### Trade recorded, not hidden
-The exterior act still runs its single revolution in 9 s rather than 12 s (~33% faster) — the +3 s
-for the exit is funded from a loop that never orbited more than once. Unchanged by this session; if
-that reads as rushed on a bigger building, the lever is `CINEMA_RISE_SEC`/the loop budget, not the
-turn.
+## Not carried forward, and why
+`CINEMA_OUT_SEC 6→7` from the handed-over branch is **dropped** (D0 — superseded by
+§CINEMA_TIMING_672; 7 s would overshoot the user's 15th second). `CINEMA_TURN_OVERLAP 0.4→0.25` is
+kept: it delays the look-back's opening 11.40 s → 12.04 s and leaves Beat 4 only 87.4° to sweep
+instead of 138.8°.
