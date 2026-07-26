@@ -12,9 +12,9 @@ FUNDAMENTAL LAW. Honour this block until this file is DONE.
 NOT implemented)** → **§CPE_PACING (measured, ONE user decision open)**. The "graph dialog" framing in
 the original sections is SUPERSEDED throughout.
 
-**STATUS 2026-07-27:** the 3-point editor is BUILT, witnessed and merged to `bim-ootb` main
-(#1023 `08bbd3e`, #1025 `15c54a0`). Bands, the full-film tube, and derived pacing are SPECCED AND
-MEASURED but NOT BUILT. Next session starts at §CPE_BANDS.
+**STATUS 2026-07-27 (later):** §CPE_BANDS and the full-film tube are now **BUILT AND WITNESSED** —
+`bim-ootb` `feat/cinema-path-editor` @ `5eb69df`. See §CPE_BANDS_BUILT below. **§CPE_PACING remains the
+only open item and is BLOCKED on one user decision** (dive/spin/orbit fixed vs derived).
 
 ---
 
@@ -238,7 +238,57 @@ themselves (*"those 2 blue dots is part of the scene"*), so they are secondary, 
   `Ctrl+S` → reopen. Only xz-drag, row-click hold and double-click release have live evidence.
 - `witness_cinema_path_editor.js` runs Duplex + Terminal only. Hospital/JKR/LTU_AHouse unrun.
 
-## §CPE_BANDS — NEXT BUILD, spec settled with the user 2026-07-27, NOT YET IMPLEMENTED
+## §CPE_BANDS_BUILT — implemented and witnessed 2026-07-27 (`feat/cinema-path-editor` @ `5eb69df`)
+All of §CPE_BANDS below is BUILT, plus the full-film tube. New file gates:
+`witness_cinema_bands.js` **6/6 on Duplex AND Terminal** — these REPLACE G7/G8/G10, which assumed
+corner-fillet geometry over free waypoints; that green was re-earned, not carried.
+`witness_cinema_path_editor.js` 9/9 both (loose waypoints still supported).
+`witness_cinema_path_persist.js` 7/7 against the 3-band schema, round-trip through a real page reload.
+`witness_cinema_orbit_v2.js` PASS (regression check on the shipped derived path).
+
+| gate | result |
+|---|---|
+| B1/B2 bands flown straight at exactly their authored length | err ≤ 2.2e-16, nothing inserted inside a band |
+| B3 curve leaves/arrives ALONG each band direction | ≤ 10° at every join |
+| B4 connector bow ≤ measured clearance (or the conservative cap where unknown) | bow 0.26–0.29m vs clearance 0.86m |
+| B5 no sharp corners, seeded layout | ≤ 12°/frame cap met on both buildings |
+| B6 fold | 3 bands → 6 waypoints → flown as authored |
+| B7 LOS runs along the band | passes outside the deliberate look-back blend |
+
+### ⚠ THREE LATENT DEFECTS IN SHIPPED CODE, exposed by band geometry — all measured, all fixed
+None of these were introduced by bands; bands merely reached them. Each was predicted arithmetically
+and then confirmed against a measurement, per the FUNDAMENTAL LAW.
+1. **`_cinemaGazeBlend` chose the look-back's turn direction with a PER-FRAME test.** The frame
+   `|dYaw|` crossed `CINEMA_TURN_ANTIPODAL_RAD`, `dYaw` moved by 2π and the gaze snapped by `2π × w`.
+   At the observed frame `e3=0.906` → `turnW3=0.341` → predicted `2π × 0.341 = 123°`; **measured
+   118°/frame**. Fixed by taking the representative of the raw delta NEAREST a per-plan reference —
+   continuous, and still lands exactly on the pivot bearing at w=1 (which Beat 4's handoff needs).
+   ⚠ A first attempt (freezing the plus-way branch as a per-plan constant) made it WORSE — 178°/frame,
+   sustained. Recorded so nobody retries it.
+2. **The look-ahead collapse guard measured HORIZONTAL distance only.** Any near-vertical stretch of
+   path tripped it while the look-ahead was metres away — just above rather than ahead. Terminal's
+   walk-out climbs ~17m with x/z barely moving: target jumped `(-0.80,-6.19,-1.14)` →
+   `(-21.82,-25.65,-1.67)`, **113°/frame at t=0.411**. Now a 3D test — what the guard always meant.
+3. **The spin's destination bearing came from the next waypoint even with no horizontal baseline.**
+   With bands that waypoint is the settle band's own far end, short and near-vertical → **27°/frame at
+   the Beat2→3 seam**. Guarded with the same 0.5m the look-ahead guard uses; a normal door-length
+   first leg is untouched, so the derived film is unchanged there.
+
+**Net:** seeded band path went 118 → **9.8°/frame** (Duplex), i.e. bands now fly *smoother than the
+derived route* (9.8 vs 12.5). Terminal derived measures 11.3.
+
+**Behaviour change to be aware of:** fix (2) alters the DERIVED film on any building whose walk-out
+has a near-vertical stretch (Terminal does). That is a defect removal, not a regression — but it is a
+visible change, so do not expect frame-identical output to pre-`5eb69df` on such buildings.
+
+### Residual, NOT gated
+An adversarial layout (three bands aimed away from each other, forcing the path to double back twice)
+peaks at **30.9°/frame** with a total turn of ~365° over 89 frames (mean 4.1). Printed as `INFO` by
+the witness rather than gated: a near-reversal genuinely cannot be flown as gently as a normal route,
+and pretending otherwise would mean weakening the gate that protects the realistic case. Revisit only
+if a real user path hits it.
+
+## §CPE_BANDS — the spec (settled with the user 2026-07-27) — IMPLEMENTED, see above
 **Read this before touching the editor again.** Settled in discussion; user quotes inline. Supersedes
 the "3 draggable points" shape in §CINEMA_PATH_EDITOR_MODEL — the *data model* (waypoints only, LOS
 aim, constant speed) is unchanged; what changes is that each anchor becomes a rigid **band**.
