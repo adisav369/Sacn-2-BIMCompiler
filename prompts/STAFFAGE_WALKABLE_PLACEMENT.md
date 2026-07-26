@@ -1326,3 +1326,41 @@ baseline's *source*, because the unfixed tip cannot emit a log that does not exi
 
 New per-press witness fields: `§STAFFAGE_OUTSIDE_VARIETY pool=N used=[...] distinct=N`, and
 `floor=slab:N/ground:N/phantom:N` on `§PHOTO_STAFFAGE`.
+
+### ANSWERED 2026-07-26 (late) — the data is NOT lost; reopen simply never rehydrates
+Round-trip driven programmatically through the REAL export/open API (`A._exportBuildingDb()` →
+`A._openDbBytes()`, i.e. exactly what Ctrl+S / Ctrl+O call), Duplex:
+
+| step | staffage instances | table in DB |
+|---|---|---|
+| after Alt+P | **8** | — |
+| after export (Ctrl+S bytes) | — | **present, 8 rows** |
+| after open (Ctrl+O path) | **0** | **present** |
+| after one more Alt+P | **8** | present |
+
+`§STAFFAGE_SAVE rows=8` → `§STAFFAGE_RESTORE rows=8` → `§PHOTO_POPULATE ... restored=8`.
+
+**So the save/reopen round-trip already works end-to-end. Nothing is lost.** The gap is that restore
+is wired to the *first Alt+P press* (`effects.js` `togglePopulate`, the `freshBuilding` branch), not
+to load. Reopen the saved file and the scene is empty until you press Alt+P again — which is exactly
+what "when opening back it is gone" looks like from the outside. The parallel session's leading
+hypothesis (user reopened the URL, not the saved file) is therefore **not needed** to explain the
+report, and should not be assumed: even with the correct Ctrl+O on the correct file, you see nothing.
+
+**Fix for the user's directive** (*"on Save, Open should retain persist the alt-p results"*): on
+building load, if the DB carries `staffage_instances`, call `A._restoreStaffageInstances()` straight
+away instead of waiting for a keypress. The restore function, the table, the writer and the reader
+all already exist and are proven by the table above — this is a trigger change, not a feature.
+
+**"Scene jumping" — NOT reproduced on this path.** Camera moved **0.00 m** and the controls target
+**0.00 m** across the same save→open round-trip. Whatever the user is seeing comes from somewhere
+else (a different reopen route, or a later moment) — needs its own repro before anyone touches it.
+
+**Sprite storage — already a reference, not pixels** (user: *"saved DB should carry the sprite
+reference.. not the image i hope.. to do instancing, saves space"*). Confirmed from the schema in
+`viewer/scene.js:582`:
+```sql
+CREATE TABLE staffage_instances (kind TEXT, file TEXT, ifc_x REAL, ifc_y REAL, ifc_z REAL, rot_y REAL)
+```
+`file` holds the asset PATH (e.g. `people/person_standing_casual_male.png`); no image bytes are ever
+written. 8 placed figures = 8 short rows. Already the instancing-friendly shape the user wants.
