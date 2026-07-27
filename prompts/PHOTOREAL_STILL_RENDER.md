@@ -6249,3 +6249,60 @@ Two things the run exposed that are NOT failures but should be decided deliberat
    staging constants and the footprint edges are bbox-axis-aligned. It varies with the SUN, not with
    the building. Real variety would come from deriving the sun azimuth from site orientation or the
    Time Machine clock — a separate, larger decision.
+
+---
+
+# ▶▶ NEXT SESSION — START HERE (written 2026-07-28 at close)
+**Everything above §11 is background.** This is the live state and the queue.
+
+## Shipped and verified today (all merge-verified BY CONTENT on origin/main, not by PR state)
+| § | what | witness | ver |
+|---|---|---|---|
+| `§GROUND_ALBEDO` | multiplicative albedo gain on the ground, default 1.0, restored on teardown | W-GROUND-ALBEDO 8/8 | v867 |
+| `§GROUND_COLOR_ORDER_FIX` | **the evening ground had been at 1/3 brightness since §PHOTO_GROUND_LIT shipped** — `toggleNightMode` clobbered the photo colour 78 lines later | same | v867 |
+| `§FACADE_WARM_COOL` | sun-facing facades warm, shaded facades cool; luminance-matched, 0 new lights | W-FACADE-WARM-COOL 7/7 Hospital **and** Terminal | v868 |
+| `§BILLBOARD_ART` | artwork quad from the panel's own DB row, own material, 1 draw call | W-BILLBOARD-ART | v869 |
+| `§BILLBOARD_SOURCE` / `§BILLBOARD_FIT` / `§BILLBOARD_ALWAYS` | image by convention beside the DB, cover-crop, built outside Alt+S | W-BILLBOARD-ART 10/10 | **PR #1069, auto-merge armed — VERIFY BY CONTENT** |
+
+**Terminal DB injections** (`migration/billboards/*.sql`, applied to a local `Terminal_Hi.db`):
+billboard panel (4 rows, real `IfcBuildingElementProxy`), 4 corner floodlights (real
+`IfcLightFixture`, so the shipped night pipeline adopts them with zero new render code), and
+`render_finishes(guid, finish, source, note)` — 1 user-designated mirror + 11 polished floors
+auto-derived from the model's own `%Procelain%` slab names.
+
+## THE QUEUE, in order
+1. **Artwork stored IN the DB.** A browser file-picker hands the page ONE file handle and never its
+   directory, so `Ctrl+O` local-open can never see `billboard.jpg` sitting beside the .db — the
+   folder convention only works over HTTP. Storing the image bytes as a row makes the DB the single
+   portable artifact, works identically for both open paths, survives the `Ctrl+S` split→monolith
+   fold, and costs ~75KB against 280MB. **Do this one first** — it removes a real user-facing
+   limitation rather than adding polish.
+2. **`§FACADE_SUN_STRENGTH`** — couple the sun dot into wash strength. Measured on BOTH buildings:
+   the most sun-facing edge (dot **+0.94**) gets the DIMMEST wash (0.30, the `PHOTO_FACADE_DIM_FRACTION`
+   floor) while a COOL edge gets the brightest, because strength is camera-driven and hue is
+   sun-driven with nothing coupling them. The warm side is systematically under-lit, so the split
+   reads weaker on film than it actually is. ~1 line, but it changes the shipped look — a decision,
+   not a tidy-up.
+3. **`§HALL_MIRROR` — the `Reflector`.** Design is settled by §13: read `render_finishes`, never a
+   hardcoded guid; porcelain/mirror only; semantic reflect-set (1,429 elements in, 1,166 ducts and
+   furniture out). Freeze-trick for the still (camera is frozen during accumulation, so render once
+   and reuse → ~+45ms instead of ~+1.8s). **`Reflector.js` is NOT vendored** — MIT from three.js
+   examples, same footing as `Pass.js`/`BloomPass.js`. Navigation viability needs quarter-res +
+   Nth-frame + the semantic set and **must be MEASURED, not estimated** — my first estimate in
+   conversation was wrong by 40x and only the witness caught it.
+4. **`§MATERIAL_FINISH` class-name repair** — 8 table lines, ~58k m² fleet-wide, zero new textures.
+   Unblocked: the user's own live log answered the two-week-old open question —
+   `§STILL_REFINE done accumulateIndex=16 elapsedMs=717` with `triplanarMaterials=37` on an RTX 4060,
+   so the whole still is under 1.5s and there is real headroom.
+
+## ⚠ Traps that actually cost time today — check these BEFORE believing anything
+1. **Never continue pushing to a squash-merged branch.** #1066 squashed `feat/billboard-art`; the
+   follow-up push to the same branch went **DIRTY** and #1067 had to be closed and re-cut from fresh
+   `origin/main`. This repo's own notes warn about it and it happened anyway.
+2. **Async texture loads beat fixed sleeps — twice.** The ground witness measured a null map after
+   `_applyGroundTexture`, and the billboard witness did the same after up to four SEQUENTIAL image
+   probes. Both reported a WORKING feature as broken. **Wait on the condition, never on a timer.**
+3. **The IndexedDB DB cache is keyed by URL.** Editing a .db on disk does not invalidate it — load
+   under a fresh name (`Terminal_Hi2.db`) or you will debug a stale copy.
+4. **Read the rounded display value at your peril.** Using `150.02` from a log instead of the stored
+   `150.0229...` put the billboard 3mm inside its host wall. Query the DB for placement maths.
