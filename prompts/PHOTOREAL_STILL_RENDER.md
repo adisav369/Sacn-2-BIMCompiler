@@ -5609,3 +5609,67 @@ patching of `document.hidden`, because the thing under test is the browser's rea
 - **G-HID-5** regression: a bake that is never hidden is unaffected — no pause lines, same frames.
 
 RED on `main` by construction: there is no visibility check anywhere in the frame loop.
+
+---
+
+# §PHOTO_EMBER — 2026-07-27: light the luminaires that our light sources never light
+
+## The ask
+> *"in the building some lighting devices are not lighted up by our light sources. Dont disturb those.
+>  What if during render we pick out those non lighted and apply ember lighting with reflective
+>  bounced surfaces?"*
+> *"Perhaps it is easier to not use source of lights but right away implant any lighting fixture as
+>  source of light and bounce surfaces?"*
+> *"Lighting decor is always a killer if can dress it up similar to how we first did Alt-s."*
+
+**Ruling: glow only, first.** User, same session: *"glow only first, use the Clinic hallway, then have
+a the later version to compare."* The bounced-light layer (nearest-N real point lights) is DEFERRED,
+not cancelled — build and judge the cheap half before paying for the expensive one.
+
+## What the data actually says — checked, not assumed
+| building | luminaires | classified as |
+|---|---|---|
+| Hospital | 1272 | `IfcLightFixture` |
+| Terminal | 814 | `IfcLightFixture` |
+| Clinic | ~884 | **`IfcFlowTerminal`, discipline `ELEC`** |
+
+**Two landmines, both found by querying rather than by reasoning:**
+1. **Classification is NOT consistent across buildings.** A detector keyed on `IfcLightFixture` finds
+   ZERO in the Clinic — which is exactly the wrong answer this spec was first written with. Key on a
+   luminaire VOCABULARY over `element_name`, scoped to the ELEC discipline.
+2. **`LIKE '%light%'` is a trap.** The Clinic has `M_Lighting Switches` ×236, `M_Lighting and
+   Appliance Panelboard` ×28 and `M_Duplex Receptacle` ×961. A naive match sets 236 light switches
+   glowing. Switch/receptacle/panelboard/socket must be explicitly EXCLUDED.
+3. **`rel_contained_in_space` carries NO ELEC rows** (ACMV/ARC/STR only, 2133 rows, 98 spaces). Any
+   per-room grouping must assign fixtures by POSITION — `element_transforms.center_*` against the
+   space's `center_*`/`size_*`. That method is what produced the demo room's count below.
+
+## The demo target — settled by shape, because the rooms have no names
+Clinic rooms are COMPILED (`≈ First Floor R1`, `R2`, …), so "main hallway" cannot be selected by name.
+Selected by geometry instead: long, thin, most-lit.
+**`≈ Second Floor R22` — 21.8 × 6.8 m, aspect 3.2, 148 m², 67 luminaires.** The most-lit space in the
+building and unambiguously the corridor. Terminal's seating hall is NOT available: its largest
+`IfcSpace` is 83 m², because the room compiler does not enclose big open halls.
+
+## Method — glow only
+- **Emissive material, not lights.** Cost is independent of fixture count, so 884 is free. Three.js's
+  forward renderer applies EVERY light to EVERY material with no distance culling, so a real light per
+  fixture is not slow — it is a shader that will not compile. That is the whole reason glow comes first.
+- **Save/restore is not invented here** — `ghostglass.js` already does exactly this (caches
+  `emissive`/`emissiveIntensity` per material, sets, restores). Copy that pattern.
+- **Bake-only**, gated behind `_stillRefineActive` like Layer 3's triplanar PBR. Nav is untouched,
+  which is also what "Dont disturb those" asks for.
+- **No composer change.** The chain is TAA → SSAO → Outline → Output; there is no bloom pass. Adding
+  one is the natural next increment and is deliberately NOT in this step.
+
+### Intensity and colour must be EXTRACTED where the data carries them
+Terminal's family names carry both: `E_Light_2 X 28W_Recessed_MPRL_LED T8 cw` → 2×28 = 56W, `cw` =
+cool white; `E_Light_100W_Low Bay` → 100W. Parse `N X MMW` and `MMW`, and `cw`/`ww` for tint.
+**The Clinic's names carry NEITHER** (`M_Troffer Light - Parabolic Rectangular`). So a per-kind
+default is required, and it must be DECLARED as a stated constant with its reasoning shown — the same
+treatment `CINEMA_WALK_MPS` gets — never silently guessed per building.
+
+## Sandbox before production
+`probe_ember_clinic.js` renders the SAME camera in R22 twice — baseline and glow — through the real
+Alt+S fold, and reports both stills plus numbers (fixtures matched, fold time, mean/peak luminance).
+The comparison is the deliverable the user asked for. Nothing lands in the viewer until they judge it.
