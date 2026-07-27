@@ -6233,3 +6233,19 @@ rule, unchanged:** ship it as `buildings/patches/<db>.sql` applied by the self-h
 proven live (`§PATCH_APPLY Hospital_meta.db applied (226962 bytes)` in the user's own log) — **never
 a committed binary.** If a genuinely separate `Terminal_Hi.db` binary is wanted, that is an OCI
 upload (`deploy/OCI_UPLOAD.md` §RULES), never git/LFS.
+
+### §FACADE_WARM_COOL confirmed on Terminal (2026-07-28) — 7/7, plus two real observations
+`W-FACADE-WARM-COOL` on Terminal: **7/7 PASS**, `§FACADE_WARM_COOL sunAz=-0.342,-0.940 warm=2 cool=2
+dots=-0.94,-0.34,0.94,0.34` — identical to Hospital. The feature works on both.
+Two things the run exposed that are NOT failures but should be decided deliberately:
+1. **The hue rule and the brightness rule pull in opposite directions.** `§PHOTO_FACING` on Terminal
+   is `0.59,0.62,0.30,0.54` and on Hospital `0.30,0.67,0.30,0.54` — in BOTH, the most sun-facing edge
+   (dot **+0.94**) gets the **dimmest** wash (0.30, the `PHOTO_FACADE_DIM_FRACTION` floor) while a
+   COOL edge gets the brightest. Wash strength is camera-driven, hue is sun-driven, and nothing
+   couples them — so the warm side is systematically under-lit and the split reads weaker than it is.
+   Fix is small (let `max(0, toSun)` contribute to `strength`), but it changes the shipped look, so
+   it is a decision, not a tidy-up.
+2. **The split is the same 2/2 on every building** because `PHOTO_SUN_ELEVATION`/azimuth are fixed
+   staging constants and the footprint edges are bbox-axis-aligned. It varies with the SUN, not with
+   the building. Real variety would come from deriving the sun azimuth from site orientation or the
+   Time Machine clock — a separate, larger decision.
