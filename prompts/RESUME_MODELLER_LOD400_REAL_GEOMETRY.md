@@ -1,6 +1,150 @@
 <!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
 # ⚠ DO NOT REMOVE — RESUME: Modeller LOD400 real-geometry rendering + UX polish
 
+## 🔴 2026-07-27 — §LODHELL-ROOTCAUSE: "why is the LOD hell still there" — MEASURED. Renderer is clean; the
+## loss is UPSTREAM, in extraction. Read this before touching `real_geometry.js`/`arc_editable.js` again.
+
+Triggered by the live screenshot (`~/Pictures/Screenshots/Screenshot from 2026-07-27 14-08-06.png`,
+`red1oon.github.io/bim-ootb/modeller/modeller.html`, SampleCastle, detailed lower facade + boxy upper masses,
+`selected feature #2362`). Guids in the Outliner confirmed against `SampleCastle_ARC.db` — building identified
+by query, not by eye. All figures below are SQL over the SHIPPED artifacts, no browser, no screenshot as
+evidence (FUNDAMENTAL LAW). Resident under test: `str_walker_outliner.js:41` →
+`db: SampleCastle_ARC.db`, `geoDb: mesh.db`.
+
+**FINDING 0 — the renderer is NOT the culprit; stop re-auditing it.**
+- `element_instances` = 3225 rows; **3225/3225 (100%) resolve a real mesh in `mesh.db`**. `hash_MISSING = 0`,
+  `distinct_missing = 0`, `null_hash = 0`. `real_geometry.js buildGeometryIndex()` has nothing to fail on.
+- `mesh.db` is **byte-faithful to the extractor**: of the 1924 hashes SampleCastle needs, all 1924 exist in
+  `deploy/buildings/SampleCastle_extracted.db` too and `length(faces)` differs on **0** of them. `mesh.db` is
+  not a proxy/decimated store — it carries exactly what the compiler emitted.
+- `arc_editable.js:159-168` `§GEOM-HARDFAIL` is behaving correctly (refuse + log + skip, never a fake box).
+  There is **no LOD-doctrine violation here** ([[feedback_no_fake_lod_unbreakable]] scope: pipeline fidelity,
+  not source richness). Nothing shown is invented. What's wrong is what's MISSING and what's THIN.
+
+**FINDING 1 — 46.4% of what renders is genuinely a 12-triangle box at SOURCE (1498/3225).** This is the boxy
+mass in the screenshot. Per class (`rendered` / `12-tri` / %):
+
+| class | rendered | 12-tri | % |
+|---|---|---|---|
+| IfcWallStandardCase | 231 | 230 | **99.6** |
+| IfcWall | 648 | 324 | 50.0 |
+| IfcRailing | 90 | 42 | 46.7 |
+| IfcBuildingElementPart | 277 | 126 | 45.5 |
+| IfcCovering | 1214 | 515 | 42.4 |
+| IfcSlab | 279 | 116 | 41.6 |
+| IfcWindow | 259 | 92 | 35.5 |
+| IfcDoor | 205 | 49 | 23.9 |
+
+A plain uncut rectangular solid legitimately tessellates to 12 triangles, so this alone is GIGO, **not** a
+violation — but `IfcWallStandardCase` at **230/231** is the tell, and Finding 2 explains it.
+
+**FINDING 2 — the real defect: every wall that has an opening cut into it LOST ITS GEOMETRY and is not
+rendered at all.** Parsed `internal/sources/Ifc2x3_SampleCastle.ifc` (714,485 entities): the source has
+**79 `IFCRELVOIDSELEMENT` / 79 `IFCOPENINGELEMENT` / 74 `IFCRELFILLSELEMENT`** → 71 unique host elements
+(60 `IfcWallStandardCase` named `kozijn` = Dutch *window frame*, 14 `IfcBuildingElementProxy`, 3 `IfcCovering`,
+2 `IfcSlab`). Cross-joined against the shipped DBs:
+- **65 of those 71 opening-hosts have NO `element_instances` row, NO `element_transforms` row, no geometry
+  anywhere.** Only 6 survive with geometry.
+- They are part of a **117-row meta-only population** identical in all three DBs
+  (`deploy/buildings/SampleCastle_extracted.db` 3621 meta / 3504 inst; ootb `SampleCastle_extracted.db` and
+  `SampleCastle_ARC.db` both 3342 / 3225) — i.e. this originates in the COMPILER, not in the ARC filter or
+  the ootb copy. Breakdown: `IfcWallStandardCase` 51, `IfcCovering` 48, `IfcBuildingElementProxy` 14,
+  `IfcWall` 4 (`kozijn`, `dakopstand`).
+- `extractIFCtoDB.py:1351-1366` writes `elements_meta` + `element_instances` + `element_transforms` **in one
+  block**, so a meta-only row cannot come from the geometry loop. These 117 have meta but zero transform ⇒
+  written by a later meta-only pass (the BOM stage's `INSERT OR IGNORE INTO elements_meta (guid, discipline,
+  ifc_class, element_name, element_type)` in `BOMTypeSystem.java:392` / `BOMBuilder.java:213` /
+  `FloorAssemblyBuilder.java:340`), while the geometry pass had already dropped them into `failed`
+  (`extractIFCtoDB.py:1426-1429`, which only prints the first 5).
+- ~~Net effect: the frame-walls that carry the windows are hard-failed and never drawn.~~ **← RETRACTED,
+  see FINDING 2-CORRECTED. The elements are absent, but that is CORRECT, not a loss.**
+
+**FINDING 2-CORRECTED (2026-07-27, same day, by RUNNING the extractor — this supersedes the "lost geometry"
+reading above; do not re-cite it).** Baseline re-extraction of the same IFC
+(`log: scratchpad/lodhell/baseline.log`, `imported=3583 failed=65 bbox_fallback=0`, `§PATHB 79 host edges
+recovered`) plus a per-element probe give the actual mechanism:
+- All 65 empty-tessellation elements are the opening-hosts. Their **body representation tessellates
+  perfectly** — probed `create_shape()` on the `Body` `IfcExtrudedAreaSolid` ITEM directly for
+  `1A9aTEU4z9SwaqEUwI8Lx4`: **8 verts / 12 tris**, a 1.210 × 0.114 × 1.850 m strip.
+- Its authored opening (`merk B1sp-R`) measures **1.210 × 0.342 × 1.850 m** — equal in width and height,
+  *thicker* than the wall. The boolean subtraction correctly removes **100%** of the body ⇒ empty product.
+- Classified all 65 programmatically: **65/65 VOID-CONSUMED** (body tessellates + has `HasOpenings` +
+  product empty). **0** with an empty body, **0** empty without openings. There is no geometry defect here.
+- And the content is not missing: `rel_fills_host` in the fresh DB has 79 rows / 74 with a filling, and
+  **74/74 fillings (the actual windows/doors) DO have geometry**. A `kozijn` is the wall strip that exists
+  only to host a window; the window is what you are meant to see. The author voided it deliberately.
+- ⇒ **The "LOD hell" is FINDING 1 alone** — SampleCastle's own source detail (46.4% literal 12-tri boxes,
+  `IfcWallStandardCase` 230/231). GIGO, honest, no pipeline fix available. What IS broken is the REPORTING
+  around it (Finding 3) — a correct outcome is being screamed at as an illegal fallback.
+
+**FINDING 3 — the reporting is wrong in three ways, and the "fix" I first proposed for it is wrong too.**
+- `extractIFCtoDB.py:1179` raises `§ILLEGAL_PARAMETRIC_FALLBACK … "Add to NON_GEOMETRIC_CLASSES or fix IFC
+  source"` for all 65 — **a correct, authored geometric outcome reported as a source defect.**
+- `:1426-1429` prints only `if failed <= 5`. 60 of 65 are invisible. A genuine defect hiding among them
+  would never be seen.
+- P5 `FAIL_RATE` counts them ⇒ **`§PROOF RESULT: 5 PASS, 1 FAIL` (65/3648 = 1.78%)** — the gate cries wolf
+  on every run, **and the script still `exit 0`** (verified). The one check that could have caught a real
+  loss is permanently red for a non-reason and non-blocking.
+- ⚠ **The Tier-2 no-boolean fallback must NOT be wired** (this reverses my own earlier fix-2 proposal).
+  Measured: `DISABLE_BOOLEAN_RESULT=True` (readback confirmed `True`) still yields **v=0 t=0** at product
+  level on ifcopenshell 0.8.4 — it does not work. And even if it did, it would resurrect a wall the author
+  deliberately voided and render it as an uncut solid — **inventing content, a direct
+  [[feedback_no_fake_lod_unbreakable]] violation.** `settings_no_bool` (`:1119-1123`) and
+  `BOOL_DEPTH_THRESHOLD` (`:1125`) are unreferenced dead code and must be **deleted**, not activated.
+
+**FINDING 4 — correction to an existing memory claim, do not re-cite it.**
+[[project_modeller_lod400_real_geometry]] and the 2026-07-02 NIGHT note (item 1) state SampleCastle has no
+`rel_fills_host` "confirmed absent in both the DB and the source IFC." **The DB half is true; the source-IFC
+half is FALSE** — the IFC has 79 RelVoids / 74 RelFills. The relations are **dropped by the pipeline**, not
+missing from the source. This changes the §STRETCH-RIDE / proximity-clustering design question below: the
+host↔opening relation does not have to be re-derived by a geometry-clustering heuristic — it can be
+**extracted**, which is the Prime-Rule-compliant path.
+
+**FINDING 4 — correction to an existing memory claim, do not re-cite it.**
+[[project_modeller_lod400_real_geometry]] and the 2026-07-02 NIGHT note (item 1) state SampleCastle has no
+`rel_fills_host` "confirmed absent in both the DB and the source IFC." **The DB half is true; the source-IFC
+half is FALSE** — the IFC has 79 RelVoids / 74 RelFills, and `extract_rel_fills_host()`
+(`extractIFCtoDB.py:757`, called at `:1532`) already recovers all 79 verbatim. The shipped DBs simply predate
+that function. So the §STRETCH-RIDE host↔opening relation does **not** need a proximity-clustering heuristic —
+it is already extracted, it just was never shipped to the Modeller.
+
+---
+
+### §LODHELL-FIX — SPEC (written before code, per Spec-First). Three items, in order.
+
+**§LODHELL-FIX-1 — classify empty tessellation; report all of it; make the gate mean something.**
+*Issue it proves/disproves:* whether a genuine geometry loss can be distinguished from an authored full-void
+in the extraction log, and whether the §PROOF gate can still fire on the genuine one.
+- In the iterator loop, when `len(verts) < 3 or len(faces) < 1`, do NOT unconditionally raise. First classify,
+  using authored data only (non-invent — no thresholds, no heuristics):
+  - element has ≥1 `HasOpenings` **and** at least one `Body` representation ITEM that tessellates non-empty
+    ⇒ **`§VOID-CONSUMED`**: the author's own opening removed the whole body. Counted in `void_consumed`,
+    NOT `failed`. Recorded (see below), not rendered — the filling element carries the visible geometry.
+  - anything else ⇒ real failure, keep the existing `§ILLEGAL_PARAMETRIC_FALLBACK` raise.
+- Print **every** real `§FAIL` (drop the `failed <= 5` cap). Print `§VOID-CONSUMED` as one summary line plus
+  a capped sample, since it is expected output, not an error.
+- P5 `FAIL_RATE` counts real `failed` only. Add **P9 `VOID_CONSUMED`**: informational PASS carrying the count,
+  and FAIL if any void-consumed element's **filling has no geometry** (that is the one case where a consumed
+  host really does leave a hole — the check that would have caught a true loss).
+- `main()` returns non-zero when `_proof_fail > 0`. A red §PROOF must fail the run, not exit 0.
+- *Witness:* `scripts/witness_lodhell_classify.py` — re-extract SampleCastle, assert
+  `failed == 0`, `void_consumed == 65`, `§PROOF RESULT` has 0 FAIL, exit code 0; then falsify it by forcing
+  one host's filling out of the DB and asserting P9 turns FAIL + exit non-zero.
+
+**§LODHELL-FIX-2 — delete the dead no-boolean tier (NOT wire it).** Evidence in FINDING 3: it does not work
+on ifcopenshell 0.8.4 and activating it would invent uncut walls. Remove `settings_no_bool` and
+`BOOL_DEPTH_THRESHOLD`, leave a comment recording the measurement so nobody re-adds it.
+*Issue it proves:* that no code path can resurrect an author-voided body as real geometry.
+
+**§LODHELL-FIX-3 — ship `rel_fills_host` to the Modeller's SampleCastle.** The extractor already produces it;
+the shipped DBs have no such table, which is why `sdg_cascade.js stretchRide()` silently no-ops (2026-07-02
+NIGHT item 1). Per the project DB policy (**patch + self-heal loader together, never a binary**):
+`modeller/patches/SampleCastle_ARC.db.sql` = `CREATE TABLE IF NOT EXISTS rel_fills_host (…)` + 79 `INSERT OR
+IGNORE` rows generated from the freshly-extracted DB, applied by the existing
+`str_walker_outliner.js _applyPendingPatch()`.
+*Issue it proves:* that `stretchRide()` stops no-opping on SampleCastle — a hosted window rides its wall
+instead of warping.
+
 ## 🔎 2026-07-03 — deeper competitive-polish pass, see dedicated spec
 5 more parallel investigations (Outliner↔canvas wiring, visual consistency, IFC/BCF interop, 3D-grid geometric
 accuracy, authoring-toolset+canvas-render polish) went into their own file, not inline here — it's a big enough
