@@ -25,6 +25,8 @@ async function initViewer() {
   if (typeof setupDLOD === 'function') setupDLOD(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
   if (typeof setupGhostGlass === 'function') setupGhostGlass(APP);
+  // Implementing prompts/Viewer/BLANK_VIEWER_LANDING_CARD.md §2 — Witness: witness_blank_viewer_card.js
+  if (typeof setupBlankOpen === 'function') setupBlankOpen(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
   APP._navigateLoaded = false;
   APP.loadNavigate = function() {

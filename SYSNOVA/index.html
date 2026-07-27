@@ -398,6 +398,28 @@ function saveViewed() {
 // DB files served from production bucket — dev only overrides viewer/JS
 const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/';
 
+// Implementing prompts/Viewer/BLANK_VIEWER_LANDING_CARD.md §3 — Witness: witness_blank_viewer_card.js
+function openBlankViewer() {
+  const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
+  const url = viewerUrl + '?blank=1';
+  const win = window.open(url, 'bim_blank');
+  if (!win) { location.href = url; return; }
+  trackTab('Blank', '3D', win);
+}
+
+function buildBlankCard(container) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed rgba(2,119,189,0.4)';
+  card.innerHTML = `
+    <div class="name" style="color:#0277bd">&#10133; ${_TRL.landing_blank_viewer||'Blank Viewer'}</div>
+    <div class="meta" style="text-align:center">${_TRL.landing_blank_viewer_desc||'Open your own .db file'}</div>
+    <button class="open-btn" onclick="event.stopPropagation(); openBlankViewer()">${_TRL.landing_open_viewer||'Open 3D Viewer'} &#9889;</button>
+  `;
+  card.addEventListener('click', () => openBlankViewer());
+  container.appendChild(card);
+}
+
 function openViewer(archName, repBuilding) {
   const bld = BUILDINGS[archName];
   if (!bld) { alert(`No DB for ${archName}`); return; }
@@ -493,6 +515,9 @@ window._TRL = window._TRL || {};
 // ── Load manifest ──
 async function loadManifest() {
   const loadingEl = document.getElementById('loading');
+  // Blank Viewer — always first, independent of manifest fetch success/failure (§3 BLANK_VIEWER_LANDING_CARD.md)
+  const _instantGridEarly = document.getElementById('instant-grid');
+  if (_instantGridEarly) buildBlankCard(_instantGridEarly);
   try {
     const url = (_base || '') + 'manifest.json';
     const ctrl = new AbortController();
