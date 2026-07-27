@@ -5723,3 +5723,95 @@ INSIDE walls (the fixtures of a compiled room span 21.1 x 15.5m for a 21.8 x 6.8
 anchor resolved to world origin because instance-matrix extraction is wrong for batched meshes).
 **`cinemaPathPlan(30).poseAt(t)` already walks the building at eye level and is the same function the
 bake flies.** Sample it. There is no reason for any probe in this repo to invent a camera again.
+
+---
+
+# §MATERIAL_FINISH — VIABILITY, MEASURED (2026-07-28, analysis only, no code)
+**The ask: "we discussed replacing materials surface for higher visual during Alt+S — find it and
+analyse its viability."** It is two sections of this file: **§LAYER 3** (line 51, triplanar PBR,
+Alt+S-gated — SHIPPED for 3 texture groups / 21 classes on 2026-07-15) and **§Part B — Material
+finish** (line 1927, 2026-07-17 — the "~20 curated real-material starter set, name-pattern lookup",
+never implemented, deferred because it "touches SQL queries + batching grouping keys… in a
+performance-critical file"). Numbers below are from `sqlite3` over six `*_extracted.db` and from
+reading `origin/main:viewer/streaming.js`. **Area = bbox-surface proxy `2(xy+xz+yz)` — a RANKING
+metric, not photometry: it counts hidden interior faces. Use it to compare classes, not to predict
+pixels.**
+
+## 1. Both of Part B's stated blockers are already gone — shipped by other work
+- *"touches SQL queries"* — **it does not.** `element_name` is already selected by the streaming
+  query (`streaming.js:74` and `:132`, row slot 12, documented at `:193`) and already consumed at
+  `:929`/`:1548`. Nothing to add.
+- *"touches batching grouping keys (`rgba, ifcClass`) in a performance-critical file"* — **already
+  changed, by §ENTOURAGE.** The batch bucket key is now `storey|disc|rgba|matVariant`
+  (`streaming.js:1028`) and the material cache key `rgba|ifcClass|matVariant` (`:416`).
+  `A._entourageVariant()` (`:282`) is a live, working name→variant lookup (RPC person/tree/vehicle/
+  logo). A material-finish name route rides the same rail.
+**Part B is a table plus one lookup function today, not an architecture change.** That is the good
+news, and it is why this is worth re-reading rather than re-deferring.
+
+## 2. …but the payoff is far smaller than the spec assumed: coverage is already 77–91%
+Share of bbox-surface already carrying a triplanar texture, per shipped building:
+| building | elements | textured elements | **textured AREA** | biggest untextured block |
+|---|---|---|---|---|
+| Hospital | 63,182 | 52,322 (82.8%) | **90.6%** | `IfcBuildingElementProxy` 7.0% |
+| Terminal | 48,428 | 44,855 (92.6%) | **89.8%** | `IfcBuildingElementProxy` 4.1% |
+| HHS Office | 6,839 | 2,640 (38.6%) | **90.4%** | `IfcFlowSegment` 3.3% |
+| Clinic | 16,071 | 3,119 (19.4%) | **85.4%** | `IfcFlowSegment` 5.1% + `IfcFlowTerminal` 2.9% |
+| Duplex | 1,119 | 114 (10.2%) | **84.6%** | `IfcFurnishingElement` 5.4% |
+| LTU AHouse | 125,698 | 34,049 (27.1%) | **76.8%** | `IfcOpeningElement` 8.6% — **never rendered**, `streaming.js` excludes it at `:80`, `:138`, `:1824`, so LTU's true untextured share is ~13% |
+A 20-material library is therefore chasing **≤10–15% of visible surface**. That is not where the
+remaining flatness is.
+
+## 3. Where it IS: five DEAD table lines and three missing class names — zero new texture bytes
+`TRIPLANAR_MAT` entries matching **0 elements across all six buildings**: `IfcPile`, `IfcRamp`,
+`IfcPipe`, `IfcDuct`, `IfcCableCarrier`. The last three **are not real IFC class names at all** —
+the real ones are `IfcPipeSegment`/`IfcPipeFitting`/`IfcDuctSegment`/`IfcDuctFitting` (present, wired)
+and `IfcCableCarrierSegment`/`IfcCableCarrierFitting` (present, **not** wired).
+
+The real gap is the **IFC2x3 generic-MEP convention**. Hospital and Terminal export
+`IfcPipeSegment`/`IfcDuctSegment` → they get the brushed-metal texture. Clinic, LTU and HHS export
+the generic classes → **their entire MEP is untextured**:
+| class, fleet-wide | elements | area | fix |
+|---|---|---|---|
+| `IfcFlowSegment` | 48,223 | **37.9k m²** | → `_TRI_METAL` |
+| `IfcFlowTerminal` | 9,563 | 9.3k m² | → `_TRI_METAL` |
+| `IfcFlowFitting` | 38,786 | 6.8k m² | → `_TRI_METAL` |
+| `IfcStairFlight` | 82 | 2.3k m² | → `_TRI_CONCRETE` (`IfcStair` is wired, `IfcStairFlight` is not) |
+| `IfcCableCarrierSegment`/`Fitting` | 150 | 1.8k m² | → `_TRI_METAL` |
+**≈58k m² recovered by about eight table lines. No new textures, no new download, no new draw calls**
+— materials are already split per `ifcClass`, so these classes get their own material either way.
+This is the whole explanation for "the Clinic still looks flat and the Hospital doesn't."
+
+## 4. The teal-proxy problem is half its apparent size, and its largest block is unnameable
+`IfcBuildingElementProxy`: 8,551 elements / 49.9k m² fleet-wide — but only **18.6k m² actually falls
+back to teal** (`material_rgba IS NULL`; the rest carry real IFC colour and are correctly trusted).
+Of that, **Hospital's 17 UNNAMED proxies are 20.06k m² on their own** (`element_name` empty,
+`material_name '≈ Grey'`, up to 58.2m × 0.4m — site/podium decks). **A name-pattern lookup cannot
+reach them.** What the name route *can* reach: `Sunpower E19 Solar Panel` 567 / 4.1k m²,
+`Stahlbalkon` 81 / 1.3k, awnings 26 / 2.1k, `Louver - Nystrom` 76 / 0.9k, `HeliPad` 1 / 0.6k, plus
+toilets/grab-bars — and `M_RPC Tree`/`Shrub` are **already** handled by §ENTOURAGE. Realistic reach:
+**~8k m², not 50k.**
+
+## 5. Memory arithmetic for the "~20 materials" version
+Today: **6 maps, 2.17 MB on disk** (`viewer/textures/materials/`), ≈ **33 MB VRAM**
+(1024²×4B ×1.33 mips ×6). Twenty materials × 2 maps = 40 maps ≈ **15 MB download and ≈224 MB VRAM**,
+on top of Hospital's existing budget — and it enters `sw.js PRECACHE_ASSETS` for the offline PWA as
+well. Reusing three texture GROUPS across many classes (what §3 does) costs **zero** of this.
+
+## 6. The one number that has never been measured is the one that gates everything
+§OPEN QUESTIONS (line 227, still open since 2026-07-15): **real-GPU triplanar cost was never
+measured** — only SwiftShader (~18–22s per 16-sample accumulation). Triplanar is 3 taps per map per
+fragment (6 with two maps); every class added widens the fragment population paying it during Alt+S.
+`§TRIPLANAR_PERF` already exists in the code, and the real-GPU headless rig already exists
+(RTX 4060 + `--use-angle=gl`, proven by §MAXQ_OFFLINE_RUNNER). **One run closes it.**
+
+## 7. VERDICT — scored
+| # | action | payoff | cost | call |
+|---|---|---|---|---|
+| 1 | **Class-name repair** — wire `IfcFlowSegment`/`Fitting`/`Terminal`, `IfcStairFlight`, `IfcCableCarrierSegment`/`Fitting`; delete the 5 dead lines | **~58k m² fleet-wide**, fixes Clinic/LTU/HHS MEP flatness | ~8 table lines, **0 new bytes**, 0 new draw calls | ✅ **DO — highest ratio in this whole spec** |
+| 2 | **Real-GPU `§TRIPLANAR_PERF` run** | closes a 2-week-old open question; gates 1, 3, 4 | one headless run on the existing rig | ✅ **DO NEXT** |
+| 3 | Proxy **name→variant** route (`_entourageVariant` pattern) | ~8k m², kills the teal on solar panels/awnings/louvers | 1–2 new texture sets; splits batches → some new draw calls | ⚠️ **MAYBE, after 2** |
+| 4 | The full **~20-material curated library** as specced | ≤10–15% of residual surface | ≈224 MB VRAM, ≈15 MB download, PWA precache growth | ❌ **NOT YET — revisit only if 2 shows headroom** |
+Hospital's 20k m² of unnamed grey proxy slabs are reachable by neither 3 nor 4 (no name, no class
+signal). If they matter visually, that is a **class+size heuristic**, a separate decision — do not
+let it ride in as part of a material library.
