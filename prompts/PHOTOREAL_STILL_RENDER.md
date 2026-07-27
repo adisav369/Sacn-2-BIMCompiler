@@ -6306,3 +6306,58 @@ auto-derived from the model's own `%Procelain%` slab names.
    under a fresh name (`Terminal_Hi2.db`) or you will debug a stale copy.
 4. **Read the rounded display value at your peril.** Using `150.02` from a log instead of the stored
    `150.0229...` put the billboard 3mm inside its host wall. Query the DB for placement maths.
+
+---
+
+# §MAXQ_TIME — bake a movie off the Time Machine cursor (2026-07-28, spec only, no code)
+User: *"Can we also bake a movie but based on the Time Machine canvas? Where it is more compact, but
+render similar Alt+S quality — or apply the 4D schedule onto the Alt+C scene?"*
+**Both, and they are one feature.** Read `prompts/archive/TM_MOVIE_EXPORT_RETIRED_2026-07-18.md`
+before writing a line — a previous TM movie export was RETIRED, and this design must answer why it
+will not repeat those failures.
+
+## Why it is small — the bake loop already isolates the variable
+`cinema_maxq.js` per frame: `stopStillRefine → settle → freezeRandom → **poseAt(t)** →
+startStillRefine → waitFoldDone → captureFrame → IDB`. **The only per-frame state advance is one
+line: `poseAt(t)`.** Everything else — the full Alt+S fold, TAA, AO, warm-up fold (so frame 0 shares
+the later frames' lighting baseline), mp4 mux, ETA, wake lock, `§MAXQ_HIDDEN_PAUSE`, partial-save on
+cancel — is generic and already hardened. Add a second advance and three modes fall out:
+| mode | camera | time | result |
+|---|---|---|---|
+| A | `poseAt(t)` | frozen | **today's Alt+C MaxQ** |
+| B | frozen | `timeAt(t)` | **the compact construction film at Alt+S quality** ← what the user asked for |
+| C | `poseAt(t)` | `timeAt(t)` | **the 4D schedule playing onto the Alt+C orbit** |
+
+## What actually has to be built (small)
+1. **A public cursor setter.** `time_machine.js` exports `tmResweep()`, `tmJumpToPhase/Element/Order`
+   and `tmGetState()`, but `renderAtTime(cursorMs)` is internal — mode B/C needs `tmSetCursor(ms)`.
+2. **`timeAt(t)`** — normalized `t` 0→1 mapped onto the schedule's real date range. Chronological by
+   construction (see the retired-failure table below).
+3. **A mode flag** on the existing MaxQ entry point. Nothing else changes.
+
+## ⚠ Checked against WHY the previous export was retired — 3 of 4 are fixed by construction
+| retired failure | status here |
+|---|---|
+| Beats played in the storyboard's **spatial-flight order, not chronological** — did not read as "start from the timeline" | ✅ **fixed by construction** — the driver is `t` mapped onto the real date range, so it can only be chronological |
+| SSAO composer-sizing bug put a **solid white band** across captured frames | ✅ **different pipeline** — that was a proxy canvas + `MediaRecorder`; MaxQ captures the real composer canvas and already warms the fold before frame 0 |
+| Dropping Alt+S for cheap Shadow-mode capture fixed timing but output was **visibly grainy, no AA** | ✅ **not repeated** — MaxQ keeps the full Alt+S fold per frame; that IS the quality being asked for |
+| **The sun hit zenith (elevation 90°) at the schedule's midpoint hour and washed out the sky** — required decoupling "sun time" from "construction time" | ⚠️ **STILL LIVE. The one real landmine.** If the TM cursor drives the sun, a long schedule sweeps it through noon. **Pin the sun to the staged dusk (`PHOTO_SUN_ELEVATION = 6`) and let ONLY construction state advance.** Sun time and construction time must stay separate variables. |
+
+## Cost — measured where measured, flagged where not
+- Per frame today (user's own RTX 4060 log, 2026-07-28): `§STILL_REFINE done … elapsedMs=717`,
+  `§PHOTO_AO done … totalMs=714`, plus settle and the staging teardown/restage → **~2–2.5 s/frame**.
+  Their 731-frame film is therefore a ~25–30 min bake.
+- **"More compact" is real**: a construction film needs far fewer frames than an orbit. 300 frames at
+  15 fps = 20 s ≈ **10–12 min**.
+- **UNMEASURED, and it must not be assumed**: mode B/C add `renderAtTime()` per frame — a full scene
+  traverse over 48,433 elements writing per-element visibility matrices. That cost is unknown. **A
+  witness must measure it against the existing per-frame budget before any bake is promised**, the
+  same discipline the `Reflector` estimate needed (a conversational estimate there was wrong by 40×).
+
+## Build order
+**Mode B first.** It is the compact film the user asked for, and it isolates the new variable — only
+time advances, camera fixed — so if the resweep cost is bad it surfaces immediately, without also
+debugging camera motion. **Mode C is then free**: both advances already exist, it just stops pinning
+the camera. Witness: `§MAXQ_TIME mode=<A|B|C> frames=N cursorMs=… resweepMs=… perFrameMs=…`, and
+assert the cursor is monotonic across frames (a non-monotonic cursor is the retired version's
+out-of-order defect returning).
