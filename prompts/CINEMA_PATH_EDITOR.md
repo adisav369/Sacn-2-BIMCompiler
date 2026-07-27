@@ -780,3 +780,122 @@ GUARDED, so it never threw and therefore never got noticed. Now reports `bands=3
 outright that staging is not saving. Worth noting as a pattern: the crash was found in one afternoon
 because it threw; its silent twin sat in the same feature untouched. **When a field is renamed, grep
 every consumer — the guarded ones are the ones that survive to lie later.**
+
+---
+
+# 2026-07-27 (evening) — three items from the user's second live Hospital run
+
+**RESUME HERE.** Two defects + one agreed-for-later design, all three raised by the user after a full
+edit→OK→bake on Hospital. §CPE_PREVIEW_DIVERGENCE is the lead for both defects and is ALREADY
+MEASURED in the user's own pasted console — read it first.
+
+## §CPE_PREVIEW_DIVERGENCE — the baked film is NOT the film the user authored ⚠ MEASURED, NOT FIXED
+
+The user's report for item 1 is *"It has a frame jump"*. Before touching curvature, look at this,
+because it is bigger than a corner: **the plan built when the editor closes differs from the plan the
+user was editing against — in the pivot, the dive and the spin.** Straight from their console, same
+session, minutes apart:
+
+| | while editing (every live re-plan) | after OK, the plan that BAKES |
+|---|---|---|
+| `§CINEMA_PIVOT src` | `arc-bbox-centre` pivot=(-7.3,-2.8,18.0) | **`controls-target(plausible)`** pivot=(0.0,0.0,-0.0) |
+| `§CINEMA_DIVE` | `diveDist=14.2m` yaw0=-163.2° pitch0=4.2° | **`diveDist=77.2m`** yaw0=90.2° pitch0=-48.1° |
+| `§CINEMA_SPIN` | `dYawRawDeg=11.4 class=already-facing(no-spin) finalSpinDeg=0.0` | **`dYawRawDeg=118.1 direct-turn finalSpinDeg=118.1`** |
+| `§CINEMA_EXIT facingDot` | `0.980` | **`-0.471`** |
+| `§CINEMA_PACING` | `natural=99.1s = dive 2.5 + spin 0.8 + walk 71.2 + pullback 16.7 + orbit 8.0` | `natural=99.9s = dive 3.9 + **spin 2.6** + walk 71.2 + pullback 14.3 + orbit 8.0` |
+
+**The user previewed a film with no spin at all and got one that turns 118° at the start.** This is
+not a subtle regression — it is the first two beats of every edited film. It reproduces in the
+EARLIER Hospital run too (preview `arc-bbox-centre`/dive 25.4m/spin 45.8° → bake
+`controls-target`/dive 62.8m/spin 107.8°), so it is not a one-off.
+
+**Lead, to be confirmed not assumed:** `finish()` restores the camera to `_state.camSave` and calls
+`a.controls.update()` before resolving. The pivot picker then sees a DIFFERENT `controls.target` than
+the one in force during editing and switches source from `arc-bbox-centre` to
+`controls-target(plausible)` — pivot (0,0,-0) is suspiciously the origin, i.e. a target that was never
+re-aimed. Everything downstream (dive distance, `facingDot`, the spin) is derived from the pivot, so
+one wrong branch moves all of them together, exactly as the table shows.
+
+**Verify like this, numerically:** capture `A.controls.target` + `A.camera.position` at editor OPEN,
+at every live re-plan, and immediately before the post-OK `cinemaPathPlan` call; log them as one
+`§CPE_PIVOT_TRACE` line. If the target at bake ≠ the target during editing, that is the defect and
+the fix is to plan the bake against the SAME pivot input the editor previewed — not to re-derive it.
+**Gate: `§CINEMA_PIVOT src` and `diveDist` must be identical in the last editing re-plan and in the
+post-OK plan.** Until that is true, no amount of corner smoothing will make the film match the preview.
+
+## §CPE_EVEN_TURN — item 1 proper: no sharp turns, no camera discontinuity
+
+User: *"if the pipe is facing another way and then ensuing path is a sharp turn, it has to be even
+curved out to never have any sharp sudden turns. And the ensuing frames connected do not jump the
+camera pos/pov that breaks continuity."*
+
+Two separate obligations, gate them separately:
+1. **Position C1** — the flown curve must not kink at a band join. `§CPE_BANDS` B3 already gates
+   tangent continuity, so the mechanism exists; what the user hit is the connector being *allowed
+   too little room to turn*. Their log: `§CINEMA_BANDS ... maxBow=2.13m **unmeasuredJoins=2/2**` —
+   BOTH connectors fell back to the conservative no-hit cap (`nudgeCap=3`) because the fan measured
+   nothing, so a hard direction change had to be crammed into a bounded bow. **That is the knob**:
+   when clearance is genuinely unknown, a conservative bow is the safe choice for a WALL and the
+   wrong choice for a TURN. Decide what an unmeasured join should do — measured clearance stays
+   authoritative wherever the fan does return a hit.
+2. **Gaze C1** — the per-frame camera turn rate. The existing number to beat is the ungated
+   **D2 walk-out corner whip: 19.8°/frame**, and `witness_cinema_bands.js` B5 caps the seeded layout
+   at 12°/frame (adversarial layout measured 12.1). The user's edited layout is closer to adversarial
+   than to seeded, which is consistent with a visible jump.
+**Gate:** peak deg/frame AND peak metres/frame across the WHOLE film (not just the walk) on a
+user-shaped edited path, with the §CPE_PREVIEW_DIVERGENCE fix in place — a 118° phantom spin would
+otherwise dominate any number this gate produces. Report both peaks and where in `u` they fall.
+
+## §CPE_PACE_LOS — item 2: even speed inside, brake only for what is actually ahead
+
+User: *"too slow and thus gives uneven speed. It has to maintain same speed inside building and apply
+brake when too near or facing an object not to crash into or zoom past but slows down just abit not
+overdoing."*
+
+**Measured:** `CINEMA_WALK_MPS = 1.3` (`effects.js:3319`) is a flat constant with no proximity term
+at all. Their edited walk was **92.5 m ⇒ 71.2 s of the 99.5 s film (72%)** at that fixed pace, and
+1492 frames — at the ~4.6 s/frame their §MAXQ_FRAME reported, ≈1.9 hours of cook. The runaway bake
+they saw is a straight consequence of the pace, not a separate bug.
+
+**The brake the user is describing ALREADY EXISTS — do not invent a second one.** `tour.js:1111-1165`
+carries §INTERIOR_PACING / §INTERIOR_PACING_LOS, settled with this same user on 2026-07-25/26:
+- `_invPace(d, ref, min)` — *"the simple inverse formula"*, far ⇒ fast, near ⇒ slow;
+- `_losPace(pts, i)` — a SINGLE forward raycast along the leg via the already-exposed
+  `A.cinemaLookDist`, `REF=3m` reads as neutral — chosen precisely because an omnidirectional fan-min
+  braked for furniture off to the side (the courtyard bug);
+- **`PACE_SWING = 1.6`, ONE knob**, symmetric: `MIN=1/1.6`, `MAX=1.6`. This is literally the user's
+  *"slows down just abit not overdoing"*, already tuned with them across three live-review rounds;
+- `_paceBuildRemap` redistributes time along the path AND rescales the total via `meanFactor`.
+It is wired to Fly Tour's flyPath/moveTo/orbit and **not** to the cinema walk-out.
+
+**The work:** raise the cinema base pace (1.3 m/s is a literal pedestrian and the user has now twice
+called the result too slow), then apply the EXISTING remap to the walk beat. Two constants, one
+reused module — not a new pacing system.
+**Gate:** on an edited path, (a) speed in open interior is CONSTANT within the ±`PACE_SWING` band —
+report min/mean/max m/s, not a "feels right"; (b) the slow samples coincide with genuinely low
+`cinemaLookDist`, i.e. the brake fires for what is AHEAD, not for anything nearby; (c) the resulting
+frame count for the user's Hospital edit lands in minutes, not hours — report it.
+
+## §CPE_IDB_PATH_STORE — agreed, spec-only, NOT NOW (user, 2026-07-27)
+
+User: *"on save it goes to DB.. ok fair for now.. later should be its own in IndexDB first separate
+table of saved waypoints if u agree with the idea spec it first for later once we cleared this big
+pathing achievement."*
+
+**Agreed, and for a reason the current design already exposes** — see §CPE_SAVED_PATH_LIFECYCLE:
+today a saved path can only live inside the building `.db`, so (a) a building served read-only from
+OCI can never keep one without the user downloading a private copy, (b) one file holds exactly ONE
+path, (c) saving a path means rewriting a 260 MB binary. An IndexedDB store fixes all three, and it
+is the same shape the viewer already uses for `bim_ootb_logs` and `bim_ootb_cinema_maxq`.
+
+Sketch, to be settled with the user when it comes up — **do not build from this**:
+- store `bim_ootb_cinema_paths`, key `buildingId + name`, value = the band override + `_total` +
+  beat seconds (the exact `_buildOverride()` object, IFC-space like `cinema_path` already is);
+- MANY named paths per building ⇒ the editor grows a small list: Save as… / Load / Delete;
+- the `cinema_path` TABLE STAYS as the portable/exchange format — IndexedDB is the working store,
+  Ctrl+S remains how a path travels with the file to someone else. Read order at plan time:
+  staged override → IndexedDB (if a path is selected) → `cinema_path` table → derived;
+- this also gives `A.clearCinemaPath()` a home in the UI, which §CPE_SAVED_PATH_LIFECYCLE flags as
+  missing today.
+**Open question for the user when this starts:** should a path selected from IndexedDB auto-apply on
+load, or only when picked from the list? (Today the DB table auto-applies, silently.)
