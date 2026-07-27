@@ -1982,11 +1982,14 @@ contradict that code rather than echo it. The witness check is a drift report on
 **1.00x means §CPE_DRAG_TELEPORT's frightening leaps are back**). Cursor-lock is NOT the goal here
 and a future session must not "fix" the 0.45x.
 
+## CLOSED, was item 4 — the dive base rate. Do NOT reopen, do NOT ask for a number.
+User, 2026-07-27: *"The dive is OK as it has slowed down leave it alone."* `§CPE_NOISE_LAW` already
+did the job. The previous handover's "decide it with a number, with them" was itself off-doctrine —
+the noise ratio **governs throughout** (a settled ruling, see below), so there was never a constant
+to ask them to pick. `CINEMA_DIVE_MPS = 20` stays as it is. Asking again is the drift this note exists
+to stop.
+
 ## Still open — in order
-4. **The dive base rate.** UNTOUCHED this session. `CINEMA_DIVE_MPS = 20` is a flat constant, 8.7x the
-   walk pace; the law bends only ±PACE_SWING around it and measured ×1.15 dive-seconds on Terminal.
-   User: *"the dive in ... its same too fast"*. **Decide it with a number, with them** — same
-   treatment `CINEMA_WALK_MPS` got.
 5. **T5 / T6 are RED, different answers each.** T5: the walk's position step is 3.0x against a 2.4x
    allowance — REAL (noise weight multiplying an already-spread cost, worst case 1.5·SWING²=3.8x).
    Decide: mean-neutral walk noise, or state 3.8x as the bound. T6: stale model (still plain
