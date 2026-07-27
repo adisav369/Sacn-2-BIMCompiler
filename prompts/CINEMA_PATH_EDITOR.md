@@ -823,6 +823,39 @@ the fix is to plan the bake against the SAME pivot input the editor previewed �
 **Gate: `§CINEMA_PIVOT src` and `diveDist` must be identical in the last editing re-plan and in the
 post-OK plan.** Until that is true, no amount of corner smoothing will make the film match the preview.
 
+### ✅ FIXED AND WITNESSED 2026-07-27 — `witness_cpe_preview_divergence.js` 3/3 Duplex + 3/3 Terminal
+
+**The witness found it is BROADER than the pivot branch.** On Duplex the pivot `src` stayed the same
+in both plans and the film still diverged:
+```
+RED (origin/main), Duplex — camera dollied 93.3m -> 23.3m from target mid-edit
+  FAIL P1  editor: pivot=controls-target @0,0,0  dive=21.7m   spin=0.0deg
+           bake:   pivot=controls-target @0,0,0  dive=91.3m   spin=0.0deg     <- 4.2x
+  PASS P3  untouched camera: editor and bake agree exactly (91.3m both)
+```
+`diveDist` is measured from the LIVE camera to the settle point, so **any** camera movement while the
+editor is open rewrites the film's opening beat — the pivot-branch flip the user hit on Hospital is
+one extra symptom stacked on top, not the whole defect. P3 passing RED is the proof of mechanism:
+leave the camera alone and the two agree to the metre.
+
+**Fix:** an explicit `_camBasis` on the plan wrapper. Every editor re-plan is pinned to the camera
+pose captured at editor OPEN — which is the pose the bake plans from, because `finish()` restores
+exactly that before resolving. Same "set inputs, call the untouched `_cinemaPathPlan`, restore in
+`finally`" pattern the beat-second overrides already use; the 600-line plan function is not touched.
+The basis rides a COPY of the override, never the override itself — `_buildOverride()` is also what
+"Save this path" stages, and pinning a STORED path to one session's camera would be this same bug
+inverted. New log line: `§CPE_CAM_BASIS`.
+
+```
+GREEN  Duplex    editor dive=91.3m spin=0.0deg  ==  bake dive=91.3m spin=0.0deg   (dollied 93.3->23.3m)
+       Terminal  editor dive=143.7m spin=57.9deg == bake dive=143.7m spin=57.9deg (dollied 119.9->30.0m)
+       P2 3 re-plans across a large camera move -> 1 distinct pivot on both buildings
+       P3 no-move regression clean on both
+```
+**Second property, free and arguably the bigger one:** looking at the path from another angle can no
+longer change the path. §CPE_SCREEN_PLANE *tells* the user to orbit before dragging, so the previous
+behaviour meant the documented gesture silently rewrote the film.
+
 ## §CPE_EVEN_TURN — item 1 proper: no sharp turns, no camera discontinuity
 
 User: *"if the pipe is facing another way and then ensuing path is a sharp turn, it has to be even
