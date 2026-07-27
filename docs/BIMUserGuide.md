@@ -375,6 +375,32 @@ The **Camera / View** drawer (camera icon) bundles three camera-control toggles:
 - **Auto-Pivot** (key **Q**) — toggles automatic pivot-point recentring as you orbit, so the camera keeps
   turning around whatever's in view instead of a fixed point.
 
+### Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker
+
+**Alt+C** computes a complete cinematic film of the building — dive in, settle on the largest occupiable
+space, walk out through a real door, orbit the exterior — in well under a second, from the model's own
+room graph. No camera path is authored by hand; the defaults come from measured geometry (room area,
+reachability, door position, clearance), not a guess.
+
+Before recording starts, a **Cinema path** dialog shows the whole film as a curve overlaid on the
+building, with three editable bands — *settle* (where the dive lands), *exit door* (which door it
+walks out through), and *stop* (end of the walk, not the film — the orbit continues after it):
+
+![The Cinema path dialog on Terminal — a 3-band curve (settle, exit door, stop) drawn through the building in the 3D view, each row showing its aim angle and a one-line description, plus total duration, frame count, walk speed, and Cancel / Save this path / OK](img/viewer/cinema-path-editor.png)
+
+- **Drag a band's end** to pivot it around its far end (length stays fixed) — use this to aim a leg
+  differently or pick a different door.
+- **Drag a band's middle** to move the whole band without pivoting.
+- **Anywhere else orbits the scene as normal** — there's no freeze or modifier key. A drag only ever
+  moves in the plane you're currently facing, so turn the view to reach the axis you need (e.g. orbit
+  to a side view to adjust height).
+- **Save this path** stores your edit as part of the building so it's there next time; **OK** records
+  the film exactly as previewed — if nothing was touched, that's byte-identical to the un-edited default.
+
+Total duration is derived per building from real walk distance and pull-back distance, not a fixed
+number — a small building's film runs shorter than a large one's by construction, not by a per-building
+setting. [Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
+
 ### Display options — Palette, Night, Shadow + Ground, Background, Sound FX
 
 The **Palette** pill (key **P**) opens one panel for every visual-appearance control — five lighting
