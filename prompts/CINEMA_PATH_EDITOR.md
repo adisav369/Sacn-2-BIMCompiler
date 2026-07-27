@@ -2020,16 +2020,39 @@ changing. Per-second means:
    the pacing now falls over, NOT the dive (which the user has explicitly closed).
 
 `CINEMA_PACE_SWING = 1.6` can bend a beat by at most ±1.6x; the delivered spread is 4.58x (p90/p10).
-So **the tail is outside what the noise law can reach** — the law equalizes WITHIN a beat's cost
-parameterization, and the orbit/rise beats' seconds come from `360 / CINEMA_TURN_DPS` and
-`_pullDist / CINEMA_PULLBACK_MPS`, which carry no noise term at all. That is the gap, stated
-structurally rather than guessed: **the exterior beats never got the treatment the dive and walk got.**
-Re-measure with the same ffmpeg command after any change — the film is the artifact under test.
+The orbit/rise beats take their seconds from `360 / CINEMA_TURN_DPS` and `_pullDist /
+CINEMA_PULLBACK_MPS`, neither of which carries a noise term — so structurally the exterior beats
+never got the treatment the dive and walk got.
+
+### ⚠ CORRECTED SAME SESSION — the long tail decay is NOT general. Do not chase it as one.
+A second film, `~/Downloads/TerminalHiQ.mp4` (18:29, same merged build, WITH the edited preview,
+user-confirmed working), measured the same way — **44.1s, 662 frames**:
+
+| | Terminal 07:16 (before today) | **Terminal 18:29 (today)** | Hospital 17:56 |
+|---|---|---|---|
+| p90/p10 | 4.90x | **3.86x** | 4.58x |
+| last-6s mean vs film mean | 94% | **81%** | ~30% |
+| min second | 3.50 | **0.52** | 3.34 |
+
+Terminal's tail holds at 81% — nothing like Hospital's ~30%. **The exterior neglect is real in the
+code but only bites on some geometry**, so the Hospital reading was over-generalized when first
+written above. Also note the delivered evenness IMPROVED 4.90x -> 3.86x against yesterday, on a film
+twice as long (the harder case) — the user's *"much better than yesterday"* is corroborated, and this
+is the number to defend in future changes.
+
+### §CINEMA_END_FREEZE — the actual residue, small and specific
+Both films end on their quietest second, and Terminal's is a near-total halt: the last seconds run
+`... 15.0, 5.3, 0.52` against a mean of 12.10 — a 23x drop inside 1.5s, and a 103.7x spread across
+the film driven entirely by that one second. Hospital does the same thing more gently (3.44). The
+camera stops dead before the film ends. This is the one pacing item worth taking next: it is
+bounded, reproducible, and visible in a single number (`min second` above) that the user can check.
 
 ## Still open — in order
-5. **§CINEMA_TAIL_DECAY (above)** — give `orbit` and `rise` the noise term the dive and walk already
-   carry, so the film does not end on its dullest six seconds. Gate it on the delivered MP4's
-   p90/p10, which is a number the user can check themselves.
+5. **§CINEMA_END_FREEZE (above)** — the camera stops dead in the final ~1.5s (Terminal's last second
+   reads 0.52 against a mean of 12.10). Bounded and reproducible. Gate it on the delivered MP4's
+   `min second`, a number the user can check themselves. Give `orbit`/`rise` the noise term the dive
+   and walk already carry — but treat §CINEMA_TAIL_DECAY as building-dependent, NOT as a general
+   defect: Terminal's tail is fine at 81% of mean, only Hospital's collapsed.
 6. **Outside the envelope the gaze spins away from the building** (user, live, never analysed).
    Almost certainly the same exterior-beat neglect as §CINEMA_TAIL_DECAY — do them together.
 7. **T5 / T6 are RED, different answers each.** T5: the walk's position step is 3.0x against a 2.4x
