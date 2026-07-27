@@ -1689,6 +1689,34 @@ has now earned its place four times here.
 `witness_cpe_even_turn` **5/5 on Duplex, Terminal AND Hospital**; `witness_cinema_bands` 6/6;
 `witness_cinema_path_editor` 9/9; `witness_cpe_undo` 6/6; `witness_cpe_ok_bake` 3/3.
 
+## 🔴 LIVE BUG, user-reported 2026-07-27, NOT reproduced in a witness yet — take this first
+**"UNDO did not revert the jump in wpts when dragged too far."** §CPE_UNDO is live and correct on
+its own gates (`witness_cpe_undo` 6/6, U1 residue 0.00e+0 m, driven by a REAL keystroke), so the
+gates are passing while the user's actual gesture fails — which means the witness does not reproduce
+the gesture. **Build the repro first; do not "fix" undo against gates that already pass.**
+
+ALREADY RULED OUT by reading the code — do not re-walk these:
+- `_replanFilm()` does NOT reseed `_state.bands`. It only recomputes `filmPts`/`plan` from
+  `_buildOverride()`, which READS `_state.bands`. A restore is not being overwritten by the replan.
+- The snapshot is taken BEFORE mutation on the first real move (`h.move`, `drag.snapped` guard), so
+  a huge first-move jump is still captured pre-jump.
+- `h.key` is registered on `window` in capture phase with `preventDefault`, removed in `_unwire`.
+
+STILL SUSPECT, in order:
+1. **Two drags, one Ctrl+Z.** If the user jumps, then drags BACK to correct, that is TWO undo
+   entries — one Ctrl+Z reverts only the correction and looks like "undo did nothing". Cheapest to
+   check, and if it is this the fix is UX (coalesce a gesture pair, or surface undo depth), not the
+   stack.
+2. **The jump may not be band geometry at all.** Undo covers centre/direction/length only
+   (deliberate scope line, §CPE_UNDO "Known follow-on"). If dragging too far also moves something
+   outside that set, undo cannot restore it BY DESIGN and the scope line is the bug.
+3. `_scheduleReplan`'s debounce firing across the undo — believed harmless (it reads restored
+   bands) but not proven.
+
+Reproduce with a drag of the SCALE the user actually hits: §CPE_DRAG_SCALE measured 0.453 m/px on
+Hospital, so a 50px flick moves a waypoint 22.7m. `witness_cpe_undo` U1 drags 14-22m on
+Duplex/Terminal — a much milder gesture than the failing one.
+
 ## ⛔ NEXT, in order — every one is specified, none is guesswork
 1. **The spin-at-wp1 (user, live, 2026-07-27: "at wp1 it can spin around itself one full rev").**
    **⚖ USER RULING, same day, settled — do NOT re-litigate:** *"no reason to if it follows its path,
