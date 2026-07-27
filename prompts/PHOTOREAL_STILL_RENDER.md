@@ -6112,3 +6112,50 @@ budget. Do not let them be discussed as one item.
 | 5 | Fake mirrors (C2) | interiors gain depth | material only | ⏳ |
 | 6 | Interior posters (B) | furnished interiors | 1 quad each | ⏳ |
 | 7 | Real reflection (C1) | true mirror | ~+6% of the still, **unmeasured** | ⛔ measure first |
+
+### D. §FACADE_SIGNAGE extensions — rim bulbs, top spotlights, and an LCD ad (asked 2026-07-28)
+User: *"billboard can even be an advert opportunity ;) if done so realistic with its neon bulbs or
+spotlights top rim… And it can be an LCD screen playing adverts."* Checked against the code, not
+assumed.
+
+**1. Neon bulb rim — needs NO new mechanism, it is already shipped.** A row of bulbs along the
+board's edge is exactly `§PHOTO_GLOW_SPRITE`: one additive `THREE.Points` cloud, **one draw call for
+the whole set**, own material shared with nothing, staged by night mode, already carrying per-sprite
+size and colour (`GLOW_EXIT_SIZE` proves the per-sprite size path works). Positions come from the
+board quad's own corners. **Cost: adding N points to an existing buffer.** This is the single
+cheapest "expensive-looking" thing available.
+
+**2. Top-rim spotlights — cheap, but respect the light budget.** Two or three `PointLight`s on the
+rim reuse the `_photoUplights` array and its teardown. But `NIGHT_AND_FIXTURE_LIGHTING.md` §constants
+is binding: **12 lights in navigation, 48 in the still**, because every light costs per-fragment work
+on every lit material and a **shader recompile whenever the COUNT changes**. So rim spots are a
+still/night-staging addition, and they must be counted against that budget, not added on top of it.
+If more than a couple are wanted, use glow sprites (1) for the *look* and one real light for the
+*spill* — the same division §PHOTO_GLOW_SPRITE already makes.
+
+**3. LCD screen playing adverts — feasible, and there are exactly two hard rules.** `THREE.VideoTexture`
+on the same quad; the app already puts a `<video>` element on the page elsewhere (`wh_walk.js:501`),
+so this is not new ground. The two rules are not style preferences, they follow from code that is
+already there:
+- **FREEZE IT DURING Alt+S.** The still is a **16-sample jittered TAA accumulation** plus **24 N8AO
+  accumulation frames** (`STILL_AO_FRAMES`), and the result *stays frozen until interaction*. A video
+  advancing mid-accumulation is averaged across ~40 frames — a smeared ghost, and this file already
+  has a named "ghost family" of exactly that bug. Pause on stage, resume on teardown.
+- **FRAME-STEP IT IN MaxQ, never wall-clock.** The movie bake is a per-frame loop
+  (`§MAXQ_FRAME i=<i>/<nFrames> elapsedMs=…`) where each frame costs hundreds of ms to seconds. Let
+  the video play on wall-clock and the ad jumps seconds per movie-frame — a strobe. Set
+  `video.currentTime = i / fps` from the bake index instead: deterministic, reproducible, and it
+  makes the ad play at **correct speed in the exported film**. That is the version worth having.
+
+**4. The advert idea itself — merits, and the two lines not to cross.** For a project whose only
+promo budget is freedom, an ad slot that lives **inside a demo render** rather than inside the user's
+tool UI is a genuinely different thing from ad-injected software: it costs the user nothing, tracks
+nobody, and appears only where the project is showing off. Worth taking seriously. But:
+- **Never on a client's building by default.** A third-party ad rendered on a real client's facade
+  in a deliverable is a consent problem and can read as an endorsement that does not exist. Opt-in,
+  demo/marketing scenes only, off in client work.
+- **Never fetch ad content over the network.** This app is an offline-first PWA and its currency is
+  trust; a live ad-network call would add a tracking surface and break the offline promise in one
+  move. **Bundle sponsor images/clips as local CC0-or-licensed assets** in `viewer/textures/…` with a
+  `NOTICE.txt`, exactly like every other asset here. A static bundled "sponsor slot" keeps the whole
+  freedom argument intact; a live ad tag destroys it.
