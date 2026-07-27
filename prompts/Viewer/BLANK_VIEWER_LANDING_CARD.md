@@ -83,4 +83,28 @@ had **no local file-open control at all**.
 topology (`index.html` + sibling `sandbox/` — symlinks, no repo files moved): landing serves the Blank card
 wiring, `sandbox/index.html?blank=1` serves the overlay + `blank_open.js` include, `blank_open.js` returns
 200. Files touched: `config.js`, `streaming.js`, `main.js`, `blank_open.js` (new), `index.html`,
-`SYSNOVA/index.html`. Not yet pushed.
+`SYSNOVA/index.html`. Pushed `fable/meshdb-livewire` (`40e333efd`, `de9b49406`).
+
+### ✅ bim-ootb PORT DONE — 2026-07-28, PR #1068 (`fix/blank-viewer-landing-card`, `c7a6ce0`)
+User checked bim-ootb's own landing (`~/bim-ootb/index.html`) and didn't see the card — **this repo's
+`SYSNOVA/index.html`/`deploy/dev` and bim-ootb's `index.html`/`viewer/` are two entirely separate
+codebases**, per `feedback_edit_right_repo.md` (bim-ootb = the canonical, actually-viewed-by-the-user
+stage). Ported the same fix there, via a fresh `origin/main` worktree (`/tmp/wt-blank-viewer` — the local
+`~/bim-ootb` main checkout was 88 commits stale, per project doctrine never measure/branch from it):
+- `viewer/config.js`: same `A.BLANK_MODE` guard, but ALSO gates bim-ootb's `§S283 pwa_last_db` PWA-resume
+  fallback (bim-compiler's config.js doesn't have this — bim-ootb-only code path).
+- `viewer/streaming.js` `A.init()`: same early-return before the DB fetch.
+- `index.html`: dashed "Blank Viewer" card added into the Buildings/IFC hub (`buildHubBody()`'s
+  `.hub-grid`), opens `viewer/viewer.html?blank=1&ghost=1`.
+- **No new open-file UI built** (unlike the bim-compiler port's `blank_open.js`) — bim-ootb's viewer
+  ALREADY ships a full native Open control (`A.openModelDb()`/Ctrl+O/"Open Building" pill, FSA picker +
+  input fallback, `scene.js:718`) per the already-closed `OPEN_BUTTON_IFC_BCF_MERGE.md`. Blank mode just
+  needed to stop erroring/auto-loading Duplex so that existing pill has something to open into.
+- Whitebox: `node --check` both JS files + inline `<script>` parse in `index.html`; curl-smoke-tested
+  through the real repo topology (python http.server on the worktree itself — genuine `index.html` +
+  `viewer/` siblings, no symlink hack needed here).
+- **Push note:** first `git push` attempt hung ~90s. User correctly questioned "what r u sending? LFS is
+  for DB" — checked directly (`git lfs pre-push` run standalone against this exact commit range: exit 0,
+  instant, zero objects) — confirmed the hang was NOT the documented LFS-probe issue for once; a retry
+  with `GIT_SSH_COMMAND="ssh -v"` succeeded in 14.9s (ref negotiation, not LFS, not auth). Transient.
+  Don't assume every bim-ootb push hang is the LFS probe — verify before citing it.
