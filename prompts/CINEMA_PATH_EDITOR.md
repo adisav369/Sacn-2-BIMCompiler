@@ -871,6 +871,40 @@ It is wired to Fly Tour's flyPath/moveTo/orbit and **not** to the cinema walk-ou
 **The work:** raise the cinema base pace (1.3 m/s is a literal pedestrian and the user has now twice
 called the result too slow), then apply the EXISTING remap to the walk beat. Two constants, one
 reused module — not a new pacing system.
+### ⚠ AMENDMENT (user, same evening) — the signal is SCENE BUSYNESS, not just distance ahead
+> *"The simple rule is scene busy or noise.. if too much is happening, slow down"*
+
+**This supersedes a pure-LOS reading of the section above.** LOS distance answers *"am I about to hit
+something"*; it does NOT answer *"is there a lot going on in this shot"*. A camera crossing a wide but
+densely furnished plant room is not close to anything and still deserves to slow down, because there
+is something to look at. Distance-ahead alone would fly it.
+
+**Do NOT resolve this by bringing back the omnidirectional fan-MIN.** That was tried and retired for
+cause (§INTERIOR_PACING_LOS, 2026-07-26 — a courtyard traversal read slow because a low wall or a
+piece of staffage off to the side tripped the min). The user's rule is a **DENSITY/COUNT**, not a
+MIN, and the two fail differently: a min brakes for one nearby thing; a density does not fire in an
+empty courtyard at all. Record this distinction — it is the reason this is not a re-litigation.
+
+**Deterministic candidates only** (PRIME RULE: the same building must produce the same film on any
+machine):
+- **fan hit FRACTION** — `A.cinemaFan` already casts 32 rays and is the project's blessed
+  clearance source. `hits within R / 32` is a density, costs nothing extra, and is already computed
+  at each sample. Strongest candidate.
+- **elements in the view frustum** at the sample pose (count of instances/GUIDs) — the most literal
+  reading of "how much is happening", deterministic from the DB, but needs a real cost measurement
+  before it goes in a per-sample loop.
+- **⛔ NOT frame time / FPS / DLOD flip counts.** They measure the MACHINE, not the scene: pacing off
+  them makes the same building bake a different film on a different GPU. Tempting because
+  `§FPS_MODE`/`§DLOD_TICK` are right there in the log — and wrong for exactly the reason the prime
+  rule exists.
+
+**Combine, don't replace:** forward LOS keeps its job (never crash into or zoom past what is directly
+ahead); busyness is the second term for "a lot is happening here". Both feed ONE `PACE_SWING`-style
+knob so re-tuning stays a single number, per the user's standing *"every edit, it is just a single
+number change"*.
+**Gate this too:** report per-sample busyness alongside speed, and show that the slow samples are the
+busy ones — the number, not the impression.
+
 **Gate:** on an edited path, (a) speed in open interior is CONSTANT within the ±`PACE_SWING` band —
 report min/mean/max m/s, not a "feels right"; (b) the slow samples coincide with genuinely low
 `cinemaLookDist`, i.e. the brake fires for what is AHEAD, not for anything nearby; (c) the resulting
