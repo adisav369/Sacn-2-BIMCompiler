@@ -63,65 +63,24 @@ Shipped 2026-06-04→2026-06-06 to the canonical viewer (`bim-ootb/viewer/precis
 (top-centre icon notices), #109/#111 (fallback hardening — building meshes only, never sky/ground).
 Full behavioral detail lives in memory `project_precision_pivot.md`, not restated here.
 
-## 2026-07-27 — Un-archived: pulled back out of `prompts/archive/` into this active folder
+## 2026-07-27 — CLOSED: §RESET_AMBIENT_AUTO shipped, `Q`/Fine/Reset untouched
 
-Was archived on ship (normal convention — spec done → archived), but a later session investigating
-"make Auto-Pivot always active" found the code but not this spec (searched by filename/content for
-"pivot"/"precision_cam", the archive folder didn't surface it under those terms either — a `git grep`
-across all of `prompts/**/*.md` for "Caps Lock" is what eventually found it). Moving it back to the
-active folder so a future dev looking for "how does the precision-cam drawer work" lands on the real
-origin doc instead of just the memory summary.
+Un-archived from `prompts/archive/` the same day (a "make Auto-Pivot always active" investigation
+found the code but not this spec — filename/content search for "pivot"/"precision_cam" didn't surface
+the archive copy; a `git grep` for "Caps Lock" across all `prompts/**/*.md` did). Several attempts this
+session (`Q` default-on, tried and reverted; an ambient mechanism that mistakenly called `Q`'s
+`recenterPivot()` instead of `A`'s `resetOrbit()`) are superseded by the final shipped state below —
+git holds that history (bim-ootb PRs #1033, #1034, #1039, #1040), no need to replay it here.
 
-A same-day default-state experiment (below) was tried and reverted, so the "Scope guard — NO impact"
-section above still fully holds, unmodified — Auto-Pivot remains exactly the opt-in toggle it
-describes.
+**Final state, bim-ootb PR #1041 (`fix/ambient-recheck-at-fire`), same file:**
+- `Q` (`pivotOn`/`pivotOff`/`recenterPivot`), Fine (`fineOn`/`fineOff`), and Reset (`resetOrbit`) are
+  byte-identical to the original spec above — nothing in this closing work modified any of them.
+- New, fully self-contained addition: `_ambientResetOnEnd`, a separate listener on the same
+  OrbitControls `'end'` event. After 3 drags/zooms with no further one for 1.5s, it calls `resetOrbit()`
+  (literal `A`) once. Skips entirely (checked both when counting AND again at the moment the timer
+  fires) whenever `Q` or Fine is active — engaging either stops it; turning both off, it resumes on the
+  next 3 moves.
+- Deliberately calls `resetOrbit()`, not `recenterPivot()` — this was specifically an "automate `A`"
+  request, not "automate `Q`."
 
-- **Auto-Pivot defaulting ON at load (bim-ootb PR #1033) was tried, then REVERTED same day (PR #1034,
-  `fix/autopivot-default-off`, commit `292be9e`).** A real session's §-tagged log (not a screenshot)
-  showed it firing exactly as coded — `§pivot ON tries=1`, then `§pivot recenter ... hit=mesh` on every
-  ordinary drag — and that behavior surfaced two real problems once actually used: (1) recentering on
-  every drag-end with no opt-in reads as the view drifting on its own, not smooth continuous nav; (2)
-  it silently defeated Reset (`A` key) — `resetOrbit()` only moves `controls.target` (no camera motion),
-  so its effect is invisible until the next drag/zoom, and with Pivot always listening that next
-  drag-end immediately overwrote the target Reset had just set, before the user ever saw Reset work.
-  **Current shipped state: Auto-Pivot is opt-in via `Q` again, exactly as this spec originally
-  describes** — the polling-default-on code was removed entirely, nothing of it remains.
-- **New decision this spec never covered, KEPT (independent of the default-on revert): Fine vs. Pivot
-  interaction.** Fine (CapsLock) is a deliberate
-  act for slowly closing in on one specific point; Auto-Pivot recentering the target on every drag-end
-  while Fine is on would fight that. Resolved as **Fine wins** — `_onEnd` now checks `_pivot && !_fine`,
-  i.e. auto-recenter is suppressed while Fine is active. Decided 2026-07-27: Fine has a visible top-
-  centre icon and is an explicit user act, so it should not be silently overridden by an ambient one.
-
-## 2026-07-27 (same day, third pass) — §PIVOT_AMBIENT_AUTO: continuous nav by default, done differently
-
-The default-on goal from the top of this section didn't die with the #1034 revert — it came back once
-the actual failure mode was understood, built as a genuinely different mechanism instead of just
-re-trying #1033's approach. bim-ootb PR (branch `feat/autopivot-idle-count`), same file.
-
-**Why #1033 failed and this doesn't repeat it:** #1033 made `Q`'s own toggle default ON, so its
-existing "recenter on every drag-end" logic ran unconditionally — that's what drifted and defeated
-Reset. This pass instead adds a **separate, independent listener** (`_ambientOnEnd`) that:
-- **No-ops entirely whenever `Q` or Fine are active** — `Q`'s own mechanism above is completely
-  untouched, still opt-in, still fires on every drag exactly as before. Ambient only ever runs in the
-  gap where neither manual mode is engaged. `pivotOn()`/`fineOn()`/`resetOrbit()` also each proactively
-  clear any pending ambient timer the instant they're invoked (not just on the next drag-end) — closing
-  a race where a queued ambient correction could land right after the user just deliberately took over.
-- **Debounced AND count-gated, not immediate.** Only fires once no drag/zoom has happened for 1.5s
-  (`_AMBIENT_REST_MS`) AND at least 3 have accumulated since the last correction
-  (`_AMBIENT_THRESHOLD`) — never mid-navigation, never for one small nudge. This is the actual fix for
-  the "drift" complaint: nothing ever moves while the user's hand is still on the controls.
-- **Uses `recenterPivot()` (raycast, surface-aware), never `resetOrbit()`.** Automating blind-Reset was
-  separately evaluated and rejected as unviable in-session — it would reintroduce the "orbiting empty
-  space" problem Auto-Pivot exists to fix, on top of still carrying the drift risk.
-
-Net effect: `Q`, Fine, and Reset are byte-for-byte the same proven behavior they were before this
-change (one added `_ambientClear()` no-op call each) — the only new code path is the ambient one, and
-it only ever writes `controls.target` (never camera position, same no-jump property every function in
-this file already relies on), so a wrong ambient firing has no worse a failure mode than "the next zoom
-range is slightly different than expected," not a visible jump or lost work.
-- Correction to a claim in the memory record (`project_precision_pivot.md`) that this work surfaced:
-  `recenterPivot()` does NOT touch `controls.minDistance` — only `Reset` (`resetOrbit()`, → 0) and
-  `Fine` (`fineOn`/`fineOff`, → 0.001/0.1) do. There was never a Reset/Fine/Pivot `minDistance`
-  three-way collision to resolve; the actual conflict was always-on recenter fighting Fine's slow-
-  approach workflow (addressed above), not a shared-field write race.
+Witness: `§reset ambient-auto wired/fired` log lines in the same style as `§pivot ON/OFF`.
