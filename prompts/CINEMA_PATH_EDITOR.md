@@ -1151,7 +1151,7 @@ block below is kept for its dead-end record only; its status table is STALE and 
 | "that jerk was happening at the 2nd wp1 after the settle" | **ROOT-CAUSED THERE EXACTLY.** It was an 81° DISCONTINUITY at the Beat2→Beat3 seam. Now 0.18°. |
 | "out of control drag" | **DONE.** `witness_cpe_drag.js` **4/4 both** (PR #1038 branch). |
 
-Branches pushed, both green, neither merged yet:
+`witness_cinema_path_editor.js` **9/9 both**. Branches pushed, both green, neither merged yet:
 - `fix/cpe-drag-reach-revert` @ `96f9f66` — drag 4/4. (PR #1038, needs merge.)
 - `feat/cpe-even-turn` — jerk + seam, merged up to `origin/main` already, witnesses green.
 
@@ -1220,24 +1220,41 @@ tried and measured: paying for it in the spin makes the spin's DURATION depend o
 which shifts every beat fraction before it and breaks G2's "an edit changes nothing before it".
 `§CPE_SEAM_CONTINUOUS seamGapDeg=` logs the seam every plan; it must stay ~0.
 
-## ⚠ TWO GATES ARE RED ON SHIPPED `origin/main` — NOT caused by this work
-Verified by running `witness_cinema_path_editor.js` against a pristine `origin/main` `effects.js`:
-it fails **identically**, and with **byte-identical numbers** to the branch, because both defects sit
-in beats this work does not touch.
+## ✅ THE TWO "RED" GATES WERE BROKEN INSTRUMENTS — RESOLVED, both now PASS
+**Earlier in this same session I recorded G2 and G7 as red on `origin/main` and framed G2 as a spec
+tension needing a user decision. BOTH of those conclusions were WRONG and are retracted here.**
+Neither gate was measuring a jerk; both were measuring themselves wrong. `witness_cinema_path_editor.js`
+is now **9/9 on Duplex and 9/9 on Terminal**.
 
-| gate | main = branch | reading |
+**G7** measured `planS` (the 90° dog-leg) but filtered frames with `planA.beats` — a DIFFERENT plan,
+from a different path, whose walk occupies a different fraction of the film. The window was misaligned
+with `planS`'s own walk, so the gate sampled beats the walk's pacing does not govern (the spin runs on
+a clock, not on the path). That is precisely why G7 sat at 15.7/20.4 **to the decimal** while every
+other jerk number moved: the peak it reported was never in the walk.
+
+| window fixed | Duplex | Terminal |
 |---|---|---|
-| G2 "edit changes nothing before it" | `maxDelta=38.29m firstDiffT=0.0025 diveEnds=0.114` (Duplex); `48.57 / 0.0025 / 0.111` (Terminal) | the edit changes the film from t=0.0025 — inside the DIVE |
-| G7 no sharp corners ≤12 | `peak=15.7 @ t=0.156` (Duplex); `20.4 @ t=0.142` (Terminal) | peak sits at/just after `diveEnds`, i.e. the SPIN, not the walk |
+| pristine `origin/main` | 4.4 | 6.9 | ← **already passing**; there was never a defect |
+| this branch | 3.3 | 4.6 | ← pacing improves an already-good number |
 
-**G2's likely cause is a SPEC TENSION, not a bug** — and this needs the user, so do not code around it.
-`_natSec.out = totalLen / CINEMA_WALK_MPS`, so an edit that changes path length changes the walk's
-seconds, hence `_shapeTotal`, hence EVERY beat fraction including the dive's. That is settled §9
-doctrine ("constant speed, path length sets the clock") working exactly as specified — and it is
-logically incompatible with G2's invariant as G2 is currently written. **⛔ BLOCKED — the one
-question: when an edit lengthens the path, should the earlier beats (dive/spin) keep their ABSOLUTE
-seconds (so only the walk stretches), or keep their FRACTIONS (today, so the whole film re-times)?**
-Ask this; do not pick one.
+**§CPE_EVEN_TURN did not fix G7 and must not be credited with it.**
+
+**G2** compared the two films at the same PERCENTAGE through. The edited path is longer, and §9
+("path length sets the clock") means the edited film legitimately RUNS LONGER — `cinema_maxq.js:414`
+sets the real bake's frame count from `plan.naturalTotal`, so that is the product's actual behaviour,
+not a theory. Sampling both at the same normalized `t` lines second 3 of a 24s film against second 4
+of a 32s one, and reports the opening as "changed" when nothing about it moved. Beat seconds are
+derived independently of path length (the dive from its own distance), so **at equal REAL time the
+opening is identical by construction**. Compared at equal absolute seconds:
+`firstDiffT=0.155 vs diveEnds=0.114` (Duplex), `0.1425 vs 0.111` (Terminal) — the edit changes things
+only AFTER the dive.
+
+**⛔ The "when an edit lengthens the path, absolute seconds or fractions?" question is WITHDRAWN.**
+There is no conflict with §9 and no user decision is needed. Do not ask it.
+
+**The lesson, worth more than either gate:** two instrument bugs in a row, both of which would have
+been read as product defects. `feedback_verify_checker_before_code_under_test` earned its place —
+when a number refuses to move while everything around it moves, suspect the meter, not the engine.
 
 ## ▶ NEXT SESSION — executable, in order
 1. **Merge PR #1038** (`fix/cpe-drag-reach-revert`, 4/4 green) and open+merge a PR for
