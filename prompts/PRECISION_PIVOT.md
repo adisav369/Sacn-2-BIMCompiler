@@ -63,24 +63,20 @@ Shipped 2026-06-04→2026-06-06 to the canonical viewer (`bim-ootb/viewer/precis
 (top-centre icon notices), #109/#111 (fallback hardening — building meshes only, never sky/ground).
 Full behavioral detail lives in memory `project_precision_pivot.md`, not restated here.
 
-## 2026-07-27 — CLOSED: §RESET_AMBIENT_AUTO shipped, `Q`/Fine/Reset untouched
+## 2026-07-27 — CLOSED: no automated trigger for anything. `A`/`Q`/Fine are manual only.
 
 Un-archived from `prompts/archive/` the same day (a "make Auto-Pivot always active" investigation
-found the code but not this spec — filename/content search for "pivot"/"precision_cam" didn't surface
-the archive copy; a `git grep` for "Caps Lock" across all `prompts/**/*.md` did). Several attempts this
-session (`Q` default-on, tried and reverted; an ambient mechanism that mistakenly called `Q`'s
-`recenterPivot()` instead of `A`'s `resetOrbit()`) are superseded by the final shipped state below —
-git holds that history (bim-ootb PRs #1033, #1034, #1039, #1040), no need to replay it here.
+found the code but not this spec — a `git grep` for "Caps Lock" across `prompts/**/*.md` is what
+found it). Several same-day attempts at automating a recenter — `Q` default-on (#1033), reverted
+(#1034) for drifting the view and defeating Reset; an ambient mechanism gated on idle+count that
+first mistakenly called `Q`'s `recenterPivot()` (#1039), was corrected to call `A`'s `resetOrbit()`
+(#1040), had its Q/Fine check hardened (#1041) — were all tried, then **fully reverted (#1048)**
+after real use showed the pivot going haywire regardless of the safeguards. Git holds that whole
+chain (PRs #1033/#1034/#1039/#1040/#1041/#1048); no need to replay it here.
 
-**Final state, bim-ootb PR #1041 (`fix/ambient-recheck-at-fire`), same file:**
-- `Q` (`pivotOn`/`pivotOff`/`recenterPivot`), Fine (`fineOn`/`fineOff`), and Reset (`resetOrbit`) are
-  byte-identical to the original spec above — nothing in this closing work modified any of them.
-- New, fully self-contained addition: `_ambientResetOnEnd`, a separate listener on the same
-  OrbitControls `'end'` event. After 3 drags/zooms with no further one for 1.5s, it calls `resetOrbit()`
-  (literal `A`) once. Skips entirely (checked both when counting AND again at the moment the timer
-  fires) whenever `Q` or Fine is active — engaging either stops it; turning both off, it resumes on the
-  next 3 moves.
-- Deliberately calls `resetOrbit()`, not `recenterPivot()` — this was specifically an "automate `A`"
-  request, not "automate `Q`."
-
-Witness: `§reset ambient-auto wired/fired` log lines in the same style as `§pivot ON/OFF`.
+**Final requirement, stated directly by the user: `A` is manual only, no automated trigger of any
+kind.** `viewer/precision_cam.js` is restored byte-for-byte to `08c0809` (#1034) — `Q`/`A`/Fine are
+exactly the original spec above, nothing automated added. The one change from the original spec that
+IS kept: Fine wins over Auto-Pivot's own recenter (`_onEnd` checks `_pivot && !_fine`, from #1033) —
+independent of the automation attempts, still correct on its own merits. Do not revisit "always
+active" for this feature without the user raising it fresh.
