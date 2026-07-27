@@ -110,10 +110,9 @@ hot pixels 1.289% -> 2.323%. Stills: `~/Pictures/Screenshots/ember/night_{1_nav,
 
 ---
 
-# ▶▶ NEXT SESSION — START HERE. Everything above is settled background.
-**Written 2026-07-27 at session close. The still-lighting feature is BUILT, MEASURED, and
-DELIBERATELY TURNED OFF.** `A._emberEnabled = false` in `viewer/effects.js`. Re-arm it to experiment;
-do not ship it re-armed without solving §THE BLOCKER below.
+# ⓘ SUPERSEDED — was the 2026-07-27 handover. Kept for the §THE BLOCKER analysis only.
+**The live handover is the LAST section of this file (2026-07-28). Do not start here.**
+`A._emberEnabled = false` in `viewer/effects.js` — still true, ember is still disarmed.
 
 ## What is live on `main` right now (keep — these fix real bugs)
 | § | what it fixes | proof |
@@ -386,3 +385,77 @@ without reaching into the architecture band.
   halo whose fixture is just off-screen pops rather than fading at the frame edge. The upgrade is a
   billboarded `InstancedMesh` quad — same positions, same colours, same staging, more geometry.
 - `§PHOTO_BLOOM` still has not been judged on its own by the user.
+
+---
+
+# ▶▶ NEXT SESSION — START HERE. Written 2026-07-28 at session close.
+**Everything above is background. Some of it describes code that was REVERTED — this section is
+the authority on what is actually live.**
+
+## What is live on `main` (v866) — keep
+| § | what it does | numbers |
+|---|---|---|
+| `§PHOTO_GLOW_SPRITE` | ONE additive `THREE.Points` cloud at fixture positions, staged by **night mode** (not Alt+S) | 1 draw call for the whole building |
+| `§GLOW_EMIT_DOWN` | drops each sprite to the fitting's emitting FACE using real `bbox_z`, THEN nudges toward the eye | troffer 0.19m, downlight 0.22m, pendant-linear 0.889m |
+| `§NIGHT_NAME_NOT_CLASS` | selection is `ifc_class='IfcLightFixture' OR <name words>`, a UNION | the class gate was ANDed and hid luminaires filed elsewhere |
+| `§NIGHT_EXIT_SIGNS` | `exit sign`/`keluar`/`signage` added to the vocabulary | Clinic +43, Hospital +57 |
+| `§NIGHT_ROLE_EXCLUDE` | rejects by role class + `clamp`/`alarm`/`detector`/`sprinkler`/`flight`/`skylight` | Terminal 823→814 (9 `IfcAlarm` beacons) |
+| `§GLOW_EXIT_SOFT` | exit signs gain 0.9 (under the bloom threshold), size x0.40 | a sign glows, a troffer blooms |
+| `§NIGHT_MIX_WHITE` | 20/20/60 amber/blue/**flat white** | colour values only |
+
+**Counts: Clinic 884 · Hospital 1272 · Terminal 814 · Duplex 14 · HHS 410.**
+
+**THE INVARIANT, and it is the whole reason this approach works: the sprite cloud owns its own
+material, shared with NOTHING. Verified — the diff against main adds ZERO writes to any scene
+material (`.transparent`, `.opacity`, `.depthWrite`, `.emissive`, `.toneMapped`). Every regression
+this session came from giving that property away. Do not give it away.**
+
+## OFF, deliberately
+`A._bloomOff = true` (bloom overshot) · `A._nightStillBoost` unset (48 lights made Alt+S heavy,
+§STILL_REFINE 4496→6560ms) · `§PHOTO_EMBER` still disarmed.
+
+## ⛔ THE JOB: the translucent cover
+User: *"that cover supposed to be translucent"* + *"translucent must not have own source of light but
+allow light thru if it is against light"*.
+
+**§NIGHT_DIFFUSER was built for this and REVERTED — it was the black boxes.** It forced `emissive`
+to black, set `transparent`, cleared `depthWrite` on luminaire materials. Hospital has FIVE luminaire
+materials; it took all five, so all **1151 `M_Plain Recessed Lighting Fixture`** panels became dark
+translucent rectangles in a dark ceiling.
+
+**Why it failed, and the design constraint for the retry:** the user's physics is right — a diffuser
+TRANSMITS, it does not EMIT — but it was implemented as *remove the emissive*, with nothing ever
+placed BEHIND the cover to shine through. A diffuser with no source behind it is a dark panel.
+**Both halves are required:**
+1. a light source INSIDE the housing (the sprite cannot serve — `§GLOW_EMIT_DOWN` puts it at the
+   emitting face, in FRONT of the cover), and
+2. a cover that transmits it (`transparent` + `depthWrite:false` so the source behind survives the
+   depth test).
+
+**The material-sharing problem is solved and the solution is worth recovering:** `A._matCache` is
+keyed `rgba|ifcClass|matVariant` (streaming.js), so materials are shared only by same-colour
+same-class elements — NOT by everything a batched mesh draws, which is what the old ember guard
+wrongly measured at mesh level. Measured exclusivity: Hospital `_default|IfcLightFixture` 1151/1151
+exclusive ✅; Clinic `0.384,0.384,0.384|IfcFlowTerminal` 601/601 ✅; Clinic
+`0.920,0.900,0.850|IfcFlowTerminal` 1974 total / 384 luminaires ❌ (shared with 1590 grab bars,
+receptacles, diffuser grilles — the Clinic authors ONE material, `≈ Off-White`, across 20 families;
+`material_name` does not separate them either).
+`§LUM_VARIANT` solved that by returning `'lum'` from `A._entourageVariant()` so luminaires split into
+their own material by NAME at load time — the same mechanism RPC people/trees use, no DB change, no
+invented colour. **It was reverted with the rest, not because it was wrong.** Recover it from
+git history (`fix/night-diffuser-bloom`) if the retry needs it.
+
+## ⚠ Two process traps that cost this session ~6 test rounds — check BOTH before believing a log
+1. **`sw.js` CACHE_VERSION + the `?v=` pins in `viewer/viewer.html`.** `viewer.html` pins each module
+   (`tools.js?v=31`, `effects.js?v=3`, `streaming.js?v=56`); an edited file keeps its OLD url and is
+   served from cache. ~12 commits shipped without bumping either, and the user's logs were read as
+   evidence about the CODE when they were evidence about the CACHE. **`§BUILD_VERSION` in the log is
+   the ground truth for which build is running.**
+2. **Auto-merge squashes a PREFIX of a branch and orphans the rest** — happened three times (#1058
+   took 1 of 5 commits, #1059 took 6 of 9). **Verify a merge by CONTENT** (`git show
+   origin/main:<file> | grep -c <marker>`), never by PR state or commit list.
+
+## Testing rule (user directive, still standing)
+See §HOW THIS FEATURE IS TESTED above. The AI's job is the DATA — selected / counted / applied /
+nothing else touched, answerable from `sqlite3` in seconds. **The look is the user's.** No AI vision,
+no luminance probes, until the user has established a baseline.
