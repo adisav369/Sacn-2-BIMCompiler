@@ -1939,3 +1939,59 @@ frames=1409` → `§MAXQ_FRAME i=0/1409`. No second `§MAXQ_PREVIEW`; the only o
 opened. This is **ask 5** of the FOUR ASKS block ("after edit and OK, it should do the 10 sec fast
 preview again"), still unbuilt. It is a wiring job on the existing preview loop, and it must fly the
 EDITED plan through the same `poseAt` the bake uses or it re-creates §CPE_PREVIEW_DIVERGENCE.
+
+---
+
+# ▶▶ START HERE — NEXT SESSION (2026-07-27, session close). Everything above this line is history.
+
+**Branch: `bim-ootb` `fix/cpe-noise-law-dive` @ `5b63f1e`, pushed, NOT merged.** The user has never
+flown any of it — their live Hospital runs are all on `origin/main`, which is why every "still not
+fixed" report tonight is expected rather than contradictory. **Merging it is step 0.**
+
+## What is on that branch (all witnessed, none in front of the user yet)
+| § | what | gates |
+|---|---|---|
+| §CPE_NOISE_LAW | the dive is paced by bbox rate-of-change; dive seconds bought by the same number | `witness_cpe_noise_law` 5/5 + 5/5 |
+| §CPE_NOISE_LAW (walk) | the walk's cost carries the same term; radius = half the beat's travel | Terminal pause 2.27s → 2.07s |
+| floored ease | `a·t+(1-a)·smoothstep`, `a=1/PACE_SWING`, on dive/walk/rise | dive spread 20x → 1.82x, dive stall 0.00s |
+| §CPE_DRAG_SCALE | drag rate is building-derived, not camera-distance-geared | 0.151→0.063 (Duplex), 0.227→0.085 (Terminal) |
+| §CPE_DRAG_LAND_FIRST | no re-plan during a drag; the film re-derives once on release | `witness_cpe_drag` 4/4 + 4/4 |
+| §CPE_BASIS_HALF_PIN | the pin now re-aims the camera, not just moves it | ⚠ gate is BLIND, see below |
+| §CPE_HOLDER_INTEGRITY | asserts the calc never writes back into the authored bands | never fired = holder is clean |
+| §LOG_SPAM_THROTTLE | RENDER_LOOP / IDLE_GATE park+wake: first 3, then every 25th | — |
+| `witness_cpe_gaze_spin` | NEW: net-vs-accumulated gaze, sees a revolution T2 structurally cannot | 2/2 Duplex, Terminal, Hospital |
+
+## Do these in order
+1. **Merge the branch.** Nothing below can be judged by the user until it is live.
+2. **Build P4 — the rotation gate.** `witness_cpe_preview_divergence` was 3/3 BEFORE and AFTER the
+   §CPE_BASIS_HALF_PIN fix, so it cannot see it: it moves the camera and never ROTATES it. P4:
+   orbit while the editor is open, then compare the editor's last plan with the bake's on `yaw0`,
+   `pitch0`, exit GUID and `finalSpinDeg`. **It must be RED on `origin/main`** — if it is green on
+   both, the §CPE_BASIS_HALF_PIN diagnosis is wrong and its numbers need re-deriving.
+3. **The 10s preview after OK (ask 5) — still unbuilt**, confirmed from their log: `§CPE_CLOSE` →
+   `§CPE_APPLIED` → `§MAXQ_FRAME i=0` with no second `§MAXQ_PREVIEW`. Wiring job on the existing
+   preview loop; must fly the EDITED plan through the same `poseAt` the bake uses.
+4. **The dive base rate.** User: *"the dive in ... its same too fast"*. The law bends ±PACE_SWING
+   around `CINEMA_DIVE_MPS = 20`, and measured only ×1.15 dive-seconds on Terminal. 20 m/s is 8.7×
+   the walk pace and is a flat constant of exactly the kind `CINEMA_WALK_MPS = 1.3` was before the
+   user called it a pedestrian. **Decide it with a number, with them.**
+5. **T5 / T6 are RED and each needs a different answer.** T5: the walk's position step is 3.0x
+   against its 2.4x allowance — REAL, caused by the noise weight multiplying an already-spread cost
+   (worst case 1.5·SWING² = 3.8x). Decide: make the walk's noise weight mean-neutral, or state 3.8x
+   as the walk's bound. T6: stale model (still plain smoothstep) AND it gates a stall the user has
+   now ACCEPTED — fix the model, then demote it to a report, quoting the ruling.
+6. **Outside the envelope the gaze spins away from the building** (user, live, not analysed).
+
+## Rulings settled tonight — do NOT re-litigate, do NOT re-derive
+- The noise ratio **governs throughout**, every beat, not the walk alone.
+- The signal is **bboxes**, **100% rate of change**, no density term. *"if frame not changing, not
+  matter how dense the animation is not moving makes a boring show"*.
+- **No outside/inside or panorama special case** — *"We are in a range, thus no worry"*.
+- **Stalls are fine**: *"a sec or two pause which is fine in the film"*; tempering is optional.
+- **No clamps** — *"putting stupid clamps only breaks other stuff"*; fix the source instead.
+- The MaxQ per-frame `STILL_REFINE`+`PHOTO_AO` cycle is the bake's DESIGN, not a defect.
+- UNDO works (the earlier LIVE BUG was a wrong keypress) — do not rebuild the far-drag repro.
+
+## Rig
+`/tmp/wt-turn` on port 8403 serves this branch, buildings symlinked, clean and pushed. **Reuse it.**
+`PORT=8403 node witness_<name>.js`. Read the log after every run — exit code is not evidence.
