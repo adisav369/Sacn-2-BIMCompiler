@@ -6159,3 +6159,77 @@ nobody, and appears only where the project is showing off. Worth taking seriousl
   move. **Bundle sponsor images/clips as local CC0-or-licensed assets** in `viewer/textures/…` with a
   `NOTICE.txt`, exactly like every other asset here. A static bundled "sponsor slot" keeps the whole
   freedom argument intact; a live ad tag destroys it.
+
+## 13. §HALL_MIRROR — the model already says which floor is polished (2026-07-28, exploration, no code)
+User: *"On the hall large mirror yes explore one."* Queried `Terminal_extracted.db` before designing
+anything, and the data settled the biggest open question by itself.
+
+### The finding: reflectivity is NAMED IN THE DATA, so the mirror is EXTRACTED, not chosen
+Terminal's floor slabs carry their real finish in `element_name`:
+| finish | slabs | area | reads as |
+|---|---|---|---|
+| `A_Floor_Tile_Procelain_300x300_V1` | 11 | **2,653 m²** | **polished porcelain — reflective** |
+| `A_Floor_CementRender_V1` | 35 | 3,721 m² | cement render — matte |
+| `A_Floor_Tile_nonslip_V1` | 21 | 1,053 m² | explicitly NON-SLIP — matte by definition |
+**The two hall slabs are porcelain: 31.4 × 39.7 m (1,245 m²) and 29.9 × 39.7 m (1,185 m²), both at
+`center_z 14.7`.** Nothing here is a taste call — a `nonslip` floor must not be a mirror and the
+model says which is which. This is the PRIME RULE applied to a visual effect: **extract the
+reflectivity, don't invent it.** No other viewer can do this because no other viewer reads the
+finish name as a material property.
+
+### The reflection set, also from the data (what actually sits above that floor, z 14.7–32)
+| reflect | n | | skip | n |
+|---|---|---|---|---|
+| `IfcSlab` | 280 | | `IfcDuctSegment` | 536 |
+| `IfcWall` | 280 | | `IfcBuildingElementProxy` | 454 |
+| `IfcBeam` | 390 | | `IfcFurniture` | 176 |
+| `IfcWindow` | 228 | | | |
+| `IfcColumn` | 146 | | | |
+| `IfcCovering` | 75 | | | |
+| `IfcRailing` | 30 | | | |
+| **1,429 elements** | | | **1,166 skipped** | |
+A hall floor shows the roof, the glazing, the columns and the volumes — not 536 duct segments. The
+skipped set is the high-count/low-area tail, so the cull is cheap AND semantically correct. **This is
+the "cull by meaning" claim made concrete**: distance/screen-size culling (what every other web
+viewer has) cannot make this distinction; a duct 3m above the floor is *near and large on screen* and
+would survive every generic heuristic.
+
+### Cost, with the user's own real-GPU numbers (log, 2026-07-28, RTX 4060)
+`§STILL_REFINE done accumulateIndex=16 elapsedMs=717` → **~45ms per scene render**. Navigation orbit
+runs **43–65 ms/frame** (`§FPS_MODE` is MILLISECONDS — the `mean=303171.5` idle line proves the unit).
+- **Naive `Reflector`** re-renders on every render call. A still does ~40 (16 TAA + 24 AO) → **+1.8s,
+  roughly doubling the still.** ⚠ An earlier "+50ms" estimate in conversation was WRONG on this point.
+- **Still, with the freeze trick:** the camera is frozen during accumulation, so the reflection cannot
+  change. Render the mirror ONCE at still-start, reuse the target for all 40 passes → **~+45ms.**
+- **Movie (MaxQ):** camera moves per frame, so one mirror render per baked frame → **~+16s over a
+  360-frame bake** that already runs minutes. Affordable.
+- **Navigation:** naive = ~2x frame time. With quarter-res target (reflections in a floor are blurred
+  anyway) + Nth-frame update + the semantic set above, it is plausibly affordable — **to be MEASURED,
+  not promised.** `Reflector.js` is not vendored; it is MIT from three.js examples, same footing as
+  the already-vendored `Pass.js`/`BloomPass.js`/`OutlinePass.js`.
+
+### ⚠ Correction to a claim made in conversation — the kernel op-log does NOT make this free
+`kernel_ops.js` `commitOp(db, opType, params, inputGuids, outputGuid, opUuid, ts)` is a signed,
+chained **provenance ledger of operations on the model**. It has no bearing on per-frame GPU cost and
+cannot make a rasterization pass free. What IS free is the *selection*: the reflect/skip query above
+runs against the already-loaded local SQLite in milliseconds, so the semantic cull costs nothing at
+runtime. The formula is ours; the pixels are still the GPU's.
+
+## 14. Policy answers (2026-07-28)
+**"Do we still need the meta/geo split?"** — For a shipped building, yes; for an experimental
+derivative, no. The split is a *distribution* optimisation, not a correctness requirement: meta
+(21.5MB) makes rooms/BOM/ERP/Find interactive while geo (229MB) is still arriving, and many lenses
+never need geometry at all. On a warm cache over a fast link it buys little (the user's own log:
+`§SPLIT_GEO_LOADED src=download size=229MB ms=1167`), but a cold mobile load is a different story.
+`§DB_SPLIT_DETECT … found=true` already falls back when there is no split, so a **single combined
+file is fine for a one-off experimental build.**
+
+**"Billboard injected into the DB → save as `Terminal_Hi.db`"** — Injecting it as a REAL element is
+the better design, not a compromise: it becomes pickable, quantifiable, shadow-casting real data
+instead of presentation dressing, which is this project's own doctrine. It needs four rows —
+`elements_meta`, `element_transforms`, `element_instances`, and a `component_geometries` blob (a box
+is 8 verts / 12 tris, small enough to be a hex literal in SQL). **Delivery follows the standing DB
+rule, unchanged:** ship it as `buildings/patches/<db>.sql` applied by the self-heal loader already
+proven live (`§PATCH_APPLY Hospital_meta.db applied (226962 bytes)` in the user's own log) — **never
+a committed binary.** If a genuinely separate `Terminal_Hi.db` binary is wanted, that is an OCI
+upload (`deploy/OCI_UPLOAD.md` §RULES), never git/LFS.
