@@ -1668,3 +1668,55 @@ Log the pace FACTOR SERIES (not min/mean/max) against distance and read it at `u
 - §CPE_IDB_PATH_STORE — specced, parked at the user's request.
 - `witness_cinema_exit_breathe` / `_flat_ending` / `_reciprocal` / `_glazing` were ALREADY RED on
   main before this session (see §CPE_BUILT G6). Not caused by this work.
+
+---
+
+# ▶ HANDOVER 2026-07-27 (late) — read this first in a new session
+
+## The one lesson this session actually taught
+**Four separate "defects" in this lane were broken instruments, not broken code** (G7, G2, then
+`witness_cpe_even_turn` T2 and `witness_cinema_bands` B5). The last two both sampled `dur * fps` — a
+fixed 24s film — while the product bakes `plan.naturalTotal` seconds (`cinema_maxq.js:414`), and
+§CPE_TURN_BUDGET now makes that grow with route turn. **The film is no longer 24s.** `deg/FRAME`
+falls with frame count, so every jerk number argued over for two sessions was measured at a duration
+no user ever sees. Fixing the instrument alone moved Hospital 21.6 → 5.6 and Duplex 20.4 → 5.2.
+
+**Before believing any gate in this lane, check what duration it samples.** When a number refuses to
+move while everything around it moves, suspect the meter — `feedback_verify_checker_before_code_under_test`
+has now earned its place four times here.
+
+## Shipped and green (PR #1047 + #1042/#1044/#1046)
+`witness_cpe_even_turn` **5/5 on Duplex, Terminal AND Hospital**; `witness_cinema_bands` 6/6;
+`witness_cinema_path_editor` 9/9; `witness_cpe_undo` 6/6; `witness_cpe_ok_bake` 3/3.
+
+## ⛔ NEXT, in order — every one is specified, none is guesswork
+1. **The spin-at-wp1 (user, live, 2026-07-27: "at wp1 it can spin around itself one full rev").
+   NOT NOTICED BY ANY GATE, and T2 structurally cannot see it** — it measures deg per FRAME, and a
+   360° revolution spread smoothly over many frames passes. Hospital accumulates 888° of gaze sweep
+   across the film (~2.5 revolutions) with T2 green. **The instrument to build: NET vs ACCUMULATED
+   gaze rotation over a short stretch of path.** Accumulated ≈360° with net ≈0° IS a spin-in-place.
+   Build the gate FIRST, then look for the cause — that ordering is what worked every time this
+   session and guessing first is what wasted it.
+2. **§CPE_LOOK_HOME keyed to the WALL CROSSING.** User narrowed it themselves: *"the only concern is
+   when leaving building outer wall — cam turns towards centre of building, or face perpendicular to
+   path towards building centre."* Do NOT implement it by widening `CINEMA_TURN_OVERLAP`: that was
+   tried at 0.75 and reverted — it starts the blend while still inside, broke G10 (Terminal wp1
+   aimErr 36.5° vs 25 cap), and was the sole cause of Duplex's 15.5 deg/frame. `exitOuter` is
+   already computed in the plan; key off that crossing.
+3. **The 10s preview after OK** (§ ask 5) — must fly the EDITED plan through the SAME `poseAt` the
+   bake uses, or it re-creates §CPE_PREVIEW_DIVERGENCE.
+4. **§CPE_DRAG_SCALE** — still open, still one user decision (1:1 vs a precision modifier).
+5. **Screen dims / brightness flash at the jerk spot** (user, live). Suspect the photoreal staging
+   re-firing on camera movement (`§STILL_REFINE` / `§PHOTO_AO` / `§NIGHT_MODE` cycle constantly in
+   their logs), NOT the camera — T5 already proves there is no position teleport.
+
+## Dead ends — do NOT retry, all measured
+- **Noise-speed as a SPEED heuristic** (`v = clamp(avgNoise/noise, 1/SWING, SWING)`), per-segment
+  AND windowed. Both measured WORSE on jerk (11.2 → 16.5 → 18.3) because a speed law has no bound on
+  turn-per-frame, and windowing removes the slowdown exactly at the corner needing it. The blended
+  cost `dc = (1-w)ds/S + w·dθ/Θ` is kept because `Δθ ≤ Θ/(w·N)` is PROVABLE. The user's instinct that
+  one abstract structure covers it was right — the missing half was FRAMES (§CPE_TURN_BUDGET), since
+  with N fixed the mean is Θ/N no matter how you redistribute.
+- **Clamp-then-renormalise** for the pace floor: rescaling by the shrunk span multiplies every slope
+  by `1/span > 1` and restores exactly what the clamp removed. Use the water-filling bisection.
+- **Pitch term in `_spinDeg`** — makes the spin's duration path-dependent, breaks G2.
