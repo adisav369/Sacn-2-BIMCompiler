@@ -56,3 +56,39 @@ W-PIVOT-RECENTER : after every drag-end while ON, exactly one
 
 ## DONE
 (append evidence: § log lines proving W-PIVOT-TOGGLE + W-PIVOT-RECENTER)
+
+Shipped 2026-06-04→2026-06-06 to the canonical viewer (`bim-ootb/viewer/precision_cam.js`, this repo's
+`deploy/dev/precision_cam.js` copy was the original build location) — PR #101 (base feature), #103
+(keyboard cluster: `A`=Reset, `Q`=Pivot, `CapsLock`=Fine), #104 (homes on selected element), #108
+(top-centre icon notices), #109/#111 (fallback hardening — building meshes only, never sky/ground).
+Full behavioral detail lives in memory `project_precision_pivot.md`, not restated here.
+
+## 2026-07-27 — Un-archived: pulled back out of `prompts/archive/` into this active folder
+
+Was archived on ship (normal convention — spec done → archived), but a later session investigating
+"make Auto-Pivot always active" found the code but not this spec (searched by filename/content for
+"pivot"/"precision_cam", the archive folder didn't surface it under those terms either — a `git grep`
+across all of `prompts/**/*.md` for "Caps Lock" is what eventually found it). Moving it back to the
+active folder so a future dev looking for "how does the precision-cam drawer work" lands on the real
+origin doc instead of just the memory summary.
+
+**Supersedes the "Scope guard — NO impact" section above on ONE point: the toggle's *default state*.**
+The listener attach-on-ON / detach-on-OFF mechanism the scope guard describes is UNCHANGED and still
+holds — this only flips what state the toggle starts in.
+
+- **Auto-Pivot now defaults ON at load** (bim-ootb PR #1033, `feat/autopivot-always-active`,
+  commit `b326605`) — continuous "never get stuck on a stale target" navigation without needing to know/
+  press `Q` first. `init()` polls for `A().controls` (not ready yet at `DOMContentLoaded` — `setupScene`
+  creates it later, async) every 100ms up to ~10s, then calls the SAME `pivotOn()` `Q` already called —
+  no new recenter logic. Self-clearing timer either way (found or timeout); zero steady-state cost once
+  resolved. `Q` / the panel button / the drawer chip still toggle it OFF exactly as before.
+- **New decision this spec never covered: Fine vs. Pivot interaction.** Fine (CapsLock) is a deliberate
+  act for slowly closing in on one specific point; Auto-Pivot recentering the target on every drag-end
+  while Fine is on would fight that. Resolved as **Fine wins** — `_onEnd` now checks `_pivot && !_fine`,
+  i.e. auto-recenter is suppressed while Fine is active. Decided 2026-07-27: Fine has a visible top-
+  centre icon and is an explicit user act, so it should not be silently overridden by an ambient one.
+- Correction to a claim in the memory record (`project_precision_pivot.md`) that this work surfaced:
+  `recenterPivot()` does NOT touch `controls.minDistance` — only `Reset` (`resetOrbit()`, → 0) and
+  `Fine` (`fineOn`/`fineOff`, → 0.001/0.1) do. There was never a Reset/Fine/Pivot `minDistance`
+  three-way collision to resolve; the actual conflict was always-on recenter fighting Fine's slow-
+  approach workflow (addressed above), not a shared-field write race.
