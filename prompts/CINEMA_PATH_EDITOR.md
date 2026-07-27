@@ -21,7 +21,9 @@ the original sections is SUPERSEDED throughout.
   derived. Built. **One thing is left to LOOK AT, not decide: the derived totals do not match the
   ~15s/~40s expectation** — see §CPE_PACING_BUILT.
 
-**RESUME AT:** §CPE_PACING_BUILT "what to look at next".
+**RESUME AT:** **§CPE_JERK_SETTLED** (the LATER 2026-07-27 session-end block, near the end of this
+file). Jerk and drag are both SOLVED and witnessed there; the elegant formula that solved them is
+recorded as settled doctrine and must not be re-derived.
 
 **⚠ 2026-07-27 (later, live user run on Hospital):** OK-after-an-edit CRASHED the bake on shipped
 main — `§CPE_OK_CRASH`, root-caused, fixed and witnessed 6/6 (`witness_cpe_ok_bake.js`, the first
@@ -1136,7 +1138,134 @@ correct as they stand; only the mid/translate branch was wrong.
 
 ---
 
-# ⛔ SESSION END 2026-07-27 — READ THIS FIRST, NEXT SESSION STARTS HERE
+# ⛔ SESSION END 2026-07-27 (LATER) — §CPE_JERK_SETTLED — READ THIS FIRST
+
+**Both of the user's headline asks are now BUILT, MEASURED and PUSHED.** The earlier session-end
+block below is kept for its dead-end record only; its status table is STALE and must not be quoted.
+
+## The user's asks, answered against numbers
+| their words | state |
+|---|---|
+| "1. NO JERK" | **DONE.** Hostile-layout peak 29.1 → **6.7** deg/frame (Duplex), 46.8 → **7.3** (Terminal), cap 12. `witness_cpe_even_turn.js` **PASS 3/3 both**. |
+| "2. EVEN SPEED NOISE" | **DONE** — and it is the *same* mechanism, not a second feature. See the formula below. |
+| "that jerk was happening at the 2nd wp1 after the settle" | **ROOT-CAUSED THERE EXACTLY.** It was an 81° DISCONTINUITY at the Beat2→Beat3 seam. Now 0.18°. |
+| "out of control drag" | **DONE.** `witness_cpe_drag.js` **4/4 both** (PR #1038 branch). |
+
+Branches pushed, both green, neither merged yet:
+- `fix/cpe-drag-reach-revert` @ `96f9f66` — drag 4/4. (PR #1038, needs merge.)
+- `feat/cpe-even-turn` — jerk + seam, merged up to `origin/main` already, witnesses green.
+
+## §CPE_JERK_DEFINITION — what a jerk IS (settled, user 2026-07-27)
+User's own definition, verbatim: *"pov sudden position, turn angle too large, need even out between
+frames."* Operationally, THREE measurable things — a fix must not trade one for another:
+1. **Gaze sweep per frame** — the angle between consecutive frames' gaze DIRECTION vectors (3D).
+2. **Position step per frame** — metres between consecutive frames' camera positions.
+3. **Discontinuities** — detected by re-sampling the same neighbourhood at **100× density**: a real
+   turn shrinks ~100×, a genuine STEP stays the same size. This test is what found the 81° seam and
+   it is the single most useful diagnostic in this lane. Reuse it.
+
+**Do NOT measure yaw.** Yaw is degenerate near-vertical: on Terminal it read 46.8 deg/frame where
+the gaze sat at 87.2° pitch (horizontal component 0.049) and the TRUE sweep was 7.2. The old T2 gated
+yaw and was chasing an instrument artefact.
+
+**Where the camera POINTS is the USER'S creative control** (their explicit ruling, 2026-07-27:
+*"Gaze angle is user control, why u wana fix? Fix only jerks, speed etc."* / *"user creativity .. leave
+to them its intuition"*). We own only how fast it may CHANGE. Do not "fix" a camera aim, a chosen
+exit, or a path's steepness because it looks odd — that ruling also killed a line of investigation
+into Terminal's 83.4° first walk leg, which is CORRECT AS DESIGNED (dive into a big space → exit →
+orbit is the intended film).
+
+## §CPE_EVEN_TURN — the elegant formula (THIS IS THE SETTLED ANSWER, do not re-derive)
+**The mistake every earlier attempt made:** keep frames evenly spaced in TIME/DISTANCE, then try to
+fix a corner by MULTIPLYING speed there. Bounded by `PACE_SWING`, a multiplier can divide a peak by
+at most 1.6, against a measured 29.1 deg/frame needing 2.4×. **H3 moving 29.1 → 29.4 was an
+arithmetic ceiling, not bad tuning.** No amount of pacing work can beat that ceiling.
+
+**The fix — make pace the PARAMETERIZATION, not a correction.** Step frames at equal increments of a
+blended cost:
+
+    dc = (1-w)·(ds/S)  +  w·(dθ/Θ)
+
+with `S` the walk's arc length, `Θ` its total gaze turn. Because every frame advances the same
+`Δc = 1/N`, **each term is bounded on its own, by construction**:
+
+    Δθ ≤ Θ / (w·N)          — turn per frame, at most 1/w × the perfectly-even Θ/N
+    Δs ≤ S / ((1-w)·N)      — distance per frame, at most 1/(1-w) × nominal speed
+
+So **`1/(1-w)` IS the speed range.** The user set that range at `PACE_SWING = 1.6`, which fixes
+
+    w = 1 - 1/1.6 = 0.375
+
+**Nothing here is tuned.** The single dial was already chosen by the user, and the turn bound falls
+out of it. Slow-in-the-turn and pick-up-in-the-open are not imposed by a brake — they are what equal
+cost stepping DOES, and the brake releases in open space for free because there is no dθ to pay for.
+This is simultaneously ask 1 (no jerk) and ask 2 (even speed noise): one mechanism, both asks.
+
+Implementation: `viewer/effects.js`, `_evenTurnBuild()` + `_evenTurnRemap()`, applied to Beat 3's
+progress. The cost table samples `_beat3Pose()` — the REAL poses — never a re-implementation of the
+gaze rule, so the table and the film cannot drift apart. Guard: `Θ < 1e-3` falls back to pure arc
+length (today's behaviour) so a straight walk is untouched.
+
+## §CPE_SEAM_CONTINUOUS — the discontinuity, and why it goes in the WALK
+The Beat2→Beat3 seam stepped **81° in one frame** on Terminal (at the user's reported wp1-after-
+settle). Proven a STEP not a fast turn by the 100× density test: it stayed 81°. Cause: the spin ends
+on a LEVEL gaze while the walk opens aimed up a 16m climb (walk-out leg 1 measured `run 1.85m,
+rise 15.98m` = 83.4°).
+
+Fix: the walk now OPENS on exactly the direction the spin handed over, and eases onto its own aim
+over `_openU`, sized at the project's existing `CINEMA_TURN_DPS`. **81° → 0.18°.**
+
+**⚠ It is closed inside the WALK, deliberately — do not "simplify" this into the spin.** That was
+tried and measured: paying for it in the spin makes the spin's DURATION depend on the authored path,
+which shifts every beat fraction before it and breaks G2's "an edit changes nothing before it".
+`§CPE_SEAM_CONTINUOUS seamGapDeg=` logs the seam every plan; it must stay ~0.
+
+## ⚠ TWO GATES ARE RED ON SHIPPED `origin/main` — NOT caused by this work
+Verified by running `witness_cinema_path_editor.js` against a pristine `origin/main` `effects.js`:
+it fails **identically**, and with **byte-identical numbers** to the branch, because both defects sit
+in beats this work does not touch.
+
+| gate | main = branch | reading |
+|---|---|---|
+| G2 "edit changes nothing before it" | `maxDelta=38.29m firstDiffT=0.0025 diveEnds=0.114` (Duplex); `48.57 / 0.0025 / 0.111` (Terminal) | the edit changes the film from t=0.0025 — inside the DIVE |
+| G7 no sharp corners ≤12 | `peak=15.7 @ t=0.156` (Duplex); `20.4 @ t=0.142` (Terminal) | peak sits at/just after `diveEnds`, i.e. the SPIN, not the walk |
+
+**G2's likely cause is a SPEC TENSION, not a bug** — and this needs the user, so do not code around it.
+`_natSec.out = totalLen / CINEMA_WALK_MPS`, so an edit that changes path length changes the walk's
+seconds, hence `_shapeTotal`, hence EVERY beat fraction including the dive's. That is settled §9
+doctrine ("constant speed, path length sets the clock") working exactly as specified — and it is
+logically incompatible with G2's invariant as G2 is currently written. **⛔ BLOCKED — the one
+question: when an edit lengthens the path, should the earlier beats (dive/spin) keep their ABSOLUTE
+seconds (so only the walk stretches), or keep their FRACTIONS (today, so the whole film re-times)?**
+Ask this; do not pick one.
+
+## ▶ NEXT SESSION — executable, in order
+1. **Merge PR #1038** (`fix/cpe-drag-reach-revert`, 4/4 green) and open+merge a PR for
+   `feat/cpe-even-turn`. Both are pushed and green; nothing to re-run first.
+2. **Locate G7's peak precisely.** Run the plan, print `plan.beats`, and report which beat
+   `t=0.156` (Duplex) / `t=0.142` (Terminal) falls in. Expected: the SPIN. Command shape is in
+   `/tmp/.../diag_terminal_jump.js` from this session — it already prints top-5 worst frames in 3D
+   and yaw with `plan.beats`; re-create it if the scratchpad is gone (it is ~90 lines).
+3. **If it is the spin:** the spin's budget is `_spinDeg / CINEMA_TURN_DPS` floored at
+   `CINEMA_SPIN_MIN_SEC = 0.8`, and `_spinDeg` is capped at 180. On a 90° dog-leg the floor binds
+   while the real sweep is larger, so the turn is crammed into ~12 frames. Apply the SAME formula as
+   §CPE_EVEN_TURN — the spin is pure rotation, so its cost IS its turn, and cost sets its clock.
+   **Do NOT add the pitch term to `_spinDeg`** — that was tried this session and broke G2 (it makes
+   spin duration path-dependent); it is reverted and must stay reverted.
+4. **Gate the position half of the jerk definition.** T2 currently gates gaze sweep only. Add the
+   per-frame POSITION step (metres) to `turnPeak()` in `witness_cpe_even_turn.js` and gate it — the
+   user's definition names "sudden position" first and it is currently ungated.
+5. Take the G2 question above to the user.
+
+## Rig
+`python3 -m http.server 8403 --bind 127.0.0.1` (buildings are symlinked from
+`~/bim-ootb/buildings/`), then `PORT=8403 node witness_cpe_even_turn.js`. Drag witness runs on
+`/tmp/wt-drag` port 8402. Both worktrees exist and are clean — **reuse them, do not create new ones**
+(worktree hygiene rule in CLAUDE.md).
+
+---
+
+# ⛔ SESSION END 2026-07-27 (EARLIER) — SUPERSEDED BY §CPE_JERK_SETTLED BELOW
 
 **The user's three asks are NOT done. Two of three have nothing shipped. Do not report progress on
 them without re-measuring.** Everything below is measured, not remembered.
