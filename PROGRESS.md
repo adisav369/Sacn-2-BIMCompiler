@@ -51,23 +51,23 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- ✅ §LODHELL 1-2-3 CLOSED (07-27) — **all detail `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md`
+  §LODHELL-ROOTCAUSE/-FIX**; W-LODHELL-CLASSIFY 5/5, `f7d00240b` + bim-ootb **#1051 merged**.
+  SampleCastle's boxiness is its OWN source (46.4% literal 12-tri), renderer clean (3225/3225). The 65
+  "missing" walls are **VOID-CONSUMED** (correct, 74/74 fillings present) — now classified, all fails
+  printed, P5 honest + new P9, red §PROOF exits ≠0; dead no-boolean tier DELETED not wired.
+  ⛔ OPEN design call: only 9/74 fills can ride (65 hosts aren't scene features) — non-rendered
+  logical anchor for a void-consumed host? Not scoped.
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 §TOUR-POLYLINE (Terminal 8/92→2/91) + #1013 T2/T3
   NO-CHANGE ×7 + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**; T4/exits = its OWN
   track (`§G1-EXTERIOR-DOOR-LANE`), NOT a blocker.
-- ✅ §STAKEHOLDER_STROLL S1+S2+S3 → `FLY_TOUR_CORRIDOR_GRAPH.md` §S1/§S2/§S3 SHIPPED (07-26).
-  **S1** injector **28/28** (+W-R5A 10/10) — Duplex's 21 authored rooms survive by name+guid; Clinic
-  118→207 gate-backed by G2b. **S3** scene budget — per-storey `K` → checklist (hall→ascent→spine≤3→
-  scenic≤3): Hospital **18→7**, Terminal **15→8**, Clinic **7→6**, LTU **15→7**, JKR **5→4**. ⚠ spec's
-  "Hospital 22" is PRE-S1; use 18. **S2** lift shafts — `IfcTransportElement`=0 fleet-wide so lift
-  DOORS group; Terminal 5 doors/1 shaft/5 storeys, 4 others 0 (fence holds); choice = edge WEIGHT not
-  threshold (4 STAIR/6 LIFT), weights tagged priors; exit=0 everywhere. S3 re-run after S2: scene
-  lists IDENTICAL — predicted S3↔S2 interaction did NOT materialise.
-  ⚠ **JKR/LTU coverage gap closed 07-26 (user asked)** — JKR was in NO witness and carried a shipped
-  S3 regression: 75-component graph put its 2 largest rooms on islands → S3 elected unreachable
-  scenes → route LOST to legacy. Fixed by **§SCENE-COMPONENT**. **S3 55/55 (5 bldgs), S2 37/37.**
-  New gate G6: a route that existed pre-change must still exist. JKR strolls 1 storey, LTU has no
-  ascent — data, not bugs.
+- ✅ §STAKEHOLDER_STROLL S1+S2+S3 SHIPPED (07-26) — **all detail in `FLY_TOUR_CORRIDOR_GRAPH.md`
+  §S1/§S2/§S3, read it there.** S1 injector 28/28 (+W-R5A 10/10); S3 scene budget 55/55 (5 bldgs);
+  S2 lift shafts 37/37. New gate G6 = a route that existed pre-change must still exist.
+  ⚠ spec's "Hospital 22" is PRE-S1, use 18 · ⚠ JKR/LTU coverage gap closed 07-26 (JKR was in NO
+  witness, its 75-component graph islanded the 2 largest rooms → route LOST to legacy; fixed by
+  **§SCENE-COMPONENT**) · JKR strolls 1 storey and LTU has no ascent — data, not bugs.
 - ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2%
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
   `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
