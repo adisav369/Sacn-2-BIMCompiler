@@ -459,3 +459,93 @@ git history (`fix/night-diffuser-bloom`) if the retry needs it.
 See §HOW THIS FEATURE IS TESTED above. The AI's job is the DATA — selected / counted / applied /
 nothing else touched, answerable from `sqlite3` in seconds. **The look is the user's.** No AI vision,
 no luminance probes, until the user has established a baseline.
+
+---
+
+# §TRANSLUCENT_COVER — THE CALCULATION (2026-07-28, before any code)
+**Question asked: "calculate and discuss if it is worth it."** Every number below is from
+`sqlite3` over the five shipped `*_extracted.db` and from reading `origin/main:viewer/streaming.js`.
+No code was written for this section.
+
+## 1. There is no cover. There is only the whole fixture.
+`element_instances` is `guid PRIMARY KEY` → **one geometry per element, one material per element**,
+and `component_geometries` stores `vertices`+`faces` with **no material groups**. Verified: every
+Hospital `IfcLightFixture` and every Clinic troffer resolves to exactly 1 component (1272/1272,
+601/601). So `transparent+opacity` cannot reach "the cover" — it reaches the housing, the back and
+the reflector at the same time, because they are the same six faces of the same mesh.
+
+What that mesh actually is:
+| family | building | n | verts / tris | what frosting it does |
+|---|---|---|---|---|
+| `M_Plain Recessed Lighting Fixture` | Hospital | **1151 (90% of its luminaires)** | **34 / 12** — a BOX | the ceiling gets a see-through rectangle onto the void behind it |
+| `M_Troffer Light - Parabolic Rect/Sq` | Clinic | 601 | 868 / 424, 476 / 224 | real louvers, but they go 55% transparent WITH the cover — a ghost, not a lit lens |
+| `M_Pendant Light - Linear` | Clinic | 50 | 1584 / 766 | hangs free; nothing behind it to see through to |
+| `M_Downlight - Recessed Can` | Clinic | ~147 | 446 / 220 | can + trim, one material |
+
+**A 12-triangle box has no inside and no cover.** §NIGHT_DIFFUSER's failure was not only "no source
+behind it" — it is that on 1151 of Hospital's 1272 fixtures there is nothing a diffuser could be
+distinguished FROM. That is the same mechanism as the black rectangles, reached from the other side.
+
+## 2. Interior depth exists, so half #1 is buildable — it just does not need the cover
+`bbox_z` of selected luminaires: Clinic 0.10–2.00 (avg 0.266) · Hospital 0.15–1.25 (avg 0.182) ·
+Terminal 0.045–0.62 (avg 0.14) · Duplex 0.40–0.675 · HHS 0.146–1.727. **0 fixtures below 20mm on any
+building** — a second sprite ring at `bbox_z/2` behind the face is geometrically well-defined.
+But the cover would be `depthWrite:false`, so that inner sprite is **not depth-culled by the cover
+either way** — the same pixels can be had by moving the existing sprite, with no material write at
+all. The cover contributes nothing to the light; it only makes the body see-through.
+
+## 3. Coverage under the exclusivity gate, measured per building
+| building | luminaires | on EXCLUSIVE material keys (would frost) | on SHARED keys (must skip) |
+|---|---|---|---|
+| Hospital | 1272 | **1272** (`_default\|IfcLightFixture` 1151/1151 + 4 more keys) | 0 |
+| Terminal | 814 | **814** (6 keys, all pure) | 0 |
+| Clinic | 884 | **736** | **148** — `0.920,0.900,0.850\|IfcFlowTerminal` is 1974 elements, 1826 of them not lights |
+| HHS | 410 | 0 | **410** — `_default\|IfcFlowTerminal` 725 total, 315 others |
+| Duplex | 14 | 0 | **14** — `\|IfcFlowTerminal` 105 total, 91 others |
+| **total** | **3394** | **2822 (83%)** | **572 (17%)** |
+`§LUM_VARIANT` (67 reverted lines, recoverable) takes this to 3394/3394 and makes it STRUCTURAL
+rather than a per-building measurement. That part of the reverted work is sound and worth keeping.
+
+## 4. ⚠ LANDMINE the reverted design did not account for — the DB key is not the draw-level key
+`streaming.js:1028` buckets BatchedMesh by **`storey|disc|rgba|matVariant` — `ifc_class` is NOT in
+the bucket key** — and `streaming.js:1086` then takes the bucket's material from
+`items[0].el.ifcClass`. So one material object can be handed to a bucket holding several classes.
+`_buildExclusiveLumKeys()` scans `elements_meta` GROUP BY `rgba, ifc_class` and cannot see this.
+Simulated bucket composition (single-instance hashes, the BatchedMesh path):
+- HHS `Level 1..3|MEP|_default`: 337 luminaires bucketed with **1657 ducts, pipes and diffusers**.
+- Duplex `Unknown|MEP|`: 5 luminaires bucketed with **566 pipes/elbows/tees**.
+- Clinic `Unknown|ELEC|0.920,0.900,0.850`: 46 luminaires with 8 others (receptacles, AHU, chiller).
+- Hospital / Terminal: **1251 and 814 luminaires are InstancedMesh groups, 0 non-luminaires** — clean.
+On the shipped five the DB gate happens to skip all three mixed cases for another reason (their rgba
+key is shared anyway), so the old code was **lucky, not correct**. Any retry must scan at draw level.
+
+## 5. The cost, stated
+- 171 reverted lines to recover (`4af5927` 104 + `ffaff11` 67) + the inside-source half + a
+  draw-level exclusivity scan to replace §4's DB-level one ≈ one full session.
+- It spends **THE INVARIANT** (§NEXT SESSION: "the sprite cloud owns its own material, shared with
+  NOTHING… every regression this session came from giving that property away").
+- The look is the user's to judge (standing directive), so every iteration is a user round-trip. The
+  previous attempt cost ~6 test rounds, one 204-line revert, and shipped a live regression.
+
+## 6. VERDICT — not worth it as specified. Build §GLOW_LENS_QUAD instead.
+Scored:
+| | translucent cover | §GLOW_LENS_QUAD |
+|---|---|---|
+| fixtures it can reach | 2822/3394, or 3394 with §LUM_VARIANT | **3394/3394, every building** |
+| scene materials written | 5+ per building | **0 — invariant intact** |
+| draw calls added | 0 (reuses the batch) | **1** (one InstancedMesh) |
+| gets "the fixture body reads as lit" | no — it reads as see-through | **yes — the lens IS the glow** |
+| new failure mode | see-through box over a dark plenum = the black rectangles again | per-quad orientation must follow `rotation_*` |
+| effort | ~1 session + user rounds | ~1 session, no material risk |
+
+**§GLOW_LENS_QUAD:** replace the round `THREE.Points` halo (`GLOW_SPRITE_SIZE = 1.1` m, one scalar,
+always a square) with an **instanced quad sized `bbox_x × bbox_y`** at the emitting face, oriented by
+the stored `rotation_*`. A lit 600×1200 troffer seen from below IS a 0.6×1.2m rectangle of light —
+that is the thing the user is asking to see, and it is reachable without touching one scene material.
+Data is complete for it: **0 of 3394 luminaires have a null or zero `bbox_x`/`bbox_y`** (Clinic avg
+0.78×0.66, Hospital 0.85×0.72, Terminal 0.63×0.65, Duplex 0.47×0.56, HHS 0.82×0.70). It also closes
+the known §Still-open defect — `THREE.Points` clips a sprite by its CENTRE, so halos pop at the frame
+edge; a quad does not.
+
+**Keep from the reverted branch:** `§LUM_VARIANT` only, and only if a later job needs per-luminaire
+materials. **Do not recover `§NIGHT_DIFFUSER`** — §1 is why, and it is a data fact, not a tuning one.
