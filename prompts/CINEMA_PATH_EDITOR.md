@@ -879,6 +879,48 @@ Two separate obligations, gate them separately:
 user-shaped edited path, with the §CPE_PREVIEW_DIVERGENCE fix in place — a 118° phantom spin would
 otherwise dominate any number this gate produces. Report both peaks and where in `u` they fall.
 
+### 🔬 MEASURED 2026-07-27 — `witness_cpe_even_turn.js`. TWO HYPOTHESES TRIED, BOTH DISPROVEN
+
+**Instrument committed, fix NOT — nothing shipped from this pass.** The witness is the value here: it
+turned "sharp jerk" into numbers, and those numbers killed the two obvious fixes before either
+reached a PR. Current measured baseline on `origin/main`, hostile 3-band layout (bands aimed apart):
+```
+Duplex    T2 peak = 29.1 deg/frame at u=0.281   (839deg total / 360 frames, mean 2.3)
+Terminal  T2 peak = 70.2 deg/frame at u=0.370   (879deg total / 360 frames, mean 2.4)
+          seeded (non-hostile) layouts: 7.6 and 7.8 deg/frame — comfortably under the 12 cap
+```
+
+**Hypothesis 1 — "the no-hit bow cap crams the corner." DISPROVEN, the cap never binds.**
+Built it (probe the join along its own bow direction with `A.cinemaLookDist` instead of falling back
+to the 3m sentinel cap — deliberately NOT re-reading `CINEMA_FAN_FAR` as space, per §CPE_LIVE), then
+measured what was actually binding:
+```
+Duplex    bow 0.26m / 0.29m  against MEASURED clearance 0.86m / 0.87m
+Terminal  bow 0.74m / 0.67m  against the 3m cap, and the bow ray ALSO returns 60.00 (no hit)
+```
+**Every bow is far under its own budget.** `k` never shrinks, so the cap is not in play on either
+building. The corner is sharp because the connector SPAN is short relative to the direction change,
+not because the bow was crammed. Reverted rather than shipped: unexercised code behind a vacuous gate
+is exactly what §CPE_LIVE's lesson warns about.
+
+**Hypothesis 2 — "average the gaze look-ahead across its window." DISPROVEN, made it WORSE.**
+`ah = _outPos(e3 + 0.15)` is one point at the window's far edge; replacing it with the mean of 5
+samples across the window measured **29.1 → 37.0 deg/frame on Duplex**. Reason, and it is general:
+on a path that DOUBLES BACK the window straddles the fold, so the mean lands near the fold itself —
+close to the camera — and a short look vector has an unstable direction. **A positional low-pass is
+the wrong instrument for a reversing path.** Do not retry this.
+
+### ➡ WHERE THIS GOES: fold §CPE_EVEN_TURN INTO §CPE_PACE_LOS — they are one problem
+`deg/frame = (deg/metre) × (metres/frame)`. The geometry term is the user's own authored layout and
+is theirs to choose; the only other lever is **metres per frame**. So "never have any sharp sudden
+turns" is delivered by *spending more frames where the direction changes fast* — which is the user's
+own rule (*"if too much is happening, slow down"*) with **turn rate as one of the busyness terms**,
+alongside the fan hit-fraction. One mechanism satisfies both items; building them separately would
+be two systems fighting over the same frames.
+**Revised gate for the combined work:** T2 (peak deg/frame under cap on a hostile layout) must go
+green *because* the pace slowed there — reported together with the m/frame at that same `u`, so the
+gate shows the mechanism and not just the outcome.
+
 ## §CPE_PACE_LOS — item 2: even speed inside, brake only for what is actually ahead
 
 User: *"too slow and thus gives uneven speed. It has to maintain same speed inside building and apply
