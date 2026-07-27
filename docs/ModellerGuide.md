@@ -91,6 +91,25 @@ retreat across every tool below.
 That's the whole loop: **open → select → tool → commit → scrub**. Every tool below is a variation on it. Press
 **? Help** any time for the live list of pills and shortcuts, or **`Esc`** to cancel a mode.
 
+### Open your own building — straight from an `.ifc`
+
+The resident buildings are there so you can start in one click, but **📂 Open** takes your own model too.
+Besides a resident, it accepts an **`.ifc` file** and a local **`.db`**.
+
+1. Tap **📂 Open**.
+2. Choose **FROM IFC** and pick your `.ifc` — or pick a local `.db` you exported earlier.
+3. The building lands on the grid the same way a resident does: it walks the structure and seeds the
+   editable ARC substrate, so you can select and edit immediately.
+
+Two things to know. First, an IFC opens **filtered to ARC** — the architectural model only, the single
+editable substrate; the other disciplines follow by walking, exactly as they do for a resident. Second,
+it's parsed by the **same engine the Viewer uses** — not a second, differently-behaved importer — so a
+building reads the same in both tools.
+
+Because an IFC carries more than the pre-filtered resident `.db` does, an IFC-opened building often shows
+*more* ARC elements than the same building opened as a resident. That's the source file being richer, not
+a discrepancy.
+
 ---
 
 ## Outliner — find, focus, and manage what's shown
@@ -328,6 +347,13 @@ to disarm. `R` is reserved for Insert, so it doesn't arm anything here.
 2. Drag a **gridline**.
 3. Release to commit. Walls attached to that line **recompose** — a span stretches, an attached wall translates — as one signed operation. A hosted door or window **rides** its wall rather than stretching or divorcing from it, same as Move.
 
+The ride is not a guess about what looks hosted. It follows the **authored** host↔opening↔filling chain
+recovered verbatim from the building's own IFC, so a door rides the wall its designer actually put it in —
+and where a building's author never declared that relationship, the modeller says so rather than inventing
+one. In practice that means the ride is exact on *SampleHouse* (all 7 hosted openings) and *Duplex* (36 of
+its 38), and partial on *SampleCastle*, whose window-frame walls are consumed by their own openings and so
+aren't separate things to ride.
+
 ![Before — a wall spanning two gridlines](img/modeller/gridstretch-before.png)
 ![After — dragging the gridline stretched the attached wall by exactly the drag distance](img/modeller/gridstretch-after.png)
 
@@ -461,6 +487,25 @@ score: of the joins the walker drew, how many land on a real pipe touch.
 The model **degrades gracefully** and never collapses. On **every** building **0 joins were fabricated** and
 **0 exceeded the gap bound**. An ARC-only building with no pipes routes **0**, never a guess.
 
+### Walk them all at once
+
+You don't have to pick the trades one at a time. Under **Not extracted — walk from …** in the Outliner,
+the first row is **▶▶ Walk ALL Disciplines**; its sub-label tells you how many trades the building is
+missing (e.g. *4 not extracted · x-ray reveal*).
+
+1. Open a bare ARC building.
+2. Click **▶▶ Walk ALL Disciplines**.
+
+It walks every absent discipline in turn, through exactly the same production path a single click uses —
+same rules, same gating, same honest refusal when a trade has nothing to hang on. The difference is the
+presentation: X-ray brackets the whole run so you can watch it land, and each discipline's placements
+flash amber and settle into their own trade colour just before they're committed, so you can see *which*
+trade just filled in rather than watching one undifferentiated wave.
+
+X-ray is restored afterwards even if a discipline refuses part-way. On a very large building the
+per-element flash is dropped in favour of one batched hold-and-settle — the geometry committed is
+identical either way, only the reveal animation is coarser.
+
 ### Seed-Trunk — route a service trunk
 
 After walking a discipline, route its **service trunk** from a real entry.
@@ -527,7 +572,7 @@ The toolbar is a **⋯ pill rail** at the right edge: tap **⋯** to fan the pil
 | **Fillet** | Round a selected solid's picked edges (`GEOM_FILLET`) |
 | **Apply** | Commit the pending fillet / chamfer |
 | **Insert** | Insert a library component — assemble, don't draw (`GEOM_INSERT`) |
-| **LOD 200** | Refine the selected component's level of detail (same signed row) |
+| **LOD 200** | Refine the last-placed component's level of detail (same signed row) — appears once you enter **Insert**, not on the resting rail |
 | **IFC** | Export the authored model as IFC4 |
 | **Undo / Redo** | Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) |
 | **Delete** | Delete the selection (`Del`) |
