@@ -1191,17 +1191,32 @@ blended cost:
 
     dc = (1-w)·(ds/S)  +  w·(dθ/Θ)
 
-with `S` the walk's arc length, `Θ` its total gaze turn. Because every frame advances the same
-`Δc = 1/N`, **each term is bounded on its own, by construction**:
+with `S` the walk's arc length, `Θ` its total gaze turn. If every frame advanced the same `Δc = 1/N`,
+each term would be bounded on its own, by construction:
 
     Δθ ≤ Θ / (w·N)          — turn per frame, at most 1/w × the perfectly-even Θ/N
     Δs ≤ S / ((1-w)·N)      — distance per frame, at most 1/(1-w) × nominal speed
 
-So **`1/(1-w)` IS the speed range.** The user set that range at `PACE_SWING = 1.6`, which fixes
+### ⚠ CORRECTION (review, 2026-07-27) — Δc is NOT constant, and the delivered range is 2.4×, not 1.6×
+The paragraph above described the mechanism in isolation. **The shipped code composes the remap with
+the ease** — `_evenTurnRemap(_cinemaSmoothstep(t))` (`effects.js`, Beat 3) — and `_cinemaSmoothstep`
+is `t²(3-2t)`, whose derivative **peaks at 1.5** at the midpoint. Frames are uniform in TIME, so cost
+advances at up to `1.5/N` per frame and **every bound above carries a ×1.5**:
 
-    w = 1 - 1/1.6 = 0.375
+    Δθ ≤ 1.5·Θ / (w·N)      Δs ≤ 1.5·S / ((1-w)·N)
 
-**Nothing here is tuned.** The single dial was already chosen by the user, and the turn bound falls
+**So `1/(1-w)` is the per-cost-step range, NOT the speed range the film delivers.** Delivered range is
+`1.5/(1-w) ≈ 2.4×`: against `CINEMA_WALK_MPS = 2.3` the walk peaks near **5.5 m/s**, and §CPE_WALK's
+"2.3 m/s pace" is a **MEAN**, not the pace — read any gate asserting 2.30 as asserting the average.
+
+The ease is deliberate and should stay (zero rate at both beat seams, so the walk neither starts nor
+stops abruptly); the ×1.5 is its price. What is **not** settled is whether 2.4× is inside what the user
+meant by *"don't overdo it"* — the gaze half passes comfortably (7.3 measured against the 12 cap), but
+the POSITION half of §CPE_JERK_DEFINITION is still ungated, so nothing measures the metres-per-frame
+this bound governs. **Gating the position step is what turns this from an argument into a measurement**
+— it is already the top known gap, and this correction is the reason it matters more than it looked.
+
+`w` itself is still **not tuned**: the single dial was chosen by the user, and the turn bound falls
 out of it. Slow-in-the-turn and pick-up-in-the-open are not imposed by a brake — they are what equal
 cost stepping DOES, and the brake releases in open space for free because there is no dθ to pay for.
 This is simultaneously ask 1 (no jerk) and ask 2 (even speed noise): one mechanism, both asks.
@@ -1210,6 +1225,63 @@ Implementation: `viewer/effects.js`, `_evenTurnBuild()` + `_evenTurnRemap()`, ap
 progress. The cost table samples `_beat3Pose()` — the REAL poses — never a re-implementation of the
 gaze rule, so the table and the film cannot drift apart. Guard: `Θ < 1e-3` falls back to pure arc
 length (today's behaviour) so a straight walk is untouched.
+
+## §CINEMA_LOOKAHEAD_ARC — the jerk the user kept reporting. FOUND, FIXED, WITNESSED (2026-07-27)
+**The user was right and the code was wrong.** After §CPE_EVEN_TURN and §CPE_SEAM_CONTINUOUS shipped,
+Hospital still jerked. Gated at last (see §CPE_POSITION_GATE below) it measured **81.0 deg/frame at
+u=0.312, INSIDE the walk**, and the 100× density test returned **ratio 1.0× — a true STEP**.
+
+**Cause.** Beat 3's look-ahead had a collapse guard: *if the point at `u+0.15` is within 0.5 m,
+substitute `(odx, 0, odz) × 20`.* That substitute is a DIFFERENT vector, switched to in one frame.
+The measured gaze went `(-0.230, 0.973, -0.019)` → `(-0.733, 0.000, 0.680)`. **The `y` of exactly
+0.000 is the substitution's fingerprint** — that is how to recognise this class of bug again.
+
+**What did NOT work, and why it is the lesson:** searching forward for the first point that clears
+the 0.5 m radius. It only shrank the step (81.0 → **21.3**, still ratio 1.4× = still a step), because
+on a folding path the first-clearing point can itself jump. **Any rule of the form "if the look-ahead
+is too close, use something else" contains a switch, and a switch is a step.** Window size was never
+the variable; the THRESHOLD was.
+
+**The fix — remove the threshold entirely.** The look-ahead is the point a fixed **ARC LENGTH**
+further along the path (`L = 0.15 × walkLen`, the same 0.15 the fraction window meant, now in metres).
+Arc length is monotone in `u`, so that point always exists and always moves continuously, on **any**
+path shape. Nothing to collapse, nothing to substitute. The `(odx,odz)` fallback survives for exactly
+one case — a walk of zero length, where there is no path to read a direction from, and where Beat 4
+opens on `(odx,0,odz)` anyway.
+
+| | Hospital peak | 100× ratio | verdict |
+|---|---|---|---|
+| before | 81.0 deg/frame | 1.0× | STEP |
+| forward-search (rejected) | 21.3 | 1.4× | still a STEP |
+| **arc-length (shipped)** | **11.2** | **92.9×** | **fast turn, under the 12 cap** |
+
+`_lookAhead()` in `viewer/effects.js` is now the ONE look-ahead rule — Beat 3 and the
+§CPE_SEAM_CONTINUOUS opening direction both call it, so they cannot drift apart.
+
+**Witnessed:** `witness_cpe_even_turn` **4/4 on Duplex, Terminal AND Hospital** (Hospital added this
+session — it had never been gated, which is why this survived three sessions of "fixed" claims).
+No regression: `witness_cinema_path_editor` 9/9, `witness_cpe_undo` 6/6, `witness_cpe_ok_bake` 3/3.
+
+## §CPE_POSITION_GATE — T5, the ungated half of §CPE_JERK_DEFINITION (2026-07-27)
+The user's definition names *"pov sudden position"* FIRST; every gate until now measured only the
+gaze sweep. A camera can hold a perfectly steady aim while teleporting.
+
+**T5 in `witness_cpe_even_turn.js`.** Cap is DERIVED per beat, never picked: each beat is a smoothstep
+of its own time fraction and smoothstep's derivative peaks at exactly 1.5, so a smooth traverse cannot
+exceed **1.5× that beat's own mean step**. Two stated exceptions:
+- **the walk gets 1.5 × PACE_SWING = 2.4×** — it is deliberately cost-parameterized (§CPE_EVEN_TURN),
+  so holding it to 1.5× would gate the FEATURE, not a defect;
+- **the spin is exempt by name** — an in-place turn, whose motion T2 already owns. Exempted by name
+  rather than a magnitude threshold, because a threshold would just be a number chosen to straddle
+  the three buildings (measured means: Duplex 0.01 m, Terminal 0.02 m, Hospital 0.03 m per frame).
+
+**Measured walk ratios: Duplex 2.4×, Terminal 2.3×, Hospital 2.4× against the 2.4× allowance** — the
+corrected derivation below, confirmed empirically rather than argued. **No teleport on any building.**
+
+⚠ **Hospital's 17.22 m/frame at u=0.914 is the ORBIT at 1.4× its own mean** — 360° in 8 s at a 91 m
+radius. Smooth by construction, NOT a step; it was briefly mis-called a bug this session. It is
+genuinely fast (~189 m/s) and may be what reads as "too fast" on large buildings, but that is an
+orbit-duration design constant and a separate decision. Do not re-diagnose it as a jerk.
 
 ## §CPE_SEAM_CONTINUOUS — the discontinuity, and why it goes in the WALK
 The Beat2→Beat3 seam stepped **81° in one frame** on Terminal (at the user's reported wp1-after-
@@ -1295,7 +1367,7 @@ change. **If a future session is tempted to unify these, this paragraph is the r
 6. Bindings: `Ctrl+Z` undo, `Ctrl+Shift+Z` / `Ctrl+Y` redo. Capture phase + `preventDefault`, so the
    browser's own text-undo does not fight it while a number input has focus.
 
-### Witness — `witness_cpe_undo.js`, **5/5 Duplex, 5/5 Terminal**
+### Witness — `witness_cpe_undo.js`, **6/6 Duplex, 6/6 Terminal**
 Driven by a **REAL keystroke** through the browser's input pipeline, not an exposed seam, so it
 proves the binding a user actually presses (per `feedback_test_real_user_path_not_seams`).
 
@@ -1306,6 +1378,7 @@ proves the binding a user actually presses (per `feedback_test_real_user_path_no
 | U3 empty stack is a safe no-op | 0 m drift, 0 page errors |
 | U4 reaches the history line | 3 `CINEMA_PATH_EDIT` events observed on the channel |
 | U5 keyed panel edit undoes too | 0.00e+0 m residue |
+| U6 a press that never MOVES leaves no phantom undo entry | found by review; snapshot moved to first real movement |
 
 No regression: `witness_cinema_path_editor` 9/9 both, `witness_cpe_ok_bake` 3/3 both.
 Shipped as `CPE_V v8`, `cinema_path_editor.js?v=9`, `sw CACHE_VERSION v863`.
