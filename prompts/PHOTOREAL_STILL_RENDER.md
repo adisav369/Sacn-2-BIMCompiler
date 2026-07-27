@@ -5815,3 +5815,125 @@ fragment (6 with two maps); every class added widens the fragment population pay
 Hospital's 20k m² of unnamed grey proxy slabs are reachable by neither 3 nor 4 (no name, no class
 signal). If they matter visually, that is a **class+size heuristic**, a separate decision — do not
 let it ride in as part of a material library.
+
+---
+
+# §GROUND_DARK_RETHINK + §FACADE_COLOUR (2026-07-28, analysis + sourcing measurement, no code)
+**Asks: "the Alt+S evening ground is too dark and was previously said cannot be helped — any
+ideas?", "should we have default coloured spotlights onto the building? what can raise the wow
+factor", "or maybe a bright cobbled paved surface we can source?", "[Poly Haven] has ready-made
+urban props".** Answered with arithmetic and with textures actually downloaded and measured.
+
+## 1. "Cannot be helped" was HALF right — and the wrong half was never tested
+The physics half is correct and stays: `PHOTO_SUN_ELEVATION = 6°`, so a horizontal ground receives
+**sin(6°) = 0.105** of the irradiance a sun-facing vertical facade gets (`effects.js`
+§PHOTO_HEMI_FILL). Real dusk. Not a bug.
+The other half is wrong. That same comment says *"the ground was ALREADY rendering at maximum
+brightness for its given light level — no tint could ever make it brighter than that,"* because
+`_setGroundColor` (`tools.js:119-130`) forces `material.color = 0xffffff` whenever a map is present.
+**White is the multiplicative IDENTITY, not a ceiling.** `THREE.Color` is not clamped to 1 and the
+`diffuse` uniform is a plain `vec3` — `diffuseColor` is `diffuse × map`, so a colour above 1.0
+raises ground albedo directly. Nothing was at any maximum; the tint was simply the identity.
+
+### The arithmetic, both factors together
+| | albedo | × N·L | = relative radiance |
+|---|---|---|---|
+| sunlit facade (`STD_MAT.IfcWall` 0.85, triplanar renormalized to ~1.0) | **0.85** | cos ≈ 1.0 | **0.85** |
+| ground (`paved_1k.jpg`, measured linear-avg luminance **0.155**, colour = white = ×1) | **0.155** | sin 6° = 0.105 | **0.0163** |
+| | | | **52 : 1** |
+The 6° sun explains **9.5×** of that. The other **5.5×** is that the ground map is never
+renormalized. The shipped Layer-3 material textures measure **concrete 0.723, plaster 0.742, metal
+0.535** *and* get divided back out by `normFactor` (`streaming.js` `_TRI_CONCRETE.normFactor =
+1.384`) — the ground map measures **0.155 and gets nothing**. The ground is ~5.5× darker in albedo
+than the wall standing on it before a single photon is cast.
+
+### Why both levers already tried made it worse — they are ADDITIVE
+The emissive add (reverted, §PHOTO_GROUND_WHITE_REVERTED) and the hemi/ambient fill (1.6/1.3 →
+1.25/1.15, §PHOTO_CONTRAST_DIALBACK) both add a **constant** to lit and shadowed pixels alike, so
+the shadow's contrast RATIO collapses — exactly the reported "Shadows? None on the ground."
+**Albedo is MULTIPLICATIVE: scaling it scales lit and shadowed ground by the same factor, so the
+ratio survives by construction.** (Pre-tonemap it is exact; ACES compresses the top end, so high
+values soften slightly — it never collapses the way a fill does.) This mechanism was never tried.
+
+## 2. IDEA 1 — renormalize the ground map. One line, contrast-safe by construction
+`A.ground.material.color.setHex(0xffffff).multiplyScalar(k)` (use `multiplyScalar`, not a >1 hex —
+unambiguous linear scaling, no colour-space transfer surprise). Full normalize is k = 1/0.155 =
+6.45, which is too far; target a real **dry-concrete albedo ≈ 0.35 → k ≈ 2.3**. Reference albedos:
+asphalt 0.05–0.12, dry concrete 0.25–0.40, light pavers 0.35–0.45. **0.155 is asphalt; the scene
+wants a plaza.** Zero new assets, zero draw calls, no light touched.
+Witness: `§GROUND_ALBEDO k=<k> eff=<albedo>` **plus a contrast assertion** — mean luminance inside
+vs outside the cast-shadow region, before and after; the ratio must not fall. That is the test that
+names the issue (it proves or disproves the additive-vs-multiplicative claim above).
+
+## 3. IDEA 2 — shadow-mask the ambient on the GROUND material only
+The "strong fill flattens everything" landmine exists because ambient/hemi is unshadowed. The ground
+is a **dedicated mesh with its own material** (`scene.js:369-381`, `A.ground`) that **already carries
+an `onBeforeCompile` injection** — the §GROUND_WETNESS puddle shader (`effects.js:2461-2470`). Add
+one line there: multiply the indirect term by `mix(SHADOW_FILL, 1.0, getShadowMask())`. Then
+`PHOTO_HEMI_INTENSITY_SCALE` can go back to 1.6+ and the cast shadow receives none of it. This
+**dissolves** the documented landmine instead of respecting it, and it touches exactly one material
+that nothing else shares — no exposure to the material-sharing invariant.
+
+## 4. IDEA 3 — part of the darkness is self-inflicted
+`GROUND_WETNESS_STAGE_DEFAULT = 0.5` and the shader does `diffuseColor.rgb *= mix(1.0, 0.72,
+wetness)` → **every Alt+S starts with the ground diffuse cut ~14%**. Physically right for wet
+asphalt, but it belongs in the arithmetic above, not in the "unexplained darkness" bucket.
+
+## 5. IDEA 4 — "source a brighter cobbled/paved surface": MEASURED, and it does not work
+Downloaded six CC0 candidates from Poly Haven (the same source as the current ground set) and
+measured linear-average luminance the same way `NOTICE.txt` already does:
+| texture | linear albedo | vs current |
+|---|---|---|
+| `concrete_pavement` | **0.181** | +17% |
+| **`paved_1k.jpg` (current, `concrete_floor_01`)** | **0.155** | — |
+| `cobblestone_pavement` | 0.128 | −17% |
+| `concrete_pavers` | 0.117 | −25% |
+| `checkered_pavement_tiles` | 0.080 | −48% |
+| `granite_tile` | 0.077 | −50% |
+| `brick_pavement_02` | 0.069 | −55% |
+**The best candidate is +17%; most are DARKER than what ships today.** Outdoor paving photographs are
+captured under bright light, so the JPEG encodes *appearance*, not albedo — sourcing cannot deliver
+the 3–5× this needs. **Swap the texture for the PATTERN if a cobble/paver plaza reads better than a
+flat slab — but take the brightness from IDEA 1**, which works with whichever texture is chosen.
+
+## 6. §FACADE_COLOUR — coloured spotlights: yes, but as a warm/cool SPLIT
+Every light the photoshoot creates, in one place: sun `0xffa55c` · ambient `0x8a6a55` · facade
+uplight `0xffaa55` · roof downlight `0xffcf9a` · roof-corner twin `0xfff2d0` · door sconce
+`0xffcf9a` · tree uplight `0xffddaa`. **All amber, inside a ~30° hue span.** The only other hue is
+the dim violet hemi sky `0x6a5a7a`. There is no colour contrast anywhere in the frame — which is why
+three rounds of *more lumens* kept not reading as *more drama*. Architectural lighting sells on
+complementary colour, not on brightness.
+**The rule, data-derived and building-general:** the per-edge uplight/downlight pairs already sit at
+real footprint-edge midpoints with real facade normals, and `A.updateSky()` already computes the sun
+azimuth. Edges within ±90° of the sun azimuth keep the warm amber; edges facing away get the cool
+wash. Reuse the vocabulary already settled in `NIGHT_AND_FIXTURE_LIGHTING.md` §NIGHT_LIGHT_MIX
+(**cool `0xdce8ff`, warm `0xffdca8`**) rather than inventing a palette. **Zero new light objects,
+zero new draw calls — one dot product and one constant.**
+Three honest caveats:
+- **Alt+S / night staging only.** Never navigation — that is where the 12-light budget and the
+  per-fragment cost live (`NIGHT_AND_FIXTURE_LIGHTING.md` §constants).
+- **Saturated theatrical colours (magenta/cyan) = opt-in preset, default OFF.** Coloured light on a
+  BIM model competes with discipline colour-coding, and that is *data*.
+- These are `PointLight(dist 14/16, decay 2)`. On a 150m Hospital facade that is a pool, not a wash.
+  If the goal is a visible architectural **cone**, a real `THREE.SpotLight` aimed at the facade
+  midpoint is what produces the cone edge — same count, no shadow map.
+
+## 7. Urban props from Poly Haven — viable, but mind the precedent
+Poly Haven has **521 CC0 models** (props 176 · containers 68 · plants 57 · seating 34 · lighting 29 ·
+structures 26 · trees 20). But **there is no `GLTFLoader` in this repo**, and the existing vehicle
+prop is deliberately not external: `car_beetle.bin` is **our own IFC geometry** (`M_RPC Beetle`,
+`geometry_hash 8c0e2517038456a4`, from `BimWhale_Advanced_extracted.db`) vendored as a raw binary —
+per the user's own directive *"we wana use the car IFCs already in our project"*. Its format is
+trivial (`uint32 vertCount, uint32 idxCount, float32 xyz…, uint32 indices…`).
+**So the cheap path for a bench/streetlamp/bollard is an OFFLINE conversion into that same `.bin`
+format** — no new runtime loader, no new dependency, rides the proven path. A small script, not a
+pipeline. Sprites (people/trees) are already external CC0, so mixed sourcing is established.
+
+## 8. VERDICT — scored
+| # | action | why it works | cost | call |
+|---|---|---|---|---|
+| 1 | **Ground albedo renormalize** (`multiplyScalar(≈2.3)`) | multiplicative → shadow ratio preserved; fixes the 5.5× that is NOT dusk physics | one line, one constant | ✅ **DO FIRST** |
+| 2 | **Shadow-masked ambient, ground material only** | dissolves the flatten-the-shadow landmine, so the fill can be raised again | one shader line in an existing injection, one unshared material | ✅ **DO NEXT** |
+| 3 | **Warm/cool facade split** (sun-azimuth rule) | colour contrast is the missing ingredient, not lumens | one dot product; 0 new lights | ✅ **DO — best wow-per-line** |
+| 4 | Cobble/paver texture swap | pattern/design read only | one asset + precache | ⚠️ **for looks, not brightness** (+17% at best, measured) |
+| 5 | Urban props via offline `.bin` conversion | real staffage depth | its own session | ⏳ **after 1-3** |
