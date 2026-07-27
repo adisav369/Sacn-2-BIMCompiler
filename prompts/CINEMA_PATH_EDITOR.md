@@ -1056,3 +1056,40 @@ experience"*. `tour.js`'s §INTERIOR_PACING_LOS is the nearest existing MECHANIS
 that reason, but it is a distance brake for navigation. What is being built here is different in
 kind: pace as a function of how much the scene has to SAY at each moment — busy frame lingers, empty
 frame moves on. Keep the framing (and the credit) in any doc or release note that describes it.
+
+### 🔴 THIRD HYPOTHESIS ALSO FAILED — unified pace remap built, measured NO effect on the peak
+
+Built the combined mechanism the user asked for (jerk + speed as one): a time↔distance remap over the
+walk, three busyness terms combined by **MAX not product** (turn deg/m, fan hit-FRACTION, forward LOS),
+clamped to `PACE_SWING=1.6`, rate-limited per metre, wired into Beat 3 so `e3` becomes
+`_pace.u(smoothstep(...))` — position AND look-ahead both read the remapped distance. Base pace raised
+`1.3 → 2.3 m/s` (arithmetic: their ~15s expectation against the 26.1s derived ⇒ ~1.8×).
+
+**Measured on Duplex, hostile layout: 29.1 → 29.4 → 29.4 deg/frame. No effect whatsoever.**
+The rate limiter was found and fixed mid-pass (a symmetric clamp toward the neighbour FLATTENED the
+1m corner peak back to ~1; changed to a MAX-dilation that preserves peaks and ramps neighbours up) —
+and the number still did not move. **Reverted: an unproven mechanism must not ship.**
+
+**Beat boundaries measured, so the peak is located, not guessed:**
+`dive=0.094 spin=0.124 out=0.510 rise=0.700` — the peak at `u=0.279` is squarely INSIDE the walk
+(beat 3), which is the beat the remap rewrites. So the remap reaches the right beat and still changes
+nothing.
+
+**⛔ RUN THIS DIAGNOSTIC FIRST, before writing any more code.** Three plausible fixes have now been
+built and killed by measurement; the fourth must start from data, not from a theory:
+1. Log the `_pace` factor SERIES (not just min/mean/max) against distance, and read it at the sample
+   nearest `u=0.279`. **If the factor there is ~1.0, the busyness terms are not firing on this
+   layout** — most likely because the hostile path sits outside the building, so fan and LOS both
+   read nothing and only the turn term is live. That would make the whole result an artefact of the
+   SYNTHETIC test layout, not of the mechanism — and the real check becomes a user-shaped edit.
+2. If the factor IS at the 1.6 cap there, then a 1.6× slowdown genuinely cannot fix a 29°/frame
+   corner, and the honest conclusion is that `PACE_SWING` (the user's own "don't overdo it, have a
+   speed range") BOUNDS how much pacing can smooth a hostile corner. Report that trade-off to the
+   user rather than quietly widening their range.
+3. Only then decide. Do NOT retry: the bow-ray probe (cap never binds), or the positional look-ahead
+   average (measured worse, 29.1→37.0).
+
+**Ready to apply once the above is answered, independently useful and NOT shipped:**
+`CINEMA_WALK_MPS 1.3 → 2.3` alone shortens every film ~1.8× and takes the user's 1015-frame /
+~26-minute Hospital cook to roughly 570 frames. Held back only because they asked for the jerk and
+the speed to land together.
