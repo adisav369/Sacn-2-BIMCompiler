@@ -1283,6 +1283,65 @@ radius. Smooth by construction, NOT a step; it was briefly mis-called a bug this
 genuinely fast (~189 m/s) and may be what reads as "too fast" on large buildings, but that is an
 orbit-duration design constant and a separate decision. Do not re-diagnose it as a jerk.
 
+## §CPE_PACE_FLOOR — the 2-second pause. Built, MEASURED, and it collides with T2. ⛔ USER DECISION
+**User, live on Hospital, 2026-07-27:** *"eventually it moves but it must be 2 secs pausing there in
+movie later"*. A STALL, the exact opposite of the jerk §CPE_EVEN_TURN was built for.
+
+**Cause, and it is our own bound being half-written.** `PACE_SWING` is a RANGE, but only its fast
+half was ever enforced: `Δs ≤ 1.5·S/((1-w)·N)` caps how FAST the walk gets, and NOTHING capped how
+slow. Where `dθ` dominates a cost step, `ds → 0` and the camera crawls. Hospital's walk turns
+**488° over 36 m**, so one corner can eat the whole budget. Measured with no floor:
+**min = 0.000 m/frame, 596× slower than the beat mean — a dead stop.**
+
+**Instrument note worth keeping.** A flat floor CANNOT measure this: every beat is a smoothstep of
+its own time fraction, so its first and last frames legitimately approach zero speed (that ease is
+what makes the seams smooth), and a flat floor duly reported a "stall" at `u=0.524` — which IS
+`beats.out`, the walk's own end. T6 therefore compares each frame against what the ease alone
+predicts there, `expected(e) = mean × 6e(1-e)`, and gates `measured/expected ≥ 1/PACE_SWING`.
+
+**The fix built (parked, not merged):** clamp the cost slope against normalised arc so cost cannot
+accumulate faster than `PACE_SWING × uniform`. Clamp-then-renormalise does NOT work — rescaling by
+the shrunk span multiplies every slope by `1/span > 1` and puts back exactly what the clamp removed
+(measured 53–57% against a 63% floor). The removed cost must be redistributed to the segments not at
+the cap: water-filling, bisect `k` such that `Σ min(k·raw_i, SWING·dArc_i) = 1`. Feasible because
+`Σ SWING·dArc = 1.6 > 1`.
+
+**⛔ WHY IT IS PARKED — the dial cannot satisfy both gates at once.** With the floor in:
+
+| | T6 stall (floor 63%) | T2 jerk (cap 12°/frame) |
+|---|---|---|
+| no floor | 0% — dead stop | Duplex 10.6 / Terminal 6.9 / Hospital 11.2 ✅ |
+| water-filled floor | 60–62% — still short | **Duplex and Hospital go RED** |
+
+Slowing less in the corner necessarily turns more per frame. **`PACE_SWING = 1.6` is not wide enough
+to hold both the 12°/frame jerk cap and a no-stall floor on these layouts.** This is precisely the
+trade-off the earlier spec said to take back rather than resolve by widening a user's number to make
+a gate green. The question: **widen `PACE_SWING`, accept the stall, or accept more jerk?** Everything
+is built and measured; only the choice is missing.
+
+## ▶ FOUR ASKS CAPTURED 2026-07-27, NOT YET BUILT (user, live, mid-session — do not lose these)
+1. **"the sudden jump of the wp to a high position on top of building still happening"** — the
+   §CPE_DRAG_SCALE item below, confirmed still live by the user AFTER §CINEMA_LOOKAHEAD_ARC shipped.
+   Measured at 0.453 m/px on Hospital; blocked only on the 1:1-vs-precision-modifier decision.
+2. **"when orbiting outside the cam remains pointed to the building in the centre.. since our wp
+   before follows the path"** — user observation about the orbit beat's gaze. Recorded verbatim;
+   NOT yet analysed, and it is not obvious whether they are reporting it as correct-and-good or as
+   a defect. Ask before building.
+3. **"the stick band should curve along more.. now it is short, if twisted its curve still short..
+   having more make it more useful to craft"** — bands are too short to author with; a twisted band
+   should produce a longer curve. Relates to §CPE_SCREEN_PLANE's known cosmetic gap (bands drawn as
+   thin lines, ~1–1.3 m, three grab spheres). Likely the same fix: longer bands rendered as tubes
+   with a nearest-third hit-test.
+4. **"why cant we have sense of time/timer.. measure in the code"** — DONE for the bake readout as
+   §MAXQ_ETA_TICK (PR #1046): status every frame, console throttled on elapsed ms not frame index.
+   The principle generalises and the user stated it as a general one.
+5. **"after edit and OK, it should do the 10 sec fast preview again, so user sees the impact before
+   final decision"** — OK currently commits straight to the bake. It should re-run the existing 10s
+   fast preview on the EDITED path first, so the edit is seen before the ~25-minute cook is
+   committed to. The preview loop already exists (`cinema_maxq.js`, the 10s authored path preview
+   noted in §CINEMA_DAMPING_BLEED), so this is a wiring job, not a new mechanism. Sequence the user
+   described: edit → OK → 10s preview → then decide. Buildable as specified; no open question.
+
 ## §CPE_DRAG_SCALE — "wp1 jumps to way high" MEASURED. ⛔ ONE USER DECISION, then it is buildable
 **User, 2026-07-27, live on Hospital:** *"it still has another bug where the wp1 jumps to way high"*,
 with `§CPE_DRAG band=1 zone=mid plane=view centre=(2.88,-16.72,-26.43)` against `floorY=-15.47` —
