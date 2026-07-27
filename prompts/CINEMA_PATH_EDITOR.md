@@ -692,3 +692,91 @@ The user's next sentence (*"Error submission hits error in Gmail should have sen
 same defect class — the mailto path had no URL length cap while the GitHub path has capped at 8000
 since §S280 — but it is **owned by another session and already shipped as PR #1028** (cascades the
 log-line count until the URL fits ~1800 chars; measured 8202 → 1561). Do not re-fix it here.
+
+---
+
+## §CPE_PANEL_DRAG — the editor panel is draggable (user, 2026-07-27)
+
+User, after firing a full run: *"happy with how editor behaves.. but can u make the editor panel
+draggable"*. The panel is anchored `position:fixed; top:60px; right:12px` and covers a fixed 412px
+strip of the viewport — exactly where the bands often sit once the user has orbited to face the axes
+they want to drag in (§CPE_SCREEN_PLANE makes "turn to face the plane" the normal gesture, so the
+panel WILL end up over the handles).
+
+### Reuse, do not invent — this is model item 14's rule applied to the panel itself
+`A._makeDraggable(el)` (`measure.js:13`) is this viewer's ONE panel-drag utility: ~10 panels already
+use it (`navigate_find`, `panels`, `issues`, `clash_matrix`, `grid_overlay`, `print_sheet`, `hba_lens`,
+`measure` ×2). It grabs the top `el._dragStrip` px (30 desktop / 50 mobile, overridable), arms on
+pointerdown but only captures after 4px of movement (so a stationary tap still reaches child
+controls), and switches the panel from its right-anchor to free `left/top`. **Do not write a second
+one**, and do not edit `_makeDraggable` — it is shared by every one of those panels.
+
+Applied here as: the header div gets `id="cpe-title"` + `cursor:move`, and `_dragStrip = 36` so the
+grab zone is exactly the header — the rows below it carry number inputs whose keyed edits must never
+fling the panel.
+
+### Why this cannot disturb the path — the thing actually worth gating
+`_wire()` installs `pointermove`/`pointerup` on **window** (capture phase). Those are the handlers
+that move a band. They are guarded by `_state.drag`, which is only ever set by `h.down` — and `h.down`
+is bound to **the canvas alone**. So a header drag cannot become a band drag. That is an argument;
+the witness makes it a measurement.
+
+### Scope note, stated not smuggled
+Beyond the literal ask, the dragged position is **remembered for the session** (module-scope
+`_panelPos`, re-applied on the next open). A panel that forgets where you put it every time Alt+M
+re-opens it is a half-feature. It is three lines, it is gated (D4), and it is called out here rather
+than slipped in. Nothing is persisted to the DB — this is not `cinema_path` state.
+
+### Witness — `witness_cpe_panel_drag.js`, Duplex + Terminal
+- **D1 the ask** — pointerdown on `#cpe-title`, move by a known (dx, dy), pointerup: the panel's
+  `getBoundingClientRect()` must have moved by EXACTLY that delta (±1px). Proves the drag is wired
+  and 1:1 — a scaled or offset drag would still "look draggable" and be wrong under the hand.
+- **D2 the risk** — that same drag must leave the path untouched: **no `§CPE_DRAG` line**, and band
+  centres bit-identical before and after. Disproves the window-level-handler collision above.
+- **D3 the grab zone** — an identical drag started on a ROW (below the strip) must NOT move the
+  panel. Proves keyed edits and row clicks can't fling it.
+- **D4 the scope note** — after close and re-open, the panel is back where the user left it.
+
+### Measured — 4/4 Duplex AND 4/4 Terminal (2026-07-27, `feat/cpe-draggable-panel`)
+```
+D1  panel (976,60) -> (1156,180) = moved (180.0,120.0), asked (180,120)
+    §CPE_PANEL_DRAGGABLE handle=cpe-title strip=36 at default anchor
+    §CPE_PANEL_MOVED dx=180 dy=120 left=1156 top=180 (remembered for this session)
+D2  §CPE_DRAG lines 0 -> 0 | band centres IDENTICAL before and after
+D3  panel (1156,180) -> (1156,180) = moved (0.0,0.0) when the drag starts on a row
+D4  left at (1156,180), re-opened at (1156,180)
+```
+**A witness bug worth recording, since it will bite the next puppeteer gate here:**
+`page.evaluate(() => window.APP.startMaxQualityOrbit(...))` with a CONCISE arrow body RETURNS the
+bake's promise, so `evaluate` waits for the entire cook and dies on `protocolTimeout` after 180s —
+it looks exactly like a hung viewer. Use a BLOCK body (`() => { ...; }`) so nothing is returned.
+
+---
+
+## §CPE_SAVED_PATH_LIFECYCLE — "when Saved the edited path, how do we open it?" (user, 2026-07-27)
+
+Answered from the code, end to end. **There is no "open" action, by design — a saved path is not a
+document you load, it is state the plan picks up.**
+
+| step | what actually happens | log line |
+|---|---|---|
+| "Save this path" | `cinema_path_editor.js:664` → `A.stageCinemaPath(_buildOverride())` sets `A._cinemaPathEdit` **in memory only**. Editor stays open — staging is not closing. | `§CINEMA_PATH_STAGE` |
+| **Ctrl+S** (Save Building; `scene.js:2136`, also the panel item at `panels.js:1302`) | `A.saveModelDb()` → `_exportBuildingDb()` → `_writeCinemaPathTable()` drops+rewrites a `cinema_path` table — one row per band (IFC anchor, unit dir, length) plus the beat seconds. | `§CINEMA_PATH_SAVE bands=3 total=…s` |
+| next Alt+M on that file | `A.cinemaPathPlan()` calls `_cpeLoadFromDb()` **lazily at the first plan** — before anything can observe the derived route — and rebuilds the bands. The editor then opens on the user's path. | `§CINEMA_PATH_RESTORE bands=3 total=…s — authored path in force` (or `none (no cinema_path table) — derived path`) |
+
+### Two consequences the user needs stated, not discovered
+1. **It is per-FILE, and a building served from OCI is read-only.** Ctrl+S produces a downloaded
+   `.db` via Save-As; the path lives in that local copy. Loading the OCI URL again gets the derived
+   path — nothing writes back to the bucket. (Same shape as `staffage_instances`; not a new rule.)
+2. **⛔ No UI drops a saved path.** `A.clearCinemaPath()` exists and logs `§CINEMA_PATH_CLEAR`, but
+   NOTHING calls it — console only. So once a file carries `cinema_path`, every Alt+M authors from it
+   until it is cleared by hand. **Named as a gap and offered to the user; not built unprompted.**
+   If picked up: a "Use derived path" button in the editor next to "Save this path" is the whole job.
+
+### One defect found while reading this path — FIXED
+`A.stageCinemaPath` logged `waypoints=' + (ov.waypoints ? … : 0)` → a flat **`waypoints=0` on every
+save**. Same stale-field species as §CPE_OK_CRASH (§CPE_BANDS replaced `waypoints` with `bands`), but
+GUARDED, so it never threw and therefore never got noticed. Now reports `bands=3 waypoints=6` and says
+outright that staging is not saving. Worth noting as a pattern: the crash was found in one afternoon
+because it threw; its silent twin sat in the same feature untouched. **When a field is renamed, grep
+every consumer — the guarded ones are the ones that survive to lie later.**
