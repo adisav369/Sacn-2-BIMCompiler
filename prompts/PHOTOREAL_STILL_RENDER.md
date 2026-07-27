@@ -6361,3 +6361,52 @@ debugging camera motion. **Mode C is then free**: both advances already exist, i
 the camera. Witness: `§MAXQ_TIME mode=<A|B|C> frames=N cursorMs=… resweepMs=… perFrameMs=…`, and
 assert the cursor is monotonic across frames (a non-monotonic cursor is the retired version's
 out-of-order defect returning).
+
+## §MAXQ_TIME addendum — the artistic framing, and a fact that changes what can be claimed
+User, same session: *"For artistic value thus mostly ARCH discipline, can have internals but once the
+ARCH closes up the view, it can end"* · *"Or the construction follows the camera path"* ·
+*"pure artistic value"*.
+
+### ⚠ CHECKED FIRST, because it changes the wording of everything: THERE IS NO 4D SCHEDULE IN THE DATA
+- `Terminal_Hi.db` has **no `schedules` / `tasks` / `task_elements` tables at all**.
+- `Hospital_extracted.db` has the tables but they are **EMPTY — `tasks=0`**.
+**So "apply the 4D schedule" cannot mean a real programme on these buildings.** Time Machine
+synthesises its order (bottom-up Z-band + `SEQUENCE_RULES` phase order within a storey). That is
+fine for a film — the user's own framing is **"pure artistic value"** — but it must never be
+described as construction-programme playback to a BIM audience, who will ask for the P6/MSP link.
+Say *derived build order*, not *the schedule*. If a real programme is ever wanted, that is a
+separate data job (populate `tasks`/`task_elements`), not a rendering job.
+
+### The fourth driver — construction follows the CAMERA (mode D)
+This is the strongest artistic idea of the four **and the code for it already exists**. The retired
+export's first listed failure was: *"beats played in the storyboard's spatial-flight order
+(foundation-up, left-to-right sweep, built for smooth Drone Pilot camera motion), not chronological
+— didn't read as 'start from timeline'."* **That was a labelling failure, not a defect.** Sold as a
+timeline film it was wrong; framed as *the building assembling itself along the camera's path*, it
+is exactly what is being asked for now. The code is preserved verbatim at
+`prompts/archive/TM_MOVIE_EXPORT_RETIRED_2026-07-18.patch` — **read it before rebuilding**.
+| mode | driver |
+|---|---|
+| A | camera only — today's Alt+C MaxQ |
+| B | time only — compact construction film, fixed viewpoint |
+| C | camera + time, independent |
+| **D** | **construction ordered BY the camera path** — reveal follows the flight, spatial not chronological |
+
+### ARC-only, and the ending is DERIVABLE — no arbitrary cut
+`discipline='ARC'` is **35,553 of 48,433 elements (73%)** on Terminal, and an ARC-only filter already
+has precedent in this file (`_buildingBBoxArc()` for cinema framing). Within ARC, the envelope that
+"closes up the view" is countable and small:
+| envelope group | n | top z |
+|---|---|---|
+| slabs | 700 | 24.5 |
+| exterior walls (`%_Wall_Ext%`) | 330 | 25.1 |
+| windows | 236 | 22.5 |
+| roof | 7 | 8.8 |
+| other ARC (interior, fit-out) | 34,280 | 27.1 |
+**The film ends when the last envelope element lands** — 1,273 elements out of 35,553 define
+closure, and everything after them is interior work the camera can no longer see. That is a stop
+condition read from the model, not a chosen duration: no guessing a runtime, and it is general to
+any building. **Interiors are still visible for most of the film** (they are placed before the
+envelope closes), which is precisely the user's ask: *"can have internals but once the ARCH closes
+up the view, it can end."*
+Witness: `§MAXQ_TIME mode=D arc=35553 envelope=1273 stopFrame=N reason=envelope-closed`.
