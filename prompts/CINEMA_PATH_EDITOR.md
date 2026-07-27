@@ -1256,23 +1256,74 @@ There is no conflict with §9 and no user decision is needed. Do not ask it.
 been read as product defects. `feedback_verify_checker_before_code_under_test` earned its place —
 when a number refuses to move while everything around it moves, suspect the meter, not the engine.
 
+## §CPE_UNDO — Ctrl+Z on the editor, reflected in the history line ✅ BUILT & WITNESSED
+**User, 2026-07-27:** *"also put in the prompts/# to allow UNDO, Ctl-Z as reflecting in the history
+line to take effect so a misplaced can be easily reverted?"*
+
+**Why it is not a nicety:** direct manipulation is only safe to experiment with if a bad drag costs
+nothing to reverse. Dragging a band back BY HAND is exactly the gesture §CPE_DRAG_TELEPORT measured
+as unreliable (a 12.6m residue on the return drag). Undo makes the reversal exact — measured
+residue **0.00e+0 m**.
+
+### The one design call, and why (do NOT "improve" this into the model op-log)
+A waypoint edit is **TRANSIENT editor state** until the user explicitly saves the path
+(§CPE_BUILT persistence). It therefore has **no signed kernel op to flip**. So §CPE_UNDO is a LOCAL
+snapshot stack, *not* `KernelOps` / `UniversalHistory.undo()`:
+- routing it through the model op-log would **mint fake model ops** for edits that may never be
+  saved, and
+- Ctrl+Z would then undo *the wrong thing* once the editor closed.
+
+The history **line** still shows it, via `UniversalHistory.recordEvent('CINEMA_PATH_EDIT', label)` —
+the existing **read-only detail-event** channel (`universal_history.js`, `HISTORY_SESSION_EVENTS.md`
+A1). That satisfies the user's ask exactly ("reflecting in the history line") without faking a model
+change. **If a future session is tempted to unify these, this paragraph is the reason not to.**
+
+### Rules
+1. Snapshot **BEFORE** every mutation, never after — that is what makes the restore exact.
+2. Cover **BOTH** input routes: canvas drags AND keyed panel edits. §CINEMA_PATH_EDITOR_MODEL item
+   19 makes panel and canvas the same state, so an undo covering only one is a trap.
+3. A new edit **clears the redo stack** (standard linear undo; the same rule UniversalHistory
+   applies to a new op after a step-back).
+4. The keydown listener is added on open and **removed on close** — it must never shadow any other
+   Ctrl+Z (notably `grid_drag.js`, which owns the same binding when grid drag is active).
+5. Depth cap `_UNDO_MAX = 50`.
+6. Bindings: `Ctrl+Z` undo, `Ctrl+Shift+Z` / `Ctrl+Y` redo. Capture phase + `preventDefault`, so the
+   browser's own text-undo does not fight it while a number input has focus.
+
+### Witness — `witness_cpe_undo.js`, **5/5 Duplex, 5/5 Terminal**
+Driven by a **REAL keystroke** through the browser's input pipeline, not an exposed seam, so it
+proves the binding a user actually presses (per `feedback_test_real_user_path_not_seams`).
+
+| gate | measured |
+|---|---|
+| U1 drag then Ctrl+Z restores exactly | dragged 14.26m / 22.18m → residue **0.00e+0 m** |
+| U2 Ctrl+Shift+Z redoes | 0.00e+0 m from the dragged position |
+| U3 empty stack is a safe no-op | 0 m drift, 0 page errors |
+| U4 reaches the history line | 3 `CINEMA_PATH_EDIT` events observed on the channel |
+| U5 keyed panel edit undoes too | 0.00e+0 m residue |
+
+No regression: `witness_cinema_path_editor` 9/9 both, `witness_cpe_ok_bake` 3/3 both.
+Shipped as `CPE_V v8`, `cinema_path_editor.js?v=9`, `sw CACHE_VERSION v863`.
+
+### Known follow-on, NOT built
+Undo currently covers **band geometry** (centre, direction, length). It does **not** cover the
+total-seconds field or the orbit stop-row elasticity. Neither is a "misplaced drag", which is what
+the user asked for, so this is a deliberate scope line rather than an oversight — but if either later
+becomes draggable, extend `_undoPush` to snapshot it in the same call.
+
 ## ▶ NEXT SESSION — executable, in order
 1. **Merge PR #1038** (`fix/cpe-drag-reach-revert`, 4/4 green) and open+merge a PR for
    `feat/cpe-even-turn`. Both are pushed and green; nothing to re-run first.
-2. **Locate G7's peak precisely.** Run the plan, print `plan.beats`, and report which beat
-   `t=0.156` (Duplex) / `t=0.142` (Terminal) falls in. Expected: the SPIN. Command shape is in
-   `/tmp/.../diag_terminal_jump.js` from this session — it already prints top-5 worst frames in 3D
-   and yaw with `plan.beats`; re-create it if the scratchpad is gone (it is ~90 lines).
-3. **If it is the spin:** the spin's budget is `_spinDeg / CINEMA_TURN_DPS` floored at
-   `CINEMA_SPIN_MIN_SEC = 0.8`, and `_spinDeg` is capped at 180. On a 90° dog-leg the floor binds
-   while the real sweep is larger, so the turn is crammed into ~12 frames. Apply the SAME formula as
-   §CPE_EVEN_TURN — the spin is pure rotation, so its cost IS its turn, and cost sets its clock.
-   **Do NOT add the pitch term to `_spinDeg`** — that was tried this session and broke G2 (it makes
-   spin duration path-dependent); it is reverted and must stay reverted.
-4. **Gate the position half of the jerk definition.** T2 currently gates gaze sweep only. Add the
-   per-frame POSITION step (metres) to `turnPeak()` in `witness_cpe_even_turn.js` and gate it — the
-   user's definition names "sudden position" first and it is currently ungated.
-5. Take the G2 question above to the user.
+2. **§CPE_UNDO — Ctrl+Z on the editor, landing in the history line.** Spec below. This is the
+   user's live ask (2026-07-27) and the top item.
+3. **Gate the position half of the jerk definition.** T2 gates gaze SWEEP only. Add the per-frame
+   POSITION step (metres) to `turnPeak()` in `witness_cpe_even_turn.js` and gate it — the user's own
+   definition names "sudden position" FIRST and it is currently ungated. Only known real gap in the
+   jerk lane.
+4. **Do NOT add the pitch term to `_spinDeg`** — tried this session; it makes the spin's duration
+   path-dependent and shifts every earlier beat fraction. Reverted; must stay reverted.
+5. Nothing else outstanding. Both previously-"red" gates were instrument bugs (above), and there is
+   no pending user question.
 
 ## Rig
 `python3 -m http.server 8403 --bind 127.0.0.1` (buildings are symlinked from
