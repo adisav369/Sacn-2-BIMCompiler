@@ -171,3 +171,218 @@ Rig `/tmp/wt-turn` on port 8403, buildings symlinked (Clinic included).
 every `§PHOTO_EMBER` / `§NIGHT_*` line. `probe_mix.js` checks the colour ratio and its determinism.
 **Test on Hospital, not only the Clinic** — the Clinic's 33-element collateral read as a footnote and
 is exactly why this shipped broken; Hospital is where the same ratio becomes a broken render.
+
+---
+
+# §PHOTO_GLOW_SPRITE — the replacement mechanism (spec written 2026-07-27, before any code)
+
+Taking mechanism **1** from §THE BLOCKER's list: *additive glow sprites at fixture positions*. Chosen
+over per-instance attributes (2) and a cloned luminaire layer (3) because it is the only one of the
+three where **the collateral problem cannot occur by construction** — it never touches a scene
+material, so material sharing becomes irrelevant rather than merely guarded against.
+
+## The claim this must prove or disprove — W-GLOW-SPRITE
+> A luminaire reads as a light source in the frozen still, on **Hospital** as well as the Clinic,
+> **without any scene material being modified** — therefore with zero lit walls, zero lit beams,
+> and zero blacked-out transparent panels.
+
+Three numbers decide it, all read programmatically, none by looking at the picture:
+1. **`materialsMutated = 0`** — asserted, not assumed: the probe snapshots `emissive`,
+   `emissiveIntensity` and `toneMapped` of every scene material before staging and diffs after.
+   Any non-zero value fails the run outright. This is the entire point of the mechanism; a glow that
+   works but still touches materials has not solved the blocker.
+2. **`sprites == fixtures`** — every luminaire the vocabulary finds gets a sprite. The dead end being
+   replaced could only reach 4 materials of 6 on the Clinic; the count here must be all of them.
+3. **mean luminance / hot-pixel share, still vs. the same pose with sprites suppressed.** A glow that
+   does not move these is decoration that is not reaching the frame (`probe_ember_clinic.js`'s own
+   rule, kept). Gated on (1) and (2) so it can never print a pass with nothing staged.
+
+## The mechanism
+ONE `THREE.Points` object, built at still-start, removed and disposed at teardown.
+- **One draw call for every fixture in the building.** This is why the light *count* budget
+  (`_nightMaxLights` 12 / 48) does not apply to it — those are per-fragment lighting costs on every
+  lit material; a Points cloud is a single additive pass with no lighting term at all.
+- **Per-fixture colour** via a vertex-colour attribute, taken from `p.__color` — the same
+  §NIGHT_LIGHT_MIX value the point light at that fixture already uses, so the sprite and the light
+  agree instead of being two independent colour decisions.
+- **`toneMapped = false` is safe here** and is not safe on a scene material: this material is drawn
+  by nothing but the sprites. That asymmetry is exactly what made the old approach black out
+  transparent panels.
+- **`depthTest = true`, `depthWrite = false`** — a lamp behind a wall must not shine through it, and
+  two overlapping halos must not occlude each other.
+
+## The constants, and what each protects
+| constant | value | why |
+|---|---|---|
+| `GLOW_SPRITE_SIZE` | 1.1 m | Halo diameter in world units (`sizeAttenuation`), sized against a 0.6x1.2m troffer — the halo reads as light *around* the fitting, not as a second fitting. |
+| `GLOW_GAIN` | 3.0 | Linear-space multiplier on the vertex colour. Peak sprite radiance ~3.0 against `BloomPass` `threshold: 1.0` — above the threshold on purpose, since a value at or below it is invisible to bloom and we are back to "emissive alone moved 56.13 → 56.13". |
+| `GLOW_EYE_OFFSET` | 0.15 m | Toward the camera. **Not a fudge:** the DB gives a fixture's *centre*, and the glow leaves its visible face, which is nearer the eye than its centre by roughly half its thickness. Without it the fitting's own geometry wins the depth test against a sprite sitting inside it and the glow is invisible. Computed once at still-start — the still is frozen, so once is exact. |
+
+## Known limitation, stated up front
+`THREE.Points` sprites are culled by their **centre**, so a halo whose fixture is just off-screen pops
+out rather than fading at the frame edge. At 1.1 m it is a fringe artifact. If it reads on a real
+still, mechanism 3 (a billboarded `InstancedMesh` quad) is the upgrade — same positions, same colours,
+same staging, more geometry.
+
+## What stays OFF
+`§PHOTO_EMBER` stays disarmed (`A._emberEnabled = false`). This is a replacement, not an addition —
+if both were on, neither's contribution would be attributable. `§PHOTO_BLOOM` is REQUIRED by this
+mechanism and is enabled with it (it has still never been judged on its own; it now gets judged
+against emission that actually lands).
+
+---
+
+# ⛔ HOW THIS FEATURE IS TESTED — user directive, 2026-07-27. Read before writing any probe.
+**Do NOT test lighting by having the AI look at it — no vision, no screenshots, no luminance
+measurement — at an early juncture. Only after the USER has established the baseline.**
+User, verbatim: *"i will test with one look, leave that to me. U get all the intended elements
+correct"* and *"STOP TESTING THAT WAY, JUST GET THOSE RIGHT ELEMENTS COUNTED"*.
+
+The division of labour is fixed:
+- **The AI's job is the DATA:** are the right elements selected, counted, and applied, and is nothing
+  else touched. All of that is answerable from the DB and from object state — `sqlite3` against
+  `buildings/*.db` answers the selection question in **seconds**, with no browser at all.
+- **The USER's job is the LOOK.** One glance establishes the baseline. Until that baseline exists
+  there is nothing for a pixel measurement to be measured against, so building one is waste.
+
+What this rule cost when it was not followed, this session: an Alt+S fold is ~90s under SwiftShader,
+a 3-fold run ~6 min, a 21-pose raycast scan ~10 min, and several of those runs were then discarded
+because the *probe* was wrong (camera aimed at a floor, frames shot mid-stream, the wrong snapshot
+used as baseline). The counting question that actually mattered — exit signs missing from the
+vocabulary — was answered by one `sqlite3` query over five buildings in under a second, and it is
+the only defect the pixel runs never found.
+
+---
+
+# §PHOTO_GLOW_SPRITE — RESULT (2026-07-27, same day as the spec above)
+
+## It is a NIGHT-MODE feature, not an Alt+S feature
+Changed mid-session on the user's instruction (*"it has Night or just night mode is enough.. see if
+those 'lights' are activated"*). The sprites now stage when **night mode goes on**, with nothing else
+pressed. There is no budget reason to have hidden them behind Alt+S: the 12/48 light caps exist
+because each point light costs per-fragment work on every lit material every frame, and this is ONE
+additive draw call whether the building holds 12 fixtures or 1216. Only **bloom** stays still-only —
+that is 7 extra full-screen draws and it does have a 60fps cost.
+
+## §NIGHT_NAME_NOT_CLASS — why luminaires kept going missing
+User: *"anything that has 'light' name"*, *"i dunno why we keep missing 'light' in names"*, *"LIGHT!!!"*.
+**The answer is the `ifc_class` gate.** The selector used to read
+
+```sql
+WHERE ifc_class IN ('IfcLightFixture','IfcFlowTerminal','IfcElectricAppliance') AND <name words> AND NOT <accessories>
+```
+
+and any luminaire filed under a different class was dropped without trace. The class was never doing
+useful work: inside those three classes, **every family the name vocabulary rejects is a receptacle,
+diffuser, sink, grab bar, mirror, data outlet or sprinkler** — checked family-by-family on all five
+shipped buildings. The NAME was always the selector; the class was only ever hiding things.
+
+Removing it adds exactly **12** elements across all five buildings — 9 real, 3 substring accidents:
+
+| added | class | family | verdict |
+|---|---|---|---|
+| 9 | `IfcAlarm` | `jkrME_fir-al_Flashing Light_Red & Green` (Terminal) | **real** — a lit fixture the class gate hid |
+| 1 | `IfcBuildingElementProxy` | `Life_Flight_Helicopter` (Hospital) | accident — "f**light**" |
+| 2 | `IfcWindow` | `M_Skylight` (Duplex) | accident — "sky**light**" |
+
+So `flight` and `skylight` join the exclusion list. Those two are the price of selecting on the name,
+and it is the right price: the class gate cost 9 real fixtures plus every future model that files a
+luminaire somewhere unexpected.
+
+## §NIGHT_EXIT_SIGNS — 100 exit signs were dark
+`A.nightLightColor` has carried an `exit 0x9bffc0` branch for exit/keluar/signage since
+§NIGHT_LIGHT_MIX — but those words were never in the **selector**, so the branch could not fire.
+Exactly the bug class as the `'light'` filter that "existed in that query only as a test, never as
+the selector". Adding `exit sign` / `keluar` / `signage`: **Clinic +43, Hospital +57**, others
+unchanged (their signs already carry the word "Light"). **Zero false positives** — every element
+matching those three words in all five DBs is already in a luminaire class. `exit sign`, not bare
+`exit`, which would reach exit corridors and exit doors.
+
+## §GLOW_EXIT_SOFT — a sign is not a troffer
+User: *"exit signs should have soft appropriate lighting"*. Exit signs get `GLOW_EXIT_GAIN 0.9` and
+`GLOW_EXIT_SIZE 0.40` (a ~0.44m halo against the luminaires' 1.1m). **0.9 is deliberately below the
+bloom threshold of 1.0** — that is what makes it soft: the sign glows but never blooms, while the
+luminaires at gain 3.0 do. Per-fixture size needs a one-line `onBeforeCompile` patch
+(`gl_PointSize = size * aSize`) because `PointsMaterial.size` is one uniform for the whole cloud —
+worth it to keep everything in ONE object and one draw call.
+
+## THE LIST — every family selected, all five shipped buildings (884/1272/823/14/410)
+| Clinic — 884 | Hospital — 1272 | Terminal — 823 |
+|---|---|---|
+| 443 `M_Troffer Light - Parabolic Rectangular` | 1151 `M_Plain Recessed Lighting Fixture` | 354 `E_Light_2 X 28W_Recessed_MPRL_LED T8 cw` |
+| 158 `M_Troffer Light - Parabolic Square` | 57 `Exit Sign Ceiling Based` | 179 `E_Light_Emergency_V1` |
+| 147 `M_Downlight - Recessed Can` | 52 `M_Pendant Light - Linear - 2 Lamp` | 96 `E_Light_1 X 28W_Surface_LED T8_V1` |
+| 70 `M_Pendant Light - Linear` | 12 `M_Pendant Light - Hemisphere` | 66 `E_Light_100W_Low Bay_V1` |
+| 35 `Exit Sign - Ceiling_Mount_Single` | | 39 `E_Light_1 X 14W_Surface_LED T8_V1` |
+| 11 `M_Surface Mounted Light` | | 38 `E_Light_Keluar Emergency_V1` |
+| 8 `M_Sconce Light - Sphere` | | 20 `E_Light_1 X 28W_Wall_LED T8_Weatherproof_V1` |
+| 6 `Exit Sign - Ceiling_Mount_Double Face` | | 14 `E_Light_2 X 14W_Recessed_MPRL_LED T8 cw` |
+| 4 `Lighted Signage` | | 9 `jkrME_fir-al_Flashing Light_Red & Green` *(IfcAlarm)* |
+| 2 `Exit Sign - End Mount - Double Face` | | 8 `E_Light_1 X 28W_Wall_LED T8_V1` |
+
+| Duplex — 14 | HHS_Office_Federated — 410 |
+|---|---|
+| 8 `M_Pendant Light - Hemisphere` | 195 `M_Plain Recessed Lighting Fixture` |
+| 6 `M_Sconce Light - Sphere` | 84 `M_Pendant Light - Linear - 2 Lamp` |
+| | 66 `M_Sconce Light - Flat Round` |
+| | 65 `M_Pendant Light - Disk` |
+
+Classes carrying luminaires, for the record: Clinic `IfcFlowTerminal`, Hospital `IfcLightFixture`,
+Terminal `IfcLightFixture` + `IfcAlarm`, Duplex `IfcFlowTerminal`, HHS `IfcFlowTerminal`. Five
+buildings, three different classes — which is the second reason the class gate had to go.
+
+## Staging, verified on Clinic and Hospital (`probe_glow_night.js`, before the vocabulary widened)
+| | Clinic | Hospital |
+|---|---|---|
+| sprites applied in night mode, no Alt+S | 841 of 841 | 1215 of 1215 |
+| sprites after night OFF | 0 | 0 |
+| **scene materials mutated** | **0** | **0** |
+| scene meshes sharing the sprite material | **0** | **0** |
+
+## Why the wall panels cannot light up now
+User, twice: *"it must avoid the mistake of lighting up wall panels."* The lit panels and the black
+rectangles were **a changed `emissive` and a flipped `toneMapped`** on a material shared with
+non-luminaires. The witness snapshots `emissive`, `emissiveIntensity` and `toneMapped` for every
+scene material before staging and diffs after: **0 changed, on both buildings.** Nothing is filtered,
+guarded or tuned — there is no code path that writes a scene material at all, and the sprite cloud's
+own material is shared with **0** scene meshes. `toneMapped=false` is safe on it for that reason and
+was never safe on a shared one.
+
+## Also proven, then dropped as not worth the cost
+One earlier run did measure pixels (Clinic, night, difference image): **25,425 px brightened, mean
+delta 52.8, max 242, hot pixels 0.629% → 1.211%**, and a depthTest-off control changed 173,815 px —
+i.e. the cloud draws, and with depth on, lamps in other rooms are correctly occluded rather than
+shining through walls. Kept as a record; **not** the standing witness. Per the user: *"you need not
+test that way.. by measuring light.. just whether those elements are included and applied"* — pixel
+measurement needs a camera with lamps in line of sight, and finding one costs a raycast search plus
+~90s per fold, for a question inclusion + application already answers.
+
+## Landmines found on the way — do NOT re-derive these
+- **The Alt+C path flies at the wrong storey height for the Clinic.** `probe_glow_diag.js` scanned
+  all 21 poses: `clearLOS = 0` across the ENTIRE interior band t=0.15..0.60, 100-200 fixtures in
+  frustum each. Any lighting verdict measured from an Alt+C pose on this building is measuring an
+  empty room. Separate defect, not investigated here.
+- **`A.ifc2three` returns a plain `{x,y,z}`, not a `THREE.Vector3`.** No `.distanceTo`, no
+  `.clone`. Cost one probe crash.
+- **Aiming at the centroid of NEARBY fixtures points the camera at the floor** — lamps surround you,
+  so their centroid is roughly under your own feet. Measured as an exactly-0-pixel difference.
+- **A single-model DB (Hospital) never triggers a stream-gated settle-wait.** A probe that only waits
+  after `streamBuilding()` shoots mid-stream, and reported a frame getting 35% DARKER with additive
+  sprites on — physically impossible, and it would have been read as a result. Settle unconditionally.
+- **Diff the post-night-OFF material snapshot against the DAY snapshot, not the night one**, or night
+  mode restoring its own glow materials reads as a sprite failure.
+
+## Rejected on cost, with the measurement that rejected it
+A per-sprite raycast placing each glow on its fitting's visible face. More precise, and it would
+recover the whole ≤0.8m fitting-occluded group. **Raycasting batched meshes measured at roughly
+50ms/ray** — 841 fixtures is a tens-of-seconds stall at still-start and Hospital's 1216 is worse.
+Took the zero-cost constant instead: `GLOW_EYE_OFFSET` 0.15 → **0.30**, chosen off the occlusion-gap
+histogram (115 sprites occluded by ≤0.05m, 188 cumulative by ≤0.3m, ~286 by ≤0.8m, against thousands
+at 1.5m+ that are lamps behind WALLS and must stay hidden). 0.30 clears most of the fitting group
+without reaching into the architecture band.
+
+## Still open
+- The per-point clipping limitation is unaddressed: `THREE.Points` clips a sprite by its CENTRE, so a
+  halo whose fixture is just off-screen pops rather than fading at the frame edge. The upgrade is a
+  billboarded `InstancedMesh` quad — same positions, same colours, same staging, more geometry.
+- `§PHOTO_BLOOM` still has not been judged on its own by the user.
