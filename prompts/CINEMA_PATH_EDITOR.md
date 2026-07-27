@@ -1995,3 +1995,26 @@ fixed" report tonight is expected rather than contradictory. **Merging it is ste
 ## Rig
 `/tmp/wt-turn` on port 8403 serves this branch, buildings symlinked, clean and pushed. **Reuse it.**
 `PORT=8403 node witness_<name>.js`. Read the log after every run — exit code is not evidence.
+
+## Two live observations added at close (2026-07-27), both already half-answered
+1. **"the trick to avoid wpt jump is to put a delay after dropping it, as holding it long ensure it
+   does not jump"** — this CONFIRMS §CPE_DRAG_LAND_FIRST rather than adding a new cause. Holding
+   still lets the in-flight 120 ms re-plan finish and settle BEFORE release; releasing quickly drops
+   the waypoint while a ~1 s re-plan is still in flight, and it lands afterwards on a changed plan.
+   The fix already on the branch removes mid-drag re-plans entirely — it is their "delay after
+   dropping", done at the source. **They have not flown it yet** (branch unmerged), so their
+   workaround is still the only thing available to them. Verify against this exact gesture after
+   merging: fast drag + instant release, on Hospital.
+2. **"if i do something else on another tab it may leak... giving it focus by going to the console
+   seems to restore it"** — NOT a leak, it is background-tab rAF throttling, and the log measures
+   it: on `§TAB_VISIBILITY visible=false` the fold's own timings balloon (`STILL_REFINE done
+   elapsedMs` 850 → 11190 → 25589 → 45355; `PHOTO_AO totalMs` 750 → 21695) and `perFrameMs` goes
+   2156 → 12168, ending in `§MAXQ_FRAME_TIMEOUT i=683 — capturing as-is`. Refocusing restores it
+   because rAF un-throttles. **A frame captured on that timeout is a frame that never converged**,
+   so a backgrounded bake silently degrades quality, not just speed. Same root cause family as
+   §MAXQ_IDB_SALVAGE (which already blames background throttling). Options to weigh: drive the fold
+   off timers rather than rAF, or refuse to advance while `document.hidden` and log the pause.
+3. **`GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture`** floods the
+   console at load until Chrome silences it ("too many errors"). A pass is sampling the texture it
+   is rendering into — real, unrelated to pacing, and it means those draws are DROPPED by the
+   driver. Not diagnosed; note it before trusting any still/AO frame timing.
