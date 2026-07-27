@@ -6041,3 +6041,74 @@ ground while *increasing* that 1.19, and the ground's own dedicated material alr
 ### Not done here, deliberately
 Rungs 2–5 and the §LOOK_PRESETS toggle UI. One bounded task; the gain is console-tunable so the
 comparison the toggle will eventually automate can be run today.
+
+## 11. §FACADE_WARM_COOL — SHIPPED (2026-07-28, bim-ootb PR #1064, merge verified by content, v868)
+User: *"do facade colour if it's more realistic and not costly."* Both — and the realism argument is
+the reason, not a bonus. **Witness `probe_facade_warm_cool.js` — W-FACADE-WARM-COOL, 7/7 Hospital.**
+
+The scene already declares two illuminants (`PHOTO_SUN_COLOR 0xffa55c` warm, `PHOTO_HEMI_SKY_COLOR
+0x6a5a7a` cool sky) and then contradicts itself — every wash, spot, sconce and uplight is amber in a
+~30° hue span, so a sun-facing wall and a wall in full shade were painted the same colour. A surface
+that cannot see the sun is lit **by the sky**. `dot(edgeNormal, sunAzimuth) > 0` → warm pair, else
+cool pair. **Zero new lights; a colour is a uniform.** Luminance-matched (2.0% / 1.4% apart) so the
+split is chromatic and cannot reintroduce the flattening both earlier reverts died of.
+Hospital: sun az (-0.342,-0.940), per-edge dots -0.94/-0.34/**0.94**/**0.34** → 2 warm, 2 cool.
+`APP._facadeWarmCool = false` is the live A/B.
+**The control gate failed first and named a real defect:** a kill-switch must REPAINT warm, not stop
+assigning — lights keep the last recompute's colour, so it froze the split instead of undoing it.
+
+## 12. §FACADE_SIGNAGE + interior posters/mirrors — merits, asked 2026-07-28
+User: *"is there any way to do outside wall lighting with big ad poster etc? Inside also if some wall
+has mirrors and posters. Discuss merits"*, with the framing that matters most:
+**"the intent is to give a super wow as this FOSS project has no promo budget other than freedom."**
+
+### A. Exterior billboard / lit signage — the strongest wow-per-zero-dollars item on this list
+- **Extract before fabricating.** Some models already carry facade signage: `Model Text:Logo` is
+  already a case in `A._entourageVariant()` (`streaming.js:282`), and the proxy census found
+  real `Louver`, `Awning`, `HeliPad` families. **Texture the real element where one exists**; only
+  fabricate a quad where the model has none. That keeps it inside the same extract-first discipline
+  the rest of the project runs on.
+- **Placement is already computed.** `_photoFacadeLights` holds each footprint edge's midpoint and
+  outward normal, and `backIdx` already picks the least-camera-facing side. A poster quad on the
+  largest facade is one `PlaneGeometry` + one material — **one draw call.**
+- **At dusk it is also a LIGHT, and the safe mechanism already exists.** An emissive quad with its
+  OWN material, shared with nothing, is exactly §PHOTO_GLOW_SPRITE's invariant — no exposure to the
+  material-sharing trap. Pair it with one existing `PointLight` and the sign spills onto the wall
+  and the (now 2.3× brighter) ground for free.
+- **⚠ The one real constraint, and it is not technical.** A fabricated advertisement for a REAL
+  third-party brand, rendered on a REAL client's building, is a genuine problem — brand misuse, and
+  it can read as an endorsement that does not exist. **Use the project's own wordmark, or neutral
+  generic copy (`TO LET`, `COMING SOON`, a house number).** Never a real third-party brand, in any
+  shipped default or demo.
+- **Why this one is special for a no-budget FOSS project:** it is the only item on the list where
+  **the wow and the promotion are literally the same pixels.** Every screenshot anyone shares of a
+  render carries the project's own mark, at zero cost, forever. Nothing else here does that.
+
+### B. Interior posters — same mechanism, smaller payoff, do it after A
+Same quad, placed on real interior wall faces (`IfcWall`/`IfcWallStandardCase` bbox + `rotation_z`,
+the convention §sparkle already verified empirically). Cheap and it makes interiors read as
+furnished. But interiors are only visible in the dive/indoor beats, so it buys fewer frames than A.
+
+### C. Mirrors — the honest cost split, because these are NOT one feature
+1. **Real reflection** (`THREE.Reflector`, or a cube probe): renders the whole scene AGAIN from the
+   mirrored camera. Per mirror. On a 63,182-element Hospital that is a second full scene render.
+   **Per-frame in navigation: no, absolutely not.** But **Alt+S is already a 16-sample accumulation**,
+   so ONE hero mirror during the still costs roughly one extra sample ≈ **+6% of the still** — that
+   is an ESTIMATE from the sample count, **not measured**, and it must be measured before promising
+   it. Restricted to one mirror, still-only, this is plausibly affordable.
+2. **Fake mirror** — high `metalness`, `roughness ≈ 0.05`, riding the envMap that Alt+S already
+   swaps to a real HDRI (§LAYER2). **Zero extra passes.** It reflects the sky and the environment,
+   not the room. At lobby distances in a still, it reads. **Start here.**
+The distinction matters: (2) is free and ships this week; (1) is a measured experiment with a real
+budget. Do not let them be discussed as one item.
+
+### Ranking for the stated intent (super wow, zero budget)
+| | item | wow | cost | status |
+|---|---|---|---|---|
+| 1 | §GROUND_ALBEDO + §GROUND_COLOR_ORDER_FIX | ground stops being black | 2 lines | ✅ shipped v867 |
+| 2 | §FACADE_WARM_COOL | the frame gets colour contrast at last | 1 dot product | ✅ shipped v868 |
+| 3 | **§FACADE_SIGNAGE with the project's own mark** | high — and it IS the promo | 1 quad, 1 draw call | ⏳ next |
+| 4 | Rung 2 shadow-masked fill (§3) | raises ground AND deepens the shadow | 1 shader line | ⏳ |
+| 5 | Fake mirrors (C2) | interiors gain depth | material only | ⏳ |
+| 6 | Interior posters (B) | furnished interiors | 1 quad each | ⏳ |
+| 7 | Real reflection (C1) | true mirror | ~+6% of the still, **unmeasured** | ⛔ measure first |
