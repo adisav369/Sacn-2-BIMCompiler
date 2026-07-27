@@ -5673,3 +5673,53 @@ treatment `CINEMA_WALK_MPS` gets — never silently guessed per building.
 `probe_ember_clinic.js` renders the SAME camera in R22 twice — baseline and glow — through the real
 Alt+S fold, and reports both stills plus numbers (fixtures matched, fold time, mean/peak luminance).
 The comparison is the deliverable the user asked for. Nothing lands in the viewer until they judge it.
+
+## §PHOTO_EMBER — RESULT, 2026-07-27: glow-only does NOT read. Bloom is not the next increment, it is
+## part of the same feature.
+Sandbox `probe_ember_clinic.js` run against the Clinic, camera taken from Alt+C's own `poseAt()` (see
+below for why). Same pose, baseline vs glow, measured pixel-for-pixel with ffmpeg:
+```
+t60   mean luminance 56.13 -> 56.13  (-0.0%)
+      hot pixels >240   0.002% -> 0.002%   (unchanged)
+      pixels differing by >8/255: 4.6%     (TAA fold noise, not glow)
+```
+Stills kept at `~/Pictures/Screenshots/ember/Clinic_t60_{1_baseline,2_glow}.png`.
+
+**Withdrawn:** earlier runs of this same probe reported +21% and +30% mean luminance. Those cameras
+were jammed inside walls, where one glowing material filled the frame. They were artifacts of a bad
+viewpoint, not evidence of the feature working, and the probe's own VERDICT line compounded it by
+reading `shots[0]` — the wall shot — so it printed "the glow IS reaching the frame" about a render
+that never showed the corridor. A verdict computed from a different frame than the one being judged is
+a defect in the instrument.
+
+**Why it does not read, and it is not a tuning problem:** `emissive` + `toneMapped:false` makes a
+fixture's SURFACE bright, but a luminaire is a handful of pixels at any normal viewing distance and
+there is no bleed. Bright-and-tiny is just tiny. The composer chain is TAA -> SSAO -> Outline ->
+Output with **no bloom pass anywhere**, so nothing spreads the energy. Raising `emissiveIntensity`
+cannot fix this — it makes the same few pixels whiter.
+
+**Consequence for planning:** glow and bloom are ONE feature, not two increments. Bloom inserts before
+`OutputPass`, is bake-only like Layer 3, and its 3-6ms/frame is irrelevant against a 1.6s frame. Do
+not schedule "glow" as a cheap standalone win again — this measurement is why.
+
+### What DID hold, and is reusable as-is
+- **Detection.** 841 luminaires building-wide from the vocabulary, including all 8
+  `M_Sconce Light - Sphere` the user asked about. A bare `%light%` matches 1105 — the exclusions
+  reject 264 switches/panelboards. The user's point stands and is now gated: searching `*light*` must
+  hit the sconces, and it does; it was the ROOM FILTER that dropped them, so the room filter was
+  removed (emissive costs nothing per fixture, so scoping it to a room buys nothing and loses fixtures
+  that sit outside a compiled space's bbox).
+- **Collateral is small and measured.** 6 materials serve the 841 fixtures; 33 non-luminaire elements
+  share them and would also glow. Instanced/batched meshes cannot do per-instance emissive — 33 out of
+  8408 is a footnote, but it must be reported rather than discovered later.
+- **Federated streaming.** `A.streamBuilding()` must be called ONE MODEL AT A TIME, waiting for the
+  guid count to settle between calls. Firing both in one tick landed only one (guidMap 5822 = HVAC +
+  Electrical, Architectural missing entirely, so fixtures floated in the dark with no walls).
+
+### Camera: use Alt+C, do not derive one
+Three attempts to derive a viewpoint from the data all failed — DB-coordinate mapping put the camera
+outside the building at the night skyline; the fixture bbox centroid and a fixture anchor both landed
+INSIDE walls (the fixtures of a compiled room span 21.1 x 15.5m for a 21.8 x 6.8m room, and the
+anchor resolved to world origin because instance-matrix extraction is wrong for batched meshes).
+**`cinemaPathPlan(30).poseAt(t)` already walks the building at eye level and is the same function the
+bake flies.** Sample it. There is no reason for any probe in this repo to invent a camera again.
