@@ -5982,3 +5982,59 @@ touching the UI**, because the ladder is also ordered by implementation cost.
 - **Six swatches + an icon may not fit the drawer row on mobile** (today it carries three). Prefer
   cycling with the preset NAME shown in the row title over six swatches — decide against the live
   panel at implementation time, not here.
+
+## 10. §GROUND_ALBEDO — BUILT + WITNESSED (2026-07-28, user: "albedo u said is easy, try it?")
+Rung 1 of the §LOOK_PRESETS ladder, implemented on `bim-ootb:fix/ground-albedo-lift` (worktree
+`/tmp/wt-albedo`, served on `:8412`). **Witness `probe_ground_albedo.js` — W-GROUND-ALBEDO, 9/9 on
+Hospital.** `sw.js v866→v867`, `viewer.html` pins `effects.js?v=3→4`, `tools.js?v=31→32` (the trap
+§NEXT SESSION names — an edited file keeps its old URL and is served from cache).
+
+### The code
+- `tools.js` `A._groundAlbedoGain` (default **1.0** — navigation and day are unchanged) applied in
+  `_setGroundColor` as `color.setHex(0xffffff).multiplyScalar(gain)` on the photo-true branch only;
+  the night-dim branch stays dim. `multiplyScalar`, never a >1 hex, so the sRGB→linear transfer runs
+  first and the gain is unambiguously linear.
+- `effects.js` `A._photoGroundAlbedoGain = 2.3` (× the map's measured 0.155 = **0.36 albedo**, real
+  dry concrete), set BEFORE `_applyGroundTexture` (which calls `_setGroundColor` itself), handed
+  back to 1.0 on teardown. **Console-tunable for the A/B the user asked for**: set it to 1.0 / 2.3 /
+  3.5 and press Alt+S again — no rebuild.
+
+### ⚠ THE REAL FIND — §GROUND_COLOR_ORDER_FIX. The witness found a bug reading found nothing
+`_applyPhotoStaging` sets the photo ground colour at line ~2616. `A.toggleNightMode()` runs at line
+~2694 — **78 lines later** — and does `_setGroundColor(0x0a0a15)` as a side effect (`tools.js`
+§S277c). `0x0a0a15`'s channel sum is 41, under the `0x60` night-dim threshold, so the ground took
+the dim branch and rendered at **`0x555566` = 0.333 instead of the intended photo-true 1.0**.
+**The evening ground has been rendering at ONE THIRD of the brightness this file believed it set,
+ever since §PHOTO_GROUND_LIT shipped — the "bright warm sunlit-concrete tone" 0xd9c39a never
+reached the material at all.** Measured in one run: `§GROUND_ALBEDO … color=2.30` at staging, and
+the material read `0.333` nine seconds later.
+This is **the same clobber, on the same call, that §PHOTO_FOG_ORDER_FIX already documents for fog**
+— that fix listed sun/ambient/hemi/exposure/fog and never included the ground. Now re-asserted in
+the same post-night block. **So "the ground is too dark" was never one problem: it is 3× from this
+ordering bug × 5.5× from the un-renormalized albedo × 9.5× from the real 6° dusk physics.** Only
+the third was ever true.
+
+### What the witness proves, and its control
+| gate | result |
+|---|---|
+| 1. APPLIED — gain at staging, map still bound | PASS, `color.r = 2.300`, effective albedo 0.155 → **0.356** |
+| 2. RESTORED — handed back on teardown | PASS, gain 1.0, ground r=0.133 |
+| 3. RATIO HELD — lit/shadow from the REAL staged lights | PASS, **1.1907 at gain 1.0, 1.1907 at gain 2.3** — lit ×2.30, shade ×2.30 |
+| 4. **CONTROL** — same lift delivered ADDITIVELY | PASS, ratio **1.1907 → 1.0748, 9.7% of the shadow contrast lost** (needs indirect ×2.55) |
+| 5. NOTHING ELSE — every scene material's colour diffed | PASS, **0 of 121** changed outside the ground |
+Gate 4 is the discriminator — a gate that only ever passes proves nothing, and this is the exact
+mechanism that got the previous two attempts reverted. It asserts DIRECTION (additive must fall,
+multiplicative must not), never a round-number threshold.
+
+### Measured while proving it — the cast shadow on the ground is inherently weak here
+From Hospital's real staged lights: `sun=3.08 ambient=0.90 hemi=1.57 sin(elev)=0.1045` →
+**indirect 1.688 vs direct 0.322**. The fill is already **5.2× the direct term**, so lit/shadow on
+the ground is only **1.19 — a 19% contrast** before anything is changed. That is why every "brighten
+the ground" attempt read as "shadows gone": there was barely a shadow to lose. **This is the
+strongest argument for rung 2 (§3, shadow-masked fill)** — it is the only lever that raises the
+ground while *increasing* that 1.19, and the ground's own dedicated material already carries the
+`onBeforeCompile` injection it needs.
+
+### Not done here, deliberately
+Rungs 2–5 and the §LOOK_PRESETS toggle UI. One bounded task; the gain is console-tunable so the
+comparison the toggle will eventually automate can be run today.
