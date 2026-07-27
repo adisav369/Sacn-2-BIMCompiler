@@ -1756,3 +1756,115 @@ Duplex/Terminal — a much milder gesture than the failing one.
 - **Clamp-then-renormalise** for the pace floor: rescaling by the shrunk span multiplies every slope
   by `1/span > 1` and restores exactly what the clamp removed. Use the water-filling bisection.
 - **Pitch term in `_spinDeg`** — makes the spin's duration path-dependent, breaks G2.
+
+---
+
+# ▶ SESSION 2026-07-27 (latest) — §CPE_NOISE_LAW: the noise ratio now governs the DIVE, and the ease no longer governs the film
+
+## Retracted: the "LIVE BUG — undo does not revert a far drag" above is NOT A BUG
+**User, 2026-07-27: "UNDO does work, i was pressing the wrong key.."** The 🔴 LIVE BUG block in the
+previous handover is closed with no code change. Nothing was altered in `cinema_path_editor.js`.
+Do not re-open it, do not build the far-drag repro that block asks for.
+
+## The user's method, examined as asked ("examine the noise ratio method from me, if it is not well written")
+It is a good method and it was written badly — three specific faults, all now fixed here:
+1. **It was scattered** across §CPE_PACE_LOS + two amendments, §CPE_EVEN_TURN + a correction,
+   §CPE_TURN_BUDGET and §CPE_PACE_FLOOR. No single place stated the law, so each session rebuilt
+   its own reading of it.
+2. **Every sentence was phrased about THE WALK.** Nothing said it governs the whole film — which is
+   exactly why the dive never got it. The user's correction: *"it governs thrughout"*.
+3. **"Noise" meant two different things** in two sections (gaze turn per metre vs scene busyness)
+   and only the first was ever built. So *"still not using noise ratio"* was literally true.
+
+## ⚖ THE LAW, as the user settled it this session — do NOT re-derive, do NOT re-litigate
+- *"it governs thrughout"* — every beat, not the walk alone.
+- *"isnt it best to use the bbxes to smell out the frame rate"* — the signal is **bbox**, not the ray
+  fan. (Proved necessary: see the blind-fan finding below.)
+- *"20% density, 80% noise ie rate of change"* → final: **"i would say its 100% rate of change of
+  bbxes"**. Density is NOT the signal.
+- *"because if frame not changing, not matter how dense the animation is not moving makes a boring
+  show"* — the reason. A dense but static frame is a still; lingering on it is the boredom.
+- *"when outside building it changes as the building is far off, or it hits the max ... We are in a
+  range, thus no worry"* — **no outside/inside special case, no panorama branch.** The swing bounds
+  both failure modes. Do not add a clamp.
+- *"thus it is not using the noise ratio"* (on seeing the stalls) — the diagnosis was correct and is
+  now measured: the per-beat smoothstep spanned **20x** while the law modulated only 1.1–1.5x.
+
+## Built (`viewer/effects.js`, branch `fix/cpe-noise-law-dive` off `origin/main` @ fa6d251)
+1. **`_densityAt(p)`** — count of `element_transforms` bbox centres within `CINEMA_FAN_FAR` of the
+   point, counted in IFC space (one point converted, never the 48k rows). DB truth, deterministic,
+   no new constant.
+2. **The dive's cost table** — noise = normalised |central difference of that count| along 64
+   uniform points of the dive line; cost per metre = `1 + (SWING-1)·noise`; frames stepped at equal
+   cost via `_diveRemap` (same monotone-inverse shape as `_evenTurnRemap`).
+3. **The dive's SECONDS bought by the same number** — `_diveEff/CINEMA_DIVE_MPS × (1+(SWING-1)·meanNoise)`,
+   the §CPE_TURN_BUDGET half generalised to Beat 1.
+4. **`_cinemaEaseFloored`** — `a·t + (1-a)·smoothstep(t)`, `a = 1/PACE_SWING`. Applied to the dive,
+   the walk and the rise. Ends still 0→0 and 1→1, so no beat boundary and no path moves, but the
+   rate at every seam is now `1/1.6` of the beat mean instead of ZERO.
+5. `CINEMA_PACE_SWING` hoisted to module scope — one dial, read by every beat.
+
+## Measured — `witness_cpe_noise_law.js`, **4/4 Duplex, 4/4 Terminal** (N5 below is the exception)
+| gate | Duplex | Terminal |
+|---|---|---|
+| N1 slower where the bbox neighbourhood changes fastest | 1.17x slower | 1.44–1.68x slower |
+| N2 residual after the ease inside [1/1.6, 1.6] | 0.68–1.04x | 0.72–1.16x |
+| N3 pacing changed, path did not (dive still lands on settle) | 5.8e-15 m | 3.6e-15 m |
+| N4 plan budget | 62 ms (was 80) | 226–295 ms (was 204) |
+| **raw dive speed spread, before → after the floored ease** | **20x → 1.82x** | **25x → 1.64x** |
+| N5 dive stall | **0.00 s** | **0.00 s** |
+
+## 🔴 STILL OPEN, measured this session, NOT fixed — take these first
+1. **Terminal's WALK stalls 2.27 s** (34 frames under beat-mean/1.6, at u=0.195). N5 catches it; the
+   floored ease fixed the dive and the rise but not this. It is the parked §CPE_PACE_FLOOR
+   trade-off, now with a live user report behind it ("last wpt stalling as the first one") and a
+   number. The walk's `_paceFloor` bounds the COST slope against uniform arc, not the DELIVERED
+   speed — that is the gap to close.
+2. **Outside the envelope the gaze spins AWAY from the building** (user, live, 2026-07-27). Relates
+   to §CPE_LOOK_HOME (next-list item 2) and to the earlier orbit-gaze observation. Not analysed.
+3. **`witness_cpe_gaze_spin.js` (new, S1/S2)** — net-vs-accumulated gaze, the instrument T2
+   structurally cannot provide. **PASSES on Duplex, Terminal AND Hospital on the DEFAULT plan**, so
+   the reported "full rev at wp1" does not reproduce without an edited path. Worst waste: 15.2 deg
+   (Duplex walk), 6.5 deg (Hospital orbit). Run it against an EDITED path next.
+
+## ⚠ THE BLIND FAN — a rig finding that invalidates other measurements, not just this one
+On Terminal in the headless rig `_cinemaFanMeshes()` returns **ZERO meshes**. Every `_cinemaFan`
+call then reports the `CINEMA_FAN_FAR` sentinel, every `§CINEMA_SPACE` candidate reads
+`enclosed=0%`, and the settle **falls back to bbox-centre at y=-31.5 (below ground)**. Any
+fan-derived number measured on Terminal in this rig is meaningless. `§CPE_NOISE_LAW` logs
+`elems=` for exactly this reason, and the law uses bboxes so it keeps working (Terminal:
+`elems=48428`, noise 0.21→0.77→0.72→0.34 across the descent, where the fan saw nothing).
+
+## Instrument corrections made this session — verify these rather than trust them
+Three gates were wrong before they were right, each for a stated reason:
+- N1 first measured density change **between consecutive FRAMES** — large wherever the camera moves
+  fast, so it measured the pacing it was judging and read *inverted* (0.67x "faster where busier").
+  Now sampled on uniform PATH position, as the law does.
+- N1/N2 then compared **raw metres per frame**, which is dominated by the ease (the noise peak sits
+  mid-dive, exactly where smoothstep peaks at 1.5). Now both divide the ease out.
+- N2's expected model was **stale by one build** — still `6e(1-e)` after the beat moved to the
+  floored ease, reading 0.55x. Now `a + (1-a)·6e(1-e)`.
+This is the fifth, sixth and seventh broken instrument in this lane. `feedback_verify_checker_before_code_under_test`.
+
+## Not a defect — the per-frame staging cycle in the bake log
+`§PHOTO_STAGING on/off`, `§STILL_REFINE start/cancelled`, `§PHOTO_AO start/done/off` cycling once
+per `§MAXQ_FRAME` is MaxQ's DESIGN: `cinema_maxq.js` calls `startStillRefine()` and waits for the
+fold on every frame, so each frame is a converged photoreal still. It costs ~1.5–2 s of the
+~2.3 s/frame and it is the reason a 914-frame Hospital bake runs ~35–45 min. Frames are captured
+after `§PHOTO_AO done`, so the output is consistent; the flashing is the live viewport only. Do not
+"fix" it without deciding to trade quality for time.
+
+## ⚠ REGRESSION CHECK after the floored ease — `witness_cpe_even_turn`: T2 better, T5/T6 RED
+Run immediately after the change, both buildings, same rig:
+- **T2 (the jerk) IMPROVED**: peak gaze sweep **4.1 deg/frame** on both (was 5.2 Duplex / 6.9–7.3
+  Terminal, cap 12). Flooring the ease did not cost jerk; it bought some.
+- **T5 RED on Duplex, green on Terminal.** Believed a STALE MODEL, not a defect: T5 allows the walk
+  `1.5 × PACE_SWING` because it is cost-parameterized and every other beat only `1.5` — but the DIVE
+  is now cost-parameterized too (§CPE_NOISE_LAW), so its allowance is the same `1.5 × 1.6` the walk
+  already gets. **Verify before changing it** — run T5 against `origin/main` and against this branch
+  and compare which beat trips.
+- **T6 RED on both.** Two causes tangled and they must be separated before either is "fixed":
+  (a) its expected model is `mean × 6e(1-e)`, i.e. plain smoothstep — stale by one build now that
+  the walk uses the floored ease (this is the identical correction N2 needed, where it moved the
+  reading from 0.55x to 0.68x); and (b) Terminal's walk really does stall **2.27 s** (N5, above).
+  Fix the model FIRST, then see how much stall is left.
