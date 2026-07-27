@@ -107,3 +107,67 @@ hot pixels 1.289% -> 2.323%. Stills: `~/Pictures/Screenshots/ember/night_{1_nav,
   is dimmer than the still of the same spot. Judge before changing; it is anti-blowout, not an oversight.
 - 48 lights across 841 fixtures still leaves rooms unlit. Raising it is a measured decision, not a
   dial: check shader-recompile stalls and per-frame cost on the biggest building before moving it.
+
+---
+
+# ▶▶ NEXT SESSION — START HERE. Everything above is settled background.
+**Written 2026-07-27 at session close. The still-lighting feature is BUILT, MEASURED, and
+DELIBERATELY TURNED OFF.** `A._emberEnabled = false` in `viewer/effects.js`. Re-arm it to experiment;
+do not ship it re-armed without solving §THE BLOCKER below.
+
+## What is live on `main` right now (keep — these fix real bugs)
+| § | what it fixes | proof |
+|---|---|---|
+| §NIGHT_GLOW_CLASS_GATE | the Clinic lit **nothing at all** before it | `fixtures=841 source=IFC+fallback` |
+| §NIGHT_FIXTURE_VOCAB | 961 receptacles + 236 switches were light sources | 1105 naive → 841 real |
+| §NIGHT_LIGHT_MIX / §NIGHT_MIX_RATIO | colour by fitting type + a 20/20 blue/amber share | amber 20.1%, blue 17.7%, deterministic |
+| §MAXQ_HIDDEN_PAUSE | a backgrounded tab silently ruining bakes | witness 6/6, RED 0/6 |
+
+## What is OFF, and why (do not simply re-enable)
+`§PHOTO_EMBER`, `§PHOTO_BLOOM`, `PHOTO_EXPOSURE_LIFT` (2.2→1.0), and the 48-light still boost — one
+look, judged together. User, live on Hospital: **black rectangles and lit wall panels.**
+
+## §THE BLOCKER — per-material emissive cannot work at this scale
+Their own log is the entire diagnosis:
+```
+§PHOTO_EMBER lit 1216 luminaires -> 1216 guidMap hits, 86 meshes, 7 materials
+```
+**Seven materials for 1216 luminaires in a 63,182-element building.** Batched and instanced meshes
+share ONE material across everything they draw. So:
+- setting `emissive` on those 7 lit **walls, beams and railings** — everything else drawn with them;
+- `toneMapped=false` on a material shared by a **transparent** panel renders it **pure black** —
+  those are the black rectangles, not a bloom artifact.
+
+An exclusivity guard (`§PHOTO_EMBER_EXCLUSIVE`, in the code, working) skips any material shared with
+a non-luminaire. Measured on the Clinic: **6 materials → 4 applied, 2 skipped.** It cuts the damage
+**and simultaneously proves the approach is a dead end** — the same sharing that causes the collateral
+is what the fixtures themselves are drawn with, so a correct guard also starves most fixtures of glow.
+**This needs a different mechanism, not a better filter.** Do not spend the next session tuning it.
+
+### Mechanisms worth evaluating instead (none tried yet)
+1. **Additive glow sprites/quads at fixture positions.** Decoupled from the geometry entirely, so
+   material sharing becomes irrelevant — the collateral problem disappears by construction. Positions
+   are already computed and correct (`A._nightFixtures` + `A.ifc2three`, 841/1216 verified). Bloom
+   picks them up. This is the strongest candidate and the cheapest.
+2. **Per-instance emissive via a custom attribute** on InstancedMesh/BatchedMesh, injected through
+   the existing `onBeforeCompile` hook that triplanar already uses. Precise, but touches the hot
+   material path that Layer 3 depends on.
+3. **A dedicated luminaire mesh layer** — clone luminaire geometry into its own mesh with its own
+   material at stage time, restore on teardown. Simple, costs geometry.
+
+## Also unresolved
+- **`§PHOTO_BLOOM` has never been judged on its own.** The user has not seen it work — it shipped
+  attached to a broken ember. `viewer/lib/BloomPass.js` is written, wired before `OutputPass`, and
+  measured harmless. Judge it against emissive that actually lands.
+- **AO does not reduce cost — it adds it.** User asked "is it really using occlusion to lessen its
+  burden?" No: `§PHOTO_AO done frames=24 totalMs=635 avgRenderMs=23.8`. AO is shading, not culling.
+  **The `o` key is `toggleDlodNav` (DLOD), which IS the culling system** — that is the one that hides
+  distant/small geometry to save cost. AO and DLOD are unrelated; do not conflate them again.
+- Night NAVIGATION is dimmer than a still of the same spot (0.3 near-fade, correct as anti-blowout).
+
+## How to verify anything here
+Rig `/tmp/wt-turn` on port 8403, buildings symlinked (Clinic included).
+`PORT=8403 node probe_night_still.js` — night mode + Alt+S, reports lights nav/still/restored and
+every `§PHOTO_EMBER` / `§NIGHT_*` line. `probe_mix.js` checks the colour ratio and its determinism.
+**Test on Hospital, not only the Clinic** — the Clinic's 33-element collateral read as a footnote and
+is exactly why this shipped broken; Hospital is where the same ratio becomes a broken render.
