@@ -5985,7 +5985,7 @@ touching the UI**, because the ladder is also ordered by implementation cost.
 
 ## 10. §GROUND_ALBEDO — BUILT + WITNESSED (2026-07-28, user: "albedo u said is easy, try it?")
 Rung 1 of the §LOOK_PRESETS ladder, implemented on `bim-ootb:fix/ground-albedo-lift` (worktree
-`/tmp/wt-albedo`, served on `:8412`). **Witness `probe_ground_albedo.js` — W-GROUND-ALBEDO, 9/9 on
+`/tmp/wt-albedo`, served on `:8412`). **Witness `probe_ground_albedo.js` — W-GROUND-ALBEDO, 8/8 (8 gates) on
 Hospital.** `sw.js v866→v867`, `viewer.html` pins `effects.js?v=3→4`, `tools.js?v=31→32` (the trap
 §NEXT SESSION names — an edited file keeps its old URL and is served from cache).
 
@@ -6022,6 +6022,9 @@ the third was ever true.
 | 3. RATIO HELD — lit/shadow from the REAL staged lights | PASS, **1.1907 at gain 1.0, 1.1907 at gain 2.3** — lit ×2.30, shade ×2.30 |
 | 4. **CONTROL** — same lift delivered ADDITIVELY | PASS, ratio **1.1907 → 1.0748, 9.7% of the shadow contrast lost** (needs indirect ×2.55) |
 | 5. NOTHING ELSE — every scene material's colour diffed | PASS, **0 of 121** changed outside the ground |
+Log proof of the ordering fix, from the same run: `§GROUND_ALBEDO gain=2.30 … color=2.30 map=none`
+(staging) → `§GROUND_COLOR_ORDER_FIX reasserted color=2.30 gain=2.30` (**after** night mode, where
+the clobber used to land) → `§GROUND_ALBEDO restored gain=1.00 color=0.13` (teardown).
 Gate 4 is the discriminator — a gate that only ever passes proves nothing, and this is the exact
 mechanism that got the previous two attempts reverted. It asserts DIRECTION (additive must fall,
 multiplicative must not), never a round-number threshold.
