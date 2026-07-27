@@ -1690,8 +1690,16 @@ has now earned its place four times here.
 `witness_cinema_path_editor` 9/9; `witness_cpe_undo` 6/6; `witness_cpe_ok_bake` 3/3.
 
 ## ⛔ NEXT, in order — every one is specified, none is guesswork
-1. **The spin-at-wp1 (user, live, 2026-07-27: "at wp1 it can spin around itself one full rev").
-   NOT NOTICED BY ANY GATE, and T2 structurally cannot see it** — it measures deg per FRAME, and a
+1. **The spin-at-wp1 (user, live, 2026-07-27: "at wp1 it can spin around itself one full rev").**
+   **⚖ USER RULING, same day, settled — do NOT re-litigate:** *"no reason to if it follows its path,
+   even at wp1, no reason not to follow."* A full revolution is therefore a DEFECT, never a stylistic
+   choice and never something to detect-and-permit. **The gaze follows the path. Full stop.** Any fix
+   that "smooths" a revolution rather than removing it is wrong by this ruling.
+   Likely causes to check FIRST, in this order, before touching anything: (a) the arc-length
+   `_lookAhead` can point BACKWARDS where the route folds, since arc length keeps advancing through a
+   fold — the look-ahead point is then behind the camera and the gaze swings through 180°+;
+   (b) `_cinemaGazeBlend` taking the long way round a wrap boundary. Both are cheap to instrument.
+   **NOT NOTICED BY ANY GATE, and T2 structurally cannot see it** — it measures deg per FRAME, and a
    360° revolution spread smoothly over many frames passes. Hospital accumulates 888° of gaze sweep
    across the film (~2.5 revolutions) with T2 green. **The instrument to build: NET vs ACCUMULATED
    gaze rotation over a short stretch of path.** Accumulated ≈360° with net ≈0° IS a spin-in-place.
