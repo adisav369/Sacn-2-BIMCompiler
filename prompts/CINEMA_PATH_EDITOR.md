@@ -1283,6 +1283,38 @@ radius. Smooth by construction, NOT a step; it was briefly mis-called a bug this
 genuinely fast (~189 m/s) and may be what reads as "too fast" on large buildings, but that is an
 orbit-duration design constant and a separate decision. Do not re-diagnose it as a jerk.
 
+## §CPE_DRAG_SCALE — "wp1 jumps to way high" MEASURED. ⛔ ONE USER DECISION, then it is buildable
+**User, 2026-07-27, live on Hospital:** *"it still has another bug where the wp1 jumps to way high"*,
+with `§CPE_DRAG band=1 zone=mid plane=view centre=(2.88,-16.72,-26.43)` against `floorY=-15.47` —
+the waypoint 1.25 m below the floor.
+
+**This is NOT a delta bug.** §CPE_DRAG_TELEPORT is fixed and `G-DRAG-4` measures the mapping at
+0.9973× / 0.9991× — the handle tracks the cursor correctly. It is not a plane bug either:
+§CPE_SCREEN_PLANE settled that a drag moves the handle in the camera's view plane and that height
+comes from a side view, and the user accepted that cost explicitly.
+
+**What was never settled is the SCALE.** The view plane sits at the handle's distance from the
+camera, so world-metres-per-pixel grows with that distance. Measured (`probe_drag_scale.js`, fov 60,
+700 px viewport, from the real opening camera):
+
+| building | handle dist | m/px | a 50 px flick moves | walk length |
+|---|---|---|---|---|
+| Duplex | 91 m | 0.151 | **7.5 m** | 12.6 m |
+| Terminal | 138 m | 0.227 | **11.4 m** | 25.3 m |
+| Hospital | 274 m | **0.453** | **22.7 m** | 29.8 m |
+
+**On Hospital a 50-pixel nudge throws a waypoint 76% of the entire walk.** That is the mechanism
+behind "jumps to way high", and it is worst exactly where the user hit it. 1:1 with the cursor is
+correct *on screen* and far too coarse *in the world*.
+
+⛔ **BLOCKED — the one question, because the answer contradicts a settled model either way:**
+should a drag stay pinned 1:1 under the cursor (§CPE_SCREEN_PLANE's "the dot when touched can only
+move in that XY sense"), meaning the fix is *zoom in first* and this is workflow, not defect — or
+should a precision modifier (e.g. Shift = 0.1×) break 1:1 while held? Do NOT pick one silently:
+1:1-under-the-finger is the user's own stated model, so reducing it is their call, not a bug fix.
+
+Everything needed to build either is measured and in hand; only the choice is missing.
+
 ## §CPE_SEAM_CONTINUOUS — the discontinuity, and why it goes in the WALK
 The Beat2→Beat3 seam stepped **81° in one frame** on Terminal (at the user's reported wp1-after-
 settle). Proven a STEP not a fast turn by the 100× density test: it stayed 81°. Cause: the spin ends
