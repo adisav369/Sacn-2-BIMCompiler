@@ -5937,3 +5937,48 @@ pipeline. Sprites (people/trees) are already external CC0, so mixed sourcing is 
 | 3 | **Warm/cool facade split** (sun-azimuth rule) | colour contrast is the missing ingredient, not lumens | one dot product; 0 new lights | ✅ **DO — best wow-per-line** |
 | 4 | Cobble/paver texture swap | pattern/design read only | one asset + precache | ⚠️ **for looks, not brightness** (+17% at best, measured) |
 | 5 | Urban props via offline `.bin` conversion | real staffage depth | its own session | ⏳ **after 1-3** |
+
+## 9. §LOOK_PRESETS — the option count, and the toggle to compare them (2026-07-28, user ask)
+**User: "how many options all in can we have? I'm thinking a toggle same as Shadow Ground in the
+panel, so the user can compare from default to your suggestion and further."**
+
+### The mechanism already exists and is config-driven
+`ground_config.json` (`{key,label,src}` list) → `A._applyGroundTexture()` → the drawer row built at
+`panels.js:1555-1615` (cloud button + one swatch `<span>` per key, cycling Off → Grass → Earth →
+Paved, repainted through the existing `A._refreshGroundBtns` hook). Its own comment says *"Edit to
+add textures (no code change)"* — **true for the texture list, with one caveat: `panels.js:1571`
+hardcodes `var _keys = ['grass','earth','paved']`, so a new JSON option renders no swatch until that
+line reads the config instead.** One-line fix, do it as part of this.
+
+### The raw lever count (why a matrix is the WRONG UI)
+Ground: texture (**4 shipped + 6 measured candidates = 10**) × albedo gain **k** (new) × fill mode
+(unshadowed today / shadow-masked new) × fill strength × wetness 0–1 (exists) × warm fog (exists).
+Building: facade scheme (all-warm today / warm-cool / theatrical) × light form (PointLight pool /
+SpotLight cone) × `PHOTO_EXPOSURE_LIFT` (exists) × bloom (exists, off) × glow sprites (exists).
+That is **thousands of combinations**. Exposing it as a matrix gives the user a control panel, not a
+comparison — and none of it is A/B-judgeable, which is the entire point of the ask.
+
+### The answer: SIX presets, as a LADDER — each rung adds exactly ONE lever
+Same row pattern as Shadow Ground, cycling. Every rung is a strict superset of the one before, so if
+a rung looks wrong the user knows precisely which lever did it — a matrix can never give that.
+| # | preset | what it adds over the rung above | new code |
+|---|---|---|---|
+| 0 | **Default** | today's look — **the control; without it there is nothing to compare against** | none |
+| 1 | **Lift** | ground albedo `k ≈ 2.3` (§2) — nothing else | 1 line |
+| 2 | **Lift + Shade** | shadow-masked ambient on the ground material, fill back up to 1.6 (§3) | 1 shader line |
+| 3 | **Plaza** | paver/cobble ground texture + wetness ≈ 0.35 (§4, §5) | JSON + 1 asset |
+| 4 | **Dusk Drama** | warm/cool facade split by sun azimuth (§6) | 1 dot product |
+| 5 | **Gala** | saturated accent hues + real `SpotLight` cones (§6 caveats) | new lights |
+Rungs 0–2 are shippable in one session and need no new asset; 3–5 can be added later **without
+touching the UI**, because the ladder is also ordered by implementation cost.
+
+### Rules for it
+- **`§LOOK_PRESET name=<n> k=<k> fill=<f> wet=<w> facade=<scheme>` on every switch.** The AI's job is
+  that the preset applied the values it claims — **the look stays the user's** (standing directive,
+  §HOW THIS FEATURE IS TESTED in `NIGHT_AND_FIXTURE_LIGHTING.md`). No AI vision verdicts.
+- **Ground TEXTURE stays its own independent row**, unchanged — it is orthogonal to the look ladder,
+  and merging them would remove the ability to hold one fixed while varying the other.
+- Follow `_groundUserPicked`: once the user picks a rung, staging must not auto-override it.
+- **Six swatches + an icon may not fit the drawer row on mobile** (today it carries three). Prefer
+  cycling with the preset NAME shown in the row title over six swatches — decide against the live
+  panel at implementation time, not here.
