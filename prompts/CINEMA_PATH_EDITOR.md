@@ -1868,3 +1868,34 @@ Run immediately after the change, both buildings, same rig:
   the walk uses the floored ease (this is the identical correction N2 needed, where it moved the
   reading from 0.55x to 0.68x); and (b) Terminal's walk really does stall **2.27 s** (N5, above).
   Fix the model FIRST, then see how much stall is left.
+
+## ⚖ RULING — the stalls are ACCEPTED (user, 2026-07-27). §CPE_PACE_FLOOR's parked question is answered
+> *"i thnk the stalls are ok, it may mean a sec or two pause which is fine in the film"* ...
+> *"but if the noise ratio tempers it a bit also ok"*
+
+This closes the trade-off that was parked as "widen PACE_SWING, accept the stall, or accept more
+jerk?" — **accept the stall.** Consequences, all applied:
+- `witness_cpe_noise_law` N5 is a **REPORT with a 3 s ceiling**, not a 0.5 s gate. Gating a pause the
+  user calls good film-making was gating their taste. The number still prints every run.
+- **T6 must get the same treatment** (still RED, and it is now red against an accepted behaviour).
+  It also still divides out plain smoothstep while the walk uses the floored ease — fix the model
+  first, then demote it to a report with the ruling quoted.
+- Tempering was done by FINISHING the law, not by adding a mechanism: the walk's cost increments are
+  now weighted by the same bbox rate of change the dive uses, so a corner whose content is not
+  changing stays cheap. Terminal's pause **2.27 s → 2.07 s**. Tempered "a bit", exactly as asked.
+
+### The radius finding — a fixed neighbourhood makes the term INERT
+A 60 m neighbourhood is constant across a 12–36 m walk: the walk's noise series measured
+`maxChange=0` on BOTH buildings, i.e. the term did nothing and the crawl was untouched. The radius
+is now **half the beat's own travel**, capped at the fan horizon (`_noiseRadius`): Duplex 6.3 m,
+Terminal 12.7 m, and `maxChange` 0 → 157 / 219. Any future beat that adopts the law must pick its
+radius the same way — this is the difference between the law running and merely being installed.
+
+### 🔴 The one thing this widened — T5, and it is REAL, not a stale model
+`T5 walk: peak 0.13m vs mean 0.04m = 3.0x against its 2.4x allowance` (Duplex, u=0.697). My earlier
+guess that T5 was stale is **WRONG and is corrected here**: the dive passes at 1.2x, so the model is
+fine — the walk's position spread genuinely widened, because the noise weight multiplies a cost that
+was already spread by `1/(1-w)`. Worst case is `1.5 × SWING × SWING = 3.8x`, which is outside the
+one dial the user set. **Next session decides: make the noise weight mean-neutral for the walk, or
+state 3.8x as the walk's new bound.** Do not merge this branch into a release without that decision.
+Branch: `bim-ootb` `fix/cpe-noise-law-dive` @ 5d89659 (pushed, not merged).
