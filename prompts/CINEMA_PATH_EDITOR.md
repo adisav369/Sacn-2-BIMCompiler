@@ -1133,3 +1133,79 @@ correct as they stand; only the mid/translate branch was wrong.
   view plane, and by **zero along the view normal** (the band must not change depth at all).
 - **G-DRAG-3** drag out and back to the same pixel ⇒ centre returns to its start within 1e-6. This is
   literally the user's "dragging it back" and is the gate that would have caught this.
+
+---
+
+# ⛔ SESSION END 2026-07-27 — READ THIS FIRST, NEXT SESSION STARTS HERE
+
+**The user's three asks are NOT done. Two of three have nothing shipped. Do not report progress on
+them without re-measuring.** Everything below is measured, not remembered.
+
+## Answer the user's own three questions, honestly, before anything else
+| their question | answer |
+|---|---|
+| "is the jerk solved?" | **NO.** Nothing shipped. THREE hypotheses built and all three disproven by measurement. |
+| "is the out of control drag solved?" | **PARTLY.** Teleport-on-touch is fixed and gated. **Out-and-back still FAILS (G-DRAG-3).** |
+| "is the even noise speed ratio applied?" | **NO.** Only the flat base pace shipped. The temperament — their own idea — is not in the product. |
+
+## ⚠ FIRST ACTION, before writing any code
+**PR #1038 is open and unmerged: it removes the §CPE_DRAG_REACH cap and adds `witness_cpe_drag.js`.**
+The cap is ON MAIN (merged in #1037) and is **known harmful** — `G-DRAG-3` measured it breaking the
+user's exact "drag it back" case. Merge #1038, then **run `witness_cpe_drag.js` immediately** — it was
+NOT re-run after the removal. Expected: G-DRAG-3 flips to PASS. If it does not, the residue has a
+second cause and the cap was never the whole story.
+
+Run it with the standing rig: `cd <worktree> && python3 -m http.server 8402` (symlink
+`buildings/{Duplex,Terminal}_extracted.db` from `~/bim-ootb/buildings/`), then `node witness_cpe_drag.js`.
+
+## What actually shipped today (all merged, all witnessed unless noted)
+| PR | what | gates |
+|---|---|---|
+| #1029 | §CPE_OK_CRASH — OK after an edit no longer kills the bake | 3/3 + 3/3 |
+| #1030 | §CPE_PANEL_DRAG — panel drags by its header | 4/4 + 4/4 |
+| #1031 | §CPE_PREVIEW_DIVERGENCE — the film you edit is the film that bakes | 3/3 + 3/3 |
+| #1032 | `witness_cpe_even_turn.js` — turn-rate instrument, no production change | T2 RED by design |
+| #1035 | §CPE_DRAG_TELEPORT — drag is a DELTA, not the cursor point | ⚠ ungated when merged |
+| #1036 | `CPE_V` fingerprint so `§CPE_LOADED` identifies the build | — |
+| #1037 | §CPE_WALK 2.3 m/s base pace **+ the harmful reach cap** | pace verified 2.30 both |
+| #1038 | **OPEN** — removes the cap, adds `witness_cpe_drag.js` | G-DRAG-3 not re-run |
+
+## The three dead ends — DO NOT RETRY THESE
+1. **Bow cap** (§CPE_EVEN_TURN H1). The cap never binds: Duplex bows 0.26/0.29m against MEASURED
+   0.86/0.87m clearance; Terminal 0.74/0.67m against a 3m cap. `k` never shrinks.
+2. **Gaze look-ahead window mean** (H2). MEASURED WORSE: 29.1 → 37.0 deg/frame. On a path that
+   doubles back the window straddles the fold, the mean lands near the fold, and a short look vector
+   has an unstable direction.
+3. **Pace remap over the walk** (H3). 29.1 → 29.4, i.e. nothing — even after fixing a real bug in its
+   rate limiter mid-pass (a symmetric clamp toward the neighbour FLATTENED the 1m corner peak; a
+   MAX-dilation that preserves peaks and ramps neighbours up is the correct form and is what to
+   re-use). Beat boundaries were measured (`dive=0.094 spin=0.124 out=0.510 rise=0.700`) so the
+   peak at `u=0.279` IS inside the walk — the remap reaches the right beat and changes nothing.
+
+## ⛔ THE DIAGNOSTIC THAT MUST RUN BEFORE HYPOTHESIS 4
+Log the pace FACTOR SERIES (not min/mean/max) against distance and read it at `u=0.279`:
+- **~1.0 there** ⇒ the busyness terms are not firing on the synthetic hostile layout (its path likely
+  sits outside the building, so fan and LOS both read nothing and only the turn term is live). Then
+  the whole 29 deg/frame result is a TEST ARTEFACT and the real check is a user-shaped edit.
+- **at the 1.6 cap** ⇒ a 1.6× slowdown genuinely cannot fix a 29 deg/frame corner, and `PACE_SWING` —
+  the user's own *"don't overdo it, have a speed range"* — bounds what pacing can do. **Take that
+  trade-off back to the user; do not widen their range to make a gate green.**
+
+## The user's settled direction for the temperament (all recorded above, do not re-ask)
+- *"if too much is happening, slow down"* — a DENSITY (fan hit-fraction), never the fan MIN that was
+  retired for the courtyard bug.
+- *"graceful"* — bound the RATE of change, not just the range. Use the MAX-dilation form.
+- *"have a speed range… don't overdo"* — `PACE_SWING = 1.6`.
+- *"picks up… user wont get bored"* — the brake must RELEASE in open space, not ratchet down.
+- *"the cam pos/pov must not shift without interim frames"* — turn rate is a busyness TERM;
+  `deg/frame = (deg/metre) × (metres/frame)` and metres-per-frame is the only lever we own.
+- Total-seconds field = a pure uniform compress/elongate of the finished film. A keyed total must
+  never be rescaled by `meanFactor`.
+- **Attribution:** the noise-temperament model is the USER'S design idea, not a port of Fly Tour's
+  distance brake. Keep the credit in any doc or release note.
+
+## Also still open
+- `A.clearCinemaPath()` has no UI — once a file carries a `cinema_path`, every Alt+M authors from it.
+- §CPE_IDB_PATH_STORE — specced, parked at the user's request.
+- `witness_cinema_exit_breathe` / `_flat_ending` / `_reciprocal` / `_glazing` were ALREADY RED on
+  main before this session (see §CPE_BUILT G6). Not caused by this work.
