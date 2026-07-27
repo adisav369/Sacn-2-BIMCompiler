@@ -1093,3 +1093,43 @@ built and killed by measurement; the fourth must start from data, not from a the
 `CINEMA_WALK_MPS 1.3 → 2.3` alone shortens every film ~1.8× and takes the user's 1015-frame /
 ~26-minute Hospital cook to roughly 570 frames. Held back only because they asked for the jerk and
 the speed to land together.
+
+---
+
+## §CPE_DRAG_TELEPORT — the mid-band drag teleports and cannot be dragged back (user, 2026-07-27)
+
+> *"the drag of the waypoint seems to misbehave went off to a spot user didnt put. Draging it back,
+> still flew back."*
+
+**Root cause, and `c0` proves the intent.** `h.move` for `zone='mid'` assigned the projected cursor
+point ABSOLUTELY — `b.c.x = p.x; b.c.y = p.y; b.c.z = p.z` — so the band's new centre became wherever
+the grab ray met the view plane, **not** the old centre plus the gesture. `_state.drag.c0` (the
+centre at pointerdown) was captured on the line above and **never read anywhere in the file** — the
+delta form was clearly intended and never wired.
+
+Two consequences, both exactly what the user described:
+1. Any depth error in the grab point `p0` becomes an immediate **teleport** — the band lands where
+   the ray happens to cross, not under the cursor.
+2. The next drag re-anchors its plane at the already-wrong depth, so **"dragging it back" moves it
+   wrong again**. The error compounds instead of cancelling.
+
+**Measured in their own log:**
+```
+§CPE_DRAG band=1 zone=mid centre=(-14.26, 39.24,-33.54)   floorY=-15.47, settle y=-13.8
+§CPE_DRAG band=1 zone=mid centre=(-15.04, 41.65,-25.45)   ← the "drag it back" attempt, still up there
+pathLen 32.3m -> 40.3 -> 52.0 -> 161.7m       walk 24.9s -> 124.4s      k=[0.55,0.55] -> [0.09,0.55]
+```
+y=+39 against a floor at −15.5 is **~55m above the floor** — the band was flung into the sky, and the
+5× path length is why their film ballooned to 148s.
+
+**Fix (one line, shipped):** `b.c = c0 + (p - p0)`. A zero-pixel drag is now a zero-metre move by
+construction, and any `p0` depth error cancels out of the difference instead of accumulating.
+End-drags (`_rotateAbout`) are absolute by nature — rotate the band to aim at the cursor — and are
+correct as they stand; only the mid/translate branch was wrong.
+
+**⚠ NOT YET WITNESSED — this is the one thing outstanding on it.** The gate to write:
+- **G-DRAG-1** zero-pixel drag ⇒ centre unchanged to 1e-9 (the invariant the absolute form breaks).
+- **G-DRAG-2** a known pixel delta ⇒ centre moves by exactly the corresponding world delta in the
+  view plane, and by **zero along the view normal** (the band must not change depth at all).
+- **G-DRAG-3** drag out and back to the same pixel ⇒ centre returns to its start within 1e-6. This is
+  literally the user's "dragging it back" and is the gate that would have caught this.
