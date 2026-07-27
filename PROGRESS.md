@@ -26,13 +26,10 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
 - `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
-- ✅ **Modeller stranded-branch sweep DONE 07-27** — all 4 verified against main by content, not patch-id
-  (`git cherry` gave false "+" on every one; 300-commit drift breaks patch-id). §STOREY-ZBAND was NOT
-  stranded — `fix/xray-fixture-classification`'s core files were byte-identical to main. `e2e-suite-2`
-  landed via #590/#711 (main is a superset), `modeller-lod400-livewire` was re-homed to
-  `viewer/lib/room_walker.js` (859→1474L) + `common/room_habitability.js`, `modeller-ifc-open` landed via
-  #642. All 3 dead branches deleted. The ONE real leftover — IFC-open rendering ZERO ARC geometry — is
-  **fixed + merged (#1062)**. Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
+- ✅ **Modeller stranded-branch sweep DONE 07-27, all 4 retired** — §STOREY-ZBAND was NOT stranded; 3
+  branches were already landed/re-homed (#590/#711, `viewer/lib/room_walker.js`, #642), deleted. ONE real
+  leftover shipped: IFC-open rendered ZERO ARC geometry — **#1062 merged**. ⚠ verify by CONTENT not
+  `git cherry` (patch-id gave false "undelivered" on all 4). Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
   ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — look-back was a ONE-FRAME 180° snap (look-at lerped THROUGH
   the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED (stale main, retime
