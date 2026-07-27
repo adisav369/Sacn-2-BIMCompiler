@@ -1989,17 +1989,58 @@ the noise ratio **governs throughout** (a settled ruling, see below), so there w
 to ask them to pick. `CINEMA_DIVE_MPS = 20` stays as it is. Asking again is the drift this note exists
 to stop.
 
+## §CINEMA_TAIL_DECAY — MEASURED FROM THE DELIVERED FILM. This is the top open item.
+The user pointed at their newest bake (*"Latest MP4 in downloads can be indication what speeds"*) —
+`~/Downloads/BIM_MaxQ_Hospital_1785146208680.mp4`, baked 17:56 local on the MERGED build, so it is
+the current law's real output, not a lab run. **45.4s, 681 frames @15fps, 1852x960.**
+
+Measured the way the law itself defines the signal — 100% rate of change — with no eyeballing:
+```
+ffmpeg -v error -i FILM.mp4 -vf "scale=160:-1,format=gray,tblend=all_mode=difference,\
+signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -
+```
+`YAVG` per frame = mean absolute inter-frame difference (0-255 grey) = how much of the frame is
+changing. Per-second means:
+
+| beat | seconds | rate of change |
+|---|---|---|
+| dive | 0-3s | **25-42** — fastest in the film, peak 41.9 at 2s |
+| interior walk | 8-15s | 5-9 |
+| walk, later | 19-21s | ~14 |
+| spike | 26s | 21.5 |
+| **exterior tail** | **40-45s** | **3.4-5.3 — slowest in the film** |
+
+`mean 11.54  min 3.34  max 41.87  spread 12.5x  p90/p10 4.58x`
+
+**Two findings, and they point opposite ways:**
+1. **No stalls anywhere** — nothing falls below 25% of the mean. The floored ease is doing its job on
+   the delivered artifact, not just in the witness. `§CPE_NOISE_LAW`'s dive-stall claim holds up.
+2. **The film ends on its quietest 6 seconds.** The tail decays monotonically from 13.9 at 34s to
+   3.44 at 45s — ~30% of the mean, and 12x slower than the dive. The exterior orbit+rise is where
+   the pacing now falls over, NOT the dive (which the user has explicitly closed).
+
+`CINEMA_PACE_SWING = 1.6` can bend a beat by at most ±1.6x; the delivered spread is 4.58x (p90/p10).
+So **the tail is outside what the noise law can reach** — the law equalizes WITHIN a beat's cost
+parameterization, and the orbit/rise beats' seconds come from `360 / CINEMA_TURN_DPS` and
+`_pullDist / CINEMA_PULLBACK_MPS`, which carry no noise term at all. That is the gap, stated
+structurally rather than guessed: **the exterior beats never got the treatment the dive and walk got.**
+Re-measure with the same ffmpeg command after any change — the film is the artifact under test.
+
 ## Still open — in order
-5. **T5 / T6 are RED, different answers each.** T5: the walk's position step is 3.0x against a 2.4x
+5. **§CINEMA_TAIL_DECAY (above)** — give `orbit` and `rise` the noise term the dive and walk already
+   carry, so the film does not end on its dullest six seconds. Gate it on the delivered MP4's
+   p90/p10, which is a number the user can check themselves.
+6. **Outside the envelope the gaze spins away from the building** (user, live, never analysed).
+   Almost certainly the same exterior-beat neglect as §CINEMA_TAIL_DECAY — do them together.
+7. **T5 / T6 are RED, different answers each.** T5: the walk's position step is 3.0x against a 2.4x
    allowance — REAL (noise weight multiplying an already-spread cost, worst case 1.5·SWING²=3.8x).
    Decide: mean-neutral walk noise, or state 3.8x as the bound. T6: stale model (still plain
    smoothstep) AND it gates a stall the user has ACCEPTED — fix the model, then demote it to a
    report quoting the ruling, exactly as G-TRACK-1 was demoted above.
-6. **Outside the envelope the gaze spins away from the building** (user, live, never analysed).
-7. **Background-tab bake degrades QUALITY, not just speed** — `§MAXQ_FRAME_TIMEOUT i=683 capturing
+8. **Background-tab bake degrades QUALITY, not just speed** — `§MAXQ_FRAME_TIMEOUT i=683 capturing
    as-is` is a frame that never converged. Options to weigh: drive the fold off timers not rAF, or
    refuse to advance while `document.hidden` and log the pause.
-8. **`GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture`** floods the
+9. **`GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture`** floods the
    console at load. A pass samples the texture it renders into; those draws are DROPPED by the
    driver. Undiagnosed — note it before trusting any still/AO frame timing.
 
