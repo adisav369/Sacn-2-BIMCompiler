@@ -1989,7 +1989,28 @@ the noise ratio **governs throughout** (a settled ruling, see below), so there w
 to ask them to pick. `CINEMA_DIVE_MPS = 20` stays as it is. Asking again is the drift this note exists
 to stop.
 
-## §CINEMA_TAIL_DECAY — MEASURED FROM THE DELIVERED FILM. This is the top open item.
+## ⛔ §CINEMA_TAIL_DECAY — RETRACTED. The Hospital film below is CONTAMINATED DATA, not a pacing
+## measurement. Do NOT act on it. Kept only because the retraction is the finding.
+**User, 2026-07-27, after it was written:** *"The hospital just before was frozen tab due to been out
+of focus."* That bake ran backgrounded. rAF throttled, `§MAXQ_FRAME_TIMEOUT` captured frames "as-is"
+that had never converged, and consecutive captures ended up near-duplicates — which is precisely why
+the measured inter-frame change collapsed toward the end. The ~30% tail is the CAPTURE dying, not the
+camera slowing. Every structural conclusion drawn from it below (orbit/rise lack a noise term →
+therefore the film ends dull) is unsupported by that artifact.
+
+**The lesson, worth more than the retracted claim:** measuring the delivered artifact is only sound if
+the artifact was produced under valid conditions. "It came out of the real pipeline" is not the same
+as "it is valid evidence". Ask how the bake ran before drawing anything from a film.
+
+**The re-use, which IS valuable — this makes open item 8 detectable.** A backgrounded bake now has a
+fingerprint readable straight off the MP4 with no console access: the inter-frame change decays toward
+zero over the final seconds while the earlier beats look normal. Any future "is this film any good"
+check should run the ffmpeg command below FIRST to reject contaminated captures before analysing
+pacing at all.
+
+---
+
+## §CINEMA_TAIL_DECAY — the original (retracted) entry, for the method only
 The user pointed at their newest bake (*"Latest MP4 in downloads can be indication what speeds"*) —
 `~/Downloads/BIM_MaxQ_Hospital_1785146208680.mp4`, baked 17:56 local on the MERGED build, so it is
 the current law's real output, not a lab run. **45.4s, 681 frames @15fps, 1852x960.**
@@ -2044,8 +2065,32 @@ is the number to defend in future changes.
 Both films end on their quietest second, and Terminal's is a near-total halt: the last seconds run
 `... 15.0, 5.3, 0.52` against a mean of 12.10 — a 23x drop inside 1.5s, and a 103.7x spread across
 the film driven entirely by that one second. Hospital does the same thing more gently (3.44). The
-camera stops dead before the film ends. This is the one pacing item worth taking next: it is
-bounded, reproducible, and visible in a single number (`min second` above) that the user can check.
+camera stops dead before the film ends. Bounded, reproducible, visible in a single number
+(`min second`) the user can check.
+
+⚠ **Hospital's 3.44 is NOT evidence for this** — that film was a backgrounded bake (see the
+retraction above) and its whole tail is invalid. The claim rests on **Terminal alone**, which the user
+watched and confirmed good, so its 0.52 is a real film ending on a real halt. Before building
+anything here, bake one more foreground film and check whether the last-second collapse repeats. One
+artifact is not a pattern — that is the mistake the retraction above records.
+
+## The three-movie facade — why this lane is not a side feature (user framing, 2026-07-27)
+> *"this 3 movie scrubbable TM, Fly, and MaxQ gives the facade signals"*
+> *"Distro is no issue as the videos are progresively shown and noted by growing number beginning
+>  awareness in reddit, oSARCH and Linked as Youtube"*
+
+**TM (Time Machine), Fly (Fly Tour) and MaxQ are one family, not three features** — three scrubbable
+films that together are the product's outward-facing surface. The videos ARE the distribution channel
+(reddit, OSArch, LinkedIn, YouTube), and awareness is already growing off them. So a pacing defect in
+MaxQ is not a polish item: it is a defect in the thing that reaches people.
+
+Two consequences for anyone working this lane:
+- **Judge the delivered film, not the code path.** The ffmpeg rate-of-change measurement above is the
+  right instrument, and it applies to all three members — a TM or Fly clip can be measured the same
+  way and compared against MaxQ's numbers.
+- **Do not treat "it markets itself" as someone else's problem to solve later.** It is already
+  working; the job is to not ship a film that undercuts it. That is exactly what a silently
+  backgrounded bake does (item 8), which is why it is promoted.
 
 ## Still open — in order
 5. **§CINEMA_END_FREEZE (above)** — the camera stops dead in the final ~1.5s (Terminal's last second
@@ -2060,9 +2105,15 @@ bounded, reproducible, and visible in a single number (`min second` above) that 
    Decide: mean-neutral walk noise, or state 3.8x as the bound. T6: stale model (still plain
    smoothstep) AND it gates a stall the user has ACCEPTED — fix the model, then demote it to a
    report quoting the ruling, exactly as G-TRACK-1 was demoted above.
-8. **Background-tab bake degrades QUALITY, not just speed** — `§MAXQ_FRAME_TIMEOUT i=683 capturing
-   as-is` is a frame that never converged. Options to weigh: drive the fold off timers not rAF, or
-   refuse to advance while `document.hidden` and log the pause.
+8. **Background-tab bake degrades QUALITY, not just speed — PROMOTED, this is the one that silently
+   ruins output.** `§MAXQ_FRAME_TIMEOUT i=683 capturing as-is` is a frame that never converged, and
+   the Hospital film above proves it reaches the delivered MP4: a whole backgrounded tail of
+   near-duplicate frames that a viewer would read as the film stalling. The user lost a 45s Hospital
+   bake to it today and only knew because they remembered the tab was unfocused. Options: drive the
+   fold off timers rather than rAF, or refuse to advance while `document.hidden` and log the pause.
+   **Whichever is chosen, the bake must SAY it was backgrounded** — a film that degrades silently is
+   worse than one that pauses. Detector already exists (ffmpeg command above): tail change decaying
+   toward zero while earlier beats look normal.
 9. **`GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture`** floods the
    console at load. A pass samples the texture it renders into; those draws are DROPPED by the
    driver. Undiagnosed — note it before trusting any still/AO frame timing.
