@@ -960,6 +960,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#cinema-film-maker-altc-the-bim-ootb-film-maker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#display-options-palette-night-shadow-ground-background-sound-fx" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2076,6 +2087,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#cinema-film-maker-altc-the-bim-ootb-film-maker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#display-options-palette-night-shadow-ground-background-sound-fx" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2578,17 +2600,32 @@ stair flights it uses, and the rooms along the way stay highlighted.</p>
 <p><em>Verified live (2026-07-12):</em> a real route across Terminal's floors returns several stair-crossing
 legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
 it passes through.</p>
-<p><img alt="Aerial X-ray view of Hospital with a Find-panel path drawn from ≈ Level 1 R35 to ≈ Level 4 R8 — the yellow route line zigzags across open rooftop/atrium space between wings instead of following a corridor" src="../img/viewer/find-room-path-hospital-topview.png" /></p>
-<p><img alt="Straight-on facade view of the same Hospital route — the yellow line rises vertically then runs horizontally in front of the building mass, a visible zigzag rather than a corridor-hugging path" src="../img/viewer/find-room-path-hospital-frontview.png" /></p>
-<p><img alt="Angled view along the Hospital building's length, same route — the yellow line floats outside/above the real floor plates rather than tracking the walkable interior" src="../img/viewer/find-room-path-hospital-sideview.png" /></p>
-<p><em>Known limitation, reported not fixed (2026-07-26):</em> on some buildings — confirmed on Hospital — a
-room-to-room path can currently draw as a straight line that cuts through open air or atrium space
-instead of hugging the real walkable floor, and/or zigzag through a door pair it didn't need to use,
-rather than the clean corridor-hugging route described above. A real route on Hospital
-(<code>≈ Level 1 R35 → ≈ Level 4 R8</code>, 124.69m) reproduced this live: 5 of its 6 same-storey legality checks
-failed to find a valid detour, which is why the drawn line doesn't hug the floor in the screenshots
-above. This is a known, tracked issue, not newly discovered here — the full technical trail is in
-<code>prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md</code> §9–§16 for anyone who wants it.</p>
+<p><img alt="Aerial X-ray view of Hospital with the Find panel open on the same ≈ Level 1 R35 to ≈ Level 4 R8 route, the yellow line now hugging the real corridors and stair flights on both levels instead of cutting across the open roof between wings, the panel listing three numbered room stops with each hop labelled through door: / via stair: / along Corridor — 3 doors · 1 stair · 124.7m" src="../img/viewer/find-room-path-hospital-topview.png" /></p>
+<p><img alt="Straight-on facade view of the same Hospital route with the Find panel still open, the yellow line now tracking the real ground-floor corridor and climbing through the stair flight against the building mass instead of floating in front of it, the same three numbered stops and through door: / via stair: / along Corridor hop labels visible in the list — 3 doors · 1 stair · 124.7m" src="../img/viewer/find-room-path-hospital-frontview.png" /></p>
+<p><img alt="Angled view along the Hospital building's length, same route — the yellow line now runs along the real corridor windows and through the doorways it uses on its way up the stair instead of floating outside the floor plates — 3 doors · 1 stair · 124.7m" src="../img/viewer/find-room-path-hospital-sideview.png" /></p>
+<p><em>Fixed and verified live (2026-07-26):</em> the drawn-line defect shown in earlier versions of the
+screenshots above — a room-to-room path cutting straight through open air or atrium space instead of
+hugging the real walkable floor — is fixed. The same Hospital route (<code>≈ Level 1 R35 → ≈ Level 4 R8</code>,
+124.69m, same 3 doors and 1 stair as before) was re-run live after the fix: the 5 legality checks that
+used to fail no longer need rescuing at all — most of those stretches are simply on real floor now, and
+where a detour is still required (3 of 9 same-storey chords) one is found. <strong>Zero</strong>
+<code>§PATH_LEGAL_DETOUR_FAIL</code> remain, and all 15 same-storey legs measure <strong>0 illegal sample points</strong> (was
+265 across 3 unroutable legs). The extra waypoints in the drawn line (<code>polyPts</code> 15 → 19) are the fix's
+fingerprint, not a longer route — the 124.69m distance and the doors used did not change, deliberately,
+because the fix only changes the drawn line, never which rooms or doors a route uses. Fleet-wide on
+Hospital, a detour-failure sweep over 3023 real room pairs went <strong>63.3% → 0.0%</strong> with zero newly-broken
+pairs, room-pair pathability rose <strong>69.4% → 91.2%</strong>, and unreachable (deg-0) rooms fell <strong>26 → 7</strong>;
+Terminal's off-floor sampling went 352 → 0, Clinic's 49 → 0. Root cause, plainly: (a) the walkable-floor
+raster was consulted <em>instead of</em> the room data rather than <em>together with</em> it, so rooms compiled in the
+browser after the raster was built had no floor under them; (b) doorways and stairs — the only ways
+through a wall or between floors — weren't counted as walkable at all; (c) the raster builder picked
+floor slabs in a fixed height window that missed Hospital's real floor plates by 5cm, dropping an
+8270m² Level 4 plate entirely. Still imperfect, worth saying plainly: on Level 4 two chords needed a
+wider-than-local detour search (<code>§PATH_LEGAL_DETOUR_NONLOCAL</code>), and the line passes one door twice — a
+real ~3m back-step out of room R9 — so the drawn route is on real floor but not always the tidiest
+line. Full technical trail, for anyone who wants it:
+<code>prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md</code> §17 (supersedes §9–§16), shipped in
+bim-ootb PRs #1006–#1009.</p>
 <p><em>Future feature — fire escape:</em> the same routing will pin a <strong>Fire Escape</strong> entry at the top of the
 path list — one tap from any room to the nearest building exit.</p>
 <p><em>Future feature — mobile:</em> scan a QR code posted beside a door to fetch that building's lightweight
@@ -2646,6 +2683,28 @@ one icon:</p>
 <li><strong>Auto-Pivot</strong> (key <strong>Q</strong>) — toggles automatic pivot-point recentring as you orbit, so the camera keeps
   turning around whatever's in view instead of a fixed point.</li>
 </ul>
+<h3 id="cinema-film-maker-altc-the-bim-ootb-film-maker">Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker<a class="headerlink" href="#cinema-film-maker-altc-the-bim-ootb-film-maker" title="Permanent link">&para;</a></h3>
+<p><strong>Alt+C</strong> computes a complete cinematic film of the building — dive in, settle on the largest occupiable
+space, walk out through a real door, orbit the exterior — in well under a second, from the model's own
+room graph. No camera path is authored by hand; the defaults come from measured geometry (room area,
+reachability, door position, clearance), not a guess.</p>
+<p>Before recording starts, a <strong>Cinema path</strong> dialog shows the whole film as a curve overlaid on the
+building, with three editable bands — <em>settle</em> (where the dive lands), <em>exit door</em> (which door it
+walks out through), and <em>stop</em> (end of the walk, not the film — the orbit continues after it):</p>
+<p><img alt="The Cinema path dialog on Terminal — a 3-band curve (settle, exit door, stop) drawn through the building in the 3D view, each row showing its aim angle and a one-line description, plus total duration, frame count, walk speed, and Cancel / Save this path / OK" src="../img/viewer/cinema-path-editor.png" /></p>
+<ul>
+<li><strong>Drag a band's end</strong> to pivot it around its far end (length stays fixed) — use this to aim a leg
+  differently or pick a different door.</li>
+<li><strong>Drag a band's middle</strong> to move the whole band without pivoting.</li>
+<li><strong>Anywhere else orbits the scene as normal</strong> — there's no freeze or modifier key. A drag only ever
+  moves in the plane you're currently facing, so turn the view to reach the axis you need (e.g. orbit
+  to a side view to adjust height).</li>
+<li><strong>Save this path</strong> stores your edit as part of the building so it's there next time; <strong>OK</strong> records
+  the film exactly as previewed — if nothing was touched, that's byte-identical to the un-edited default.</li>
+</ul>
+<p>Total duration is derived per building from real walk distance and pull-back distance, not a fixed
+number — a small building's film runs shorter than a large one's by construction, not by a per-building
+setting. <a href="https://youtu.be/sUTscAgnQMc">Watch the film</a> this feature produced on a real building.</p>
 <h3 id="display-options-palette-night-shadow-ground-background-sound-fx">Display options — Palette, Night, Shadow + Ground, Background, Sound FX<a class="headerlink" href="#display-options-palette-night-shadow-ground-background-sound-fx" title="Permanent link">&para;</a></h3>
 <p>The <strong>Palette</strong> pill (key <strong>P</strong>) opens one panel for every visual-appearance control — five lighting
 sliders, plus four more toggles appended below them:</p>
