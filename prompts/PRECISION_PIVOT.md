@@ -72,17 +72,22 @@ across all of `prompts/**/*.md` for "Caps Lock" is what eventually found it). Mo
 active folder so a future dev looking for "how does the precision-cam drawer work" lands on the real
 origin doc instead of just the memory summary.
 
-**Supersedes the "Scope guard — NO impact" section above on ONE point: the toggle's *default state*.**
-The listener attach-on-ON / detach-on-OFF mechanism the scope guard describes is UNCHANGED and still
-holds — this only flips what state the toggle starts in.
+A same-day default-state experiment (below) was tried and reverted, so the "Scope guard — NO impact"
+section above still fully holds, unmodified — Auto-Pivot remains exactly the opt-in toggle it
+describes.
 
-- **Auto-Pivot now defaults ON at load** (bim-ootb PR #1033, `feat/autopivot-always-active`,
-  commit `b326605`) — continuous "never get stuck on a stale target" navigation without needing to know/
-  press `Q` first. `init()` polls for `A().controls` (not ready yet at `DOMContentLoaded` — `setupScene`
-  creates it later, async) every 100ms up to ~10s, then calls the SAME `pivotOn()` `Q` already called —
-  no new recenter logic. Self-clearing timer either way (found or timeout); zero steady-state cost once
-  resolved. `Q` / the panel button / the drawer chip still toggle it OFF exactly as before.
-- **New decision this spec never covered: Fine vs. Pivot interaction.** Fine (CapsLock) is a deliberate
+- **Auto-Pivot defaulting ON at load (bim-ootb PR #1033) was tried, then REVERTED same day (PR #1034,
+  `fix/autopivot-default-off`, commit `292be9e`).** A real session's §-tagged log (not a screenshot)
+  showed it firing exactly as coded — `§pivot ON tries=1`, then `§pivot recenter ... hit=mesh` on every
+  ordinary drag — and that behavior surfaced two real problems once actually used: (1) recentering on
+  every drag-end with no opt-in reads as the view drifting on its own, not smooth continuous nav; (2)
+  it silently defeated Reset (`A` key) — `resetOrbit()` only moves `controls.target` (no camera motion),
+  so its effect is invisible until the next drag/zoom, and with Pivot always listening that next
+  drag-end immediately overwrote the target Reset had just set, before the user ever saw Reset work.
+  **Current shipped state: Auto-Pivot is opt-in via `Q` again, exactly as this spec originally
+  describes** — the polling-default-on code was removed entirely, nothing of it remains.
+- **New decision this spec never covered, KEPT (independent of the default-on revert): Fine vs. Pivot
+  interaction.** Fine (CapsLock) is a deliberate
   act for slowly closing in on one specific point; Auto-Pivot recentering the target on every drag-end
   while Fine is on would fight that. Resolved as **Fine wins** — `_onEnd` now checks `_pivot && !_fine`,
   i.e. auto-recenter is suppressed while Fine is active. Decided 2026-07-27: Fine has a visible top-
