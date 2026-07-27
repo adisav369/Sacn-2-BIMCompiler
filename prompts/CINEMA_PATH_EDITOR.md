@@ -1942,7 +1942,76 @@ EDITED plan through the same `poseAt` the bake uses or it re-creates §CPE_PREVI
 
 ---
 
-# ▶▶ START HERE — NEXT SESSION (2026-07-27, session close). Everything above this line is history.
+# ▶▶ START HERE — NEXT SESSION (2026-07-27, LATER session close). Everything below the next rule is
+# the PREVIOUS handover, kept for its rulings; items 1, 2 and 3 of its list are now DONE.
+
+**Merged to `main` as PR #1052 (`998750e`).** The user is flying it. `fix/cpe-drag-rationale` is a
+docs-only follow-up, pushed, not yet merged.
+
+## Done this session
+| item | § | proof |
+|---|---|---|
+| 1 merge the branch | — | was ALREADY merged as PR #1050 before the session started. The 31-line delta vs `main` was only `§RESET_AMBIENT_AUTO`, which `main` deliberately reverted in #1048 — not missing cinema work. Do not re-check this. |
+| 2 build P4 | §CPE_BASIS_HALF_PIN | `witness_cpe_preview_divergence.js` P4 ORBITS mid-edit (P1-P3 only dolly, which is exactly why they were blind). **RED on the half-pin: 3/4** — editor `yaw0=5.0 pitch0=-13.3 exit=1hOSvn6df7F8 spin=-500.6`, bake `yaw0=-135.0 pitch0=-43.3 exit=2OBrcmyk58Nu spin=0.0`. **GREEN fixed: 4/4** Duplex, Terminal, HHS_Office. The RED signature reproduces the user's live Hospital report (different exit door + a full extra lap). |
+| 3 the 10s preview after OK | §CPE_PREVIEW_AFTER | `witness_cpe_preview_after.js` 4/4 Duplex + HHS_Office. G-PA-3 on HHS: the edited preview's `poseAt(0)` and the bake's first frame are **0.00m apart**. RED on the old build 1/4 (G-PA-4 correctly still passes there). One implementation, two call sites; `poseAt` resolves `plan` at call time so the second run flies the EDITED plan through the bake's own function. Edit-only, so guardrail 2 survives. |
+| — the drag residual | §CPE_DRAG_TRACK | NEW, arose from the user flying the merge. See the ruling below. |
+
+## §CPE_DRAG_TRACK — the drag question is CLOSED. Do NOT reopen it.
+The user flew the merged build and reported: *"much better, as it delays the path but the wpts still
+jumpy but its more intuitive to handle"*, then *"and the wypt jerk is gone.. great"*. Measured — two
+stages that pull opposite ways, and measuring either alone explains neither:
+- **cursor → band: 0.47x** (Duplex), 0.44x (Terminal), 0.46x (HHS). The handle lands ~103px behind a
+  194px gesture. `§CPE_DRAG_SCALE`'s constant `envelope/canvasHeight` rate equals true perspective at
+  exactly one depth; everywhere else cursor-lock is impossible by construction.
+- **band → path: +1.98m** of path per metre of band (Duplex), +1.61m (HHS). This is the "lever".
+- `§CPE_DRAG_LAND_FIRST` is provably clean: out-and-back residue **0.0000m**, and the re-plan on
+  release moves the placed band **0.0000m**. That is the jerk the user says is gone.
+
+**RULINGS (2026-07-27, shown the numbers):**
+> *"I think it is fine.. the slight jump is no longer exagerated, it is in small measures so the user
+> able to hold and see it coming back quicker than before... which is more of a feature as user need
+> not drag further on fear of losing to big jump."*
+> *"Its like a lever effect. Move small length, it exagerates bigger but not jump as the path has not
+> react yet until release."*
+> *"the amplification is good in sense the user need not do much dragging as it is hard over canvas
+> that is overlay to get XY plane."*
+
+So it **LOGS, it does not GATE** — the app emits `§CPE_DRAG_TRACK` on every real gesture, derived
+in-app from the gesture's own pixels and the camera frustum, independent of `_dragBasis` so it can
+contradict that code rather than echo it. The witness check is a drift report only (0.20-0.85x;
+**1.00x means §CPE_DRAG_TELEPORT's frightening leaps are back**). Cursor-lock is NOT the goal here
+and a future session must not "fix" the 0.45x.
+
+## Still open — in order
+4. **The dive base rate.** UNTOUCHED this session. `CINEMA_DIVE_MPS = 20` is a flat constant, 8.7x the
+   walk pace; the law bends only ±PACE_SWING around it and measured ×1.15 dive-seconds on Terminal.
+   User: *"the dive in ... its same too fast"*. **Decide it with a number, with them** — same
+   treatment `CINEMA_WALK_MPS` got.
+5. **T5 / T6 are RED, different answers each.** T5: the walk's position step is 3.0x against a 2.4x
+   allowance — REAL (noise weight multiplying an already-spread cost, worst case 1.5·SWING²=3.8x).
+   Decide: mean-neutral walk noise, or state 3.8x as the bound. T6: stale model (still plain
+   smoothstep) AND it gates a stall the user has ACCEPTED — fix the model, then demote it to a
+   report quoting the ruling, exactly as G-TRACK-1 was demoted above.
+6. **Outside the envelope the gaze spins away from the building** (user, live, never analysed).
+7. **Background-tab bake degrades QUALITY, not just speed** — `§MAXQ_FRAME_TIMEOUT i=683 capturing
+   as-is` is a frame that never converged. Options to weigh: drive the fold off timers not rAF, or
+   refuse to advance while `document.hidden` and log the pause.
+8. **`GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture`** floods the
+   console at load. A pass samples the texture it renders into; those draws are DROPPED by the
+   driver. Undiagnosed — note it before trusting any still/AO frame timing.
+
+## Rig notes learned the hard way this session
+- `/tmp/wt-turn` on port 8403, buildings symlinked. **Reuse it.** `PORT=8403 node witness_<name>.js`.
+- **puppeteer's default `protocolTimeout` (180s) is too short** — a blocking plan blows it and the
+  abort READS LIKE A PRODUCT FAILURE. Both cinema witnesses now set `protocolTimeout: 900000`. The
+  wrapper's `exit=0` lied; the log is what showed the crash. Read the log, every time.
+- **Hospital's editor does not open inside 300s under swiftshader** — P4's Hospital coverage is a rig
+  limitation, not a gate result. Use **HHS_Office_Federated** instead (user's instruction: *"need not
+  use DX et al, just HHS_Office"*), which completes and is where the 0.00m G-PA-3 came from.
+
+---
+
+# ▶▶ (PREVIOUS handover — 2026-07-27 earlier session close). Everything above this line is history.
 
 **Branch: `bim-ootb` `fix/cpe-noise-law-dive` @ `5b63f1e`, pushed, NOT merged.** The user has never
 flown any of it — their live Hospital runs are all on `origin/main`, which is why every "still not
