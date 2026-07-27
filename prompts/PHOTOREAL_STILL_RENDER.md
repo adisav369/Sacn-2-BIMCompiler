@@ -5537,3 +5537,75 @@ This file remains the owner of the cinema PLAN itself (`_cinemaPathPlan`, the be
 session, user agreed); D2's walk-out corner whip (19.8°/frame on main, printed by the witness, not
 gated); the MP4 one-lost-pixel-row on odd-height canvases; and — outside this file —
 `§STAFFAGE_PAX_REJECT`'s 69 unattributed rejections and the unreproduced scene-jump-on-reopen.
+
+---
+
+# §MAXQ_HIDDEN_PAUSE — 2026-07-27: a backgrounded tab silently RUINS the film, it must not
+
+## The report, and how it was caught
+The user baked a 45s Hospital film and it came out with a dead tail. They then said: *"The hospital
+just before was frozen tab due to been out of focus."* Before that explanation arrived, the tail had
+already been measured off the delivered MP4 and — wrongly — written up as a PACING defect
+(`§CINEMA_TAIL_DECAY`, since retracted in `CINEMA_PATH_EDITOR.md`). That is the whole problem in one
+sentence: **the failure is invisible.** It does not throw, it does not stop the bake, it produces a
+complete, playable, plausible-looking MP4 whose last seconds are quietly worthless — and it fooled a
+measurement pass that was specifically looking for defects.
+
+The user's own words on why this matters more than it looks:
+> *"this 3 movie scrubbable TM, Fly, and MaxQ gives the facade signals"*
+> *"Distro is no issue as the videos are progresively shown and noted by growing number..."*
+
+The films ARE the distribution. A renderer that silently degrades is disqualifying for a tool anyone
+is meant to rely on, which is why this is being fixed ahead of every remaining pacing item.
+
+## Root cause — measured, not inferred
+The bake's per-frame cook is `startStillRefine()` (16-sample TAA fold) + `§PHOTO_AO` (24-frame AO
+pass), both driven by the renderer's rAF loop, waited on by `_waitFoldDone(30000)`. Chrome throttles
+rAF to a near-stop in a hidden tab, so `_stillRefineBusy` never clears, the 30s WALL-CLOCK timeout
+expires, and `§MAXQ_FRAME_TIMEOUT i=… — capturing as-is` saves a frame that never converged. From the
+user's console, one backgrounded session:
+
+```
+§TAB_VISIBILITY visible=false
+STILL_REFINE done elapsedMs   850 → 11190 → 25589 → 45355
+PHOTO_AO totalMs              750 → 21695
+perFrameMs                   2156 → 12168
+§MAXQ_FRAME_TIMEOUT i=683 — capturing as-is
+```
+
+Consecutive unconverged captures come out near-duplicates, which is exactly why the delivered film's
+inter-frame change collapses toward zero — the fingerprint recorded in `CINEMA_PATH_EDITOR.md`.
+
+## Decision — PAUSE, do not re-plumb. And SAY SO.
+The earlier note offered two options: drive the fold off timers instead of rAF, or refuse to advance
+while hidden. **Timers are the wrong answer and the reason is physical, not stylistic:** a hidden tab
+does not reliably composite WebGL at all, so a timer-driven fold in a hidden tab still accumulates
+nothing. It would fail identically while looking like it had been fixed. There is no way to render a
+converged frame in a backgrounded tab; the only correct behaviour is to not pretend to.
+
+So, three rules:
+
+1. **§MAXQ_HIDDEN_PAUSE — the loop does not advance while `document.hidden`.** Before each frame's
+   cook, wait for visibility. A paused bake is slower; a degraded bake is worthless. This is not a
+   trade, it is a correction.
+2. **The fold timeout must measure VISIBLE time, not wall-clock.** Without this rule 1 is defeated:
+   a tab hidden mid-cook still burns the 30s budget and still captures as-is on return. The deadline
+   extends by exactly the hidden duration.
+3. **The film must announce its own health.** `§MAXQ_HIDDEN_PAUSE` / `§MAXQ_HIDDEN_RESUME` per event,
+   and at the end `§MAXQ_QUALITY` stating hidden time, pause count, and — the load-bearing number —
+   how many frames were captured unconverged. **A bake that degraded must never finish quietly.**
+
+## Witness — `witness_maxq_hidden_pause.js`
+Real user path: a SECOND tab is brought to front, which is what actually hides the first one. No
+patching of `document.hidden`, because the thing under test is the browser's real throttling.
+
+- **G-HID-1** the bake does not advance while hidden — frame index at hide == frame index at reveal.
+- **G-HID-2** it says so: `§MAXQ_HIDDEN_PAUSE` on hide, `§MAXQ_HIDDEN_RESUME` with the measured
+  hidden ms on reveal.
+- **G-HID-3** no frame is captured unconverged across a hide/reveal — zero `§MAXQ_FRAME_TIMEOUT`.
+  This is the gate that maps directly to the ruined film.
+- **G-HID-4** the run reports its own health (`§MAXQ_QUALITY … unconverged=0`), so a pasted console
+  answers "is this film any good" without re-deriving it.
+- **G-HID-5** regression: a bake that is never hidden is unaffected — no pause lines, same frames.
+
+RED on `main` by construction: there is no visibility check anywhere in the frame loop.
