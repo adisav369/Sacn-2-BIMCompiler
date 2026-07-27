@@ -966,3 +966,20 @@ Sketch, to be settled with the user when it comes up — **do not build from thi
   missing today.
 **Open question for the user when this starts:** should a path selected from IndexedDB auto-apply on
 load, or only when picked from the list? (Today the DB table auto-applies, silently.)
+
+### ⚠ AMENDMENT to §CPE_PACE_LOS (user, 2026-07-27) — graceful, not just bounded
+> *"but do tamper measure not to have extreme change in speed.. graceful. If busy slows down, when not,
+> picks up.. user wont get bored."*
+
+Two separate constraints, and the existing `PACE_SWING` clamp only delivers the first:
+1. **RANGE** — how slow/fast pace may get. `PACE_SWING=1.6` already bounds this.
+2. **RATE** — how FAST pace may change from one sample to the next. **Nothing bounds this today.** A
+   path that steps from wide-open to tight in one sample would jump between the two clamp ends
+   instantly — inside the allowed range, and still a lurch. The user's "graceful" is this second one.
+**Therefore:** rate-limit the pace-factor series along the path (a per-metre cap on Δfactor, or a
+smoothing pass over the factors before `_paceBuildRemap` consumes them) — bounded acceleration, not
+just bounded speed. And the "picks up" half is load-bearing too: the brake must RELEASE in open
+space, not ratchet down and stay there, or the film ends up uniformly slow — which is the complaint
+that started this.
+**Gate:** report peak |Δspeed| per second AND per metre across the whole film, not just min/mean/max
+speed. A film can sit inside the speed band the whole way and still lurch; only the derivative shows it.
