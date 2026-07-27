@@ -1899,3 +1899,43 @@ was already spread by `1/(1-w)`. Worst case is `1.5 × SWING × SWING = 3.8x`, w
 one dial the user set. **Next session decides: make the noise weight mean-neutral for the walk, or
 state 3.8x as the walk's new bound.** Do not merge this branch into a release without that decision.
 Branch: `bim-ootb` `fix/cpe-noise-law-dive` @ 5d89659 (pushed, not merged).
+
+## 🔴 §CPE_BASIS_HALF_PIN — FOUND from the user's console, FIXED, and the gate CANNOT see it
+**User, live Hospital, 2026-07-27: "Drag still jumps."** Their log settles it. Same session, same
+edit — the plan while editing vs the plan at OK:
+
+| | editing (every re-plan) | baking (at OK) |
+|---|---|---|
+| `yaw0 / pitch0` | −88.9° / **−16.9°** | +91.5° / **−81.0°** |
+| `§CINEMA_EXIT facingDot` | +0.456 (cost 15.4) | **−0.450** (cost 16.8) |
+| `§CINEMA_SPIN` | −35.3° | **504.3°, `class=behind(full-lap)`** |
+
+A **different exit door** and **a full extra lap of spin**. The 504° also explains the earlier
+"at wp1 it can spin around itself one full rev" — it is not in the default plan (which is why
+`witness_cpe_gaze_spin` passes on all three buildings), it appears only in the BAKED plan after an
+edit.
+
+**Root cause:** `yaw0/pitch0` are read from `A.camera.getWorldDirection()` — the camera's
+**ROTATION** — but `_withCamBasis` pinned only `camera.position` and `controls.target` and never
+re-aimed. Editor re-plans therefore ran the pinned POSITION with the user's live orbited ROTATION,
+while `finish()` sets position + target + `controls.update()`, which does re-aim, so the bake ran
+the real basis. §CPE_PREVIEW_DIVERGENCE was only half closed. **Half a pin is not a pin.**
+
+**Fixed:** `lookAt(basis target)` + `updateMatrixWorld` inside the swap; original quaternion
+restored in the `finally`.
+
+### ⚠ THE GATE IS BLIND TO THIS — build P4 before trusting this area again
+`witness_cpe_preview_divergence` is **3/3 on both buildings after the fix — and it was ALSO 3/3
+before it.** It MOVES the camera between editor and bake and never ROTATES it, which is exactly the
+half that was broken. **P4, the missing gate:** orbit the camera while the editor is open (rotation
+only, no translation), then compare the editor's last plan against the bake's plan on `yaw0`,
+`pitch0`, the chosen exit GUID and `finalSpinDeg`. It must fail on `origin/main` and pass here — if
+it passes on both, this diagnosis is wrong and the numbers above need re-deriving.
+This is the **eighth** broken instrument in this lane; `feedback_verify_checker_before_code_under_test`.
+
+## "Edited preview still not there" — NOT a regression, never built
+Their log goes `§CPE_CLOSE action=ok edited=true` → `§CPE_LOCKS re-claimed` → `§CPE_APPLIED
+frames=1409` → `§MAXQ_FRAME i=0/1409`. No second `§MAXQ_PREVIEW`; the only one ran BEFORE the editor
+opened. This is **ask 5** of the FOUR ASKS block ("after edit and OK, it should do the 10 sec fast
+preview again"), still unbuilt. It is a wiring job on the existing preview loop, and it must fly the
+EDITED plan through the same `poseAt` the bake uses or it re-creates §CPE_PREVIEW_DIVERGENCE.
