@@ -77,6 +77,10 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle + Home fill-frame #969 · ✅ Branch
   hygiene (07-25).
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
+- ✅ Blank Viewer landing card + local `.db` Open (07-27), `40e333efd` pushed — `Viewer/BLANK_VIEWER_LANDING_CARD.md`,
+  19/19. ⛔ open thread: user saw an idempiere-seed-db status message while at the Viewer; grep of
+  `deploy/dev` + `~/bim-ootb/viewer` found only lazy (`only-when-opened`) triggers, real source not located —
+  need the exact page/text from the user before fixing.
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
 
 ## OCI Deployment · Reference
