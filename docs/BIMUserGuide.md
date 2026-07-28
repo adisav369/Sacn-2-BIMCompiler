@@ -389,7 +389,10 @@ Before recording starts, a **Cinema path** panel opens with the whole film drawn
 through the building. You edit the flight by dragging the flight itself — there is no separate
 storyboard or keyframe list:
 
-![The Film-Maker's Cinema path panel on a real building — the yellow flight tube drawn through the model with draggable band handles on it, and the panel listing settle, four added sticks and stop (each with x / z / height / length fields and its aim angle), then the Whole path block: reach %, clip mark in / mark out, "build the model as the camera flies", saved plans, total seconds and frames to bake, and the Preview / Cancel / Save this path / OK row](img/viewer/filmmaker-path-editor.png)
+![The Cinema path panel the moment Alt+C is pressed, before any editing — the derived flight drawn as a yellow tube diving into the building and running out along the roof, and the panel listing just three bands (settle, one stick, stop) each with its x / z / height / length fields and aim angles, then the Whole path block: reach 15%, clip "whole film", the buildup checkbox, "saved — none yet —", total 53.9 s / 808 frames, and the derived line "walk 36.9m · 1.69 m/s · natural 53.9s · replan 91ms"](img/viewer/filmmaker-path-editor-initial.png)
+
+That is the whole film, derived, before you touch anything — and the footer says so: *"Unedited · OK
+records exactly the film the preview just showed."* Pressing **OK** here is already a complete take.
 
 #### The bands — the rows in the panel
 
@@ -399,8 +402,8 @@ Every row is one straight **band** of the flight, listed in flight order with it
 - **settle** — where the dive lands and the camera looks around. Always the first row.
 - **stop** — end of the *walk*, not the film; its far end stretches the exterior orbit that follows.
   Always the last row.
-- **stick** — any band you added yourself, labelled with how far along the walk it sits. The screenshot
-  above has four.
+- **stick** — any band you added yourself, labelled with how far along the walk it sits. A derived path
+  opens with one; the screenshot below has four.
 
 To work with them:
 
@@ -413,6 +416,8 @@ To work with them:
    and the orbit stretches off the other, so removing either would change what the beats mean.
 5. **Anywhere else orbits the scene as normal** — no freeze, no modifier key. A drag moves in the plane
    you are currently facing, so orbit to a side view when you need to change height.
+
+![The same panel after authoring — the yellow flight tube now bent through the model with draggable band handles along it, and the list grown to settle, four added sticks (each labelled with how far along the walk it sits and carrying a × to remove it) and stop, above the same Whole path block and the Preview / Cancel / Save this path / OK row](img/viewer/filmmaker-path-editor.png)
 
 #### Whole path — the controls that act on the entire film
 
