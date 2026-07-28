@@ -3058,3 +3058,129 @@ stale `_markClip` comment belong to. Re-aim it in the same commit:
 ## Explicitly NOT in this section
 The Preview button's own behaviour, the stale marker, the clip window it honours, or the buildup it
 drives; the `opts.editor === false` rehearsal; §CPE_REPLAN_LAZY (still item 0 of the delight batch).
+
+---
+
+# §CPE_BUILDUP_SOURCE_BLIND — Alt+C bakes mode D on Hospital, and the log never says why (user, 2026-07-29)
+> User: *"another serious alt-c/TM interaction, Hospital has a proper schedule, but when done in alt-c
+> it takes a bad one that flattens too much too early"*
+
+**Diagnosed from the user's pasted console plus the DBs themselves. Four findings, only one of which
+is the thing they saw.** Nothing here is implemented yet — this is the spec.
+
+## 0. What their console actually proves
+```
+§TIME_MACHINE ON — 63439 ops, 182 days, project: 1/1/2026 → 7/29/2026
+§GANTT_MINI tasks=36
+§GANTT_CACHE_HIT ops=63421                        ← generated timeline, restored from cache
+§CPE_BUILDUP ON — reveal follows the camera path (derived build order, NOT a construction programme)
+§MAXQ_TIME mode=D … span=18042087338ms — DERIVED BUILD ORDER re-keyed to the camera path
+```
+There is **no `§GANTT_SOURCE captured` line** and **no `§CPE_BUILDUP_SOURCE` line of any kind**. Both
+absences are load-bearing evidence, and the second one is finding 4.
+
+## 1. Hospital has NO linked schedule — its 4D is GENERATED, and that is not a criticism of it
+Measured on `~/bim-ootb/buildings/Hospital_extracted.db` (263 MB):
+```
+CREATE TABLE tasks (task_id TEXT PRIMARY KEY, schedule_id TEXT, name TEXT,
+                    start_date TEXT, finish_date TEXT, duration_days REAL, status TEXT);
+tasks: 0 rows      schedules: 0 rows      task_elements: 0 rows
+```
+So `injectGantt`'s `_cap` overlay — the ONLY writer of `parameters._captured` — never runs, `capOps`
+is 0, and `tmScheduleSource()` correctly answers `derived`. **`§GANTT_MINI tasks=36` is not the tasks
+table:** `_ganttTasks` is built in `time_machine.js` (~3816) by GROUPING ops into phase × storey bands.
+The 36 bars in the TM drawer are a view of the generated timeline, not 36 schedule rows.
+
+**The user's premise is right in substance and wrong in mechanism.** Hospital's 4D *is* real work —
+`schedule_gate.js` gates every element by its true geometric Z, bottom-up, in storey bands, and
+§PLAYBACK-STAGGER spreads each phase across its own window. It is a deterministic, model-derived build
+order. It is simply not a *captured* one, so §CPE_BUILDUP_REAL_SCHEDULE's captured branch is right not
+to fire. **Do not "fix" this by loosening the captured test** — that would let the film claim a linked
+schedule it does not have, which is the §5 honesty rule.
+
+## 2. ⚠ THE DEFECT THE USER SAW — mode D throws the generated timeline away too
+`tmOrderByCameraPath` **re-keys all 63,439 ops to camera-path proximity**, discarding the bottom-up,
+storey-banded order the TM drawer is showing at that very moment. Proximity to a flight path has no
+relationship to storey order: Hospital's dive lands at bbox-centre `settle=(-7.3,-14.4,18.0)` and the
+walk is 73.6 m through a building of `boundingR=91.4`, so everything near that short walk reveals at
+once, on every storey, in the first fraction of the film. **That is "flattens too much too early",
+exactly.**
+
+This is §CPE_BUILDUP_REAL_SCHEDULE §2's defect — *"mode D destroys a real schedule 100% of the time"* —
+recurring for the GENERATED case, which that section fixed only for the captured case. The generated
+order is also an order worth respecting.
+
+**The fix is a third mode, not a widened test. §CPE_BUILDUP_MODE_T — "follow the Time Machine".**
+`tmOrderBySchedule()` already proves the shape: it writes NOTHING and returns the same object
+`cinema_maxq.js`'s cursor loop consumes, because `_ops` are ALREADY in timeline order the moment the
+timeline exists. Mode T is that function minus its `leafTasks > 0` precondition. Selection becomes:
+captured schedule → mode S; a timeline exists but is generated → **mode T**; no timeline at all →
+mode D. Mode D stops being the default and becomes what you ask for when you WANT the reveal keyed to
+the flight.
+- **⚠ Do NOT delete mode D.** It is the right answer for a building with no 4D at all, and it may be
+  the better *look* for a short film. It becomes a choice, and the checkbox grows a third state or a
+  small select — decide with the user, do not invent the control.
+- **⚠ Wording, per §5 and the three tiers.** Mode T is *"follows this model's derived 4D timeline"* —
+  never *"the schedule"*, never *"a construction programme"*. Only mode S may say *linked schedule*.
+
+## 3. ⚠ TWO INCOMPATIBLE `tasks` SCHEMAS — §3.1's query THROWS on one of them
+| db | tasks columns | rows |
+|---|---|---|
+| `Hospital_extracted.db` | `start_date`, `finish_date`, `duration_days` — **no `is_summary`, no `schedule_*`** | 0 |
+| `JKR_extracted.db` | `schedule_start`, `schedule_finish`, `is_summary`, floats, `is_critical` … | 0 |
+| `Terminal`, `Duplex` | no `tasks` table at all | — |
+
+`tmScheduleSource()` queries `schedule_start / schedule_finish / is_summary`. On Hospital's schema that
+raises `no such column`, which the `catch` turns into `leafTasks = 0` — **indistinguishable from "this
+building has no schedule".** Today that is harmless (0 rows either way), but it is a live landmine: the
+day a building carries populated `start_date`/`finish_date` rows, it will be reported as having no
+schedule, silently, and mode D will eat it. **W-SCHED-SCHEMA:** a db with populated rows in EITHER
+schema must report `source='captured'`; a caught SQL error must log `§CPE_BUILDUP_SOURCE probe_failed
+reason=<sqlite message>` rather than being folded into the same 0 the empty case produces.
+
+## 4. ⚠ THE PREVIEW NEVER ASKS — `cinema_path_editor.js` calls `tmOrderByCameraPath` unconditionally
+`cinema_path_editor.js:1001`:
+```js
+if (ok) bkPrev = window.tmOrderByCameraPath(function(t) { return s.plan.poseAt(t); }, 60);
+```
+No `tmScheduleSource()` consultation at all — the whole §3.3 branch exists only in `cinema_maxq.js`.
+So on a building that DOES have a captured schedule, **the Preview button shows mode D while the bake
+records mode S**: the rehearsal disagrees with the film it is rehearsing. It is not corruption — line
+989 calls `tmRestoreDerivedOrder()` on completion, so the ops are put back — but it is the same class
+of divergence §CPE_PREVIEW_DIVERGENCE exists to forbid, and it matters MORE now that
+§CPE_PREVIEW_AFTER_RETIRED makes the button the only rehearsal there is.
+**Fix: lift the mode selection into one shared verb both callers use.** Two call sites choosing the
+buildup source by different rules is the root cause; a copy of the branch into the editor would just
+be the same bug twice.
+
+## 5. ⚠ AND NOBODY LOGS THE CHOICE — this is why the diagnosis needed a DB dig
+`cinema_maxq.js:737` only prints when it TRIES the captured branch. When `source === 'derived'` it says
+**nothing**: no line names the source, the leaf-task count, the coverage, or the reason. The user's
+console therefore cannot answer *"why mode D?"* — it took opening `Hospital_extracted.db` to find out.
+**Make the choice unconditionally loud, in BOTH callers:**
+```
+§CPE_BUILDUP_SOURCE mode=S|T|D reason=captured|generated-timeline|no-timeline
+  leafTasks=<n> capOps=<n>/<ops> capActive=<0|1> covered=<n>/<n> pct=<n>% window=<iso>..<iso>
+```
+A pasted console must answer which order the film used and why, on its own — the standing rule from
+§MAXQ_LOADED's *"u got to make the logs tell u"*.
+
+## Build order and witness claims
+1. **§5 first, on its own** — the log line, both call sites, no behaviour change. It is the instrument
+   every other gate here reads, and it is what makes the next live report self-diagnosing.
+   *Gate:* Hospital prints `mode=D reason=no-captured-schedule leafTasks=0 capOps=0/63439`.
+2. **§3** — schema-tolerant probe + `probe_failed` logging. *Gate:* W-SCHED-SCHEMA above.
+3. **§4** — one shared selection verb; the preview and the bake must return the SAME mode for the same
+   building. *Gate:* W-BUILDUP-PREVIEW-AGREES — on a captured-schedule building, preview and bake log
+   the identical `mode=`. RED today by construction.
+4. **§2 mode T** — last, because it is the only one that changes what the film looks like, and it needs
+   the control decided with the user first. *Gate:* W-BUILDUP-MODE-T — on Hospital, the reveal order
+   must correlate with element Z (bottom-up) rather than with distance to the path; report Spearman
+   against both, and mode T must beat mode D on the Z correlation by a stated margin.
+
+## ⛔ Open question for the user before §2 is built
+**Mode D still has a use — do you want it as a choice, or gone?** The checkbox is one line today
+(*"build the model as the camera flies"*). Mode T makes that sentence wrong for the default case.
+Recommended: keep the checkbox as the on/off, and let the MODE follow the data automatically
+(S if linked, else T if a timeline exists, else D), with mode D reachable only as an explicit
+*"reveal along the flight path instead"* sub-option — so the honest default never has to be chosen.
