@@ -380,3 +380,38 @@ and ecosystem and this work touches none of them. What it does is make ONE capab
    §CPE_WHEN_HERE's radius question. Three of them change what gets built.
 **Shipped and pushed as of this close:** `bim-ootb` `feat/cpe-hose` @ `b63a0d1` (CPE v13, MAXQ v15,
 sw v875), PRs #1074 and #1078 merged to main. Witness `witness_cpe_hose.js` 29/29 on Duplex.
+
+---
+
+# ▶ OBSERVED 2026-07-29 (user, live on jkr_fixed) — the sticks ARE in the panel; the panel just can't take you to them
+> User: *"the added 'bands' does not show up in the film maker panel to reselect so we can get back to
+> them easily. Have to find back in canvas."* — **reported, not fixed, at the user's instruction.**
+
+Read from `viewer/cinema_path_editor.js` (now `main`, PR #1080). Three separate things, only one of
+which is a cache question:
+1. **The row list DOES rebuild.** `_addStick()` calls `_renderRows()`, and every middle band renders as
+   a row labelled `stick @ NN%` with x/z/y + length inputs, a `×` remove button, and the whole row is
+   click-to-select (`_hold(i, 'mid', true)`). So a spawned stick is not missing from the model or the DOM.
+2. **⚠ The panel header is a hardcoded lie.** `_buildPanel()`'s innerHTML contains the literal
+   `— 3 bands`, never re-rendered from `_state.bands.length`. After adding a 4th band the panel still
+   says three. A label that contradicts the list under it is worse than no label — same species as the
+   `§CINEMA_PATH_STAGE waypoints=0` defect §CPE_IDB_PATH_STORE fixed.
+3. **⚠ THE REAL GAP, and it is the user's actual complaint.** Clicking a row only sets the selection
+   highlight. **Nothing moves the camera to that band.** If the stick is off-screen the panel gives you
+   no way to reach it — hence *"have to find back in canvas."* The panel is an editor of bands you can
+   already see, not a way of navigating to bands you cannot.
+   **This is §CPE_HOVER_SCRUB's machinery pointed the other way** (panel → camera instead of pipe →
+   camera), and item 1 should absorb it rather than grow a second flight path: same `plan.poseAt`,
+   same return-to-editing-pose rule, same §CPE_PREVIEW_DIVERGENCE no-re-pin trap.
+
+**Diagnosing "do I need a hard reset?" is one log line:** `§CPE_LOADED v13` = the code is current and
+the explanation is (2)+(3); `v11` = the SW served a stale bundle and §CPE_STICK is genuinely absent.
+Their pasted console carried no `§CPE_` lines, so this was not determined either way.
+
+### Unrelated, also in the same console — an imported building can never be patched
+`Fetch API cannot load import://jkr_fixed.db/patches/v0.sql. URL scheme "import" is not supported.`
+(twice). The Viewer self-heal loader (`viewer/scene.js` `A._applyPendingPatch()`, the port landed
+2026-07-11) derives the patch URL from the db URL, and an IDB-imported building's `import://` URL is not
+a fetchable scheme. Harmless today — jkr_fixed has no patch — but it means **the DB-change-via-SQL
+architecture in CLAUDE.md has no reach into imported buildings at all.** Named here so it is not
+rediscovered; not in this batch's scope.
