@@ -221,3 +221,23 @@ work and must not be discarded to fix a dependency.
 ## Where this sits
 Not in the Cinema lane — the film only EXPOSED it. It belongs to 4D generation and should be fixed there,
 which also means every consumer (Time Machine playback, the Gantt drawer, 4D/5D variance) gets it.
+
+### ▶ THE A/B IS ALREADY SET UP — the user still holds the path (2026-07-29)
+> User: *"that means if the windows stayed back it would have been dramatic"* · *"i still have the same
+> path script"*
+
+**Correctness and spectacle point the SAME way here, which is worth stating to any sceptic.** Correct
+order is wall first, glazing after — so on the same flight the camera approaches an open frame with the
+services exposed and the façade closes over them AS IT WATCHES. The reveal happens in front of the lens
+instead of having already happened. The defect did not merely mis-state the build order; **it cost the
+shot its drama.** Fixing the schedule sharpens the film rather than sanding it down.
+
+**And the experiment is already controlled.** The user retains the authored Hospital path
+(§CPE_IDB_PATH_STORE / the `cinema_path` record). So the fix can be demonstrated as a true A/B: same
+camera, same building, same duration, ONE variable changed. **Re-bake that exact path after the fix and
+compare against `BIM_MaxQ_Hospital_1785273910881.mp4`** (1852×960, 1186 frames, 79.067 s, 5.31 Mbps —
+the reference film, user-accepted 2026-07-29).
+- ⚠ Per the FUNDAMENTAL LAW the two films are the DEMONSTRATION, not the proof — W-HOST-ORDER's
+  violation count going >0 → 0 is the proof. Keep both; they answer different questions.
+- ⚠ The comparison is only valid if nothing else moved. Re-bake from the SAVED path, do not re-author,
+  and confirm `§CPE_OPEN src=authored` plus an unchanged band/hose count before baking.
