@@ -1,6 +1,56 @@
 <!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
 # ⚠ DO NOT REMOVE — RESUME: Modeller LOD400 real-geometry rendering + UX polish
 
+## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
+
+**Everything below §LODHELL-ROOTCAUSE is closed unless it is listed as OPEN here.** Do not re-walk the
+2026-07-02/03 review sections looking for work — their surviving items are folded into the list below.
+
+### Closed this pass (do NOT re-open, do NOT re-derive)
+| what | proof | where |
+|---|---|---|
+| "LOD hell" root cause | W-LODHELL-CLASSIFY 5/5 | §LODHELL-ROOTCAUSE below |
+| VOID-CONSUMED classifier, all-fails printing, honest P5, new P9, red §PROOF ⇒ exit≠0 | `f7d00240b` | `extractIFCtoDB.py` |
+| dead no-boolean tier DELETED (measured: doesn't work + would invent uncut walls) | same commit | §LODHELL-FIX-2 |
+| `rel_fills_host` shipped to SampleCastle / Duplex / SampleHouse | #1051, #1065 | `modeller/patches/*.sql` |
+| IFC-open rendered ZERO ARC geometry — fixed, falsification-checked | #1062, W-ARC-SOURCE-PARITY 8/8 | `str_walker_outliner.js §IFC-OPEN-SEED-FIX` |
+| published guide: hosted-door claim made true, Walk-ALL + IFC-open documented | live on gh-pages | `docs/ModellerGuide.md` |
+| the 4 "stranded" Modeller branches | 3 were already landed; all deleted | PROGRESS.md §OPEN |
+
+### OPEN — ranked, each one actionable as written
+1. **⛔ DESIGN CALL (user's, not a build task): should a VOID-CONSUMED host be a non-rendered logical
+   anchor?** Today a `kozijn` wall correctly has no geometry, so it never becomes a scene feature, so
+   `fidByGuid[host_guid]` is null and `stretchRide()` skips its edge. Measured reach of the shipped
+   relation: **SampleHouse 7/7 · Duplex 36/38 · SampleCastle 9/74**. SampleCastle is the outlier precisely
+   because 65 of its 71 hosts are void-consumed. Making those hosts participate in the cascade WITHOUT
+   rendering them would close the gap — but it means inventing a scene participant that has no geometry,
+   which is a doctrine question, not an implementation one. **Do not build this unilaterally.**
+2. **Clinic / Hospital / Terminal have no `rel_fills_host`** — their source IFCs are not in this checkout,
+   so there is nothing to recover from. Not an oversight. When a source lands, one command finishes it:
+   `python3 scripts/gen_rel_fills_host_patch.py --ifc <src> --target ~/bim-ootb/modeller/<X>_ARC.db --out <wt>/modeller/patches/<X>_ARC.db.sql`
+   The generator imports `extract_rel_fills_host()` (one recovery implementation) and measures reach
+   against the real target. ⚠ `docs/ModellerGuide.md`'s Grid-Stretch section names only SH/DX/SC by
+   design — **extend that sentence when a new building gains the relation**, or the guide goes stale.
+3. **Walk-ALL row reuses the singular tooltip** — `bonsai_outliner.js:602` still renders
+   `title="Walk this discipline"` on the synthetic `__ALL__` row. One string. Verified still open 07-28.
+4. **§SEL-TINT-REFOLD** — a re-fold drops the selection tint while `_selSet` still holds the mesh. Zero
+   hits for the tag in `modeller/`, so still unbuilt. Small, well-specified selection plumbing.
+5. **Terminal-scale proxy-mode downgrade is silent to the user** — `modeller.html:3904` announces the walk
+   start but nothing signals the batch-hold fallback. Geometry is identical either way (low severity).
+6. **Window/opening composition as a BOM** — the original §NEW ARCHITECTURE QUESTION further below. It is
+   now PARTLY answered: the host↔filling relation no longer has to be proximity-clustered, it is
+   extracted (see FINDING 4). What remains is whether a multi-part window should fold as one assembly.
+
+### Landmines — read before touching this area
+- **Verify branches by CONTENT, never `git cherry`.** On 4 stale Modeller branches patch-id reported every
+  commit as undelivered and was wrong every time; 300+ commits of drift changes patch-ids.
+- **A 12-triangle mesh is not evidence of a fake box.** 46.4% of SampleCastle is genuinely 12-tri at
+  source — a plain extruded rectangle IS 12 triangles. GIGO, not a violation.
+- **An empty tessellation is not automatically a defect** — classify against the element's own openings
+  first (`is_void_consumed()`), or you will report an author's deliberate void as a source bug.
+- The renderer is clean and was re-measured (3225/3225 real meshes, mesh.db byte-faithful to the
+  extractor). **Do not re-audit `real_geometry.js` for this.**
+
 ## 🔴 2026-07-27 — §LODHELL-ROOTCAUSE: "why is the LOD hell still there" — MEASURED. Renderer is clean; the
 ## loss is UPSTREAM, in extraction. Read this before touching `real_geometry.js`/`arc_editable.js` again.
 
@@ -171,8 +221,9 @@ Sonnet = the user's own architecture/scoping call, Opus = well-scoped-but-nontri
    to solve. **Assign: Sonnet dialogue with you first** (the design call was already flagged as yours to make —
    this just gives it a precise mechanism to design against), **then Opus to implement** (a real geometry-
    clustering heuristic + BOM synthesis, not mechanical).
-2. **"Walk ALL Disciplines" reuses the singular per-row tooltip** — `modeller/bonsai_outliner.js:267`: hovering
-   the synthetic ALL row still says "Walk this discipline." **Assign: Fable5** (one string, fully specified).
+2. ⛔ **STILL OPEN (re-verified 2026-07-28)** — **"Walk ALL Disciplines" reuses the singular per-row tooltip.**
+   The line moved: it is now `modeller/bonsai_outliner.js:602`, still `title="Walk this discipline"` on the
+   synthetic `__ALL__` row. **Assign: Fable5** (one string, fully specified).
 3. **The Outliner 3-surface unification was descoped, not shipped, and it's undocumented that it was.**
    `modeller/modeller.html:2902-2906` has its own comment admitting the "risky Outliner restructure" was
    dropped in favor of just adding an ALL-row to the existing category — STR Walker tab and "Route trunk"
@@ -180,12 +231,13 @@ Sonnet = the user's own architecture/scoping call, Opus = well-scoped-but-nontri
    code, but worth deciding whether it's still wanted. **Assign: Sonnet to re-scope** (is the restructure still
    wanted, what's a safe incremental path that doesn't risk the surfaces that already work) **→ Opus to build**
    if greenlit (multi-file UI refactor, real regression risk).
-4. **Zero end-user documentation for Walk-All-Disciplines or §STRETCH-RIDE's hosted-door behavior** in
-   `docs/ModellerGuide.md` (bim-compiler side, confirmed by a full front-to-back read + grep — the only "all
-   disciplines" hits are in `archive/`/`internal/`). Grid-Stretch's section says an attached wall translates
-   but never states a hosted door/window rides along, even though that's this session's own shipped fix.
-   **Assign: Fable5** (the features are built and understood, existing guide has an established voice/format
-   to match — this is a documentation-writing task with a known spec, not a design task).
+4. ✅ **DONE 2026-07-28 — do not re-assign.** ~~Zero end-user documentation for Walk-All-Disciplines or
+   §STRETCH-RIDE's hosted-door behavior in `docs/ModellerGuide.md`.~~ Both now written and **live on
+   gh-pages** (verified by content poll, not just a canary 200). Two corrections to the note as written:
+   (a) the §STRETCH-RIDE half was already documented — the real defect was that the sentence was FALSE,
+   because no resident shipped `rel_fills_host`; fixed at the source (#1051/#1065), not in prose;
+   (b) IFC direct-open was ALSO undocumented and is now covered. ⚠ The Grid-Stretch text names only
+   SH/DX/SC by design — extend it when another building gains the relation (OPEN item 2 in §START HERE).
 5. **Terminal-scale proxy-mode downgrade is invisible to the user** — `modeller/modeller.html:2374-2384` only
    `console.log`s the batch-hold fallback; final geometry is identical either way (low severity) but nothing
    in the UI signals reduced reveal quality during a big walk. **Assign: Fable5** (add a small toast/badge,

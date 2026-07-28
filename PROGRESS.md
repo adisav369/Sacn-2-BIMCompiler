@@ -53,13 +53,12 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ §LODHELL 1-2-3 CLOSED (07-27) — **all detail `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md`
-  §LODHELL-ROOTCAUSE/-FIX**; W-LODHELL-CLASSIFY 5/5, `f7d00240b` + bim-ootb **#1051 merged**.
-  SampleCastle's boxiness is its OWN source (46.4% literal 12-tri), renderer clean (3225/3225). The 65
-  "missing" walls are **VOID-CONSUMED** (correct, 74/74 fillings present) — now classified, all fails
-  printed, P5 honest + new P9, red §PROOF exits ≠0; dead no-boolean tier DELETED not wired.
-  ⛔ OPEN design call: only 9/74 fills can ride (65 hosts aren't scene features) — non-rendered
-  logical anchor for a void-consumed host? Not scoped.
+- ✅ §LODHELL + Modeller-guide pass CLOSED (07-27/28) — **read `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md`
+  §START HERE, it holds the full closed/open/landmine list.** W-LODHELL-CLASSIFY 5/5 · `f7d00240b` ·
+  bim-ootb #1051/#1062/#1065 · guide LIVE on gh-pages. SampleCastle's boxiness is its OWN source (46.4%
+  12-tri, renderer clean 3225/3225); the 65 "missing" walls are **VOID-CONSUMED** (correct). `rel_fills_host`
+  now shipped SH 7/7 · DX 36/38 · SC 9/74, so the guide's hosted-door ride is TRUE, not prose.
+  ⛔ user design call: non-rendered logical anchor for a void-consumed host? Not scoped, don't build alone.
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 §TOUR-POLYLINE (Terminal 8/92→2/91) + #1013 T2/T3
   NO-CHANGE ×7 + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**; T4/exits = its OWN
