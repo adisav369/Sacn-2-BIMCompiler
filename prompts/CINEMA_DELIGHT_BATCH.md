@@ -280,3 +280,57 @@ counterexample makes a good post look sloppy to the audience it is aimed at.
    that building? (recommended: ≤3, and yes, remembered per building)
 4. **§CPE_FIND_TO_FILM:** does `▶ Film` bake immediately or open the editor pre-loaded? (recommended:
    the editor)
+
+---
+
+## 7. §CPE_WHEN_HERE — the camera asks the schedule "when is THIS built?" (user, 2026-07-29)
+> User: *"will it be standard Z value build or will it take from generated 4D schedule? That will kill
+> birds and can be free? Because from there can be creative way to study its construction at certain
+> parts along the path of interest."*
+
+### First, the factual answer — it is ALREADY both, and it auto-selects (verified in merged code)
+Read from `origin/main:viewer/time_machine.js`, not from the other session's report:
+- `window.tmScheduleSource()` decides from the OPS THEMSELVES — dated leaf tasks must exist AND the
+  loaded ops must be keyed to them (`parameters._captured`).
+- **captured** → `tmOrderBySchedule()`: reveal follows `schedule_start`, **no re-key at all**. The
+  `_cap` overlay already keyed every covered op to its task's `[schedule_start, schedule_finish]`, with
+  §PLAYBACK-STAGGER spreading each task's guids bottom-up by `center_z` inside that window.
+- **derived** → `tmOrderByCameraPath()`: the Z-band + `SEQUENCE_RULES` order, re-keyed to the flight.
+- **On `TerminalHi4D.db` all 48,433 ops carry `_captured:1`** spanning a real 2026-01-01..2026-05-30
+  window — so the injected schedule IS what drives that building's buildup. #1078's own comment
+  records that mode D's re-key was **destroying** it before the fix, caught by the witness.
+
+### ⚠ Which also means the two modes are MUTUALLY EXCLUSIVE by nature
+You cannot re-order a real programme by camera path and still call it the programme. So "camera-ordered
+buildup" and "real-schedule buildup" can never merge — **and the user's idea is the resolution:** stop
+using the camera to re-order, and start using it to ASK.
+
+### The feature: mark a place on the path, get its construction window
+1. A point on the flight → nearest elements (`element_transforms`, the same query mode D already runs).
+2. Those elements → their task and `[schedule_start, schedule_finish]` (the `_cap` keying, already there).
+3. Report it, and offer it as a **§CPE_CLIP preset**: a clip whose TIME window is that location's
+   construction window, with the camera parked at that stick.
+**That is the two birds.** The camera picks WHERE, the schedule says WHEN, and the clip is the
+intersection — "show me this atrium being built, and only that." It turns the film from an output into
+a query instrument, which is the same inversion that makes the derived path interesting.
+It also composes with everything already shipped: §CPE_STICK marks the place, §CPE_CLIP cuts the
+window, §CPE_BUILDUP renders it, §CPE_HOVER_SCRUB (item 1) previews it.
+
+**Consumes, all existing:** `tmScheduleSource()`, the `_cap` op→task keying, `element_transforms`,
+`§CPE_CLIP`. **No new data, no new subsystem.**
+**Open (ask):** radius around the path point — fixed metres, or the room containing it? (recommend the
+ROOM, since the room graph already answers containment and "this space" is what a user means).
+**Witness:** `§CPE_WHEN_HERE t=<f> room="<name>" elems=<n> tasks=<n> window=<iso>..<iso> days=<n>`
+plus: the derived clip's placed-count at its first frame must be < at its last (it must actually show
+construction happening, not a static before/after).
+**Cost: SMALL-MEDIUM** — half to one session. **Only meaningful on a building with a real schedule**,
+so it is Terminal-4D-first; on derived buildings it must say so rather than invent a window.
+
+### ⚠ WORDING now has THREE tiers, not two — update §NOT-CLAIMS when this ships
+| tier | data | honest phrase |
+|---|---|---|
+| derived | no tasks (Terminal_Hi, Duplex, Hospital) | *"derived build order"* — never "the schedule" |
+| authored | real dated tasks, **CPM columns empty** (TerminalHi4D) | *"a linked 4D schedule"* — NOT "critical path", NOT "programme logic" |
+| imported | P6/XER with logic + float | **none yet** — do not imply it |
+`early_start`/`late_start`/`is_critical`/`total_float` are EMPTY on TerminalHi4D (verified), and
+`§CPE_BUILDUP_SOURCE` says so itself: *"no float/logic in this data"*. A 4D audience will ask.
