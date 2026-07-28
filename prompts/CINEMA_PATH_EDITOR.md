@@ -2993,3 +2993,68 @@ Middle bands are re-flagged `_stick: true` on adoption, exactly as `_pathsApply`
 - **W-REOPEN-DERIVED.** With no override, the seeded count and geometry are unchanged from today.
   *Proves/disproves:* that the fix did not alter the derived first-open path.
 - `§CPE_OPEN` gains `src=authored|seeded` so a pasted console says which branch ran.
+
+---
+
+# §CPE_PREVIEW_AFTER_RETIRED — OK records; it does not preview first (user, 2026-07-29)
+> User: *"also when OK, do not run preview again as there is already a Preview button"*
+
+## This is the SECOND half of a cut already made once
+`§CPE_PREVIEW_REDUNDANT` (2026-07-28) removed the 10 s rehearsal that ran **before** the editor opened,
+on the user's reasoning *"I see the initial preview is redundant. Straight showing this is good as
+preview button is always there and serving well."* The comment justifying that removal is still in
+`viewer/cinema_maxq.js` and its argument covers this case verbatim — the pipe shows the path without
+flying it, and §CPE_PREVIEW_BUTTON flies the current edit on demand, as many times as wanted.
+
+`§CPE_PREVIEW_AFTER` — the 10 s flight that runs **after OK**, between §CPE_APPLIED and frame 0 — was
+written for a build where **the editor could not preview at all**. Its own comment says so: *"Until now
+the only 10s rehearsal ran BEFORE the editor opened, so it showed the DERIVED path… The film you
+actually authored went straight to a ten-minute bake unseen."* §CPE_PREVIEW_BUTTON landed after it and
+closed that gap directly, with a stale marker (`Preview ●`) that answers *"have I seen THIS version?"*
+The post-OK preview has been ten forced seconds proving something the user already chose when to see.
+
+## The change — one block, and only when the editor ran
+In `cinema_maxq.js`, inside `if (_cpeRes && _cpeRes.override)`, delete:
+```js
+if (opts.preview !== false) {
+  if (await _runPreview('edited', '🎬 Preview of YOUR edit (10s) — the ' + nFrames + '-frame bake follows; Alt+C cancels')) {
+    _cancelledOut('the edited-path preview'); return;
+  }
+}
+```
+**`_runPreview` STAYS.** The `opts.editor === false` branch (scripted/witness bakes, where there is no
+panel and therefore no Preview button) is the one caller that still needs a rehearsal, and it keeps it.
+`opts.preview` keeps its meaning for that caller. Nothing else in the OK path changes: §CPE_APPLIED,
+§CPE_CLIP, §MAXQ_START_REVISED and the frame re-derivation all still run, and guardrail 2's untouched-OK
+no-op is untouched.
+
+**What the user loses, stated plainly:** OK is now irreversible-ish in one respect — the last chance to
+catch a bad edit before a long cook was that forced flight. The replacement is the Preview button plus
+its stale marker, which is *better* (any time, repeatable, and it tells you when you are looking at an
+older version) but it is **opt-in**, so a user who never presses it bakes unseen. That is the trade the
+user is asking for, and it matches how they already ruled on the pre-editor preview.
+
+## Witness claims — this RETIRES an existing witness, it does not just add one
+`witness_cpe_preview_after.js` (4 gates, G-PA-1…4) exists **to prove the post-OK preview runs.** Deleting
+the feature without re-aiming that witness would leave a green-by-neglect file asserting the opposite of
+the shipped behaviour — the exact defect class §CPE_IDB_PATH_STORE's `waypoints=0` log and §CPE_REOPEN's
+stale `_markClip` comment belong to. Re-aim it in the same commit:
+- **G-PA-1 → inverted (the gate).** After an EDITED OK, **no** `§MAXQ_PREVIEW start phase=edited` line
+  appears between `§CPE_APPLIED` and `§MAXQ_FRAME i=0`, and the frame-0 pose still equals the edited
+  plan's `poseAt(0)` within 1e-6. *Proves/disproves:* that the removal cut the rehearsal and not the
+  edit — a bake that silently reverted to the derived plan would also print no edited preview.
+- **G-PA-2 → keep, re-pointed at the BAKE.** The old gate resampled the edited preview to prove it flew
+  the authored film. With the preview gone, sample the first N baked frames instead: they must diverge
+  from the derived plan's poses by the same margin the old gate measured. *Proves/disproves:* the same
+  property (the edit reached the flown path), through the only flight left.
+- **G-PA-3 → keep unchanged in intent.** `§CPE_PREVIEW_DIVERGENCE` still holds: the bake's frame 0 is
+  the edited plan's `poseAt(0)`.
+- **G-PA-4 → repair, it is ALREADY STALE.** It asserts an untouched OK gets *exactly one* preview,
+  `phase=derived` — but §CPE_PREVIEW_REDUNDANT removed that derived rehearsal on the same day this file
+  landed. **Verify its current state before re-aiming** (it may be RED on `main` right now, in which
+  case say so rather than quietly rewriting it). Correct claim: an untouched OK runs **zero** previews.
+- **No regression:** `witness_cpe_hose.js` stays 29/29 on Duplex, D1 Hospital_3 known-limit unchanged.
+
+## Explicitly NOT in this section
+The Preview button's own behaviour, the stale marker, the clip window it honours, or the buildup it
+drives; the `opts.editor === false` rehearsal; §CPE_REPLAN_LAZY (still item 0 of the delight batch).
