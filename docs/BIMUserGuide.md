@@ -127,6 +127,9 @@ All panels collapse with **−/+**.
 
   ![Fly Tour's scrub bar — beat counter ("Entrance 2/43"), elapsed/total time, tick marks per beat,
   play/pause/step controls, and speed toggles](img/viewer/fly-tour-scrub-bar.png)
+- Film-Maker (**Alt+C**) — derives a complete cinematic film of the building from its own room graph,
+  then lets you edit the flight by dragging the flight itself, and records it to an mp4 in the browser.
+  See [Cinema Film-Maker](#cinema-film-maker-altc-the-bim-ootb-film-maker) below
 - Indoor walk-through — follows IfcSpace/door graph through the building
 - X-Ray mode (Alt+Z) — a 3-state cycle: **Off → X-Ray → Bounding Boxes → Off**. X-Ray is the transparent
   see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
@@ -382,24 +385,78 @@ space, walk out through a real door, orbit the exterior — in well under a seco
 room graph. No camera path is authored by hand; the defaults come from measured geometry (room area,
 reachability, door position, clearance), not a guess.
 
-Before recording starts, a **Cinema path** dialog shows the whole film as a curve overlaid on the
-building, with three editable bands — *settle* (where the dive lands), *exit door* (which door it
-walks out through), and *stop* (end of the walk, not the film — the orbit continues after it):
+Before recording starts, a **Cinema path** panel opens with the whole film drawn as a yellow tube
+through the building. You edit the flight by dragging the flight itself — there is no separate
+storyboard or keyframe list:
 
-![The Cinema path dialog on Terminal — a 3-band curve (settle, exit door, stop) drawn through the building in the 3D view, each row showing its aim angle and a one-line description, plus total duration, frame count, walk speed, and Cancel / Save this path / OK](img/viewer/cinema-path-editor.png)
+![The Film-Maker's Cinema path panel on a real building — the yellow flight tube drawn through the model with draggable band handles on it, and the panel listing settle, four added sticks and stop (each with x / z / height / length fields and its aim angle), then the Whole path block: reach %, clip mark in / mark out, "build the model as the camera flies", saved plans, total seconds and frames to bake, and the Preview / Cancel / Save this path / OK row](img/viewer/filmmaker-path-editor.png)
 
-- **Drag a band's end** to pivot it around its far end (length stays fixed) — use this to aim a leg
-  differently or pick a different door.
-- **Drag a band's middle** to move the whole band without pivoting.
-- **Anywhere else orbits the scene as normal** — there's no freeze or modifier key. A drag only ever
-  moves in the plane you're currently facing, so turn the view to reach the axis you need (e.g. orbit
-  to a side view to adjust height).
-- **Save this path** stores your edit as part of the building so it's there next time; **OK** records
-  the film exactly as previewed — if nothing was touched, that's byte-identical to the un-edited default.
+#### The bands — the rows in the panel
 
-Total duration is derived per building from real walk distance and pull-back distance, not a fixed
-number — a small building's film runs shorter than a large one's by construction, not by a per-building
-setting. [Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
+Every row is one straight **band** of the flight, listed in flight order with its own x, z, **height**
+(green) and **length** (orange) fields, plus its aim angles:
+
+- **settle** — where the dive lands and the camera looks around. Always the first row.
+- **stop** — end of the *walk*, not the film; its far end stretches the exterior orbit that follows.
+  Always the last row.
+- **stick** — any band you added yourself, labelled with how far along the walk it sits. The screenshot
+  above has four.
+
+To work with them:
+
+1. **Click the tube** anywhere along the walk to drop a new **stick** there. A fresh stick lies exactly
+   along the curve, so the film does not move until you move it — dropping one costs nothing.
+2. **Drag a band's end** to pivot it about its far end (length is fixed, so this aims a leg — use it to
+   turn through a different doorway).
+3. **Drag a band's middle** to move the whole band without pivoting.
+4. **Press `×` on a stick's row** to remove it. *settle* and *stop* have no `×` — the dive lands on one
+   and the orbit stretches off the other, so removing either would change what the beats mean.
+5. **Anywhere else orbits the scene as normal** — no freeze, no modifier key. A drag moves in the plane
+   you are currently facing, so orbit to a side view when you need to change height.
+
+#### Whole path — the controls that act on the entire film
+
+- **reach %** — how far a drag on the tube carries along the walk. Drag the tube *between* the bands and
+  it bends like a hose, falling off over that reach; a small reach edits locally, a large one sweeps the
+  whole flight.
+- **clip · mark in / mark out / whole film** — trims the film to a window without changing the path.
+  ⚠ **Marking uses the point of the film nearest your camera**, so put the camera close to the spot *on
+  the yellow tube* where the cut belongs before pressing — marking from a wide exterior view lands on
+  whichever part of the flight happens to pass closest to your eye. **whole film** clears the window.
+- **build the model as the camera flies** — the construction reveal. See the 4D note below.
+- **saved** — plans you stored for this building, with **open** and **delete**. Choosing one and pressing
+  **open** replaces the path you are editing; the line under it says how many bands, how many hose pulls,
+  the clip window and when it was saved.
+
+#### Timing, preview and recording
+
+The **total** field is seconds, and the line beneath it reports the derived reality: walk length, walking
+speed in m/s, the natural duration, and how far your edit has moved it. Total duration is derived per
+building from real walk distance and pull-back distance, never a fixed number — a small building's film
+is shorter than a large one's by construction, not by a setting.
+
+- **Preview** flies the current edit so you can watch it before committing to a bake. The panel tells you
+  when what you are looking at is older than your last edit.
+- **Save this path** stores the plan — both into the building (so it travels with the file when you save
+  it) and as a named entry in the **saved** list above.
+- **Cancel** discards; **OK** records the film exactly as previewed. If you touched nothing, that is
+  byte-identical to the un-edited default — opening the panel to look costs you nothing.
+
+#### The 4D reveal — and what it may honestly be called
+
+With **build the model as the camera flies** ticked, the model assembles as the film runs. What drives
+that order depends on the data in *your* building, and the viewer picks automatically:
+
+| your data | what drives the reveal | what to call it |
+|---|---|---|
+| no dated tasks | the derived build order, re-keyed to the flight | **"derived build order"** — never "the schedule" |
+| real dated tasks (a 4D schedule authored or imported into the building) | each element's own `schedule_start` | **"a linked 4D schedule"** |
+
+A building with a real schedule reveals by that schedule and nothing is re-ordered. The practical
+workflow is to **preview the Time Machine first** — its Gantt is in the Inspect drawer — and then place
+your **mark in / mark out** against what the programme actually shows.
+
+[Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
 
 ### Display options — Palette, Night, Shadow + Ground, Background, Sound FX
 
@@ -504,6 +561,9 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | **Front / Back / Left / Right** | Elevation views |
 | **Roof** | Roof plan view |
 | **Alt+Z** | Toggle X-ray mode |
+| **Alt+C** | [Film-Maker](#cinema-film-maker-altc-the-bim-ootb-film-maker) — derive a cinematic film, edit the flight, record |
+| **Click the flight tube** (in the Film-Maker) | Add a stick — a new band you can drag |
+| **Ctrl+Z / Ctrl+Shift+Z** (in the Film-Maker) | Undo / redo a path edit |
 | **F11** | Toggle fullscreen |
 | **F1** | Help — the full, live list of every toolbar action and its shortcut key |
 
