@@ -435,6 +435,72 @@ correct run — the log did.**
   `clearStreamed()` resets `_instanceMeta` but NOT `A.guidMap`, so guidMap grew 1119 → 11191 across
   the looping re-streams. Harmless at one re-stream; real if something ever re-streams repeatedly.
 
+## ✅ DEPLOYED LIVE 2026-07-28 — sw `v873` (user: "deploy then i can only test in mobile")
+`bim-ootb` PR **#1071** (`f091f26`) + PR **#1073** (`5de3562`, the fix below). Live-verified by
+fetch-back from `https://red1oon.github.io/bim-ootb`: `CACHE_VERSION="v873"`; `streaming.js?v=58`
+`picking.js?v=30` `helpers.js?v=6` `panels.js?v=43` `scene.js?v=53` `time_machine.js?v=64`
+`hba_lens.js?v=7`; deployed code contains `MERGE_ROUTE` / `MERGED_PICK` / `_installMergedRaycast` /
+`filterMergedMesh` / `_hasMultiDraw` / `TM_UNMERGE` / `HBA_LAZY` / `ensureHbaData`.
+⚠ When fetch-back-grepping deployed files, **grep ASCII-only** (`MERGE_ROUTE`, not `§MERGE_ROUTE`) —
+the `§` through curl→grep returns 0 hits as an encoding artifact and reads exactly like missing code.
+
+**Shipped in #1071** (both witnesses re-run against the merged result, 16/16 + 11/11 PASS):
+1. §MERGED_GUID — the merged low-draw path with identity (spec above).
+2. §HBA_LAZY — HBA is opt-in; the `hbaFM` pill no longer casts itself onto the rail, and the whole
+   HBA compile (footprints, members, 7 demonstrator seeds, `ad_seed.db` fetch) no longer runs at load.
+   `§HBA_SEED ms=8.8 rooms=5` (Duplex) / `ms=10 rooms=14` (HHS) when actually invoked.
+
+**MERGE CONFLICT RESOLUTIONS — both kept BOTH sides, and one MATTERS for LTU:**
+- `streaming.js`: upstream **§S280e** (2026-07-25) raised the BatchedMesh cutoff from 1 instance to
+  `LOW_INSTANCE_BATCH_MAX = 3`, because LTU had **13,453 InstancedMesh scene objects averaging 2.7
+  instances each**, every one paying per-object frustum-cull traversal each frame. Kept verbatim; the
+  merge/batch target selection now applies INSIDE it, so ≤3-instance elements bake individually into
+  the merged buffer with their own ranges (Duplex merged elements went 758 → 929, draws 420 → 22).
+- `panels.js`: upstream's `_visibilityGen` bump kept alongside the new merged collector.
+
+**‼ SELF-INFLICTED DEPLOY FAILURE — the reason #1073 exists (read before serving test data):**
+Setting up a local `http.server` to run the probes, I ran `ln -sf ~/bim-ootb/buildings/<db>
+buildings/<db>` INSIDE the PR worktree. Duplex's DB is gitignored so its symlink was invisible to
+git — but `buildings/HHS_Office_Federated_extracted.db` is **TRACKED**, so `ln -sf` overwrote the real
+file and `git add -A` committed it: 75,579,392 bytes → a 63-byte symlink (mode 100644 → 120000).
+The Pages build for `f091f26` then FAILED (`tar: ... File removed before we read it`) and **#1071
+never reached the live site** until #1073 restored the blob (`0e2d157f`, byte-identical, verified
+`file` reports valid SQLite 18452 pages). **Never symlink into a repo worktree to serve test data —
+serve from a directory outside the checkout, or copy.** See [[feedback_never_symlink_into_repo_worktree]].
+
+## NEXT SESSION — open items, ranked (nothing here is blocked on code, only on a reading)
+1. **[THE GATE] `§RENDERER_CAPS multi_draw=` from the user's real phone on LTU.** User is testing.
+   `off` ⇒ merged path auto-engages, expect `§MERGE_ROUTE on` + `§MERGED_FLUSH buckets=N elements=M`
+   with M ≈ 10–20× N — that is the fly fix. `on` ⇒ inert by design; A/B by hand with `&merge=1` vs
+   `&merge=0`. **If `merge=1` does not help, draw calls are NOT the bottleneck** → go to lever 2
+   (sql.js full-DB residency), do NOT keep tuning the GPU stack.
+2. **Fly-on-LTU, if merging doesn't fix it.** Analysis done this session, not yet measured on device:
+   during a fly the camera signature changes EVERY frame (`dlod_nav.js:553`), so `_scanPending` never
+   clears and `_evalChunk` runs **every frame at `EVAL_CHUNK = 16384`** (`dlod_nav.js:51`) — on LTU's
+   122k that is ~7.5 frames per pass with 16K distance+frustum tests per frame, plus continuous
+   `_startFade` churn where each fade hoists a standalone copy mesh (MORE draw calls) for 10 frames.
+   **So `o` DLOD trades GPU draws for CPU scan + fade churn — expect a wash on a phone, which matches
+   the user's "with DLOD bboxes on even so."** Measure before changing it.
+3. **⛔ BLOCKED (needs one user fact): "its panel does not disappear even though touch empty spot as in
+   Desktop, or when deselect in pill tray."** Could NOT reproduce on Duplex at mobile viewport — the
+   HBA family drawer toggles closed correctly via the pill path, and outside-tap dismissal is
+   implemented ad-hoc per drawer (`panels.js:170` whist-drawer, `:1093` disc popup), NOT globally, so
+   the answer depends entirely on WHICH panel. May also be moot now that HBA no longer auto-wakes.
+   **The one question: which panel?**
+4. **§S280e is UNVERIFIED at LTU scale** — its own author flagged it "UNVERIFIED against TM/picking/
+   storey+disc filter... do not treat this as shipped/done until those three are re-tested on a large
+   building." This session's witnesses cover exactly those three ON THE MERGED PATH, but only on
+   Duplex/HHS. If picking or isolate misbehaves on LTU specifically, look here first.
+5. **guidMap does not contain merged elements** (by design — it is keyed by `mesh.id`, one-to-many for
+   a bucket; identity lives in `_mergedIndex`). Every guidMap-based consumer therefore cannot see
+   merged elements: `hba_lens` (25 refs — zone tinting silently no-ops), `city` (7), `ghostglass` (6),
+   `hba_avatars` (3). NOT a regression vs the 2026-05 merged path (it registered nothing either), but
+   a gap vs the BatchedMesh path. Only `hba_lens` is mobile-relevant; user closed it 2026-07-28
+   ("no need further featuring in mobile"). Cheapest fix if reopened is per-vertex colour over the
+   element's range + a cloned `vertexColors` material — NOT full promote-on-demand.
+6. **Pre-existing leak, named so it is not re-discovered:** `clearStreamed()` resets `_instanceMeta`
+   but NOT `A.guidMap` — observed growing 1119 → 11191 across repeated re-streams.
+
 ## TEST / WITNESS
 - Real device (preferred) or DevTools mobile emulation + CPU 4–6× + GPU throttle.
 - Capture per run, naming building + device: **draw calls · frame ms · DPR · first-load ms · peak RAM**.
