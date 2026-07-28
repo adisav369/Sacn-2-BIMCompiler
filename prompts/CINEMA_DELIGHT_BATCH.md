@@ -144,6 +144,23 @@ bbox (assert containment, not appearance).
 **Cost: 3a SMALL (half a session) · 3b MEDIUM-LARGE (one to two sessions), mostly the candidate query
 and making the ghosts readable without cluttering the pipe.**
 
+## 4. §CPE_FILM_AUDIO — ⛔ DECLINED BY THE USER 2026-07-29. Do not re-propose.
+> User: *"the reason I asked to drop the audio is because I could dub it in my Facebook with a scorpion
+> song the smoke under. I have a knack of finding the right bit."*
+
+**The reason is better than any in the analysis below, and it is a PRODUCT fact, not a preference:** the
+distribution channel already supplies the soundtrack, and it supplies it better, because a human with
+taste is choosing the track and the cut. In-app film audio would compete with that and lose. **Cost was
+never the objection — do not revive this item by arguing it is cheap.**
+
+⚠ **One factual distinction, offered once and then left alone (the user's call, not a re-argument):**
+Stage 1 below is **§CPE_AUDIO_CUES — a cue list, not audio.** It emits `film-cues.json`/CSV of the
+moments the film already knows are worth scoring (beat boundaries, room transitions, the exit-door
+crossing, 4D phase changes) with **no encoder, no muxer, no AudioContext**. That is a marker track FOR
+the person doing the dub — i.e. it serves the exact workflow the user described rather than replacing
+it. It stays DECLINED unless they ask; it is recorded here only so nobody re-derives it from scratch.
+
+### (Original analysis retained below for that reason only — the item is closed.)
 ## 4. §CPE_FILM_AUDIO — RE-THOUGHT 2026-07-29, and it is now the CHEAPEST item, not the dearest
 > User: *"yes when V is ON it is recorded so user can control not to have it embedded"* → then, on
 > reading the cost: *"can we make it like TM machine where it is auto triggered? Or cheaply. And when
