@@ -442,3 +442,38 @@ checkbox that suppresses the reset for the run — "x-ray film" as an authored l
 is not a photoreal bake**, and §MAXQ's own comment is the existing statement of that. The accidental
 version is also non-reproducible — it depends on when the toggle happened to land — so a deliberate
 control is strictly better than the discovery.
+
+## ▶ SETTLED 2026-07-29c — the buildup is DONE; the tools are the feature, not more engine
+> User: *"anyway it is okay the buildup… It is up to the user creative skill to use all these tools.
+> Need not over-engineer. He can preview the TM first and then plan out his markers. It is more
+> realistic and avoid critics saying this is just a nice movie as now it is 4D schedule driven. Also
+> the engineer who prepared the 4D knows the buildup. Also the gantt chart is already there in the TM
+> drawer to refer."*
+
+**All three shapes I floated for gaze-keyed reveal — (a) first-well-seen keying, (b) true per-region
+replay, (c) per-region real-window playback — are CLOSED, not deferred.** The ruling is that authorship
+belongs to the user: preview the TM, read the Gantt already in the TM drawer, place §CPE_CLIP markers
+accordingly. **Do not reopen this without the user asking.** The reasoning is also the strongest part
+of the public claim: a film cut against a real 4D schedule by the engineer who built that schedule is
+defensible; a film whose reveal order was invented by a camera heuristic is what invites *"it's just a
+nice movie."* `tmOrderByCameraPath` keys on PROXIMITY (nearest path sample), and that stays as-is.
+
+**ACCEPTED, not a defect: lighting is visible from frame 1.** > *"good side effect as it gives a heads
+up where the lighting will be. Also double up as construction lighting."* §PHOTO_GLOW_SPRITE stages 189
+luminaire sprites before the reveal begins. Ruled a feature. **Do not "fix" it to reveal with its host
+element.**
+
+### ⚠ §CPE_CLIP usability finding — why "mark in" cut 98% of the film
+> User: *"How do i do the mark in/out, i wana shorten the starting point. I pressed mark in it reduced
+> completely 98%"*
+
+`_markClip()` marks the film point **nearest the CURRENT CAMERA POSITION** in 3D — nothing else. Its own
+comment claims it marks *"the CENTRE of the current preview window if one is flying, else…"*, but **there
+is no preview-time branch in the code**; the nearest-point search is the whole function. So marking from
+an orbited-out editing pose lands on whichever part of the film happens to pass closest to the eye —
+typically the exterior orbit at the END — giving `clipIn ≈ 0.99` and a 1% window. Working recipe today:
+move the camera close to the point ON THE YELLOW PIPE where the cut belongs, then press the button.
+**The honest fix is to mark by TIME, not by proximity** — the preview cursor already knows `t`, and
+§CPE_HOVER_SCRUB (item 1) introduces exactly that cursor. Fold it there rather than growing a third
+notion of "here". The stale comment must go with it: a comment describing a branch that does not exist
+is the same class of defect as the `waypoints=0` log §CPE_IDB_PATH_STORE fixed.
