@@ -2945,3 +2945,51 @@ part of THIS task, not a follow-up.
 ## 6. Explicitly NOT in this section
 Any change to WHICH space, door or pivot the plan picks; any change to pacing (§CPE_SPEED_RAMP is item 6
 and must never share a PR with a pacing change); hover scrub, room titles, cues, detours (items 1–5).
+
+---
+
+# §CPE_REOPEN_DOUBLE — the band count DOUBLES on every re-open of an authored path (2026-07-29)
+> User: *"Bug where it seems to dupe more bars upon alt-c cancel and resume, so when i reopen saved
+> path it gave me back my last count."*
+
+## The mechanism, read from the code — it is exact, not approximate
+Two functions with reciprocal fan-out, composed in a loop:
+- `_cinemaSeedBands(wp)` (`viewer/effects.js`) emits **one band per waypoint** — `for (i = 0; i < wp.length; i++) bands.push(...)`.
+- `_cinemaBandWaypoints(bands)` emits **two waypoints per band** (its two ends) — which is why
+  `§CPE_OPEN` prints `waypoints = bands.length * 2`.
+
+`open()` seeds from `a.cinemaSeedBands(plan.waypoints, plan.pathLen)` — **unconditionally**, including
+when the plan it was handed was itself BUILT from authored bands. So once a path is staged:
+
+| cycle | authored bands | plan waypoints | bands on next open |
+|---|---|---|---|
+| 1 | N | 2N | **2N** |
+| 2 | 2N | 4N | **4N** |
+
+**The count doubles per open, forever.** Cancel is irrelevant — `finish('cancel')` correctly returns
+`override: null`; what feeds the doubled plan is the staging from an earlier *Save this path* / OK
+(`A._cinemaPathEdit`), which the plan wrapper re-applies on every subsequent plan. And *"reopen saved
+path gave me back my last count"* is `_pathsApply` behaving CORRECTLY — it restores exactly the record
+that was saved, which by then was already inflated.
+
+**This corrupts saved plans**, so it outranks the performance work: every save taken after a re-open
+stores a band list the user never authored.
+
+## The fix — the plan already carries the answer and `open()` ignores it
+`_cinemaPathPlan` already returns `bands: _cpeBands ? …map(c,d,len) : null` (`viewer/effects.js`) — the
+authored bands, verbatim. So:
+```
+var seeded = (plan.bands && plan.bands.length >= 2) ? plan.bands : a.cinemaSeedBands(plan.waypoints, plan.pathLen);
+```
+Middle bands are re-flagged `_stick: true` on adoption, exactly as `_pathsApply` already does, so the
+`×` remove affordance survives a re-open. Derived (unauthored) plans are untouched: `plan.bands` is
+`null` there, so the seeder still runs and a first open is byte-identical to today.
+
+## Witness claims
+- **W-REOPEN-STABLE (the gate).** Open → author N bands → build the override → re-plan with it →
+  re-open: band count is **N, not 2N**, and each adopted band equals the authored one within 1e-6 in
+  centre, direction and length. *Proves/disproves:* the doubling, and that adoption is not a re-seed
+  wearing a different name.
+- **W-REOPEN-DERIVED.** With no override, the seeded count and geometry are unchanged from today.
+  *Proves/disproves:* that the fix did not alter the derived first-open path.
+- `§CPE_OPEN` gains `src=authored|seeded` so a pasted console says which branch ran.
