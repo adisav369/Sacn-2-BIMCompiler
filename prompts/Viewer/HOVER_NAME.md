@@ -43,6 +43,28 @@ Honour this block until this file is DONE.
   gate is green, then flip the default in the same PR that reports the number** — never flip it on hope.
   Remembered per session like the other Find toggles either way.
 
+## Shortcut key — the checkbox is the setting, the key is the ACTION
+> User, 2026-07-29: *"have it as shortcut key for fast action.. as user may want it to shut off"*
+
+**A toggle you have to open a panel to reach is not a toggle you will use.** The reason is specific and
+the user named it: hover-name is *helpful* while inspecting and *in the way* while presenting or filming,
+so the cost of turning it OFF must be one keystroke, at the moment it becomes annoying — not a drawer,
+a scroll and a click. Same reasoning that made X-Ray, Section Cut and Fly Tour keyed.
+- **The checkbox and the key drive ONE state.** Pressing the key must visibly tick/untick the Find
+  panel's checkbox, and vice versa. Two controls that disagree about the same boolean is the `— 3 bands`
+  defect again.
+- **Register it the same way every other shortcut is registered** — through the existing keyboard route
+  (`§KBD_SEQ_ENGINE` / `§SHORTCUT_FIRE`), so it appears in the cheat-sheet and the Settings → Pill Icons
+  shortcut list automatically. **Do not add a bare `keydown` listener.**
+- ⛔ **Which key? Ask the user, do not pick one.** The obvious single letters are heavily taken (`f` Find,
+  `t` Time Machine, `r` room cycle) and `§KBD_SEQ_ENGINE` supports sequences, so a free single key may not
+  exist. **Run `node deploy/dev/tests/audit_specs.js`-style verification of the existing bindings and
+  present the FREE candidates** rather than proposing one and discovering the clash later.
+- **Log it:** `§HOVER_NAME toggle=on|off src=key|checkbox` — so a pasted console shows both that it
+  changed and which control changed it.
+- Also update the cheat-sheet row in `docs/BIMUserGuide.md` when it ships (the Alt+C/tube-click rows are
+  the pattern), and bump `sw.js CACHE_VERSION` in the same PR as any precached `viewer/` change.
+
 ## Relationship to §CPE_HOVER_SCRUB
 Different feature, same gesture family. §CPE_HOVER_SCRUB (Cinema) hovers the PIPE to scrub the film;
 this hovers the MODEL to name a thing. They must not fight: while the Cinema editor is open, the pipe
