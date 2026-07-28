@@ -2420,3 +2420,66 @@ removing the handles would redesign settled, witnessed behaviour and was out of 
    point at. Not yet decided.
 4. ARC-only for §CPE_BUILDUP — shipped WITHOUT the filter; the witness reports the ARC count
    (10,941/63,415 on Hospital_3) so the question can be answered from data rather than taste.
+
+## §CPE_STICK — bands are N, not three (BUILT + witnessed 2026-07-28, PR #1074)
+**User, after flying §CPE_HOSE on JKR:** *"So u still retrain those three sticks? I cannot do the
+intended any part of hose to get arbitrary stick."* — against their ORIGINAL ask, which had two
+halves and only one shipped: *"clicking any point will open an aribitary '3 point band' **or** just
+dragging a point where the whole path is like a long rubber hose."*
+
+**Their own log said why the hose was unreachable, and it was not the falloff maths.** Every grab in
+the session was `§CPE_DRAG_SCALE grab band=… zone=mid`; there is no `§CPE_HOSE grab` line anywhere and
+every preview reported `hoseOps=0`. Cause, from the same log: `§CINEMA_BANDS … flown=84` — the hose
+hit-tests the WALK polyline, while the drawn pipe is the whole film. On that run the walk was
+`pathLen=18.4 m` against `diveDist=67.6 m` and an orbit `granted=54.3`, so **~15% of the visible pipe
+was grabbable and nothing showed which 15%.** An affordance you cannot see is not an affordance.
+
+### What shipped
+- **Click the pipe → a rigid band is seeded there** (`A.cinemaSeedStick`, in effects.js so the witness
+  exercises the shipped function): centre ON the curve, direction = the LOCAL TANGENT, length
+  inherited. Inserted in ARC ORDER between settle and stop, never appended. Removable via a `×` on its
+  row; settle and stop are not removable (the dive lands on one, the orbit stretches off the other).
+- **Click vs drag on the pipe is one grab, split by what the hand does** — release without moving and
+  you get a stick; move and you bend the pipe. No modifier to remember.
+- **The walk is drawn as a FATTER tube** over the thin film pipe, so the authorable stretch is visible.
+  Dive and orbit remain underivable — this makes an existing limit VISIBLE, it does not remove it.
+- **§CPE_PREVIEW drives the buildup** (see push-back below). **§CPE_PREVIEW_REDUNDANT:** the pre-editor
+  10 s rehearsal is removed; it still runs when `opts.editor === false`.
+
+### ⚖ SUPERSEDES §CPE_BANDS rule 1, and ONLY rule 1
+"Three bands, one per anchor, no bands added or removed" is now "N bands". **Nothing else about a band
+changes** — rigid length, end=rotate/mid=translate, tangent authoring, store-bands-not-points all
+stand, and they are what make a spawned stick worth having. `_cinemaBandWaypoints` and
+`_cinemaBandFlow` were already written as loops over `bands.length`, so the plan side needed NO change.
+
+### Push-back the user invited, and the numbers behind it
+> *"i dont expect buildup preview can be done as it be heavy engine work... I would expect maybe meshed
+> batch or some occlusion happening"*
+
+**There is no new engine work.** Time Machine already drives per-element visibility through BatchedMesh
+`setVisibleAt` and InstancedMesh zero-scale matrices — that is what its playback does today on 122k-
+element buildings. The preview moves the same cursor. Costs: re-key is a ONE-OFF 12–14 ms (1,120 ops);
+per frame it is `renderAtTime`, measured in `TM_INCREMENTAL_RENDER_PERF.md` at 2.0 ms on the delta path
+and ~23 ms full at 16k objects, and a 10 s preview steps the cursor far under `_INCR_MAX_SPAN_MS` so the
+delta path engages. The one case that pays full price is DLOD engaged on a very large building, and it
+is now VISIBLE as `§CPE_PREVIEW msPerFrame` rather than a mystery.
+
+### ⚠ THE WITNESS WAS WRONG THREE TIMES BEFORE THE CODE WAS — read before writing the next gate
+| # | instrument | read | why it was wrong |
+|---|---|---|---|
+| 1 | two films compared pose-by-pose at equal `t` | 98.4 m | a stick lengthens the walk, so duration and beat fractions move — equal-`t` samples land on DIFFERENT BEATS (dive vs walk). A re-timing, not a jump. |
+| 2 | walks resampled by ARC FRACTION | 2.578 m | the stick inserts its own length, so the two polylines differ in total length and fraction-matching compares points offset by ~a stick along a curve |
+| 3 | gated in absolute metres | — | a budget that passes on a house and fails on a terminal for identical behaviour |
+**The correct instrument: point-to-curve (one-sided Hausdorff) deviation, gated at 0.6× the stick's own
+length.** Replacing a curved arc with a rigid chord of the same length deviates by the sagitta, so "it
+did not jump" means *the disturbance is bounded by the thing you dropped*. Measured: **0.640 m against
+a 1.13 m budget (Duplex, 1.89 m stick, 15.3 m walk); 1.222 m against 4.58 m (Hospital_3, 7.64 m stick,
+68.2 m walk)**; seeded tangent vs local tangent `dot=1.000000` on both.
+Gates: **S1** dropped stick is a no-op · **S2** moving it moves the path (52.5 m / 500.3 m) · **S3**
+removing it restores the film exactly (`0.00e+0 m`). 29/29 green overall.
+
+### Still open after this
+- **Dive and orbit are still not authorable** (§CPE_BANDS "still open" — bands 4 and 5). "Any part of
+  the path" is blocked on THAT, not on the hose or the stick. It is now at least honestly signposted.
+- Marker anchoring across a path edit (§CPE_HOSE open question 3) — markers are film-fraction `t`, so
+  a large edit moves what they point at.
