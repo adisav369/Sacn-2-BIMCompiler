@@ -108,3 +108,18 @@ stage). Ported the same fix there, via a fresh `origin/main` worktree (`/tmp/wt-
   instant, zero objects) — confirmed the hang was NOT the documented LFS-probe issue for once; a retry
   with `GIT_SSH_COMMAND="ssh -v"` succeeded in 14.9s (ref negotiation, not LFS, not auth). Transient.
   Don't assume every bim-ootb push hang is the LFS probe — verify before citing it.
+
+### ✅ FOLLOW-UP FIX — 2026-07-28, PR #1070 (`fix/blank-viewer-sw-cache-bump`, merged `0db250e`)
+User clicked the merged card live and still got Hospital, not blank — "discuss first if u face issue"
+before pushing another guess. Root cause found and confirmed via `viewer/sw.js`'s own `isNetworkFirst()`:
+`viewer.html`/`config.js`/`streaming.js` are in `PRECACHE_ASSETS`, which routes them **cache-first**
+(freshness = `CACHE_VERSION` bump on deploy, by this file's own doctrine/comment) — NOT the network-first
+fallback that untracked `.html`/`.js` get. PR #1068 edited exactly those three files without bumping
+`CACHE_VERSION`, so an already-installed client (the user's, which already had a `pwa_last_db` of
+Hospital) kept serving the stale pre-fix `config.js` straight from cache — hence "shows Hospital", not
+the hardcoded `Duplex` default a fresh client would have seen. Fix: `CACHE_VERSION` `v871`→`v872`, one
+line, `viewer/sw.js`. `main` is a protected branch (2 required status checks) — a direct push was
+rejected; opened as a PR instead, `gh pr merge --auto --squash`, both checks (`fast-checks`,
+`e2e-tests`) passed, merged clean. **Standing lesson for future viewer-file changes in bim-ootb: check
+`viewer/sw.js`'s `PRECACHE_ASSETS` list for every touched file and bump `CACHE_VERSION` in the SAME PR —
+don't ship the code change and the cache-bust as two round trips.**
