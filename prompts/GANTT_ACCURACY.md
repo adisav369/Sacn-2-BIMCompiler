@@ -143,3 +143,56 @@ Keep it lightweight — no post-processing passes, no bloom shader. Emissive tra
 - Verify: roof elements appear AFTER wall elements in `§` log order
 - Export JSON, modify a sequence number, re-import, verify playback changes
 - Test on mobile: export/import buttons accessible and functional
+
+---
+
+# §4D_HOST_BEFORE_HOSTED — a window reveals BEFORE its supporting wall (user, observed in a baked film, 2026-07-29)
+> User, watching the Hospital MaxQ film: *"that window coming on first, before its supporting walls can
+> be noted to harden our 4D generater, its matter of data."*
+
+## Why this matters more than it looks
+It is a **build-order correctness** defect, not a cosmetic one, and it is the first thing a scheduler
+will notice — before the camera work, before the render. A window cannot be installed before the wall
+that hosts it. The whole defensible claim of the Cinema work is *"a film cut against a real 4D schedule
+by the engineer who built that schedule"* (`CINEMA_DELIGHT_BATCH.md` §SETTLED 2026-07-29c); an ordering
+violation visible on screen undercuts exactly that claim, on the one axis it is being sold on.
+
+**The user's own framing is right: it is a DATA/RULES matter, not a renderer bug.** The buildup now
+plays the timeline verbatim (§CPE_BUILDUP_FOLLOW_TM, PR #1082) — so whatever order the generator emits
+is what the film shows, faithfully. Fixing this in the camera or the reveal would be the wrong layer and
+is explicitly forbidden by that same ruling.
+
+## Likely mechanism — TO BE VERIFIED before any code (do not treat as diagnosed)
+`schedule_gate.js` orders bottom-up by real geometric Z within storey bands + phase. **A window and its
+host wall are independent elements to that sort**, and an opening filler's `center_z` (~sill+half-height,
+often ~1.5 m above floor) can easily sort BELOW the centroid of the wall that carries it. Nothing in the
+Z sort knows one depends on the other.
+**Verify first, in this order:** (1) query `elements_meta`/`element_transforms` for a real offending
+pair on Hospital and compare their `center_z` AND their emitted `start_ts` — name the actual guids;
+(2) confirm whether the two are in the same phase or different ones (if different, the phase order is
+the cause and Z is innocent); (3) only then decide where the constraint belongs.
+
+## The rule to add, once verified
+**HOST BEFORE HOSTED: an element may not reveal before the element that hosts it.** Applied as a
+constraint AFTER the existing sort, never as a replacement for it — the Z/phase ordering is doing real
+work and must not be discarded to fix a dependency.
+- The host relationship **already exists in this codebase** — see `project_openings_inherit_host_rotation`
+  (openings inherit their host wall's rotation), so the pairing is derivable, not new data to invent.
+- Scope it to what is provable: opening fillers (`IfcWindow`, `IfcDoor`) → host `IfcWall`. ⚠ **Do NOT
+  generalise to "MEP after structure" in the same pass** — that is a different rule with different
+  evidence, and bundling them makes both unfalsifiable.
+- ⚠ **Prime Directive:** the host link must be EXTRACTED (IFC relationship or measured containment),
+  never inferred from proximity alone. A window assigned to the nearest wall by distance is invention.
+
+## Witness claims
+- **W-HOST-ORDER (the gate).** For every hosted element on Hospital, `start_ts(host) <= start_ts(hosted)`.
+  Report the violation COUNT before and after — before must be > 0 or the defect was never reproduced,
+  and a witness that cannot show the RED is not a witness.
+- **W-HOST-NO-REGRESSION.** The storey-band bottom-up character survives: the Z-vs-reveal-order
+  correlation must not degrade, and `§GANTT_MINI` phase spans must not collapse into each other.
+- **W-HOST-COVERAGE.** Report how many elements actually HAVE a derivable host. Elements with none keep
+  their current order and are counted, not silently passed.
+
+## Where this sits
+Not in the Cinema lane — the film only EXPOSED it. It belongs to 4D generation and should be fixed there,
+which also means every consumer (Time Machine playback, the Gantt drawer, 4D/5D variance) gets it.
