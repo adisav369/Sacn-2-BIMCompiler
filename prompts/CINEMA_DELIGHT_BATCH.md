@@ -334,3 +334,49 @@ so it is Terminal-4D-first; on derived buildings it must say so rather than inve
 | imported | P6/XER with logic + float | **none yet** — do not imply it |
 `early_start`/`late_start`/`is_critical`/`total_float` are EMPTY on TerminalHi4D (verified), and
 `§CPE_BUILDUP_SOURCE` says so itself: *"no float/logic in this data"*. A 4D audience will ask.
+
+---
+
+# ▶ SESSION CLOSE 2026-07-29 — the tier is a property of the DATA, and the sentence to carry forward
+
+## "But it can, if 4D is generated first, similar to TerminalHi4D.db?" — YES, and for both tiers
+**The three tiers are not properties of a BUILDING. They are properties of what is in its DB**, so any
+building can be promoted, and neither promotion is a data-import project:
+- **tier 1 → tier 2 (real dated tasks):** `materializeDefault()` + the Schedule Author wrote
+  TerminalHi4D's schedule — the fingerprint that identified it was `SCH_AUTHORED`,
+  `TASK_ROOT="Project"`, 30-day windows, i.e. **authored in-app, not imported from XER**. Run the same
+  path on any building and `tmScheduleSource()` starts reporting `source=captured` for it, and
+  §CPE_BUILDUP switches to schedule-driven **with no code change at all** — the branch is already there
+  and already witnessed.
+- **tier 2 → tier 3 (critical path / float):** `computeCpm` **already exists** —
+  `viewer/schedule_author.js:508`, wired via `schedule_editor_ui.js:385` + `schedule_sync.js:26`, with
+  its own witness `erp/tests/schedule_cpm_witness.js`. It has simply **never been run against
+  TerminalHi4D** (its `early_start`/`late_start`/`is_critical`/`total_float` columns are empty —
+  verified). So "critical path" is **one function call plus a witness pass away**, not a roadmap item.
+
+**⚠ The nuance that keeps it credible even after CPM runs.** A materialised schedule is DERIVED
+durations, not a contractor's programme. So:
+- tier 2 stays *"a linked 4D schedule"* — never *"the project schedule"*.
+- tier 3, once CPM has run, is *"critical path computed from the derived schedule"* — **not** *"the
+  project's critical path"*, unless real durations and logic came from a real programme.
+The distinction costs nothing to state and is exactly what a scheduler will probe first. Do not lose it
+in the excitement of the columns filling in.
+
+## THE SENTENCE — carry this forward verbatim
+> **A model-derived cinematic path you edit by dragging the flight itself, baked to photoreal video
+> entirely in the browser, with the construction reveal following the camera.**
+
+Full clause-by-clause backing, the adjacent-field survey and the DO-NOT-SAY list live in
+`prompts/PUBLIC_TECH_STATEMENT.md` §COMPETITIVE_POSITION. **Read that before any public claim** — in
+particular: no *"first"* / *"only"* without a verified sweep (half a session, not yet run), and no
+ranking claims against Revit/Navisworks, because ranking is import fidelity, model scale, collaboration
+and ecosystem and this work touches none of them. What it does is make ONE capability distinctive.
+
+## Where the next session starts
+1. **§CPE_REPLAN_LAZY (item 0)** — pays for everything else; the diagnosis is already done and proven
+   from the user's own log. Gate on equivalence, not speed.
+2. Then item **1 §CPE_HOVER_SCRUB** and **4a §CPE_AUDIO_CUES** (both small, both independent).
+3. **Answer the five open questions first** — four listed at the end of the item list, plus
+   §CPE_WHEN_HERE's radius question. Three of them change what gets built.
+**Shipped and pushed as of this close:** `bim-ootb` `feat/cpe-hose` @ `b63a0d1` (CPE v13, MAXQ v15,
+sw v875), PRs #1074 and #1078 merged to main. Witness `witness_cpe_hose.js` 29/29 on Duplex.
