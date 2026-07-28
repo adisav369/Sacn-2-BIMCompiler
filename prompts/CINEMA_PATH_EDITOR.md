@@ -30,6 +30,12 @@ went green — verify I corrected the instruments rather than lowered the bar).
 file). Jerk and drag are both SOLVED and witnessed there; the elegant formula that solved them is
 recorded as settled doctrine and must not be re-derived.
 
+**NEXT DIRECTION (agreed 2026-07-28, spec-only, nothing built): §CPE_HOSE** at the END of this file —
+whole-path editing by arc-length falloff (the band and the hose unified as one gesture), §CPE_CLIP
+in/out markers, and the §CPE_BUILDUP construction checkbox (= §MAXQ_TIME mode D in
+`PHOTOREAL_STILL_RENDER.md`). Read its §2 ARC-LENGTH LAW first — a world-distance falloff re-introduces
+the out-and-back bug that removed §CPE_DRAG_REACH in #1038.
+
 **⚠ 2026-07-27 (later, live user run on Hospital):** OK-after-an-edit CRASHED the bake on shipped
 main — `§CPE_OK_CRASH`, root-caused, fixed and witnessed 6/6 (`witness_cpe_ok_bake.js`, the first
 gate that walks editor → OK → bake instead of the plan seam). Read **§CPE_OK_CRASH** at the end of
