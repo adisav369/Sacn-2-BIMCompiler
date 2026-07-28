@@ -3178,9 +3178,35 @@ A pasted console must answer which order the film used and why, on its own — t
    must correlate with element Z (bottom-up) rather than with distance to the path; report Spearman
    against both, and mode T must beat mode D on the Z correlation by a stated margin.
 
-## ⛔ Open question for the user before §2 is built
-**Mode D still has a use — do you want it as a choice, or gone?** The checkbox is one line today
-(*"build the model as the camera flies"*). Mode T makes that sentence wrong for the default case.
-Recommended: keep the checkbox as the on/off, and let the MODE follow the data automatically
-(S if linked, else T if a timeline exists, else D), with mode D reachable only as an explicit
-*"reveal along the flight path instead"* sub-option — so the honest default never has to be chosen.
+## ✅ SETTLED SAME DAY — the user ruled before any of it was built, and it is simpler than the spec above
+> *"do not bake anything for TM.. as i said, it is user's own plan"*
+> *"this practices good separation of tasks"*
+> *"so buildup it gives as it is basis"*
+
+**The open question below is CLOSED and mode D is retired from the film path — do not re-open either.**
+There is no three-way selector, no *"reveal along the flight path instead"* sub-option, and no control
+to design: **Time Machine owns the build order, Alt+C owns the camera.** The buildup takes the TM
+timeline AS IT IS and plays it. That is also the §CPE_BUILDUP_SETTLED ruling (2026-07-29c) applied one
+level down — authorship belongs to the user, who previews the TM and places their markers; the camera
+must not invent an order for them.
+
+~~⛔ Open question: mode D still has a use — do you want it as a choice, or gone?~~ **Answered: gone.**
+
+### Built and shipped 2026-07-29 — `bim-ootb` PR #1082, CPE v15, MAXQ v17, sw v880
+One verb, `tmFollowTimeline()` (`time_machine.js`), used by BOTH callers. It writes nothing, because
+`_ops` are already in timeline order the moment the timeline exists:
+- **mode S** — captured/linked schedule; delegates to `tmOrderBySchedule()`, unchanged.
+- **mode T** — this model's own derived 4D timeline, followed verbatim.
+- **no mode D.** `tmOrderByCameraPath` is left in place and unchanged, and **nothing calls it.** It is
+  still correct at what it does; re-keying a timeline to camera proximity is simply not something the
+  film may do. ⚠ Do not re-wire it into the buildup path.
+
+§4 (preview vs bake divergence) and §5 (nothing logged the choice) closed in the same commit, both as
+consequences rather than as separate fixes — one shared verb cannot disagree with itself, and it logs
+`§CPE_BUILDUP_SOURCE mode=S|T reason=… leafTasks=… capOps=… placed=… window=…` unconditionally.
+§3 (the two `tasks` schemas) is **still open** — harmless today because both are empty, and W-SCHED-SCHEMA
+above still names the gate for the day one of them is populated.
+
+**Wording, unchanged in force:** mode S may say *linked schedule*; mode T says *this model's 4D
+timeline* — never *"the schedule"*, never *"a construction programme"*. The checkbox now reads
+*"build the model as the film plays (follows the Time Machine, not a programme)"*.
