@@ -41,6 +41,11 @@ main — `§CPE_OK_CRASH`, root-caused, fixed and witnessed 6/6 (`witness_cpe_ok
 gate that walks editor → OK → bake instead of the plan seam). Read **§CPE_OK_CRASH** at the end of
 this file before anything else on this lane.
 
+**VISION CAPTURE (2026-07-28, interim — not a spec, commits to no new build order): §CPE_VISION_CHAIN**
+at the END of this file — the user's own end-to-end sequencing for where this lane goes (space-awareness
+→ auto-hose → edit → buildup POC → smart markers → real schedule data later), written down so it isn't
+only in one person's head. Read for context; the "still open" list at its end is real work, not decided.
+
 ---
 
 # §CINEMA_PATH_EDITOR — the simplest fastest tour maker
@@ -2483,3 +2488,380 @@ removing it restores the film exactly (`0.00e+0 m`). 29/29 green overall.
   the path" is blocked on THAT, not on the hose or the stick. It is now at least honestly signposted.
 - Marker anchoring across a path edit (§CPE_HOSE open question 3) — markers are film-fraction `t`, so
   a large edit moves what they point at.
+
+## §CPE_VISION_CHAIN — the roadmap in one place, so it isn't only in the user's head (interim capture, 2026-07-28)
+**Not a new spec.** Nothing here commits to new build order beyond what's already ✅ elsewhere in this
+file. This exists because the user laid out the full end-to-end chain in conversation and asked for it
+written down before it's only recoverable from a chat log.
+
+### Origin — the user's own framing, lightly cleaned up for reading, not reworded in substance
+> *"Task data can be injected as the build sequence can base on later. Building in parts is on the heels
+> of recent success of functional space injection giving awareness of where large halls, stairs and
+> storeys are, a fast simple hose path is granted. Then it can be edited. Now the whole length. Then
+> more build up animation — as a POC first. Then intelligent marker placing, i.e. set to nearest room,
+> stairs climbing — all to lead in speed and ease of use, besides being utterly free."*
+
+### The chain, mapped to what exists vs what's still vision
+| step | what it is | status |
+|---|---|---|
+| 1. Space awareness | knowing where halls/stairs/storeys are | prior work, not owned by this file — see `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` |
+| 2. Fast simple auto-hose path | GENERATE a first-pass path FROM space awareness, not hand-placed | **NOT built** — §CPE_HOSE/§CPE_STICK only EDIT a path that already exists from the Alt+C plan; nothing yet proposes a path from room/hall/stair layout |
+| 3. Edit the whole length | drag-edit with arc-length falloff | ✅ built — §CPE_HOSE_BUILT, §CPE_STICK (N arbitrary bands, 29/29 green, PR #1074) |
+| 4. Build-up animation, POC first | construction reveal synced to camera travel | ✅ POC built — §CPE_BUILDUP / W-BUILDUP-SAMPLE, honestly labeled DERIVED order, not a real schedule (no `tasks` data exists in the source DBs today) |
+| 5. Intelligent marker placing (nearest room, stairs-climbing) | §CPE_CLIP markers snapped to space semantics instead of raw arc-fraction | **NOT built** — §CPE_CLIP markers are `t`-fraction only; §CPE_HOSE open question 3 already flags they don't survive a path edit, and nothing yet snaps a marker to "nearest room" or recognizes a stair-climb |
+| 6. Real task data injected later | replace the derived buildup order with an actual linked schedule when one exists | **NOT built, explicitly deferred** — the DERIVED-order honesty label in §CPE_BUILDUP is the placeholder; swapping in real `tasks`/`task_elements` rows is a data-availability problem, not a code problem, once a building actually has one |
+
+### Why "free" is load-bearing, not a footnote
+Checked against the closest professional analogues (2026-07-28 research pass): Synchro and Navisworks
+TimeLiner do step 4 — cinematic camera + construction sequence — but require a REAL linked schedule as
+input; neither has a derived-order fallback for a building that never got 4D data attached. Twinmotion/
+Enscape/Lumion do a step-3-equivalent camera path but waypoint-based, not proximity-falloff hose editing
+— and none of the four (Synchro, Navisworks, Twinmotion/Enscape/Lumion) are free. The chain above isn't
+a cheaper clone of any one of them; the entry point (no schedule required to start, more accurate if one
+is added later, free throughout) is different from all of them.
+
+### Open, in the user's stated order — not yet spec'd, flag before starting any of these
+1. Auto-generate a first-pass hose path from room/hall/stair/storey space-awareness data (step 2) — needs
+   its own spec; nothing in this file currently produces a path FROM space data, only edits one that
+   already exists.
+2. Marker placement snapped to space semantics ("nearest room", "stairs climbing") instead of arc-fraction
+   `t` — extends §CPE_CLIP and would resolve §CPE_HOSE open question 3 (marker anchoring across an edit)
+   at the same time, since a room-anchored marker doesn't drift the way a `t`-fraction one does.
+3. Real task-data injection path for §CPE_BUILDUP — **✅ DONE (witness) 2026-07-28, 16/16 GREEN on
+   `feat/cpe-buildup-schedule`. See §CPE_BUILDUP_REAL_SCHEDULE (the spec) and
+   §CPE_BUILDUP_REAL_SCHEDULE_BUILT (the measured result) at the end of this file.** §CPE_BUILDUP now
+   branches: a building with dated leaf `tasks` reveals in real `schedule_start` order (proven on
+   `TerminalHi4D.db` — 5 phases, 0 interleaving pairs, vs mode D smearing all 5 into 23 days with 4/4
+   pairs interleaving); a building without one keeps today's derived order **bit-identical** (gated
+   against a control repeat of the old call, `0/40` frames differ). Three findings worth carrying
+   forward: (a) the "author a schedule in the Viewer and save it to the DB" half was **already shipped**
+   (`schedule_author.js` / `schedule_editor_ui.js` / `foreign_schedule.js`) and was verified, not
+   rebuilt; (b) `TerminalHi4D.db`'s schedule is `materializeDefault`'s output, **not** a P6 import — the
+   id/naming fingerprint is decisive, so the "no float, no logic, no resources" honesty bound still
+   applies; (c) the §BILLBOARD_INJECT panel + 4 floodlights are **already bound** to leaf tasks
+   (Architecture / MEP Final), because `materializeDefault` covers 100 % of `elements_meta` by
+   construction. One ⛔ question remains open for the user — see that section's "Still open".
+
+---
+
+# §CPE_BUILDUP_REAL_SCHEDULE — feed §CPE_BUILDUP a REAL schedule when the building has one (2026-07-28)
+**Spec-first. Written before any code**, per CLAUDE.md §Standing Rules. Closes §CPE_VISION_CHAIN open
+item 3 / chain step 6. Cross-references, does not repeat: **§CPE_BUILDUP** (the checkbox + the DERIVED
+-order honesty label), **§CPE_HOSE_BUILT** (what shipped in PR #1074), **§CPE_VISION_CHAIN** (why this
+is next), `PHOTOREAL_STILL_RENDER.md §MAXQ_TIME mode D` (the re-key), and
+`prompts/archive/XER_IMPORT_P6_ADOPT_LANE.md` (the foreign-programme adopt seam — already shipped, NOT
+rebuilt here).
+
+## 0. ⚠ THREE THINGS THAT ALREADY EXIST — do not rebuild any of them (verified by reading the code, 2026-07-28)
+This section exists to STOP a fresh session re-implementing shipped work. Each claim below was read out
+of the actual files, not assumed.
+
+| already built | where | what it does |
+|---|---|---|
+| **Real-schedule READ path** | `viewer/time_machine.js` `injectGantt()` → the `_cap` IIFE (~line 3121) | Probes `tasks` for **dated, non-summary leaf** rows (`WHERE schedule_start IS NOT NULL AND schedule_finish IS NOT NULL AND (is_summary IS NULL OR is_summary = 0)`), builds `guid → task` from `task_elements` (earliest-starting task wins on a multi-link guid), then OVERLAYS the real task window + real task name onto every covered element's `kernel_ops` row (`_captured=1`). Uncovered elements keep generative timing. Sets `_capActive`, `_coveredCount`, `_coveragePct`; logs `§GANTT_SOURCE captured …` / `§4D_COVERAGE …`, or `§GANTT_SOURCE generated` when absent. **`is_summary` is ALREADY honoured — the root task is already excluded.** |
+| **Schedule AUTHORING in the Viewer, with DB persistence** | `viewer/schedule_author.js` (`materializeDefault`, `assignElement`, `activeSchedule`, `persistDb`), `viewer/schedule_author_ui.js` (✎ Author wizard), `viewer/schedule_editor_ui.js` (WBS/Gantt/CPM editor, `doGenerate`, `doImportP6`) | Writes `schedules`/`tasks`/`task_elements` directly and debounce-persists the mutated db back into the shared IndexedDB building cache (§SE-6, PR #770). **This IS "author a schedule in the Viewer and save it to the DB". It shipped.** |
+| **Foreign-programme import (P6 XER / PMXML / MSPDI)** | `viewer/foreign_schedule.js` (`parseForeign` → `toScheduleData` → `adoptIntoDb` → `autoBind`), driven by `schedule_editor_ui.js doImportP6` | Same four tables. W-FGN 22/22 green. See `archive/XER_IMPORT_P6_ADOPT_LANE.md`; the write-back side is a separate lane (`XER_PMXML_WRITER_LANE.md`) and the real-`.xer`-fixture gate is still ⛔ (`XER_REAL_FIXTURE_PROOF.md`) — neither is in scope here. |
+
+**Consequence: the original two-half framing collapses.** "Half 2 — author/inject a schedule from the
+Viewer and save it to the DB" is **ALREADY BUILT** and needs verification, not construction. The only
+genuinely missing link is half 1, and it is a *one-branch* defect described in §2.
+
+## 1. The JSON-in / DB-out shape the authoring path actually uses (user: *"atm we working with the 4d json settings in view that users will either import to or edit from"*)
+There are **two** JSON surfaces, and they are different things. A spec that conflates them will send the
+next session to the wrong file.
+
+**(a) `rates/sequence_rules.json` — the 4D *rules* JSON. THIS is the one the user edits/imports.**
+`viewer/rates.js loadSequenceRules()` fetches it, deep-merges any user override from
+`localStorage['json_sequence_rules']`, and applies `SEQUENCE_RULES` / `SEQUENCE_DEFAULT` /
+`LABOR_RATES` **in place** onto the globals (object identity preserved, so existing references stay
+valid). Fallback on any failure = the hardcoded objects. Logs `§RATES_JSON loaded=json|json+override|fallback rules=<n> labor=<n>`.
+Shape: `{ SEQUENCE_RULES: { "<ifc_class substring>": {phase, sequence, resource} }, SEQUENCE_DEFAULT: {phase, sequence, resource}, LABOR_RATES: {…} }`.
+The class→phase match is **longest-substring containment**, and `schedule_author.js matchRule` is a
+deliberate exact replica of `time_machine.js matchRule` so authored phases equal what `injectGantt`
+would have grouped.
+
+**(b) `ForeignSchedule.toScheduleData()`'s return value — the *interchange* JSON.**
+`{schedules[], tasks[], taskSequences[], calendars[], taskElements[], _meta}` → `adoptIntoDb(db, data)`.
+This is the P6/MSP import shape only; `taskElements` is always `[]` (P6 carries no model guids —
+binding is the separate `assignElement` / `autoBind` craft).
+
+**The flow, end to end, all of it already shipped:**
+`sequence_rules.json (+localStorage override)` → `SEQUENCE_RULES` → `ScheduleAuthor.materializeDefault(db, SEQUENCE_RULES, {start, phaseDays})`
+→ `schedules`/`tasks`/`task_elements` rows → `persistDb()` → IndexedDB → next load → `injectGantt()`'s `_cap` → real dates on `kernel_ops`.
+**This spec adds NOTHING to that chain.** It only stops §CPE_BUILDUP from throwing the result away (§2).
+
+## 2. THE DEFECT — §CPE_BUILDUP destroys a real schedule 100% of the time
+`cinema_maxq.js` (~line 724) runs, with no branch of any kind:
+```js
+_bkState = window.tmOrderByCameraPath(function (t) { … }, nFrames);
+```
+`tmOrderByCameraPath` (`time_machine.js` ~4873, §MAXQ_TIME mode D) **overwrites `op.start_ts` and
+`op.end_ts` for every op** with `reveal = (floor(cameraS·frames) + zRank)/frames`, then re-sorts and
+re-derives `_projectStart`/`_projectEnd`. It runs *after* `injectGantt()` has already written the real
+task windows onto those same ops.
+
+**Therefore: a building WITH a real linked schedule currently produces a byte-identical buildup film to
+one with no schedule at all.** The §CPE_BUILDUP honesty label ("derived build order, not a construction
+programme") is not merely cautious — it is currently *unconditionally true by construction*, even when
+the data would support the stronger claim. That is the whole bug.
+
+## 3. THE FIX — one branch, two new read-only TM verbs, zero change to the render path
+**Non-negotiable: when no real schedule is present, the code path must be BIT-IDENTICAL to today.**
+§CPE_BUILDUP's derived mode is shipped and witnessed (W-BUILDUP-SAMPLE, B1/B2 in §CPE_HOSE_BUILT); this
+work must not perturb it. That is what `W-SCHED-FALLBACK` gates.
+
+**3.1 `window.tmScheduleSource()` — a pure read, no side effects.** Returns
+```
+{ source: 'captured' | 'derived', leafTasks, summarySkipped, covered, total, pct,
+  projectStart, projectEnd, ops }
+```
+built from the already-maintained `_capActive` / `_coveredCount` / `_coveragePct` / `_projectStart` /
+`_projectEnd` plus a `tasks`-table count for `leafTasks`/`summarySkipped`. It must NOT trigger
+`injectGantt` and must NOT mutate anything.
+
+**3.2 `window.tmOrderBySchedule()` — the captured branch, and it deliberately does almost nothing.**
+The correct implementation of "order the reveal by the real schedule" is **to leave `_ops` alone.**
+`injectGantt`'s `_cap` has *already* keyed every covered op to its task window, `loadOps()` reads them
+back `ORDER BY timestamp`, and `computeDays()` has already set `_projectStart`/`_projectEnd` to the real
+project epoch. So this verb: validates (`_capActive && _ops.length`), counts coverage, **performs no
+write**, and returns the SAME object shape `tmOrderByCameraPath` returns
+(`{ops, placed, noGeom, projectStart, projectEnd}`) plus `source:'captured'` — so `cinema_maxq.js`'s
+per-frame cursor loop needs **no change whatsoever**. Because it writes nothing, `_bkSaved` stays null
+and `tmRestoreDerivedOrder()` is a genuine no-op: there is nothing to restore, which is *stronger* than
+restoring correctly (`W-SCHED-REVERSIBLE`).
+
+**Within-phase order is NOT flat, and that is already handled.** §PLAYBACK-STAGGER (2026-07-19) sorts
+each task's covered guids bottom-up by `center_z` and distributes them linearly across that task's own
+`[start, finish]` window instead of collapsing them onto it. So the reveal is *real phase order between
+phases, real-Z order within a phase* — the derived Z-band discipline survives as the tie-break, exactly
+as `zRank` does in mode D. Nothing new is needed for this.
+
+**`wbs_parent` is NOT a sort key.** Ordering is `schedule_start` (present on every leaf). `wbs_parent`'s
+only roles are (a) identifying the root/summary ancestry that `is_summary` already filters out, and
+(b) a stable tie-break for two leaves sharing an identical `schedule_start`. Sorting *by* `wbs_parent`
+would be inventing a hierarchy semantic the data does not carry.
+
+**3.3 The branch in `cinema_maxq.js`** — replaces the unconditional call:
+```js
+var _ss = (typeof window.tmScheduleSource === 'function') ? window.tmScheduleSource() : null;
+if (_ss && _ss.source === 'captured') _bkState = window.tmOrderBySchedule();
+else                                  _bkState = window.tmOrderByCameraPath(poseFn, nFrames);
+```
+Every existing `§CPE_BUILDUP_SKIP` guard is retained unchanged. If `tmOrderBySchedule()` returns null
+(schedule present but unusable), **fall through to `tmOrderByCameraPath`** — a degraded real schedule
+must never be worse than no schedule.
+
+**3.4 The user-visible label must move with the data.** §CPE_BUILDUP's "say *derived build order*, never
+*the schedule*" rule stands **only in the derived branch**. In the captured branch the status string
+names the real source and its coverage. It must still not overclaim (§5).
+
+## 4. Witness claims — named before implementation, in the style of §CPE_HOSE's list
+Rig: `witness_cpe_buildup_schedule.js`, same harness shape as `witness_cpe_hose.js` (puppeteer,
+SwiftShader ANGLE, `PORT=8421`, real viewer page, `§`-log + numeric state only — **no screenshots**,
+FUNDAMENTAL LAW).
+
+- **W-SCHED-REAL-ORDER** — on a building whose `tasks` are populated, the buildup reveal follows the
+  SCHEDULE, not the camera. Proof is numeric and cannot pass by accident: for every consecutive pair of
+  leaf phases ordered by `schedule_start`, **max(reveal cursor of phase *i*) ≤ min(reveal cursor of
+  phase *i+1*)** across all covered elements — i.e. phases do not interleave. Mode D provably CANNOT
+  satisfy this (its reveal key is camera proximity, which scatters every phase across the whole film);
+  so this gate is exactly the difference between the two orders. Report per-phase
+  `[firstFrame, lastFrame]` windows.
+- **W-SCHED-FALLBACK** — on a building with NO usable `tasks` (`§GANTT_SOURCE generated`), the code path
+  is unchanged: `tmScheduleSource().source === 'derived'`, `§MAXQ_TIME mode=D` still prints, and the
+  frame-by-frame `placed` series is **identical** to the same run with this change reverted. This is the
+  regression gate; without it the change is not shippable.
+- **W-SCHED-REVERSIBLE** — after a captured-branch buildup, every op's `start_ts`/`end_ts` equals its
+  pre-bake value **exactly** (diff = 0 on all ops), and `_projectStart`/`_projectEnd` are unchanged. A
+  bake must never leave the user's Time Machine re-ordered. (Stronger than mode D's restore, because
+  nothing was written.)
+- **W-SCHED-MONOTONE** — the captured branch still satisfies §CPE_BUILDUP's own trap: `placed` is
+  monotone non-decreasing across frames, starts at/near 0, ends at/near total, and a MID sample is
+  strictly between — so a §CPE_CLIP still opens on a partially-built model.
+- **W-SCHED-COVERAGE** — the reported coverage is real, not asserted: `covered + generated == total`,
+  `pct` matches, and the count of elements bound in `task_elements` equals what `_cap` says it covered.
+- **W-SCHED-BILLBOARD** (§6) — the billboard panel and the 4 floodlights are each bound to a leaf task
+  and therefore appear in the captured reveal, with their frame index reported.
+- **W-SCHED-AUTHOR-ROUNDTRIP** — author → save → reload → §CPE_BUILDUP consumes it. Because the
+  authoring path already exists (§0), this is a **verification** gate over shipped code, not a gate on
+  new code: run `ScheduleAuthor.materializeDefault(db, SEQUENCE_RULES, {start:'2026-01-01', phaseDays:30})`
+  on a building that has none, confirm `tmScheduleSource()` flips `derived → captured`, and confirm
+  W-SCHED-REAL-ORDER then passes on that building too.
+
+## 5. The honesty rule, updated — what may and may NOT be claimed
+§CPE_BUILDUP's original label was forced by there being no data at all. With data, the label becomes
+*conditional*, and it must still be bounded by what the data actually carries.
+
+`TerminalHi4D.db` (`~/Downloads/OPEN SOURCE BIM/`, 306 MB, `building_name=TerminalMerged`,
+`import_date=2026-05-02`) contains, **verified by direct query, 2026-07-28**:
+- `schedules`: **1 row** — `SCH_AUTHORED | Authored Schedule | PLANNED | 2026-01-01`
+- `tasks`: **6 rows** — `TASK_ROOT` (`is_summary=1`, name `Project`, 2026-01-01→2026-05-31, `P150D`)
+  + 5 dated leaves, contiguous 30-day windows: Superstructure (01-01→01-31), MEP Rough-in (01-31→03-02),
+  Architecture (03-02→04-01), MEP Final (04-01→05-01), Finishes (05-01→05-31).
+- `task_elements`: **48,433 rows = 100.0 % of `elements_meta` (48,433)**. Superstructure 35,061 /
+  MEP Rough-in 9,477 / MEP Final 2,377 / Architecture 1,260 / Finishes 258.
+- **`resource`, `is_critical`, `total_float`, `free_float`: ALL NULL on every row. `task_sequences`
+  table: absent. `predefined_type`: `CONSTRUCTION` on all 6.**
+
+**PROVENANCE — settled by evidence, not inference.** This schedule was produced by
+`ScheduleAuthor.materializeDefault(db, SEQUENCE_RULES, {start:'2026-01-01', phaseDays:30})` — the exact
+call at `schedule_editor_ui.js:503` / `:653` ("Generate first draft" / "Regenerate"). Every field
+matches that function's literals: `schedId='SCH_AUTHORED'`, `INSERT INTO schedules VALUES (…, 'Authored
+Schedule','PLANNED', start)`, `rootId='TASK_ROOT'` named `'Project'` with `is_summary=1`, leaf ids
+`'TASK_' + _slug(name)` (hence `TASK_MEP_Rough_in` from `"MEP Rough-in"`), 30-day contiguous windows
+from `_addDays(start, cursor*30)`, `resource` written as literal `null`, and 100 % element coverage
+because the loop assigns **every** row of `elements_meta`. It is **NOT** the foreign-import path:
+`adoptIntoDb` would have produced `A:`/`W:`-prefixed task ids, `status='Imported'`, a populated
+`task_sequences`, and an **empty** `task_elements`. (Recorded because it was guessed both ways during
+this session; the id/naming fingerprint is decisive.)
+
+**So the permitted claim is:** *"a real, per-element, saved phase assignment — five dated construction
+phases covering 100 % of the model, authored in the Viewer and persisted to the IFC-native 4D tables."*
+**The forbidden claims are:** "a CPM schedule", "critical path", "float", "resource-loaded", "imported
+from P6/Primavera", or anything implying predecessor logic. **There is none in this file.** The
+importer that *would* carry that data is shipped and separate (§0 row 3); this DB simply did not come
+through it. Nothing in the code or the UI copy may imply otherwise.
+
+**The two labels, verbatim, so a future session does not re-invent them:**
+- derived branch → `derived build order (not a construction programme)` — unchanged from §CPE_BUILDUP.
+- captured branch → `linked schedule: <n> phases, <pct>% of elements` — states scope, claims no logic.
+
+## 6. §BILLBOARD_INJECT elements in the 4D — user directive: *"this has to be part of the 4D generate feature"*
+The billboard panel + 4 corner floodlights (`PHOTOREAL_STILL_RENDER.md §12 §BILLBOARD_INJECT` /
+`§BILLBOARD_ART`, SQL in `migration/billboards/terminal_billboard.sql` + `terminal_billboard_floodlights.sql`)
+did not exist when §CPE_BUILDUP or the foreign-schedule lane were designed. **Checked directly against
+`TerminalHi4D.db`, 2026-07-28 — they are ALREADY BOUND. No patch needed:**
+
+| guid | ifc_class | discipline | bound to |
+|---|---|---|---|
+| `BB0BIMOOTBSIGN000001A` | `IfcBuildingElementProxy` | ARC | **`TASK_Architecture`** |
+| `BB0BIMOOTBFLOOD000001`…`4` | `IfcLightFixture` | ELEC | **`TASK_MEP_Final`** (all four) |
+
+**Why it worked without anyone arranging it, and where the real risk is.** `materializeDefault` iterates
+`SELECT guid, ifc_class FROM elements_meta` and assigns **every** element via `matchRule`, falling back
+to `SEQUENCE_DEFAULT` when no rule matches — so coverage is 100 % *by construction*, and anything
+present in `elements_meta` at generate time is bound automatically. The floodlights landed in MEP Final
+because `IfcLightFixture` matches an ELEC rule; the panel landed in Architecture via the proxy/default
+route. **The actual gap is ORDERING, not the rule:** an element injected into `elements_meta` **after**
+the schedule was authored is left unbound, is skipped by `_cap.guidTask`, and silently falls back to
+generative timing inside a film the user believes is schedule-driven. In this DB the billboard SQL was
+applied *before* generate, so it is covered.
+
+**Two requirements this section adds, therefore:**
+1. **W-SCHED-BILLBOARD** (§4) asserts these 5 guids are in `task_elements` and reports the frame at
+   which each is revealed — so a regression that drops decorative/proxy elements from the 4D is caught
+   by a number, not noticed later in a film.
+2. **`tmScheduleSource()` must report `covered`/`total`/`pct` and the captured-branch status string must
+   surface it**, so a partially-bound model (post-authoring injection) is *visible* rather than silent.
+   **Anything below 100 % coverage is a real, reportable condition, not a rounding detail.**
+   ⛔ **BLOCKED — one user decision, not inventable:** *when a model has been edited since its schedule
+   was authored (coverage < 100 %), should the buildup (a) reveal the unbound elements on their
+   generative fallback timing, (b) hold them to the end of the last phase, or (c) refuse the captured
+   branch and fall back wholly to mode D?* Shipping (a) — today's `_cap` behaviour, the smallest change,
+   and the only option that alters nothing — and flagging the count in the log until the user rules.
+
+## 7. Explicitly NOT in this section
+A P6/MSP **importer** (shipped — §0 row 3), the P6 **writer** (`XER_PMXML_WRITER_LANE.md`), the real-
+`.xer` fixture gate (`XER_REAL_FIXTURE_PROOF.md`, ⛔ blocked on a user-supplied export), CPM/float/
+resource derivation for a schedule that carries none, a new authoring UI (shipped — §0 row 2), and
+§CPE_VISION_CHAIN items 1 and 2 (auto-hose path, space-semantic markers) which remain unspecced.
+
+## §CPE_BUILDUP_REAL_SCHEDULE_BUILT — implemented and witnessed 2026-07-28 (`bim-ootb` `feat/cpe-buildup-schedule`)
+**16/16 GREEN** — `witness_cpe_buildup_schedule.js`, `PORT=8433 DER_BLDS=Duplex,Hospital_3 node witness_cpe_buildup_schedule.js`,
+log `W_SCHED_run5.log`. Built exactly as §3 specifies, with **one measured correction to §3.1 that the
+witness caught before it shipped** (below). **Half 2 was NOT built — it already existed** (§0); it was
+verified instead, by `W-SCHED-AUTHOR-ROUNDTRIP`, over a real page reload.
+
+### The headline number — the §2 defect, measured on both sides
+Same building (`TerminalHi4D`), same 48,433 ops, the two orders side by side:
+
+| leaf phase | `schedule_start` | CAPTURED reveal window | mode-D reveal window (the defect) |
+|---|---|---|---|
+| Superstructure (35,061) | 2026-01-01 | 2026-01-01 .. 2026-01-30 | 2026-03-05 .. 2026-03-27 |
+| MEP Rough-in (9,477) | 2026-01-31 | 2026-01-31 .. 2026-03-01 | 2026-03-08 .. 2026-03-27 |
+| Architecture (1,260) | 2026-03-02 | 2026-03-02 .. 2026-03-31 | 2026-03-09 .. 2026-03-28 |
+| MEP Final (2,377) | 2026-04-01 | 2026-04-01 .. 2026-04-30 | 2026-03-09 .. 2026-03-28 |
+| Finishes (258) | 2026-05-01 | 2026-05-01 .. 2026-05-30 | 2026-03-13 .. 2026-03-28 |
+
+**Captured: 5 clean, non-overlapping phase windows across the real Jan–May programme, 0 interleaving
+pairs. Mode D: all five phases smeared into the same 23 days, 4/4 consecutive pairs interleaving.**
+That contrast is `R1` + `R2` — and `R2` exists precisely so `R1` cannot pass for a reason unrelated to
+the fix: a gate mode D also satisfied would prove nothing.
+
+### The gate table
+| gate | claim | measured |
+|---|---|---|
+| SRC | the source is detected | `source=captured leafTasks=5 summarySkipped=1 covered=48433/48433 pct=100%` |
+| **R1 W-SCHED-REAL-ORDER** | reveal follows the schedule | 5 leaf phases, **0 interleaving pairs** |
+| **R2 discriminator** | the gate discriminates | mode D interleaves **4/4** consecutive pairs |
+| **V1 W-SCHED-REVERSIBLE** | the captured branch writes nothing | 48,433 ops, `sumStart delta=0 sumEnd delta=0`, `tmRestoreDerivedOrder()=false` |
+| V1b | mode D still restores exactly | `sumStart delta=0 sumEnd delta=0` after re-key + restore |
+| **M1 W-SCHED-MONOTONE** | a clip still opens part-built | placed `0 → 45,248 (mid) → 48,433` over 40 frames, monotone |
+| **C1 W-SCHED-COVERAGE** | coverage is real, not asserted | `task_elements` distinct bound guids **48,433** == `_cap` covered **48,433** == elements **48,433**, 100% |
+| **B1 W-SCHED-BILLBOARD** | §6, the decorative elements are in the 4D | 5/5 bound: panel → Architecture (frame 23/39), 4 floodlights → MEP Final (frame 31/39) |
+| **F1 W-SCHED-FALLBACK** | no schedule → refuse, do not guess | Duplex + Hospital_3: `source=derived leafTasks=0 capOps=0`, `tmOrderBySchedule()=null` |
+| **F2 regression** | the derived path is untouched | Duplex + Hospital_3: branch result **exactly equals a repeat of the old call** — `ops`, `placed`, `noGeom`, `arc`, window all equal, checksum `sumStart delta=0 sumEnd delta=0`, placed series `0/40` frames differ |
+| **A1 W-SCHED-AUTHOR-ROUNDTRIP** | author → save → **reload** → consumed | Duplex: `derived → RELOAD → captured`; 6 phases / 1,119 assignments; after reload `tasks=7 task_elements=1119 covered=1119/1119 pct=100%`, **0 interleaving pairs** |
+
+### ⚠ MEASURED CORRECTION TO §3.1 — `_capActive` alone is the WRONG test, and the witness caught it
+The first run failed at setup: `tmOrderBySchedule()` returned null on `TerminalHi4D` — a building with
+a complete, 100%-bound real schedule. **`_capActive` is set by `injectGantt`'s `_cap` overlay, so it is
+a RUN-SCOPED SIDE EFFECT, not a property of the data.** `activate()` deliberately SKIPS `injectGantt`
+when the db already carries usable `ELEMENT_PLACE` ops with `_end_ts` (`time_machine.js` ~4462) — the
+cached/shipped-timeline fast path — which is exactly the state of any building whose schedule was
+authored in an earlier session and persisted. Confirmed by direct query: all 48,433 of TerminalHi4D's
+`kernel_ops` carry `"_captured":1` and `"_task":"TASK_*"` with timestamps spanning the real
+2026-01-01..2026-05-30 window, and `_capActive` was still `false`.
+
+**Corrected rule, now in the code:** the source is decided by the OPS THEMSELVES —
+`captured ⇔ (dated leaf tasks exist) AND (_capActive OR any op carries parameters._captured)`.
+Coverage likewise counts `capOps` off the loaded ops FIRST, falling back to `_coveredCount` only when
+ops have not been reloaded yet: `_coveredCount` tallies `_cap`'s UPDATE executions against
+`kernel_ops`, so a db with duplicate `ELEMENT_PLACE` rows for a guid inflates it past the element count
+(measured **2238 on a 1119-element Duplex** — a 200% "coverage" — during an intermediate run).
+**Had this shipped on `_capActive` alone, the feature would have been silently dead on exactly the
+buildings it was built for.**
+
+### ⚠ THE F2 INSTRUMENT WAS WRONG TWICE BEFORE THE CODE WAS — read before touching that gate
+| # | instrument | read | why it was wrong |
+|---|---|---|---|
+| 1 | both paths in ONE page, compare the placed series frame by frame | 1/40 frames differed | mode D's tie-break `zRank = i/(n-1)` is the op's INDEX in the current `_ops`. Re-key re-sorts; restore re-sorts back — and for ops with TIED original timestamps the stable sort preserves the *camera* order, not the load order. A second pass starts from a different permutation. Pre-existing non-idempotence in SHIPPED mode D (its `noGeom` branch sets `camS = zRank`, so index changes leak into values), not a regression. |
+| 2 | one path per FRESH page load | `ops=1120` vs `1121`, windows 4.6 s apart | `injectGantt` anchors the generated timeline on `new Date()` — every load has a different epoch — and the IDB building cache PERSISTS across loads in one browser profile, so a stray op from load 1 is present in load 2. A differential across two different inputs is not a differential. |
+| 3 | ✅ **the correct one: a CONTROL.** One page. Three consecutive DIRECT passes (the old code), then the branch. Gate = branch **exactly equals pass 3**. | GREEN | Measures the branch against a repeat of the OLD call, so the shipped artifact is held constant on both sides. **No invented tolerance anywhere.** The control also proves the artifact converges: sumEnd deltas vs pass 1 were `0, -1.75, -1.75` (Duplex) and `0, 192, 192` (Hospital_3) — settled by pass 2, so pass 3 is a stable control. |
+
+### What shipped
+- `viewer/time_machine.js` — `window.tmScheduleSource()` (§3.1, pure read), `window.tmOrderBySchedule()`
+  (§3.2, the captured branch — **writes nothing**), `window.tmPhaseWindows()` (§4, the aggregate numeric
+  instrument: per-leaf-task first/last reveal + an all-ops checksum; never ships 10^5 rows to a caller).
+- `viewer/cinema_maxq.js` — the §3.3 branch, plus the §5 status label that moves with the data
+  (`🎬 Building to the linked schedule (5 phases, 100% of elements)` vs the unchanged derived wording).
+  Every existing `§CPE_BUILDUP_SKIP` guard retained; a captured-but-unusable schedule falls THROUGH to
+  mode D, never to nothing.
+- `viewer/sw.js` — `CACHE_VERSION` v873 → v874 (both changed files are precached).
+- `witness_cpe_buildup_schedule.js` — the 16 gates above.
+- **No DB binary touched, no migration needed:** the schema already exists and `TerminalHi4D.db` already
+  carries the rows. Nothing in this change writes to a building db.
+
+### The §-log line
+```
+§CPE_BUILDUP_SOURCE source=captured leafTasks=5 summarySkipped=1 covered=48433/48433 pct=100%
+  capOps=48433/48433 capActive=false window=2025-12-31..2026-05-31
+  — REAL LINKED SCHEDULE, reveal follows schedule_start (no re-key, no float/logic in this data)
+```
+`capActive=false` in that line is not a defect — it is the corrected detection working: the schedule was
+authored in an earlier session, so `injectGantt` never re-ran, and the ops themselves are the evidence.
+
+### Still open after this
+- ⛔ **BLOCKED (§6, needs the user, one question):** when a model has been edited since its schedule was
+  authored (coverage < 100 %), should the buildup (a) reveal unbound elements on their generative
+  fallback timing, (b) hold them to the end of the last phase, or (c) refuse the captured branch
+  entirely? **Shipped (a)** — today's `_cap` behaviour, the smallest change, the only option that alters
+  nothing — with the count surfaced in `§CPE_BUILDUP_SOURCE` until the user rules. Not encountered in
+  practice yet: every building tested is at 100 %.
+- **Two pre-existing defects this work MEASURED but did not fix** (out of scope, named so they are not
+  rediscovered): (1) shipped mode D is not idempotent across a save/restore cycle — its `noGeom` branch
+  uses `camS = zRank`, an index, so a tie permutation leaks into values (bounded, converges after one
+  pass, `0/40` frames in the placed series once settled); (2) `injectGantt` re-run in place can insert a
+  SECOND set of `ELEMENT_PLACE` ops on top of the existing ones, which is what inflated `_coveredCount`
+  to 200 %. The shipped `tmRefoldSchedule()` (§TM-REFOLD) is the correct verb and avoids (2).
+- §CPE_VISION_CHAIN items 1, 2 and 5 (auto-hose path, space-semantic markers) remain unspecced.
