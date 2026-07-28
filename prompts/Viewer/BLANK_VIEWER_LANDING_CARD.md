@@ -123,3 +123,9 @@ rejected; opened as a PR instead, `gh pr merge --auto --squash`, both checks (`f
 `e2e-tests`) passed, merged clean. **Standing lesson for future viewer-file changes in bim-ootb: check
 `viewer/sw.js`'s `PRECACHE_ASSETS` list for every touched file and bump `CACHE_VERSION` in the SAME PR —
 don't ship the code change and the cache-bust as two round trips.**
+
+## ✅ CLOSED — user-confirmed live, 2026-07-28
+User confirmed the Blank Viewer opens correctly after the PR #1070 cache-bump. Nothing left open on this
+card. (Unrelated low-priority thread the user raised in the same session — an idempiere-seed-db status
+message while at the Viewer — is tracked in `PROGRESS.md`, not here; source not located, user says not
+urgent/not disturbing.)

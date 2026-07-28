@@ -67,13 +67,13 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
   `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
-- ✅ Blank Viewer landing card + local `.db` Open, CLOSED (07-27/28) — bim-compiler `40e333efd` pushed;
-  bim-ootb PORT **PR #1068 merged**, then a live click still showed Hospital — root-caused to sw.js
-  precache (`config.js` cache-first, `CACHE_VERSION` not bumped) — fixed **PR #1070 merged**. Standing
-  lesson saved: `feedback_bimootb_sw_cache_bump_on_viewer_change.md`. Detail:
-  `Viewer/BLANK_VIEWER_LANDING_CARD.md`. ⛔ open thread: user saw an idempiere-seed-db status message
-  while at the Viewer; grep of `deploy/dev` + `~/bim-ootb/viewer` found only lazy triggers, real source
-  not located — need the exact page/text from the user.
+- ✅ Blank Viewer landing card + local `.db` Open, CLOSED + user-CONFIRMED live (07-27/28) — bim-compiler
+  `40e333efd`; bim-ootb PORT **PR #1068 merged**, live click showed Hospital (stale sw.js precache,
+  `config.js` cache-first + `CACHE_VERSION` not bumped) — fixed **PR #1070 merged**, user confirmed blank
+  now opens correctly. Standing lesson: `feedback_bimootb_sw_cache_bump_on_viewer_change.md`. Detail:
+  `Viewer/BLANK_VIEWER_LANDING_CARD.md`. 🟢 low-priority, not blocking: user saw an idempiere-seed-db
+  status message while at the Viewer — grep of `deploy/dev` + `~/bim-ootb/viewer` found only lazy
+  triggers, real source not located; user says not urgent/not disturbing, pick up only if they resurface it.
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
 
 ## OCI Deployment · Reference
