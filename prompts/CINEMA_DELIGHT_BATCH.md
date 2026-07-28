@@ -144,23 +144,67 @@ bbox (assert containment, not appearance).
 **Cost: 3a SMALL (half a session) · 3b MEDIUM-LARGE (one to two sessions), mostly the candidate query
 and making the ghosts readable without cluttering the pipe.**
 
-## 4. §CPE_FILM_AUDIO — sound embedded only when the user has it on
-> User: *"yes when V is ON it is recorded so user can control not to have it embedded"*
+## 4. §CPE_FILM_AUDIO — RE-THOUGHT 2026-07-29, and it is now the CHEAPEST item, not the dearest
+> User: *"yes when V is ON it is recorded so user can control not to have it embedded"* → then, on
+> reading the cost: *"can we make it like TM machine where it is auto triggered? Or cheaply. And when
+> user check the audio box, can we display the cost in Mb? Then user can decide to do it post
+> production in better studio. This is just early win stuff."*
 
-**Agreed: the film carries audio only if sound is ON at bake time, and the bake states which it did.**
+**Their re-think is right and it dissolves most of the cost I quoted.** My "LARGE" estimate assumed
+the deliverable was an AAC track muxed into the mp4. It does not have to be, and for their own stated
+purpose — *"do it post production in better studio"* — a muxed track is actually the WORSE deliverable:
+a sound designer wants stems and timings, not a bed already welded into the video.
 
-**⚠ HONEST COST WARNING — this is the MOST EXPENSIVE of the six, despite sounding the smallest.**
-`cinema_maxq.js`'s mp4 path (`_stitchMp4`) is **video-only**: it configures a `VideoEncoder`, collects
-chunks and muxes with `lib/mp4_mux.js`. Adding sound means (i) an `AudioEncoder` (AAC) track, (ii)
-interleaving audio and video chunks in the muxer, (iii) producing a continuous audio BED — today's
-`§SFX_NAV`/`§SFX_PLAY` are discrete UI events tied to user input, not a timeline, so there is nothing
-to record; a bake is silent by construction. So this is really "author an ambience bed keyed to the
-beats" PLUS "add an audio track to the muxer", and the webm fallback path needs the same treatment.
-**Recommend deferring until 1, 2, 3a, 5 and 6 are in** — it is the only item here that is mostly new
-subsystem rather than new use of existing data.
-**Witness:** `§MAXQ_AUDIO enabled=<0|1> reason=<sfx-off|sfx-on> track=aac bedSec=<n> muxed=<1|0>` and
-a probe that the output container actually HAS an audio track (parse it — do not trust the flag).
-**Cost: LARGE** — two-plus sessions, and it touches the mux path every other feature depends on.
+### THREE STAGES, and stage 1 alone may be the whole win
+**Stage 1 · §CPE_AUDIO_CUES — a timed cue list beside the mp4. Nearly free, and the most useful to a
+studio.** The film already knows every moment worth scoring, all derived, none invented:
+`§CINEMA_BEATS dive/spin/out/rise` (beat boundaries in normalised t → seconds via the known duration),
+room transitions (§CPE_ROOM_TITLE's own per-`t` lookup, item 2), the exit-door crossing
+(`§CINEMA_EXIT`), and — when §CPE_BUILDUP is on — phase changes, which is exactly the `_sfxPhases`
+signal Time Machine already derives per tick. Emit `film-cues.json` (+ a CSV for editors that want
+markers) alongside the video. **No encoder, no muxer, no AudioContext.** Cost: HALF A SESSION.
+
+**Stage 2 · §CPE_AUDIO_BED — render those cues to a WAV sidecar, offline.** `viewer/sfx.js` already
+holds the 24-voice cinematic set and creates its AudioContext lazily. Render the cue list through an
+**`OfflineAudioContext`** — which renders FASTER than real time and does not need a user gesture or a
+live context — into a PCM buffer, write a WAV, download it beside the mp4. **Still no muxer change,
+still no AAC.** Two files the user drops on a timeline, in sync by construction because both are
+derived from the same `t`. Cost: ONE SESSION. ⚠ Check first whether sfx.js SYNTHESISES its voices or
+decodes samples — synthesis is trivially re-renderable offline, samples need the buffers loaded first.
+
+**Stage 3 · muxed AAC track — DEFER, and possibly never.** This is the only part that needs
+`AudioEncoder` + interleaving in `lib/mp4_mux.js` + the same again on the webm fallback. Do it only if
+users actually ask for one self-contained file. Everything above delivers the value without it.
+
+### The MB readout they asked for — build it, but expect it to argue AGAINST their instinct
+> *"when user check the audio box, can we display the cost in Mb?"*
+
+Yes, and it is pure arithmetic from numbers already in the code — **but the honest answer is that it
+will show audio is nearly free in bytes, so file size is the WRONG reason to skip it.** Worked from
+`cinema_maxq.js:284` (`bitrate = min(50e6, max(2e6, w*h*fps*0.2))`) against the user's own 30 s /
+1853×961 / 15 fps run:
+| stream | rate | 30 s film |
+|---|---|---|
+| video (their actual settings) | ~5.34 Mbps | **~20 MB** |
+| AAC 128 kbps stereo | 16 KB/s | **0.48 MB — 2.3% of the video** |
+| WAV 16-bit stereo 48 kHz (stage 2 sidecar) | 192 KB/s | **5.8 MB — 29%, and it is a SEPARATE file** |
+So the checkbox should show **both** numbers side by side (video estimate + audio estimate), because
+the ratio is the actual information. **And the label must say the real trade-off honestly: the reason
+to score in a studio is QUALITY — a browser-generated bed from 24 UI voices is not a sound design —
+not megabytes.** A readout that lets the user infer "audio is expensive" would be a true number
+telling a false story, which this project's whole logging doctrine exists to prevent.
+
+### "Auto triggered like TM"
+Yes — that is stage 1's cue source and it is the right instinct: TM already derives `_sfxPhases` from
+the ops at the frontier each tick, and mode D gives the film that same per-frame phase set. So the
+cue list is DERIVED from construction state, not authored by hand. Same rule as everywhere else here:
+every cue must name what produced it (`beat`, `room`, `door`, `phase`) or it is invention.
+
+**Witness:** `§CPE_AUDIO_CUES n=<k> src=beat|room|door|phase spanSec=<n> firstSec=<n> lastSec=<n>`
+(assert cue times are monotone and inside [0, duration]); `§CPE_AUDIO_BED renderedSec=<n> offlineMs=<n>
+bytes=<n> sampleRate=<n>`; `§CPE_AUDIO_SIZE videoMB=<n> audioMB=<n> pct=<n>` on checkbox toggle.
+**Cost: stage 1 SMALL (half a session) · stage 2 MEDIUM (one) · stage 3 LARGE (defer).**
+**This moves item 4 from LAST to EARLY — stage 1 can ship alongside item 1.**
 
 ## 5. §CPE_FIND_TO_FILM — pick rooms in Find, get a path, film it
 > User: *"that is good reuse, open same time Find get room2room pathing was what i tot shuld be done
@@ -207,11 +251,13 @@ gates. Do it LAST of the cheap items, and never in the same PR as another pacing
 | 0 | **§CPE_REPLAN_LAZY** (cache the dive/exit prefix) | medium | low | user's own log shows ~550 ms producing IDENTICAL output on 8 consecutive drags; pays for every item below |
 | 1 | §CPE_HOVER_SCRUB | small | low | biggest felt win per line; no re-plan involved |
 | 3a | §CPE_SUGGEST_CLIP | small | low | the ranking already exists, panel-only |
+| 4a | §CPE_AUDIO_CUES | small | low | ships alongside item 1; see the re-think in §4 |
 | 5 | §CPE_FIND_TO_FILM | medium | medium | highest product value; needs room-graph routing to be reusable |
 | 2 | §CPE_ROOM_TITLE | medium | medium | the composite path is the real work, not the lookup |
 | 6 | §CPE_SPEED_RAMP | medium | **high** | touches the settled pacing law; gate on peak deg/frame |
+| 4b | §CPE_AUDIO_BED (WAV sidecar, OfflineAudioContext) | medium | low | still no muxer change; two files, in sync by construction |
 | 3b | §CPE_SUGGEST_DETOUR | medium-large | medium | the most delightful, and the most design-dependent |
-| 4 | §CPE_FILM_AUDIO | **large** | medium | mostly new subsystem (AAC track + muxer + an ambience bed) |
+| 4c | muxed AAC track | large | medium | **defer, possibly never** — only if users want one self-contained file |
 
 ## ⚖ "Does this push us up the world ranking of BIM apps?" — the honest answer
 **No, and it is worth being precise about why, because the honest answer is more useful than yes.**
