@@ -2334,3 +2334,44 @@ Two consequences, one free win and one trap:
 ## Explicitly NOT in this section
 Dive origin and orbit authorability (§CPE_BANDS "still open" — bands 4 and 5), the §CINEMA_SPACE
 attic-pick (owned by another session), and collision avoidance on an authored path (rule 8 forbids it).
+
+## §CPE_AIM_DENSITY — outside the perimeter with nothing near, turn perpendicular to the mass
+**User directive, 2026-07-28, given with "proceed to implement":**
+> *"when the rope passes the final building perimeter and no substantial building part nearby, then
+> camera turns perpendicular towards the densest nearest part of the building."*
+
+**Why it is needed:** the hose lets the user fling a stretch of path far outside the building. The walk
+gaze is a LOOK-AHEAD along the path (`_beat3Pose` → `_lookAhead`), so out in open ground the camera
+looks at *nothing* — empty sky/ground for seconds of film. This rule gives those stretches a subject.
+
+**The trigger — two conditions, both measured, neither guessed:**
+1. **Outside the perimeter** — the pose is outside the building footprint (IFC-space XY bbox, the same
+   `base`/`envelope` the plan already computes), not merely far from the last waypoint.
+2. **Nothing substantial nearby** — `_densityAt(pose, R_near)` is at/below a floor, where `R_near` is
+   DERIVED from the building (a fraction of `envelope`), not a picked metre value. `_densityAt` and
+   `_densPoints` already exist for §CPE_NOISE_LAW — reuse, do not invent a second proximity system.
+
+**The aim:** find the densest cluster (coarse grid over `_densPoints()`, cell count scored against
+distance so it is the densest *nearest* part, not the densest part of the site), then aim at it **with
+the along-path component projected out** — that is literally "perpendicular": the camera turns side-on
+to its own travel and faces the mass. If the cluster lies dead ahead or dead behind (the projection
+degenerates), fall back to the unprojected direction rather than inventing a sideways look.
+
+**Blending is mandatory, not polish.** A gaze that snaps on when the trigger fires is exactly the jerk
+§CPE_JERK_DEFINITION and §CPE_EVEN_TURN exist to kill. Ramp in and out on smoothstep over a fraction of
+the path, so the rate is zero at both ends. **Gate: peak deg/frame must not regress** — the existing
+turn witness is the instrument, and this change must be run against it, not merely eyeballed.
+
+Witness: `§CPE_AIM_DENSITY outside=1 nearDens=<n>/<floor> R=<m> cell=(x,y,z) elems=<n> perpDeg=<d>
+blend=<w>` — plus the unchanged peak-turn number, to prove the ramp did not buy the subject with a jerk.
+
+## §CPE_PREVIEW_BUTTON — a Preview button, NOT auto-preview (settled 2026-07-28)
+User, in sequence: *"and the preview must always repeat each time an edit is done"* → *"Or a preview
+button"* → **"thus no auto preview needed"**. Settled: **an explicit Preview button on the editor
+panel.** It re-runs the existing 10 s fast preview on the CURRENT edited path. No preview fires on its
+own — auto-preview after every drag would hijack the authoring gesture, which is why the user landed
+here. Supersedes FOUR ASKS item 5's "OK → preview → decide" sequencing for the edit loop (the button is
+available at any time, so the OK path needs no special case).
+Small requirement that makes it useful rather than decorative: the button must show when the path has
+changed since the last preview (stale marker), so "have I seen this version?" is answerable without
+guessing. Witness: `§CPE_PREVIEW click stale=<0|1> edits=<n>`.
