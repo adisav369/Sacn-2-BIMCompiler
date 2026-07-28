@@ -3210,3 +3210,59 @@ above still names the gate for the day one of them is populated.
 **Wording, unchanged in force:** mode S may say *linked schedule*; mode T says *this model's 4D
 timeline* — never *"the schedule"*, never *"a construction programme"*. The checkbox now reads
 *"build the model as the film plays (follows the Time Machine, not a programme)"*.
+
+---
+
+# §CPE_CLICK_SLOP — a click on the pipe can never spawn a stick, because there is no pixel threshold (user, 2026-07-29)
+> User: *"when i made a new node in the pipe, it does not show up in the alt-c panel list as first time
+> using. I know it can appear after refresh. But immediate as before is important helpful."*
+
+## The mechanism — exact, from the code and confirmed by their own console
+§CPE_STICK's contract is *"ONE grab, split by what the hand does: let go without moving and you get a
+stick; move and you bend the pipe."* `h.up` implements the split correctly:
+```js
+if (!d.op) { if (d.hit) _spawnStick(d.hit); return; }   // never moved -> stick
+```
+**But `h.move` has no threshold.** The FIRST `pointermove` of any size creates the op:
+```js
+if (!d.snapped) { d.snapped = true; _undoPush(...); d.op = {...}; _state.hose.push(d.op); }
+```
+A physical mouse click emits at least one `pointermove` of 1–2 px in almost every case (tremor, or the
+pointer drifting between down and up). So `d.op` is truthy by the time `h.up` runs and **the stick
+branch is unreachable in practice.** The `mag < 1e-4` cancel below it does not save the gesture either:
+at Hospital's `rate=0.192 m/px`, ONE pixel is 0.19 m of displacement — four orders of magnitude above
+that threshold — so the click lands as a real, recorded hose pull.
+
+**Their console proves it:** five `§CPE_HOSE grab` → `§CPE_HOSE landed` pairs (smallest `disp=1.84m`),
+**zero `§CPE_STICK` lines**, and `§CINEMA_BANDS bands=3 waypoints=6` unchanged from first plan to last.
+No node was ever created — the panel list was right.
+
+## ⚠ And "it can appear after refresh" was §CPE_REOPEN_DOUBLE, which is now FIXED
+That half is not a second feature — it was the doubling bug. Re-opening used to re-seed from
+`plan.waypoints` (2 per band), so bends showed up as extra rows on the next open. §CPE_REOPEN_DOUBLE
+(PR #1081, this same day) removed that, which also removed the accidental route by which a hose pull
+eventually became a row. **Do not "restore" it.** The right fix is to make the CLICK work, which is
+what the user asked for in the first place ("immediate as before is important helpful").
+
+## The fix — a click slop, and nothing else
+Gate the op's creation on the gesture exceeding **`CLICK_SLOP_PX = 4`** from `sx0/sy0` (standard click
+slop; at 0.192 m/px that is 0.77 m, comfortably below any intentional bend). Below it the grab stays
+a candidate click, the pipe does not deform, no undo entry is pushed, and `h.up` reaches
+`_spawnStick`. Above it the gesture becomes a hose pull exactly as today — including `_undoPush`,
+which must stay on the crossing, not on pointerdown, or a click would leave an undo step that does
+nothing (the reason it was moved off pointerdown in the first place).
+- **Do NOT add a modifier key or a mode.** The one-grab-split-by-the-hand rule is settled doctrine;
+  this is a bug in how "did the hand move" is measured, not a reason to re-litigate the gesture.
+- **Do NOT apply it to the band-handle drag** (`h.down`'s `hit` branch). That path has no click action,
+  so a threshold there would only add lag.
+
+## Witness claims
+- **W-CLICK-STICK (the gate).** A synthetic pointerdown → pointermove of **2 px** → pointerup on the
+  fat pipe spawns exactly one stick: `§CPE_STICK added`, `bands` N→N+1, a new row in `#cpe-rows`, and
+  **no** `§CPE_HOSE landed` line. *Proves/disproves:* the defect exactly — 2 px is the jitter a real
+  click carries, and it is what makes the current build take the wrong branch.
+- **W-CLICK-DRAG.** The same gesture with a **20 px** move produces a hose pull and NO stick: one
+  `§CPE_HOSE landed`, `bands` unchanged. *Proves/disproves:* that the slop did not turn small
+  intentional bends into stray nodes.
+- **W-CLICK-UNDO.** A 2 px click leaves the undo stack able to remove the stick, and a 0 px press
+  leaves NO undo entry at all (G-DRAG-1's existing property, which must survive).
