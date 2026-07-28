@@ -6270,6 +6270,221 @@ billboard panel (4 rows, real `IfcBuildingElementProxy`), 4 corner floodlights (
 `render_finishes(guid, finish, source, note)` — 1 user-designated mirror + 11 polished floors
 auto-derived from the model's own `%Procelain%` slab names.
 
+### ⚠ DEV-FIXTURE GOTCHA (2026-07-28) — "why is my billboard black with Malay text"
+A fresh `/tmp/wt-*` worktree's `buildings/` dir does **not** inherit the billboard image symlinks —
+each worktree needs its own `billboard.jpg` (or `<DbStem>Billboard.jpg`, stem = first `_`-token of
+the DB filename, e.g. `Terminal_Hi.db` → `TerminalBillboard.jpg`) symlinked in beside its
+`Terminal_Hi.db`, or `_billboardFallbackTexture` (`effects.js`) draws its canvas notice —
+`'RUANG IKLAN UNTUK DI SEWA'` on a near-black `#0d1017` panel — instead of the real art. This is
+`§BILLBOARD_ALWAYS`'s intended behaviour ("an empty advertising hoarding advertises itself"), not a
+bug, but it looks exactly like a broken fetch if you don't know the convention. Known-good example:
+`/tmp/wt-albedo/buildings/`. Fixed in `/tmp/wt-cpe-hose/buildings/` 2026-07-28 (symlinked
+`billboard.jpg` + `TerminalBillboard.jpg` to `~/Downloads/OPEN SOURCE BIM/TerminalBillboard.jpg`).
+
+## §BILLBOARD_BUILDING_NAME — SUPERSEDED 2026-07-28 by §BILLBOARD_NAME_ELEMENT below
+The first pass (config-driven `THREE.Mesh`, no DB row, built unconditionally in `_billboardAutoBuild`)
+is **retained here only as the record of what was wrong with it**, and the geometry derivation it got
+right. Do not build from this section — build from §BILLBOARD_NAME_ELEMENT.
+
+**User ask:** extend the billboard with the building's name filling the wall margin to its right,
+stored in a proper `<building>.config`, text = `"TERMINAL PENUMPANG"`.
+
+**Real numbers, verified against `Terminal_Hi.db` before writing anything** (same discipline as the
+original `§BILLBOARD_INJECT`): host wall `317rFPKoL6eO76U6ttKqzG` bbox_y=10.8402m; billboard panel
+bbox_y=8.0m, centred on the wall (both centred ~y=-34.6) → **1.4201m margin on each side**, confirmed
+against both edges independently. "Right" is derived, not guessed: the facade faces +X (established
+by the original billboard comment); for a viewer facing -X, `right = (Fy,-Fx)` applied to facing
+`(-1,0)` gives `(0,1)` = **+Y**. The +Y margin is where floodlights `BB0BIMOOTBFLOOD000003/4` already
+sit (0.3m housings, ~0.3m out from the panel edge, matching their own "+0.30m overshoot" derivation)
+— consistent cross-check, not a coincidence.
+
+**1.2m is too narrow for "TERMINAL PENUMPANG" set horizontally at a legible size**, so the plate
+renders the text VERTICALLY up the 4m height instead of shrinking type to fit — real narrow-pilaster
+signage does this too, it isn't a workaround.
+
+**The two defects the user named, verbatim:** *"it shall appear last, not like now it came on."*
+1. **No DB row** → not quantifiable, not costable, not schedule-bindable. It was presentation
+   dressing on a project whose own doctrine (§14, "Billboard injected into the DB") had already
+   settled that the panel should be a REAL element.
+2. **Built unconditionally** in `_billboardAutoBuild` → it renders from frame 0 of a Time Machine
+   buildup, regardless of the playback cursor.
+
+---
+
+# §BILLBOARD_NAME_ELEMENT (2026-07-28) — the name plate as a REAL element, revealed last
+Supersedes §BILLBOARD_BUILDING_NAME. Same visual result; the panel becomes DB data and the text
+overlay becomes the only thing JS builds.
+
+## 1. The split — what is data, what is presentation
+Exactly the split `§BILLBOARD_ART` already makes for the big panel, applied to the name plate:
+
+| concern | where it lives | why |
+|---|---|---|
+| the plate BODY (a 0.1 × 1.2 × 4.0 m box on the facade) | **`elements_meta` / `element_transforms` / `element_instances` / `component_geometries` rows**, guid `BB0BIMOOTBNAME000001A` | it is a physical object: pickable, quantifiable, shadow-casting, folds into 5D and the ERP project order like any other element, and it is what Time Machine schedules |
+| the TEXT on its face | one always-on-top `THREE.Mesh` quad with a canvas texture (`_billboardNameMesh`) | a font raster is not geometry; same reason the billboard's artwork is not baked into `component_geometries` (§BILLBOARD_ART) |
+| WHICH text | `<DbStem>.config.json` → `buildingName` **only** | changing the wording must not require a code change or a DB migration |
+
+**`namePlate{widthM,heightM,gapM,orientation}` is REMOVED from the config.** Geometry now comes from
+the element's own `element_transforms` row, read at runtime exactly like `_buildBillboardArt` reads
+the panel's. Config that duplicates DB data is a second source of truth; there must be one.
+
+## 2. Geometry — decoded and rescaled from the shipped panel, not hand-derived
+The panel's `component_geometries` blob (`bimootb_bb_8x4_v1`) is decoded, each vertex normalised by
+the panel's own half-extents `(0.2, 4.0, 2.0)`, and the resulting ±1 sign pattern rescaled by the new
+plate's half-extents `(0.05, 0.6, 2.0)`. **The 12-triangle index blob is reused byte-for-byte.** This
+reuses proven-correct box topology instead of re-deriving one — the original billboard SQL records a
+real 3 mm wall-penetration near-miss in exactly this area (§Traps 4).
+
+Measured (`§NAMEPLATE_GEOM`, decode log):
+```
+verts=24 tris=12 vbytes=288 fbytes=144
+src bbox extent=0.400000,8.000000,4.000000   (== the panel's stored bbox, so the normalisation is exact)
+all |v/halfExtent| == 1 within 1e-6          (a true ±1 box, no stray vertex)
+dst bbox extent=0.100000,1.200000,4.000000   (== the new plate's stored bbox)
+```
+
+## 3. Placement — every number from a real row
+| input | source |
+|---|---|
+| host wall `317rFPKoL6eO76U6ttKqzG` | `center_x 150.022938218902`, `bbox_x 0.15011265873909`, `center_y -34.5991588724087`, `bbox_y 10.8401651382446` |
+| billboard panel `BB0BIMOOTBSIGN000001A` | `center (150.348, -34.6, 23.61)`, `bbox (0.4, 8.0, 4.0)` |
+| standoff convention | re-derived from the shipped panel: `outer_face + thickness/2 + 0.05`; recomputing the panel gives `150.347995` vs stored `150.348` (Δ 5.5e-6, the SQL's own rounding) |
+
+Chosen, with no real antecedent and said so plainly (same category as the floodlight's chosen 0.3 m
+bracket): **thickness 0.1 m**. Width 1.2 m and height 4.0 m are the §BILLBOARD_BUILDING_NAME
+derivation above (margin 1.4201 m; height matches the panel so the two read as one composition).
+
+```
+wall outer face x   = 150.022938218902 + 0.15011265873909/2 = 150.097994548272
+plate center_x      = 150.097994548272 + 0.05 + 0.05        = 150.197995   (standoff 0.050000000 m, > 0)
+plate center_y      = -34.6 + (8.0/2 + 0.05 + 1.2/2)        = -29.950000
+plate center_z      = 23.610000                             (same as the panel)
+```
+Clearances, all computed not eyeballed (`§NAMEPLATE_CLEAR`):
+- plate spans y `[-30.5500, -29.3500]`; wall right edge `-29.179076` → **0.170924 m clear**.
+- gap to the panel's right edge (`-30.6`) → **0.050000 m**, exactly the intended gap.
+- vs floodlights `BB0BIMOOTBFLOOD000003/4`: `overlapX=-1.1500 overlapZ=-0.1500` → **collision=false**
+  on both (Y does overlap by 0.30 m — X and Z are what separate them, and both are negative).
+
+## 4. Schedule binding — `TASK_Finishes`, and why the kernel_ops row is part of the patch
+`TerminalHi4D.db` carries an authored 5-phase schedule (`§CPE_BUILDUP_REAL_SCHEDULE`); the last leaf
+by `schedule_finish` is **`TASK_Finishes` (2026-05-01 → 2026-05-31)**. Signage goes up last, so the
+plate binds there: `INSERT INTO task_elements VALUES ('TASK_Finishes','BB0BIMOOTBNAME000001A')`.
+
+**The `task_elements` row alone is NOT enough on this DB, and that is the trap this section exists to
+close.** `TerminalHi4D.db` already carries 48,433 materialised `ELEMENT_PLACE` `kernel_ops` rows with
+`_captured=1`, so `activate()` (`time_machine.js:4439-4450`) takes the existing-ops path and **never
+runs `injectGantt()`** — the `_cap` overlay that reads `task_elements` never runs either. An element
+with no `ELEMENT_PLACE` op is absent from `_ops`, and `renderAtTime`'s traverse
+(`time_machine.js:1269-1296`) then sets `obj.visible = false` for it at **every** cursor value: the
+plate would be invisible for the whole film. This is precisely the post-authoring-injection ordering
+gap named in `CINEMA_PATH_EDITOR.md §CPE_BUILDUP_REAL_SCHEDULE §6`, hit for real.
+
+So the migration writes the op too, with the timestamp **derived from `_cap`'s own slot formula**
+(`time_machine.js:3437-3438`), not chosen:
+```
+w.s = 1777593600000 (2026-05-01)   w.e = 1780185600000 (2026-05-31)   span = 2592000000 ms
+n = 259 (258 existing Finishes elements + this one), i = 258 (last)
+start_ts = w.s + floor((258/259) * span) = 1780175592277   (2026-05-30T21:13:12.277Z)
+end_ts   = w.e                           = 1780185600000   (2026-05-31T00:00:00.000Z)
+```
+`start_ts` is **38,789 ms after** the previous last op's start (`1780175553488`) → strictly last of the
+259, and at **99.923 %** of the 2026-01-01…2026-05-31 programme. No existing op is re-timed.
+
+⚠ **One bounded, deliberate difference, recorded so it is not "discovered" later as a bug.** `_cap`
+sorts a phase's bucket by `center_z` ascending. The plate's `center_z` is 23.61; the current last
+Finishes element (`1eZp5ooAv7nR3kNwng52r2`, `IfcCovering`) is at 23.6228781. So a full
+`tmRefoldSchedule()` would place the plate **second**-to-last of 259, ~2.8 h of model time earlier —
+still inside the final 0.4 % of the programme, still visually "last". The patch encodes the
+construction fact (signage goes up last); the refold encodes bottom-up Z order. Both satisfy the
+user's ask; they are not identical, and the witness asserts the patched value, not a range.
+
+## 5. The overlay must track the element, not build unconditionally
+`renderAtTime`'s traverse only touches objects carrying `userData.guid`. The text quad has none, so
+it renders from frame 0 — defect 2 above. It also cannot simply *be* given the element's guid: that
+would make two scene objects answer to one guid for picking/Find/BOM, and would run `applyHighlight`
+(cyan/orange emissive at 0.85 opacity) over the lettering during the install window.
+
+**Mechanism: one O(1) per-tick seam in `renderAtTime`, the same shape as the shipped `§SFX` seam**
+(`time_machine.js:1156`, `window.__sfxTM`). TM hands over the visibility it has ALREADY computed;
+the overlay owner decides what to do with it. No re-derivation, so the overlay cannot drift from the
+element.
+```js
+// time_machine.js, end of renderAtTime
+if (window.__tmOverlaySync) window.__tmOverlaySync(function(g) {
+  return !!placed[g] || !!frontier[g] || recent[g] !== undefined;
+});
+// deactivate(): window.__tmOverlaySync(null)  → TM off, overlays visible again
+```
+`effects.js` registers `window.__tmOverlaySync` and sets `_billboardNameMesh.visible` from it.
+Default (TM never activated, or `null` passed) = **visible**, because the sign exists in the finished
+building.
+
+**Named gap, NOT fixed here (scope):** the billboard ARTWORK quad (`_billboardMesh`) has the identical
+defect — the panel is bound to `TASK_Architecture` but its art renders from frame 0. The seam built
+here is generic and wiring it is one line; it is left out only because it changes shipped
+`§BILLBOARD_ART` behaviour that is in flight on PR #1069. Do it next.
+
+## 6. 5D cost and ERP — RESEARCHED, nothing invented, nothing new needed
+**Costing is keyed by `elements_meta.ifc_class` and by nothing else** — `viewer/schedule_author.js:290`
+`var rt = RATES[cls]; if (!rt) rt = ratesDefault;` (exact property lookup, no regex, no normalisation).
+`discipline`, `material_name` and `element_name` are never read by any of the three cost paths
+(`schedule_author.js:255 foldCost`, `analysis_sidecar.js:62 compute5D`, `navigate_find.js:1656
+_selectionPriced`). There is **no per-element cost column** anywhere: `elements_meta` has none, and
+`qto_cache` (absent from every Terminal DB anyway) is grained by `(ifc_class, storey, discipline,
+rate_template)`, not by guid.
+
+So the answer to "do the already-shipped billboard elements fold into 5D?" is **YES, they already
+do** — not a gap:
+| guid | class | rate row | folded into |
+|---|---|---|---|
+| `BB0BIMOOTBSIGN000001A` | `IfcBuildingElementProxy` | `rates.js:41` `{rate:850, unit:'EA'}` | RM 850 → `TASK_Architecture` |
+| `BB0BIMOOTBFLOOD000001..4` | `IfcLightFixture` | `rates.js:37` `{rate:485, unit:'EA'}` | RM 485 × 4 = 1,940 → `TASK_MEP_Final` |
+| **`BB0BIMOOTBNAME000001A`** (new) | `IfcBuildingElementProxy` | same row, **RM 850** | → `TASK_Finishes`, once its `task_elements` row exists |
+**No new rate category is invented and none is needed.** The cited figure is the shipped
+`rates.js`/`rates/cidb2024_my.json` value, not a fabrication.
+
+Two real findings worth recording, neither in scope to fix here:
+- **`unit:'EA'` bills `qty = 1`** (`schedule_author.js:292`), so the sign's 8 × 4 m face is invisible to
+  5D — an 8 m² plate and a 32 m² billboard cost the same RM 850. By design for EA; still worth naming.
+- **The wizard fold and the ERP push disagree on unmapped classes.** `foldCost` falls back to
+  `RATES_DEFAULT = {rate:500,unit:'EA'}` (`rates.js:72`); `_selectionPriced` has **no** default —
+  `navigate_find.js:1680` `rate = rt ? rt.rate : 0`. Same element, RM 500 one way, RM 0 the other.
+  Doesn't bite these elements (both classes are mapped), but it is a genuine divergence.
+
+**"ERP project order assigning" concretely = `ProjFold.foldProjectOrder`** (`viewer/proj_fold.js:107`),
+reached from the Find panel's `› to ERP` button (`navigate_find.js:1876 _pushToErp`). It writes
+`C_Project → C_ProjectPhase → C_ProjectTask → C_ProjectLine`, find-or-creating `M_Product_Category`
+(`'BIM-' + discipline` → `BIM-ARC`) and `M_Product` (`ifc_class`) on the fly. **A new `elements_meta`
+row needs nothing extra** — no product mapping, no BOM row, no ERP-side seed — provided it has a
+positive `element_transforms` bbox (the fold's inner join requires `bbox_x > 0`; ours is 0.1) and the
+user selects it. Two limits, named rather than half-built:
+- **No `C_Order` is created from the viewer.** `proj_fold.js:274` only writes one when
+  `opts.bpartnerId` is set, and `navigate_find.js:1888` never sets it → always `PLAN_ONLY no supplier
+  → no C_Order PO`. A real PO line is reachable only from the witnesses.
+- **The guid never reaches ERP.** `grep guid viewer/proj_fold.js` = 0 hits; the grain is
+  `(discipline, ifc_class, storey)` aggregated to one `C_ProjectLine`. So this plate is absorbed into
+  the `IfcBuildingElementProxy` line — it is never individually assignable. Acknowledged in-code at
+  `navigate_find.js:1773` ("Slice-1 grain = project-level … Per-line/guid [deep-link is a follow-on]").
+
+⛔ **BLOCKED (one user decision, not inventable):** should `› to ERP` acquire a supplier/`C_BPartner`
+picker so the fold can emit a real `C_Order`/PO, and should the fold carry element guids so a single
+element is individually assignable? Both are genuine integrations, not tidy-ups. Nothing is
+half-built here pending the answer.
+
+## 7. Witness claims — written BEFORE the code (W-BILLBOARD-NAME-ELEMENT)
+| # | claim | how it is proved |
+|---|---|---|
+| G1 | the geometry blob is the panel's topology rescaled | decode both blobs; assert 24 verts / 12 tris, index blob **byte-identical**, every normalised component `|v/half| == 1` within 1e-6 |
+| G2 | stored bbox == decoded geometry extent | decoded extent vs `element_transforms.bbox_*`, tolerance 1e-5 m (float32 storage of 0.6 is 0.60000002, so an exact-equality gate would be wrong) |
+| G3 | the plate does not penetrate its host wall, or anything else | `plate_inner_face_x - wall_outer_face_x > 0`; AABB overlap vs the panel and all 4 floodlights = false; clear to wall edge > 0 |
+| S1 | it is bound to the LAST leaf task | `task_elements` row is `TASK_Finishes`, and `TASK_Finishes` has the max `schedule_finish` of all non-summary tasks |
+| S2 | it is the last-starting op of its phase | its `ELEMENT_PLACE.start_ts` > every other `TASK_Finishes` op's `start_ts`, and its `_end_ts` == the phase finish |
+| **V1** | **the overlay's visibility EQUALS the real element's, at 3+ scrub points** | drive the shipped predicate over the real `_ops` at `t` = phase starts and ends; assert overlay-visible == element-placed at each, **including BEFORE `TASK_Finishes` opens (both false) and after it closes (both true)** |
+| V2 | the "came on immediately" defect is actually gone | at `t = project start`, overlay visible == **false**. This is the literal regression the user reported; a gate that only checked the end would pass on the broken build too |
+| C1 | text is config-only | change `buildingName` in the JSON, reload, no code change, new text renders; the config carries no geometry keys at all |
+| M1 | the migration is idempotent | apply twice, `SELECT count(*)` unchanged on all five tables, and every value identical |
+
 ## THE QUEUE, in order
 1. **Artwork stored IN the DB.** A browser file-picker hands the page ONE file handle and never its
    directory, so `Ctrl+O` local-open can never see `billboard.jpg` sitting beside the .db — the
@@ -6483,3 +6698,92 @@ Consequences that fall out for free:
 `filmMode` (items 3.1–3.3) → mode B. Then `orderByCameraPath()` → mode D. Mode C is the two advances
 run together, free. The sun stays pinned at `PHOTO_SUN_ELEVATION = 6` in every mode (§Cost table's
 one live landmine — construction time and sun time never share a variable).
+
+## §BILLBOARD_NAME_ELEMENT_BUILT — implemented and witnessed 2026-07-28/29
+**W-BILLBOARD-NAME-ELEMENT 10/10 GREEN.** `bim-ootb` PR **#1079** (`feat/billboard-nameplate`,
+auto-merge armed — **verify by content on `origin/main`, not by PR state**), witness
+`tests/witness_billboard_nameplate.js`, log `/tmp/W_NAMEPLATE.log`.
+
+### The witness drives the SHIPPED SOURCE TEXT, not a reimplementation
+`renderAtTime`'s op→state loop and `effects.js`'s `window.__tmOverlaySync` setter are extracted from
+the two source files by exact-substring match and executed via `new Function()`. If either changes
+shape the extraction **fails loudly** rather than grading a stale copy of the logic. This is what
+made V1/V2 provable without a browser: the numbers below come from the real `kernel_ops` rows of
+`TerminalHi4D.db` run through the real code.
+
+| gate | measured |
+|---|---|
+| G1 | `verts=24 tris=12`, index blob **byte-identical** to the panel's, sign pattern identical, `nonUnitNormalized=0` |
+| G2 | decoded extent `0.100000001, 1.200000048, 4.000000000` vs stored bbox `0.1, 1.2, 4` → `|delta| = 1.49e-9, 4.77e-8, 0` (tol 1e-5) |
+| G3 | `standoff=0.050000000 m` (>0), `clear_to_wall_right_edge=0.170924 m`, `gap_to_panel_right_edge=0.050000 m`, **collisions=0** against the panel + all 4 floodlights |
+| S1 | `task_elements` = `TASK_Finishes`; `max(schedule_finish)` leaf of 5 = `TASK_Finishes` 2026-05-01..05-31 |
+| S2 | `start_ts=1780175592277` vs next-latest `1780175553488` → **+38,789 ms**; `end_ts=1780185600000 == schedule_finish` |
+| **V1** | 9 scrub points, **mismatches=0** — false at project start / Superstructure end / MEP Rough-in end / Architecture end / Finishes opening / 1 ms before install; true at the install instant / mid-install / programme end |
+| **V2** | `visible@projectStart=false` (**the reported defect, now measured absent**), `visible@programmeEnd=true`; TM-off restores from **either** state (`false → true`, and `true` stays `true`) |
+| C1 | config keys besides `buildingName`/`_comment` = **[]**; `effects.js` reads `cfg.buildingName`; reads no `namePlate.*` key; hardcodes no text |
+| M1 | both migrations re-applied → snapshots **identical** on both DBs; `elements_meta=48434`, `task_elements=48434`, `ELEMENT_PLACE=48434` |
+| D1 | `ifc_class='IfcBuildingElementProxy'` → `rates.js` `{rate:850, unit:'EA'}` — the shipped row, no new category |
+
+The §-log the shipped setter emits (captured in V2):
+```
+§BILLBOARD_NAME_VIS guid=BB0BIMOOTBNAME000001A visible=false tmActive=true
+§BILLBOARD_NAME_VIS guid=BB0BIMOOTBNAME000001A visible=true  tmActive=true
+§BILLBOARD_NAME_VIS guid=BB0BIMOOTBNAME000001A visible=true  tmActive=false   ← deactivate()
+```
+It writes and logs on **change only**, never per tick.
+
+### What shipped
+- `migration/billboards/terminal_billboard_nameplate.sql` — the element (4 rows). Applies to any
+  Terminal_Hi-family DB, **including ones with no 4D tables**.
+- `migration/billboards/terminal_billboard_nameplate_4d.sql` — the schedule binding
+  (`task_elements` + the `ELEMENT_PLACE` `kernel_ops` row). Requires the 4D tables. **Split
+  deliberately** — verified by negative control: running the 4D file against `Terminal_Hi.db`
+  errors `no such table: task_elements`, which is the intended refusal, and it must not silently
+  create empty schedule tables that would change how `_cap` probes.
+- Applied to **both** `~/Downloads/OPEN SOURCE BIM/Terminal_Hi.db` (element only) and
+  `TerminalHi4D.db` (element + 4D). Both were confirmed by query to be the real files a test
+  session loads (48,433 → 48,434 `elements_meta` rows, same host wall row in both). There is no
+  canonical single copy these should point to instead — `Terminal_Hi.db` carries no 4D tables at
+  all and `TerminalHi4D.db` is the schedule-carrying one; they are two different fixtures.
+- `viewer/effects.js`, `viewer/time_machine.js` (`§TM_OVERLAY_SYNC` seam), `viewer/sw.js` v874→v876,
+  `tests/witness_billboard_nameplate.js`.
+- `Terminal.config.json` reduced to `buildingName` + `_comment`.
+
+### ⚠ Deviation from the brief, with the reason — the change is on ONE worktree, not two
+The brief said to mirror into `/tmp/wt-cpe-hose` as well. **Checked before acting, and the premise
+was wrong:** `wt-cpe-hose`'s `effects.js` contains **zero** nameplate code (`grep -c
+'_buildBillboardNamePlate\|_nameplateTexture'` = 0) — the previous session only ever edited
+`wt-albedo`. Mirroring would create NEW duplication, not maintain existing parity, and
+`feat/cpe-hose` already modifies **both** `viewer/effects.js` and `viewer/time_machine.js`
+(`git diff --name-only origin/main...HEAD`), so it would have been a guaranteed two-file conflict.
+The work therefore stays on the branch that owns `§BILLBOARD_*`.
+
+**Also: `feat/billboard-source` was already SQUASH-MERGED (PR #1069, 2026-07-27T20:15:33Z), so the
+follow-up was re-cut off fresh `origin/main` as `feat/billboard-nameplate`** — this repo's own
+"never continue pushing to a squash-merged branch" rule, applied before it could bite a third time.
+
+### Dev fixtures wired (they are NOT inherited by a fresh worktree — see the DEV-FIXTURE GOTCHA)
+`TerminalHi4D.db`, `TerminalHi4DBillboard.jpg` and `TerminalHi4D.config.json` symlinked into both
+`/tmp/wt-albedo/buildings/` and `/tmp/wt-cpe-hose/buildings/`. The config stem for
+`TerminalHi4D.db` is `TerminalHi4D` (no `_` to split on), **not** `Terminal` — a fresh session that
+loads the 4D DB and sees no name plate should check that first.
+
+### Still open after this
+- **Named gap, not fixed (scope):** the billboard **artwork** quad (`_billboardMesh`) has the
+  identical always-on defect — the panel is bound to `TASK_Architecture` but its art renders from
+  frame 0. `§TM_OVERLAY_SYNC` is generic and wiring it is one line; left out only because it
+  changes `§BILLBOARD_ART` behaviour that had just landed in #1069. **Do it next.**
+- **Two pre-existing 5D defects this work MEASURED but did not fix**, named so they are not
+  rediscovered: (1) `unit:'EA'` bills `qty = 1` (`schedule_author.js:292`), so an 8 m² plate and a
+  32 m² billboard both cost RM 850 — the sign's size is invisible to 5D; (2) the wizard fold and
+  the ERP push disagree on unmapped classes — `foldCost` falls back to `RATES_DEFAULT
+  {rate:500,unit:'EA'}` (`rates.js:72`) while `_selectionPriced` has **no** default
+  (`navigate_find.js:1680` `rate = rt ? rt.rate : 0`). Same element, RM 500 one way, RM 0 the other.
+- ⛔ **BLOCKED — one user decision, not inventable (from §6):** should `› to ERP` acquire a
+  supplier/`C_BPartner` picker so the fold can emit a real `C_Order`/PO (today `proj_fold.js:274`
+  only writes one when `opts.bpartnerId` is set, and `navigate_find.js:1888` never sets it → always
+  `PLAN_ONLY no supplier → no C_Order PO`), and should the fold carry element guids so a single
+  element is individually assignable (today `grep guid viewer/proj_fold.js` = **0 hits**; the grain
+  is `(discipline, ifc_class, storey)` → one `C_ProjectLine`)? Both are genuine integrations, not
+  tidy-ups. **Nothing is half-built pending the answer** — the plate folds correctly at the grain
+  that exists today.
