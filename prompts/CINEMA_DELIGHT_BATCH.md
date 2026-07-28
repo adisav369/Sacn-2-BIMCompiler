@@ -477,3 +477,18 @@ move the camera close to the point ON THE YELLOW PIPE where the cut belongs, the
 §CPE_HOVER_SCRUB (item 1) introduces exactly that cursor. Fold it there rather than growing a third
 notion of "here". The stale comment must go with it: a comment describing a branch that does not exist
 is the same class of defect as the `waypoints=0` log §CPE_IDB_PATH_STORE fixed.
+
+## ▶ FILM DELIVERED 2026-07-29 — the first Hospital bake on §CPE_BUILDUP_FOLLOW_TM (user: *"happy with it"*)
+`BIM_MaxQ_Hospital_1785273910881.mp4` — 1852×960, h264/yuv420p, 15 fps, **1186 frames = 79.067 s**,
+5.31 Mbps, 52.5 MB. `1186/15 = 79.0667` exactly, so **no frames were dropped or starved** by the
+recorder at more than double the length of the jkr reference film (588 frames / 39.20 s @ 5.289 Mbps),
+whose bitrate it matches in character.
+
+**This is the first film whose construction reveal followed Hospital's OWN 4D timeline** rather than a
+camera-path re-key — `§CPE_BUILDUP_SOURCE mode=T reason=generated-timeline ops=63421 placed=63183`,
+verified in the user's live console before the bake. The 79.1 s is a derived total that rose from the
+`dur=76.1s` in that same console as more hose pulls were added: length is a consequence of the walk,
+which is the §CINEMA_PACING model working as specified.
+
+The verdict on the LOOK is the user's and they gave it. Everything recorded here is a number read off
+the file with `ffprobe` — per CLAUDE.md's FUNDAMENTAL LAW, a film is never assessed here by watching it.
