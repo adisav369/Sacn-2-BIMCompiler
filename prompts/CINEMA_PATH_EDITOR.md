@@ -3267,20 +3267,26 @@ nothing (the reason it was moved off pointerdown in the first place).
 - **W-CLICK-UNDO.** A 2 px click leaves the undo stack able to remove the stick, and a 0 px press
   leaves NO undo entry at all (G-DRAG-1's existing property, which must survive).
 
-### ⚠ MEASURED — the witness harness CANNOT land a synthetic pointer gesture on the pipe (2026-07-29)
-`witness_cpe_click_slop.js` is written and committed, but it **does not pass, and it does not fail the
-product either** — it never gets a gesture through. Recorded so the next session does not re-derive it:
-- The pixel is right. `_pipePixel(frac)` + `_probePipe(x,y)` (both read-only whitebox hooks added for
-  this) agree the point is on the walk, and `document.elementFromPoint` confirms `APP.canvas` is the
-  topmost element there — so it is not the CPE panel occluding it, which WAS the first hypothesis and
-  was measured wrong.
-- Yet `page.mouse.down/move/up` at that pixel produces **no `§CPE_HOSE grab`, no `§CPE_STICK`, and no
-  `§CPE_HOSE landed`** — not even on a 20 px drag, which needs none of the new slop logic and worked
-  the same way before this change. **The handler is not receiving the event at all.**
-- `h.down` is bound as `c.addEventListener('pointerdown', h.down, true)` with `c = A().canvas`. The
-  open question is whether CDP-synthesised mouse input reaches a capture-phase `pointerdown` on that
-  element in this app's event stack — NOT whether the click slop works.
-**Do not read the RED as evidence about §CPE_CLICK_SLOP.** G-CS-3 (Ctrl+Z) passes only because its
-assertion is trivially true when nothing spawned. Whoever picks this up: prove the harness can drive
-ANY pipe gesture first (assert `§CPE_HOSE grab` appears on a 20 px drag against the OLD build), then
-re-aim the gates — the same discipline `feedback_verify_checker_before_code_under_test` names.
+### ✅ WITNESSED 4/4 (2026-07-29) — and the RED was the instrument three times over
+`witness_cpe_click_slop.js` first shipped RED with an honest "the harness cannot land a gesture" note.
+It lands now, and §CPE_CLICK_SLOP passes: **G-CS-1** 2 px grab → rows 3→4, `§CPE_STICK added=1`, no
+`§CPE_HOSE landed`; **G-CS-2** 20 px grab → one `§CPE_HOSE landed`, bands unchanged; **G-CS-3** Ctrl+Z
+back to 3; **G-CS-4** 0 px press → rows 3→4. Shipped in `bim-ootb` PR #1084, sw v882.
+
+**⚠ THE ROOT CAUSE IS A REAL PROPERTY, not merely a test bug — know it before writing any pipe test.**
+`h.down` checks `_hitTest` (band handles) **BEFORE** `_hitTestPath` (the pipe). A pixel inside a
+handle's grab radius is therefore a **BAND DRAG and can never be a stick**, however exactly it sits on
+the tube. The witness was choosing exactly such a pixel every run. `_probePipe` now returns
+`{pipe, band}` and the picker rejects any pixel with a band under it.
+
+**Three hypotheses were measured and each was WRONG** — recorded so none is re-tried: (1) the blind
+42 px canvas sweep was too coarse (true, but fixing it did not fix the gate); (2) the CPE panel was
+occluding the point (`elementFromPoint` proved `APP.canvas` was topmost); (3) CDP input was not
+reaching a capture-phase `pointerdown` (switching to real `PointerEvent` dispatch did not fix it
+either — though that change was KEPT, since it removes CDP synthesis from the loop entirely).
+This is `feedback_verify_checker_before_code_under_test` earning its place four times in one session.
+
+**⚠ Second-order consequence worth its own thought, NOT yet specced:** every stick you add covers more
+of the pipe with handle grab radius, so the pipe gets progressively harder to click as a path gets
+denser. Nobody has hit this yet and it is not today's defect — but it is the reason a "click the pipe"
+affordance degrades with use, and §CPE_HOVER_SCRUB will make it visible. Decide it there.
