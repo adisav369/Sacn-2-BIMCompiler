@@ -2205,3 +2205,126 @@ fixed" report tonight is expected rather than contradictory. **Merging it is ste
    console at load until Chrome silences it ("too many errors"). A pass is sampling the texture it
    is rendering into — real, unrelated to pacing, and it means those draws are DROPPED by the
    driver. Not diagnosed; note it before trusting any still/AO frame timing.
+
+---
+
+# §CPE_HOSE — the whole path editable, clips off it, and a construction checkbox
+**Discussed and AGREED with the user 2026-07-28. SPEC-ONLY — nothing here is built, and the user's
+own framing was "No hard laying out yet." What follows is the settled INTENT plus the traps found by
+reading the shipped code; the build order and the open questions below are deliberately unresolved.**
+
+## Origin — the user's proposal, verbatim
+> *"I like to explore a bit on the alt-c mechanism we just did. U agree we use that? As i wana propose
+> something that expands further the 3 point edit system. What if we make the whole path editable? And
+> clicking any point will open an aribitary '3 point band' or just dragging a point where the whole
+> path is like a long rubber hose, reacting only by proximity to the point been dragged, and the rest
+> just curves along. The final start stop also draggable. Now the next stage is tricky but kills two
+> birds. It is to mark start and stop along the path so a clip can be derived. Such usefullness is the
+> user can create any walk thru or viewing talking point on the fly. And this construction bit is a
+> checkbox to animate its buildup as cam goes along. As in movies or other's animation, its giving the
+> impression and not chronologically accurate. But the elements laying on each other according to its
+> part in the 4D is educational."*
+
+## Why Alt+C is the right base — the reason is structural, not preference
+The editor draws the path by sampling `plan.poseAt(t)` (§CPE_BANDS "Also asked" → shipped as the
+full-film tube). **The tube the user drags IS the film the bake flies.** Any other editing surface
+would be a second implementation of the path, free to drift from it. Cost is already measured and is
+not a blocker: re-plan **13 ms Duplex / 82 ms Terminal**, sampling 240 poses **0.3 ms** (§CPE_BANDS).
+Live deformation is affordable on today's numbers.
+
+## 1. The hose and the band are ONE gesture at two falloff radii (agreed)
+Rule 2 of §CPE_BANDS — *"the bands are short straight parts of the path… their length and
+straightness does not morph"* — is settled and stays settled. It does NOT conflict with this proposal
+once the two are unified rather than shipped side by side:
+> **radius → 0 = today's rigid band pivot. Large radius = the rubber hose.** One control, one mental
+> model. Do not ship "click for a band" AND "drag for a hose" as two affordances — that is where this
+> gets fiddly to use, and it is the one thing in the proposal I pushed back on (user agreed).
+This also answers **FOUR ASKS item 3** (*"the stick band should curve along more.. now it is short, if
+twisted its curve still short.. having more make it more useful to craft"*) — that complaint and this
+proposal are the same complaint, and the falloff radius is its general answer. Band tangent-authoring
+survives: the tangent is still what shapes the curve, which is the whole reason bands beat points.
+
+## 2. ⚠ THE LAW: falloff is measured in PATH ARC-LENGTH, never in world distance
+A world-space influence radius deforms an out-and-back path's RETURN leg — 2 m away in space, far
+away in the film. **This exact class of bug is why the `§CPE_DRAG_REACH` cap was removed** (#1038,
+*"G-DRAG-3 measured it BREAKING out-and-back"*). A world-distance hose walks it back in through the
+front door. Falloff parameterises on `t` / arc length along the path. Non-negotiable; witness it on an
+out-and-back before anything else about the hose is believed.
+
+## 3. Storage: store the DRAG OPERATIONS, not the resulting curve
+§CPE_BANDS rule 6 stores **3 bands, not 6 points**, deliberately — rigidity then survives save/reload
+*structurally*. A free-form hose cannot store a polyline without discarding that guarantee. Resolution:
+> persist each edit as `(arc-length position, falloff radius, displacement)` **layered on the derived
+> path** — not the deformed polyline.
+Small; reload-safe; the authored intent survives a re-derived base path (different building version,
+changed dive origin); and it composes with the existing §CPE_UNDO snapshot stack instead of fighting it.
+
+## 4. A hose can make a curvature spike a rigid band structurally could not — SHOW it, don't forbid it
+§CPE_EVEN_TURN, §CPE_POSITION_GATE and the jerk gates are all downstream of the curve, so they still
+apply unchanged. But rule 8 stands — **authored is authored**, no collision fighting, no silent
+correction. The editor should REPORT the jerk/curvature after a drag (the numbers already exist), so
+the user sees what they made and decides. Correcting it for them would be the same paternalism the
+band rules already rejected.
+
+## 5. §CPE_CLIP — in/out markers. The cheapest part, and the biggest product win
+`poseAt(t)` is already normalised 0→1 and `cinema_maxq.js` already accepts `opts.frames`. A clip is:
+```
+poseAt(t0 + t * (t1 - t0))
+```
+That is close to a one-line change to the existing bake loop. Named markers along the path ARE the
+user's *"viewing talking point"*.
+- **Markers live in the `bim_ootb_cinema_paths` IndexedDB store already sketched in §CPE_IDB_PATH_STORE**
+  — same shape (many named entries per building, keyed `buildingId + name`). **Do not mint a second store.**
+- **Two birds, and the second is bigger than clips:** the same markers can drive a LIVE walkthrough
+  with stops, not only a bake. Author once → present live, or cook a film from any segment.
+- Start/stop draggable (the user's *"final start stop also draggable"*) is the degenerate case of the
+  same marker mechanism — t=0 and t=1 markers — not separate machinery.
+
+## 6. §CPE_BUILDUP — the construction checkbox = §MAXQ_TIME mode D
+Wires to `prompts/PHOTOREAL_STILL_RENDER.md` §MAXQ_TIME mode D (*construction ordered BY the camera
+path*) and its 2026-07-28 code-read addendum. Mode D is a **re-sort of the synthetic build order**
+(`injectGantt()` re-keys `start_ts` from arc-length along the flight) — no new render path. This
+checkbox is its UI.
+
+**The honest label is FORCED, not a hedge.** There is no 4D schedule in the data: `Terminal_Hi.db` has
+no `tasks`/`task_elements` tables at all, `Hospital_extracted.db` has them EMPTY (`tasks=0`). So it can
+only ever be a DERIVED assembly order. The user reached the same conclusion independently — *"its
+giving the impression and not chronologically accurate"* — and the educational claim survives intact,
+because elements still land in dependency-plausible order (Z-band + `SEQUENCE_RULES`). **Say "derived
+build order", never "the schedule"**, or a BIM audience will ask for the P6/MSP link.
+
+Two consequences, one free win and one trap:
+- ✅ **Key the reveal to ARC LENGTH, not to time** → when §CPE_PACE_LOS slows the camera in a tight
+  space, the buildup slows with it automatically. The construction breathes with the pacing for free.
+- ⚠ **With a clip, compute the buildup over the WHOLE path, then sample it by the in/out window.**
+  Re-normalising the buildup to the clip makes every clip start from bare ground — wrong, and far less
+  interesting than a clip that opens on a partially-built building.
+
+## Open questions — NOT decided, ask before building
+1. **Falloff shape** — linear, smoothstep, or gaussian in arc length? Affects how "hose-like" it feels;
+   pick by trying, not by argument.
+2. **Is the radius per-drag or a persistent editor setting?** (Per-drag is more expressive; persistent
+   is fewer controls. The "simplest fastest tour maker" scope guardrail argues for persistent.)
+3. **Do markers survive a path edit that changes arc length?** A marker at `t=0.4` means a different
+   place after a big drag. Anchor markers to arc-length-from-start, to a nearest waypoint, or accept
+   the drift?
+4. Does §CPE_BUILDUP force ARC-only (§MAXQ_TIME's ARC = 35,553 of 48,433 on Terminal), or is the
+   discipline filter a second checkbox?
+
+## Witness claims — write these before any implementation (spec-first)
+- **W-HOSE-ARC** — drag on an out-and-back path deforms ONLY the near-in-`t` leg; the return leg's
+  sampled poses are unchanged within tolerance. This is §2's law, and it is the FIRST gate.
+- **W-HOSE-BAND** — falloff radius 0 reproduces today's rigid band pivot pose-for-pose (the unification
+  in §1 is real, not approximate).
+- **W-HOSE-RELOAD** — save → reload → the path re-forms from stored drag ops, poses match within
+  tolerance (§3's structural guarantee).
+- **W-CLIP-WINDOW** — a bake with markers `[t0,t1]` produces frames whose poses equal
+  `poseAt(t0 + t*(t1-t0))`, and `frames` scales with the window.
+- **W-BUILDUP-SAMPLE** — a mid-path clip with the checkbox on OPENS on a partially-built model:
+  placed-element count at the clip's first frame is > 0 and < the count at its last frame (§6's trap).
+- **W-BUILDUP-PACE** — reveal rate tracks arc length, not wall clock: where pacing slows, elements per
+  second falls proportionally.
+
+## Explicitly NOT in this section
+Dive origin and orbit authorability (§CPE_BANDS "still open" — bands 4 and 5), the §CINEMA_SPACE
+attic-pick (owned by another session), and collision avoidance on an authored path (rule 8 forbids it).
