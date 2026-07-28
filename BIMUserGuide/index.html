@@ -202,7 +202,7 @@
       
     
     
-      <div class="md-header__source">
+      <div class="md-header__source md-header__source--stacked">
         <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
@@ -212,6 +212,10 @@
     GitHub
   </div>
 </a>
+        <a href="https://github.com/red1oon/bim-compiler" title="red1oon/bim-compiler on GitHub" class="md-source-extra" target="_blank" rel="noopener">
+          <img src="https://img.shields.io/github/stars/red1oon/bim-compiler?style=flat-square&label=%E2%98%85&color=grey&labelColor=455a64" alt="bim-compiler stars" height="20">
+          <img src="https://img.shields.io/github/forks/red1oon/bim-compiler?style=flat-square&label=%E2%9D%B1&color=grey&labelColor=455a64" alt="bim-compiler forks" height="20">
+        </a>
       </div>
     
   </nav>
@@ -967,6 +971,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-bands-the-rows-in-the-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The bands — the rows in the panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whole-path-the-controls-that-act-on-the-entire-film" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Whole path — the controls that act on the entire film
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timing-preview-and-recording" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing, preview and recording
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-4d-reveal-and-what-it-may-honestly-be-called" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 4D reveal — and what it may honestly be called
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -2095,6 +2149,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-bands-the-rows-in-the-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The bands — the rows in the panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whole-path-the-controls-that-act-on-the-entire-film" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Whole path — the controls that act on the entire film
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timing-preview-and-recording" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing, preview and recording
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-4d-reveal-and-what-it-may-honestly-be-called" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 4D reveal — and what it may honestly be called
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2433,6 +2537,9 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 </ul>
 <p><img alt="Fly Tour's scrub bar — beat counter (&quot;Entrance 2/43&quot;), elapsed/total time, tick marks per beat,
   play/pause/step controls, and speed toggles" src="../img/viewer/fly-tour-scrub-bar.png" />
+- Film-Maker (<strong>Alt+C</strong>) — derives a complete cinematic film of the building from its own room graph,
+  then lets you edit the flight by dragging the flight itself, and records it to an mp4 in the browser.
+  See <a href="#cinema-film-maker-altc-the-bim-ootb-film-maker">Cinema Film-Maker</a> below
 - Indoor walk-through — follows IfcSpace/door graph through the building
 - X-Ray mode (Alt+Z) — a 3-state cycle: <strong>Off → X-Ray → Bounding Boxes → Off</strong>. X-Ray is the transparent
   see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
@@ -2688,23 +2795,87 @@ one icon:</p>
 space, walk out through a real door, orbit the exterior — in well under a second, from the model's own
 room graph. No camera path is authored by hand; the defaults come from measured geometry (room area,
 reachability, door position, clearance), not a guess.</p>
-<p>Before recording starts, a <strong>Cinema path</strong> dialog shows the whole film as a curve overlaid on the
-building, with three editable bands — <em>settle</em> (where the dive lands), <em>exit door</em> (which door it
-walks out through), and <em>stop</em> (end of the walk, not the film — the orbit continues after it):</p>
-<p><img alt="The Cinema path dialog on Terminal — a 3-band curve (settle, exit door, stop) drawn through the building in the 3D view, each row showing its aim angle and a one-line description, plus total duration, frame count, walk speed, and Cancel / Save this path / OK" src="../img/viewer/cinema-path-editor.png" /></p>
+<p>Before recording starts, a <strong>Cinema path</strong> panel opens with the whole film drawn as a yellow tube
+through the building. You edit the flight by dragging the flight itself — there is no separate
+storyboard or keyframe list:</p>
+<p><img alt="The Film-Maker's Cinema path panel on a real building — the yellow flight tube drawn through the model with draggable band handles on it, and the panel listing settle, four added sticks and stop (each with x / z / height / length fields and its aim angle), then the Whole path block: reach %, clip mark in / mark out, &quot;build the model as the camera flies&quot;, saved plans, total seconds and frames to bake, and the Preview / Cancel / Save this path / OK row" src="../img/viewer/filmmaker-path-editor.png" /></p>
+<h4 id="the-bands-the-rows-in-the-panel">The bands — the rows in the panel<a class="headerlink" href="#the-bands-the-rows-in-the-panel" title="Permanent link">&para;</a></h4>
+<p>Every row is one straight <strong>band</strong> of the flight, listed in flight order with its own x, z, <strong>height</strong>
+(green) and <strong>length</strong> (orange) fields, plus its aim angles:</p>
 <ul>
-<li><strong>Drag a band's end</strong> to pivot it around its far end (length stays fixed) — use this to aim a leg
-  differently or pick a different door.</li>
-<li><strong>Drag a band's middle</strong> to move the whole band without pivoting.</li>
-<li><strong>Anywhere else orbits the scene as normal</strong> — there's no freeze or modifier key. A drag only ever
-  moves in the plane you're currently facing, so turn the view to reach the axis you need (e.g. orbit
-  to a side view to adjust height).</li>
-<li><strong>Save this path</strong> stores your edit as part of the building so it's there next time; <strong>OK</strong> records
-  the film exactly as previewed — if nothing was touched, that's byte-identical to the un-edited default.</li>
+<li><strong>settle</strong> — where the dive lands and the camera looks around. Always the first row.</li>
+<li><strong>stop</strong> — end of the <em>walk</em>, not the film; its far end stretches the exterior orbit that follows.
+  Always the last row.</li>
+<li><strong>stick</strong> — any band you added yourself, labelled with how far along the walk it sits. The screenshot
+  above has four.</li>
 </ul>
-<p>Total duration is derived per building from real walk distance and pull-back distance, not a fixed
-number — a small building's film runs shorter than a large one's by construction, not by a per-building
-setting. <a href="https://youtu.be/sUTscAgnQMc">Watch the film</a> this feature produced on a real building.</p>
+<p>To work with them:</p>
+<ol>
+<li><strong>Click the tube</strong> anywhere along the walk to drop a new <strong>stick</strong> there. A fresh stick lies exactly
+   along the curve, so the film does not move until you move it — dropping one costs nothing.</li>
+<li><strong>Drag a band's end</strong> to pivot it about its far end (length is fixed, so this aims a leg — use it to
+   turn through a different doorway).</li>
+<li><strong>Drag a band's middle</strong> to move the whole band without pivoting.</li>
+<li><strong>Press <code>×</code> on a stick's row</strong> to remove it. <em>settle</em> and <em>stop</em> have no <code>×</code> — the dive lands on one
+   and the orbit stretches off the other, so removing either would change what the beats mean.</li>
+<li><strong>Anywhere else orbits the scene as normal</strong> — no freeze, no modifier key. A drag moves in the plane
+   you are currently facing, so orbit to a side view when you need to change height.</li>
+</ol>
+<h4 id="whole-path-the-controls-that-act-on-the-entire-film">Whole path — the controls that act on the entire film<a class="headerlink" href="#whole-path-the-controls-that-act-on-the-entire-film" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>reach %</strong> — how far a drag on the tube carries along the walk. Drag the tube <em>between</em> the bands and
+  it bends like a hose, falling off over that reach; a small reach edits locally, a large one sweeps the
+  whole flight.</li>
+<li><strong>clip · mark in / mark out / whole film</strong> — trims the film to a window without changing the path.
+  ⚠ <strong>Marking uses the point of the film nearest your camera</strong>, so put the camera close to the spot <em>on
+  the yellow tube</em> where the cut belongs before pressing — marking from a wide exterior view lands on
+  whichever part of the flight happens to pass closest to your eye. <strong>whole film</strong> clears the window.</li>
+<li><strong>build the model as the camera flies</strong> — the construction reveal. See the 4D note below.</li>
+<li><strong>saved</strong> — plans you stored for this building, with <strong>open</strong> and <strong>delete</strong>. Choosing one and pressing
+  <strong>open</strong> replaces the path you are editing; the line under it says how many bands, how many hose pulls,
+  the clip window and when it was saved.</li>
+</ul>
+<h4 id="timing-preview-and-recording">Timing, preview and recording<a class="headerlink" href="#timing-preview-and-recording" title="Permanent link">&para;</a></h4>
+<p>The <strong>total</strong> field is seconds, and the line beneath it reports the derived reality: walk length, walking
+speed in m/s, the natural duration, and how far your edit has moved it. Total duration is derived per
+building from real walk distance and pull-back distance, never a fixed number — a small building's film
+is shorter than a large one's by construction, not by a setting.</p>
+<ul>
+<li><strong>Preview</strong> flies the current edit so you can watch it before committing to a bake. The panel tells you
+  when what you are looking at is older than your last edit.</li>
+<li><strong>Save this path</strong> stores the plan — both into the building (so it travels with the file when you save
+  it) and as a named entry in the <strong>saved</strong> list above.</li>
+<li><strong>Cancel</strong> discards; <strong>OK</strong> records the film exactly as previewed. If you touched nothing, that is
+  byte-identical to the un-edited default — opening the panel to look costs you nothing.</li>
+</ul>
+<h4 id="the-4d-reveal-and-what-it-may-honestly-be-called">The 4D reveal — and what it may honestly be called<a class="headerlink" href="#the-4d-reveal-and-what-it-may-honestly-be-called" title="Permanent link">&para;</a></h4>
+<p>With <strong>build the model as the camera flies</strong> ticked, the model assembles as the film runs. What drives
+that order depends on the data in <em>your</em> building, and the viewer picks automatically:</p>
+<table>
+<thead>
+<tr>
+<th>your data</th>
+<th>what drives the reveal</th>
+<th>what to call it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no dated tasks</td>
+<td>the derived build order, re-keyed to the flight</td>
+<td><strong>"derived build order"</strong> — never "the schedule"</td>
+</tr>
+<tr>
+<td>real dated tasks (a 4D schedule authored or imported into the building)</td>
+<td>each element's own <code>schedule_start</code></td>
+<td><strong>"a linked 4D schedule"</strong></td>
+</tr>
+</tbody>
+</table>
+<p>A building with a real schedule reveals by that schedule and nothing is re-ordered. The practical
+workflow is to <strong>preview the Time Machine first</strong> — its Gantt is in the Inspect drawer — and then place
+your <strong>mark in / mark out</strong> against what the programme actually shows.</p>
+<p><a href="https://youtu.be/sUTscAgnQMc">Watch the film</a> this feature produced on a real building.</p>
 <h3 id="display-options-palette-night-shadow-ground-background-sound-fx">Display options — Palette, Night, Shadow + Ground, Background, Sound FX<a class="headerlink" href="#display-options-palette-night-shadow-ground-background-sound-fx" title="Permanent link">&para;</a></h3>
 <p>The <strong>Palette</strong> pill (key <strong>P</strong>) opens one panel for every visual-appearance control — five lighting
 sliders, plus four more toggles appended below them:</p>
@@ -2843,6 +3014,18 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 <tr>
 <td><strong>Alt+Z</strong></td>
 <td>Toggle X-ray mode</td>
+</tr>
+<tr>
+<td><strong>Alt+C</strong></td>
+<td><a href="#cinema-film-maker-altc-the-bim-ootb-film-maker">Film-Maker</a> — derive a cinematic film, edit the flight, record</td>
+</tr>
+<tr>
+<td><strong>Click the flight tube</strong> (in the Film-Maker)</td>
+<td>Add a stick — a new band you can drag</td>
+</tr>
+<tr>
+<td><strong>Ctrl+Z / Ctrl+Shift+Z</strong> (in the Film-Maker)</td>
+<td>Undo / redo a path edit</td>
 </tr>
 <tr>
 <td><strong>F11</strong></td>
