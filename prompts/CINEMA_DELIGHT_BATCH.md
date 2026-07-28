@@ -24,9 +24,44 @@ elements, 4 bands). Every drag re-runs the WHOLE plan — `§CINEMA_PLAN_MS ~550
 `fanRays=32 spaceCands=52 exitCands=135`, i.e. the BVH fan and the exit-door scoring — even though a
 band drag changes only the walk geometry and cannot change which door the dive exits through.
 **This grows with band count, and §CPE_STICK now lets the user add bands freely.** Every item below
-makes the editor more inviting to fiddle with, which makes this worse. **Fixing it is arguably item 0:
-cache the dive/exit/space decisions and re-run only the walk+pacing when only bands/hose changed.**
-Not specced here — it is a separate measured job — but do not add all six on top of a 1 s edit latency.
+makes the editor more inviting to fiddle with, which makes this worse.
+
+### §CPE_REPLAN_LAZY — the user's diagnosis, confirmed by their own log
+> User, 2026-07-29: *"is it tied to the best alt pipe feature? Cant that be lazy only when user press
+> that feature?"*
+
+**Yes — and the proof is already in their console.** Across EVERY drag in that session, the expensive
+block printed **byte-identical values**:
+```
+§CINEMA_SPACE cand=CORRIDOR_ROOM::Aras Tanah|y|119.95 area=131.5 enclosed=100% chosen=true
+§CINEMA_DIVE  settle=(3.7,-15.7,3.4) floorY=-17.39 nudge=5.93m yaw0=-152.4° diveDist=53.0m
+§CINEMA_EXIT  chosen=1hnR05M7n4hAsCinhpv9DL dist=6.4 cost=11.3 candidates=135 runnerUp=…@12.8
+```
+Identical settle point, identical door, identical cost, identical runner-up — **on eight consecutive
+re-plans.** That is ~550 ms of BVH fan raycasts, 52 space candidates and 135 scored doors producing
+the same answer every time, because that block depends only on (a) the MODEL and (b) the camera basis
+— and §CPE_PREVIEW_DIVERGENCE already **pins the basis to the pose the editor opened with**, precisely
+so that orbiting cannot change the film. The cache key is therefore trivially stable for the whole
+editor session: *nothing the user can do while editing can change it.*
+
+**The seam is clean.** In `_cinemaPathPlan`, everything from `arcBbox`/`pivot` through §CINEMA_SPACE,
+§CINEMA_DIVE and §CINEMA_EXIT runs BEFORE the `if (_cpeBands …)` block that expands bands into the
+route. Bands, hose and clip all act after it. So: compute that prefix once on editor open, hand it to
+subsequent re-plans, and re-run only the parts that legitimately changed — band flow, hose, pacing,
+§CPE_NOISE_LAW probes, `poseAt`.
+
+**Better than lazy: give the user the button they implied.** Re-deriving the entry is a real thing they
+may WANT (a different room to dive into, a different door to walk out of) — it just should not happen
+eight times by accident while dragging a stick. So: cache by default, plus a **`re-derive entry`**
+control that recomputes the prefix on demand. That turns a hidden 550 ms tax into an explicit feature.
+
+**⚠ Gate it on equivalence, not on speed.** The failure mode is a stale cache silently pinning the film
+to a settle point or door that no longer applies (e.g. after a building switch or a `_metaGen` bump).
+**W-REPLAN-CACHE:** for N random band/hose edits, the cached plan's sampled poses must equal the
+uncached plan's within 1e-6 m — same discipline as `§INCR_VERIFY mismatch=0` in the Time Machine work,
+where an equivalence witness caught exactly this class of bug. Report `§CPE_REPLAN_LAZY hit=<n>
+miss=<n> savedMs=<n> prefixMs=<n>` so the saving is a number, not a hope.
+**Cost: MEDIUM, and it pays for every other item in this file.** Do it first.
 
 ---
 
@@ -169,7 +204,7 @@ gates. Do it LAST of the cheap items, and never in the same PR as another pacing
 ## Cost summary, and the build order
 | # | item | cost | risk | why this order |
 |---|---|---|---|---|
-| 0 | re-plan caching (`§CPE_REPLAN_SLOW`) | medium | low | every item below makes the 1 s edit latency more noticeable |
+| 0 | **§CPE_REPLAN_LAZY** (cache the dive/exit prefix) | medium | low | user's own log shows ~550 ms producing IDENTICAL output on 8 consecutive drags; pays for every item below |
 | 1 | §CPE_HOVER_SCRUB | small | low | biggest felt win per line; no re-plan involved |
 | 3a | §CPE_SUGGEST_CLIP | small | low | the ranking already exists, panel-only |
 | 5 | §CPE_FIND_TO_FILM | medium | medium | highest product value; needs room-graph routing to be reusable |

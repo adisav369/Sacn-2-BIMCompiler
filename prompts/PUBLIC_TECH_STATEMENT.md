@@ -55,3 +55,61 @@ All from `§`-tagged logs and file metadata on 2026-07-28, not estimates: `§CON
 `§BATCHED_FLUSH` (element and draw-call counts), `ffprobe` (container), `§PHOTO_GLOW_SPRITE`
 (luminaire count), `§STILL_REFINE` + `§PHOTO_AO` (accumulation), `§TRIPLANAR_INIT` (material count).
 Full engineering detail: `PHOTOREAL_STILL_RENDER.md` §11–§14 and its `▶▶ NEXT SESSION` handover.
+
+---
+
+# §COMPETITIVE_POSITION (2026-07-29) — the claim, and the survey behind it
+Asked by the user, twice: *"You agree this is a novel art been able to achieve on a mere browser tab?
+Is anyone doing the same?"* and then *"we can pursue those other roadmap gaps with the big players
+more easily now."* Written down so the next session does not re-derive it, and so the claim that goes
+public is the one that survives being challenged.
+
+## THE SENTENCE — use this one, verbatim
+> **A model-derived cinematic path you edit by dragging the flight itself, baked to photoreal video
+> entirely in the browser, with the construction reveal following the camera.**
+
+Every clause is witnessed, and this is why each one is in there:
+| clause | what backs it |
+|---|---|
+| *model-derived* | dive target from the room graph (`§CINEMA_SPACE`/`§CINEMA_DIVE`), exit door scored from `db-doors` (`§CINEMA_EXIT candidates=135`), pacing from measured bbox change (`§CPE_NOISE_LAW`) |
+| *edit by dragging the flight itself* | §CPE_HOSE arc-length falloff + §CPE_STICK spawn-a-band-anywhere, PR #1074 |
+| *baked to photoreal video* | full Alt+S fold per frame (16-sample TAA + 24-frame N8AO), H.264 via WebCodecs + `lib/mp4_mux.js` |
+| *entirely in the browser* | static file host, no server render, no install, no seat |
+| *construction reveal following the camera* | §MAXQ_TIME mode D / §CPE_BUILDUP, PR #1074 + #1078 |
+
+## The survey, as far as it is honestly known (knowledge to May 2026 — NOT a verified sweep)
+**Every ingredient exists somewhere. None of the adjacent products combines them.**
+| field | who | what they have | what they do not |
+|---|---|---|---|
+| browser BIM viewers | APS/Forge, Speckle, That Open (web-ifc), Trimble Connect, Revizto | web 3D, extensions, collaboration | camera work is manual keyframes; no photoreal bake in-tab |
+| camera-path tools | Sketchfab, Matterport, Google Earth Studio | keyframed flights, guided tours | no building semantics — they do not know what a room or a door IS |
+| 4D sequencing | Synchro, Navisworks TimeLiner, Fuzor | real programme playback, CPM | desktop; reveal ordered by schedule, never by the camera |
+| photoreal | Enscape, Twinmotion, Lumion | far better images than this | desktop/GPU-bound, install + seat, not model-derived paths |
+
+**The differentiator is the INVERSION, not the pixels.** Everyone else makes you author the shot. Here
+the model proposes it and you override — the same compile-not-model stance as the rest of the project.
+The pixels are not the argument and should never be the argument: Enscape and Lumion win that outright.
+
+## ⛔ DO NOT SAY
+- **"first", "only", "nobody else does this"** — no verified sweep has been run. One counterexample
+  makes an otherwise good post look sloppy to exactly the audience worth having.
+- **"it ranks against Revit/Navisworks"** — BIM app ranking is decided by import fidelity, model scale,
+  collaboration/permissions, clash and quantity workflows, and ecosystem. **This work touches none of
+  them.** It makes ONE capability distinctive; it does not move the league table, and claiming it does
+  invites a comparison this loses.
+- **"4D schedule playback"** for the buildup — it is a DERIVED build order unless the DB genuinely has
+  populated `tasks`/`task_elements` (Terminal_Hi: none; Hospital: empty; TerminalHi4D: authored by
+  `materializeDefault()`, CPM columns empty). See §CPE_BUILDUP.
+
+## Why this matters for the roadmap gaps (the user's own framing)
+The strategic value is not the film. It is that a browser tab now demonstrably does derivation +
+direct manipulation + photoreal output on a 48,433-element model, which is the credibility needed to
+argue the HARDER gaps against the big players — federation, quantities, clash, programme integration —
+without first having to prove the platform can do anything visually serious. **Use the film to buy the
+hearing; do not let it become the pitch.**
+
+## ⚠ If this is ever going public as a comparison, do the sweep first
+One targeted survey, once: Speckle + APS extension marketplaces, That Open's ecosystem, Sketchfab and
+Matterport animation features, and anything new since. Half a session. Do it BEFORE the post, not after
+someone replies with a link. Until then the honest phrasing is *"I am not aware of another tool that
+does this"* — which is true, testable, and costs nothing if someone knows one.
