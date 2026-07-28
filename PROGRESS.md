@@ -26,10 +26,6 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
 - `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
-- ✅ **Modeller stranded-branch sweep DONE 07-27, all 4 retired** — §STOREY-ZBAND was NOT stranded; 3
-  branches were already landed/re-homed (#590/#711, `viewer/lib/room_walker.js`, #642), deleted. ONE real
-  leftover shipped: IFC-open rendered ZERO ARC geometry — **#1062 merged**. ⚠ verify by CONTENT not
-  `git cherry` (patch-id gave false "undelivered" on all 4). Do NOT re-attempt `_hostAxis`/R-DOOR-SCORE.
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
   ✅ **§CINEMA_TURN_SLERP LANDED (PR #1018, 7/7)** — look-back was a ONE-FRAME 180° snap (look-at lerped THROUGH
   the camera); fixed by rotating the gaze direction. #1017/`feat/cinema-exit-breathe` CLOSED (stale main, retime
@@ -53,12 +49,10 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ §LODHELL + Modeller-guide pass CLOSED (07-27/28) — **read `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md`
-  §START HERE, it holds the full closed/open/landmine list.** W-LODHELL-CLASSIFY 5/5 · `f7d00240b` ·
-  bim-ootb #1051/#1062/#1065 · guide LIVE on gh-pages. SampleCastle's boxiness is its OWN source (46.4%
-  12-tri, renderer clean 3225/3225); the 65 "missing" walls are **VOID-CONSUMED** (correct). `rel_fills_host`
-  now shipped SH 7/7 · DX 36/38 · SC 9/74, so the guide's hosted-door ride is TRUE, not prose.
-  ⛔ user design call: non-rendered logical anchor for a void-consumed host? Not scoped, don't build alone.
+- ✅ §LODHELL + Modeller guide + stranded-branch sweep, ALL CLOSED (07-27/28) — **read
+  `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md` §START HERE: closed / open / landmines, nothing to re-derive.**
+  `f7d00240b` · #1051/#1062/#1065 · guide LIVE. All 4 "stranded" Modeller branches retired (3 were already
+  landed — ⚠ verify by CONTENT, `git cherry` lied on all 4). ⛔ ONE user design call left, don't build alone.
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26): #1012 §TOUR-POLYLINE (Terminal 8/92→2/91) + #1013 T2/T3
   NO-CHANGE ×7 + #1014 `exit` was a LIFT-door filter → removed, 2/91→**0/84**; T4/exits = its OWN
@@ -72,9 +66,6 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2%
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
   `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
-- ✅ Room-injector self-heal Stages 1-4 (07-21/22) #947-#967 · ✅ nav-DLOD perf LTU 122k (07-23)
-  #973-#977 `FLY_TOUR_DLOD_SCALE.md §18-§19` · ✅ R room-cycle + Home fill-frame #969 · ✅ Branch
-  hygiene (07-25).
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
 - ✅ Blank Viewer landing card + local `.db` Open (07-27/28) — bim-compiler `40e333efd` pushed +
   **bim-ootb PORT PR #1068 open** (`fix/blank-viewer-landing-card`, `c7a6ce0`, two separate codebases —

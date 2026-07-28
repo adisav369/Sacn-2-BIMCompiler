@@ -17,3 +17,7 @@ each item's own spec doc — these are the exact lines that were in PROGRESS.md 
 - ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
   #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
 - ✅ Fly Tour route cache re-fixed (2026-07-20), bim-ootb PR #926. `prompts/done/TOUR_ROUTE_CACHE.md` §4.
+- ✅ Room-injector self-heal Stages 1-4 (2026-07-21/22), bim-ootb #947-#967.
+- ✅ nav-DLOD perf at LTU's 122k elements (2026-07-23), bim-ootb #973-#977. `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md §18-§19`.
+- ✅ R room-cycle + Home fill-frame keyboard shortcuts, bim-ootb #969.
+- ✅ Branch hygiene sweep (2026-07-25).
