@@ -6787,3 +6787,65 @@ loads the 4D DB and sees no name plate should check that first.
   is `(discipline, ifc_class, storey)` → one `C_ProjectLine`)? Both are genuine integrations, not
   tidy-ups. **Nothing is half-built pending the answer** — the plate folds correctly at the grain
   that exists today.
+
+---
+
+# §MAXQ_STAGING_HOLD — the bake is FOLD-bound and STAGING-bound, not geometry-bound (2026-07-29)
+> User, mid-bake: *"i notice it is quite fast for Terminal, but much slower for Hospital. I thot our
+> DLOD is in effect for larger models?"*
+
+**Three findings, all from their own console, none requiring a new measurement.**
+
+## 1. DLOD is not the lever, and MUST NOT become one
+Every `§FPS_MODE` line in that bake reads **`dlod=off`**. But even switched on it could not help:
+`§PHOTO_AO done frames=24 avgRenderMs=10.0–11.6` — **one render of the whole Hospital scene costs
+~10 ms**, against a `perFrameMs=1400–1476` budget. Geometry draw is ~1% of a baked frame.
+**⚠ AND IT MUST STAY OFF FOR BAKES.** DLOD substitutes bbox proxies for real meshes. Putting proxy
+boxes into a photoreal deliverable is precisely what `feedback_no_fake_lod_unbreakable` forbids — the
+frame would no longer be the model. DLOD is a NAVIGATION lever; the bake is a DELIVERABLE. Do not
+wire them together, and do not "optimise" a bake by degrading what it renders.
+
+## 2. Where the 1.45 s actually goes
+| stage | per frame | note |
+|---|---|---|
+| `§STILL_REFINE` 16-sample TAA | **450–540 ms** | 16 renders |
+| `§PHOTO_AO` 24-frame N8AO | **372–497 ms** | 24 renders @ ~10 ms |
+| `SETTLE_MS` | **250 ms** | fixed sleep, teardown→restage |
+| staging churn (see §3) | **~130–280 ms** | inside the staged window |
+| **total** | **~1400–1470 ms** | matches `perFrameMs` |
+**40 full renders per captured frame.** That is the cost, and it is the QUALITY the feature exists to
+deliver — it is not waste. Lowering it means lowering the fold, i.e. lowering the output.
+
+## 3. THE REAL WASTE — the staging is torn down and rebuilt EVERY FRAME
+Per captured frame, on a scene where **only the camera moved**, the log shows:
+- `§PHOTO_GLOW_SPRITE staged 818 sprites` → `removed 818 sprites` — **twice**
+- `§NIGHT_MODE on fixtures=818` → `§NIGHT_MODE off`
+- `§PHOTO_SHADOW enabled casters=1206` → `disabled`
+- `§GROUND_MAP key=paved … repeat=64 aniso=8` re-applied; `§GROUND_Y` recomputed 3–4×
+- `§NIGHT_GLOW_REASSERT`, `§GROUND_ALBEDO`, `§FACADE_WARM_COOL`, `§PHOTO_FACING`
+- `§TRIPLANAR_PERF ms=1044–1475 materials=27`
+**Nothing in that list depends on the camera.** It is set-up being paid 711 times for one film.
+`SETTLE_MS`'s own comment says it exists because "the next staging captures mid-restore sun-tint/
+exposure values as original" — i.e. the settle is a WORKAROUND for the teardown, not a requirement.
+**Proposal §MAXQ_STAGING_HOLD: stage ONCE before frame 0, hold it for the whole bake, tear down once
+at the end.** The per-frame loop then becomes pose → fold → capture. Estimated saving **~380–530 ms/
+frame ≈ 26–36%**, i.e. ~4–6 min off this 17-minute bake, with **zero change to the rendered image** —
+which is also the gate: **W-STAGING-HOLD, a held-staging frame must be pixel-identical to a
+restaged one at the same pose.** If it is not, the teardown was hiding a state leak and THAT is the
+finding.
+⚠ Check first why the teardown exists at all — `§PHOTO_AO off (cancelled (interaction))` fires every
+frame, so something is treating the bake's own camera move as a user interaction. That may be the
+actual root cause, and fixing it may deliver the hold for free.
+
+## 4. "Hospital is slower than Terminal" — it is not, per frame. The FILM is longer.
+| | Terminal | Hospital |
+|---|---|---|
+| `§MAXQ_START frames` | **450** | **711** (+58%) |
+| per frame | ~2.0–2.5 s (2026-07-28 log) | **~1.45 s** |
+| total | ~16 min | ~17 min |
+**Hospital renders each frame FASTER.** The film is simply longer, because frame count is DERIVED from
+`§CINEMA_PACING` → path length → `§MAXQ_DURATION_DERIVED 24.0s→30.0s, frames 360→450`. A longer walk
+buys more seconds and therefore more frames. Hospital's extra staging load (818 luminaires + night
+mode, which Terminal's bake did not carry) is real but is the §3 item, not a model-size effect.
+**Say it plainly to a user: bake time tracks FILM LENGTH first and staging second — element count is
+nearly irrelevant.** Worth surfacing in the ETA line so nobody infers "big model = slow bake".
