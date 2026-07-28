@@ -3266,3 +3266,21 @@ nothing (the reason it was moved off pointerdown in the first place).
   intentional bends into stray nodes.
 - **W-CLICK-UNDO.** A 2 px click leaves the undo stack able to remove the stick, and a 0 px press
   leaves NO undo entry at all (G-DRAG-1's existing property, which must survive).
+
+### ⚠ MEASURED — the witness harness CANNOT land a synthetic pointer gesture on the pipe (2026-07-29)
+`witness_cpe_click_slop.js` is written and committed, but it **does not pass, and it does not fail the
+product either** — it never gets a gesture through. Recorded so the next session does not re-derive it:
+- The pixel is right. `_pipePixel(frac)` + `_probePipe(x,y)` (both read-only whitebox hooks added for
+  this) agree the point is on the walk, and `document.elementFromPoint` confirms `APP.canvas` is the
+  topmost element there — so it is not the CPE panel occluding it, which WAS the first hypothesis and
+  was measured wrong.
+- Yet `page.mouse.down/move/up` at that pixel produces **no `§CPE_HOSE grab`, no `§CPE_STICK`, and no
+  `§CPE_HOSE landed`** — not even on a 20 px drag, which needs none of the new slop logic and worked
+  the same way before this change. **The handler is not receiving the event at all.**
+- `h.down` is bound as `c.addEventListener('pointerdown', h.down, true)` with `c = A().canvas`. The
+  open question is whether CDP-synthesised mouse input reaches a capture-phase `pointerdown` on that
+  element in this app's event stack — NOT whether the click slop works.
+**Do not read the RED as evidence about §CPE_CLICK_SLOP.** G-CS-3 (Ctrl+Z) passes only because its
+assertion is trivially true when nothing spawned. Whoever picks this up: prove the harness can drive
+ANY pipe gesture first (assert `§CPE_HOSE grab` appears on a 20 px drag against the OLD build), then
+re-aim the gates — the same discipline `feedback_verify_checker_before_code_under_test` names.
