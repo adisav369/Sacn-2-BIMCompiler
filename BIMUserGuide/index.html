@@ -2798,7 +2798,9 @@ reachability, door position, clearance), not a guess.</p>
 <p>Before recording starts, a <strong>Cinema path</strong> panel opens with the whole film drawn as a yellow tube
 through the building. You edit the flight by dragging the flight itself — there is no separate
 storyboard or keyframe list:</p>
-<p><img alt="The Film-Maker's Cinema path panel on a real building — the yellow flight tube drawn through the model with draggable band handles on it, and the panel listing settle, four added sticks and stop (each with x / z / height / length fields and its aim angle), then the Whole path block: reach %, clip mark in / mark out, &quot;build the model as the camera flies&quot;, saved plans, total seconds and frames to bake, and the Preview / Cancel / Save this path / OK row" src="../img/viewer/filmmaker-path-editor.png" /></p>
+<p><img alt="The Cinema path panel the moment Alt+C is pressed, before any editing — the derived flight drawn as a yellow tube diving into the building and running out along the roof, and the panel listing just three bands (settle, one stick, stop) each with its x / z / height / length fields and aim angles, then the Whole path block: reach 15%, clip &quot;whole film&quot;, the buildup checkbox, &quot;saved — none yet —&quot;, total 53.9 s / 808 frames, and the derived line &quot;walk 36.9m · 1.69 m/s · natural 53.9s · replan 91ms&quot;" src="../img/viewer/filmmaker-path-editor-initial.png" /></p>
+<p>That is the whole film, derived, before you touch anything — and the footer says so: <em>"Unedited · OK
+records exactly the film the preview just showed."</em> Pressing <strong>OK</strong> here is already a complete take.</p>
 <h4 id="the-bands-the-rows-in-the-panel">The bands — the rows in the panel<a class="headerlink" href="#the-bands-the-rows-in-the-panel" title="Permanent link">&para;</a></h4>
 <p>Every row is one straight <strong>band</strong> of the flight, listed in flight order with its own x, z, <strong>height</strong>
 (green) and <strong>length</strong> (orange) fields, plus its aim angles:</p>
@@ -2806,8 +2808,8 @@ storyboard or keyframe list:</p>
 <li><strong>settle</strong> — where the dive lands and the camera looks around. Always the first row.</li>
 <li><strong>stop</strong> — end of the <em>walk</em>, not the film; its far end stretches the exterior orbit that follows.
   Always the last row.</li>
-<li><strong>stick</strong> — any band you added yourself, labelled with how far along the walk it sits. The screenshot
-  above has four.</li>
+<li><strong>stick</strong> — any band you added yourself, labelled with how far along the walk it sits. A derived path
+  opens with one; the screenshot below has four.</li>
 </ul>
 <p>To work with them:</p>
 <ol>
@@ -2821,6 +2823,7 @@ storyboard or keyframe list:</p>
 <li><strong>Anywhere else orbits the scene as normal</strong> — no freeze, no modifier key. A drag moves in the plane
    you are currently facing, so orbit to a side view when you need to change height.</li>
 </ol>
+<p><img alt="The same panel after authoring — the yellow flight tube now bent through the model with draggable band handles along it, and the list grown to settle, four added sticks (each labelled with how far along the walk it sits and carrying a × to remove it) and stop, above the same Whole path block and the Preview / Cancel / Save this path / OK row" src="../img/viewer/filmmaker-path-editor.png" /></p>
 <h4 id="whole-path-the-controls-that-act-on-the-entire-film">Whole path — the controls that act on the entire film<a class="headerlink" href="#whole-path-the-controls-that-act-on-the-entire-film" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>reach %</strong> — how far a drag on the tube carries along the walk. Drag the tube <em>between</em> the bands and
