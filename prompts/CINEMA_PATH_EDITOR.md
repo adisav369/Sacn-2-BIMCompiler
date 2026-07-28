@@ -3290,3 +3290,53 @@ This is `feedback_verify_checker_before_code_under_test` earning its place four 
 of the pipe with handle grab radius, so the pipe gets progressively harder to click as a path gets
 denser. Nobody has hit this yet and it is not today's defect — but it is the reason a "click the pipe"
 affordance degrades with use, and §CPE_HOVER_SCRUB will make it visible. Decide it there.
+
+---
+
+# §CPE_BE_HERE_WHEN — the shot the demo caught by ACCIDENT, made authorable (user, 2026-07-29)
+> User, on their published demo: *"the path happens to catch the right impression onset the
+> construction and approaching the block it caught just in time the outer wall paneling of the floors,
+> and glimpse of the inner rooms exhaust covers"*
+> *"now i am not sure which next step can top that wow"*
+
+## The insight — that shot was LUCK, and luck is a feature request
+Two independent clocks coincided: the camera's arrival at the block, and the 4D's installation of the
+façade panelling. The camera passed the rooms while the exhaust covers were still visible — i.e. in the
+window AFTER the MEP was installed and BEFORE the envelope closed over it. Nobody authored that. Drag
+one band and it is gone.
+
+**§CPE_WHEN_HERE (item 7) is specced as a READ — "mark a place, get its construction window." The thing
+that tops the demo is the WRITE:** pin a point on the path to a moment in the timeline and let the
+PACING solve for it. *Be **here** when **that** is being built.*
+
+## Why now, and not before today
+- **§CPE_BUILDUP_FOLLOW_TM made the target stand still.** Until this morning the reveal was re-keyed to
+  the camera path, so "when is this built" changed every time a band moved — there was nothing stable to
+  solve against. Mode T fixed that as a side effect, and it is what makes this feature possible at all.
+- **The mechanism exists.** This is a constraint on pacing, and pace redistribution is already built.
+  ⚠ **Same law as §CPE_SPEED_RAMP: fold the constraint INTO the cost integrand, never as a multiplier
+  after it**, or §CPE_EVEN_TURN's turn-per-frame bound breaks and the jerk comes back. That lane cost
+  several sessions and three dead ends; do not re-learn it here. The peak-deg/frame witness is the gate.
+- **The glimpse-before-occlusion moment is only available in a 4D film.** In a finished model those
+  exhaust covers are behind a wall. This is not a prettier picture than a rendered walkthrough — it is a
+  picture a rendered walkthrough structurally cannot take. That is the defensible claim, and it is the
+  same honesty tier already settled: a film cut against a real schedule, not a nice movie.
+
+## ⚠ The honest limit — state it in the UI, do not fake around it
+It only works where the schedule HAS that ordering. On a building whose 4D installs the envelope before
+the MEP, there is no window to arrive in. **The feature must report "no such window on this building"
+rather than inventing one or nudging the schedule** — nudging the schedule would be the camera authoring
+the build order again, which is exactly what §CPE_BUILDUP_FOLLOW_TM removed on the user's ruling.
+
+## Shape to explore (NOT yet a build plan — spec it properly before any code)
+- Pick a target: an element, a room, or a phase (`_sfxPhases` already derives phase changes per tick).
+- Derive its window from the SAME `_ops` the buildup plays — never a second notion of "when".
+- Solve pacing so the camera's `t` at that point maps to a cursor inside the window; report the achieved
+  offset as a NUMBER, and report failure when the window cannot be hit within the pacing bounds.
+- **Witness sketch:** `§CPE_BE_HERE_WHEN target=<guid|room|phase> window=<iso>..<iso> cameraT=<f>
+  cursorAt=<iso> offsetDays=<n> hit=1|0 peakTurnDeg=<n> (bound=<n>)` — plus the unchanged jerk gate.
+
+## Relationship to the queue — this does NOT displace Find→Film
+`prompts/CINEMA_FIND_TO_FILM.md` stays the next POC: it is the CORRECTNESS instrument, and it is what
+makes a route trustworthy. This is the one that makes a route CINEMATIC. **They compose** — pick the
+ward in Find, film the route, arrive as it is built. Build them in that order, not this one first.
