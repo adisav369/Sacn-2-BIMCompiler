@@ -241,3 +241,29 @@ the reference film, user-accepted 2026-07-29).
   violation count going >0 → 0 is the proof. Keep both; they answer different questions.
 - ⚠ The comparison is only valid if nothing else moved. Re-bake from the SAVED path, do not re-author,
   and confirm `§CPE_OPEN src=authored` plus an unchanged band/hose count before baking.
+
+### ⚠ REFRAMED — Hospital did not need a heuristic at all (2026-07-29)
+> User: *"cant we make it strictly weigh to Z value?"* → *"then recall the 4d schedule prompts/# and
+> look at the CPM"*
+
+**1. Strict Z cannot express it.** A wall CONTAINS its window (wall 0.0→3.0, window 0.9→2.1 inside that
+span). Containment is not ordinal, so no weighting of one scalar encodes it — and pushing Z harder
+breaks the stacking cases the gate currently gets right.
+
+**2. The CPM data already answers it, and we are discarding it.** From `4D_CAPTURE_AND_FALLBACK.md`
+§2.1/§5.2, Hospital's captured IFC programme carries **deps + element links 46/46**, Early/Late
+Start/Finish 45/46, Free/Total Float 44/46, IsCritical 45/46 — *"the schema then discards the CPM/float/
+WBS/calendar that made it expert-grade."* The widening is **already specced as T1b/§5.2 and never built.**
+
+**So this defect is not a gate bug — it is the FALLBACK running on a building that did not need one.**
+A planner already stated wall-before-window; we are throwing the statement away and then re-deriving a
+worse answer geometrically. Two tracks, non-competing:
+1. **Captured programme → build T1b, use the planner's dependencies.** `schedule_gate` should not be
+   ordering Hospital at all. This is the higher-value track and it is already written.
+2. **No programme → the geometric gate stays**, and there the HOSTED-BY constraint above is the fix,
+   because there is nothing else to appeal to.
+
+⚠ **Boundary unchanged:** capture and replay CPM, **never recompute float** (`4D_CAPTURE_AND_FALLBACK.md`
+:359). Reading a planner's stated dependencies is not us solving CPM, and must not become that.
+⚠ **Honesty tiers move with this:** a film ordered by captured deps is tier 1 (*linked schedule*); the
+geometric gate stays tier 2 (*this model's derived 4D*). See `CINEMA_PATH_EDITOR.md` §5.
