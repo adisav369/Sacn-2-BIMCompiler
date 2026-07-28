@@ -1,0 +1,81 @@
+{#-
+  Based on material/templates/partials/header.html, extended with a second
+  repo badge (bim-compiler) below the theme's built-in source widget.
+
+  Why not a second [data-md-component="source"] element: mkdocs-material's
+  source component memoizes its GitHub fetch in a module-level singleton
+  (components/source/_/index.ts: `let fetch$ ||= ...`), so a second instance
+  would just replay the FIRST repo's cached stats instead of fetching its
+  own — wrong data, not a real second widget. shields.io badges fetch each
+  repo independently and avoid that trap.
+-#}
+{% set class = "md-header" %}
+{% if "navigation.tabs.sticky" in features %}
+  {% set class = class ~ " md-header--shadow md-header--lifted" %}
+{% elif "navigation.tabs" not in features %}
+  {% set class = class ~ " md-header--shadow" %}
+{% endif %}
+<header class="{{ class }}" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="{{ lang.t('header') }}">
+    <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" title="{{ config.site_name | e }}" class="md-header__button md-logo" aria-label="{{ config.site_name }}" data-md-component="logo">
+      {% include "partials/logo.html" %}
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      {% set icon = config.theme.icon.menu or "material/menu" %}
+      {% include ".icons/" ~ icon ~ ".svg" %}
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            {{ config.site_name }}
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            {% if page.meta and page.meta.title %}
+              {{ page.meta.title }}
+            {% else %}
+              {{ page.title }}
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+    {% if config.theme.palette %}
+      {% if not config.theme.palette is mapping %}
+        {% include "partials/palette.html" %}
+      {% endif %}
+    {% endif %}
+    {% if not config.theme.palette is mapping %}
+      {% include "partials/javascripts/palette.html" %}
+    {% endif %}
+    {% if config.extra.alternate %}
+      {% include "partials/alternate.html" %}
+    {% endif %}
+    {% if "material/search" in config.plugins %}
+      {% set search = config.plugins["material/search"] | attr("config") %}
+      {% if search.enabled %}
+        <label class="md-header__button md-icon" for="__search">
+          {% set icon = config.theme.icon.search or "material/magnify" %}
+          {% include ".icons/" ~ icon ~ ".svg" %}
+        </label>
+        {% include "partials/search.html" %}
+      {% endif %}
+    {% endif %}
+    {% if config.repo_url %}
+      <div class="md-header__source md-header__source--stacked">
+        {% include "partials/source.html" %}
+        <a href="https://github.com/red1oon/bim-compiler" title="red1oon/bim-compiler on GitHub" class="md-source-extra" target="_blank" rel="noopener">
+          <img src="https://img.shields.io/github/stars/red1oon/bim-compiler?style=flat-square&label=%E2%98%85&color=grey&labelColor=455a64" alt="bim-compiler stars" height="20">
+          <img src="https://img.shields.io/github/forks/red1oon/bim-compiler?style=flat-square&label=%E2%9D%B1&color=grey&labelColor=455a64" alt="bim-compiler forks" height="20">
+        </a>
+      </div>
+    {% endif %}
+  </nav>
+  {% if "navigation.tabs.sticky" in features %}
+    {% if "navigation.tabs" in features %}
+      {% include "partials/tabs.html" %}
+    {% endif %}
+  {% endif %}
+</header>
