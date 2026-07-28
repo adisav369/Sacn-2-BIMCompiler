@@ -6410,3 +6410,76 @@ any building. **Interiors are still visible for most of the film** (they are pla
 envelope closes), which is precisely the user's ask: *"can have internals but once the ARCH closes
 up the view, it can end."*
 Witness: `§MAXQ_TIME mode=D arc=35553 envelope=1273 stopFrame=N reason=envelope-closed`.
+
+## §MAXQ_TIME code-read (2026-07-28) — the resweep is NOT unmeasured, and mode D is a SORT not an engine
+Read against `~/bim-ootb/viewer/time_machine.js` (identical at local HEAD and `origin/main`) and
+`origin/main:viewer/cinema_maxq.js` (local checkout is 92 commits behind on that file — read it from
+`origin/main`, not the working tree). Note also: `bim-compiler/deploy/dev/time_machine.js` is a
+DIFFERENT, older copy (3,244 lines, zero `_incrOK`/`§PERF_TRAVERSE`) — it is not the code that bakes.
+
+### 1. The "UNMEASURED" flag in §Cost is stale — the number exists, in this repo
+`prompts/TM_INCREMENTAL_RENDER_PERF.md` measured `renderAtTime()` three times:
+| where | objs | traverse |
+|---|---|---|
+| Hospital, pre-Phase-1 | 10,841 | 15.6–22.4 ms |
+| Hospital, after §WB_MAT gating | 10,841 | ~23 ms full |
+| real LTU hardware, live user log | 16,092 | **2.0 ms** (`mode=delta skipped=16019/16092`) |
+Linear in scene-graph size (it is one `scene.traverse`), so Terminal's 48,433 → **~60–100 ms full,
+~2–5 ms delta**, against a **2,000–2,500 ms** per-frame bake. **Worst case ≈ 4% of a frame.** This
+cannot be the Reflector-class 40× surprise — that was an unknown mechanism; this is a linear scan
+already measured at two sizes. So: do NOT run a separate measurement session. **Fold the number into
+mode D's own first witness** (`resweepMs=` is already in the §Cost witness line) and read it there.
+
+### 2. Which mode gets `delta` vs `full` — decided by code that already exists
+- `_INCR_MAX_SPAN_MS = 7 days` (`time_machine.js:1039`). A 300-frame film over a 6-month schedule
+  steps ~0.6 days/frame → **under the cap, delta engages**. Mode B is the ~2 ms case.
+- `_dlodCamMoved` (`:1248-1256`) forces `mode=full` on any tick where the camera pose changed while
+  DLOD is engaged. **Modes C and D move the camera every frame → full traverse every frame** by
+  design. That is the ~60–100 ms figure, i.e. still ~4%. Known, bounded, not a landmine.
+- The one to actually watch: `§PERF_INCR_INDEX` rebuild (50–159 ms) fires on every `A._metaGen` bump
+  — `streaming.js:1151/1152/1626`, `city.js:164`. **Bake only after streaming has settled**, or the
+  index rebuilds under the film. Cheap to assert: log `_metaGen` at frame 0 and at the last frame and
+  require equality.
+
+### 3. THREE artifacts the spec does not yet name — all visual, all in `renderAtTime`
+1. **Frontier tint.** `:1288` `applyHighlight(obj, ft<0.15 ? 0x44ffff : 0xff8c00, 0.85, 0.4)` — every
+   element mid-install renders **cyan-flash then orange emissive** at 0.85 opacity. In a photoreal
+   Alt+S frame that is a glowing plastic object. Mode B/C/D must decide explicitly: suppress it
+   (`filmMode` flag) or keep it as the deliberate "under construction" read. Not deciding = shipping
+   the wrong one.
+2. **The linger/frontier windows are tied to PLAYBACK tick rate, not to the bake's cursor step.**
+   `lingerMs = tickMs() * 3` (`:1130`); `tickMs()` in DAY mode is 3,200,000 ms → linger ≈ 2.7 h. A
+   300-frame film over 6 months steps ~15,600,000 ms per frame — **6× larger than the whole linger
+   window**, so the amber "just finished" state is stepped straight over and most elements go
+   unbuilt→built with no frontier frame at all. The film reads as pop-in, not assembly. **Fix: scale
+   the install/linger windows to the bake's per-frame cursor step**, don't inherit playback constants.
+3. **Sparks (`_gspCollect`) and SFX advance on wall-clock, not on the cursor.** `_freezeRandom()`
+   freezes the RNG but not particle age; at ~2.5 s of real time per frame, sparks age ~2.5 s between
+   captures. Simplest correct answer for a film: disable §GROUP_SPARK and `__sfxTM` under the bake.
+
+### 4. Mode D is a RE-SORT of the synthetic order — no new render path at all
+`injectGantt()` (`:3097`) already synthesises the whole build order, and its element query
+(`:3178-3188`) already selects `center_x, center_y, center_z, bbox_*`. `_ops` is consumed by
+`renderAtTime` purely as *"sorted ascending by `start_ts`, break when `start_ts > cursor`"*
+(`:588-590`). Therefore:
+> **Mode D = mode B + one function that re-keys `start_ts` from the camera path instead of from
+> Z-bands.** For each ARC element, take its arc-length parameter `s ∈ [0,1]` along the Alt+C flight
+> (nearest camera station, or first station whose frustum contains it), then `start_ts = base + s ×
+> span`. Feed the SAME `_ops` array to the SAME `renderAtTime`. Nothing in the render path changes.
+This is why the retired exporter's "spatial-flight order" was never a defect: that ordering IS this
+feature, mislabelled. But the retired *code* (storyboard beats + proxy canvas + MediaRecorder) does
+NOT need to come back — MaxQ's loop already does the capture, better. **Read
+`TM_MOVIE_EXPORT_RETIRED_2026-07-18.patch` for the ordering intent, not for code to restore.**
+Consequences that fall out for free:
+- **No pop-in behind the camera** — everything the camera has passed is already built, by construction.
+- **The envelope stop condition gets simpler**: with path ordering, closure happens where the camera
+  passes it, so `stopFrame` = the frame at which the last of the 1,273 envelope elements is placed.
+  Same derivable ending, no arbitrary runtime.
+- Mode B's `timeAt(t)` and mode D's `orderByCameraPath()` are independent: **build B first** (it needs
+  only `tmSetCursor` + `timeAt`), then D is a sort function layered on it, not a second engine.
+
+### 5. Build order — unchanged, but smaller than it looked
+`tmSetCursor(ms)` (public wrapper on the internal `renderAtTime`) + `timeAt(t)` + a mode flag +
+`filmMode` (items 3.1–3.3) → mode B. Then `orderByCameraPath()` → mode D. Mode C is the two advances
+run together, free. The sun stays pinned at `PHOTO_SUN_ELEVATION = 6` in every mode (§Cost table's
+one live landmine — construction time and sun time never share a variable).
