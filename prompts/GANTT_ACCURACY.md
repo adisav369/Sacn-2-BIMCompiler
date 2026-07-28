@@ -162,11 +162,36 @@ plays the timeline verbatim (§CPE_BUILDUP_FOLLOW_TM, PR #1082) — so whatever 
 is what the film shows, faithfully. Fixing this in the camera or the reveal would be the wrong layer and
 is explicitly forbidden by that same ruling.
 
-## Likely mechanism — TO BE VERIFIED before any code (do not treat as diagnosed)
-`schedule_gate.js` orders bottom-up by real geometric Z within storey bands + phase. **A window and its
-host wall are independent elements to that sort**, and an opening filler's `center_z` (~sill+half-height,
-often ~1.5 m above floor) can easily sort BELOW the centroid of the wall that carries it. Nothing in the
-Z sort knows one depends on the other.
+## ⚠ MECHANISM — CORRECTED after reading `viewer/schedule_gate.js` (supersedes the guess below)
+> User: *"its again a Z stacking matrix required i reckon"*
+
+**Half right, and the wrong half is the useful part: the Z stacking matrix ALREADY EXISTS and works.**
+`schedule_gate.js` is built on it — two passes, both gated on vertical support:
+- **PASS A (structure, `seq<=4`)** — bottom-up by `base_z`: an element waits for the structure whose XY
+  footprint overlaps it and whose base is below. ε=0.05m so a thin slab under a duct still counts.
+- **PASS B (non-structure, `seq>4`)** — by TRADE then `base_z`: waits for the structure under its
+  footprint AND for the lower trades in its own Level.
+
+**A window beating its wall cannot be caught by that, structurally: a window is not ABOVE its wall, it
+is INSIDE it.** Same Level, same footprint line, overlapping Z range — "whose base is below" has nothing
+to bite on. So this is the OTHER axis, not a missing Z relation.
+
+Two candidate causes, needing different fixes — **determine which before building**:
+1. **Trade `seq` ordering.** If glazing's trade sorts before the wall's in PASS B, the window wins
+   regardless of geometry. Fix is a data/table correction. Cheap. **Check this first.**
+2. **No HOSTED-BY relation exists.** The gate has *supported-by* but not *hosted-by*. Fix is a third
+   constraint beside the two passes: bbox containment (or the real IFC host link), in the same style as
+   the support gate. This is the GENERAL answer — it covers doors, louvres, any opening filler, anything
+   recessed into a host.
+
+⚠ **Pre-empt the scope objection:** the file's own header states *"No CPM/dependency solving
+(planner's)"*. A hosting gate is NOT CPM — no float, no logic network, no critical path — it is one more
+geometric gate of exactly the kind already implemented. Say so when proposing it.
+
+## ~~Likely mechanism~~ — SUPERSEDED, kept only to show what was ruled out
+~~A window's `center_z` sorts below its host wall's centroid.~~ **Wrong** — the gate sorts on `base_z`,
+where a wall (0.0) is already below a window (sill ~0.9), so plain Z ordering would put the wall FIRST.
+The Z axis was never the problem. Read the corrected section above instead.
 **Verify first, in this order:** (1) query `elements_meta`/`element_transforms` for a real offending
 pair on Hospital and compare their `center_z` AND their emitted `start_ts` — name the actual guids;
 (2) confirm whether the two are in the same phase or different ones (if different, the phase order is
