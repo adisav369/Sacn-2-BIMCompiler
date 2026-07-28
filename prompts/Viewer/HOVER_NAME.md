@@ -1,0 +1,66 @@
+# ⚠ DO NOT REMOVE — Scope & Working Rules
+**Scope:** §HOVER_NAME ONLY — a `hover name` checkbox in the Find panel; with it on, hovering the model
+shows the friendly name of whatever is under the cursor. User idea, 2026-07-29.
+**Read the log after every run.** Proof is `§`-tagged output and NUMBERS. **Spec before code.**
+Honour this block until this file is DONE.
+
+## Why it is worth more than it looks
+1. **It is the cheapest coverage test for `A.friendlyName` that exists.** Hover around Hospital for
+   thirty seconds and you see exactly where names are good and where they fall back to raw identifiers
+   (`RM_Level_1_14`, `CORRIDOR_ROOM::Level 1|y|12.84`). That is the SAME number
+   `prompts/RESUME_CPE_ROOM_TITLE.md` W-TITLE-NAME-SOURCE must report — but interactive, and available
+   BEFORE that feature is built. **It de-risks §CPE_ROOM_TITLE**, which is why it is worth doing first
+   or alongside.
+2. It serves navigation and QA, not just demos: "what is this thing?" is the question a reviewer asks
+   most, and today it costs a click.
+
+## What already exists — CONSUME, do not rebuild
+- **`A.friendlyName(elementName, ifcClass)`** — `viewer/navigate_find.js:4694`, exported at :5024, already
+  used by `navigate_engine.js:135` and by the Find panel's own lists. ⚠ **Use this verb.** A hover label
+  disagreeing with the panel's name for the same element is the `— 3 bands` species of defect: two
+  truths, one screen. If a name reads badly, fix `friendlyName` in place — every consumer improves.
+- **Picking/raycast** — the Find panel already highlights elements, and `§PICK_GUARD` already exists to
+  reject pointer events that did not originate on the canvas. Reuse both.
+- **Room containment** — the room graph answers "which space is this in", so a hover can name the ROOM as
+  well as the element (recommend showing element first, room as a subtitle; ask the user).
+
+## ⚠ Traps, all measured elsewhere on this project
+- **Raycast per `pointermove` is not free** at 63k elements. Throttle to a rate the frame budget can pay
+  (rAF-coalesced, one pick per frame at most), and report the cost: `§HOVER_NAME ms=<n>` — if it moves
+  `§FPS_MODE`, it is not shippable. **This is the gate, not a nicety.**
+- **`§IDLE_GATE` parks the rAF chain when nothing moves.** A hover that draws must `markDirty()` or the
+  label will not appear on a still scene — the same trap §CPE_HOVER_SCRUB names.
+- **Mobile has no hover.** Either hide the checkbox on touch or define a tap-and-hold fallback; do not
+  ship a control that silently does nothing on a phone.
+- **Hover NAMES; click still SELECTS.** User directive 2026-07-29: *"turn it on, no need to click on the
+  item (which is still functionally useful)."* The whole point is answering "what is this?" with **zero
+  clicks** — so the label must appear on hover alone, and **click must keep doing exactly what it does
+  today** (select / highlight / focus). ⚠ Do NOT implement this as "hover to arm, click to reveal", and
+  do NOT let the hover consume or suppress the click. Two behaviours, one pointer, no interference —
+  `§PICK_GUARD` and the existing selection path are untouched by this feature.
+- **Default ON or OFF?** The user said *"turn it on"*. Read as: it should be on when the checkbox is
+  ticked, and worth defaulting ON once W-HOVER-COST proves it free. **Ship it default OFF until that
+  gate is green, then flip the default in the same PR that reports the number** — never flip it on hope.
+  Remembered per session like the other Find toggles either way.
+
+## Relationship to §CPE_HOVER_SCRUB
+Different feature, same gesture family. §CPE_HOVER_SCRUB (Cinema) hovers the PIPE to scrub the film;
+this hovers the MODEL to name a thing. They must not fight: while the Cinema editor is open, the pipe
+hover wins. **Whoever builds the second one reconciles them** — do not let both claim `pointermove`
+without a stated precedence.
+
+## Witness claims
+- **W-HOVER-NAME (the gate).** `§HOVER_NAME guid=<g> name="<friendly>" ifc=<class> room="<space>" ms=<n>`
+  — and the string shown equals `A.friendlyName(...)` for that element, asserted, not eyeballed.
+  *Proves/disproves:* that a second naming path was not invented.
+- **W-HOVER-COST.** Over a scripted sweep across N screen positions on Hospital (63k elements), mean and
+  max pick ms reported, and `§FPS_MODE` mean unchanged vs a no-hover control run.
+  *Proves/disproves:* that the feature is free at LOD400 scale, which is the only reason to ship it.
+- **W-HOVER-COVERAGE (the payoff).** Over that same sweep, report how many hits returned a real friendly
+  name vs a raw identifier. **This number is the input to §CPE_ROOM_TITLE's decision** — record it in
+  `prompts/RESUME_CPE_ROOM_TITLE.md` when known.
+
+## ⛔ Open questions for the user
+1. Element name only, or element + its room as a subtitle? (recommend both, room smaller)
+2. Follow the cursor, or a fixed corner readout? (recommend follow — a corner readout makes you look away
+   from the thing you are pointing at)
