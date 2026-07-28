@@ -2870,3 +2870,78 @@ authored in an earlier session, so `injectGantt` never re-ran, and the ops thems
   SECOND set of `ELEMENT_PLACE` ops on top of the existing ones, which is what inflated `_coveredCount`
   to 200 %. The shipped `tmRefoldSchedule()` (§TM-REFOLD) is the correct verb and avoids (2).
 - §CPE_VISION_CHAIN items 1, 2 and 5 (auto-hose path, space-semantic markers) remain unspecced.
+
+---
+
+# §CPE_REPLAN_LAZY — cache the entry derivation; make re-deriving it a BUTTON (spec 2026-07-29)
+
+**Item 0 of `prompts/CINEMA_DELIGHT_BATCH.md`.** Written before implementation, per Spec-First. Nothing
+here changes the film's SHAPE — this is an equivalence-gated performance change plus one new control.
+
+## 0. The defect, from the user's own console (not a hypothesis)
+`§CPE_REPLAN_SLOW ms=600–1000` on EVERY edit on Terminal (48,433 elements, 4 bands). Across EIGHT
+consecutive drags in that session, the expensive block printed **byte-identical values** — same
+`§CINEMA_SPACE` candidate, same `§CINEMA_DIVE` settle point, same `§CINEMA_EXIT` door, same cost, same
+runner-up. `§CINEMA_PLAN_MS ~550` of the total is that block: `fanRays=32 spaceCands=52 exitCands=135`.
+A band drag changes the walk geometry; it cannot change which room the camera dives into or which door
+it walks out of, because §CPE_PREVIEW_DIVERGENCE already **pins the camera basis to the pose the editor
+opened with** precisely so orbiting cannot change the film.
+
+## 1. The seam — VERIFIED by reading the code, branch `feat/cpe-stick`
+| what | where |
+|---|---|
+| `_cinemaPathPlan(durationSec)` opens | `viewer/effects.js:4572` |
+| §CINEMA_SPACE chosen candidate | `:4749` |
+| §CINEMA_DIVE settle | `:4795` |
+| §CINEMA_EXIT chosen door | `:4874` |
+| **`if (_cpeBands && _cpeBands.length >= 2)`** — the authored-path block | **`:4929`** |
+| `§CINEMA_PLAN_MS` (plan close) | `:6135` |
+So the PREFIX is `4572 → 4928` and everything the editor can touch — bands, hose, clip, pacing,
+§CPE_NOISE_LAW probes, `poseAt` — acts at or after `:4929`. The line is clean and it is not a
+refactor of anyone's working set to respect it.
+
+## 2. Phase A — MEASURE BEFORE CACHING (no behaviour change, ship-able on its own)
+Do not assume the 550 ms is where the prose says it is. Split `§CINEMA_PLAN_MS` into a breakdown and
+read it on Terminal with 4 bands over 8 drags:
+`§CINEMA_PLAN_MS total=<n> bboxMs=<n> spaceMs=<n> diveMs=<n> exitMs=<n> flowMs=<n> paceMs=<n> poseMs=<n>`
+**This measurement DECIDES phase B's shape:** if `spaceMs+diveMs+exitMs` dominates, memoise those three
+blocks in place (smallest possible change); if the cost is spread across the prefix, memoise the whole
+prefix as one object. Either way the cache key below is the same.
+
+## 3. Phase B — the cache key, and what is deliberately NOT in it
+**IN the key** (anything that can legitimately change the entry):
+`buildingId` · `A._metaGen` · the pinned camera basis (position, world direction, controls target) ·
+the §CINEMA_PIVOT mode and pivot point · the arcBbox extents.
+**NOT in the key** (all consumed at or after `:4929`): bands, hose ops, clip in/out, pace/beat-second
+overrides, band count, undo state.
+**Invalidate on:** any key change, editor OPEN, building switch, `_metaGen` bump, and the explicit
+button in §4. Miss ⇒ recompute the prefix and log why (`reason=open|key|button|first`).
+
+## 4. Phase C — `re-derive entry`, the control the user implied
+> User: *"Cant that be lazy only when user press that feature?"*
+
+Re-deriving the entry is a real thing a user may WANT — a different room to dive into, a different door
+to walk out of — it just must not happen eight times by accident while dragging a stick. A button in the
+CPE panel drops the memo and forces one recompute, logging `prefixMs` so the cost is visible as a number
+rather than hidden in every drag. **This turns a hidden 550 ms tax into an explicit feature**, and it is
+part of THIS task, not a follow-up.
+
+## 5. Witness claims — named before implementation
+- **W-REPLAN-CACHE (the gate — equivalence, NOT speed).** For N ≥ 20 random band/hose edits, the cached
+  plan and the same plan with the memo disabled must agree on ~200 sampled `poseAt(t)`: position within
+  **1e-6 m**, yaw/pitch within 1e-6 rad. Same discipline as `§INCR_VERIFY mismatch=0` in the Time
+  Machine work, where an equivalence witness caught exactly this class of bug.
+  *Proves/disproves:* whether the memo silently pins the film to a stale settle point or door.
+- **W-REPLAN-INVALIDATE.** A building switch and a `_metaGen` bump must each produce a MISS, and the
+  recomputed prefix must differ from the previous one where the model differs.
+  *Proves/disproves:* the failure mode above — a cache that is never invalidated always "passes" W-1.
+- **W-REPLAN-SAVING.** `§CPE_REPLAN_LAZY hit=<n> miss=<n> savedMs=<n> prefixMs=<n>` over a scripted
+  8-drag sequence: hits = 7, misses = 1, and `savedMs` is reported as a measured number.
+  *Proves/disproves:* that the saving is real and not a hope. **A regression in `§CPE_REPLAN_SLOW` on
+  Terminal is the user-facing number this whole item exists to move.**
+- **No regression:** `witness_cpe_hose.js` stays 29/29 on Duplex, with the D1 Hospital_3 known-limit
+  unchanged (recorded, not tuned).
+
+## 6. Explicitly NOT in this section
+Any change to WHICH space, door or pivot the plan picks; any change to pacing (§CPE_SPEED_RAMP is item 6
+and must never share a PR with a pacing change); hover scrub, room titles, cues, detours (items 1–5).
