@@ -56,10 +56,17 @@ a scroll and a click. Same reasoning that made X-Ray, Section Cut and Fly Tour k
 - **Register it the same way every other shortcut is registered** — through the existing keyboard route
   (`§KBD_SEQ_ENGINE` / `§SHORTCUT_FIRE`), so it appears in the cheat-sheet and the Settings → Pill Icons
   shortcut list automatically. **Do not add a bare `keydown` listener.**
-- ⛔ **Which key? Ask the user, do not pick one.** The obvious single letters are heavily taken (`f` Find,
-  `t` Time Machine, `r` room cycle) and `§KBD_SEQ_ENGINE` supports sequences, so a free single key may not
-  exist. **Run `node deploy/dev/tests/audit_specs.js`-style verification of the existing bindings and
-  present the FREE candidates** rather than proposing one and discovering the clash later.
+- ✅ **THE KEY IS `'` (apostrophe)** — user's proposal 2026-07-29, **verified free against the live
+  binding table**, not assumed. Taken today: `.` `/` `2` `4` and `a b c d f g h i l m n o p q r s t v w x
+  z`, plus sequences (`dc`, `st`, `ti`). `'` is not among them. Free letters if this is ever revisited:
+  `e j k u y` — none mnemonic, and `n` (name) is already taken, which is why a punctuation key is the
+  sensible answer rather than a compromise.
+  ⚠ **Known limitation, accepted by the user, do NOT design around it:** `'` is a DEAD KEY on several
+  international layouts (US-International, Spanish, Portuguese, French-Canadian), where it composes
+  accents and fires `e.key === "Dead"`. The shortcut then simply does not match — it **fails harmlessly**,
+  nothing breaks, the checkbox still works. Ruling: ship it, and **note it in the cheat-sheet row** rather
+  than adding a second binding. If it ever becomes a real complaint, add an alternate from the free list
+  — do not replace `'`.
 - **Log it:** `§HOVER_NAME toggle=on|off src=key|checkbox` — so a pasted console shows both that it
   changed and which control changed it.
 - Also update the cheat-sheet row in `docs/BIMUserGuide.md` when it ships (the Alt+C/tube-click rows are
