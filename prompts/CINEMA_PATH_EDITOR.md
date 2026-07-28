@@ -30,6 +30,11 @@ went green — verify I corrected the instruments rather than lowered the bar).
 file). Jerk and drag are both SOLVED and witnessed there; the elegant formula that solved them is
 recorded as settled doctrine and must not be re-derived.
 
+**▶ FORWARD QUEUE (agreed with the user 2026-07-29): `prompts/CINEMA_DELIGHT_BATCH.md`** — six delight
+items (hover-scrub, room titles, suggested clips + suggested detours, film audio, Find→Film, speed
+ramps) with costs, traps and four open questions that must be answered before building. It also names
+the cost that bites first: `§CPE_REPLAN_SLOW ms=600–1000` on EVERY edit on Terminal.
+
 **NEXT DIRECTION (agreed 2026-07-28, spec-only, nothing built): §CPE_HOSE** at the END of this file —
 whole-path editing by arc-length falloff (the band and the hose unified as one gesture), §CPE_CLIP
 in/out markers, and the §CPE_BUILDUP construction checkbox (= §MAXQ_TIME mode D in
