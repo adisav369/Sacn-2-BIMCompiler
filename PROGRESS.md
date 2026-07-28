@@ -66,6 +66,21 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
 - ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2%
   (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED (07-25) #997/#998
   `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md`.
+- ✅ **Cinema lane, 2026-07-29 — 4 merged PRs, all user-confirmed or witnessed.** #1081 §CPE_REOPEN_DOUBLE
+  (band count no longer doubles on re-open, 17/17) · #1082 §CPE_PREVIEW_AFTER_RETIRED (OK records without
+  a rehearsal, witness re-aimed 4/4) **+ §CPE_BUILDUP_FOLLOW_TM** — the film now PLAYS the Time Machine
+  timeline instead of re-keying it to the camera path; mode D retired from the film path, one verb
+  `tmFollowTimeline()` for both Preview and bake, `§CPE_BUILDUP_SOURCE mode=S|T` logged unconditionally.
+  User-verified live on Hospital (`mode=T`), and the first film on it (1186 frames / 79.067 s, no dropped
+  frames) was accepted. · #1083+#1084 §CPE_CLICK_SLOP — a click on the pipe spawns a stick again
+  (`CLICK_SLOP_PX=4`), witnessed 4/4. CPE v16, MAXQ v17, sw v882. Specs: `CINEMA_PATH_EDITOR.md`.
+  ⚠ Still open from that diagnosis: two incompatible `tasks` schemas (the probe THROWS on Hospital's and
+  the catch reports it as "no schedule"), and the panel header hardcodes `— 3 bands`.
+- ▶ **NEXT: `prompts/CINEMA_FIND_TO_FILM.md`** — promoted to the next big POC by the user: a filmed
+  room-to-room route VALIDATES the pathfinder, and Preview confirms it in 10 s. Phases A/B/C + one
+  blocking question are written; answer it before Phase A.
+- ⚠ Docs NOT published: BIMUserGuide's new initial-panel screenshot is committed but `gh-pages` is still
+  at the 03:36 deploy. Needs `scripts/safe_gh_deploy.sh` (user deferred the decision).
 - 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
 - ✅ Blank Viewer landing card + local `.db` Open, CLOSED + user-CONFIRMED live (07-27/28) — bim-compiler
   `40e333efd`; bim-ootb PORT **PR #1068 merged**, live click showed Hospital (stale sw.js precache,
