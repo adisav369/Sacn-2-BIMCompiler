@@ -415,3 +415,30 @@ Their pasted console carried no `§CPE_` lines, so this was not determined eithe
 a fetchable scheme. Harmless today — jkr_fixed has no patch — but it means **the DB-change-via-SQL
 architecture in CLAUDE.md has no reach into imported buildings at all.** Named here so it is not
 rediscovered; not in this batch's scope.
+
+## ▶ OBSERVED 2026-07-29b — the x-ray film was NOT the buildup code; it is a one-shot guard the bake never re-asserts
+> User: *"maybe i accidentally touched an element making the whole model going into x-ray mode which is
+> a feature! Dont fix as now user can do that unless u saying this is purposely the code during buildup."*
+
+**Answer: not purposeful — the code actively tries to PREVENT it.** `cinema_maxq.js start()` clears both
+shells before a bake: §CINEMA_GHOST_RESET (`resetCinemaGhostLens()`, the Find-lens/Alt+Z bbox shell) and
+§CINEMA_XRAY_RESET (`if (A.xrayOn) A.toggleXray()`), reasoned in its own comment as *"equally wrong for a
+'photoreal' cinematic film, however it got on."*
+
+**The gap is that both are ONE-SHOT at `start()`, with no hold for the duration.** Anything that engages
+x-ray AFTER the bake begins — Alt+Z, or a Find-panel lens auto-engaging when an element is touched —
+survives into every remaining frame, and the guard never runs again. The user's own console proves that
+is what happened: `§FPS_MODE … disp=xray` interleaved with `§MAXQ_FRAME i=25…51/588`, and `disp=xray`
+means `APP.xrayOn === true` (`viewer/main.js:679`) — the real X-ray toggle, **not** the `ghost=1` bbox
+shell, which would print `disp=bbox`. No `§CINEMA_XRAY_RESET` line was printed, so x-ray was OFF at bake
+start and came on mid-flight.
+
+**Film delivered:** `BIM_MaxQ_jkr_1785263230241.mp4` — 1852×960, 15 fps, **588 frames = 39.20 s**, h264
+@ 5.289 Mbps, 25.9 MB. The 588 matches the `i=…/588` in their log exactly.
+
+**Treat as a FEATURE REQUEST, not a defect (user's ruling: do not fix).** Making it deliberate is a
+checkbox that suppresses the reset for the run — "x-ray film" as an authored look beside
+`build the model as the camera flies`. **⚠ If it is ever built, the honesty rule applies: an x-ray bake
+is not a photoreal bake**, and §MAXQ's own comment is the existing statement of that. The accidental
+version is also non-reproducible — it depends on when the toggle happened to land — so a deliberate
+control is strictly better than the discovery.
