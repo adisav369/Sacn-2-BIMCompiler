@@ -563,6 +563,7 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | **Shift + Drag** / **Right-click drag** | Pan camera |
 | **Scroll / Pinch** | Zoom |
 | **Click** element | Identify — IFC class, name, GUID, storey, material |
+| **'** (apostrophe) | Toggle **Hover Name** — hovering (no click) shows the friendly name + room of whatever's under the cursor; also a checkbox in the Find panel. Dead key on some international keyboard layouts (US-International, Spanish, Portuguese, French-Canadian) — fails harmlessly there, use the checkbox instead. |
 | **Front / Back / Left / Right** | Elevation views |
 | **Roof** | Roof plan view |
 | **Alt+Z** | Toggle X-ray mode |

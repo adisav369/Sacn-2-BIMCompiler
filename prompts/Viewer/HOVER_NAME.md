@@ -93,3 +93,25 @@ without a stated precedence.
 1. Element name only, or element + its room as a subtitle? (recommend both, room smaller)
 2. Follow the cursor, or a fixed corner readout? (recommend follow — a corner readout makes you look away
    from the thing you are pointing at)
+
+## ✅ DONE (2026-07-29, witness) — implemented as recommended above
+Open questions §1/§2 shipped per this file's own recommendation (label follows cursor, element name +
+smaller room subtitle) — not re-asked, since the user gave a clear steer and only the honesty-marker
+question in the sibling `RESUME_CPE_ROOM_TITLE.md` was a real open decision.
+
+`bim-ootb` PR **#1085** (`feat/hover-name`): `viewer/hover_name.js` (new) + Find-panel checkbox +
+`'` shortcut (verified free, key and checkbox drive one state) + click-select untouched + event-driven
+rAF-coalesced raycast (not a perpetual loop — caught and fixed during witnessing, see below).
+
+- **W-HOVER-NAME (gate):** 12/12 on Duplex via `witness_hover_name.js` (repo-root, committed) — label
+  text asserted against `A.friendlyName` for the ACTUAL resolved element (not a pre-guessed one — dense
+  BIM scenes occlude in depth, so a naive "click here, expect element X" assertion is invalid; fixed
+  after the first run caught this in the witness itself, not the feature).
+- **W-HOVER-COST:** Duplex mean=1.14ms. Hospital (63k elements) independently confirmed
+  mean=8.52ms/max=20.50ms over n=40 — under the 16ms one-frame budget. A full clean witness run AT
+  Hospital scale is blocked on this dev host by a pre-existing ~148s `A.loadNavigate()` cost against a
+  63k-element DB (confirmed via a hover-untouched control run that stalls identically) — unrelated to
+  this feature, not fixed here, not this file's scope.
+- **W-HOVER-COVERAGE:** 18/18 named on both buildings in the samples drawn; room-subtitle hit rate not
+  well-sampled (Hospital's `rel_contained_in_space` covers ~13% of `elements_meta`, small N per run).
+  Feeds `RESUME_CPE_ROOM_TITLE.md`'s W-TITLE-NAME-SOURCE as planned in this file's own §1.
