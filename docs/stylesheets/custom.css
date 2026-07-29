@@ -1,27 +1,19 @@
 /* BIM Compiler — theme overrides (blue grey + orange accent) */
 
-/* ── Header: bim-compiler stars/forks badge stacked under the bim-ootb repo widget ── */
+/* ── Header: bim-compiler repo widget next to the built-in bim-ootb one ── */
 .md-header__source--stacked {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 1rem;
   width: auto;
   max-width: none;
 }
-.md-source-extra {
-  display: flex;
-  gap: 4px;
-  opacity: 0.85;
-  text-decoration: none;
-}
-.md-source-extra:hover {
-  opacity: 1;
-}
-.md-source-extra img {
-  display: block;
-  border-radius: 2px;
+.md-source-totals {
+  font-size: .65rem;
+  opacity: .6;
+  white-space: nowrap;
 }
 
 /* ── Doc banner: one-liner thesis at top of every spec ── */

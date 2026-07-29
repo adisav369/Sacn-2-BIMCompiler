@@ -60,6 +60,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/fold-footnotes.js
+  - javascripts/bim_compiler_source.js
 
 extra:
   analytics:
