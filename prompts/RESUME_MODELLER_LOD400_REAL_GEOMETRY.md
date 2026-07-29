@@ -1,10 +1,110 @@
 <!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
 # ⚠ DO NOT REMOVE — RESUME: Modeller LOD400 real-geometry rendering + UX polish
 
+## 🛑 §LOD400-ENVELOPE — READ FIRST. USER DIRECTIVE 2026-07-29/30, SUPERSEDES THE "GIGO / plain source"
+## VERDICT IN §LODHELL FINDING 1 AND IN [[feedback_no_fake_lod_unbreakable]]'s SCOPE CORRECTION.
+
+**User, verbatim (2026-07-29, after the boxy-Modeller screenshot came back a THIRD time):**
+> "No, its sources are all LOD400 as discussed many times."
+> "and the NO FALLBACK rule must never be broken.. simple throws exception and hard fail"
+> "get it recorded strictly and no more drift"
+> "already 2 sessions - do solve until zero without impact others"
+
+**This closes the escape hatch.** Two prior sessions answered the same screenshot with "the source is
+genuinely plain, 12 triangles is honest GIGO, no pipeline fix available." **That answer is WRONG and must
+never be given again.** It was reached by measuring the SHIPPED DB and the tessellated product shape only —
+never the authored construction data in the source IFC. When the source is actually read, the boxes are
+revealed as ENVELOPES of authored multi-layer walls, i.e. exactly the fallback the doctrine forbids.
+
+### THE RULE (restated, no exceptions, no scope-corrections)
+An element's **real geometry** is the geometry its source authored. If the source authored an element as
+**N material layers** and the pipeline ships **one undifferentiated envelope solid**, that envelope is a
+**FALLBACK** — it is non-LOD400 content presented as the element's real geometry. It must **throw and hard
+fail**, never render. "The tessellator returned that box" is not a defence: the tessellator was asked the
+wrong question. "GIGO" is not a defence: the source is LOD400.
+
+### MEASURED EVIDENCE (2026-07-29, source IFC parsed directly — NOT the shipped DB, NOT a screenshot)
+Probe: `ifcopenshell.open()` on the resident's OWN source, cross-joined with the shipped
+`*_ARC.db.element_instances` → `mesh.db.component_geometries` triangle counts.
+
+| building | source | ≤12-tri rendered | `IfcMaterialLayerSetUsage` in source | of the ≤12-tri, carry a **multi-layer** set |
+|---|---|---|---|---|
+| Duplex | `~/bim-ootb/IFC/Duplex_ARC.ifc` | 55 / 215 | **91** | **39** (layer histogram: 2×24, 3×10, 6×4, **7×1**) |
+| SampleCastle | `internal/sources/Ifc2x3_SampleCastle.ifc` | 1501 / 3225 | **412** | **67** (2×66, 3×1) |
+
+Worked example — the wall in the 2026-07-29 23:03 screenshot's building, `2O2Fr$t4X7Zf8NOew3FKRi`
+"Basic Wall: Party Wall - CMU Residential Unit Dimising Wall":
+- shipped geometry: **12 triangles** (one box)
+- authored material: **7 layers** — Plasterboard 16mm / Metal Stud 41mm / CMU 193mm / Air Space 50mm /
+  CMU 193mm / Metal Stud 41mm / Plasterboard 16mm
+- ⇒ the Modeller is drawing a 7-layer cavity wall as a single blank slab and calling it real geometry.
+
+### THE MECHANISM (where the LOD400 is thrown away — three separate losses, all in OUR code)
+1. `DAGCompiler/python/extractIFCtoDB.py:638 extract_material_layers()` writes `material_layers` keyed by
+   **`layer_set_name` only**. `get_material_for_element()` (`:442`) collapses an element's whole
+   `IfcMaterialLayerSetUsage` to **one material NAME string**. ⇒ **there is no element→layer-set link table
+   anywhere in the schema.** The layer data survives; the link from a wall to its own layers does not.
+2. The tessellation pass asks `create_shape()` for the **product** shape. For a Revit-exported compound
+   wall that is one `IfcExtrudedAreaSolid` of the TOTAL thickness — the envelope. The per-layer geometry is
+   implied by `IfcMaterialLayerSetUsage` (`ForLayerSet` + `LayerSetDirection` + `DirectionSense` +
+   `OffsetFromReferenceLine`) and is never computed.
+3. The ARC packaging that produces the Modeller residents **drops `material_layers` and `surface_styles`
+   entirely**. Verified: `Duplex_extracted.db` has `material_layers` (41 rows) + `surface_styles` (33 rows);
+   `Duplex_ARC.db`'s table list is `project_metadata, elements_meta, element_transforms, element_instances,
+   schedules, tasks, task_sequences, task_elements, spatial_structure` — neither table is present. Same for
+   `SampleCastle_ARC.db`. So even a Modeller that WANTED to honour layers has nothing to read.
+
+### WHAT IS *NOT* THE PROBLEM (do not re-audit these — re-measured 2026-07-29, all clean)
+- The renderer. Duplex **215/215** instances resolve a real mesh; `§GEOM-HARDFAIL` never fires.
+- Decimation. Per-GUID triangle compare, `Duplex_ARC.db`+`mesh.db` vs the compiler's `Duplex_extracted.db`:
+  **194/203 identical**, 7 richer in the Modeller store, 2 stair flights 1152→1062 (tessellation param).
+  `mesh.db` is byte-faithful, not a proxy store. `git diff HEAD origin/main` on `mesh.db`, `Duplex_ARC.db`,
+  `real_geometry.js`, `arc_editable.js` = **empty**, so the live gh-pages page serves exactly these bytes.
+- Openings. All 30 Duplex `rel_fills_host` hosts carry 28–120 tris — cuts are applied, none at 12.
+- VOID-CONSUMED (§LODHELL FINDING 2-CORRECTED) — still correct, still closed, unrelated to this.
+
+### THE FIX — three items, in this order. Order is load-bearing: gating before supplying the layers would
+### refuse 39 Duplex walls and empty the building.
+- **§LOD400-LAYERS-EXTRACT — ✅ DONE (witness) 2026-07-29.** `rel_material_layer_set (element_guid,
+  layer_set_name, layer_count, total_thickness_m, layer_set_direction, direction_sense,
+  offset_from_reference_line, provenance)` + `extract_rel_material_layer_set()` /
+  `write_rel_material_layer_set()` in `DAGCompiler/python/extractIFCtoDB.py`. Pure extraction from
+  `IfcMaterialLayerSetUsage`, no computation, no invention — closes loss #1.
+  **Measured on Duplex: 91 edges, 80 multi-layer, 91/91 carry DirectionSense, 91/91 a real summed
+  thickness** (`§LOD400-LAYERS` log line). Witness `scripts/witness_lod400_envelope.py` **8/8**.
+- **§LOD400-LAYERS-REAL** — compute per-layer geometry by slicing the authored envelope along the authored
+  `LayerSetDirection` at the authored cumulative thicknesses. **This is COMPILATION FROM AUTHORED DATA, not
+  invention** — thickness, order, sense and offset are all in the source; it is precisely what
+  `IfcMaterialLayerSetUsage` *means*. Ship layers + `surface_styles` into the ARC residents (patch +
+  self-heal loader per the DB policy, never a binary).
+- **§LOD400-ENVELOPE-GATE — ✅ DONE (witness) 2026-07-29, extractor half.** P10 `LOD400_ENVELOPE` prints
+  `§ILLEGAL_LOD_FALLBACK` **naming every offender** (guid + layer count + layer-set name, not just a
+  count) and turns §PROOF red ⇒ non-zero exit via the existing `f7d00240b` path. Witnessed on Duplex:
+  `§PROOF RESULT: 7 PASS, 1 FAIL`, `LOD400_ENVELOPE 79/80`, **exit=1**; worst offender
+  `2O2Fr$t4X7Zf8NOew3FNbT` = 7 layers, "Party Wall - CMU Residential Unit Dimising Wall".
+  **⚠ INTENDED CONSEQUENCE, do not "fix" it by softening the gate:** any re-extraction of a building with
+  authored multi-layer elements now EXITS NON-ZERO until §LOD400-LAYERS-REAL ships. That is the point —
+  an envelope DB can no longer be produced silently. The remedy is to supply the layers, never to lower
+  the gate, add a threshold, or grant a per-building exemption.
+  **Modeller half still OPEN** — refuse to seed an envelope element as real geometry once the residents
+  carry the layer data (needs §LOD400-LAYERS-REAL first, or the refusal empties the building).
+
+### ANTI-DRIFT — the exact sentences that must never be written again about this
+- ~~"46.4% of what renders is genuinely a 12-triangle box at SOURCE … GIGO, not a violation"~~ — the
+  element's SHAPE is 12 triangles; its authored CONSTRUCTION is not. Shape ≠ what the source authored.
+- ~~"no pipeline fix available"~~ — three named fixes, all in our own code, listed above.
+- ~~"this building's source IFC is genuinely simple"~~ — 91 layer-set usages in Duplex, 412 in SampleCastle.
+- The [[feedback_no_fake_lod_unbreakable]] "scope correction" (GIGO is not a violation / pipeline-fidelity
+  only) **does not apply where the source carries authored richness the pipeline discards.** Fidelity is to
+  the SOURCE, not to whatever the tessellator happened to hand back.
+
+---
+
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
 **Everything below §LODHELL-ROOTCAUSE is closed unless it is listed as OPEN here.** Do not re-walk the
 2026-07-02/03 review sections looking for work — their surviving items are folded into the list below.
+**⚠ §LODHELL FINDING 1's "GIGO" verdict is SUPERSEDED by §LOD400-ENVELOPE above — read that first.**
 
 ### Closed this pass (do NOT re-open, do NOT re-derive)
 | what | proof | where |
@@ -71,7 +171,12 @@ evidence (FUNDAMENTAL LAW). Resident under test: `str_walker_outliner.js:41` →
   There is **no LOD-doctrine violation here** ([[feedback_no_fake_lod_unbreakable]] scope: pipeline fidelity,
   not source richness). Nothing shown is invented. What's wrong is what's MISSING and what's THIN.
 
-**FINDING 1 — 46.4% of what renders is genuinely a 12-triangle box at SOURCE (1498/3225).** This is the boxy
+**FINDING 1 — ⚠ SUPERSEDED 2026-07-29 by §LOD400-ENVELOPE at the top of this file. The COUNTS below are
+correct and still usable; the VERDICT ("GIGO, not a violation") is WRONG — 67 of these ≤12-tri SampleCastle
+elements are authored MULTI-LAYER (412 `IfcMaterialLayerSetUsage` in the source), so the box is an envelope
+fallback, not the authored geometry. Do not cite this finding's conclusion.**
+
+~~46.4% of what renders is genuinely a 12-triangle box at SOURCE (1498/3225).~~ This is the boxy
 mass in the screenshot. Per class (`rendered` / `12-tri` / %):
 
 | class | rendered | 12-tri | % |

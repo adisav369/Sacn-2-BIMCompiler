@@ -271,6 +271,21 @@ CREATE TABLE IF NOT EXISTS material_layers (
     is_ventilated INTEGER DEFAULT 0,
     PRIMARY KEY (layer_set_name, sequence)
 );
+-- §LOD400-ENVELOPE (prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md) — the MISSING LINK.
+-- material_layers is keyed by layer_set_name alone, and get_material_for_element() collapsed an element's
+-- whole IfcMaterialLayerSetUsage down to one material NAME string, so nothing recorded WHICH element is
+-- built of WHICH layers. Without this edge a 7-layer cavity wall is indistinguishable from a blank box and
+-- ships as an envelope — the fallback the NO-FALLBACK rule forbids. Pure extraction, no computation.
+CREATE TABLE IF NOT EXISTS rel_material_layer_set (
+    element_guid TEXT PRIMARY KEY,
+    layer_set_name TEXT,
+    layer_count INTEGER,
+    total_thickness_m REAL,
+    layer_set_direction TEXT,
+    direction_sense TEXT,
+    offset_from_reference_line REAL,
+    provenance TEXT DEFAULT 'ifc:IfcMaterialLayerSetUsage'
+);
 """
 
 
@@ -659,6 +674,69 @@ def extract_material_layers(ifc_file):
                 'is_ventilated': is_vent,
             })
     return rows
+
+
+def extract_rel_material_layer_set(ifc_file):
+    """§LOD400-ENVELOPE — extract the element→layer-set edge from IfcMaterialLayerSetUsage.
+
+    Implementing prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-LAYERS-EXTRACT
+    Witness: W-LOD400-ENVELOPE
+
+    Verbatim from the source, nothing derived: the layer set an element declares, how many layers it has,
+    their summed thickness, and the placement data (LayerSetDirection / DirectionSense /
+    OffsetFromReferenceLine) that §LOD400-LAYERS-REAL needs to slice the envelope along the authored axis.
+    An element carrying a bare IfcMaterialLayerSet (no usage) is recorded too, with placement fields NULL.
+    """
+    rows = []
+    for rel in ifc_file.by_type('IfcRelAssociatesMaterial'):
+        mat = rel.RelatingMaterial
+        if mat is None:
+            continue
+        if mat.is_a('IfcMaterialLayerSetUsage'):
+            ls = mat.ForLayerSet
+            direction = getattr(mat, 'LayerSetDirection', None)
+            sense = getattr(mat, 'DirectionSense', None)
+            offset = getattr(mat, 'OffsetFromReferenceLine', None)
+        elif mat.is_a('IfcMaterialLayerSet'):
+            ls, direction, sense, offset = mat, None, None, None
+        else:
+            continue
+        if ls is None or not ls.MaterialLayers:
+            continue
+        layers = ls.MaterialLayers
+        total = 0.0
+        for lay in layers:
+            if lay.LayerThickness is not None:
+                total += float(lay.LayerThickness)
+        for obj in rel.RelatedObjects:
+            guid = getattr(obj, 'GlobalId', None)
+            if not guid:
+                continue
+            rows.append({
+                'element_guid': guid,
+                'layer_set_name': ls.LayerSetName,
+                'layer_count': len(layers),
+                'total_thickness_m': total,
+                'layer_set_direction': direction,
+                'direction_sense': sense,
+                'offset_from_reference_line':
+                    float(offset) if offset is not None else None,
+            })
+    return rows
+
+
+def write_rel_material_layer_set(conn, rows):
+    """Write rel_material_layer_set rows to DB (§LOD400-ENVELOPE)."""
+    for r in rows:
+        conn.execute(
+            "INSERT OR REPLACE INTO rel_material_layer_set "
+            "(element_guid, layer_set_name, layer_count, total_thickness_m, "
+            "layer_set_direction, direction_sense, offset_from_reference_line) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (r['element_guid'], r['layer_set_name'], r['layer_count'],
+             r['total_thickness_m'], r['layer_set_direction'],
+             r['direction_sense'], r['offset_from_reference_line']))
+    conn.commit()
 
 
 def write_surface_styles(conn, styles):
@@ -1631,9 +1709,14 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
     styles = extract_surface_styles(ifc_file, source_tag)
     layers = extract_material_layers(ifc_file)
+    lsu_rows = extract_rel_material_layer_set(ifc_file)
     if not dry_run:
         write_surface_styles(conn, styles)
         write_material_layers(conn, layers)
+        write_rel_material_layer_set(conn, lsu_rows)
+        multi = sum(1 for r in lsu_rows if (r['layer_count'] or 0) > 1)
+        print(f"  §LOD400-LAYERS rel_material_layer_set: {len(lsu_rows)} element→layer-set edges "
+              f"({multi} multi-layer) — provenance=ifc:IfcMaterialLayerSetUsage")
 
     # ── S173: PROOF BLOCK — self-checking summary ──────────────────────────
     # Each check prints PASS/FAIL with evidence. Read this block only.
@@ -1719,6 +1802,42 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                orphan == 0,
                f"{void_consumed} hosts consumed by own opening; "
                f"{total_fills - orphan}/{total_fills} fillings have geometry, {orphan} orphaned")
+
+        # P10: LOD400_ENVELOPE — §LOD400-ENVELOPE, user directive 2026-07-29/30 ("the NO FALLBACK rule must
+        # never be broken.. simple throws exception and hard fail"). An element the SOURCE authored as N
+        # material layers, shipped as ONE undifferentiated solid, is an ENVELOPE FALLBACK: non-LOD400
+        # content presented as the element's real geometry. Fidelity is owed to what the source authored,
+        # NOT to whatever the tessellator handed back — "GIGO" is not a defence when the layers are right
+        # there in the file. A red §PROOF exits non-zero (see main()), so this gate has teeth by design:
+        # it must stay RED until §LOD400-LAYERS-REAL ships per-layer geometry. Do NOT soften it to a
+        # warning, do NOT add a threshold, do NOT add a per-building exemption.
+        try:
+            envelope = conn.execute("""
+                SELECT COUNT(*) FROM rel_material_layer_set r
+                JOIN element_instances i ON i.guid = r.element_guid
+                WHERE r.layer_count > 1
+            """).fetchone()[0]
+            multi_total = conn.execute(
+                "SELECT COUNT(*) FROM rel_material_layer_set WHERE layer_count > 1").fetchone()[0]
+            worst = conn.execute("""
+                SELECT r.element_guid, r.layer_count, r.layer_set_name
+                FROM rel_material_layer_set r
+                JOIN element_instances i ON i.guid = r.element_guid
+                WHERE r.layer_count > 1
+                ORDER BY r.layer_count DESC LIMIT 5
+            """).fetchall()
+        except sqlite3.OperationalError:
+            envelope, multi_total, worst = 0, 0, []
+        if envelope:
+            print(f"  §ILLEGAL_LOD_FALLBACK {envelope} element(s) authored MULTI-LAYER are shipped as a "
+                  f"single envelope solid — non-LOD400 content standing in for real geometry.")
+            for g, n, name in worst:
+                print(f"      §ILLEGAL_LOD_FALLBACK guid={g} layers={n} set={name!r}")
+            print(f"      → fix at source: §LOD400-LAYERS-REAL (slice the envelope along the authored "
+                  f"LayerSetDirection at the authored thicknesses). Never render the envelope as real.")
+        _check("LOD400_ENVELOPE",
+               envelope == 0,
+               f"{envelope}/{multi_total} multi-layer elements shipped as an envelope solid")
 
         # P6: MATERIALS — some materials found
         _check("MATERIALS",
