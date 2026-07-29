@@ -72,6 +72,12 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `git f
   status message seen at the Viewer, source not located, user says pick up only if it resurfaces.
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
 
+- ▶ **FOUR assignable lanes, no code owed (2026-07-29) — all specced, none started:**
+  `prompts/Viewer/HOVER_NAME.md` (smallest; key = `'`; its coverage number de-risks the next one) ·
+  `prompts/RESUME_CPE_ROOM_TITLE.md` (next wow, unblocked, user-chosen) ·
+  `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (T1b/host-before-hosted THEN the shot that tops the demo;
+  the order is a recommendation the user may overrule) · `prompts/CINEMA_FIND_TO_FILM.md` (parked).
+
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches
 from OCI `bim-ootb`. `deploy/dev/` canonical. SOP `deploy/OCI_UPLOAD.md` — **§RULES 6: patches go via
