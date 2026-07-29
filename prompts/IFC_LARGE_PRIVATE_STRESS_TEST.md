@@ -657,20 +657,22 @@ layers and must not be conflated.
 ## §NEXT_SESSION — pursue these, in this order (written 2026-07-29, nothing below is started)
 **Read §KUL007 FIRST — it supersedes §KUL006's cause claim. Do not re-derive settled items.**
 
-1. **⛔ OPEN QUESTION, blocks everything else: where do the 62,500 elements go?**
-   The ONE measurement that settles it: capture the **complete** `§GEOM_SKIP` list from an OVERALL
-   import (not the 4 lines pasted in-session — the whole console). Then: how many lines, and is
-   `err=` identical on all of them? If ~62,500 lines share `Maximum call stack size exceeded`, the
-   threshold model is wrong and needs re-measuring in a **Web Worker** (smaller stack than Node's
-   main thread — the 125,570 figure is a Node baseline, NOT a worker measurement, and that gap is
-   the most likely reason the PoC and the field disagree). If only a handful, then ~62,000 elements
-   are dropped somewhere that logs NOTHING — a separate, worse defect. **Do not fix anything before
-   this number exists.**
-2. **The confirmed `.apply` fix — 3 lines, real but small.** `viewer/import_worker.js:573-580`,
-   replace the `vxs/vys/vzs` arrays + `Math.max.apply` with a single scalar min/max pass (PoC proves
-   1,000,000 verts in 7ms). **Leave site 1 (483-493) untouched — 8 args, provably safe.** Witness
-   claim: an element with >125,570 verts imports instead of `§GEOM_SKIP`. **Core Viewer code — the
-   user reserved this call; ASK before editing.**
+1. **✅ DONE (witness W-KUL-WHERE-DO-THEY-GO, 2026-07-29) — read §KUL009.** The number exists:
+   **62,252 `§GEOM_SKIP` lines**, `err=` NOT identical (3 strings, one root cause), and **zero** of
+   them are `Maximum call stack size exceeded`. Cause = the **wasm32 4GB ceiling** (`Cannot enlarge
+   memory … limit is 4294901760 bytes` = 2³²−65536 exactly), hit at element #3,956; the wasm instance
+   never recovers. Neither branch of the original fork was right: not a stack threshold, and not a
+   silent drop either — it was always logged, just 62 k lines deep. **The "re-measure the apply
+   threshold in a Web Worker" follow-up is MOOT — do not spend a session on it.**
+2. **✅ DONE (2026-07-30) — shipped, merged with main, PR open.** The scalar min/max pass is in
+   `viewer/import_worker.js:573-598`; site 1 (483-493) untouched. Code was written + witnessed live by
+   the user in §KUL008 (so the reserved call was already made); this session merged `origin/main`
+   (61 commits, only `sw.js` `CACHE_VERSION` conflicted → **v884**), re-ran the witnesses post-merge,
+   pushed, and opened **[bim-ootb#1086](https://github.com/red1oon/bim-ootb/pull/1086)** with
+   auto-merge + squash enabled. `fast-checks` pass, `e2e-tests` were still running at hand-off.
+   **The threshold in the old witness claim was wrong — see §KUL010:** the real Chrome **Web Worker**
+   limit is **63,608**, not 125,570, so the fix recovers ~4× more than estimated (21 of EQUIPMENT's
+   151 geometries = 14% of that model; 12 in OVERALL_partial).
 3. **Complete OVERALL DB via the 8-way split** (never run to completion). `split_ifc_by_discipline.py
    --parts 8` is written, dry-run verified (8 × 10,971 products, 36MB RAM). Discipline axis is the
    WRONG one here — measured ARC 1924MB/17.4GB vs MEP 76MB/0.6GB (§KUL003 tail). Then extract each
@@ -691,7 +693,12 @@ layers and must not be conflated.
    KUL is ~20× heavier than LTU's 29 purely from tessellated export; no downstream tool recovers that.
 
 ## §KUL008 — SHIPPED to sandbox 2026-07-29: two viewer fixes, both witnessed live
-Both in `/tmp/wt-sandbox` (localhost:8399), **NOT committed** — sandbox is on detached HEAD.
+⚠ **Two claims below are now superseded — do not quote them:** (a) the "NOT committed / detached HEAD"
+status is stale — as of 2026-07-30 both fixes are on branch `fix/import-bbox-bigmesh-ghost-fallback`,
+merged with `origin/main`, pushed, and open as
+**[bim-ootb#1086](https://github.com/red1oon/bim-ootb/pull/1086)** (auto-merge armed); (b) the
+threshold table's `n=125570 OLD=THROW` was a **main-thread** measurement — the real Chrome **Web
+Worker** limit is **63,608**, see **§KUL010**. The fix and its direction are unchanged and correct.
 
 **1. `import_worker.js:573` — bbox from vertices, scalar pass (Witness W-BBOX-BIGMESH).**
 Was 3 arrays + 6 `Math.max/min.apply`. `apply` spreads the array onto the call stack AS ARGUMENTS.
@@ -737,6 +744,146 @@ returns the new file, and the console still shows the OLD behaviour with no erro
 4. Reload **twice**: first load installs the new SW, second serves the new JS.
 5. Confirm with `§BUILD_VERSION vNNN (sw-controlled)` in the console — it must show the NEW number.
 6. Still stale → DevTools → Application → Service Workers → Unregister → reload.
+
+## §KUL009 — ⛔ BLOCKER CLOSED: the 62,500 are lost to the **wasm32 4GB ceiling**, not the stack
+**Answers §NEXT_SESSION item 1. Supersedes every remaining cause claim in §KUL006/§KUL007.**
+Witness **W-KUL-WHERE-DO-THEY-GO** · harness `scratchpad/kul_discovery_probe.js` · logs
+`log_overall_discovery.log`, `log_overall_geom.log` (3 MB, 62,252 `§GEOM_SKIP` lines),
+`log_containment_geom.log`. Run 2026-07-29 under `systemd-run --user -p MemoryMax=11G`.
+
+### The measurement item 1 asked for
+| | |
+|---|---|
+| `§ELEMENTS_FOUND` | **66,214** — discovery is PERFECT, identical to the preflight estimate |
+| elements that tessellated | **3,955** |
+| `§GEOM_SKIP` lines | **62,252** |
+| `err=` identical on all? | **NO — three strings, one root cause** |
+| `Aborted(native code called abort())` | 44,756 |
+| `table index is out of bounds` | 17,380 |
+| `memory access out of bounds` | 116 |
+| `Maximum call stack size exceeded` | **0** |
+
+`66,214 = 3,955 withGeom + 62,252 skips + 7 zero-geometry flatMeshes` — the census balances exactly,
+nothing is unaccounted for.
+
+### The cause, verbatim from the log
+```
+§GEOM_PROGRESS 2000/66214  withGeom=2000  skips=0
+Cannot enlarge memory, requested 4294909952 bytes, but the limit is 4294901760 bytes!
+bad_alloc was thrown in -fno-exceptions mode
+Aborted(native code called abort())
+§GEOM_SKIP guid=3NuhEOPtf7pOu$KoL0gvBx class=IfcBuildingElementProxy err=Aborted(native code called abort())
+§GEOM_PROGRESS 4000/66214  withGeom=3955  skips=45     ← withGeom never rises again
+…
+§GEOM_PROGRESS 66000/66214 withGeom=3955  skips=62038
+```
+`4,294,901,760 = 2³² − 65,536` — **exactly the wasm32 address-space ceiling**, to the byte. Requests
+land at 4,294,905,856 / 4,294,909,952 / 4,294,914,048, i.e. 4–12 KB over the wall.
+
+**Shape of the failure: a one-way wall at element #3,956, then a corrupt module.** The first 3,955
+elements tessellate cleanly; `GetFlatMesh` then can't grow the heap, `bad_alloc` → `abort()`, and the
+wasm instance never recovers — the remaining 62,252 calls each throw into the same `catch`, degrading
+from `Aborted(...)` to `table index is out of bounds` as the aborted runtime decays. The whole
+post-abort tail burns ~3 s and emits 62,252 console lines.
+
+### What this kills, and what it corrects
+- **The `.apply` / call-stack theory explains ZERO of the 62,252.** Not one line says "Maximum call
+  stack size exceeded". §NEXT_SESSION item 1's conditional — "re-measure the threshold in a Web
+  Worker" — is **MOOT, do not spend a session on it.** (The `.apply` defect is still real and still
+  worth its fix; it is simply a different, much smaller bug. See below.)
+- **The "silent drop that logs nothing" fear is also wrong** — every one of the 62,252 IS logged as
+  `§GEOM_SKIP`, plus `§GHOST_ADMISSION` and `§GEOM_SUMMARY` would have reported the totals. It was
+  never invisible; 62 k lines simply flooded the console past what anyone pasted in-session.
+- **§RISK FINDINGS' 9/10 call was right, and is now witnessed rather than inferred.** "wasm32 4GB
+  ceiling vs 2.0GB OVERALL.ifc … a crash/OOM inside the worker" — that is precisely what happens.
+  The one detail the inference got wrong: it is not a crash, it is a *silent-ish degradation* that
+  still returns a plausible-looking 3,955-element building.
+- **Field vs harness agree.** The record browser drop landed ~3,728 of OVERALL's elements; this run
+  lands 3,955. Same wall, same magnitude.
+
+### The regime gap is CLOSED — this Node run is faithful to the browser
+Checked, not assumed: `viewer/import.js:391` `_parseOneIFC` creates **`new Worker(...)` per file** and
+`worker.terminate()`s it on `done`. So the 4-file record drop was four *independent* wasm instances,
+one model each — the same regime as this single-file Node run. The multi-file drop did **not** cause
+this and single-file import will **not** avoid it.
+
+### Harness ground truth verified BEFORE trusting it on OVERALL
+`CONTAINMENT.ifc` through the identical harness: `§ELEMENTS_FOUND count=21009` →
+`withGeom=21009 GEOM_SKIP_lines=0 maxVerts=628`. Exactly the preflight count, exactly the saved DB's
+composition (11,441 `IfcFlowSegment` + 9,568 `IfcFlowFitting`), zero skips. The harness does not
+manufacture skips.
+
+Harness notes for reuse: the shipped `viewer/lib/web-ifc-api-iife.js` is the **web** emscripten build
+— it throws "not compiled for this environment" the instant it sees `process.versions.node`. Run it
+in a `vm` context with `process` **withheld**, `globalThis.WorkerGlobalScope` defined (the loader
+guards on `window || WorkerGlobalScope`), and a `fetch` shim that reads `web-ifc.wasm` off disk.
+`PARSE_OK` on the 2,045 MB file takes **17.3 s at 5.6 GB RSS** — parsing was never the problem.
+
+### Losses by class (all 62,252)
+`IfcBuildingElementProxy` 35,299 of 39,245 · `IfcFlowSegment` **14,583 of 14,583 (100%)** ·
+`IfcFlowFitting` 12,354 of 12,361 · `IfcFlowController` 16 of 16. The wall falls mid-proxy (proxies
+are enumerated before flow classes in `PRODUCT_TYPES`), so **every MEP element in OVERALL.ifc is
+lost** — which is why the merged DB's flow counts are exactly CONTAINMENT's 11,441/9,568 and not one
+element more.
+
+### What actually fixes it (ranked — none of this is "tune a threshold")
+1. **Split the source IFC so no single wasm instance holds >~1.3 GB of STEP.** OVERALL got 3,955
+   elements out of a 2,045 MB file before the wall; CONTAINMENT (31–57 MB) does 21,009 with room to
+   spare. This is §NEXT_SESSION item 3, and this measurement changes its justification: the split is
+   not a convenience for the Python extractor, it is the **only** way the browser path can ever
+   finish this file.
+2. **Free geometry as you go.** `ifcApi.StreamAllMeshes` / per-element `ClearCache`-style disposal
+   instead of letting web-ifc accumulate every tessellated shape for the model's lifetime. Untested —
+   named as the real engineering fix, not claimed.
+3. **Fail loudly.** `§RISK FINDINGS` item 6 ("no hard size cap or early reject") is now concrete: the
+   import returns a *successful-looking* 3,955-element building with no error surfaced to the user.
+   A `§WASM_CEILING` detection on the first `bad_alloc` that aborts the import with a real message
+   costs a few lines and is worth more than any partial result.
+
+## §KUL010 — the apply threshold, finally measured WHERE THE CODE RUNS (corrects §KUL007 + §KUL008)
+Witness **W-APPLY-WORKER-THRESHOLD** · Chrome 150, real `Worker` on `localhost:8399` ·
+`scratchpad/log_threshold_recheck.log`. Binary search on `Math.max.apply(null, arr)` arg count.
+
+| context | max args before throw |
+|---|---|
+| Chrome **main thread** | 124,751 |
+| Chrome **Web Worker** ← where `import_worker.js` actually runs | **63,608** |
+| Node 18 main thread | 125,544 |
+| Node 18 `worker_threads` | **496,877** |
+
+Three things this settles, two of which were previously stated WRONG in this file:
+
+1. **§KUL007's 125,570 was a Node MAIN-THREAD number** and it reproduces exactly (125,544 here). But
+   `import_worker.js` runs in a **Web Worker**, where the real limit is **63,608 — about half.**
+   §NEXT_SESSION item 1's hunch ("Worker stack is smaller than main thread") was **RIGHT**.
+2. **§KUL008's line "the in-worker limit is lower again — treat 125,570 as an upper bound" was a
+   guess that happened to point the right way. It is now a measurement: 63,608.** Also delete the
+   claim that `n=125570 OLD=THROW` proves the worker case — that run was main-thread, where 125,570
+   sits just above a 124,751 limit. Same conclusion, wrong evidence.
+3. **Node `worker_threads` is NOT a valid stand-in for a browser Web Worker** — it measured 496,877,
+   nearly 4× the browser main thread and ~8× the browser Worker, i.e. wrong in the *opposite*
+   direction. A first pass at this witness used `worker_threads`, saw no throw at 248,782, and would
+   have concluded the `.apply` bug never fires in the field. It does. **If a witness needs a browser
+   stack limit, measure it in a browser.** (Threshold degrades with stack already consumed: at 1,000
+   frames deep the Chrome Worker limit falls to 55,568.)
+
+### Re-count at the REAL threshold — the fix is ~4× bigger than §KUL007 estimated
+`SELECT COUNT(*) FROM base_geometries WHERE vertex_count > …` on the extracted DBs:
+
+| DB | geometries | max verts | **over 63,608 (real)** | over 124,751 (§KUL007's figure) |
+|---|---|---|---|---|
+| KUL_EQUIPMENT | 151 | 248,782 | **21 — 14% of the whole file** | 5 |
+| KUL_OVERALL_partial | 4,897 | 248,782 | **12** | 3 |
+| KUL_CONTAINMENT | 13,152 | 312 | **0** | 0 |
+
+§KUL007's verdict — "*real but explains only a HANDFUL*" — **stands for OVERALL** (12 elements, vs
+62,252 lost to the wasm ceiling) but **understates EQUIPMENT.ifc**, where 21 of 151 elements is 14% of
+the model. On a 151-element building that is not a handful.
+
+**No contradiction with §KUL009.** §KUL009 found zero stack errors among OVERALL's 62,252 skips
+because those elements never reached the bbox code — the wasm heap died at element #3,956 and
+`GetFlatMesh` threw first. The two defects sit on either side of that wall, and the §KUL006 field log's
+4 `Maximum call stack size exceeded` lines are the apply bug firing on elements that *did* get past it.
 
 ## §HOUSEKEEPING
 - `~/bim-ootb/IFC/KUL/` added to `.gitignore` (PR
