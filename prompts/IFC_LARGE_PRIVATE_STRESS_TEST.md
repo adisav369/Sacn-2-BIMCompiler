@@ -885,6 +885,73 @@ because those elements never reached the bbox code — the wasm heap died at ele
 `GetFlatMesh` threw first. The two defects sit on either side of that wall, and the §KUL006 field log's
 4 `Maximum call stack size exceeded` lines are the apply bug firing on elements that *did* get past it.
 
+## §KUL011 — the 8-way split WORKS: 66,214 / 66,214 elements, zero skips, proven lossless
+Witness **W-KUL-SPLIT-COMPLETE** (2026-07-30). Closes §NEXT_SESSION item 3's "never run to completion".
+Logs: `/tmp/kul_split16/split.log`, `scratchpad/log_dump12.log`, `log_dump18.log`,
+`scratchpad/dump18_KUL070_OVERALL_P*.csv`.
+
+### Result
+`split_ifc_by_discipline.py --parts 8` on OVERALL.ifc, then the §KUL009 probe on every part:
+
+| part | source MB | entities | §ELEMENTS_FOUND | withGeom | §GEOM_SKIP | max verts | probe RSS |
+|---|---|---|---|---|---|---|---|
+| P00 | 406.7 | 7,592,074 | 8,935 | **8,935** | **0** | 1,182,257 | 1.2 GB |
+| P01 | 310.1 | 5,801,504 | 8,919 | **8,919** | **0** | 507,090 | 1.0 GB |
+| P02 | 277.7 | 5,160,372 | 8,954 | **8,954** | **0** | 611,216 | 0.9 GB |
+| P03 | 254.4 | 4,809,639 | 8,942 | **8,942** | **0** | 571,952 | 0.8 GB |
+| P04 | 313.3 | 5,908,857 | 8,924 | **8,924** | **0** | 571,952 | 1.0 GB |
+| P05 | 461.0 | 8,651,917 | 8,941 | **8,941** | **0** | 1,182,257 | 1.4 GB |
+| P06 | 311.2 | 5,829,750 | 8,913 | **8,913** | **0** | 1,182,257 | 1.0 GB |
+| P07 | 405.5 | 7,623,425 | 8,999 | **8,999** | **0** | 1,182,257 | 1.3 GB |
+
+**Union = 71,527 rows → 66,214 unique GUIDs = EXACTLY the source's `§ELEMENTS_FOUND`. 100 % recovery,
+up from 3,955 (6.0 %).** The 5,313-row surplus is 759 GUIDs the closure pulled into more than one part;
+`import_db_builder.js:45` `INSERT OR IGNORE INTO elements_meta` already collapses those (proven live —
+CONTAINMENT dropped twice gives 21,009, not 42,018).
+
+### Losslessness — proven against source truth, not asserted
+For the 3,955 elements the whole 2 GB file *did* manage to tessellate before the 4 GB wall, per-GUID
+vertex counts were compared whole-file vs union-of-parts:
+```
+§LOSSLESS_CHECK comparable_guids=3955  vertex_count_IDENTICAL=3955  DIFFERENT=0
+§COVERAGE       guids_in_whole_but_absent_from_every_part=0
+```
+Every element the source could produce, the parts reproduce **to the vertex**.
+
+### ⚠ `--max-rounds 12` (the DEFAULT) is TOO LOW for this file — raise it
+The first run ended `§CLOSURE WARNING: hit --max-rounds=12 without fixpoint — parts may be incomplete`.
+That warning was **not** cosmetic. Re-run at `--max-rounds 18`:
+```
+round=12 added=27,578   round=13 added=1,148   round=14 added=0   ← true fixpoint
+```
+The 1,148 entities round 13 recovered are **`IFCCARTESIANPOINT` (176 in P00, 106 in P05) and
+`IFCDIRECTION` (9 each)** — the deepest leaves of the reference graph. Their absence silently changed
+the geometry of **523 of 66,214 elements (0.79 %)**, with the incomplete run producing *more* vertices
+(e.g. `3NuhEOPtf7pOu$KoL0gutX` 9,932 → 9,580). Direction of that delta is consistent with boolean/void
+operands only resolving once their points are present (`USE_FAST_BOOLS: true`), **but that mechanism is
+inferred, not proven** — all 523 fall outside the 3,955 where source truth exists, so they cannot be
+adjudicated against the original. Both runs match source truth exactly on all 3,955 that can be.
+
+**Rule: always run this splitter to `added=0`, never accept the WARNING.** Cost is ~85 s per extra
+round; the 18-round run took 921 s total vs 782 s. Deterministic — rounds 1-12 produced byte-identical
+counts across both runs.
+
+### Sizing, as measured
+Source 2,045.2 MB → 8 parts totalling **2,739.9 MB** (+34 %; shared entities are duplicated into every
+part that needs them). Largest part 461 MB, forecast ~4.2 GB for `ifcopenshell`. Each part parses in
+web-ifc in **2.5-4.2 s at 0.8-1.4 GB** — a fifth of the 4 GB wasm ceiling, with room for geometry that
+the whole file never had.
+
+**Practical consequence, and it needs no new code:** the 8 parts can be dropped into the Viewer in ONE
+multi-file drop. `import.js:267` `importMultiIFC` already parses files sequentially in a fresh Worker
+each (`:391`), pins one shared `§GEOREF_SESSION` frame from the first, and dedups by GUID on insert.
+That path yields the complete 66,214-element KUL070 today.
+
+**Note for the `.apply` fix (§KUL010):** the parts' largest mesh is **1,182,257 verts** — far above
+anything the truncated whole-file import ever reached (187,134) and **18.6× the 63,608 Chrome-Worker
+limit**. Without [#1086](https://github.com/red1oon/bim-ootb/pull/1086) merged, importing these parts
+would `§GEOM_SKIP` every one of those. The two fixes are complementary and both are needed.
+
 ## §HOUSEKEEPING
 - `~/bim-ootb/IFC/KUL/` added to `.gitignore` (PR
   [bim-ootb#1075](https://github.com/red1oon/bim-ootb/pull/1075), auto-merge enabled) — these are
