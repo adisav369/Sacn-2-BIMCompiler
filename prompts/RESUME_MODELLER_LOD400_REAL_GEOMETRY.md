@@ -98,6 +98,69 @@ Worked example — the wall in the 2026-07-29 23:03 screenshot's building, `2O2F
   only) **does not apply where the source carries authored richness the pipeline discards.** Fidelity is to
   the SOURCE, not to whatever the tessellator happened to hand back.
 
+### §LOD400-DISPATCH — the task prompt. **ASSIGN: Sonnet** (this is a reason-it-out + explain job, and it
+### contains one architecture call). Fable5 takes over ONLY for step 3, after the call in step 2 is made.
+Per [[feedback_model_allocation_mastermind_vs_execution]]. Requested by the user 2026-07-29 after five
+rounds of me explaining this badly: *"Put this as a prompt for Fable5 session or Sonnet — which can reason
+out the facts and cause and remedy for me to understand?"*
+
+**⚠ Read the whole §LOD400-ENVELOPE section above first. Read the log after every run (Log Mandate). Do NOT
+re-derive the measured facts below — they are witnessed; spend the session on steps 1–3, not on re-proving.**
+
+**ALREADY SETTLED — quote these, do not re-measure:**
+| fact | number |
+|---|---|
+| duplex parts the Modeller loads (architecture + structure only, by design) | **218** |
+| duplex parts the Viewer loads (same building, federated, incl. 904 pipe/duct pieces) | **1119** |
+| duplex parts resolving a real mesh in the Modeller | **215 / 215**, zero fallbacks fired |
+| duplex walls that are a plain 12-triangle box | **35 / 56** |
+| duplex walls with a door/window hole cut through them | **21**, at 28–120 triangles ⇒ proves real mesh, a fake box cannot carry a hole |
+| `IfcMaterialLayerSetUsage` in the duplex source / castle source | **91 / 412** |
+| the worst offender | `2O2Fr$t4X7Zf8NOew3FNbT` — **7 authored layers**, shipped as one box |
+| element→layer-set edges now extracted (just built, witnessed 8/8) | **91**, 80 of them multi-layer |
+| the extractor gate, just built | prints `§ILLEGAL_LOD_FALLBACK` per offender, §PROOF red, **exit 1** |
+
+**THE THREE STEPS — work top-to-bottom to zero ([[feedback_work_to_zero]]).**
+
+1. **WRITE THE EXPLANATION THE USER ASKED FOR — this is the primary deliverable, not a preamble to code.**
+   A short plain-English page: what a wall actually is in the file (one outer solid + a list of layer
+   thicknesses, never layer shapes), why the box is real and not a fake, why the Viewer looks richer
+   (904 extra pipe/duct parts on screen, identical walls), and why the 2026-07-02 fake-box fix looked
+   dramatic on the castle and invisible on the duplex (a fake box is 12 triangles; a plain wall's real
+   shape is *also* 12 triangles). **Language rules are binding here — [[feedback_terse]]: one-line verdict
+   first, plain words, no jargon, every number something the user can picture. This exact topic has already
+   cost five rounds of rephrasing; a wordy answer is a failed deliverable.** Put it in
+   `docs/ModellerGuide.md` (a short "what a wall is made of" subsection) so it is answered permanently
+   and publicly, not just in chat.
+
+2. **⛔ MAKE THE ARCHITECTURE CALL, then say it in one line.** To draw 7 layers you need 7 shapes where
+   there is 1. `element_instances` is keyed one-row-per-guid — one element, one mesh. Two ways:
+   (a) **N sub-instances** — synthesize a child guid per layer; truthful and queryable, but touches every
+   downstream consumer of `element_instances` (Viewer, Modeller, BOM, rooms, 4D);
+   (b) **one layered mesh per element** — keep one row, store the layer slabs as one mesh plus a per-layer
+   index; no schema blast radius, but layers are not individually selectable.
+   Recommend (b) first — it is reversible, ships behind the existing hash, and answers the visual question
+   without a fleet-wide migration. State the choice, then proceed. Do not build both.
+
+3. **§LOD400-LAYERS-REAL — build it. Fable5-suitable once step 2 is chosen (mechanical, fully specified).**
+   Slice the authored envelope across its thickness at the authored cumulative thicknesses, in the authored
+   direction. Every number comes from `rel_material_layer_set` (just added: `layer_set_name`, `layer_count`,
+   `total_thickness_m`, `layer_set_direction`, `direction_sense`, `offset_from_reference_line`) joined to
+   `material_layers` (per-layer `material_name`, `thickness_m`). **Nothing may be assumed or defaulted — if
+   a thickness or sense is missing, refuse that element loudly, never guess** ([[feedback_no_invent_rules]]).
+   Ship the layers + `surface_styles` into the Modeller residents as a **patch + self-heal loader, never a
+   binary** (the DB policy in `CLAUDE.md`; mirror `str_walker_outliner.js _applyPendingPatch()`).
+   Then the extractor gate goes green on its own, and the Modeller half of §LOD400-ENVELOPE-GATE can refuse
+   any element still shipping as an envelope.
+   *Issue the witness must prove:* that the 7-layer party wall `2O2Fr$t4X7Zf8NOew3FNbT` renders as **7
+   slabs whose thicknesses sum to the authored total**, and that `scripts/witness_lod400_envelope.py`
+   (currently 8/8 with the gate RED at 79/80) goes to gate-GREEN — falsified by removing one layer row and
+   asserting the run fails again.
+
+**Out of scope — do not touch:** the renderer's mesh resolution (measured clean), the VOID-CONSUMED
+classifier (§LODHELL FINDING 2-CORRECTED, closed), the ARC-only load filter (deliberate — the user set that
+purpose themselves and it is NOT the cause of anything here; do not "fix" it or re-explain it as the cause).
+
 ---
 
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
