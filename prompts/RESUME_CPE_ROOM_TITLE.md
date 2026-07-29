@@ -83,3 +83,28 @@ beyond what the name carries. Tier language is unchanged (`CINEMA_PATH_EDITOR.md
 CPE **v16**, MAXQ **v17**, sw **v882**, PRs #1081–#1084. **Not in scope:** §CPE_BE_HERE_WHEN, T1b/
 host-before-hosted, `prompts/CINEMA_FIND_TO_FILM.md`, the hardcoded `— 3 bands` header — all recorded
 elsewhere, none belong here.
+
+## ✅ DONE (2026-07-29, witness) — §1.2 and §3 resolved per this file's own recommendation
+`≈`/other honesty markers kept (verified they pass through `A.friendlyName` untouched — no special-
+casing needed). Per-room titles with a ~0.4s fade in/out, MIN_DWELL=1.4s rate limit (a fast multi-room
+crossing suppresses, never strobes). Screen position (lower-third caption) is a placeholder — not
+re-asked since the user said proceed with the recommendation; revisit if they want it elsewhere.
+
+`bim-ootb` PR **#1089** (`feat/cpe-room-title`, merged to main `aefcb1c`): `viewer/cpe_room_title.js`
+(new) + Film-Maker checkbox (off by default, next to `cpe-buildup`) + a shared 2D-canvas draw routine
+used by BOTH the live-preview overlay and the baked-frame composite (§2's DOM-caption trap avoided —
+titles never drawn as HTML). Room lookup: IFC-space point-in-rect against `A.getRoomGraph()`'s
+`kind==='room'` nodes + z-proximity for stacked floors.
+
+- **W-TITLE-COMPOSITED (the gate):** pixel diff proven — a composited canvas differs from an
+  uncomposited one ONLY in the title band. This is the literal mechanism `cinema_maxq.js`'s
+  `_captureFrame` now calls, not a re-implementation.
+- **W-TITLE-NAME-SOURCE:** 2/2 real rooms (via a synthetic path) resolved to the exact
+  `A.friendlyName(roomNode.name, ...)` string, including an untouched `≈` marker on one and an
+  unanticipated `⚠` marker on another (T/FDN room) — both passed through correctly, unmodified.
+- **W-TITLE-RATE:** an 8-room rapid crossing (0.3s/room) → 0 segments kept, all correctly suppressed.
+- **Bug caught by the witness before merge:** `_isEdited()`'s Guardrail 2 checked `_state.buildup`
+  but not the new `_state.roomTitle` — checking ONLY the room-titles box and clicking OK would have
+  silently discarded it (same failure class the file's own `buildup` comment already named). Fixed
+  in the same commit; the witness's checkbox→override wiring test is what caught it.
+- 11/11 pass, `witness_cpe_room_title.js` (committed, repo-root convention).
