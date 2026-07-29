@@ -4,10 +4,12 @@
 #   See memory feedback_model_allocation_mastermind_vs_execution.md for the tiers.
 # Scope: find every place where TWO OR MORE call sites independently construct the SAME identity
 #   (a cache key, a url, a guid, a storey id, a phase token, a localStorage key, an IDB key) and
-#   nothing enforces that they agree. Report + fix the ones with real blast radius.
+#   nothing enforces that they agree. **PASS 1 = LIST ONLY, FIX NOTHING** (see the ⛔ block below) —
+#   comb to exhaustion, chase each to root cause, cluster by shared cause. Pass 2 does the refactor.
 # PRIME RULE: EXTRACT ONLY. Every finding cites file:line and the two divergent constructions.
 #   No speculative smells, no lint, no style opinions. Read the log after every run.
-# Witness-led: each fix ships a PURE test that FAILS on the old code (the divergence assertion).
+# Witness-led — but NOT in this pass: pass 2's fixes each ship a PURE test that FAILS on the old code
+#   (the divergence assertion). Pass 1 writes no tests either.
 
 ## §WHY THIS SESSION EXISTS — the bug that named the pattern (2026-07-30)
 The Viewer cached each building in IndexedDB **keyed on the raw url string**. Two entry points built
@@ -56,21 +58,48 @@ Rank each finding: `radius (who/what breaks, at what scale) × silence (why no l
 4. **Judge blast radius.** Divergence that is harmless (two names that never meet) is NOT a finding.
    The bug above mattered because both paths hit the same store. Say why the two paths meet.
 
-## §DELIVERABLE
-- Append findings to THIS file as a dated section, ranked. Per finding: the identity, the ≥2
-  divergent construction sites (file:line + actual strings), why the paths meet, radius × silence,
-  and the one-pure-function fix.
-- Fix the top findings that clear the landmine bar. Each fix = one pure `*.js` decision function +
-  a witness that FAILS on the old inline construction (copy the shape of
-  `viewer/tests/witness_db_cache_key.js`, which asserts `keyFromRouteA === keyFromRouteB`).
-- Explicitly list what you checked and found CLEAN — a clean family is a real result and stops the
-  next session re-walking it.
+## ⛔ PASS 1 IS LIST-ONLY — DO NOT FIX ANYTHING (user directive 2026-07-30)
+**"make it comb deeper and chase issues till listed, not act upon yet, until we can review causes in one
+more pass for refactoring opportunities."**
+
+This session **writes zero production code.** No fixes, no pure-function extractions, no witnesses, no
+PR. Touch only this file. The reason is deliberate: fixing findings one at a time hides the fact that
+several of them are the SAME root cause and want ONE refactor, not five patches. Today's cache-key bug
+had four call sites with three different notions of "is this cached" — patched individually that is
+three fixes; seen together it is one missing pure function. **Pass 2 (a separate session, after the
+user reviews this list) decides the refactor.** Anyone who starts editing code in pass 1 destroys the
+only thing pass 1 is for.
+
+If a finding looks trivially fixable — still don't. Write it down and keep combing.
+
+## §DELIVERABLE — an exhaustive ranked list, chased to root cause
+Append to THIS file as a dated section. **Comb to exhaustion — there is no finding cap.** Do not stop
+at the interesting ones; the value is a complete list the refactor pass can pattern-match over.
+
+Per finding:
+- **The identity** — what one thing is being named.
+- **Every construction site** (not just two) — `file:line` + the ACTUAL string/value each produces for
+  the same real input. Show them side by side.
+- **Where the paths meet** — the shared store/comparison that makes the divergence bite. If they never
+  meet, say so and mark it `HARMLESS` rather than dropping it (pass 2 may still want it unified).
+- **Radius × silence** — who breaks, at what scale, and why no log line or test catches it today.
+- **Root cause, one line** — e.g. "no pure function owns this key", "two modules each re-derive the
+  filename convention", "the writer and the reader were written in different sessions".
+- **Suspected shared cause** — cross-reference other findings you think share a root. This is the raw
+  material for pass 2; guess freely here, it costs nothing and is the whole point.
+
+Then two summary sections:
+- **§CLEAN** — every identity family you checked and found genuinely single-sourced. A clean family is a
+  real result; it stops the next session re-walking it.
+- **§CLUSTERS** — your grouping of the findings by shared root cause, with a one-line note on the
+  refactor each cluster is pointing at. Do not design the refactor; just name what it would touch.
 
 ## §GUARDRAILS
-- **Do not fold identities that must stay apart.** The cache-key fix had to keep
-  `deploy/dev/buildings/Terminal_extracted.db` and `deploy/buildings/Terminal_extracted.db` distinct —
-  same filename, different bytes. Every folding rule needs its matching NOT-folded guard case in the
-  witness, or you have traded a re-download for wrong geometry.
-- One bounded task. If the audit surfaces more than ~5 real findings, report them all and fix the top
-  ones; do not let it become an open-ended refactor.
+- **Note, don't apply, the folding guard.** Where you propose that two names SHOULD fold, also name the
+  case that must NOT fold. Today's fix had to keep `deploy/dev/buildings/Terminal_extracted.db` and
+  `deploy/buildings/Terminal_extracted.db` distinct — same filename, different bytes. A folding rule
+  without its NOT-folded counter-case trades a re-download for wrong geometry. Record the counter-case
+  alongside the finding so pass 2 inherits it.
+- **Prove divergence, don't assume it.** Two names that differ only in a variable you didn't resolve is
+  not a finding. Resolve it or mark it `UNVERIFIED` explicitly.
 - No new memory files (that's a Sonnet synthesis pass) — findings go in this file.
