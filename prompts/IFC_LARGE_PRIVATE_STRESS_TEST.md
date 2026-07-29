@@ -654,8 +654,10 @@ Also settled: the saved DB's `bbox_x/y/z` are **never null** (25,029 rows, 0 nul
 BECAUSE the derivation runs. "No IfcBoundingBox in the IFC" and "null bbox in the DB" are different
 layers and must not be conflated.
 
-## §NEXT_SESSION — pursue these, in this order (written 2026-07-29, nothing below is started)
-**Read §KUL007 FIRST — it supersedes §KUL006's cause claim. Do not re-derive settled items.**
+## §NEXT_SESSION — ✅ ALL FIVE ITEMS CLOSED 2026-07-30 (written 2026-07-29)
+**Nothing here is open. Do not re-walk this list.** Evidence lives in §KUL009 (the blocker),
+§KUL010 (the corrected apply threshold), §KUL011 (the split), §KUL012 (the complete DB).
+⚠ §KUL006 and §KUL007's cause claims are BOTH superseded — read §KUL009 before quoting either.
 
 1. **✅ DONE (witness W-KUL-WHERE-DO-THEY-GO, 2026-07-29) — read §KUL009.** The number exists:
    **62,252 `§GEOM_SKIP` lines**, `err=` NOT identical (3 strings, one root cause), and **zero** of
@@ -673,24 +675,28 @@ layers and must not be conflated.
    **The threshold in the old witness claim was wrong — see §KUL010:** the real Chrome **Web Worker**
    limit is **63,608**, not 125,570, so the fix recovers ~4× more than estimated (21 of EQUIPMENT's
    151 geometries = 14% of that model; 12 in OVERALL_partial).
-3. **Complete OVERALL DB via the 8-way split** (never run to completion). `split_ifc_by_discipline.py
-   --parts 8` is written, dry-run verified (8 × 10,971 products, 36MB RAM). Discipline axis is the
-   WRONG one here — measured ARC 1924MB/17.4GB vs MEP 76MB/0.6GB (§KUL003 tail). Then extract each
-   part under `systemd-run --user -p MemoryMax=…` (MemoryMax ONLY — `MemoryHigh` is a throttle that
-   stalled run 1 for 24 minutes). Expected result ~200MB DB, 66,214 elements.
-4. **Scene-merge on File Open** — user's ask: opening a fresh IFC/DB should offer "merge into the
-   current scene" instead of replacing. **Spec belongs in `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`
-   (a dated §SCENE_MERGE section), not here** — that file already owns `importMultiIFC` + Open Building.
-   Recon done, do not redo: (a) today's `§VERSION_MERGE` is a VERSION merge — `_rec.versions.push()`
-   then `_rec.metaDb = dbs.metaDb` OVERWRITES; it is not additive. (b) `importMultiIFC` merges only
-   within ONE drop; nothing reads an existing DB and appends. (c) **The scene layer ALREADY federates**
-   — `city.js:701` `A.cityBuildingDbs[archetype] = { db, libDb }` streams N buildings, each with its
-   own DB pair, via `A.buildingCentres`/`A.buildingsRendered`/`A.streamBuilding()`. (d) The ONLY
-   blocker is `scene.js:663` `_openDbBytes` → `location.assign('viewer.html?db=…')`, a full page
-   navigation. (e) The saved DB is already shaped for it: `elements_meta.building` labels the source,
-   `project_metadata.georef_offset=(0,-14420,0)` gives the shared frame.
-5. **Ship `docs/IFC_ExportGuide.md` to the BIM author** — the upstream fix. At 570 entities/element
-   KUL is ~20× heavier than LTU's 29 purely from tessellated export; no downstream tool recovers that.
+3. **✅ DONE (2026-07-30) — read §KUL011 + §KUL012.** Split run to true fixpoint (`--max-rounds 18`;
+   the DEFAULT 12 is TOO LOW and its WARNING is real), all 8 parts extracted `7 PASS / 0 FAIL`, and
+   merged into **`~/bim-ootb/IFC/KUL/KUL070_OVERALL_complete.db` — 311 MB, 87,333 elements, zero
+   orphans.** Beat the estimate: 87,333 rows (not 66,214 — the extractor walks 81 product types vs
+   the viewer's 68) and all 66,214 viewer-class GUIDs present, MISSING=0. **From 3,955 to 87,333.**
+4. **✅ DONE (2026-07-30) — spec lives in `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`
+   §SCENE_MERGE.** It was already written 2026-07-29; this session **re-verified every file:line in it
+   against `origin/main` and they were stale** — there is no `viewer/import_own.js` (it is
+   `viewer/import.js`), `§VERSION_MERGE` no longer exists anywhere in the tree, and the `scene.js`
+   line numbers had all moved. Corrected in place, plus the measured wasm cap on step 5's "open source
+   IFC". Recon points (a)-(e) all still hold. **Implementation not started — that is a separate task,
+   and it belongs in that file, not this one.**
+5. **✅ DONE (2026-07-30) — guide updated and made publishable; SENDING it is the user's call.**
+   `docs/IFC_ExportGuide.md` gained **§"The hard wall nobody warns you about"** — the §KUL009 numbers
+   turned into the argument that actually lands with an author: *it opens, it renders, it looks like a
+   building, and 94% of it — every MEP element — is not there.* The file was committed but **absent
+   from `mkdocs.yml` nav**, i.e. unpublished (live URL 404s); now added under Go Deeper, `mkdocs build`
+   produces the page, and `DRY_RUN=1 scripts/safe_gh_deploy.sh` reports
+   `§GUARD result=PASS — new build is a superset`. **The public docs deploy was deliberately NOT run**
+   — it is outward-facing and beyond what "ship to the BIM author" asked. One command when wanted.
+   Underlying fact unchanged: at 570 entities/element KUL is ~20× heavier than LTU's 29, purely from
+   tessellated export; no downstream tool recovers that.
 
 ## §KUL008 — SHIPPED to sandbox 2026-07-29: two viewer fixes, both witnessed live
 ⚠ **Two claims below are now superseded — do not quote them:** (a) the "NOT committed / detached HEAD"
@@ -951,6 +957,71 @@ That path yields the complete 66,214-element KUL070 today.
 anything the truncated whole-file import ever reached (187,134) and **18.6× the 63,608 Chrome-Worker
 limit**. Without [#1086](https://github.com/red1oon/bim-ootb/pull/1086) merged, importing these parts
 would `§GEOM_SKIP` every one of those. The two fixes are complementary and both are needed.
+
+## §KUL012 — ✅ the complete OVERALL DB EXISTS: 87,333 elements, 311 MB, zero orphans
+Witness **W-KUL-DB-MERGE** (2026-07-30). Closes §NEXT_SESSION item 3 outright.
+Logs `/tmp/kul_db/extract_all.log` + `KUL070_OVERALL_P0*.log`; merge script `/tmp/kul_db/merge_parts.py`.
+
+**Artifacts (local only, `.gitignore`d — never git/LFS, per the DB rule):**
+- `~/bim-ootb/IFC/KUL/KUL070_OVERALL_complete.db` — **311 MB, the whole building in one DB**
+- `~/bim-ootb/IFC/KUL/parts/KUL070_OVERALL_P0{0..7}.db` — the 8 per-part DBs, 492 MB total
+
+### Extraction: 8/8 clean
+Each fixpoint part through `extractIFCtoDB.py` under `systemd-run -p MemoryMax=12G`, sequentially,
+~5-16 min each (67 min total, 25-55 elem/s):
+```
+§PROOF KUL070_OVERALL_P00..P07   elements=14,178-14,191   failed=0   void_consumed=0   bbox_fallback=0
+§PROOF RESULT: 7 PASS, 0 FAIL     ×8      FAIL_RATE 0/14,1xx (0.00%)   ×8
+```
+⚠ **Do NOT pass `--library`** — it expects a pre-migrated `component_library.db` and dies with
+`missing table 'component_geometries' — run schema migration first`. Omit it; mesh BLOBs go into the
+main DB. (Cost me one wasted part-run.)
+
+### The merge is NOT a plain `INSERT OR IGNORE` — that is silently wrong, twice
+Both failure modes were hit and caught before shipping. **Anyone merging extracted DBs must read this:**
+1. **`elements_meta.id` is `INTEGER PRIMARY KEY`, per-part sequential.** Ids collide, `OR IGNORE`
+   silently DROPS the rows. First attempt produced `element_transforms=87,333` beside
+   `elements_meta=14,191` — a DB that looks fine until you join it. Fix: omit `id`, let SQLite
+   reassign, and rely on `guid UNIQUE` to dedup.
+2. **`datum_plane.datum_id` is likewise per-part sequential and means a DIFFERENT coord in each
+   part** (P00 `#1 = X -49.7916`, P01 `#1 = X -49.5647`). `rel_anchored` / `rel_spans` point at it.
+   A naive merge keeps part 0's datums and silently re-points the other 7 parts' 500 k relations at
+   the wrong planes. Fix: offset `datum_id` by a per-part base so each part's relations keep pointing
+   at their own datums.
+3. **`elements_rtree` must be REBUILT, not copied** — it is a virtual table keyed on
+   `elements_meta.id` (verified in the source DBs: `rtree.id == elements_meta.id`, 14,183/14,183),
+   so it has to be regenerated from the NEW ids. Never write its `_node`/`_parent`/`_rowid` shadows.
+
+### Result — every referential check ZERO
+```
+elements_meta 87,333 = element_instances 87,333 = element_transforms 87,333 = elements_rtree 87,333
+base_geometries 19,447  (4.5× instancing reuse)   datum_plane 27,385
+rel_anchored 589,371    rel_spans 187,626   rel_adjacency 11,623   rel_aggregates 3,760
+§INTEGRITY ok
+§ORPHAN rel_anchored→datum_plane 0 · rel_spans→datum_plane 0 · element_instances→base_geometries 0
+§ORPHAN element_transforms→meta 0 · meta→element_transforms 0
+```
+Disciplines ARC 60,373 / MEP 26,960. Top classes: `IfcBuildingElementProxy` 39,245,
+`IfcMechanicalFastener` 19,733, `IfcFlowSegment` 14,583, `IfcFlowFitting` 12,361,
+`IfcOpeningElement` 1,386, `IfcFlowController` 16.
+
+### End-to-end: the browser probe and the DB agree exactly
+```
+§COVERAGE probe_guids_present_in_db = 66,214 / 66,214   MISSING = 0
+```
+The 21,119 extra rows are real, not noise: `extractIFCtoDB.py` walks **81** product types vs the
+viewer's **68** (`IfcMechanicalFastener` 19,733 is the bulk). **From 3,955 to 87,333.**
+
+### ⚠ One honest limitation — `datum_plane` is 8 partial derivations, not one whole-model one
+27,385 datums for a building whose parts each derive ~3,400 is an **over-count**: cadence datums are
+derived from element spacing *within one model*, so eight parts produce eight near-duplicate plane
+sets (P00 `X -49.7916` vs P01 `X -49.5647` are separate derived planes, not the same plane twice).
+The id-offset merge keeps every relation pointing at the datum it was actually derived against — so
+the DB is **internally consistent and nothing is invented** — but this is NOT equivalent to running
+the cadence derivation once over all 87,333 elements. **If a walker needs true whole-model datums,
+re-derive them on the merged element set; do not trust the 27,385 as distinct physical planes.**
+Everything else in the DB (elements, geometry, transforms, r-tree, adjacency, aggregates) is a clean
+guid/hash-keyed union with no such caveat.
 
 ## §HOUSEKEEPING
 - `~/bim-ootb/IFC/KUL/` added to `.gitignore` (PR
