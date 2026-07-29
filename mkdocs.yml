@@ -105,6 +105,7 @@ nav:
       - "How the Database Works (big picture)": SQLiteWasmArchitectureActual.html
       - "Red Pill — Design From Grammar": RED_PILL.md
       - "Clash Detection": CLASH_DETECTION.md
+      - "IFC Export Guide (for the BIM author)": IFC_ExportGuide.md
       - "4D/5D Analysis": 4D5DAnalysis.md
       - "BIM → Project Order (ERP)": BIMtoProject.md
       - "Geometry as a Signed-Log Fold": ModellerKernelFold.md
