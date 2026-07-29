@@ -64,3 +64,67 @@ don't silently keep it because "it was already there."
 This item is tracked from `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG`. Per the project's Watchdog Protocol:
 the closing session's `# DONE` appendix needs a `§` log line for EVERY claim above — "verified live" without a
 `§` line is not done, it's an assertion. Flag anything unproven rather than accepting it on trust.
+
+---
+
+## §SCENE_MERGE — "Open → merge into the current scene" (SPEC, 2026-07-29, NOT started)
+
+**User's ask, their framing:** *"when we open a fresh IFC/DB in File Open it asks if we wish to merge
+into the same scene/canvas"* — and the merge/variant options should live in the Open door itself,
+including Open-source-IFC.
+
+**Hard constraint from the user, same session: NO INVENTION.** Every part below already exists and
+works today; this spec is wiring, not new machinery. Each claim carries its file:line — verify, don't
+re-derive.
+
+### §SM-1 What exists today (recon done — do NOT redo)
+| piece | where | status |
+|---|---|---|
+| N buildings in ONE canvas, each with its OWN db | `city.js:11` `A.cityBuildingDbs = {}`; `:701` `= { db, libDb }` | **works — City mode uses it** |
+| swap the active DB then draw | `city.js:707-708` (also `:796-797`, `:950`) `A.db = …[k].db; A.libDb = …[k].libDb` → `A.streamBuilding(name)` | **works** |
+| track what's already drawn | `A.buildingCentres`, `A.buildingsRendered`, `A.savedStreams` (`streaming.js:39-60`) | **works** |
+| dedup on merge | `import_db_builder.js:45` `INSERT OR IGNORE INTO elements_meta` — same GUID dropped twice collapses (proved live: CONTAINMENT dropped twice → 21,009 not 42,018) | **works** |
+| merge-or-new PROMPT, already written | `archive/gallery.html:1044` `showMergeModal()` — "Merge X into Y?" / Merge / New, dropdown when >1 target, Enter=merge Esc=new | **works, just orphaned in archive/** |
+| shared frame | `project_metadata.georef_offset_x/y/z`; multi-file drops already pin one frame from the first file — `import_own.js:657` `§GEOREF_SESSION frame pinned by …` | **works** |
+
+### §SM-2 The ONLY blocker
+`scene.js:663`, in `_openDbBytes`:
+```js
+location.assign('viewer.html?db=' + encodeURIComponent(dbUrl) + '&lib=' + … + '&ghost=1');
+```
+File Open **navigates the page**. The scene is destroyed and rebuilt. That is the whole reason
+opening a second file resets the canvas — not a data limit, not a memory limit.
+
+### §SM-3 What to build (wiring only)
+1. In `A.openModelDb` / `_openDbBytes`: when a building is **already open**, show the prompt instead
+   of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1044` — port it, don't rewrite it.
+2. **Replace** → today's `location.assign` path, unchanged.
+3. **Merge** → do exactly what City mode does:
+   - register the new DB: `A.cityBuildingDbs[newName] = { db, libDb }` (or the same shape under a
+     non-city key — naming is the only new decision here)
+   - `A.db = …; A.libDb = …;` then `A.streamBuilding(newName)`
+   - the new building appears **alongside** the current one; `buildingsRendered` keeps both
+4. **Frame:** the ALREADY-OPEN building's `project_metadata.georef_offset_*` is the pin. The incoming
+   DB rebases to it — same rule `import_own.js:657` already applies to a multi-file drop, applied to
+   an existing scene instead of the first file of a batch.
+5. **Open source IFC in the same door:** the picker currently accepts `.db,.sqlite` only
+   (`scene.js:669-671`). Widen to `.ifc`, route to the existing `importIFC`/`importMultiIFC`, then
+   feed the produced DB into step 3. No new import path.
+
+### §SM-4 Witness (name the issue, per project rule)
+**W-SCENE-MERGE** — open building A, then Open→Merge building B:
+- `§CENTRES` / `A.buildingCentres` has **2** keys, not 1
+- `guidMap` total = A + B minus shared GUIDs (dedup is `INSERT OR IGNORE`, already proven)
+- **no page navigation** — same `§HIST_SESSION` id before and after (today's reload mints a new one)
+- both buildings' element counts non-zero in one `§CONTRACT_CHECK`
+
+### §SM-5 Named risks (flagged, not solved)
+- **Memory.** Two 485MB DBs resident = ~1GB of sql.js heap in one tab. City mode's DBs are much
+  smaller. Needs a real measurement before promising N-way merge, not an assumption.
+- **Variants vs federation are different things.** Today's `§VERSION_MERGE` (`import_own.js:697`) is
+  VERSIONING — `_rec.versions.push()` then `_rec.metaDb = …` OVERWRITES. Do not build scene-merge on
+  that path or it will replace instead of accumulate. A variant SWITCHER (show v1 or v2) is a third,
+  separate feature — do not fold it in without a decision.
+- **Cross-check §KUL008_CACHE** in `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md` before testing any
+  edit to a precached `viewer/*.js` — bump `sw.js CACHE_VERSION` + the file's `?v=`, reload twice,
+  or the change is invisible and looks like a code failure.

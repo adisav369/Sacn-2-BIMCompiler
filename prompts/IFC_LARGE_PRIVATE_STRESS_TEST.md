@@ -471,6 +471,273 @@ that call:** (a) widen `_isEnvelope()` so a plant/MEP model can build a ghost fr
 classes, (b) cap on unique hashes rather than element count in `_buildShapeMeshes`, (c) add the
 missing `CAPPED@` log to the shape path. (a) is the one that actually explains KUL vs the fleet.
 
+## §KUL003 — why OVERALL fails when LTU_AHouse (1.85× MORE elements) never did
+**LTU was never one file.** `internal/UNMERGED/` holds it as **9 per-discipline IFCs** — ARC
+172.9MB, PLB 69.6MB, HEAT 32.6MB, STR 30.9MB, COOL 30.8MB, SAN 25.7MB, AIR 24.2MB, VOID 24.1MB,
+DUCT 8.0MB (419MB total, **largest single file 172.9MB**). `LTU_AHouse_ARC.ifc` is 3,527,143
+entities ≈ **1.8GB resident** — **10.7× smaller than OVERALL.ifc's 37.7M / ~19-21GB**, despite LTU
+having 122,667 elements vs OVERALL's 66,214.
+
+**RAM tracks STEP ENTITIES, not elements** — the same distinction §UNIQUE_MESH_INSTANCING drew for
+the renderer. LTU is parametric (extruded solids); KUL is explicit faceted B-rep, so KUL spends
+~570 entities per element where LTU spends ~29.
+
+And this is the fleet-wide pattern, not a one-off: **every resident was onboarded per-discipline.**
+Hospital = 7 files (largest 76.6MB), Clinic = 5 (largest 53.2MB), Duplex, Ifc4_Revit, HHS likewise;
+there is even a `merged_federation.ifc` at 205.9MB — an order of magnitude under OVERALL. **KUL
+OVERALL.ifc is the first single merged federation file ever fed to this pipeline whole, and the only
+one that has ever failed.** Its own siblings CONTAINMENT.ifc and EQUIPMENT.ifc ARE the
+per-discipline files — both extracted clean. Nothing is broken; the input violated an unwritten
+fleet convention, now written down here.
+
+Second OOM (2026-07-29 06:22, `kul-overall2`, `MemoryMax=26G`, machine otherwise idle at 7.5GiB):
+`Result=oom-kill` at **45,000/66,214**, and the rate had already collapsed — 40,000 elements in 45s
+(898 elem/s) then 1,505s for the next 5,000 (**30 elem/s, a 30× fall**) as it went into swap thrash.
+Even unlimited swap would take days, not hours. Brute force is settled: two runs, two ceilings.
+**NOTE the first run's own mistake — `MemoryHigh=20G` was a THROTTLE, not a guard**: crossing it
+triggers aggressive reclaim, which is why run 1 did 40,000 in 49s then sat at 20.5GB for 24 minutes
+doing nothing. Use `MemoryMax` alone: full speed, hard stop.
+
+**Projected full-DB size (two real data points, deliberately not narrowed further):**
+44,000 elements → 4,897 hashes → 77.0MB blobs; 45,000 → 5,155 → 84.1MB. The marginal segment costs
+**7.1 KB/element against a running average of 1.79 KB/element** (the tail is ~4× denser), so:
+average-rate floor ≈ **150MB**, marginal-rate ceiling ≈ **280MB**, best estimate **~200MB** — an
+ordinary size, between JKR (203MB) and Hospital (263MB), both already resident. The output was never
+the problem; the fully-resident `ifcopenshell.open()` is.
+
+## §KUL004 — `strip_ifc_nonessential.py` (STANDARD, reusable) + the preflight rule
+`DAGCompiler/python/strip_ifc_nonessential.py` — streaming, 3-pass, two tiers, proven lossless.
+(Supersedes and replaces the first-cut `strip_ifc_psets.py`, deleted — one script owns this topic.)
+
+**What is "non-essential" is DERIVED from `extractIFCtoDB.py`, not guessed.** That script consumes
+only: IfcProduct + geometry, IfcLocalPlacement, IfcMappedItem, IfcBooleanResult, the spatial chain,
+materials, styles, IfcRelVoidsElement/IfcRelFillsElement, IfcRelDefinesByType. Two verified drops:
+- **Property sets** — `extractIFCtoDB.py:1326` walks `elem.IsDefinedBy` but matches ONLY
+  `IfcRelDefinesByType`; `IfcRelDefinesByProperties` is never touched and no properties table exists.
+- **Ports** — `port_elements`/`port_connections` are CREATED but never INSERTed into (verified:
+  all three KUL DBs report `port_elements=0 port_connections=0`), and `IfcDistributionPort` is in
+  the extractor's own `NON_GEOMETRIC_CLASSES`.
+
+**Measured on KUL CONTAINMENT.ifc:**
+
+| tier | entities removed | file |
+|---|---|---|
+| `--tier meta` (psets/quantities) | 150,253 / 774,041 = **19.4%** | 56.7 → 43.7 MB (**-23.0%**) |
+| `--tier model` (+ ports, classifications, documents, groups/systems/zones, presentation layers, annotations, space boundaries, element connections) | 255,774 / 774,041 = **33.0%** | 56.7 → **31.1 MB (-45.2%)** |
+
+**Losslessness PROVEN, not asserted** — extracting the `--tier model` output vs the original DB:
+`guid sets identical: True` · `geometry hash sets identical: True (13152 vs 13152)` ·
+`material rows identical: True` · `transform centres identical: True` · 7/7 proof checks PASS.
+
+Safety design: pass 2 rescues any candidate still referenced by a retained line (rescued 2 in the
+meta tier, 1 in the model tier — the net is real, not decorative); `--sweep N` then retires pure
+support entities (placements/points/directions/owner-history) only once nothing references them,
+running to fixpoint.
+
+**§PREFLIGHT RULE — run before extracting ANY unfamiliar IFC:**
+```
+strip_ifc_nonessential.py IN.ifc --stats-only     # histogram + RAM forecast @ 520 bytes/entity
+```
+  - `< 40%` of free RAM → extract directly
+  - `40-70%` → strip first, if the histogram shows heavy psets/quantities/ports
+  - `> 70%` → do NOT run whole; split per discipline (the fleet convention, §KUL003)
+
+**Stripping only pays when the bloat IS metadata — check the histogram first:** CONTAINMENT psets
+19.4% + ports 13.6% → a third of the file gone. **OVERALL psets 1.0% → -1.8%, pointless**, because
+**95.6% of OVERALL is raw IFCPOLYLOOP (25.6%) / IFCFACEOUTERBOUND (25.4%) / IFCFACE (25.4%) /
+IFCCARTESIANPOINT (19.2%) tessellation.** You cannot strip the geometry you came for.
+
+## §KUL005 — RECORD: all four KUL IFCs parsed in ONE browser drop (2026-07-29, user-run)
+**3.44 GB and 65,111,715 STEP entities, four files, one drop, one browser tab, one laptop.** Not a
+CLI run — the live Viewer's `import_own.js` multi-merge on GitHub Pages.
+
+| # | file | size | entities |
+|---|---|---|---|
+| 1 | `CONTAINMENT_model.ifc` (stripped) | 31.1 MB | 518,267 |
+| 2 | `OVERALL.ifc` | 2045.2 MB | 37,716,099 |
+| 3 | `CONTAINMENT.ifc` | 56.7 MB | 774,041 |
+| 4 | `EQUIPMENT.ifc` | 1394.2 MB | 26,103,308 |
+| | **total** | **3527.2 MB** | **65,111,715** |
+
+**What this beats, measured against the fleet:**
+- **Largest single IFC parsed in-browser: 2045.2 MB** — 12× the previous fleet maximum
+  (`LTU_AHouse_ARC.ifc`, 172.9 MB). No file over ~250 MB had ever gone through this path.
+- **Most entities in one session: 65.1 M.** Parse fidelity CONFIRMED, not assumed:
+  `§EXTRACT_START totalLines=26103308` for EQUIPMENT matches the CLI histogram **exactly**, and
+  `totalLines=518267` matches the stripped CONTAINMENT exactly.
+- **Largest imported DB produced: 484.7 MB** (Hospital 263 MB, JKR 203 MB were the prior tops).
+- The wasm32-4GB-ceiling prediction in §RISK FINDINGS (score 9) was **WRONG** — measured 10.8 GB
+  RSS in the worker, so web-ifc is not confined to one linear memory. Recorded as a corrected
+  prediction, not a passed one.
+
+**Element count is NOT a record: 25,033 — 5th in the fleet** (LTU_AHouse 125,698, Hospital 63,415,
+Terminal 48,428, KUL 25,033, Clinic 16,114). It is a THROUGHPUT record, not a completeness one, and
+§KUL006 is why.
+
+Two designs quietly did their job and should be kept: `import_db_builder.js:45` uses
+`INSERT OR IGNORE INTO elements_meta`, so the SAME model dropped twice (files 1 and 3) collapsed on
+GUID instead of doubling to 42,018; and the importer emitted a SPLIT meta/geo pair (9.2 MB + 475 MB)
+rather than one blob, staying under the ~1 GB IndexedDB structured-clone ceiling that §RISK FINDINGS
+scored 8.
+
+**Saved DB** — `~/bim-ootb/IFC/KUL/KUL070-SWC-01-XX-3D-E-0001.db`, 484.7 MB, `pragma
+integrity_check: ok`, `elements_meta.building` present (so NOT subject to §KUL001), `project_metadata`
+carries `georef_offset=(0,-14420,0)`. Reopens directly, no patch, no re-import.
+
+## §KUL006 — ⚠ CAUSE CLAIM SUPERSEDED BY §KUL007 (PoC disproved it at 37,866 verts)
+**The composition numbers below are still good. The `.apply` cause claim is NOT — read §KUL007.**
+
+The record run landed **25,033** elements, of which OVERALL contributed only **~3,728 of its 66,214
+(5.6%)**. Final composition of the saved DB:
+`IfcFlowSegment` 11,441 + `IfcFlowFitting` 9,568 = **21,009 = CONTAINMENT complete and exact**;
+`IfcBuildingElementProxy` 4,015; `IfcWallStandardCase` **8**; `IfcSlab` **1**.
+
+The cause is logged verbatim and is not memory, not the parse, not truncation:
+```
+§PARSE_OK  →  §EXTRACT_START totalLines=26103308  →  §ELEMENTS_FOUND count=292   (all correct)
+§GEOM_SKIP guid=… class=IfcBuildingElementProxy err=Maximum call stack size exceeded
+```
+Parse and element discovery are perfect; **geometry building throws**. Suspected site —
+`viewer/import_worker.js` lines 489-491 and 578-580:
+```js
+el._bboxX = Math.max.apply(null, bxs) - Math.min.apply(null, bxs);
+```
+`Function.apply` spreads the whole array onto the call stack **as arguments**; V8 caps that at
+~65-125 k. These meshes carry **37,866 vertices each** (measured, §EQUIPMENT sample), so the limit is
+exceeded and every dense element is skipped. Fix = a plain min/max loop; six lines, no behaviour
+change. **NOT APPLIED — core Viewer code, user reserved that call.** Projected effect: the same drop
+would land ~87,000 elements, i.e. 2nd in the fleet behind LTU_AHouse.
+
+## §KUL007 — PoC RESULT: §KUL006's diagnosis is PARTLY WRONG (supersedes §KUL006's cause claim)
+**Read this instead of §KUL006's "six lines of .apply explain the 62,500".** It does not. Measured,
+not argued — `scratchpad/poc_apply_overflow.js`, binary-searched on this machine:
+
+```
+§POC_THRESHOLD max args that survive Math.max.apply(null, arr) = 125,570
+§POC_APPLY n= 37,866  OK      ← the size §KUL006 blamed. Does NOT throw.
+§POC_APPLY n=124,999  OK
+§POC_LOOP  n=1,000,000 OK 7ms  ← proposed replacement, no arrays, no apply
+```
+
+Against the REAL vertex distribution (from our own CLI DBs):
+
+| DB | max verts | geometries over 125,570 |
+|---|---|---|
+| KUL_EQUIPMENT | **248,782** | **5 of 151** |
+| KUL_OVERALL_partial | 248,782 | **3 of 4,897** |
+| KUL_CONTAINMENT | 312 | **0 of 13,152** |
+
+**Verdict:** the `.apply` overflow is REAL but explains only a HANDFUL of elements (the 248,782-vertex
+monsters, ~2× the limit) — the four `§GEOM_SKIP` lines actually observed. **It cannot explain 62,500
+missing elements.** That bulk loss is UNEXPLAINED and must not be assumed solved. No second theory
+was invented to cover it — see §NEXT_SESSION item 1 for the one measurement that would settle it.
+
+### §KUL007_BBOX — `IfcBoundingBox` absence is NORMAL, not a defect (corrects §KUL006's framing)
+`grep -c "=IFCBOUNDINGBOX("` returns **0** in both CONTAINMENT.ifc and EQUIPMENT.ifc. That is not a
+bad export — **nothing in this pipeline has ever read that entity.** AABBs are derived from the
+tessellated geometry pass and indexed in an R-tree, everywhere:
+- `tools/federation_preprocessor.py` `extract_bboxes_from_merged()` — an EXACT COPY of
+  `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/federation_preprocessor.py`
+  (still present on this machine): `iterator = ifcopenshell.geom.iterator(...)` → `shape.geometry.verts`
+  → AABB → spatial DB. Note it uses `USE_WORLD_COORDS=True` and a multicore iterator, unlike
+  `extractIFCtoDB.py` which logs `§COORDS LOCAL (USE_WORLD_COORDS=False)`.
+- `extractIFCtoDB.py:144` `CREATE VIRTUAL TABLE elements_rtree USING rtree(...)`; line 167 comment
+  "AABB full extent (maxK-minK), same source as elements_rtree"; `rel_adjacency` reads it (888-908).
+- `viewer/import_worker.js:573-580` — the same derivation in JS.
+
+**Consequence for the fix:** site 2 is NOT a fallback, it is the **standard path for every model**;
+site 1 (the 8-vertex `IfcBoundingBox` shortcut, lines 483-493) is the rare exception and is provably
+safe (always 8 args). So the defect sits on the main path for ALL imports — it simply never fired
+before because no prior resident approached 125,570 verts (CONTAINMENT's max is 312).
+
+Also settled: the saved DB's `bbox_x/y/z` are **never null** (25,029 rows, 0 null, 0 zero) precisely
+BECAUSE the derivation runs. "No IfcBoundingBox in the IFC" and "null bbox in the DB" are different
+layers and must not be conflated.
+
+## §NEXT_SESSION — pursue these, in this order (written 2026-07-29, nothing below is started)
+**Read §KUL007 FIRST — it supersedes §KUL006's cause claim. Do not re-derive settled items.**
+
+1. **⛔ OPEN QUESTION, blocks everything else: where do the 62,500 elements go?**
+   The ONE measurement that settles it: capture the **complete** `§GEOM_SKIP` list from an OVERALL
+   import (not the 4 lines pasted in-session — the whole console). Then: how many lines, and is
+   `err=` identical on all of them? If ~62,500 lines share `Maximum call stack size exceeded`, the
+   threshold model is wrong and needs re-measuring in a **Web Worker** (smaller stack than Node's
+   main thread — the 125,570 figure is a Node baseline, NOT a worker measurement, and that gap is
+   the most likely reason the PoC and the field disagree). If only a handful, then ~62,000 elements
+   are dropped somewhere that logs NOTHING — a separate, worse defect. **Do not fix anything before
+   this number exists.**
+2. **The confirmed `.apply` fix — 3 lines, real but small.** `viewer/import_worker.js:573-580`,
+   replace the `vxs/vys/vzs` arrays + `Math.max.apply` with a single scalar min/max pass (PoC proves
+   1,000,000 verts in 7ms). **Leave site 1 (483-493) untouched — 8 args, provably safe.** Witness
+   claim: an element with >125,570 verts imports instead of `§GEOM_SKIP`. **Core Viewer code — the
+   user reserved this call; ASK before editing.**
+3. **Complete OVERALL DB via the 8-way split** (never run to completion). `split_ifc_by_discipline.py
+   --parts 8` is written, dry-run verified (8 × 10,971 products, 36MB RAM). Discipline axis is the
+   WRONG one here — measured ARC 1924MB/17.4GB vs MEP 76MB/0.6GB (§KUL003 tail). Then extract each
+   part under `systemd-run --user -p MemoryMax=…` (MemoryMax ONLY — `MemoryHigh` is a throttle that
+   stalled run 1 for 24 minutes). Expected result ~200MB DB, 66,214 elements.
+4. **Scene-merge on File Open** — user's ask: opening a fresh IFC/DB should offer "merge into the
+   current scene" instead of replacing. **Spec belongs in `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`
+   (a dated §SCENE_MERGE section), not here** — that file already owns `importMultiIFC` + Open Building.
+   Recon done, do not redo: (a) today's `§VERSION_MERGE` is a VERSION merge — `_rec.versions.push()`
+   then `_rec.metaDb = dbs.metaDb` OVERWRITES; it is not additive. (b) `importMultiIFC` merges only
+   within ONE drop; nothing reads an existing DB and appends. (c) **The scene layer ALREADY federates**
+   — `city.js:701` `A.cityBuildingDbs[archetype] = { db, libDb }` streams N buildings, each with its
+   own DB pair, via `A.buildingCentres`/`A.buildingsRendered`/`A.streamBuilding()`. (d) The ONLY
+   blocker is `scene.js:663` `_openDbBytes` → `location.assign('viewer.html?db=…')`, a full page
+   navigation. (e) The saved DB is already shaped for it: `elements_meta.building` labels the source,
+   `project_metadata.georef_offset=(0,-14420,0)` gives the shared frame.
+5. **Ship `docs/IFC_ExportGuide.md` to the BIM author** — the upstream fix. At 570 entities/element
+   KUL is ~20× heavier than LTU's 29 purely from tessellated export; no downstream tool recovers that.
+
+## §KUL008 — SHIPPED to sandbox 2026-07-29: two viewer fixes, both witnessed live
+Both in `/tmp/wt-sandbox` (localhost:8399), **NOT committed** — sandbox is on detached HEAD.
+
+**1. `import_worker.js:573` — bbox from vertices, scalar pass (Witness W-BBOX-BIGMESH).**
+Was 3 arrays + 6 `Math.max/min.apply`. `apply` spreads the array onto the call stack AS ARGUMENTS.
+Witness, real `Float32Array` data:
+```
+n=   312  OLD=ok    NEW=ok  identical=true
+n= 37866  OLD=ok    NEW=ok  identical=true
+n=125570  OLD=THROW(Maximum call stack size exceeded)  NEW=ok   [OLD lost this element]
+n=248782  OLD=THROW(...)                               NEW=ok 1ms
+```
+KUL's biggest mesh is 248,782 verts. Site 1 (line 489, the 8-vertex `IfcBoundingBox` shortcut) left
+alone — always 8 args, provably safe. Threshold measured LOWER with real Float32Array than with the
+synthetic PoC's 125,570, so the in-worker limit is lower again — treat 125,570 as an upper bound.
+
+**2. `navigate_find.js` `_buildMergedGhost` — §BBOX_GHOST_ALL fallback (Witness W-BBOX-GHOST-NOENVELOPE).**
+`_isEnvelope()` matches only Wall|Slab|Roof|CurtainWall|Covering|Plate. KUL has **9** such elements
+in 25,029 → Alt+Z's bbox state drew 9 boxes = visually nothing.
+**FIRST ATTEMPT FAILED and the witness caught it:** the condition was "envelope is EMPTY". KUL's is
+9, not 0, so it never fired — `boxes_AFTER=9`. Corrected to **empty OR (<2% of elements AND <200)**.
+Do NOT widen `_isEnvelope` itself — for models that HAVE an envelope the filter is the point
+(shell = far context); widening globally would take LTU from 28,569 to 122,667 boxes.
+```
+KUL070_merged   9 → 25,033   *** FALLBACK FIRES ***
+Terminal    34,446   LTU 28,569   Hospital 4,518   JKR 1,087    all unchanged
+```
+Margin: KUL 0.04%, nearest real case Hospital 7.1%. Live confirmation from the user's own console:
+`§BBOX_GHOST_ALL envelope=9/25029 (0.04%) … boxing ALL 25029 elements, discs=MEP,ARC`
+→ `§SHELL_GHOST_BBOX boxes=25029 discs=2 build_ms=78` → `disp=bbox`.
+
+Also: `panels.js:32` still labelled the box icon `key: 'Alt+X'` — corrected to `Alt+Z`. Alt+X was
+retired 2026-07-06 (`tools.js:244`); Alt+Z is a 3-state cycle Off → X-Ray → Bbox → Off.
+
+### §KUL008_CACHE — the step that nearly lost this twice, write it down
+An edit to a **precached** `viewer/*.js` is INVISIBLE in the browser until the service worker is
+bumped. Ctrl+Shift+R does NOT bypass it. Symptom: the code is correct, `curl` proves the server
+returns the new file, and the console still shows the OLD behaviour with no error. Steps:
+1. Edit the file.
+2. Bump `sw.js` `CACHE_VERSION` (e.g. `v851` → `v852`). **This is the real cache-bust on
+   GitHub-Pages-style serving** — browsers byte-check the SW script on navigation. See
+   `feedback_sw_version.md` for why the `?v=` register params are allowed to drift on bim-ootb.
+3. Bump the file's own `?v=` query where it is referenced (e.g. `navigate_find.js?v=56` → `?v=57`,
+   referenced in `main.js`) — lazy-loaded modules are fetched by that URL.
+4. Reload **twice**: first load installs the new SW, second serves the new JS.
+5. Confirm with `§BUILD_VERSION vNNN (sw-controlled)` in the console — it must show the NEW number.
+6. Still stale → DevTools → Application → Service Workers → Unregister → reload.
+
 ## §HOUSEKEEPING
 - `~/bim-ootb/IFC/KUL/` added to `.gitignore` (PR
   [bim-ootb#1075](https://github.com/red1oon/bim-ootb/pull/1075), auto-merge enabled) — these are
