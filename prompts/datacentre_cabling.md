@@ -698,3 +698,68 @@ mesh occupancy, not boxes.
 
 Cable schedule: not yet on this machine (checked `~/Downloads` 2026-07-30 — no `*cable*`/`*master*`
 match). When it lands, see §PRIORITY's question: does it name tray segments, or only from/to?
+
+## §CABLE_SCHEDULE — it arrived, and it answers §PRIORITY's question (2026-07-30)
+`Master Cable List 30.06.2026.xlsx`, 3.0 MB, 17 sheets. Copied to
+`~/bim-ootb/IFC/KUL/` (private, local-only — covered by `origin/main`'s `.gitignore:72 IFC/KUL/*`).
+Read-only inspection via `openpyxl`; nothing modified.
+
+### The answer: **FROM/TO ONLY — no tray segments named.**
+`MV CABLE SCHEDULE` / `LV CABLE SCHEDULE` header row (r4):
+`From | Location | To | Location | Cable Specification | … | Cable Lth | Cutting Lth (m) | No. of Cable | Status Cable Contain | Status Cable Cutting | Start/End Date`
+
+So §PRIORITY's question is settled the harder way: **#3 (fill/segregation) CANNOT be done from this
+file alone — it needs pathing to infer which tray segments each cable traverses.** Confirms
+§PATH_THEN_PLACE: pathing is the shared primitive, and #3 is downstream of it.
+
+### ⭐ The most valuable thing in the file: HAND-COMPUTED LENGTHS = ground truth
+| sheet | runs | runs with a length | total hand-computed |
+|---|---|---|---|
+| MV CABLE SCHEDULE | 22 | 21 | **1,052 m** |
+| LV CABLE SCHEDULE | 306 | 303 | **22,366 m** |
+
+`Cable Lth` is the engineer's own figure per run; `Cutting Lth` is that plus slack (e.g. HVSS→MV-A:
+`Cable Lth 168.0`, `Cutting Lth 175.0`). **This is #1 (pull lengths) caught in the act being done by
+hand — 324 runs of it.** It also hands us a real WITNESS rather than an assertion:
+
+> **W-PULL-LENGTH-VS-ENGINEER** — path `HVSS → MV-A` over the authored tray graph and compare against
+> his 168.0 m. Then `HVSS → MV-B` (146.0 m), `MV-A → RMU-HS` (64.0 m). Agreement within a stated
+> tolerance validates the engine against the human; disagreement is a finding either way. **Do not
+> ship a pathing engine without running this — the answer key already exists.**
+
+### ⚠ A coincidence to NOT build on
+LV hand-computed total **22,366 m** vs §PULL_LENGTHS' measured total tray centreline **22,406.3 m** —
+within **0.18%**. Striking, and **probably coincidence**: in a datacentre a single tray carries many
+cables, so total cable length should EXCEED total tray length substantially, not equal it. Flagged
+because it will tempt someone. **Per-run comparison (W-PULL-LENGTH-VS-ENGINEER) is the real test;
+the aggregate agreeing means nothing on its own.**
+
+### §CS-JOIN — the join problem nobody has solved yet
+Endpoints are **equipment/panel names, not GUIDs**: `HVSS`, `MV-A`, `MV-B`, `RMU-HS`, `HSSB`,
+`GEN-HS`, `HUPP-XFMR`, `MEDS-XFMR-1.1A…`, `CH-1.1-01`, `CHCOP-1.1A` (MV 21 distinct, LV ~294).
+`Location` is a room name: `Site Substation`, `MV Room First Floor`, `Admin Electrical Room E1.1`,
+`Electrical Room E1.1/E2.1`, `Catcher Room C1.1/C2.1`.
+
+**To path a cable we must first resolve those names to elements.** Candidate source: `EQUIPMENT.ifc`
+(292 elements — the panels/transformers). **Unverified — nobody has checked whether its element names
+match this vocabulary.** That is the next cheap measurement, and it gates everything downstream of it.
+Note the rooms are also unresolvable today: KUL070 has `IfcSpace=0`, so `Location` has nothing to bind
+to either.
+
+### Data hygiene — the LV sheet needs cleaning before use
+`LV CABLE SCHEDULE`'s distinct-endpoint set contains numeric junk (`0.2772277228`, `84.0`, `1241`,
+`61795`) leaking from merged/spilled cells, so **~294 is inflated** — the true count is lower. Rows are
+also double-spaced (data on odd rows). Any parser must handle both. Other sheets present but not yet
+read: `MV/LV Cable Drum`, `Material Tracking List`, `List of Equipment`, `Cable lug (by room)` —
+`List of Equipment` may be the §CS-JOIN key and is worth reading first.
+
+### Bonus find — a 4D hook nobody asked for
+`Status Cable Contain` (containment ready?), `Status Cable Cutting`, `Start Date` / `End Date` with real
+progress (`Done (25/4/2026)`, `Ongoing`). **The schedule already tracks containment readiness per cable
+run** — i.e. it is a 4D progress feed keyed to the very trays we modelled. Recorded, not pursued.
+
+## §DEFERRED_DECISION — where this surfaces (user, 2026-07-30)
+User: *"decide later when put up in Find Panel as a feature or in Modeller when it stablize later in
+other session."* **Do NOT decide this now and do NOT let it block the pathing work.** Pathing is
+read-only and surface-agnostic (§PATH_THEN_PLACE) — build the engine, defer the UI seam. Revisit only
+once pathing is stable, in its own session.
