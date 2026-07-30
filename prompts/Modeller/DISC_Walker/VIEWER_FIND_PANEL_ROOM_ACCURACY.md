@@ -2323,3 +2323,53 @@ session TWICE mid-run — assume it is gone and recreate per §21.14; nothing li
 **Read before funnel attempt 2:** `roompath_diagnostics/funnel_diag.js` test A2 — a straight corridor
 passes with left/right deliberately SWAPPED. It proves nothing about orientation on its own, and
 mistaking it for a green light is how attempt 1 reached a full sweep with a broken portal winding.
+
+### §21.18 FUNNEL ATTEMPT 2 — root cause found and fixed (a CONVENTION INVERSION). Large improvement,
+### all three thresholds still fail. Residuals named, not tuned away.
+`roompath_diagnostics/funnel_unit.js` — hand-computed expected answers over a **valid** channel: three
+convex cells `A=[0,2]×[0,2]`, `B=[2,4]×[0,2]`, `C=[2,4]×[2,4]` forming an L with a reflex corner at
+(2,2). (§21.15's A3 was a hand-built channel whose consecutive portals shared no convex cell, so it
+could not separate an algorithm bug from bad input. These can.)
+```
+B1 true-LEFT assigned to l, CONSISTENTLY   len=5.1167  expect=3.7025   ❌
+B2 one portal flipped                      len=5.1167  expect=3.7025   ❌
+B3 true-RIGHT assigned to l                len=3.7025  expect=3.7025   ✅
+B4 straight corridor                       len=6.0000  expect=6.0000   ✅
+```
+**The funnel code was correct all along.** The SSF formulation's `l`/`r` are defined in a CLOCKWISE
+frame, so its "left" is the vertex geometrically **right** of travel in a standard y-up/CCW frame.
+`aperture()` had the convention inverted — a one-line fix. Note B1 was *consistently* wound and still
+failed, so "enforce winding across the channel" (§21.16's proposed fix) was **not** the actual cause;
+§21.16's own discriminator had already ruled out convexity. Both prior hypotheses were wrong; the unit
+test found it.
+
+**Measured after the fix** (full set, and `CONVEX_ONLY=1` in brackets):
+| test | Clinic before → after | LTU before → after |
+|---|---|---|
+| T1 funnel longer than centres | 100/110 → **7/110** [2/15] | 73/76 → **1/76** [0/18] |
+| T2 median vs reference | 1.270× → **1.169×** (centres 1.213×) | 1.185× → **1.088×** (centres 1.131×) |
+| T3 off-map | 4.09% → 3.63% [2.23%] | 11.34% → **4.55%** [0.27%] |
+The funnel now BEATS centre-joining instead of losing to it, which is the qualitative flip T1 exists
+to detect. **But T1, T2 and T3 all still fail their thresholds. Attempt 2 is progress, not a fix.**
+
+**Three residuals, each with a hypothesis and a discriminating test — none of them "tune a constant":**
+1. **T1 residual (7/110, 1/76).** `aperture()` still derives travel direction per-portal from
+   `nextCentre − prevCentre`. That estimate degenerates on a U-turn or near-collinear door triple, and
+   a single flipped portal is enough (B2 proves one flip ruins the result). **Test:** log the pairs
+   that fail T1 and check whether their door sequence contains a >90° turn at the flagged portal.
+   THIS is where §21.16's "enforce winding across the channel" belongs — as the residual fix, not the
+   primary one.
+2. **T3 (3.63%/4.55%, and 2.23% even on convex-only).** Non-convexity is a large contributor —
+   confirmed twice now (11.34%→0.27% on LTU convex-only). But Clinic still leaks 2.23% on single-rect
+   pockets, so there is a second cause. **Leading hypothesis:** door boxes are inflated by `RES` to
+   punch the opening through, so an aperture endpoint can sit INSIDE the wall; a taut line hugging
+   that endpoint is then off-floor by construction. **Test:** clamp aperture endpoints to the
+   intersection of the door box with the two pockets it joins, and re-measure T3.
+3. **T2 (1.169×/1.088× vs ≤1.05×).** The funnel is exact *within a channel* — but the channel is
+   chosen by stage-2 Dijkstra over **centre-to-centre** edge weights, so a suboptimal door sequence
+   caps how good the funnelled path can be. **Test:** re-weight the door graph by funnelled (not
+   centre) in-pocket length and re-run; if T2 closes, the channel choice was the cap.
+
+**Status: nothing deployed, engine byte-unchanged.** The reference to beat is unchanged: §21.6's
+free-space map at **1.04× / 1.22×**. Order for attempt 3: residual 2 (T3, cheapest and the only one
+that is a correctness issue rather than a quality one), then 1, then 3.
