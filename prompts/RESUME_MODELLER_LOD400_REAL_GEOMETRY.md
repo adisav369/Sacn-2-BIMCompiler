@@ -381,6 +381,30 @@ trimmed walls NOT AT ALL, by design — loud console refusal instead of a 5-slab
 "Until resolved" = a future authored-data decision (e.g. trim the authored usage to 5 layers at
 source), not a rendering compromise.**
 
+### ✅ §ROW33-EXCEPTION — 2026-07-31, USER + WATCHDOG RULING (same day, supersedes the refusal end-state
+### above; bim-compiler PR #62 + bim-ootb PR #1102)
+**The user overturned the refusal for this case:** *"that is exception if it is a legit material part
+of the wall. It is granted free, it is not a blocky fall back."* Watchdog concurred: five authored
+slabs of real material IS LOD400 — nothing invented, nothing substituted. **The no-fallback rule bans
+INVENTED content, not fewer parts than the type list advertised.** The two conflated checks were
+split; only one was ever right:
+- **KEEP — `face_count>0` on every row that exists** (row 33 proper): a zero-face slab row is a lie.
+  All falsification surfaces stay (empty-row injection → RED; set-inconsistency → RED).
+- **DROP — slab count == authored `layer_count`:** a clipped instance carrying a whole-layer subset
+  is normal and honest. Extractor announces it as `§LAYER-CLIP` naming the absent layers; the index
+  records exactly the layers the instance's body carries (absent seq, never an empty row);
+  `verify_layer_geometry` accepts per-sequence-matching subsets; P10 counts an envelope only when a
+  hash has NO rows.
+**Result:** Duplex gate **GREEN again** (0/80, exit 0) — W-LOD400-ENVELOPE **15/15**, RED-first (the
+refusing extractor fails exactly the 2 new subset checks). Residents: `Duplex_geo.db` **v6** on OCI
+(byte-verified) — both walls render **5 real slabs** seqs [0-4] Σ0.493 m, 225 rows / 71 hashes / 0
+empty; geoV 5→6, sw v42→v43; `arc_editable.js` UNTOUCHED (§LAYER-GATE was always rows-existence-based
+— subsets pass naturally, and the L6 falsification proves it still refuses a rows-less hash).
+W-E2E-LAYERS-RESIDENTS **8/8 vs LIVE** (RED-first 5/8 vs pre-upload bytes); headless real-user open:
+**196 meshes** (the walls are back), `refused=0`, hardfail 0/196; W-GLASS-PARITY 4/4, W-ARC-EDITABLE
+10/10. SampleCastle's sporenkap still refuses — body misaligned with the authored set is a DIFFERENT
+failure than a whole-layer clip; do not extend the exception to it.
+
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
 **Everything below §LODHELL-ROOTCAUSE is closed unless it is listed as OPEN here.** Do not re-walk the
