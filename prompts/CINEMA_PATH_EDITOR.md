@@ -2638,8 +2638,121 @@ saved plan in the dropdown. Every log pasted this entire session was from a fres
 session — none of them exercised that button. Code-reading `_pathsApply`/`_buildOverride`/`open()`
 found nothing obviously wrong (all three correctly use `.length`-driven arrays, no hardcoded counts),
 which is not evidence of correctness — see D3 above for what "looks right by reading" cost this
-session twice already. **Next session: get the `§CPE_PATH_LOADED` segment before any further code
-reading or guessing.** Ask for it explicitly if the user reports the bug again without it.
+session twice already. ~~**Next session: get the `§CPE_PATH_LOADED` segment before any further code
+reading or guessing.**~~
+
+**✅ SOLVED 2026-07-31 (same day) — and the evidence being demanded was the WRONG LINE.**
+`_pathsApply`/`open()` were never at fault: `finish('ok')` staged nothing, so the authored bands did
+not survive the bake and the next Alt+C re-seeded the derived three. `§CPE_PATH_LOADED` was never
+going to appear because the user was not using the `saved ▾ open` button — the line that told the
+whole story was `§CPE_OPEN src=seeded bands=3`, present in every log they pasted. **Full diagnosis,
+line numbers and witness in §CPE_REOPEN_NODE below; do not re-open this block.**
+**Standing lesson:** when a log line you asked for three times never arrives, question whether the
+user's route emits it at all before questioning the user.
+
+## §CPE_REOPEN_NODE — the added node does not survive OK, and an unselected stick looks like every other band (spec 2026-07-31)
+**User, 2026-07-31:** *"the new nodes has to be darker blue when not selected to stand out, but if the
+listing has the new node, it be easier to spot"* → *"better fix those two as i can hardly pick out the
+extra node without been listed"*. Two defects, one symptom: **after authoring a stick you cannot find
+it again** — not in the 3D pipe (it is drawn identically to a seeded band) and not in the panel list
+(after a re-open it is not there at all).
+
+### D-A — ROOT CAUSE FOUND, and it is NOT the dropdown-Open path the last session was chasing
+§CPE_TITLE_BAND_COUNT (immediately above) spent a whole session asking for a `§CPE_PATH_LOADED`
+segment and never got one. **That log line was never going to exist, because the user was not using
+that route.** `§CPE_PATH_LOADED` only fires in `_pathsApply()` (the `saved ▾ open` button); the user's
+"opening" is **Alt+C again**. Traced end to end in the code, `origin/main`:
+
+| # | file:line | what it does |
+|---|---|---|
+| 1 | `cinema_path_editor.js:1637` | `a.stageCinemaPath(_buildOverride())` is called from **the `Save this path` button ONLY** |
+| 2 | `cinema_path_editor.js:1631` | the `OK` button calls `finish('ok')` — which resolves the override to the caller and **stages nothing** |
+| 3 | `cinema_maxq.js:624` | that override is used for THIS bake — `A.cinemaPathPlan(nFrames/fps, _cpeRes.override)` — and then dropped on the floor |
+| 4 | `cinema_maxq.js:494` | the NEXT Alt+C plans with **no `ov` at all** — `A.cinemaPathPlan(nFrames/fps)` |
+| 5 | `effects.js:6466` | `ov === undefined` → `_cpeLoadFromDb(); ov = A._cinemaPathEdit || null` → **null** (nothing staged, and the `cinema_path` DB table only exists after Ctrl+S) |
+| 6 | `effects.js:6342` | so the plan returns `bands: null` |
+| 7 | `cinema_path_editor.js:1454` | `authored = !!(plan.bands && plan.bands.length >= 2)` → **false** → `_cinemaSeedBands(plan.waypoints)` → back to the derived 3 |
+
+So the stick is not "missing from the list" — **it no longer exists**, and the list is telling the
+truth. §CPE_REOPEN_DOUBLE's adopt-don't-re-seed fix is correct and is not implicated: it only runs
+when `plan.bands` is populated, and on this route it never is.
+**The evidence already in every log the user pasted** is `§CPE_OPEN src=seeded bands=3` — asking for
+`§CPE_PATH_LOADED` was asking for the wrong line for four sessions running.
+
+**Fix:** `finish('ok')` stages the override the same way `Save this path` already does, when and only
+when there was an edit (`edited === true`, Guardrail 2's own test — an untouched OK must stay
+byte-identical and stage nothing). Cancel stages nothing. This is in-memory only: `stageCinemaPath`
+sets `A._cinemaPathEdit`; the `cinema_path` table is still written solely by Ctrl+S Save Building, so
+the on-disk contract is unchanged.
+
+**Second half — provenance is thrown away and then GUESSED back.** `_buildOverride()` (`:426`) maps
+bands to `{c,d,len}` only, dropping `_stick`/`_s`. Both readers therefore infer stick-ness from
+POSITION — `_pathsApply` (`:932`) and `open()`'s `clone` (`:1461`) both use `i > 0 && i < n-1` — which
+says *every* middle band is a stick. Harmless while the only per-stick affordance was the `×` button;
+**not harmless once colour depends on it (D-B), because the colour would then lie about which node
+the user added.** So `_buildOverride` carries `_stick`/`_s`, and both readers prefer the stored flag,
+falling back to the index rule only when it is absent (records saved before this change keep their `×`).
+
+### D-B — an unselected stick is drawn exactly like a seeded band
+`_redrawScene` (`:364-379`) colours by ZONE and by HELD, never by provenance: bar `0xffffff`, mid
+`0xffffff`, ends `0x4fc3f7`, anything held `0xff8c00`. A node the user dropped is pixel-identical to
+one the seeder produced.
+**Change (one rule, KISS):** a band with `_stick` that is NOT held draws its bar and all three handles
+in **dark blue `0x1565c0`** — a colour already in this file's palette (`:98`, the light-scene contrast
+colour). Sizes are untouched, so mid-vs-end still reads by radius, and held-orange still wins over
+everything. The panel row for a stick gets the matching cue so the list and the pipe agree: label in
+`#64b5f6` (readable tint of the same hue on the dark panel) and, when not selected, a `#1565c0`
+left border where a selected row shows `#ff8c00`.
+
+### Witness claims — `witness_cpe_reopen_node.js`, and what each proves or disproves
+| gate | proves / disproves |
+|---|---|
+| G-RN-1 | **RED on `origin/main`.** Spawn a stick (rows N→N+1), click OK, let the bake finish, re-open Alt+C: the panel lists **N+1** rows and the log says `§CPE_OPEN src=authored bands=N+1`. Today it says `src=seeded bands=3` — the node is gone. |
+| G-RN-2 | Guardrail 2 is intact: open, touch nothing, OK → `A._getCinemaPathEdit()` stays null and the next open is still `src=seeded`. An unedited OK must not silently pin a path. |
+| G-RN-3 | Provenance is CARRIED, not guessed: after the re-open of a 4-band path whose stick is at index 2, exactly ONE row has a `×` and it is row 2 — not rows 1 and 2. Disproves the index inference. |
+| G-RN-4 | Colour by provenance: via a new read-only `_probeHandles()` hook, every handle of the spawned stick reads `0x1565c0` while it is unheld, every handle of a seeded band reads its existing zone colour, and grabbing the stick turns its held handle `0xff8c00`. Numbers off the real meshes — not a screenshot (CLAUDE.md FUNDAMENTAL LAW). |
+
+**Not in scope here:** D1/D3/D4 of §CPE_AIM_DEPTH (different subsystem, different session), and the
+`saved ▾ open` route — it was never broken; G-RN-3 covers it only insofar as it now reads stored
+provenance.
+
+### ✅ BUILT AND WITNESSED 2026-07-31 — `bim-ootb` PR #1104, CPE v17, viewer sw v890
+`witness_cpe_reopen_node.js`, **Duplex 9/9** (`PORT=8437 node witness_cpe_reopen_node.js`).
+**RED first, on `origin/main` with only the read-only probe hook added: 3/9** — `rows 4 -> 3`,
+`§CPE_OPEN src=seeded bands=3`, `_cinemaPathEdit=null`. The node was gone, exactly as traced.
+
+| gate | measured (fixed build) |
+|---|---|
+| G-RN-1 | rows `4 -> 4` on re-open, `§CPE_OPEN src=authored bands=4 waypoints=8` (main: `4 -> 3`, `src=seeded bands=3`) |
+| G-RN-1b | `§CPE_OK_STAGED bands=4 sticks=1` (main: no such line, `_cinemaPathEdit=null`) |
+| G-RN-2 | untouched OK → `_cinemaPathEdit=null`, next open `src=seeded`, `§CPE_OK_STAGED=0` — Guardrail 2 holds |
+| G-RN-3 | removable rows `[1]`, want `[1]` — one ×, at the dropped index |
+| G-RN-3b | row 1 border `rgb(21,101,192)`, label `rgb(100,181,246)` |
+| G-RN-4a | stick handles `a:0x1565c0 mid:0x1565c0 b:0x1565c0`; seeded `a:0x4fc3f7 mid:0xffffff b:0x4fc3f7` ×3 |
+| G-RN-4b | grabbed stick mid handle `0xff8c00` — selection stays the loudest state |
+
+**One thing the witness found that the spec above did not predict:** the plan's own band echo
+(`effects.js:6342`) also stripped `_stick`/`_s`. With only the editor-side fix in place G-RN-3 was
+still RED (`labels=[settle | stick @ 15% | stick | stop]`, no × anywhere) — the plan is what a
+re-open reads from, so provenance had to be carried at THREE seams, not two. Third one added.
+
+**A fourth thing fixed on the way, because it defeated the whole point of the ask:** `_labelOf`
+called EVERY middle band a "stick" (§CPE_STICK's blanket rule, written when the count was 3), so a
+list with one added node read `settle | stick @ 15% | stick | stop` — the user's own node was one of
+two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
+
+**Regressions run, both against this build AND `origin/main`:**
+- `witness_cinema_path_editor.js` 7/9 — **identical on both**; G7/G10 are pre-existing (§CPE_AIM_DEPTH
+  lane), and **G1 OK-without-edit byte-identity is `maxPoseDiff=0` on both sides**, which is the gate
+  the staging change could plausibly have broken.
+- `witness_cpe_click_slop.js` was **1/4 on `origin/main` as well** — harness rot, never a product
+  regression, and worth recording because it would have been misread as one: the editor opens at the
+  pre-dive orbit pose where Duplex's entire 15 m walk projects into a **~30 px smear, every pixel of
+  it inside a band handle's `GRAB_PX=18` radius**, so every gesture resolved to a handle drag and the
+  witness reported "sticks do not spawn". Repaired here (look closer first — free, because
+  §CPE_PREVIEW_DIVERGENCE pins re-plans to the OPEN pose — plus a handle-clearance requirement on the
+  chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
+  Any future CPE witness that clicks the pipe needs the same two helpers.
 
 ## §CPE_PREVIEW_BUTTON — a Preview button, NOT auto-preview (settled 2026-07-28)
 User, in sequence: *"and the preview must always repeat each time an edit is done"* → *"Or a preview
