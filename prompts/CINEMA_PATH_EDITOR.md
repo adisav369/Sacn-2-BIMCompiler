@@ -2778,10 +2778,23 @@ OUTSIDE the building — dive, pullback and orbit are all above or beyond it —
 question from up there.
 
 **The rule (deterministic, derived from the building, no constants invented):** a room may only claim
-the camera if the camera is within **half a storey pitch** of that room's own `cz`. The pitch is the
+the camera if the camera is within **one storey pitch** of that room's own `cz`. The pitch is the
 median gap between the distinct storey z values the graph already carries — the building states its
 own floor-to-floor, nothing is assumed. Outside that band: **no title**, never a fabricated one
 (the same rule `:78` already applies to "no room here").
+
+**⚠ THE BAND WAS SPECCED AT HALF A PITCH AND MEASURED WRONG — recorded because the instinct to halve
+it will recur.** Half a pitch broke `witness_cpe_room_title_timing.js` (3/3 → 1/2, its one real
+Duplex segment deleted). The measurement that settled it, taken before touching the number:
+```
+Duplex room datums (cz):  -0.63 (T/FDN)   1.62 (Level 1)   4.63 (Level 2)   6.40 (Roof)   pitch 2.25m
+Duplex's OWN derived walk, camera IFC z:  2.09 → 2.47 → 2.83 → 3.13 → 3.72 → 4.46 → 4.92
+```
+The building's own cinema path CLIMBS, and spends its middle **1.2–1.5 m above Level 1's datum** —
+inside the building, legitimately captioned, and outside a half-pitch band. One pitch also states
+something true rather than tuned: *a room stops claiming you when you are a full floor from its
+datum.* The user's case is rejected by roughly **6x** that margin, so nothing was weakened to make a
+test pass.
 
 **Explicitly NOT in scope:** giving rooms real vertical extents in the room graph. That is the
 better long-term answer and it is a `common/room_graph.js` change affecting every consumer — this
@@ -2792,9 +2805,21 @@ section fixes the title card against the data that exists today.
 |---|---|
 | G-RTH-1 | control: a synthetic pose AT a real room's own `cz`, over its rect, still titles that room. Guards against the fix simply switching titles off. |
 | G-RTH-2 | **RED today.** The SAME x/y raised by two storey pitches yields NO segment. Today it returns the room and captions it. |
-| G-RTH-3 | the boundary is the stated one, not an accident: at 0.4 x pitch above `cz` a title is still produced; at 0.9 x pitch it is not. |
+| G-RTH-3 | the boundary is the stated one, not an accident: at 0.9 x pitch above `cz` a title is still produced; at 1.6 x pitch it is not. |
 | G-RTH-4 | the log tells the story — `§CPE_ROOM_TITLE_TIMELINE` gains `storeyPitch=<m> rejectedByHeight=<n>`, so "why did my film have no captions" is answerable from the console instead of guessed. |
 | G-RTH-5 | no regression at floor level: a walk sampled at storey height produces the same segment count as before the change. |
+
+### ✅ BUILT AND WITNESSED 2026-07-31 — `bim-ootb` PR #1108, viewer sw v893
+`witness_cpe_room_title_height.js` **Duplex 5/5**; **RED on `origin/main` 2/5** — `z=cz+4.51m →
+segments=1 name="⚠ Roof R1"`, i.e. 4.5 m above the room and still captioned as if inside it.
+Regressions re-run and GREEN on both sides: `witness_cpe_room_title.js` 11/11,
+`witness_cpe_room_title_timing.js` 3/3 (the segment the half-pitch band had deleted is back, and it
+is the same `≈ Level 1 R1` / `realSec=[1.65,3.90]` the baseline produced).
+The log now carries the diagnosis: `§CPE_ROOM_TITLE_TIMELINE segments=0 suppressed=0
+rejectedByHeight=81 storeyPitch=2.3m` — `rejectedByHeight` counts samples over a room's FOOTPRINT but
+outside its storey band, so "why did my film have no captions" is read, not guessed.
+**Single-storey buildings:** no pitch is derivable, `storeyPitch=0.0` is logged and the height test is
+DISABLED (behaviour identical to before) rather than run against an invented number.
 
 ## §CPE_REOPEN_PATHLEN — a saved path re-opens 61% LONGER than it was saved (OPEN, measured 2026-07-31)
 Found while answering the user's *"do u notice the fly to the front of the building before turning in,
