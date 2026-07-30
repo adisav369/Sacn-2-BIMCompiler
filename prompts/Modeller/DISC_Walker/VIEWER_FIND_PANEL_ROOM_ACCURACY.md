@@ -2228,3 +2228,49 @@ routes ([[feedback_witness_headless_regime_gap]]).
 - Re-run `witness_room_path_doormap.js` — target: median ratio ≤1.05× vs direct grid A*, query ~1 ms.
 - Nothing here authorises touching `common/room_graph.js` or `viewer/navigate_find.js`. Shipping is
   §21.11 task 4, gated on §20's R1-R6.
+
+### §21.15 FUNNEL ATTEMPT 1 — FAILED ALL THREE FALSIFICATION TESTS (2026-07-31). Not tuned away.
+`witness_room_path_funnel.js`, log `/tmp/w_roompath_funnel.log`. The tests in §21.11 task 1 were
+written before the code, per §21.14, and all three fired:
+```
+§FUNNEL_RATIO Clinic     vs reference — doorCentres median=1.213x | FUNNEL median=1.270x  (WORSE)
+§FUNNEL_RATIO LTU_AHouse vs reference — doorCentres median=1.131x | FUNNEL median=1.185x  (WORSE)
+§FUNNEL_T1 Clinic funnelLongerThanCentres=100/110   LTU 73/76
+§FUNNEL_T3 Clinic offMap funnel=4.09% vs reference 0.04%   LTU funnel=11.34% vs reference 0.03%
+  ❌ T1  ❌ T2  ❌ T3
+```
+**The funnel made it worse and pushed the line off the floor.** T1 was written precisely to catch this
+class of error, and it did its job on the first run.
+
+**Unit tests on synthetic channels with known answers (`/tmp/funnel_diag.js`):**
+```
+A1 straight corridor, 3 portals  len=6.000 (expect 6.000) → straight line. PASSES.
+A2 same corridor, left/right SWAPPED  len=6.000 → ALSO passes. A1 cannot clear the orientation logic.
+A3 L-bend requiring a real corner  len=11.147 (straight 7.211)
+   pts=[(0,0),(1,2),(3,0),(4,6)]  ← ZIGZAGS left, then right, then up. A taut path would not.
+```
+**Two candidate causes remain OPEN. Do not pick one without the discriminating test below.**
+- **(A) the left/right portal orientation is wrong.** A1 does not clear it — A2 proves a straight
+  corridor passes either way. A3's zigzag is consistent with this.
+- **(B) the channel is invalid, so the funnel's precondition is unmet.** The funnel is exact only over
+  a sequence of portals that are shared edges of **CONVEX** cells. Our portals are door apertures and
+  our cells are compiled pockets — and a pocket is a UNION of rects (§MULTI-RECT: Clinic 304 rects /
+  207 rooms, LTU 529 / 422), so corridor and L-shaped pockets are **not convex**. Cutting a taut line
+  across a non-convex pocket leaves the floor — which is exactly what T3 measured (0.04% → 4.09%).
+  A3's zigzag is equally consistent with a hand-built channel whose two portals share no convex cell.
+
+**The discriminating test, cheap, do this FIRST next session:** re-run
+`witness_room_path_funnel.js` restricted to pairs whose entire door sequence passes only through
+**single-rect (convex) rooms**. If T1/T3 pass on that subset, the cause is (B) and the missing step is
+**convex decomposition of each pocket** — the navmesh construction step this lane skipped, after which
+doors are merely a SUBSET of the portals (every shared edge between adjacent convex cells is one).
+If T1/T3 still fail on convex-only pairs, the cause is (A) and the orientation logic is the bug.
+
+**Correction to §21.12, made honestly:** that section said part of §21.6's measured 1.04×/1.22× is 45°
+grid-quantisation bias that the funnel would remove. That claim is now doubtful — §21.6's reference
+ALREADY applies string-pull, which collapses staircase artifacts into straight runs, so most of the
+bias is likely gone before the funnel is reached. **Treat the "funnel earns twice" expectation in
+§21.12 as unproven.** The reference remains the number to beat: 1.04× / 1.22×.
+
+**Status unchanged: nothing deployed, engine byte-unchanged.** §21.11's task order stands; task 1 is
+now "run the convex-subset discriminator, then fix whichever cause it names".
