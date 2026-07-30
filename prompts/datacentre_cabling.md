@@ -841,3 +841,58 @@ silently.
 **Why this serves "general needs":** keying on (cores, mm², insulation, voltage) rather than on KUL part
 numbers means the table works for every project, and KUL-specific diameters — if the BIM person does
 send them — become an OVERRIDE layer on top, not a replacement.
+
+## §SLD — Single/One-Line Diagrams landed, and they close the NAMING gap (2026-07-30)
+`~/Downloads/KUL070-SWC-SD-E-TRN-1312.3.zip` (17.8 MB) → extracted to `~/bim-ootb/IFC/KUL/SLD/`
+(private, under `origin/main`'s `.gitignore IFC/KUL/*`). 9 drawings, DWG + plotted PDF, `.bak` removed:
+
+`E-7000` MV SINGLE LINE · `E-7001` POWER ONE LINE HOUSE LINE UP · `E-7002` CATCHERS ·
+`E-7003/7004` 1.1A/1.1B · `E-7015/7016` 2.1A/2.1B · **`E-7020/7021` ONE LINE MECHANICAL 1.1A/1.1B**
+
+**Tooling note:** no DWG converter on this machine (`dwg2dxf`, `ODAFileConverter`, `dwgread` all
+missing; `ezdxf` 1.4.3 is present but reads DXF, not DWG). The plotted PDFs are vector, so
+`pdftotext -layout` extracts the tags cleanly — **use the PDFs, don't fight the DWGs.**
+
+### The gain — measured against the §CS_JOIN_MEASURED baseline
+| tag source | endpoints resolved | runs with BOTH ends resolved |
+|---|---|---|
+| `EQUIPMENT.ifc` only | 137/298 = 46.0% | 134/325 = 41.2% |
+| **SLD only** | 265/298 = 88.9% | 290/325 = 89.2% |
+| **EQUIPMENT + SLD** | **273/298 = 91.6%** | **299/325 = 92.0%** |
+
+Every prefix that was missing is present: `DAHU` 20/20 · `EF-` 28/28 · `CHWP` 4/4 · `CH-1.1` 4/4 ·
+`HTP` 6/6 · `CRAC` 15 (needed 10) · `MSDB` 23 (18) · `CT-` 6 (4) · `CWP` 5 (4) · `GPP` 11 (9).
+The 25 stragglers are mostly free prose in the schedule, not tags — `FIRE HYD PUMP 1`,
+`FUEL TRANSFER PUMP A`, plus `GEN-1.1C/2.1B/2.1C`.
+
+### ⚠ WHAT THIS DOES **NOT** FIX — do not conflate these two ceilings
+**The SLD gives IDENTITY and LOGICAL TOPOLOGY. It gives NO GEOMETRY.** A `CRAC-1.1-001` now has a
+confirmed tag and a known place in the electrical hierarchy — and still has **no coordinates in any
+model we hold.** So:
+
+| capability | ceiling | why |
+|---|---|---|
+| cable-list validation, from/to completeness, feed-hierarchy checks | **92%** | needs identity only |
+| **PATHING / pull lengths** | **still ~41%** | needs a physical position; SLD has none |
+
+**§CS_JOIN_MEASURED's ask still stands: a MECHANICAL-EQUIPMENT IFC is what lifts pathing.** The SLD
+lifts everything that is not geometry. Anyone quoting "92%" for pathing has conflated the two.
+
+### The second, unasked-for value: an INDEPENDENT topology to cross-check against
+A one-line diagram *is* the logical feed graph — which panel feeds which, through which breaker. The
+cable list's `From`/`To` columns are the same graph in tabular form, authored separately. **So they can
+be diffed**, and any disagreement is a real finding, not noise:
+- a feed on the SLD with no cable in the schedule → **missing cable** (or missing from the schedule)
+- a cable in the schedule with no feed on the SLD → **wrong tag, or an undocumented feed**
+- ratings/breaker sizes on the SLD vs `Cable Specification` → **sizing cross-check**
+
+That is a deliverable needing **no geometry, no pathing engine and no rules DB** — pure text-vs-table
+diff. Cheap, and it audits two documents the engineer maintains by hand. **Candidate for shipping
+before anything else on this page**, alongside the §T5 dead-end report.
+
+### Recorded caveat on the extraction
+`pdftotext` token-matching is deliberately loose (any `[A-Z][A-Z0-9]*([-.][A-Z0-9]+)*` of length ≥3),
+so **88.9% "SLD only" is an UPPER BOUND** — some hits may be incidental text on the sheet (legends,
+notes, revision blocks), not equipment tags. Before building the diff, parse the SLD properly (block
+attributes if a DWG converter is installed, or positional/layout parsing of the PDF) rather than trusting
+bag-of-tokens. **The direction of the finding is safe; the exact percentage is not yet.**
