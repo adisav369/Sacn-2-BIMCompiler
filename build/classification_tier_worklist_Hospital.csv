@@ -1,0 +1,342 @@
+rank,type_key,ifc_class,instances,discipline,tier,proposed_code,proposed_code_label,evidence_sibling_type,evidence_sibling_instances,sibling_coded_instances_in_class,sibling_distinct_codes_in_class,join_key_ambiguous
+1,Pipe Types:Standard,IfcPipeSegment,5950,MECH,derived:ai,,,,,0,0,
+2,Pipe Types:Threaded Under 65mm,IfcPipeSegment,5758,SPR,derived:ai,,,,,0,0,
+3,M_Elbow - Generic:Standard,IfcPipeFitting,3115,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+4,Elbow Reducing - Threaded - MI - Class 150:Standard,IfcPipeFitting,2633,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+5,Curtain Wall:Storefront,IfcMember,2530,ARC,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+6,Round Duct:Taps,IfcDuctSegment,2490,MECH,derived:ai,,,,,0,0,
+7,Curtain Wall:Storefront - Rib End,IfcMember,1518,ARC,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+8,Pipe Types:PVC,IfcPipeSegment,1414,PLB,derived:ai,,,,,0,0,
+9,Tee Reducing - Threaded - MI - Class 150:Standard,IfcPipeFitting,1381,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+10,"Sprinkler - Pendent - Hosted:1/2"" Pendent",IfcFireSuppressionTerminal,1354,SPR,derived:ai,,,,,0,0,
+11,M_Transition - Generic:Standard,IfcPipeFitting,1323,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+12,Rectangular Duct:Mitered Elbows / Taps,IfcDuctSegment,1238,MECH,derived:ai,,,,,0,0,
+13,Curtain Wall:Exterior Glazing,IfcMember,1164,ARC,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+14,M_Duplex Receptacle:Standard,IfcBuildingElementProxy,1111,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+15,M_Tee - Generic:Standard,IfcPipeFitting,1070,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+16,Pipe Types:Welded,IfcPipeSegment,943,MECH,derived:ai,,,,,0,0,
+17,M_Round Elbow:1.5 D,IfcDuctFitting,811,MECH,derived:ai,,,,,0,0,
+18,System Panel:Glazed Spandrel,IfcPlate,805,ARC,derived:ai,,,,,0,0,
+19,Basic Wall:Interior - 123mm Partition,IfcWallStandardCase,788,ARC,derived:ai,,,,,0,0,
+20,M_Bend - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,771,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+21,System Panel:Glazed,IfcPlate,762,ARC,derived:ai,,,,,0,0,
+22,M_Rectangular to Round Transition - Angle:45 Degree,IfcDuctFitting,732,MECH,derived:ai,,,,,0,0,
+23,M_Plain Recessed Lighting Fixture:600x600 - 277,IfcLightFixture,692,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+24,UB-Universal Beam:406x178x60UB,IfcBeam,658,STR,derived:ai,,,,,0,0,
+25,Rectangular Duct:Radius Elbows / Taps,IfcDuctSegment,657,MECH,derived:ai,,,,,0,0,
+26,M_Round Transition - Angle:45 Degree,IfcDuctFitting,590,MECH,derived:ai,,,,,0,0,
+27,Sunpower E19 Solar Panel:Sunpower E19 Solar Panel,IfcBuildingElementProxy,567,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+28,Balancing Damper - Round:Standard,IfcBuildingElementProxy,546,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+29,M_Round Takeoff:Standard,IfcDuctFitting,535,MECH,derived:ai,,,,,0,0,
+30,M_Rectangular Transition - Angle:45 Degree,IfcDuctFitting,497,MECH,derived:ai,,,,,0,0,
+31,System Panel:Glazed Spandrel - SSG,IfcPlate,471,ARC,derived:ai,,,,,0,0,
+32,M_Plain Recessed Lighting Fixture:600x1200 - 277,IfcLightFixture,440,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+33,UB-Universal Beam:305x165x40UB,IfcBeam,438,STR,derived:ai,,,,,0,0,
+34,Compound Ceiling:600 x 600mm grid,IfcCovering,430,ARC,derived:ai,,,,,0,0,
+35,M_Rectangular Elbow - Mitered:Standard,IfcDuctFitting,420,MECH,derived:ai,,,,,0,0,
+36,Flex Duct Round:Flex - Round,IfcDuctSegment,412,MECH,derived:ai,,,,,0,0,
+37,M_Smoke Detector:Plain,IfcDistributionControlElement,401,FIRE,derived:ai,,,,,0,0,
+38,Pipe Types:Groved Over 50mm,IfcPipeSegment,387,SPR,derived:ai,,,,,0,0,
+39,M_Rectangular Elbow - Radius:1.5 W,IfcDuctFitting,378,MECH,derived:ai,,,,,0,0,
+40,Elbow Long Radius - Butt Welded - CS:Standard,IfcPipeFitting,378,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+41,Basic Wall:Interior - 183mm Partition,IfcWallStandardCase,373,ARC,derived:ai,,,,,0,0,
+42,M_Rectangular Takeoff:Standard,IfcDuctFitting,363,MECH,derived:ai,,,,,0,0,
+43,Fire Alarm Horn Strobe - Ceiling Mounted:Standard,IfcDistributionControlElement,353,FIRE,derived:ai,,,,,0,0,
+44,M_Supply Diffuser - Rectangular Face Round Neck - Hosted:610 mmx610 mm Face 150 mm Neck - Hosted,IfcBuildingElementProxy,345,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+45,M_Reducer - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,324,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+46,M_Wye 45 Deg Reducing - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,314,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+47,UB-Universal Beam:533x210x92UB,IfcBeam,288,STR,derived:ai,,,,,0,0,
+48,Cap - Threaded - MI - Class 150:Standard,IfcPipeFitting,243,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+49,UB-Universal Beam:356x171x51UB,IfcBeam,219,STR,derived:ai,,,,,0,0,
+50,M_Supply Diffuser_HEPA - Rectangular Face Round Neck - Hosted:305 mmx305 mm Face 250 mm Neck - Hosted 2,IfcBuildingElementProxy,209,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+51,UC-Universal Column-Column:356x368x177UC,IfcColumn,207,STR,derived:ai,,,,,0,0,
+52,M_Ball Valve - 50-150 mm:15 mm,IfcValve,207,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+53,M_Single-Flush:0915 x 2032mm_Wood,IfcDoor,193,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+54,M_Single-Flush:0915 x 2032mm_Wood,IfcOpeningElement,193,ARC,derived:ai,,,,,0,0,
+55,Curtain System:2000 x 5000mm,IfcMember,190,ARC,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+56,System Panel:Glazed SSG,IfcPlate,173,ARC,derived:ai,,,,,0,0,
+57,M_Rectangular Column:475 x 475mm,IfcColumn,167,ARC,derived:ai,,,,,0,0,
+58,Elbow - Threaded - MI - Class 150:Standard,IfcPipeFitting,166,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+59,M_Tee Sanitary - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,158,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+60,UB-Universal Beam:533x210x109UB,IfcBeam,147,STR,derived:ai,,,,,0,0,
+61,M_Return Diffuser:600 x 600 Face 300 x 300 Connection,IfcBuildingElementProxy,144,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+62,Compound Ceiling:Gyp Ceiling,IfcCovering,143,ARC,derived:ai,,,,,0,0,
+63,M_Rectangular Union:Standard,IfcDuctFitting,142,MECH,derived:ai,,,,,0,0,
+64,Curtain Wall:Exterior Glazing at front entry,IfcMember,140,ARC,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+65,M_Data Outlet:Plain,IfcElectricAppliance,138,ELE,derived:ai,,,,,0,0,
+66,VAV8:PValve200,IfcBuildingElementProxy,128,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+67,M_Chair-Breuer:M_Chair-Breuer,IfcFurniture,126,ARC,derived:ai,,,,,0,0,
+68,Coil - Hot Water:Standard,IfcBuildingElementProxy,126,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+69,M_C-Channel:C310X30.8,IfcBeam,124,STR,derived:ai,,,,,0,0,
+70,Reducer Concentric - Butt Welded - CS:Standard,IfcPipeFitting,115,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+71,M_Nurse Station:Standard,IfcSwitchingDevice,113,ELE,derived:ai,,,,,0,0,
+72,M_Single-Flush:0915 x 2134mm_Wood,IfcOpeningElement,112,ARC,derived:ai,,,,,0,0,
+73,M_Single-Flush:0915 x 2134mm_Wood,IfcDoor,112,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+74,Return Diffuser - Hosted:Workplane-based Return Diffuser,IfcBuildingElementProxy,112,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+75,Basic Wall:Exterior - Metal Panel on Mtl. Stud,IfcWall,108,ARC,derived:ai,,,,,0,0,
+76,M_Floor Drain - Round:125 mm Strainer - 50 mm Drain,IfcBuildingElementProxy,108,PLB,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+77,SINK:SINK,IfcBuildingElementProxy,108,PLB,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+78,M_Manual Pull Station:Standard,IfcDistributionControlElement,106,FIRE,derived:ai,,,,,0,0,
+79,PValve250:PValve250,IfcBuildingElementProxy,104,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+80,Round Wye with Transition - Symmetric:Standard,IfcDuctFitting,103,MECH,derived:ai,,,,,0,0,
+81,MedGasOutlet Triple - Hosted:MedGasOutlet Triple - Hosted,IfcBuildingElementProxy,103,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+82,M_Exhaust Grill:600 x 600 Face 300 x 300 Connection,IfcBuildingElementProxy,100,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+83,M_Rectangular Elbow - Radius:1 W,IfcDuctFitting,95,MECH,derived:ai,,,,,0,0,
+84,M_Ball Valve - 50-150 mm:25 mm,IfcValve,94,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+85,M_RPC Shrub:Century - 0.56 Meters,IfcBuildingElementProxy,84,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+86,Louver - Nystrom:Louver - Nystrom,IfcBuildingElementProxy,76,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+87,Tee - Butt Welded - CS:Standard,IfcPipeFitting,62,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+88,M_Single-Flush:0813 x 2134mm,IfcOpeningElement,60,ARC,derived:ai,,,,,0,0,
+89,M_Single-Flush:0813 x 2134mm,IfcDoor,60,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+90,Tee Branch Reduced - Butt Welded - CS:Standard,IfcPipeFitting,60,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+91,M_Round Column:610mm Diameter,IfcColumn,58,ARC,derived:ai,,,,,0,0,
+92,Basic Wall:Exterior - Metal Panel on Mtl. Stud,IfcOpeningElement,57,ARC,derived:ai,,,,,0,0,
+93,Floor:150mm Concrete With 75mm Metal Deck,IfcOpeningElement,57,STR,derived:ai,,,,,0,0,
+94,Exit Sign Ceiling Based:300x1200 - 120,IfcLightFixture,57,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+95,M_VAV Unit - Bypass:200 mm,IfcBuildingElementProxy,57,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+96,M_Rectangular Column:500 x 500mm,IfcColumn,56,ARC,derived:ai,,,,,0,0,
+97,08_Storefront w 2h mull_1vert mull:2000w x 4000h,IfcWindow,53,ARC,derived:ai,,,,,0,0,
+98,M_RPC Shrub:Boxwood - 0.8 Meters,IfcBuildingElementProxy,53,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+99,Railing:1100mm Pipe,IfcRailing,52,ARC,derived:sibling,C2010400,Stair Handrails/Balustrades,Railing:HAS – 42”- Series 200 cable railing – fascia mounted w/ 100 top rail,29,41,1,no
+100,M_Pendant Light - Linear - 2 Lamp:1200mm - 277V,IfcLightFixture,52,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+101,M_Round Endcap:Standard,IfcDuctFitting,52,MECH,derived:ai,,,,,0,0,
+102,Basic Wall:Exterior - Brick on Mtl. Stud w/ cap,IfcOpeningElement,50,ARC,derived:ai,,,,,0,0,
+103,M_Supply Diffuser - Rectangular Face Round Neck - Hosted:610 mmx610 mm Face 200 mm Neck - Hosted,IfcBuildingElementProxy,50,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+104,UB-Universal Beam:457x152x60UB,IfcBeam,48,STR,derived:ai,,,,,0,0,
+105,Cable Tray with Fittings:Ladder Cable Tray,IfcCableCarrierSegment,45,ELE,derived:ai,,,,,0,0,
+106,Return Grille - Rectangular - Hosted:Standard,IfcBuildingElementProxy,42,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+107,Basic Wall:Interior - Blockwork 190,IfcOpeningElement,41,ARC,derived:ai,,,,,0,0,
+108,Basic Wall:Exterior - Metal Panel on 92 mm Mtl. Stud,IfcWall,40,ARC,derived:ai,,,,,0,0,
+109,Basic Wall:Interior - 123mm Partition,IfcOpeningElement,40,ARC,derived:ai,,,,,0,0,
+110,M_RPC Shrub:Rhododendron - 1.2 Meters,IfcBuildingElementProxy,40,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+111,10_Stall Pilaster:Stall Pilaster,IfcBuildingElementProxy,39,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+112,10_Stall Panel:Stall Panel,IfcBuildingElementProxy,39,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+113,Conduit with Fittings:Electrical Metallic Tubing (EMT),IfcCableCarrierSegment,39,ELE,derived:ai,,,,,0,0,
+114,M_Supply Diffuser:600 x 600 Face 300 x 300 Connection,IfcBuildingElementProxy,36,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+115,M_Balancing Valve - Straight - 15-50 mm - Threaded:50 mm,IfcValve,36,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+116,Basic Wall:Interior - Blockwork 190,IfcWallStandardCase,35,ARC,derived:ai,,,,,0,0,
+117,08_Storefront w 2h mull_1vert mull:2000w x 3500h,IfcWindow,35,ARC,derived:ai,,,,,0,0,
+118,M_Concrete-Rectangular-Column:1150 x 1250mm,IfcColumn,33,STR,derived:ai,,,,,0,0,
+119,M_Footing-Rectangular:1200 x 1200 x 300mm,IfcFooting,33,STR,derived:sibling,A1020130,Piles - Steel Pipe,M_Pile-Steel Pipe:600mm Diameter,324,500,2,YES
+120,M_Chair-Stacking:M_Chair-Stacking,IfcFurniture,32,ARC,derived:ai,,,,,0,0,
+121,Basic Wall:Interior - Blockwork 140,IfcWallStandardCase,30,ARC,derived:ai,,,,,0,0,
+122,M_RPC Shrub:Switchgrass - 1.36 Meters,IfcBuildingElementProxy,30,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+123,M_Double-Flush:1830 x 2134mm_Wood,IfcOpeningElement,28,ARC,derived:ai,,,,,0,0,
+124,M_Double-Flush:1830 x 2134mm_Wood,IfcDoor,28,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+125,M_RPC Shrub:Meadowlark - 0.9 Meters,IfcBuildingElementProxy,28,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+126,07_Roof_Drain:07_Roof_Drain,IfcBuildingElementProxy,28,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+127,Limestone Column:Limestone Column,IfcColumn,27,ARC,derived:ai,,,,,0,0,
+128,Stair:180mm max riser 280mm going,IfcStair,26,ARC,derived:ai,,,,,0,0,
+129,Basic Wall:Exterior - Metal Panel on Mtl. Stud,IfcWallStandardCase,24,ARC,derived:ai,,,,,0,0,
+130,M_Conduit Elbow - Steel:Standard,IfcCableCarrierFitting,24,ELE,derived:ai,,,,,0,0,
+131,M_Ball Valve - 50-150 mm:50 mm,IfcValve,24,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+132,Gate Valve - 50-150 mm - Flanged:80 mm,IfcValve,24,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+133,Brick Column w_cap:1200 x 300mm,IfcColumn,21,ARC,derived:ai,,,,,0,0,
+134,M_Table-Dining Round w Chairs:1525mm Diameter,IfcFurniture,21,ARC,derived:ai,,,,,0,0,
+135,UB-Universal Beam:762x267x134UB,IfcBeam,20,STR,derived:ai,,,,,0,0,
+136,M_Trap P - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,20,PLB,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+137,M_Sink - Island - Single:455 mmx455 mm - Public,IfcBuildingElementProxy,20,PLB,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+138,M_VAV Unit - Bypass:125 mm,IfcBuildingElementProxy,19,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+139,Roof Soffit:Metal Panel - 50mm,IfcCovering,18,ARC,derived:ai,,,,,0,0,
+140,Basic Wall:Foundation - 300mm Concrete - Retaining,IfcWallStandardCase,18,STR,derived:ai,,,,,0,0,
+141,Exhaust Diffuser - Hosted:Workplane-based Exhaust Diffuser,IfcBuildingElementProxy,18,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+142,MedGasOutlet - Hosted:MedGasOutlet - Hosted,IfcBuildingElementProxy,18,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+143,(no name),IfcBuildingElementProxy,17,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+144,M_Rectangular Endcap:Standard,IfcDuctFitting,17,MECH,derived:ai,,,,,0,0,
+145,Basic Wall:Exterior - Brick on Mtl. Stud,IfcOpeningElement,16,ARC,derived:ai,,,,,0,0,
+146,08_Storefront w 2h mull_1vert mull:2500w x 3500h,IfcWindow,16,ARC,derived:ai,,,,,0,0,
+147,Basic Roof:Grass Roof,IfcSlab,16,ARC,derived:ai,,,,,0,0,
+148,M_RPC Shrub:Yew - 0.72 Meters,IfcBuildingElementProxy,16,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+149,M_RPC Shrub:Magnolia - 1.0 Meters,IfcBuildingElementProxy,16,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+150,UB-Universal Beam:838x292x194UB,IfcBeam,15,STR,derived:ai,,,,,0,0,
+151,M_VAV Unit - Bypass:250 mm,IfcBuildingElementProxy,15,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+152,Pump - Base Mounted:38 LPS - 358 kPa Head,IfcBuildingElementProxy,14,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+153,Wall Foundation:Bearing Footing - 900 x 300,IfcFooting,13,STR,derived:sibling,A1020130,Piles - Steel Pipe,M_Pile-Steel Pipe:600mm Diameter,324,500,2,YES
+154,M_Plain Recessed Lighting Fixture:600x1200 - 120,IfcLightFixture,13,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+155,Cap Flat Top - Threaded - MI - Class 150:Standard,IfcPipeFitting,13,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+156,08_Storefront w 2h mull_3vert mull:5000w x 4000h,IfcWindow,12,ARC,derived:ai,,,,,0,0,
+157,M_Table-Rectangular:1830 x 0762mm,IfcFurniture,12,ARC,derived:ai,,,,,0,0,
+158,M_HSS-Hollow Structural Section-Column:HSS152.4X152.4X7.9,IfcColumn,12,STR,derived:ai,,,,,0,0,
+159,M_Ladder Horizontal Bend:Standard,IfcCableCarrierFitting,12,ELE,derived:ai,,,,,0,0,
+160,Strainer - 50-500 mm - Flanged:80 mm,IfcValve,12,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+161,Commissioning Station - Straight - 65-300 mm - Grooved:80 mm,IfcValve,12,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+162,3 Way Valve - 20-100 mm:50 mm,IfcValve,12,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+163,Butterfly Valve - 50-300 mm:100 mm,IfcValve,12,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+164,M_Urinal - Wall Hung:20 mm Flush Valve,IfcBuildingElementProxy,12,PLB,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+165,M_Fixed:1830 x 0915mm,IfcOpeningElement,11,ARC,derived:ai,,,,,0,0,
+166,M_Double-Flush-Dbl Acting:1830 x 2134mm,IfcOpeningElement,11,ARC,derived:ai,,,,,0,0,
+167,M_Double-Panel 1:1830 x 1981mm,IfcDoor,11,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+168,M_Fixed:1830 x 0915mm,IfcWindow,11,ARC,derived:ai,,,,,0,0,
+169,M_Double-Flush-Dbl Acting:1830 x 2134mm,IfcDoor,11,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+170,M_Double-Panel 1:1830 x 1981mm,IfcOpeningElement,11,ARC,derived:ai,,,,,0,0,
+171,Rectangular Duct:Mitered Elbows / Tees,IfcDuctSegment,11,MECH,derived:ai,,,,,0,0,
+172,M_VAV Unit - Bypass:150 mm,IfcBuildingElementProxy,11,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+173,Basic Roof:Paver Roof,IfcOpeningElement,10,ARC,derived:ai,,,,,0,0,
+174,M_RPC Tree - Deciduous:Japanese Cherry - 4.5 Meters,IfcBuildingElementProxy,10,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+175,Basic Wall:Foundation - 375mm Concrete w_step,IfcOpeningElement,10,STR,derived:ai,,,,,0,0,
+176,M_Ladder Horizontal Tee:300mm Radius,IfcCableCarrierFitting,10,ELE,derived:ai,,,,,0,0,
+177,M_VAV Unit - Bypass:300 mm,IfcBuildingElementProxy,10,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+178,Basic Wall:Exterior - Metal Panel on 92 mm Mtl. Stud,IfcWallStandardCase,9,ARC,derived:ai,,,,,0,0,
+179,MetricLandingDoor2L_2011730_20158459:MetricLandingDoor2L,IfcBuildingElementProxy,9,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+180,Basic Ceiling:Generic,IfcCovering,9,ARC,derived:ai,,,,,0,0,
+181,M_RPC Tree - Deciduous:Blue Berry Elder - 4.5 Meters,IfcBuildingElementProxy,8,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+182,M_RPC Shrub:Oleander - 1.62 Meters,IfcBuildingElementProxy,8,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+183,Basic Wall:Exterior - Blockwork 190,IfcWallStandardCase,8,ARC,derived:ai,,,,,0,0,
+184,Basic Wall:Foundation - 375mm Concrete w_step,IfcWallStandardCase,8,STR,derived:ai,,,,,0,0,
+185,M_Ladder Vertical Inside Bend:Standard,IfcCableCarrierFitting,8,ELE,derived:ai,,,,,0,0,
+186,M_Ladder Vertical Outside Bend:Standard,IfcCableCarrierFitting,8,ELE,derived:ai,,,,,0,0,
+187,M_Supply Diffuser - Rectangular Face Round Neck - Hosted:610 mmx610 mm Face 300 mm Neck - Hosted,IfcBuildingElementProxy,8,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+188,Round Duct:Taps / Short Radius,IfcDuctSegment,8,MECH,derived:ai,,,,,0,0,
+189,Basic Wall:Exterior - Brick on Mtl. Stud w/ cap,IfcWallStandardCase,7,ARC,derived:ai,,,,,0,0,
+190,MetricLandingDoor2R_2011730_194123826:MetricLandingDoor2R,IfcBuildingElementProxy,7,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+191,MetricLandingDoor2L_2011730_194158642:MetricLandingDoor2L,IfcBuildingElementProxy,7,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+192,Floor:150mm Concrete With 75mm Metal Deck,IfcSlab,7,STR,derived:ai,,,,,0,0,
+193,Butterfly Valve - 50-300 mm:250 mm,IfcValve,7,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+194,Coupling Concentric Reducing - Threaded - MI - Class 150:Standard,IfcPipeFitting,7,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+195,M_Coupling Concentric Reducing - Threaded - MI - Class 150:Standard,IfcPipeFitting,7,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+196,M_RPC Shrub:Vibernum - 0.92 Meters,IfcBuildingElementProxy,6,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+197,UB-Universal Beam:762x267x173UB,IfcBeam,6,STR,derived:ai,,,,,0,0,
+198,M_Plain Recessed Lighting Fixture:600x600 - 120,IfcLightFixture,6,ELE,derived:sibling,D5020220,Lighting - Incandescent,M_Pendant Light - Hemisphere:100W - 277V,12,12,1,no
+199,AHU-2:Family4,IfcBuildingElementProxy,6,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+200,Gate Valve - 50-150 mm - Flanged:150 mm,IfcValve,6,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+201,Basic Wall:Exterior - Limestone on Mtl. Stud w/ base and cap,IfcWall,5,ARC,derived:ai,,,,,0,0,
+202,M_Double-Flush:1830 x 2134mm_Metal,IfcOpeningElement,5,ARC,derived:ai,,,,,0,0,
+203,M_Single-Flush:0915 x 2032mm_Metal,IfcOpeningElement,5,ARC,derived:ai,,,,,0,0,
+204,MetricLandingDoor2L_2011730_192425299:MetricLandingDoor2L,IfcBuildingElementProxy,5,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+205,MetricLandingDoor2R_2011730_193613577:MetricLandingDoor2R,IfcBuildingElementProxy,5,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+206,MetricLandingDoor2L_2011730_20013595:MetricLandingDoor2L,IfcBuildingElementProxy,5,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+207,MetricLandingDoor2L_2011730_20132826:MetricLandingDoor2L,IfcBuildingElementProxy,5,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+208,MetricCarDoor2L_2011730_20158482:MetricCarDoor2L,IfcBuildingElementProxy,5,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+209,M_Single-Flush:0915 x 2032mm_Metal,IfcDoor,5,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+210,M_Double-Flush:1830 x 2134mm_Metal,IfcDoor,5,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+211,Basic Roof:Paver Roof,IfcSlab,5,ARC,derived:ai,,,,,0,0,
+212,UB-Universal Beam:305x165x40UB,IfcMember,5,STR,derived:sibling,B2020200,Curtain Walls,Curtain Wall:Profilit-K41-Thermally Broken Framing-K50_41_6,1580,1580,1,no
+213,M_Duplex Receptacle:GFCI,IfcBuildingElementProxy,5,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+214,M_Centrifugal Fan - Inline - Tubular:489-2667 LPS,IfcBuildingElementProxy,5,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+215,M_Cap - Generic:Standard,IfcPipeFitting,5,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+216,Brick Column:1200 x 300mm,IfcColumn,4,ARC,derived:ai,,,,,0,0,
+217,M_Rectangular Column:550 x 550mm,IfcColumn,4,ARC,derived:ai,,,,,0,0,
+218,Stair:180mm max riser 280mm going - no stringer,IfcStair,4,ARC,derived:ai,,,,,0,0,
+219,M_Table-Rectangular:2288 x 0762mm,IfcFurniture,4,ARC,derived:ai,,,,,0,0,
+220,Basic Wall:Interior - 183mm Donor Wall,IfcWallStandardCase,4,ARC,derived:ai,,,,,0,0,
+221,12_Cntr Top(Line Based):Default,IfcBuildingElementProxy,4,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+222,UB-Universal Beam:610x229x101UB,IfcBeam,4,STR,derived:ai,,,,,0,0,
+223,M_VAV Unit - Bypass:400 mm,IfcBuildingElementProxy,4,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+224,Expansion Joint - 25-1000 mm:200 mm,IfcPipeFitting,4,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+225,Plug Valve - Gear Operated - 100-400 mm:250 mm,IfcValve,4,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+226,Tee - Threaded - MI - Class 150:Standard,IfcPipeFitting,4,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+227,M_Single-Flush:0915 x 2134mm_Metal,IfcOpeningElement,3,ARC,derived:ai,,,,,0,0,
+228,Basic Wall:Exterior - Brick on Mtl. Stud,IfcWallStandardCase,3,ARC,derived:ai,,,,,0,0,
+229,MetricCabinFront_2011730_195843287:MetricCabinFront,IfcBuildingElementProxy,3,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+230,Basic Wall:Interior - 123mm Partition,IfcWall,3,ARC,derived:ai,,,,,0,0,
+231,M_Single-Flush:0915 x 2134mm_Metal,IfcDoor,3,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+232,Basic Wall:Interior - 183mm Partition,IfcOpeningElement,3,ARC,derived:ai,,,,,0,0,
+233,Floor:Concrete-150 mm slab on 300mm base,IfcOpeningElement,3,STR,derived:ai,,,,,0,0,
+234,Foundation Slab:300mm Foundation Slab,IfcFooting,3,STR,derived:sibling,A1020130,Piles - Steel Pipe,M_Pile-Steel Pipe:600mm Diameter,324,500,2,YES
+235,M_VAV Unit - Bypass:350 mm,IfcBuildingElementProxy,3,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+236,Water-Tube Boiler - 879-6153 kW:4909 kW,IfcBuildingElementProxy,3,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+237,Expansion Tank - Freestanding  - Vertical:452 L,IfcBuildingElementProxy,3,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+238,Cooling Tower - Closed Circuit - Counterflow - 67-189 kW:177 kW,IfcBuildingElementProxy,3,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+239,Check Valve - 50-300 mm - Flanged:250 mm,IfcValve,3,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+240,"Ball Valve - 2-6 Inch:2 1/2""",IfcValve,3,SPR,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+241,Limestone Column - Corner:1200 x 1200,IfcColumn,2,ARC,derived:ai,,,,,0,0,
+242,Limestone Column - Corner - 15  degree:1200 x 1200,IfcColumn,2,ARC,derived:ai,,,,,0,0,
+243,M_Rectangular Column:1200 x 300mm,IfcColumn,2,ARC,derived:ai,,,,,0,0,
+244,Brick Column - Corner - 15  degree:1200 x 1200,IfcColumn,2,ARC,derived:ai,,,,,0,0,
+245,Brick Column - Corner:1200 x 1200,IfcColumn,2,ARC,derived:ai,,,,,0,0,
+246,Overhead Door at Dock_Metric:2400 x 3100mm,IfcOpeningElement,2,ARC,derived:ai,,,,,0,0,
+247,M_Fixed:0915 x 0915mm,IfcWindow,2,ARC,derived:ai,,,,,0,0,
+248,M_Chair-Task (Arms):M_Chair-Task (Arms),IfcFurniture,2,ARC,derived:ai,,,,,0,0,
+249,Semi Truck:Semi Truck,IfcBuildingElementProxy,2,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+250,M_Fixed:0915 x 0915mm,IfcOpeningElement,2,ARC,derived:ai,,,,,0,0,
+251,M_RPC Tree - Deciduous:Golden Chain - 5.5 Meters,IfcBuildingElementProxy,2,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+252,Curtain Wall Dbl Glass:Curtain Wall Dbl Glass,IfcDoor,2,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+253,Basic Roof:Cold Roof - Concrete,IfcSlab,2,ARC,derived:ai,,,,,0,0,
+254,Basic Wall:Exterior - Blockwork 190,IfcOpeningElement,2,ARC,derived:ai,,,,,0,0,
+255,Concrete Fndn Pier at Corner_15 degrees:Concrete Fndn Pier at Corner_15 degrees,IfcColumn,2,STR,derived:ai,,,,,0,0,
+256,Wall Foundation:Retaining Footing - 600 x 300 x 300,IfcFooting,2,STR,derived:sibling,A1020130,Piles - Steel Pipe,M_Pile-Steel Pipe:600mm Diameter,324,500,2,YES
+257,Basic Wall:Foundation - 200mm Concrete - Retaining,IfcWallStandardCase,2,STR,derived:ai,,,,,0,0,
+258,UB-Universal Beam:457x152x52UB,IfcBeam,2,STR,derived:ai,,,,,0,0,
+259,M_Footing-Rectangular:1800 x 1800 x 300mm,IfcFooting,2,STR,derived:sibling,A1020130,Piles - Steel Pipe,M_Pile-Steel Pipe:600mm Diameter,324,500,2,YES
+260,M_Conduit Junction Box - Tee - Aluminum:Standard,IfcCableCarrierFitting,2,ELE,derived:ai,,,,,0,0,
+261,M_Lighting and Appliance Panelboard - 208V MLO:MCB-3,IfcBuildingElementProxy,2,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+262,M_Rectangular Tee:Standard,IfcDuctFitting,2,MECH,derived:ai,,,,,0,0,
+263,M_Rectangular Elbow - Radius:2 W,IfcDuctFitting,2,MECH,derived:ai,,,,,0,0,
+264,Screw Chiller - Water Cooled - 1055-1934 kW:Heat Exchanger Size 55-57,IfcBuildingElementProxy,2,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+265,Butterfly Valve - 50-300 mm:200 mm,IfcValve,2,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+266,Strainer - 50-500 mm - Flanged:200 mm,IfcValve,2,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+267,Globe Valve - 50-450 mm - Flanged:200 mm,IfcValve,2,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+268,Transition - Generic:Standard,IfcPipeFitting,2,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+269,Cross - Threaded - MI - Class 150:Standard,IfcPipeFitting,2,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+270,MetricCabinFront_2011730_192211280:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+271,MetricCarDoor2L_2011730_192425270:MetricCarDoor2L,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+272,MetricCabinFront_2011730_192425282:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+273,MetricCarDoor2R_2011730_193613616:MetricCarDoor2R,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+274,MetricCoordinateSystem_2011730_193753555:475 x 610mm,IfcColumn,1,ARC,derived:ai,,,,,0,0,
+275,MetricCabinFront_2011730_194036616:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+276,MetricCarDoor2R_2011730_194123875:MetricCarDoor2R,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+277,MetricCabinFront_2011730_194144353:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+278,MetricCarDoor2L_2011730_194158676:MetricCarDoor2L,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+279,MetricCoordinateSystem_2011730_19583959:475 x 610mm,IfcColumn,1,ARC,derived:ai,,,,,0,0,
+280,MetricCabinFront_2011730_195959647:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+281,MetricCarDoor2L_2011730_20013643:MetricCarDoor2L,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+282,MetricCarDoor2L_2011730_20132794:MetricCarDoor2L,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+283,MetricCabinFront_2011730_20132806:MetricCabinFront,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+284,08_Storefront w 2h mull_1vert mull:1500w x 3500h,IfcWindow,1,ARC,derived:ai,,,,,0,0,
+285,JWCC_Mask_Dispenser:JWCC_Mask_Dispenser,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+286,M_Double-Panel 1:1730 x 2134mm,IfcOpeningElement,1,ARC,derived:ai,,,,,0,0,
+287,ED Nurse Station:ED Nurse Station,IfcFurniture,1,ARC,derived:ai,,,,,0,0,
+288,M_Double-Flush-Dbl Acting:1730 x 2032mm,IfcDoor,1,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+289,M_Double-Flush:1830 x 1981mm,IfcDoor,1,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+290,M_Double-Panel 1:1730 x 2134mm,IfcDoor,1,ARC,derived:sibling,B2020200,Curtain Walls,M_Curtain Wall Sgl Glass:M_Curtain Wall Sgl Glass,5,7,2,YES
+291,08_Storefront w 2h mull_1vert mull:1500w x 4000h,IfcWindow,1,ARC,derived:ai,,,,,0,0,
+292,ED Nurse Station1:ED Nurse Station,IfcFurniture,1,ARC,derived:ai,,,,,0,0,
+293,ED Nurse Station2:ED Nurse Station,IfcFurniture,1,ARC,derived:ai,,,,,0,0,
+294,Stall Pilaster:Stall Pilaster,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+295,M_Double-Flush:1830 x 1981mm,IfcOpeningElement,1,ARC,derived:ai,,,,,0,0,
+296,M_Double-Flush-Dbl Acting:1730 x 2032mm,IfcOpeningElement,1,ARC,derived:ai,,,,,0,0,
+297,Basic Roof:Ballasted,IfcSlab,1,ARC,derived:ai,,,,,0,0,
+298,HeliPad:HeliPad,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+299,Life_Flight_Helicopter:Life_Flight_Helicopter,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+300,Basic Wall:Exterior - Metal Panel on Mtl. Stud double Exterior,IfcWall,1,ARC,derived:ai,,,,,0,0,
+301,Beam Soffit 1:Beam Soffit 1,IfcCovering,1,ARC,derived:ai,,,,,0,0,
+302,Beam Enclosure - Wing E:Beam Enclosure - Wing E,IfcCovering,1,ARC,derived:ai,,,,,0,0,
+303,Basic Wall:Exterior - Metal Panel on Mtl. Stud at Front Entry,IfcWall,1,ARC,derived:ai,,,,,0,0,
+304,Entry Water Fountain:Entry Water Fountain,IfcBuildingElementProxy,1,ARC,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+305,Basic Wall:Interior - Water Wall,IfcWallStandardCase,1,ARC,derived:ai,,,,,0,0,
+306,Front Entry Info Desk:Front Entry Info Desk,IfcFurniture,1,ARC,derived:ai,,,,,0,0,
+307,Floor:Concrete-150 mm slab on 300mm base,IfcSlab,1,STR,derived:ai,,,,,0,0,
+308,Floor:Concrete-200 mm slab on 300mm base 2,IfcSlab,1,STR,derived:ai,,,,,0,0,
+309,Floor:Concrete-150 mm slab,IfcSlab,1,STR,derived:ai,,,,,0,0,
+310,Stair:Monolithic Stair,IfcStairFlight,1,STR,derived:ai,,,,,0,0,
+311,M_Concrete-Rectangular-Column:600 x 600mm,IfcColumn,1,STR,derived:ai,,,,,0,0,
+312,UB-Universal Beam:610x229x125UB,IfcBeam,1,STR,derived:ai,,,,,0,0,
+313,Floor:75mm Metal Roof Deck,IfcSlab,1,STR,derived:ai,,,,,0,0,
+314,M_Channel Horizontal Bend:Standard,IfcCableCarrierFitting,1,ELE,derived:ai,,,,,0,0,
+315,M_Lighting and Appliance Panelboard - 208V MCB - Surface:MCB-1,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+316,M_Lighting and Appliance Panelboard - 480V MCB - Surface:MCB-1L,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+317,M_Lighting and Appliance Panelboard - 208V MLO:PL-2,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+318,M_Lighting and Appliance Panelboard - 480V MLO:LL-2,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+319,M_Lighting and Appliance Panelboard - 480V MLO:LL-1,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+320,M_Ladder Reducer:Standard,IfcCableCarrierFitting,1,ELE,derived:ai,,,,,0,0,
+321,M_Lighting and Appliance Panelboard - 208V MLO:LL-3,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+322,M_Lighting and Appliance Panelboard - 208V MLO:MCB-2,IfcBuildingElementProxy,1,ELE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+323,AirBox Left:BottomDuct Width,IfcBuildingElementProxy,1,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+324,AirBox Right:BottomDuct Width,IfcBuildingElementProxy,1,MECH,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+325,M_Rectangular Transition - Angle:60 Degree,IfcDuctFitting,1,MECH,derived:ai,,,,,0,0,
+326,Cap - Butt Welded - CS:Standard,IfcPipeFitting,1,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+327,Air Separator with Strainer - Inline Tangential - 80-500 mm - Flanged:200 mm,IfcValve,1,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+328,Globe Valve - 50-450 mm - Flanged:250 mm,IfcValve,1,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+329,Commissioning Station - Straight - 65-300 mm - Grooved:250 mm,IfcValve,1,MECH,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+330,Flange - Blind - Steel - PN 16:Standard,IfcPipeFitting,1,MECH,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+331,"Utility Switchboard:36""x26.25""",IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+332,Fire Alarm Terminal Cabinet:Fire Alarm Terminal Cabinet,IfcDistributionControlElement,1,FIRE,derived:ai,,,,,0,0,
+333,M_Fire Alarm Control Panel:FA-1,IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+334,M_Fire Alarm Control Panel:FA-2,IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+335,M_Fire Alarm Control Panel:FA-3,IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+336,M_Fire Alarm Control Panel:FA-4,IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+337,M_Fire Alarm Control Panel:FA-5,IfcBuildingElementProxy,1,FIRE,derived:sibling,C1030220,Bath & Toilet Accessories - Residential,Shower-Head-w-Adjustable-Bar:Disabled_Shower_Head_with_adjustable_bar_2818,298,963,7,YES
+338,"Ball Valve - 2-6 Inch:1""",IfcValve,1,SPR,derived:sibling,D4090,Other Fire Protection Systems,Victaulic_FireLock NXT Deluge Valve_Series 769_2:Victaulic_FireLock NXT Deluge Valve_Series 769_2,2,4,1,no
+339,Elbow - Generic:Standard,IfcPipeFitting,1,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+340,Bend - PVC - Sch 40 - DWV:Standard,IfcPipeFitting,1,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no
+341,M_Tee Reducing - Threaded - MI - Class 150:Standard,IfcPipeFitting,1,SPR,derived:sibling,D2090800,Piping & Fittings,Victaulic-Grooved Coupling OGS-AGS:Standard,752,1439,1,no

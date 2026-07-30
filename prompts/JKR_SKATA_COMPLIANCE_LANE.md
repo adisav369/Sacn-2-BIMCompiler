@@ -234,3 +234,154 @@ Enumerated in full as `_TODO_FROM_PRIMARY_SPEC` inside `skata.example.json`. The
 ⛔ **Still blocked, unchanged:** the primary JKR/CIDB SKATA + PeDATA specification. Question 1 in
 §OPEN QUESTIONS is the one that unblocks Phase 2; questions 2 and 3 shape how much of `segments[].values`
 must be exact.
+
+---
+
+## §TIER-COVERAGE — how much of the 92.89% gap is closable WITHOUT AI (measured 2026-07-31)
+
+**Question asked:** Phase 1 recovered 7.11%. Of the uncoded remainder, how much can be proposed by a
+**pure SQL join** — no inference, no LLM — and how much genuinely needs a human/AI decision?
+
+**Three provenance tiers** (only tier 1 exists in the DB today; tiers 2 and 3 are a MEASUREMENT here,
+nothing was written back):
+
+| tier | definition |
+|---|---|
+| `ifc:recovered` | the code was authored in the IFC and extracted |
+| `derived:sibling` | the type has NO code, but another type in this same model **sharing the same `ifc_class`** DOES — a code is proposable by join alone |
+| `derived:ai` | no coded sibling exists for that `ifc_class` — a proposal would have to reason from the scheme's category tables |
+
+### T.1 Method (reproducible, all numbers from a fresh run)
+
+Re-extracted Hospital from `internal/UNMERGED/Hospital_IFC4_*.ifc` (the 7 discipline files — §B.4 of
+`RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`), one `extractIFCtoDB.py` pass per discipline (`-o` overwrites,
+so it cannot federate), then merged **on `guid`, never on `id`** (`id` is a per-file autoincrement and
+collides). Per-discipline logs + the merged DB live in the session scratchpad; **no `.db` committed, no
+OCI upload, no DB written back.**
+
+**The established figures reproduced EXACTLY — no drift:**
+
+```
+ARC  15074 elem  agg=9464  coded=2253 (14.9%)  orphan=69
+STR   2897 elem  agg=  20  coded= 504 (17.4%)  orphan=0
+ELE   2798 elem  agg=   9  coded=  12 ( 0.4%)  orphan=1
+MECH 19670 elem  agg=  13  coded=   0 ( 0.0%)  orphan=0
+PLB   9121 elem  agg=   7  coded= 334 ( 3.7%)  orphan=0
+FIRE   867 elem  agg=   7  coded=   0 ( 0.0%)  orphan=0
+SPR  13490 elem  agg=   7  coded=1443 (10.7%)  orphan=31
+§MERGE_TOTAL      elements_meta=63917
+§DECOMP_MERGED    rel_aggregates=9527 rows / 254 distinct parents
+§CLASSIFY_MERGED  coded=4546/63917 (7.11%) uncoded=59371 distinct_codes=15 systems=Uniformat
+§PROOF            7 PASS / 0 FAIL on all 7 disciplines
+```
+
+Matches §PHASE-C's `4546/63917 (7.11%)`, §STAGE-B's `9527 / 254 parents` and `orphan=101`
+(69+1+31) to the row. **`IfcRelNests` = 0 in all 7 files**, reported as zero, not omitted.
+
+**Type key.** `elements_meta.element_name` is Revit `Family:Type:InstanceID`; the type is the first two
+colon-segments. The re-extract has **338 distinct type_keys** (the shipped `Hospital_extracted.db` has
+339 — the delta is §B.5's `+735 IfcOpeningElement / −233 non-geometric aggregate parents`, not drift).
+**28 type_keys span more than one `ifc_class`** (`Basic Wall:Exterior - Metal Panel on Mtl. Stud` →
+`IfcWall` + `IfcWallStandardCase` + `IfcOpeningElement`; every `M_Single-Flush:*` door →
+`IfcDoor` + `IfcOpeningElement`). Since the tier is *defined* by `ifc_class`, the primary row identity
+below is **`(type_key, ifc_class)` = 368 rows** — collapsing would blur the very key the tier turns on.
+
+### T.2 The two splits — they disagree, and both matter
+
+**By TYPE (368 `(type_key, ifc_class)` rows — this is the HUMAN WORK):**
+
+| tier | types | share |
+|---|---:|---:|
+| `ifc:recovered` | 27 | 7.34% |
+| `derived:sibling` | 179 | 48.64% |
+| `derived:ai` | 162 | 44.02% |
+
+**By INSTANCE (63,917 elements — this is WHAT THE USER SEES):**
+
+| tier | instances | share |
+|---|---:|---:|
+| `ifc:recovered` | 4,546 | 7.11% |
+| `derived:sibling` | 24,759 | 38.74% |
+| `derived:ai` | 34,612 | 54.15% |
+
+Collapsed to bare `type_key` (338 rows, a type inherits sibling-tier if ANY of its classes has a coded
+sibling) it reads 27 / 179 / 132 types and 4,548 / 25,628 / 33,741 instances — the same story.
+
+**`§PARTIAL = 0`.** Not one type is partly coded: coding in this model is authored **per type**, all-or-
+nothing across its instances. That is a genuinely useful property — a type-level worklist is the right
+granularity, and there is no "finish the half-done types" residue to chase.
+
+### T.3 THE HEADLINE
+
+> **341 of 368 Hospital types are uncoded. 179 of them can be proposed by join alone, covering 24,759
+> instances (38.7% of the model). 162 types truly need an AI/human decision, covering 34,612 instances
+> (54.2%).**
+
+Put the other way: the join takes Uniformat coverage from **7.11% → 45.85%** of instances without a
+single inference — but it can never reach the last **54.15%**, because those elements' `ifc_class` has
+**no coded example anywhere in the model to copy from.**
+
+### T.4 ⚠ The join key is COARSE — measured, with a damning example
+
+`ifc_class` was the only join key permitted (a name-based rule was already rejected on measured grounds:
+it silently missed 30% of HHS's curtain-wall plates, §B.5). It works, but it is not clean:
+
+```
+§JOINKEY  ifc_classes carrying ANY code = 8 of 31 present; of those, 3 carry >1 DISTINCT code
+  IfcBuildingElementProxy: C1030220=298 D2010110=282 C1030200=219 D2010440=119 C1010400=31 D2010210=13 C1030100=1
+  IfcFooting:              A1020130=444 A1010130=56
+  IfcDoor:                 B2020200=5   B2030410=2
+```
+
+**116 of the 179 sibling types (covering 5,252 instances) sit on an ambiguous class**, where the join can
+only offer the *modal* code — a judgement the data does not settle. The CSV flags every one
+(`join_key_ambiguous=YES`) rather than hiding it.
+
+**Two concrete failures a reviewer must catch, both visible in the CSV:**
+
+1. **`IfcDoor`** — 7 coded doors, modal code `B2020200 Curtain Walls` (5 of them, i.e. curtain-wall
+   doors). Propagating that to the **433 uncoded doors** would be flatly wrong.
+2. **`IfcBuildingElementProxy`** is Revit's junk drawer — 5,729 instances, 7 different codes. The join
+   proposes `C1030220 Bath & Toilet Accessories` for `M_RPC Tree - Deciduous:Blue Berry Elder` and
+   `M_RPC Shrub:Oleander`. **Trees.**
+
+**In favour of the join**, the other 63 sibling types — **19,507 instances, 78.8% of the sibling tier** —
+sit on classes with exactly ONE code and are genuinely unambiguous: `IfcPipeFitting`→`D2090800 Piping &
+Fittings` (12,182 uncoded), `IfcMember`→`B2020200 Curtain Walls` (5,547 — the curtain-wall mullions,
+corroborated independently by `rel_aggregates`), `IfcLightFixture`→`D5020220` (1,260),
+`IfcValve`→`D2090800` (466), `IfcRailing`→`C2010400` (52).
+
+**Verdict on the key: usable as a PROPOSAL GENERATOR, never as an auto-apply.** Split the CSV on
+`join_key_ambiguous` and ~19.5k instances are one review away from correct; the remaining ~5.3k need the
+same human attention as tier 3.
+
+### T.5 Why tier 3 is so large — it is a discipline story, not a modelling failure
+
+Only **8 of 31 `ifc_class` values carry any code at all**. The whole MECH discipline (19,670 elements)
+and FIRE (867) have **zero** authored classifications, so every MECH/FIRE type is tier 3 by construction.
+The top of the uncoded worklist is exactly that: `Pipe Types:Standard` (5,950), `Pipe Types:Threaded
+Under 65mm` (5,758), `Round Duct:Taps` (2,490). `IfcPlate` also has **zero** coded instances model-wide
+(`System Panel:Glazed Spandrel`, 805 instances, is tier 3) — the same fact §B.5 recorded when it noted
+classification alone could not have fixed the façade.
+
+### T.6 Artifact
+
+**`build/classification_tier_worklist_Hospital.csv`** (regenerated by `build/measure_classification_tiers.py <scratch-dir>`) — 341 uncoded types, ranked by instance count
+descending. Columns: `rank, type_key, ifc_class, instances, discipline, tier, proposed_code,
+proposed_code_label, evidence_sibling_type, evidence_sibling_instances, sibling_coded_instances_in_class,
+sibling_distinct_codes_in_class, join_key_ambiguous`.
+
+Placed in **`build/`, not `reference/`**: `reference/` is the source IFC corpus (its README: *"These IFC
+files are the ground truth"*) and this is a *derived* measurement; `build/` already holds generated data
+artifacts (`build/terminal_rules_payload.json`). It is a **proposal for human review — nothing more.**
+
+### T.7 What this session did NOT do (boundaries held)
+
+- **No `UPDATE elements_meta SET classification_code`** — not one code written to any DB.
+- **No code inferred from an element NAME.** Tier 2 is a join on `ifc_class` to an already-coded sibling
+  *in the same model*: the model's own assertion generalised.
+- **No LLM called.** Tier 3 is a COUNT here, not an action.
+- **No `.db` committed, no OCI upload, no `.db` deleted, no push.**
+- **Hospital only.** Every `derived:*` number above is a property of *this* model's authoring habits —
+  which classes its author happened to code. Do not quote 38.7% / 54.2% as fleet numbers; no other
+  building has been re-extracted, and §PHASE-C's warning about 7.11% applies identically here.
