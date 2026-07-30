@@ -217,3 +217,146 @@ keeping schemes as versioned data rather than compiled-in rules.
 Read and transcribed: §3.3, §3.4, §5.1.1.1 (DPA for Bangunan). **The DAK structure (the per-element one
 we most need) and the remaining ~90 pages of category tables are NOT yet transcribed.** Do not write the
 real `skata.json` from this section alone — it defines the premise code, not the component code.
+
+---
+
+# ⏸ PARKED 2026-07-31 — READ THIS SECTION FIRST WHEN A REAL SUBMISSION LANDS
+
+**Status: no actual JKR submission exercise exists yet.** This lane was researched and scaffolded ahead of
+demand, deliberately. Nothing here is urgent until a real deliverable appears. When it does, start here.
+
+## §RESUME — the five things to do, in order
+1. **Read `reference/SKATA_v2.0_extracted_text.txt`** (97pp, full text). Transcribe the **DAK** structure
+   (§3.4 onward) — the per-element code. Only DPA (§5.1.1.1) was transcribed in 2026-07-31. **Do not write
+   the real `config/classification/schemes/skata.json` from the DPA section alone** — DPA is the premise
+   code, DAK is the component code, and they are different shapes.
+2. **Move DPA to `project_metadata`.** `elements_meta.classification_code` covers only DAK.
+   DPA is ONE code per building (agency/ministry/dept/country/state/district/mukim/category/ID) — putting
+   it per-element repeats one value 63,415 times. Fix before any patch ships.
+3. **Add version + upstream-dependency metadata to every scheme file.** SKATA defers to **DDSA** and
+   **MS 1759**, which version independently (§PENAFIAN, p.i).
+4. **Fix the verdict semantics** — see §VERDICT-FLAW below. Do this before anyone sees a GREEN.
+5. **Then** the authoring path (§TIERS below) and the `info-panel` surface.
+
+## §VERDICT-FLAW — known, unfixed, do not ship a verdict until it is
+`build/classification_checker.py` computes `verdict = "GREEN" if invalid == 0 else "RED"`. **Coverage is
+not an input.** A building with one well-formed code and 63,916 uncoded elements reports **GREEN**. The
+uncoded count is printed on the same line, but the word is doing work it has not earned.
+**Fix:** either rename to `§CLASSIFY_WELLFORMED` (an honest narrow claim) or require both axes for GREEN.
+A screenshot of a GREEN at 7% coverage would be technically true and materially false.
+
+## §TIERS — the authoring model (decided 2026-07-31, not yet built)
+Re-extraction recovers ONLY what the modeller authored. Hospital: **7.11%**. The other **92.89% is not in
+the IFC either** — nobody ever wrote it. So extraction is not the path for the bulk; authoring is.
+Three provenance tiers, using the `provenance` column the extractor already has:
+
+| tier | source | mechanism | risk |
+|---|---|---|---|
+| `ifc:recovered` | authored in the IFC | extraction | none — it is the model's own data |
+| `derived:sibling` | another type of the same `ifc_class` **in this model** carries a code | **pure SQL join** | low — generalising the model's own assertion, not a guess |
+| `derived:ai` | no coded sibling; reason from the scheme's category tables | one-time LLM pass per building | needs human review |
+
+**HARD RULE:** the handover export must **refuse to emit `derived:*` as authored**. In 4D a wrong schedule
+is embarrassing; in a government asset register a wrong code is a false statement on a regulatory
+deliverable. Default it, show it, let the user edit it — never let a proposal launder into tier 1.
+⚠ Open question for whoever builds this: `ifc_class` may be too coarse a join key. Hospital has
+`Pipe Types:Standard`, `Threaded Under 65mm` and `PVC` all as `IfcPipeSegment` — plausibly three different
+codes. If so tier 2 shrinks and the AI share grows. **Measured in §TIER-COVERAGE (pending).**
+
+## §WHERE THE GRUNT WORK ACTUALLY IS — the type-level insight
+The code is **not** applied to a finished model. It is set on the **family TYPE** in the authoring tool,
+once, and every instance inherits it. Revit chain, end to end:
+```
+UniformatClassifications.txt  (Manage → Additional Settings → Assembly Code)
+   → "Assembly Code" TYPE parameter on each family type      ← the ONLY manual step
+   → every instance of that type inherits it, free
+   → IFC exporter mapping writes IfcRelAssociatesClassification   ← silent-loss step
+   → extractIFCtoDB.py §CLASSIFY reads it back
+```
+**Step 5 is a silent-loss trap:** if the exporter is not told to write the parameter, the code exists in
+Revit and is absent from the IFC — indistinguishable from "nobody coded it".
+
+**The leverage number, measured on Hospital:** 63,415 instances → **339 distinct types**. The **top 20
+types cover 39,152 instances = 61.7%**. Nobody codes 63,415 things; they code a few hundred, once.
+Any tool we build MUST report at TYPE level ranked by instance count — "234 of 339 types uncoded" is a
+worklist; "59,371 uncoded elements" is despair. Top 10 Hospital types are MEP repetition
+(`Pipe Types:Standard` 5,950 · `Pipe Types:Threaded Under 65mm` 5,758 · `M_Elbow - Generic:Standard` 3,115
+· `Curtain Wall:Storefront` 2,626 · `Round Duct:Taps` 2,490 …).
+**The real multiplier is the round-trip:** export type→code as CSV the BIM Manager loads back into the
+`.rte` TEMPLATE. Fixing the model helps one job; fixing the library helps every future one.
+
+## §DERIVED vs EXTRACTED — the principle that decides what ships
+The test: **can it be regenerated without the original IFC?**
+
+| | regenerable | ships as | verified |
+|---|---|---|---|
+| 4D schedule | ✅ from `sequence_rules.json` + `elements_meta` | code + JSON | `time_machine.js:3363-3376` writes ELEMENT_PLACE ops to the **in-memory** db; shipped `tasks` table is **0 rows** |
+| room topology | ✅ from geometry | code | `A.ensureRooms` = "the ONE shared injection core", `navigate_find.js:928` |
+| `rel_aggregates` | ❌ only in `IfcRelAggregates` | **data** | — |
+| `classification_code` | ❌ authored in the IFC | **data** | — |
+Derived things restore themselves on every load; extracted facts cannot. **A patch ships the fact, never
+the derivation.** Re-running a script without the fact faithfully reproduces the same wrong answer.
+
+## §THE DB IS A LOSSY PROJECTION — the structural root of this whole lane
+The DB is source-of-truth for what it *contains*, but it is **not complete**. The extractor decided once
+which IFC facts to keep; everything else is gone and recoverable only from the IFC. Five separate round
+trips were forced in one session (2026-07-30/31): classification codes (entirely dropped) ·
+`rel_aggregates.parent_class` · `rel_fills`/`rel_voids` (made W-HOST-ORDER unmeasurable) · schedule deps
+46/46 + early/late/float/is_critical (T1b) · the 233 geometry-less aggregate containers.
+
+**Measured, Hospital (`dbstat`):**
+```
+component_geometries  239,124,480 bytes   ← 91% of the file
+elements_meta           7,503,872
+element_transforms      5,607,424
+element_instances       3,006,464
+indexes                ~7,585,792
+                       ── semantics + transforms + indexes ≈ 9% ──
+```
+`rel_aggregates` (9,527 rows) is **~0.2%** of the DB. **We have been rationing the cheap part.**
+**RECOMMENDATION (open, not yet actioned): stop curating semantics. Geometry stays curated — it is 91% and
+genuinely expensive. Extract EVERY IFC relationship wholesale, once, so the next new question does not
+cost a fleet re-extraction. Archive the source IFC beside each DB so provenance stops being a `find`.**
+
+## §JKR — the Malaysian test building, and its origin defect
+**Source IFCs (found 2026-07-31):** `~/Downloads/OPEN SOURCE BIM/JKR_Project.zip` plus IFC4 discipline
+files in `~/Downloads/OPEN SOURCE BIM/IFC 4/` — `jkrST25-5a_…` (STR), `jkrEL23-5a_…` (ELEC),
+`jkrME23_5a_SP_…`, `jkrME23_5a_FP_…` (FP). The filenames are themselves a JKR naming convention
+(`jkr` + discipline + year + revision) and may be worth reading as a compliance artifact in their own right.
+
+**⚠ ORIGIN DEFECT — measured, unfixed:**
+```
+JKR      x[271,392 .. 271,453]  y[721,363 .. 721,405]   ← projected national-grid coordinates
+Hospital x[    -12 ..      90]  y[      1 ..     152]   ← model-local, correct
+```
+The building is ~61m × 42m but sits **271 km from the origin**. float32 precision degrades badly out there
+(z-fighting, jitter, unreliable picking). `project_metadata` carries **no `georef_offset_*` rows** despite
+`building_name = 'jkr_aligned'` — so the rebase either never happened or was never recorded.
+`viewer/import_db_builder.js` already has the `georef_offset_x/y/z` convention; it was not applied here.
+**Fix when JKR is re-extracted: rebase to a local origin and RECORD the offset**, so the true world
+position stays recoverable. Do not silently discard the survey coordinates.
+
+**JKR also carries the level-naming test case** — 5 colliding storey prefixes, `02` alone naming six
+distinct floors (`02 1st Floor Level`, `02 Ground Floor Level`, `02 First  Floor` [double space],
+`02.5 Hvac Level 1`, `02A Ceiling Level`, `02 Aras Dua`), English and Malay mixed in one model. Any
+level-code checker must survive this. It is the single best compliance test asset we hold.
+
+## §WHAT EXISTS TODAY (branch `feat/rel-aggregates-classification`, pushed)
+- `DAGCompiler/python/extractIFCtoDB.py` — `§CLASSIFY` (IFC4 `.Identification` + IFC2x3 `.ItemReference`;
+  handling only the IFC4 name makes every 2x3 building extract as 100% NULL and look like a clean pass),
+  widened `rel_aggregates` with `parent_class`
+- `config/classification/locales.json` — locale→scheme registry, 4-step resolution order
+- `config/classification/schemes/uniformat.json` — `verified-from-data`, 15 observed codes.
+  ⚠ `D4090` is 5 chars where 14 others are 8 — a fixed-width validator would reject a REAL code. That is
+  why `permitted_lengths` is a list.
+- `config/classification/schemes/skata.example.json` — **EXAMPLE-NOT-SPECIFIED**, checker hard-refuses a
+  verdict for it (verified working). Replace using the real spec per §RESUME step 1.
+- `build/classification_checker.py` — `§CLASSIFY_CHECK`, mechanism complete, see §VERDICT-FLAW
+- `reference/SKATA_v2.0_extracted_text.txt` — the primary spec, text-extracted
+
+## §STILL OPEN
+- ⛔ **PeDATA spec not obtained.** SKATA is one half; PeDATA (asset collection + labelling) is the other.
+- Fleet: only Hospital re-extracted. **7.11% is a Hospital number, never quote it fleet-wide.**
+- Source IFCs available for 6 of 9 shipped buildings (Hospital, Clinic, Duplex, HHS, LTU_AHouse, Terminal
+  via `~/Downloads/TerminalMerged.ifc`) + JKR now located. `Hospital_3` and `TermRooms` still unlocated.
+- `§TIER-COVERAGE` measurement was dispatched 2026-07-31 and may append below this section.
