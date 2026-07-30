@@ -1,0 +1,89 @@
+{
+  "id": "uniformat",
+  "title": "UNIFORMAT II — elemental classification (ASTM E1557 lineage, CSI 1998 edition)",
+  "authority": "CSI / ASTM",
+  "status": "verified-from-data",
+
+  "_status_note": [
+    "'verified-from-data' means the DETECT block and the observed code shapes below were EXTRACTED from",
+    "a real building in this fleet, not copied from memory. Source: internal/UNMERGED/Hospital_IFC4_*.ifc,",
+    "re-extracted 2026-07-30, 4546 coded elements / 15 distinct codes. See evidence.observed_codes.",
+    "",
+    "⚠ WHAT IS *NOT* VERIFIED: the authoritative document is ASTM E1557, which this repo does NOT hold.",
+    "Only levels 3 (5 chars) and 4 (8 chars) were OBSERVED. Levels 1 (1 char) and 2 (3 chars) are",
+    "permitted by the pattern because the observed codes are strict prefix-extensions of them, but no",
+    "level-1 or level-2 code appears in our data. Do not present the level table as sourced from ASTM."
+  ],
+
+  "detect": {
+    "ifc_classification_name": ["Uniformat", "UniFormat", "UNIFORMAT", "Uniformat II", "UniFormat II"],
+    "location_uri_contains": ["csiorg.net/uniformat", "uniformat"]
+  },
+
+  "code": {
+    "separator": null,
+    "case": "upper",
+    "pattern": "^[A-G][0-9]{2}(?:[0-9]{2}(?:[0-9]{3})?)?$",
+    "permitted_lengths": [1, 3, 5, 8],
+    "observed_lengths": [5, 8],
+    "example": "B2020200"
+  },
+
+  "segments": [
+    { "name": "major_group", "level": 1, "facet": "element",
+      "offset": 0, "length": 1, "pattern": "^[A-G]$", "required": true,
+      "description": "Major group letter. OBSERVED in our data: A, B, C, D.",
+      "values": {
+        "A": "Substructure", "B": "Shell", "C": "Interiors", "D": "Services",
+        "E": "Equipment & Furnishings", "F": "Special Construction & Demolition", "G": "Building Sitework"
+      },
+      "_values_note": "A/B/C/D are corroborated by the reference NAMES our own extract carries (e.g. A1010130 'Pile Caps' = Substructure, D2090800 'Piping & Fittings' = Services). E/F/G are NOT observed in our data — treat as unverified until the ASTM source is held."
+    },
+    { "name": "group_element", "level": 2, "facet": "element",
+      "offset": 1, "length": 2, "pattern": "^[0-9]{2}$", "required": true,
+      "description": "Group element, e.g. B|20 = Exterior Enclosure, D|20 = Plumbing, D|40 = Fire Protection." },
+    { "name": "individual_element", "level": 3, "facet": "element",
+      "offset": 3, "length": 2, "pattern": "^[0-9]{2}$", "required": false,
+      "description": "Individual element. First OBSERVED level: D4090 'Other Fire Protection Systems' (5 chars)." },
+    { "name": "sub_element", "level": 4, "facet": "element",
+      "offset": 5, "length": 3, "pattern": "^[0-9]{3}$", "required": false,
+      "description": "Sub-element / assembly. The 8-char form, 14 of our 15 observed codes." }
+  ],
+
+  "facets": {
+    "element": { "applies": true,  "column": "elements_meta.classification_code",
+                 "note": "the only facet this scheme codes; Uniformat is elemental, not spatial" },
+    "space":   { "applies": false, "note": "Uniformat has no space/room code — use OmniClass Table 13 or Uniclass SL" },
+    "level":   { "applies": false, "note": "Uniformat has no storey code — see locales.json level_naming" },
+    "system":  { "applies": "partial",
+                 "note": "the D major group is service-system shaped (D20 Plumbing, D40 Fire Protection, D50 Electrical) but it codes the ELEMENT, not a system instance" }
+  },
+
+  "evidence": {
+    "source_ifc": "internal/UNMERGED/Hospital_IFC4_*.ifc (7 discipline files)",
+    "extracted": "2026-07-30, DAGCompiler/python/extractIFCtoDB.py §CLASSIFY",
+    "coded_elements": 4546,
+    "total_elements": 63917,
+    "coverage_pct": 7.11,
+    "distinct_codes": 15,
+    "ifc_carrier": "IfcRelAssociatesClassification -> IfcClassificationReference(Location,ItemReference,Name,ReferencedSource) -> IfcClassification.Name='Uniformat'",
+    "observed_codes": [
+      ["A1010130", "Pile Caps", 56],
+      ["A1020130", "Piles - Steel Pipe", 444],
+      ["B2020200", "Curtain Walls", 1585],
+      ["B2030410", "Overhead Doors", 2],
+      ["C1010400", "Site Built Toilet Partitions", 31],
+      ["C1030100", "Fabricated Compartments & Cubicles", 1],
+      ["C1030200", "Bath & Toilet Accessories", 219],
+      ["C1030220", "Bath & Toilet Accessories - Residential", 298],
+      ["C2010400", "Stair Handrails/Balustrades", 41],
+      ["D2010110", "Water Closets - Single", 282],
+      ["D2010210", "Urinals - Single", 13],
+      ["D2010440", "Sinks - Service", 119],
+      ["D2090800", "Piping & Fittings", 1439],
+      ["D4090",    "Other Fire Protection Systems", 4],
+      ["D5020220", "Lighting - Incandescent", 12]
+    ],
+    "_length_note": "D4090 is 5 chars while every other observed code is 8. A fixed-width validator would have rejected a code the authoring tool really wrote. This is the concrete reason 'permitted_lengths' is a list."
+  }
+}

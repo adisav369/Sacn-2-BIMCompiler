@@ -1,0 +1,95 @@
+{
+  "id": "skata.example",
+  "title": "SKATA (Sistem Kod Aset Tak Alih) — ⛔ EXAMPLE ONLY, NOT THE REAL FORMAT",
+  "authority": "JKR / CIDB Malaysia",
+  "status": "EXAMPLE-NOT-SPECIFIED",
+
+  "_WARNING": [
+    "⛔⛔ EVERY CODE SHAPE IN THIS FILE IS A PLACEHOLDER. IT IS NOT SKATA. ⛔⛔",
+    "",
+    "This repo does NOT hold the JKR/CIDB SKATA or PeDATA specification. The field widths, segment order,",
+    "separators, and allowed values below were chosen ONLY to exercise the descriptor mechanism and to",
+    "show a reviewer the shape a real scheme file takes. They are fiction and are labelled as fiction.",
+    "",
+    "Validating a real Malaysian handover model against this file would produce CONFIDENTLY WRONG",
+    "pass/fail results. build/classification_checker.py therefore REFUSES to emit a compliance verdict",
+    "for any scheme whose status is 'EXAMPLE-NOT-SPECIFIED' — it reports coverage and shape only, prefixed",
+    "§CLASSIFY_CHECK EXAMPLE-SCHEME. That refusal is a feature; do not remove it to 'get a green'.",
+    "",
+    "PRIME RULE: a classification code is authored or extracted, never guessed from element_name.",
+    "That applies to the FORMAT as much as to the values."
+  ],
+
+  "_TODO_FROM_PRIMARY_SPEC": {
+    "_doc": "Exactly what a real config/classification/schemes/skata.json must supply, and where each field comes from. Hand this list to whoever obtains the JKR/CIDB documents.",
+    "code.pattern": "the full-code validation regex — needs the authoritative field widths and separator",
+    "code.separator": "is it delimited (e.g. 'AA-01-002') or fixed-width contiguous? UNKNOWN",
+    "code.permitted_lengths": "one length or several? Uniformat taught us not to assume one — see uniformat.json evidence._length_note",
+    "code.case": "are lowercase codes valid, or must they be normalised/rejected?",
+    "segments[].length + offset": "per-segment widths — the core unknown",
+    "segments[].values": "the controlled vocabularies. SKATA is described as covering building codes, building LEVEL codes, space/area codes and component object codes; each is presumably an enumerated list, and those lists are the bulk of the real deliverable",
+    "segments[].facet": "which of element / space / level / building each segment keys off — the four facets named in the secondary summary, but their code-level mapping is unknown",
+    "detect.ifc_classification_name": "what string a compliant Malaysian authoring tool actually writes into IfcClassification.Name — 'SKATA'? 'JKR SKATA'? UNKNOWN, and this is what makes auto-detection work",
+    "pedata_relationship": "PeDATA is the asset COLLECTION/labelling programme paired with SKATA. Is a PeDATA identifier a separate code needing its own scheme file and its own column, or a field inside the SKATA code? UNKNOWN — this determines whether one nullable column pair suffices",
+    "level_code_vs_storey_name": "SKATA specifies building LEVEL codes. Our JKR_extracted.db carries 21 distinct storey strings in one model with prefix '01' naming three different floors. A real scheme must say whether the level code is authored independently of IfcBuildingStorey.Name, because in our own data the storey name cannot be trusted to derive one",
+    "cardinality": "may one element carry >1 code (e.g. SKATA + PeDATA + Uniformat)? extractIFCtoDB.py currently keeps FIRST and COUNTS collisions (§CLASSIFY multi=). If SKATA requires multi-valued codes, elements_meta needs a side table, not a column"
+  },
+
+  "detect": {
+    "ifc_classification_name": ["SKATA", "PeDATA", "JKR"],
+    "location_uri_contains": [],
+    "_note": "PLACEHOLDER strings — the real values are unknown (see _TODO_FROM_PRIMARY_SPEC.detect)"
+  },
+
+  "code": {
+    "separator": "-",
+    "case": "upper",
+    "pattern": "^[A-Z]{2}-[0-9]{2}-[0-9]{2}-[0-9]{4}$",
+    "permitted_lengths": [16],
+    "observed_lengths": [],
+    "example": "BG-01-03-0012",
+    "_note": "FICTION. Shown only so the segment table below has something to line up against."
+  },
+
+  "segments": [
+    { "name": "building_code", "level": 1, "facet": "building",
+      "offset": 0, "length": 2, "pattern": "^[A-Z]{2}$", "required": true,
+      "description": "PLACEHOLDER — SKATA is described as carrying a building code.",
+      "values": {} },
+    { "name": "level_code", "level": 2, "facet": "level",
+      "offset": 3, "length": 2, "pattern": "^[0-9]{2}$", "required": true,
+      "description": "PLACEHOLDER — SKATA is described as carrying a building LEVEL code. See _TODO_FROM_PRIMARY_SPEC.level_code_vs_storey_name; our own JKR model proves this cannot be derived from the storey string.",
+      "values": {} },
+    { "name": "space_code", "level": 3, "facet": "space",
+      "offset": 6, "length": 2, "pattern": "^[0-9]{2}$", "required": false,
+      "description": "PLACEHOLDER — SKATA is described as carrying space/area codes.",
+      "values": {} },
+    { "name": "component_code", "level": 4, "facet": "element",
+      "offset": 9, "length": 4, "pattern": "^[0-9]{4}$", "required": true,
+      "description": "PLACEHOLDER — SKATA is described as carrying component object codes.",
+      "values": {} }
+  ],
+
+  "facets": {
+    "building": { "applies": true, "column": "project_metadata.building_name",
+                  "note": "no dedicated column exists yet; a building-level code has nowhere to live in today's schema" },
+    "level":    { "applies": true, "column": "elements_meta.storey",
+                  "note": "storey is a free-text NAME, not a code. A real level code needs its own column or a spatial_structure column" },
+    "space":    { "applies": true, "column": "spatial_structure.guid",
+                  "note": "spatial_structure carries object_type/predefined_type (IFC enums) but no asset code column" },
+    "element":  { "applies": true, "column": "elements_meta.classification_code",
+                  "note": "the ONE facet today's schema can actually hold, added 2026-07-30" }
+  },
+
+  "evidence": {
+    "source_ifc": null,
+    "coded_elements": 0,
+    "distinct_codes": 0,
+    "_note": "No building in this fleet carries a SKATA code. That is the honest Phase 0 finding, not a gap to paper over."
+  },
+
+  "sources": [
+    "https://jkrbim.my/ — JKR BIM CPAB official site (not yet retrieved)",
+    "prompts/JKR_SKATA_COMPLIANCE_LANE.md §WHAT SKATA IS — secondary web summary only"
+  ]
+}

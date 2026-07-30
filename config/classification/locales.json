@@ -1,0 +1,95 @@
+{
+  "_doc": [
+    "LOCALE REGISTRY for asset-classification codes. Spec: prompts/JKR_SKATA_COMPLIANCE_LANE.md §PHASE-C",
+    "(2026-07-30). User directive: 'keep the code format pluggable via its locale json settings.'",
+    "",
+    "WHY LOCALE IS THE KEY, not building or project: a classification code format is a JURISDICTION",
+    "artifact. Malaysia hands over to JKR/CIDB with SKATA+PeDATA; a US federal job wants Uniformat or",
+    "OmniClass; a UK job wants Uniclass 2015. The SAME building re-tendered in another country needs a",
+    "different code with the same geometry. So the format travels with the locale, and a scheme is a",
+    "reusable descriptor that several locales may point at (Uniformat is not US-only).",
+    "",
+    "RESOLUTION ORDER used by build/classification_checker.py:",
+    "  1. --locale on the command line",
+    "  2. project_metadata key 'locale' in the building DB, if present",
+    "  3. detect: match elements_meta.classification_system against each scheme's detect block",
+    "  4. this file's 'default'",
+    "Step 3 is why an unlabelled building still reports honestly: Hospital carries Uniformat and is",
+    "recognised without anyone declaring a locale.",
+    "",
+    "NOTHING HERE SYNTHESISES A CODE. These descriptors only VALIDATE and REPORT on codes the IFC",
+    "already carried (extractIFCtoDB.py §CLASSIFY). Absent stays NULL and is COUNTED."
+  ],
+
+  "default": "en-US",
+
+  "locales": {
+    "en-US": {
+      "title": "United States — CSI/ASTM classification",
+      "schemes": ["uniformat"],
+      "primary": "uniformat",
+      "status": "verified-from-data",
+      "level_naming": "generic_numeric_prefix"
+    },
+
+    "ms-MY": {
+      "title": "Malaysia — JKR / CIDB Construction 4.0 handover",
+      "schemes": ["skata.example"],
+      "primary": "skata.example",
+      "status": "EXAMPLE-ONLY — real SKATA/PeDATA spec not held by this repo",
+      "level_naming": "my_bilingual_storey",
+      "mandate": {
+        "since": "2025-07-01",
+        "threshold": "RM10,000,000",
+        "applies_to": "public and private projects",
+        "deliverable": "LOD 500 model carrying PeDATA + SKATA conformant asset data",
+        "source": "prompts/JKR_SKATA_COMPLIANCE_LANE.md §WHAT SKATA IS (secondary web summary, NOT primary spec)"
+      }
+    }
+  },
+
+  "_doc_level_naming": [
+    "LEVEL-NAMING CONVENTIONS — a separate axis from the code, and the one our own fleet already fails.",
+    "These do NOT map a storey name to a code (that would be invention). They CLASSIFY the naming",
+    "convention in use so a model with two conventions in one building is a reported NUMBER.",
+    "JKR_extracted.db is the live test case: 21 distinct storey strings, and the prefix '01' names THREE",
+    "different floors ('01 Aras Satu', '01 Ground Floor Level', '01 Ground Level Floor'). Any level-code",
+    "checker that assumes the numeric prefix is a key is wrong on a building we already ship."
+  ],
+
+  "level_naming": {
+    "generic_numeric_prefix": {
+      "title": "Numeric prefix + free-text name",
+      "conventions": [
+        { "id": "numeric_prefix", "pattern": "^(\\d+(?:\\.\\d+)?[A-Za-z]?)\\s+(.+)$",
+          "prefix_group": 1, "body_group": 2,
+          "description": "e.g. '01 Ground Floor Level', '02.5 Hvac Level 1', '02A Ceiling Level'" },
+        { "id": "no_prefix", "pattern": "^(?!\\d)(.+)$", "prefix_group": null, "body_group": 1,
+          "description": "e.g. 'GROUND FLOOR PLAN', 'UPPER ROOF PLAN' — carries no ordinal at all" }
+      ],
+      "unknown_tokens": ["Unknown", "_UNKNOWN", ""]
+    },
+
+    "my_bilingual_storey": {
+      "title": "Malaysia — Malay/English storey names, commonly mixed in one model",
+      "extends": "generic_numeric_prefix",
+      "conventions": [
+        { "id": "numeric_prefix_ms", "pattern": "^(\\d+(?:\\.\\d+)?[A-Za-z]?)\\s+((?:Aras|Bumbung|Tanah|Rasuk|Tingkat|Bawah)\\b.*)$",
+          "prefix_group": 1, "body_group": 2, "language": "ms",
+          "description": "MEASURED in JKR_extracted.db: '00 Aras Tanah', '01 Aras Satu', '02 Aras Dua', '03 Aras Rasuk Bumbung', '04 Aras Bumbung'" },
+        { "id": "numeric_prefix_en", "pattern": "^(\\d+(?:\\.\\d+)?[A-Za-z]?)\\s+(.+)$",
+          "prefix_group": 1, "body_group": 2, "language": "en",
+          "description": "MEASURED in the same DB: '01 Ground Floor Level', '02 1st Floor Level', '03 Water Tank Floor Level'" },
+        { "id": "no_prefix", "pattern": "^(?!\\d)(.+)$", "prefix_group": null, "body_group": 1,
+          "description": "MEASURED: 'GROUND FLOOR PLAN', 'ROOF PLAN (WATER TANK LEVEL)', 'UPPER ROOF PLAN'" }
+      ],
+      "unknown_tokens": ["Unknown", "_UNKNOWN", ""],
+      "findings_to_report": [
+        "conventions_in_use > 1        -> the model mixes naming systems",
+        "prefix_collisions > 0         -> one prefix names more than one distinct storey",
+        "no_prefix_count > 0           -> storeys with no ordinal at all",
+        "unknown_count > 0             -> storeys the extract could not attribute"
+      ]
+    }
+  }
+}

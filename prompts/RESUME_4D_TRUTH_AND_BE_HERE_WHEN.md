@@ -416,3 +416,138 @@ discipline files), verified by class histogram against the DB — `IfcPlate` 221
 `IfcCurtainWall` 178, `IfcWallStandardCase` 1310, `IfcWall` 158, `IfcWindow` 131, all exact.
 `/home/red1/Downloads/Hospital 2.0.ifc` is **NOT** the source (2690 plates / 7044 members / 0 curtain
 walls) and must not be used.
+
+### B.5 RESULTS — measured 2026-07-30. Everything below was RUN, not reasoned.
+
+**Two corrections to the brief this session was given, both found by measurement before coding:**
+
+1. **`extractIFCtoDB.py` already had `IfcRelAggregates`** (table at :202, extraction at :1610). The
+   brief's "zero `IfcRelAggregates` handling today" was stale. What was missing was `parent_class` —
+   without it the edge is unusable for exactly this problem, because an `IfcCurtainWall` is
+   non-geometric and **gets no `elements_meta` row at all**, so there is nothing to join back to.
+2. **`extractIFCtoDB.py` did NOT produce the shipped fleet.** Shipped `elements_meta` is
+   `(guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building)` —
+   byte-identical to `~/bim-ootb/viewer/import_db_builder.js:38`, the **in-browser importer**. The
+   Python extractor writes a different schema (`id`, `element_type`, `base_geometries`). See §B.7.
+
+**Source IFC — identified, not assumed.** `internal/UNMERGED/Hospital_IFC4_*.ifc` (7 discipline files).
+IFC2x3 and IFC4 exports of this model have identical architectural counts, so class histogram alone
+cannot separate them; **IFC4 was confirmed by GUID overlap and by the MEP class names** — the shipped DB
+has `IfcPipeSegment`/`IfcDuctSegment`, which exist only in IFC4 (IFC2x3 collapses both to
+`IfcFlowSegment`). Re-extracting IFC2x3 mismatched 22 classes; IFC4 mismatched 4.
+`/home/red1/Downloads/Hospital 2.0.ifc` is **NOT** the source (2690 plates / 7044 members / 0 curtain walls).
+
+```
+elements_meta         re-extract 63917  vs shipped 63415   (+502)
+GUID overlap          63182 shared / 63415 shipped = 99.63%
+class histogram       27 of 31 classes EXACT
+```
+**All 502 are explained, none are drift:**
+- `+735 IfcOpeningElement` — the Python extractor keeps openings; the browser importer drops them.
+- `−178 IfcCurtainWall, −31 IfcStair, −24 IfcRoof = −233` — these are **precisely the non-geometric
+  aggregate containers**. The Python extractor only writes `elements_meta` inside the tessellation loop,
+  so a parent with no own body gets no row. 233 missing rows = 233 aggregate parents. The defect and the
+  extractor's blind spot are the same 233 objects.
+
+**B1 — `§DECOMP rel_aggregates`**
+```
+9527 rows | 254 distinct parents | rel_type: aggregates=9527, nests=0
+  IfcCurtainWall  parents=178  children=9340    <- 178/178 resolve children (100%)
+  IfcStair        parents=31   children=93
+  IfcRoof         parents=24   children=24
+  IfcBuilding/IfcSite/IfcProject  parents=21  children=70   (spatial decomposition)
+  children of IfcCurtainWall by class: IfcMember 7122, IfcPlate 2211, IfcDoor 7
+```
+Child coverage against the **shipped** element set (the DB the viewer actually loads):
+`IfcPlate 2211/2211 (100.0%)` and `IfcMember 7122/7127 (99.93%)` have a curtain-wall parent.
+The 5 unmatched `IfcMember` are genuinely not curtain-wall members. **`IfcRelNests` = 0 in this model**
+— included in the code and reported as zero, not quietly omitted.
+
+**B2 — `§CLASSIFY`** `coded=4546/63917 (7.11%) uncoded=59371 systems=Uniformat multi=0 orphan=101`.
+**Not near-zero — the brief's expectation was wrong.** Full analysis in
+`prompts/JKR_SKATA_COMPLIANCE_LANE.md` §PHASE-C.
+
+⚠ **Classification alone would NOT have fixed the façade** — worth stating because it is the tempting
+shortcut: `IfcPlate` coded = **0**, `IfcMember` coded = 1580/7127. The Uniformat code `B2020200 Curtain
+Walls` sits on the *parent*, not the glazing. `rel_aggregates` is the necessary discriminator; the
+classification column is a separate deliverable that happens to ride the same pass.
+
+**B3/B4 — `tests/test_facade_order_decomp.js`.** Rule under test: an element whose **authored** parent is
+an `IfcCurtainWall` takes the sequence already published for `IfcCurtainWall` in `sequence_rules.json`
+(seq 7 / Architecture / CARPENTER). Parent class from the IFC, sequence from the existing rules file —
+no name regex, no invented sequence number.
+
+| case | panels | before | after | worstLateDays | verdict |
+|---|---|---|---|---|---|
+| **Hospital** | 2211 | **1445/1445 RED**, 2211 before any wall | **0/1445**, 0 before any wall | **251.19 → 0.00** | **RED → GREEN** |
+| **HHS_Office_Federated** | 629 | **191/193 RED**, 221 before any wall | **0/193**, 0 before any wall | **20.58 → 0.00** | **RED → GREEN** |
+| **Terminal** | 33,324 plates | curtain-wall children **0**, retagged **0** | schedule **bit-identical** | – | **GREEN, no false positive** |
+
+Terminal's GREEN is **structural, not an absence of data**: its `rel_aggregates` was extracted from
+`/home/red1/Downloads/TerminalMerged.ifc` and contains 25 edges — `IfcBuilding→23 IfcBuildingStorey`,
+`IfcSite`, `IfcProject`. **Zero `IfcCurtainWall` parents.** Its 33,324 `Metal Deck` plates are untouched
+because the authored model says they are not curtain-wall fabric.
+
+**The locale blind spot is now a measured number, not a worry.** On HHS the decomposition claims
+**629** plates where the `/glaz|verglas|.../i` regex claims **438** — `decompOnly=191`. The name rule was
+silently missing **191 curtain-wall plates (30%)** on a building we already ship. On Hospital the two
+agree exactly (2211 = 2211). **This is the direct evidence for choosing decomposition over the name rule.**
+
+**Side effect, reported not buried:** moving 9,340 elements from `STEEL_ERECTOR` to `CARPENTER` changes
+the crew pools, so `projectDays` grows Hospital **1335 → 1424** and HHS **172 → 192**. That is a real
+consequence of correcting the trade, not a defect — but a 6.7% programme extension should be a conscious
+acceptance, not a surprise.
+
+### B.6 What was NOT done, and why
+
+- **No `bim-ootb` production file changed.** The fix itself — teaching `sequence_rules.json` /
+  `time_machine.js` to consult `rel_aggregates` — is the viewer-side follow-on. This session proved the
+  edge is sufficient; wiring it is a separate task with a `sw.js CACHE_VERSION` bump.
+- **No OCI upload, no `.db` committed, no `.db` deleted, no push.** Re-extracted DBs are local and
+  untracked, in the session scratchpad.
+- **Only Hospital was re-extracted in full.** Terminal and HHS have `rel_aggregates` only (a relations-only
+  probe reusing the same `extract_rel_aggregates()`, no tessellation). Fleet-wide classification coverage
+  is therefore **unmeasured except on Hospital** — do not quote 7.11% as a fleet number.
+- **`IfcRelNests` is implemented but unexercised** — 0 rows in all three models. Untested against real
+  nest data.
+
+### B.7 ⛔ THE BLOCKER FOR THE FLEET RE-EXTRACT — read before planning it
+
+**The canonical Python extractor is not what built the shipped fleet.** The shipped DBs come from
+`~/bim-ootb/viewer/import_db_builder.js` (in-browser). Consequences:
+
+1. The Python extractor's output is **not drop-in** for the viewer: different `elements_meta` shape,
+   `base_geometries` instead of `component_geometries`, and it lacks `qto_cache` / `spatial_structure` /
+   `rel_contained_in_space` (those come from `scripts/compile_rooms.py` + `build/room_walker.js` as a
+   post-pass), and the shipped `tasks` DDL is the older narrow one.
+2. It **does not federate** — `-o` overwrites per run. A 7-discipline building needs an explicit merge,
+   and `elements_meta.id` is a per-file autoincrement that **collides** across discipline DBs (this
+   silently dropped 44k rows on the first attempt here). Any fleet script must merge on `guid`, not `id`.
+3. It **drops the 233 non-geometric aggregate containers** (§B.5) — including all 178 `IfcCurtainWall`.
+   Shipping its output would *remove* rows the viewer currently has.
+
+**So "re-extract the fleet" is ambiguous and must be decided before anyone starts:** either (a) port
+§DECOMP + §CLASSIFY into `import_db_builder.js` and re-import through the browser — but that is a
+**viewer production change**, explicitly out of scope for this session; or (b) keep the Python extractor
+as a **sidecar** that emits only `rel_aggregates` + the classification columns, and patch them into the
+existing shipped DBs via the established `migration/*.sql` + self-heal-loader pattern (CLAUDE.md
+§DB CHANGES) — **no full re-extract, no 4GB OCI cycle at all.**
+
+**(b) looks strictly cheaper and is the recommendation**, on measured grounds: `rel_aggregates` for
+Hospital is 9,527 rows of two GUIDs and two class names — a few hundred KB of SQL, versus a 263MB binary.
+
+**And a `SEAM_IDENTITY_AUDIT` §CLUSTERS finding falls out of this — one relation, two names, two
+schemas.** `import_db_builder.js:77` already declares `bom_tree(parent_guid, child_guid, rel_type)`,
+commented *"IFC parent→child relationships (IfcRelVoids/Fills/Aggregates)"* — the same edge as
+`rel_aggregates`, under a different name, in the other extractor. Measured across the shipped fleet:
+
+```
+Duplex_extracted.db                bom_tree table present, 11 rows
+Hospital / Terminal / JKR / HHS / Clinic / LTU_AHouse / Hospital_3 / TermRooms   NO bom_tree table
+```
+
+**1 of 9 buildings has the table at all, with 11 rows.** So the browser importer's decomposition edge is
+declared but effectively never populated across the fleet, while the Python extractor's is populated but
+never shipped. That is why the façade defect survived: *both* extractors can express this relation and
+*neither* one delivers it to the viewer. Reconciling the two names into one is probably the real first
+step of the follow-on, and it is NOT this session's call to make.
