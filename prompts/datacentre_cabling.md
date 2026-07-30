@@ -1071,3 +1071,57 @@ schedule.** The SLD supplies from/to, the trays supply the route, so lengths and
 That is a bigger claim than checking his numbers — *producing* the deliverable rather than auditing it —
 and it is gated on exactly the same §RUN_READY connectivity fix. Worth stating to the DC that way, but
 **only after §RUN_READY's union-rule measurement passes.**
+
+## §NEXT_SESSION — ⛔ PRECONDITION: REVIEW ROOMS PATHING FIRST (user directive, 2026-07-30)
+**Do not start cable pathing. Start by reviewing rooms pathing.** User's reason, and it is the right
+one: *"similar to what we done for rooms path even though i still find redundant pathing errors, but it
+is a substrate to walk further on … put a precondition to review rooms pathing first as we will be
+basis for here to pick up from too."*
+
+**Cable pathing will INHERIT whatever is wrong with room pathing** — same A*, same polyline builder,
+same highlight layer (§PATH_THEN_PLACE: *one engine, two graph sources*). Shipping cable paths on top of
+an engine with known redundant-path defects doubles the bug surface and makes every cable complaint
+ambiguous: is the route wrong, or the router?
+
+### Step 0 — the review, before any cable work
+The user reports **redundant pathing errors** in the existing room path (`_roomGroupBy === 'path'`,
+`_drawPathHighlight()`, `_buildGraphRoute()`). **Nobody has measured them** — that is the gap.
+- Reproduce on a building with real rooms: `~/bim-ootb/buildings/Clinic_extracted.db` (118 spaces,
+  254 doors, 1,137 walls) and `Duplex_extracted.db` (5 spaces, 14 doors).
+- Characterise the redundancy NUMERICALLY, not by eye: revisited nodes, doubled-back segments, path
+  length vs straight-line, detours through a room the route already left. Per project law the evidence
+  is `§`-tagged values and computed numbers — **never a screenshot, not even as a supplement**.
+- Read `docs/internal/WalkerDoctrine.md` first. It is **LOCKED** — do not re-litigate it.
+- Fix or document each defect, then hand the *clean* engine to the cable lane.
+
+### Then, and only then — the cable gate
+§RUN_READY's measurement stands as the gate: rebuild the graph as
+**authored ports ∪ corrected-geometric edges** and re-run it. Today `same-component = 8 of 119
+(6.7%)`. If that rises materially, F3/F4 are viable. If not, say so plainly rather than ship a 7% tool.
+
+### What "shippable" means here — SOME topology, deliberately
+The user's bar, and it is the correct one: **a partial substrate that is honest beats a complete
+substrate that does not exist.** The room path shipped with known redundancy and is still the thing
+everything else now builds on. So for cabling, ship in this order (all from §FIND_PANEL_CABLE):
+1. **F1** SLD ↔ schedule diff — needs no geometry, no engine, no rules
+2. **F2** dead-end / island report — 3,891 dead ends, 1,486 components; needs only T1
+3. **F6** 4D containment progress from `Status Cable Contain` — a spreadsheet column becomes colour
+4. *then* F3/F4 pathing, gated on §RUN_READY
+
+### §SLACK — settled, and it is deliberately dumb
+User: *"the maths slack can account for — 'allow +5% slack'."* **Adopt exactly that.** Do NOT attempt to
+derive his allowance rule from the data.
+- Report the **computed centreline length** and the **allowance** as two separate numbers, never one
+  merged figure. `route 168.2 m · +5% slack → 176.6 m (cutting)`.
+- The percentage is a **stated, editable input with a default of 5%**, not a constant and not inferred.
+- Sanity anchor from his own sheet: `HVSS→MV-A` `Cable Lth 168.0` → `Cutting Lth 175.0` = **+4.2%**.
+  So 5% is the right ballpark and defensible — but it is HIS policy, so it stays a knob.
+- **Never present slack as derived.** A number labelled "calculated" that contains a guessed 5% is the
+  one thing that would lose the engineer's trust.
+
+### The positioning, in one line (user's framing, worth keeping)
+**We are closing the long tail the giants will not touch** — partial topology, honest "unreachable",
+verifiable against the engineer's own 324 measured lengths. Not out-engineering Revit; building what it
+structurally cannot ship (§WHAT_REVIT_CANNOT_DO, and the four reasons in the same discussion: it becomes
+a contractual quantity, their schema has no cable object, slack is judgement, and real models are too
+fragmented for a global feature to look anything but broken).
