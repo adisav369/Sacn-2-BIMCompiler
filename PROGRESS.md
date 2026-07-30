@@ -93,8 +93,13 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 
 - ▶ **Of the four lanes specced 2026-07-29: §HOVER_NAME DONE (12/12, #1085) · §CPE_ROOM_TITLE DONE
   (#1089, live-preview witness gap closed #1092, user-confirmed on a real bake 07-30). LEFT:**
-  `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (T1b/host-before-hosted THEN the shot that tops the
-  demo; order is a recommendation) · `prompts/CINEMA_FIND_TO_FILM.md` (parked).
+  `prompts/CINEMA_FIND_TO_FILM.md` (parked) · Task 2 (`§CPE_BE_HERE_WHEN`) of
+  `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (Task 1 now DONE, see below).
+- ✅ **§4D_FACADE_ORDER (Task 1 of `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`) CLOSED + LIVE (07-31),
+  user-confirmed "yes it is working"** — glazed curtain-wall panels no longer erect ~250d before their
+  host wall. FOUR fixes, not one — all detail + witness numbers in the RESUME file's ✅ TASK 1 CLOSED
+  section, do not re-derive. bim-ootb #1098+#1100, `sw.js` v885→v887.
+  Landmine: `project_rates_json_viewer_never_fetched_landmine.md`.
 - ✅ **§CACHE_KEY re-download bug CLOSED + LIVE (07-30, #1088)** — the ERP red pill re-fetched the whole
   building (Hospital 251MB, ~2min) on every click while a good copy sat in IndexedDB: `cachedFetch` keyed
   the blob on the RAW url, and the landing (`index.html:489`, absolute OCI) vs the red pill

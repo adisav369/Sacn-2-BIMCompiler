@@ -343,3 +343,71 @@ session changed no precached file, so no bump was made.
   — adds `tests/test_host_order.js` only. **Zero production files touched.** Not wired into CI
   (`.github/workflows/ci.yml` runs an explicit list; nothing globs `tests/`).
 - Stage B not started — correctly gated off by Stage A.
+
+---
+
+## ✅ TASK 1 CLOSED (2026-07-31) — user-confirmed live, glazed façade no longer beats its host wall
+
+The ⛔ A.4 decision was answered by the user directly: name-based reclassification is metadata
+tuning, not architecture — `sequence_rules.json` is "an editable JSON meant for that purpose,"
+no separate authorization needed. Built same-session, shipped, confirmed working live on Hospital.
+
+**What actually shipped — THREE fixes, not one, because the classification bug had two independent
+consumers and one silent no-op:**
+
+1. **`rates/sequence_rules.json` `NAME_OVERRIDES`** — `glazed_curtainwall_facade`: `IfcPlate`/`IfcMember`
+   whose `element_name` matches `/glaz|glass|verglas|vitrage|vidrio|curtain|mullion/i` move from their
+   structural class default to Architecture/seq7 (the same slot as `IfcWindow`/`IfcCurtainWall`). Pattern
+   was widened past the original A.3 `GLAZE_RE` (which only matched `IfcPlate`) after measuring the
+   remaining unmatched names on all 8 buildings: Hospital's `Curtain Wall:...Framing`/`Curtain System`
+   `IfcMember` mullions and Clinic's `Rectangular/Circular Mullion` needed bare `curtain`/`mullion`, not
+   `curtain.?wall`. **Measured zero false positives on all 8 shipped buildings** — Terminal's 33,324
+   `Metal Deck` `IfcPlate`, JKR's `jkrST_str-fr_st_chs` steel framing, LTU_AHouse's `Beam Planed Timber`
+   all correctly stay structural. Known reported (not silently dropped) blind spot: HHS's German
+   `Rechteckiger Pfosten` (curtain-wall posts) — deliberately not covered by a generic "post" pattern,
+   too ambiguous against real structural posts.
+2. **Two independent consumers, both needed the fix** — this was NOT found until building it:
+   - `viewer/time_machine.js` `matchRule`/`injectGantt` (the generative fallback, what A.1-A.3 measured).
+   - `viewer/schedule_author.js` `materializeDefault` — a **second, separate** class→phase classifier
+     that groups elements into the 6 WBS phase-buckets the "Generate first draft"/Regenerate authoring
+     UI writes to `tasks`/`task_elements`. Its own header says "REPLICATES time_machine.js matchRule
+     EXACTLY" but that was a comment, not a mechanism — it never saw the name override until patched
+     separately. **This is the path the user was actually exercising** (`§AUTHOR_MATERIALIZE` in every
+     console dump in this thread), not the generative fallback A.1-A.3 tested.
+3. **A third bug found only by testing the live flow, not just `tests/test_host_order.js`:**
+   `time_machine.js`'s `§PLAYBACK-STAGGER` block (`:3454-3489`) — once a schedule is 100% authored/
+   captured, it re-derives each element's fine timing by sorting elements WITHIN a phase-task bucket by
+   raw `center_z` only, no trade order. A window/glazed panel and its host wall routinely have near-
+   identical `center_z` (the opening sits inside the wall's height span), so cz-only sort left **662/1445
+   touching glazed-panel/wall pairs still violating** even after fix #2 correctly bucketed them into the
+   same phase. Changed the sort key to `(seq, cz)` — same discipline as `schedule_gate.js` PASS B — 662→0.
+4. **A fourth bug — the reason the first deploy "didn't work" (user report, same session):**
+   `viewer.html` never calls `initRateTemplate()`/`loadSequenceRules()` — only `mep_report.html` and
+   `boq_charts.html` do. So `rates/sequence_rules.json` is **never fetched** by the actual viewer;
+   `rates.js`'s own hardcoded in-file `SEQUENCE_RULES`/`SEQUENCE_DEFAULT` objects are what really run,
+   and the JSON is a "someday, if fetched" override that in practice never fires for Time Machine or the
+   Author wizard. Confirmed by the total ABSENCE of any `§RATES_JSON` log line across every console dump
+   in this thread. Fix #1 alone was **inert** until the same override was also hardcoded directly into
+   `rates.js`'s `SEQUENCE_NAME_OVERRIDES` (same convention as the existing hardcoded `SEQUENCE_RULES`).
+
+**Witnesses (real deployed code, Hospital):**
+- `tests/test_host_order.js` §W-FACADE-ORDER: 2211/2211 glazed-before-any-wall, 1445/1445 touching
+  violations (worst 251.19d late) → **0/1445**, GREEN.
+- `tests/test_facade_stagger_order.js` (new) §ZORDER_FACADE: cz-only sort 662/1445 RED → `(seq,cz)`
+  sort **0/1445**, GREEN.
+- `tests/test_schedule_gate.js` unaffected (0 floating, unchanged) — confirms the fix didn't touch the
+  support gate.
+- Zero regressions: Duplex/Terminal/LTU_AHouse/JKR all show `nameOverridden=0`, still GREEN.
+- **User-confirmed live** on the actual Hospital viewer session after the 4th fix: "yes it is working."
+
+**Deliverables:** bim-ootb PR #1098 (fixes 1-3, merged) + PR #1100 (fix 4, merged), `sw.js`
+`CACHE_VERSION` v885→v886→v887, both deployed to GH Pages and verified.
+
+**Precondition for Task 2 (`§CPE_BE_HERE_WHEN`) is now met** — the timeline no longer installs a
+window before its wall, so pinning a camera arrival to "when this is being built" now aims at a
+correct moment. Task 2 itself is untouched by this session; still open.
+
+**Lesson for next session touching `rates.js`/`sequence_rules.json`:** editing the JSON alone proves
+nothing about what the live viewer does — check whether the consuming page actually calls
+`loadSequenceRules()` before treating a JSON edit as shipped. See
+`project_rates_json_viewer_never_fetched_landmine.md`.
