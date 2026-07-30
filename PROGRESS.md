@@ -24,6 +24,26 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 `lane/hr-overlay`, `lane/teams-overlay`.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
+- ▶ **MODELLER — dispatch from `prompts/MODELLER_MASTER.md` (new 2026-07-30), NOT from the 15 scattered
+  files.** It triages all of them (3,742 lines), maps 14 objectives (O1–O14) to their owning file, and
+  carries an empty §OPEN LIST for a Fable5 harvest pass to fill; the 3 architecture calls it names need
+  Sonnet. ✅ **LIVE-DEFECT CLOSED, deployed and verified:** the Modeller drew bounding boxes on the live
+  site for months — `modeller/mesh.db` is Git-LFS-tracked and GitHub Pages doesn't resolve LFS, so the
+  browser got HTTP 200 + a 134-byte stub; with no mesh store the hard-fail guard was skipped and every
+  element fell back to `boxArrays(rawBox)`, logged only via the DevTools-hidden `console.warn`. Fixed
+  by per-resident geo files on object storage (Duplex 1.3MB vs a shared 120MB; all 8 residents resolve
+  100% of their hashes) + `_assertRealGeoDb()` refusing non-SQLite bytes and naming an LFS stub
+  (guard witnessed 4/4 on real live bytes) + service-worker cache v37→v38, confirmed `v38` serving live.
+  bim-ootb #1090 + #1091 both merged. ⚠ `modeller/mesh.db` is now dead weight in git — nothing fetches it.
+  **Standing lesson (now in `feedback_terse`): for any "the live page looks wrong" report, curl the
+  served bytes FIRST — a 200 is not evidence, and a silent substitution is its own bug.**
+- **`prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-ENVELOPE`** (BIMCompiler PR #56) — LOD400
+  means fabrication level; an authored 7-layer wall shipping as one 12-triangle box is a fallback.
+  Duplex source carries 91 `IfcMaterialLayerSetUsage`, SampleCastle 412. DONE: `rel_material_layer_set`
+  (the element→layer-set edge that never existed) + P10 `LOD400_ENVELOPE` gate, red §PROOF ⇒ exit 1,
+  witness 8/8. OPEN: §LOD400-LAYERS-REAL (slice the envelope at the authored thicknesses) — needs the
+  one-mesh-per-element vs N-sub-instances call first. ⚠ The old "GIGO / source is plain" verdict in
+  §LODHELL FINDING 1 is SUPERSEDED — do not re-cite it.
 - `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
 - `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
   ✅ **§CINEMA_TURN_SLERP LANDED (#1018, 7/7)** — look-back was a one-frame 180° snap; fixed by rotating the
