@@ -534,6 +534,8 @@ affected** by §SUBSTRATE_LANDMINE — `routeChains` demonstrably is; every othe
 (4) **Tray fill / segregation** — CONTAINMENT carries containment only, no cables; unanswerable without
 a cable schedule. (5) **Whether EQUIPMENT's 292 elements + their ports connect the tray network to
 panels** — the panel-to-rack query needs that join and it was not attempted here (EQUIPMENT is a
-separate DB; the merged 87,333-element OVERALL DB exists per §KUL012 but its port tables are empty for
-the same T1 reason). (6) **RULE_C's transferability** — it is tuned and scored on ONE building; whether
-F1 ~96 holds on Terminal/Duplex MEP is untested.
+separate DB; the merged 87,333-element OVERALL DB exists per §KUL012, and its port tables must be empty
+too since `grep -rn 'INSERT.*port_elements\|INSERT.*port_connections'` across the whole repo returns
+**zero** write sites — that is a *code* measurement, though, not a `SELECT COUNT(*)` on that particular
+DB, which was not completed). (6) **RULE_C's transferability** — it is tuned and scored on ONE building;
+whether F1 ~96 holds on Terminal/Duplex MEP is untested.
