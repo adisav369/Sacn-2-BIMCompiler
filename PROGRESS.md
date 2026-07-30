@@ -32,7 +32,12 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   One-layer prototype (walker's own pockets + doors as portals) measures 1.04×/1.22× detour, 0.05%/0.02%
   off-map, R2=R3=0 by construction, map built 54/362ms, queries 0.7/1.3ms. NEXT = funnel across door
   apertures (Lee–Preparata; §21.12 cites it, §21.13 maps it to the user's own "arrow" framing).
-  7 witnesses on bim-ootb `review/roompath-redundancy`. **Nothing deployed; engine byte-unchanged.**
+  **Funnel ATTEMPT 1 FAILED all 3 pre-written falsification tests (§21.15) and the CONVEX_ONLY
+  discriminator (§21.16) named the cause: portal WINDING, not pocket convexity — `aperture()` orients
+  each portal independently instead of enforcing consistency across the channel. Convexity is a
+  separate, real fault for off-map only (4.09%→1.87%, 11.34%→0.51%). Attempt 2 is specified in §21.16.**
+  8 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy`.
+  **Nothing deployed; engine byte-unchanged.**
   ⛔ This keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP — the
   Find panel prints Dijkstra's penalty-weighted cost as metres (3.20× over on Clinic, 0.71× under on
   LTU), and a cable schedule inheriting that is exactly what §SLACK exists to prevent.

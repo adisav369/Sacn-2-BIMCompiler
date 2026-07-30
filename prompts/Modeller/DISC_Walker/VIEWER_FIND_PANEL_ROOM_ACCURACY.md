@@ -2311,3 +2311,15 @@ clean-precondition case — before any conclusion is drawn from the full set.
 reach the reference's 0.00%/0.11%. It is a second task, not a prerequisite for T1/T2.
 
 **Still nothing deployed; engine byte-unchanged.** Witness carries the `CONVEX_ONLY` env switch now.
+
+### §21.17 SESSION CLOSE (2026-07-31) — everything a future session needs is committed, not in /tmp
+The seven one-off probes this file cites (`wall_model_check.js`, `util_breakdown.js`,
+`ratio_buckets.js`, `viol_control.js`, `offmap_check.js`, `loopcut.js`, `funnel_diag.js`) were written
+as `/tmp/*.js` scratch and **are now committed to `roompath_diagnostics/` on the branch**, with a
+README mapping each to the question it answers and the § that cites it. Any `/tmp/...` path in §20-§21.16
+should be read as `roompath_diagnostics/...`. ⚠ The `/tmp/wt-roompath` worktree was removed by another
+session TWICE mid-run — assume it is gone and recreate per §21.14; nothing lives only in /tmp any more.
+
+**Read before funnel attempt 2:** `roompath_diagnostics/funnel_diag.js` test A2 — a straight corridor
+passes with left/right deliberately SWAPPED. It proves nothing about orientation on its own, and
+mistaking it for a green light is how attempt 1 reached a full sweep with a broken portal winding.
