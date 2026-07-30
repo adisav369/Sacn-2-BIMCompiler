@@ -343,3 +343,76 @@ session changed no precached file, so no bump was made.
   — adds `tests/test_host_order.js` only. **Zero production files touched.** Not wired into CI
   (`.github/workflows/ci.yml` runs an explicit list; nothing globs `tests/`).
 - Stage B not started — correctly gated off by Stage A.
+
+---
+
+## §STAGE B 2026-07-30 — SPEC (written before any code, per Spec-First)
+
+**Worker session, `bim-compiler` branch `feat/rel-aggregates-classification`, worktree `/tmp/wt-extract`.**
+Answers §A.4's ⛔ with the second of the two options it named: **consult the IFC decomposition**
+(`IfcCurtainWall` ⊃ `IfcPlate`/`IfcMember`), not `element_name`. §A.3 already proved the name rule is
+locale-dependent (HHS `Verglasung`, and a mullion named `Rechteckiger Pfosten:6 x 15 mit Deckprofil`).
+The decomposition is authored by the modeller and carries no language.
+
+### B.0 Contract
+
+- **B1 `rel_aggregates`** — recover `IfcRelAggregates` (+ `IfcRelNests`) verbatim. `provenance` is
+  `ifc:recovered`; nothing is derived, nothing inferred from proximity or name.
+- **B2 classification** — recover `IfcRelAssociatesClassification` → `IfcClassificationReference` into
+  **nullable** `elements_meta` columns. **Absent ⇒ NULL and COUNTED, never guessed.** Coverage is
+  reported as a number per building; near-zero is a valid finding.
+- **B3 witness** — re-run §A.3's `§W-FACADE-ORDER` with curtain-wall children reclassified via the new
+  edge instead of `ifc_class`. **Must go 1445/1445 RED → 0 GREEN.** *Proves:* the decomposition edge is
+  sufficient to order the glazed façade after its wall.
+- **B4 no-false-positive** — Terminal's 33,324 `Metal Deck` `IfcPlate` have **no** curtain-wall parent, so
+  they must not move. **Must stay GREEN.** *Disproves:* "this is a blanket `IfcPlate` reclassification."
+- **Boundary:** analysis only. No `~/bim-ootb` production file is edited, no OCI upload, no `.db` committed.
+
+### B.1 Schema delta (`DAGCompiler/python/extractIFCtoDB.py`)
+
+```sql
+-- widened (table already existed; parent_class/child_class/rel_type/provenance are new)
+CREATE TABLE rel_aggregates (
+    parent_guid TEXT NOT NULL, child_guid TEXT NOT NULL,
+    parent_class TEXT, child_class TEXT,
+    rel_type TEXT NOT NULL DEFAULT 'aggregates',   -- 'aggregates' | 'nests'
+    provenance TEXT DEFAULT 'ifc:recovered',
+    PRIMARY KEY (parent_guid, child_guid, rel_type));
+-- new nullable columns on elements_meta
+classification_code TEXT, classification_system TEXT, classification_name TEXT
+```
+
+`rel_type` is what lets `IfcRelNests` ride along without conflating two different IFC relations —
+`IfcRelAggregates` is whole/part, `IfcRelNests` is ordered-child (ports, segments). Both are recovered;
+a consumer that only wants decomposition filters `rel_type='aggregates'`.
+
+⚠ `classification_name` is a **third** column beyond the two this task specified. Rationale, stated
+openly rather than slipped in: the reference carries `('…/uniformat','B2020200','Curtain Walls',#…)` —
+the human-readable facet is already in hand at zero extra parse cost, and the whole reason both changes
+ride in one pass is that a second fleet re-extract is expensive. Dropping it would have cost exactly
+that. Nullable, additive, no consumer reads it yet.
+
+### B.2 IFC2x3 vs IFC4 (the attribute rename that will silently return NULL if missed)
+
+`IfcClassificationReference` is `(Location, **ItemReference**, Name, ReferencedSource)` in IFC2x3 and
+`(Location, **Identification**, Name, ReferencedSource, Sort)` in IFC4. Read via `getattr` fallback
+`Identification → ItemReference`, or every IFC2x3 building extracts as 100% NULL and looks like a
+building with no classification rather than a parser that read the wrong slot.
+
+System name resolves by walking `ReferencedSource` to the `IfcClassification` and taking its `.Name`
+(`'Uniformat'`), **not** the reference's own `.Name` (`'Curtain Walls'` — that is the code's label).
+
+### B.3 Multi-association and non-extracted targets
+
+One element may carry >1 classification. **First wins, collisions COUNTED and logged** (`§CLASSIFY
+multi=<n>`) — never concatenated, never arbitrated by a rule this repo cannot source. Associations
+pointing at a GUID with no `elements_meta` row (non-geometric parents, spatial nodes) are counted
+separately as `orphan=<n>` rather than silently dropped.
+
+### B.4 Source-of-truth check performed before any of the above
+
+The shipped `Hospital_extracted.db` reproduces from **`internal/UNMERGED/Hospital_IFC2x3_*.ifc`** (7
+discipline files), verified by class histogram against the DB — `IfcPlate` 2211, `IfcMember` 7127,
+`IfcCurtainWall` 178, `IfcWallStandardCase` 1310, `IfcWall` 158, `IfcWindow` 131, all exact.
+`/home/red1/Downloads/Hospital 2.0.ifc` is **NOT** the source (2690 plates / 7044 members / 0 curtain
+walls) and must not be used.

@@ -148,7 +148,17 @@ CREATE TABLE IF NOT EXISTS elements_meta (
     -- logs its full size, and renders NOTHING. Reads like a size/perf bug and is neither.
     -- The browser importer has always written it (viewer/import_db_builder.js:38,48); this
     -- extractor did not, which is why CLI-built DBs opened blank.
-    building TEXT
+    building TEXT,
+    -- §CLASSIFY (RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md §STAGE B / JKR_SKATA_COMPLIANCE_LANE.md Phase 1):
+    -- asset classification RECOVERED from IfcRelAssociatesClassification -> IfcClassificationReference.
+    -- NULLABLE and NULL-when-absent by design: a code is authored or extracted, NEVER synthesised from
+    -- element_name. The un-coded remainder is COUNTED (§CLASSIFY coverage line), never hidden or guessed.
+    --   classification_code   = IfcClassificationReference.Identification (IFC4) / .ItemReference (IFC2x3)
+    --   classification_system = the parent IfcClassification.Name, e.g. 'Uniformat'
+    --   classification_name   = the reference's own .Name, e.g. 'Curtain Walls'
+    classification_code TEXT,
+    classification_system TEXT,
+    classification_name TEXT
 );
 CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT);
 CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree USING rtree(
@@ -199,10 +209,23 @@ CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     space_guid TEXT,
     PRIMARY KEY (element_guid, space_guid)
 );
+-- decomposition edge (RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md §STAGE B): IfcRelAggregates (whole/part) and
+-- IfcRelNests (ordered child) recovered VERBATIM. provenance is always 'ifc:recovered' — NON-INVENT.
+-- Why it matters beyond the BOM: an IfcCurtainWall AGGREGATES its IfcPlate glazing and IfcMember mullions.
+-- Without this edge the 4D sequencer keys on ifc_class alone and erects the whole glazed facade as
+-- Superstructure on day 14 while the wall it touches appears on day 265 (§A.3, 1445 measured pairs,
+-- worst 251.19 d). The decomposition is the LOCALE-PROOF discriminator a name regex can never be:
+-- HHS names its glazing 'Verglasung', its mullions 'Rechteckiger Pfosten', and Terminal's 33,324
+-- IfcPlate are genuinely-structural 'Metal Deck' that must NOT be reclassified.
+-- rel_type keeps the two IFC relations distinct: consumers wanting decomposition filter 'aggregates'.
 CREATE TABLE IF NOT EXISTS rel_aggregates (
     parent_guid TEXT NOT NULL,
     child_guid TEXT NOT NULL,
-    PRIMARY KEY (parent_guid, child_guid)
+    parent_class TEXT,
+    child_class TEXT,
+    rel_type TEXT NOT NULL DEFAULT 'aggregates',
+    provenance TEXT DEFAULT 'ifc:recovered',
+    PRIMARY KEY (parent_guid, child_guid, rel_type)
 );
 -- Path B (§PATHB / SPATIAL_DEPENDENCY_GRAPH.md): the void/fill chain, recovered verbatim from
 -- IfcRelVoidsElement (host→opening) composed with IfcRelFillsElement (opening→filling). One row per
@@ -806,6 +829,135 @@ def is_void_consumed(elem, settings):
     except (AttributeError, TypeError):
         return False
     return False
+
+
+def extract_rel_aggregates(ifc_file, conn):
+    """§DECOMP (RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md §STAGE B): recover the decomposition edge.
+
+    RECOVERED, never derived. Two distinct IFC relations, kept distinct by `rel_type`:
+      IfcRelAggregates -> 'aggregates'  (whole/part: curtain wall ⊃ plates+mullions, roof ⊃ slabs,
+                                         stair ⊃ flights, building ⊃ storeys)
+      IfcRelNests      -> 'nests'       (ordered child: ports on an element, segments in a run)
+
+    Both carry parent/child ifc_class inline — free at parse time, and it is what lets a consumer ask
+    "is this plate's parent an IfcCurtainWall?" with ONE query and no join back into elements_meta
+    (which matters here: an IfcCurtainWall is non-geometric and may have no elements_meta row at all).
+
+    Returns (aggregates_rows, nests_rows, distinct_parents).
+    """
+    n_agg = n_nest = 0
+    parents = set()
+    for ifc_type, rel_type in (("IfcRelAggregates", "aggregates"),
+                               ("IfcRelNests", "nests")):
+        try:
+            rels = ifc_file.by_type(ifc_type)
+        except RuntimeError:
+            continue  # relation absent from this IFC schema version
+        for rel in rels:
+            try:
+                parent = rel.RelatingObject
+                if not parent or not getattr(parent, "GlobalId", None):
+                    continue
+                p_guid, p_cls = parent.GlobalId, parent.is_a()
+                for child in (rel.RelatedObjects or ()):
+                    if not child or not getattr(child, "GlobalId", None):
+                        continue
+                    conn.execute(
+                        "INSERT OR IGNORE INTO rel_aggregates "
+                        "(parent_guid, child_guid, parent_class, child_class, rel_type, provenance) "
+                        "VALUES (?,?,?,?,?,'ifc:recovered')",
+                        (p_guid, child.GlobalId, p_cls, child.is_a(), rel_type))
+                    parents.add(p_guid)
+                    if rel_type == "aggregates":
+                        n_agg += 1
+                    else:
+                        n_nest += 1
+            except (AttributeError, TypeError):
+                continue
+    conn.commit()
+    return n_agg, n_nest, len(parents)
+
+
+def extract_classification(ifc_file, conn):
+    """§CLASSIFY (JKR_SKATA_COMPLIANCE_LANE.md Phase 1): recover authored asset classification.
+
+    PRIME RULE — EXTRACT ONLY. A classification code is authored or extracted, NEVER inferred from a
+    free-text `element_name`. Where the IFC carries nothing, the columns stay NULL and the un-coded
+    remainder is COUNTED on the §CLASSIFY line. Near-zero coverage is a valid finding, not a failure.
+
+    IFC2x3 vs IFC4 (the rename that silently returns 100% NULL if missed):
+        IFC2x3  IfcClassificationReference(Location, ItemReference,  Name, ReferencedSource)
+        IFC4    IfcClassificationReference(Location, Identification, Name, ReferencedSource, Sort)
+    `Identification` is tried first, `ItemReference` second.
+
+    `classification_system` walks ReferencedSource up to the IfcClassification and takes ITS .Name
+    ('Uniformat'), not the reference's own .Name ('Curtain Walls' — that is the code's label, which is
+    stored separately as classification_name).
+
+    Multi-association: FIRST wins, collisions COUNTED (`multi`), never concatenated and never arbitrated
+    by a rule this repo cannot source. Associations targeting a GUID with no elements_meta row are
+    COUNTED as `orphan`, never silently dropped.
+    """
+    def _resolve(ref, depth=0):
+        """(code, system, name) from an IfcClassificationReference / IfcClassification."""
+        if ref is None or depth > 8:
+            return None, None, None
+        if ref.is_a("IfcClassification"):
+            return None, getattr(ref, "Name", None), None
+        code = getattr(ref, "Identification", None) or getattr(ref, "ItemReference", None)
+        name = getattr(ref, "Name", None)
+        system = None
+        src = getattr(ref, "ReferencedSource", None)
+        while src is not None and depth < 8:
+            if src.is_a("IfcClassification"):
+                system = getattr(src, "Name", None)
+                break
+            src = getattr(src, "ReferencedSource", None)
+            depth += 1
+        return code, system, name
+
+    found = {}          # guid -> (code, system, name)
+    assoc = multi = 0
+    try:
+        rels = ifc_file.by_type("IfcRelAssociatesClassification")
+    except RuntimeError:
+        rels = []
+    for rel in rels:
+        try:
+            code, system, name = _resolve(getattr(rel, "RelatingClassification", None))
+            if code is None and system is None:
+                continue
+            for obj in (rel.RelatedObjects or ()):
+                guid = getattr(obj, "GlobalId", None)
+                if not guid:
+                    continue
+                assoc += 1
+                if guid in found:
+                    multi += 1       # counted, first wins
+                    continue
+                found[guid] = (code, system, name)
+        except (AttributeError, TypeError):
+            continue
+
+    coded = orphan = 0
+    for guid, (code, system, name) in found.items():
+        cur = conn.execute(
+            "UPDATE elements_meta SET classification_code=?, classification_system=?, "
+            "classification_name=? WHERE guid=?", (code, system, name, guid))
+        if cur.rowcount:
+            coded += cur.rowcount
+        else:
+            orphan += 1      # association targets a GUID with no elements_meta row
+    conn.commit()
+
+    total = conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+    systems = ",".join(sorted(
+        {r[0] for r in conn.execute(
+            "SELECT DISTINCT classification_system FROM elements_meta "
+            "WHERE classification_system IS NOT NULL")}))
+    return {"coded": coded, "total": total, "assoc": assoc, "multi": multi,
+            "orphan": orphan, "systems": systems,
+            "pct": (100.0 * coded / total) if total else 0.0}
 
 
 def extract_rel_fills_host(ifc_file, conn):
@@ -1607,29 +1759,22 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         print(f"  §BUILDING_COL {_bn}/{_bt} rows carry building={_building_label}; "
               f"project_metadata rows={conn.execute('SELECT COUNT(*) FROM project_metadata').fetchone()[0]}")
 
-    # Extract IfcRelAggregates — parent-child decomposition
-    agg_count = 0
+    # ── §DECOMP: recover the decomposition edge (IfcRelAggregates + IfcRelNests) ──
+    # RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md §STAGE B. Verbatim recovery, provenance='ifc:recovered'.
     if not dry_run:
-        try:
-            for rel in ifc_file.by_type("IfcRelAggregates"):
-                try:
-                    parent = rel.RelatingObject
-                    if not parent or not hasattr(parent, 'GlobalId'):
-                        continue
-                    for child in rel.RelatedObjects:
-                        if not child or not hasattr(child, 'GlobalId'):
-                            continue
-                        conn.execute(
-                            "INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) "
-                            "VALUES (?, ?)", (parent.GlobalId, child.GlobalId))
-                        agg_count += 1
-                except (AttributeError, TypeError):
-                    pass
-            conn.commit()
-        except RuntimeError:
-            pass  # IFC schema may not have these types
-    if agg_count > 0:
-        print(f"  IfcRelAggregates: {agg_count} parent→child decomposition mappings")
+        agg_rows, nest_rows, agg_parents = extract_rel_aggregates(ifc_file, conn)
+        if agg_rows or nest_rows:
+            print(f"  §DECOMP rel_aggregates: {agg_rows} aggregates + {nest_rows} nests edges "
+                  f"recovered from {agg_parents} distinct parents (provenance=ifc:recovered)")
+
+    # ── §CLASSIFY: recover authored asset classification into elements_meta ──
+    # JKR_SKATA_COMPLIANCE_LANE.md Phase 1. EXTRACT ONLY — absent stays NULL and is COUNTED.
+    if not dry_run:
+        _c = extract_classification(ifc_file, conn)
+        print(f"  §CLASSIFY coded={_c['coded']}/{_c['total']} "
+              f"({_c['pct']:.1f}%) systems={_c['systems'] or 'none'} "
+              f"assoc={_c['assoc']} multi={_c['multi']} orphan={_c['orphan']} "
+              f"uncoded={_c['total'] - _c['coded']}")
 
     # ── §PATHB: recover the void/fill chain into rel_fills_host ─────────────
     if not dry_run:
@@ -1864,6 +2009,14 @@ def enrich_reference_db(ifc_path, ref_db_path, dry_run=False):
             conn.execute("ALTER TABLE elements_meta ADD COLUMN material_rgba TEXT")
             print("  Added material_rgba column")
         conn.commit()
+
+    # §CLASSIFY — self-heal an older extract that predates the classification columns, so --enrich
+    # can add coverage to a DB already on disk without a full re-extract.
+    for _col in ("classification_code", "classification_system", "classification_name"):
+        if _col not in cols and not dry_run:
+            conn.execute(f"ALTER TABLE elements_meta ADD COLUMN {_col} TEXT")
+            print(f"  Added {_col} column")
+    conn.commit()
 
     # Build GUID -> IFC element lookup
     guid_to_ifc = {}
