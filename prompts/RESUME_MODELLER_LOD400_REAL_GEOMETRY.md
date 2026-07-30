@@ -113,8 +113,9 @@ re-derive the measured facts below — they are witnessed; spend the session on 
 | duplex parts the Modeller loads (architecture + structure only, by design) | **218** |
 | duplex parts the Viewer loads (same building, federated, incl. 904 pipe/duct pieces) | **1119** |
 | duplex parts resolving a real mesh in the Modeller | **215 / 215**, zero fallbacks fired |
-| duplex walls that are a plain 12-triangle box | **35 / 56** |
-| duplex walls with a door/window hole cut through them | **21**, at 28–120 triangles ⇒ proves real mesh, a fake box cannot carry a hole |
+| duplex walls that are a plain 12-triangle box | **35 / 57** (corrected 2026-07-30 by direct query — histogram over `Duplex_ARC.db⋈mesh.db`, tris = `length(faces)/12`) |
+| duplex walls with a door/window hole cut through them | **18**, at 28–120 triangles ⇒ proves real mesh, a fake box cannot carry a hole (corrected 2026-07-30 — the old 21 (and the "30 hosts" phrasing) counted 10 IfcFurnishingElement + 1 IfcSlab hosts; wall hosts = 18 by `rel_fills_host⋈elements_meta WHERE ifc_class LIKE 'IfcWall%'`) |
+| the party wall's own shipped mesh | **14 triangles** (hash `d4bad00ddbda7d4e`, 42 verts — a plain box is 12; corrected 2026-07-30, Watchdog-caught) |
 | `IfcMaterialLayerSetUsage` in the duplex source / castle source | **91 / 412** |
 | the worst offender | `2O2Fr$t4X7Zf8NOew3FNbT` — **7 authored layers**, shipped as one box |
 | element→layer-set edges now extracted (just built, witnessed 8/8) | **91**, 80 of them multi-layer |
@@ -222,6 +223,21 @@ purpose themselves and it is NOT the cause of anything here; do not "fix" it or 
    should void-consumed hosts (65/71 on SampleCastle) get an invisible-but-real scene mesh — built from
    the host's own pre-boolean placement and body extent, never rendered — purely so `stretchRide()` can
    ride their fillings, or should this gap stay closed (SampleCastle 9/74 stays as-is)?**
+   **✅ APPROVED — USER, 2026-07-30: "yes, build it."** Their grounds, recorded: the frame walls ARE
+   architecture (author-drawn, absent only because the window ate the strip); keeping what the extractor
+   already computes is extraction, not invention; never drawn ⇒ the LOD400 rule is untouched; payoff is
+   SC 9/74 → nearly all. **ONE BINDING CONDITION, part of THIS spec, not a follow-up: the invisible
+   anchor must be EXCLUDED from every count, pick, and audit, and tagged in the log as an anchor**
+   (`§ANCHOR` line per seed; excluded from element/mesh counts, raycast/pick sets, `gmAudit`,
+   `§DB_IDENTITY`-style coverage lines, and any witness that counts rendered geometry) — otherwise a
+   future session finds 65 shapes with no visible geometry and reads it as the box bug all over again.
+   Build spec = the Sonnet mechanism above (extractor persists placement+extent for void-consumed →
+   `elements_meta`+`element_transforms` rows flagged anchor → `buildSeedOps` `params.anchorOnly` branch →
+   `foldInsert` invisible mesh, `visible=false`, no material cost → residents get the 65 SC rows via
+   `modeller/patches/SampleCastle_ARC.db.sql` + the existing `_applyPendingPatch()` loader, never a
+   binary). Witness: SC `stretchRide` reach 9/74 → ≥70/74; anchors contribute 0 to every count/pick/audit
+   (falsify by asserting counts identical before/after anchors load); a stretched kozijn host's window
+   rides instead of warping.
 2. **Clinic / Hospital / Terminal have no `rel_fills_host`** — their source IFCs are not in this checkout,
    so there is nothing to recover from. Not an oversight. When a source lands, one command finishes it:
    `python3 scripts/gen_rel_fills_host_patch.py --ifc <src> --target ~/bim-ootb/modeller/<X>_ARC.db --out <wt>/modeller/patches/<X>_ARC.db.sql`

@@ -171,13 +171,14 @@ layers — plasterboard (16mm), metal stud (41mm), block (193mm), an air gap (50
 metal stud (41mm), plasterboard (16mm). That's real, measured construction. But the source file never
 draws those 7 slabs as 7 shapes — it draws **one outer box** the size of the whole stack, and records the
 7 thicknesses as a side list ("this box is made of, in order..."). The Modeller renders exactly what's
-there: one box, 12 triangles (a rectangular solid always tessellates to 12 triangles — 2 per face, 6
-faces). That's not a placeholder standing in for the real wall. It *is* the real wall, drawn at the
-detail the file actually authored.
+there: one box — 14 triangles for this wall (a perfectly plain box tessellates to 12, two per face on
+six faces, and 35 of the Duplex's walls are exactly that; this one's outline carries two more). That's
+not a placeholder standing in for the real wall. It *is* the real wall, drawn at the detail the file
+actually authored.
 
 You can tell a real box from a broken one by whether it can be cut. A door or window cut through a wall
 only works if the wall has a real shape to cut — a stand-in box has nothing behind it to carve. In the
-Duplex, 21 walls carry a door or window hole and each ends up with 28–120 triangles once the cut is
+Duplex, 18 walls carry a door or window hole and each ends up with 28–120 triangles once the cut is
 applied; that's proof the geometry underneath is real, not a fallback.
 
 **Why the Viewer looks richer on the same building.** Open Duplex in the Viewer and you'll see far more
