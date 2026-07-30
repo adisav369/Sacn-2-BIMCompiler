@@ -78,8 +78,11 @@ Marked honestly: (M) = measured here, (I) = industry knowledge, not measured by 
 3. **Tray fill %, segregation, bend radius.** (I) Which cables occupy which tray, fill capacity,
    power-vs-data separation, minimum bend radius — manual checks.
 
-**Best guess: #1, possibly #2.** #1 is the one that is genuinely a graph problem, genuinely expensive
-to get wrong, and genuinely absent from Revit. **Not confirmed with the engineer — ask him.**
+> ## ✅ CONFIRMED BY THE BIM ENGINEER — 2026-07-30, via the user
+> **He says all THREE are true.** Not one of them, not "mostly #1" — the whole list.
+> This retires the guesswork above: #1 was the prediction, but #2 and #3 are equally real to the person
+> doing the work. **Do not re-open "which one did he mean" — it is answered.** The consequence for
+> §SPEC is that this is not a single-feature lane; see §CONFIRMED_SCOPE below for what changes.
 
 ## §REUSE_FROM_ROOMS — the user's steer, and why it holds (MAP REPLACED 2026-07-30, verified file:symbol)
 Same shape, different graph:
@@ -144,8 +147,8 @@ rooms.** A tray walker must refuse the same way rather than bridge a gap the mod
    item's own instruction:** do **not** use `element_transforms` centres — that column is the
    placement ORIGIN, median **11.31 m** away from the element on this model. Use `elements_rtree`.
    → §SUBSTRATE_LANDMINE.
-4. ⛔ **Ask the engineer which of §WHAT_REVIT_CANNOT_DO he actually meant.** One question, saves a
-   lane. Not answerable from the data — needs the user.
+4. ✅ **CLOSED 2026-07-30 — the engineer confirmed ALL THREE of §WHAT_REVIT_CANNOT_DO are true.**
+   No longer an open question. See §CONFIRMED_SCOPE.
 
 ## §STATUS
 - 2026-07-30 — survey agent dispatched (graph statistics, authored-vs-derived comparison, reuse map).
@@ -539,3 +542,35 @@ too since `grep -rn 'INSERT.*port_elements\|INSERT.*port_connections'` across th
 **zero** write sites — that is a *code* measurement, though, not a `SELECT COUNT(*)` on that particular
 DB, which was not completed). (6) **RULE_C's transferability** — it is tuned and scored on ONE building;
 whether F1 ~96 holds on Terminal/Duplex MEP is untested.
+
+
+## §CONFIRMED_SCOPE — the engineer confirmed all three (2026-07-30)
+The user relayed it plainly: *"The engineer says your 3 issues are true."* So §WHAT_REVIT_CANNOT_DO is
+not a ranked guess any more — **pull lengths, tray auto-routing, and fill/segregation are all real,
+all manual today.** Three consequences, and one of them is a warning.
+
+**1. The scope is wider than §SPEC assumes, but the SUBSTRATE is the same for all three.**
+Every one of the three needs the same thing first: **the authored port graph, persisted** (T1) — or,
+for the fleet-wide case with no ports, **a working geometric adjacency rule** (T3). Pull lengths need
+it to traverse; fill needs it to know which cables share a segment; auto-routing needs it to know what
+connects to what. **T1 + T3 do not get bigger because the scope did.** Build them once.
+
+**2. The 1,486-component finding now bites harder, not less.** With only pull-lengths in scope, a
+fragmented graph merely limits the answer to within-run. With auto-routing in scope, those 1,486
+islands and 3,891 dead ends are *exactly the defects the engineer would want flagged* — a tray run
+that terminates in mid-air is a modelling error or a genuinely unrouted leg, and today nothing tells
+him which. **The cheapest real deliverable on this whole page is the dead-end / disconnected-island
+report (T5's 3,891 number). Ship that before anything clever.**
+
+**3. ⚠ Do NOT read "all three are true" as "build all three."** Confirmation of a pain point is not a
+prioritisation, and the user has not asked for an implementation. What it authorises is treating the
+substrate work (T1/T2/T3) as justified rather than speculative. Fill % in particular needs data that
+**does not exist in any file we hold** — there is no cable schedule (§THREE_WAY lists it as unknown),
+so #3 cannot be built from KUL070 alone no matter how confirmed the need is. **Ask what he has for
+cables before promising anything on fill.**
+
+### The one thing still worth asking him
+Not "which of the three" — that is settled. Ask instead: **are the 1,486 disconnected components real,
+or modelling artifacts?** Nothing in the IFC distinguishes them (§THREE_WAY), and the answer decides
+whether T4's router should bridge gaps under a tolerance or refuse them outright. It is the difference
+between a useful tool and one that invents connections — which the PRIME RULE forbids.
