@@ -108,3 +108,13 @@ titles never drawn as HTML). Room lookup: IFC-space point-in-rect against `A.get
   silently discarded it (same failure class the file's own `buildup` comment already named). Fixed
   in the same commit; the witness's checkbox→override wiring test is what caught it.
 - 11/11 pass, `witness_cpe_room_title.js` (committed, repo-root convention).
+
+**Live-preview gap closed + user-confirmed, 07-30.** The original witness never clicked Preview with
+the box checked and read the overlay canvas's actual pixels — `bim-ootb` PR **#1092** does that:
+`witness_cpe_room_title_live.js` proves real non-transparent pixels appear during a live rehearsal;
+`witness_cpe_room_title_timing.js` root-caused a real user report ("only flashes briefly in Preview")
+as NOT a bug — `_previewFly` plays the WHOLE film compressed into a fixed 10 real seconds regardless
+of length (pre-existing, same compression the camera motion itself gets), so a 2.4s real room-dwell
+correctly shows for only ~1.4s of the fast scrub. User then confirmed on a real bake (jkr_fixed.db,
+34s film) that the caption reads fine at the film's real speed — "the labels do appear! at the status
+line.. that is great."

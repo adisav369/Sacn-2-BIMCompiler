@@ -78,8 +78,9 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
 
 - ▶ **Of the four lanes specced 2026-07-29: §HOVER_NAME DONE (12/12, #1085) · §CPE_ROOM_TITLE DONE
-  (#1089). LEFT:** `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (T1b/host-before-hosted THEN the shot
-  that tops the demo; order is a recommendation) · `prompts/CINEMA_FIND_TO_FILM.md` (parked).
+  (#1089, live-preview witness gap closed #1092, user-confirmed on a real bake 07-30). LEFT:**
+  `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (T1b/host-before-hosted THEN the shot that tops the
+  demo; order is a recommendation) · `prompts/CINEMA_FIND_TO_FILM.md` (parked).
 - ✅ **§CACHE_KEY re-download bug CLOSED + LIVE (07-30, #1088)** — the ERP red pill re-fetched the whole
   building (Hospital 251MB, ~2min) on every click while a good copy sat in IndexedDB: `cachedFetch` keyed
   the blob on the RAW url, and the landing (`index.html:489`, absolute OCI) vs the red pill
