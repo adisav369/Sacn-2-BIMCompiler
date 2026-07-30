@@ -321,9 +321,51 @@ in the Modeller per the binding condition; ship the 65 SC rows by appending the 
 bim-ootb `modeller/patches/SampleCastle_ARC.db.sql` (loader `_applyPendingPatch` already exists);
 witness = SC `stretchRide` reach 9/74 → ≥70/74, counts identical before/after anchors load.
 
-## ⚠ 2026-07-30 WATCHDOG CORRECTIONS (post-ship, live-queried) — TWO OPEN ITEMS, next session starts here
-1. **Party wall renders 5 slabs, not 7.** Live `Duplex_geo.db`: layers 5-6 of `2O2Fr$t4X7Zf8NOew3FNbT` have `face_count=0`, `face_start=124` (past buffer). 4 empty rows/229, 2 walls/71 — both 7-layer, both opening-cut. The `§LAYER-PARTIAL` announcement made it non-silent in the LOG, but the brief said hard-fail, and the witness's two reconciliation sums are blind by construction (both reconcile with layers missing). **Directive: `face_count>0` per-layer assertion; an empty slab is a REFUSAL, not a row.** Root-cause first: 0.493 m authored-body-span vs opening-boolean-cut — measure, don't assume. → MODELLER_MASTER row 33.
+## ⚠ 2026-07-30 WATCHDOG CORRECTIONS (post-ship, live-queried) — item 1 ✅ RESOLVED 2026-07-30 (§ROW33 below); item 2 (row 34) still open, next session starts THERE
+1. ~~**Party wall renders 5 slabs, not 7.**~~ ✅ RESOLVED — see §ROW33-EMPTY-SLAB-REFUSAL below. (Original directive kept for history: layers 5-6 of `2O2Fr$t4X7Zf8NOew3FNbT` had `face_count=0`; the witness's two reconciliation sums were blind by construction. Directive: `face_count>0` per-layer assertion; an empty slab is a REFUSAL, not a row; root-cause first. ⚠ One factual premise in the directive was WRONG and is corrected in §ROW33: the walls are NOT opening-cut — they carry ZERO openings.)
 2. **Anchor export/save leak unchecked.** The §ANCHOR guardrail proved render/Outliner/pick/audit invisibility but no witness covers `bonsai_ifc.js` export or `sdg_save.js` snapshot — both fold from an op-log that now carries 65 anchor ops. → MODELLER_MASTER row 34.
+
+### ✅ §ROW33-EMPTY-SLAB-REFUSAL — 2026-07-30 (row 33 executed: measured first, then refusal armed;
+### bim-compiler branch `fix/layer-empty-slab-refusal`)
+**ROOT CAUSE, MEASURED (logs: scratchpad `measure_row33.log` / `measure_row33_profile.log`, source
+`~/bim-ootb/IFC/Duplex_ARC.ifc`):** the Watchdog's opening-boolean-cut hypothesis is **FALSE** — both
+affected walls (`2O2Fr$t4X7Zf8NOew3FNbT`, `2O2Fr$t4X7Zf8NOew3FKRi`) carry **ZERO** `IfcRelVoidsElement`
+(`§M-OPENINGS count=0`), and their body extent is byte-identical with and without opening subtraction
+(0.4930 m both ways). The shipped §LAYER-PARTIAL diagnosis was CORRECT and is now deeper: the authored
+base solid IS the full 7-layer prism (`IfcRectangleProfileDef YDim=0.550`), but an **authored
+`IfcPolygonalBoundedHalfSpace` clip in the Body itself sits exactly at the layer-4/5 boundary
+(y=−0.218)** and trims the neighbour-side Metal Stud (41 mm) + Plasterboard (16 mm) off the wall's full
+length — Revit unit-demising: that material belongs to the neighbour wall's body. Duplex has FOUR
+7-layer party walls; the other two (`…FKRH` 44 tris, `…FKau` 76 tris) span the full 0.550 m (their
+clips are partial-length, AABB-invisible). So the source genuinely does not author layers 5-6 in the
+two trimmed elements → **per the directive, the refusal stands; the walls are honestly RED.**
+**BUILT (extractor half):**
+- `compile_layer_geometry()`: an uncovered layer now raises `LayerRefusal` naming the layer, its
+  material, and the body span — "an empty slab is a refusal, not a row (row 33)". §LAYER-PARTIAL and
+  the `empty_slabs` bookkeeping are GONE; the schema comment on `component_geometry_layers` now states
+  `face_count MUST be > 0`.
+- `verify_layer_geometry()`: per-row `face_count>0` assertion FIRST in the loop (so a re-introduced
+  empty row is named as such, not caught incidentally by the tiling sum) — the row-33 falsification
+  surface. `gen_layered_geo_db.py` output-verify likewise hard-fails on any `face_count=0` row.
+- **Witness `scripts/witness_lod400_envelope.py` 16/16** (`logs/witness_row33/witness_run1.log`):
+  Duplex gate now honestly RED — `2/80` multi-layer elements ship as envelopes (the two trimmed
+  walls), **exit 1 BY DESIGN** (same honest-refusal posture as SampleCastle's sporenkap — do NOT
+  "fix" by softening). New checks: exemplar moved to full-span `…FKRH` (7 real slabs, extents
+  16/41/193/50/193/41/16 mm exact, 424-tri buffer tiled); `NO_EMPTY_ROWS_ANYWHERE` (0 rows with
+  `face_count<=0` store-wide); `TRIMMED_WALLS_REFUSED` (both walls `§LAYER-REFUSE`d by name with the
+  row-33 reason); `TRIMMED_KEEP_ENVELOPE` (0 layer rows behind their hashes); `FALSIFY_EMPTY_ROW`
+  (UPDATE one row to `face_count=0` → `--compile-layers` exit 1 naming the empty slab).
+  **RED-first proven** (`witness_red_prefix.log`): against the pre-fix extractor exactly the 4 new
+  checks FAIL (4 empty rows found, no refusals, 14 rows behind the trimmed hashes, wrong falsify
+  message) — the blind-witness shape the Watchdog flagged is dead.
+- ⚠ The 2026-07-30 §LOD400-LAYERS-REAL claim "12/12 exit 0 / gate GREEN on Duplex" above is
+  SUPERSEDED by this policy: Duplex exits 1 by design while the two trimmed walls refuse.
+**Residents half (same session, second slice):** live `Duplex_geo.db` still carried the partial ship
+(2 hashes `582223c5f6b2c1ae` + `d4bad00ddbda7d4e`, 124-tri layered buffers + 7 index rows of which 2
+empty). Fix = restore both hashes' ORIGINAL envelope buffers (12/14 tris, recovered from the
+pre-layer store) + delete their 14 index rows → the live Modeller's armed §LAYER-GATE then refuses
+both walls loudly (`§LAYER-ENVELOPE-REFUSE`), which is the row-33 "honestly RED" end-state on the
+surface the user sees. Status: see the dated record below this line once shipped.
 
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
