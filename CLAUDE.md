@@ -140,6 +140,20 @@ Before ending, update PROGRESS.md with:
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
 - **Tests expose issues:** Every test must name the issue it proves or disproves. A test that passes without revealing whether the issue is solved is not a test.
 - **Browser testing — §-log first, Playwright second:** Primary browser verification = whitebox `§`-tagged `console.log()` output. The coder reads `§` lines to confirm values, counts, and state are correct. Playwright is secondary — for wiring/deploy checks only (scripts load, buttons exist, DB returns data). Do NOT add Playwright tests for value verification — add a `§` log line instead. See `docs/TestArchitecture.md` §Browser Testing. Run `node deploy/dev/tests/audit_specs.js` after any Playwright changes — must exit 0.
+- **FUNDAMENTAL LAW — code and maths is the truth, never screenshots/visuals (hardened 2026-07-21,
+  user had to repeat this after a prior-session warning was dropped):** For ANY continuous/geometric
+  behavior — camera paths, orbits, motion over time, positions, angles, rates — the proof is the
+  `§`-tagged log values PLUS numbers computed from real object state (position, tilt/pitch, azimuth,
+  rate-of-change), read and asserted programmatically. Screenshots, "does it look right", and eyeballing
+  a recording are NOT proof and must not be the verification method, even as a supplement — they are
+  "programmatically bad" per the user's own words: unverifiable, non-reproducible, and not something a
+  session can assert a pass/fail on. If a live-browser run is needed at all (e.g. to reach real
+  navigation/raycast state a synthetic call can't), still extract the SAME kind of numeric truth from
+  it — camera position/tilt/rate time series compared against the intended formula — never a screenshot
+  as the evidence. This applies on top of, and hardens, the existing whitebox rules
+  ([[feedback_whitebox_deduce_not_browser]], [[feedback_whitebox_not_playwright]]) — those already said
+  this; this entry exists because it was violated anyway (dispatched a screenshot-capturing agent for
+  the §CINEMA_ORBIT_V2 live-trial check) and had to be corrected twice.
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
@@ -201,6 +215,16 @@ confirmed clean + 100+ commits stale first). Rules going forward:
   commits or uncommitted changes is NOT safe to prune — leave those alone, they're someone's in-progress work.
 - **`.claude/worktrees/agent-*` are harness-managed** — never manually `git worktree remove` these; they're
   the Claude Code tool's own isolation mechanism, not dev-created clutter.
+- **MANDATORY at session closeout, not "when you notice" (hardened 2026-07-21 — 61 worktrees found
+  accumulated, 26 confirmed prunable in one pass, despite a prior verbal "everyone clean up" that only
+  reached sessions live at that moment):** a spoken/one-off cleanup ask does not persist — a fresh session
+  has no memory of it unless it's a standing rule read here. So every session that used `~/bim-ootb` runs
+  this before ending, not only when asked: for each worktree, check `ahead` (`git rev-list --count
+  origin/<branch>..<branch>`) and `dirty` (`git status --short`); if both are 0, it's prunable. **Before
+  removing, check nobody's actively inside it** — scan `for p in /proc/[0-9]*; do readlink -f "$p/cwd";
+  done | grep '^/tmp/wt-'` and skip any path that shows up live, even if git-clean (a concurrent session may
+  be mid-command there — pulling the directory out from under them is disruptive even when no data is at
+  risk). Prune everything else that qualifies; leave dirty/unpushed/actively-occupied ones alone and move on.
 
 ## Sacred Files (edit with extreme care)
 - `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)

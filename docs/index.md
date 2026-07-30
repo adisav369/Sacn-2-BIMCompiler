@@ -56,7 +56,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions and [SQLite](https:
 
     Author B-rep geometry — insert library parts, sketch, extrude, sweep, edit the **3D Grid** — where the signed op-log *is* the feature tree.
 
-    [:octicons-arrow-right-24: Modeller Guide](ModellerGuide.md) · [Open](https://red1oon.github.io/bim-ootb/viewer/modeller.html)
+    [:octicons-arrow-right-24: Modeller Guide](ModellerGuide.md) · [Open](https://red1oon.github.io/bim-ootb/modeller/modeller.html)
 
 -   **📊 Kernel-ERP**
 

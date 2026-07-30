@@ -270,19 +270,27 @@ hands back logs — it holds no business logic and makes no accounting decisions
 person its URL, and everyone keeps logging in as their own real user. The relay carries only the *log*;
 the accounting still folds from that log on each device, identical to single-user.
 
-> **One honest limit — read this before you rely on it for approvals.** Cross-device Sync is proven today
-> for **field edits** (change a value → save → sync). It does **not yet** carry full per-person, per-step
-> attribution of **document actions** — *Complete / Void / Close* and similar workflow steps — *across
-> devices*: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
-> **single device** is unaffected. So if you need a multi-person **approval trail that holds up across
-> machines**, that is the next piece we are building (opt-in per-step signing) — not this one. We would
-> rather tell you here than have you find it during an audit.
+> **Where the attribution trail stands — read this before you rely on it for approvals.** Every device
+> now signs its own edits with its own device key, and that signature survives a cross-device sync intact
+> — proven with two real devices, real edits, real sync: each edit is independently verifiable back to
+> the device that actually made it, and a forged attribution is rejected, not silently accepted. Two
+> honest limits remain, both about *reach*, not the signing mechanism itself:
+> 1. **Checking a signature today means comparing it against a roster of device public keys you assemble
+>    yourself** — there is no built-in "share my device with the team" step yet, so this is a capability
+>    proven to work, not yet a one-click feature in the app.
+> 2. This has been proven on **field edits** (change a value → save → sync). *Document actions* —
+>    *Complete / Void / Close* and similar workflow steps — use the identical signing mechanism, so we
+>    expect it to carry the same guarantee, but that specific case has not yet been separately confirmed
+>    live (blocked by an unrelated rendering issue on the Complete button in this build, not by the
+>    signing mechanism).
+> Everything on a **single device** is, and always was, unaffected by either limit. We would rather tell
+> you where the edge of what's proven sits than have you find it during an audit.
 
 > **For auditors & compliance officers.** How this serverless, hash-chained model maps to **SOX §404 /
 > PCAOB, COSO (2013), and ISO/IEC 27001:2022** control objectives — what is *strengthened*, what
-> *relocates*, and the *open* items disclosed above — is set out in a companion control-objective map:
-> [**Times Have Changed — And So Must ISO for ERP**](AssuranceControlMap.html) (a control-mapping
-> position paper, not a certification).
+> *relocates*, and the *open* items disclosed above (including the two limits just above) — is set out
+> in a companion control-objective map: [**Times Have Changed — And So Must ISO for ERP**](AssuranceControlMap.html)
+> (a control-mapping position paper, not a certification).
 
 ---
 
@@ -362,6 +370,40 @@ or the element, where name-matching schedulers would re-bind or break.
 > element (from **Find**, or a **Zoom-Across** from a record in the ERP), the timeline **jumps to that
 > element's construction moment** instead of only lighting it in 3D — the Time Machine *consumes* the
 > pinpoint. With the Time Machine closed, the pinpoint goes to **Find** as before (cost/location first).
+
+### Playing back a large building — the box-cube LOD toggle *(LIVE)*
+
+On a big model (LTU-scale, 100K+ elements), scrubbing or playing the Time Machine forward keeps
+every already-built element rendered at full detail forever, even the parts nowhere near your
+camera — that's real GPU cost paid on every frame for geometry you can't currently see. The
+box-cube pill trims exactly that, without ever hiding or degrading anything you're actually
+looking at.
+
+**Where the button is:**
+
+1. Open a building with more than **50,000 elements** and open the **Time Machine** (the clock
+   pill, or press **`t`**).
+2. A small **cube-wireframe pill** appears in the panel's header row, next to the Day/Night and
+   Drone-Pilot icons — it only shows up at all on large buildings; smaller ones never need it.
+3. Click it to turn the proxy **on**. Click again to go back to today's full-detail rendering.
+
+**What it does:**
+
+- Anything **currently under construction** (the active build) or **just finished** (the short
+  amber "just placed" glow) always renders in full — the toggle never touches those.
+- Anything else that's already built stays **full detail (LOD400)** as long as it's **close to the
+  camera and inside your view** — so whatever you're actually looking at never loses quality.
+- Anything already built that's **far away or off to the side of what you're looking at** collapses
+  to a lightweight **wireframe box** in its discipline's colour — the same "not yet detailed" visual
+  language the model already uses while a building is still streaming in.
+
+![Time Machine mid-playback (Day 64/200) on a 122,000-element building with the box-cube LOD pill turned on — the storey directly in view stays full solid LOD400 geometry, while the surrounding structural frame and far bays, already built but outside the camera's immediate view, render as lightweight cyan wireframe boxes coloured by discipline.](img/viewer/time-machine-dlod-wireframe.png)
+
+- Boxes are **never pickable** as real elements — clicking one does nothing, the same as clicking
+  an ordinary loading placeholder.
+- Turning it off is instant and exact: every element goes back to its normal full-detail rendering,
+  nothing about the model itself ever changes — it's a display choice only, made per-session, never
+  saved into the model or the schedule.
 
 ### What-if schedule — slip a phase, watch the chain re-fold *(LIVE)*
 

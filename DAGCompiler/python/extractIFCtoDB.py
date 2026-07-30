@@ -53,6 +53,9 @@ import struct
 # S173: Log level — FINE enables detailed proofs, INFO is summary only.
 LOG_LEVEL = os.environ.get("BIM_LOG_LEVEL", "FINE").upper()
 FINE = LOG_LEVEL == "FINE"
+# §LODHELL-FIX-1: number of §PROOF checks that FAILED in the last extract_reference() call. main() turns a
+# non-zero value into a non-zero exit status so a red gate actually stops a pipeline.
+LAST_PROOF_FAIL = 0
 import sys
 import time
 
@@ -267,6 +270,21 @@ CREATE TABLE IF NOT EXISTS material_layers (
     thickness_m REAL,
     is_ventilated INTEGER DEFAULT 0,
     PRIMARY KEY (layer_set_name, sequence)
+);
+-- §LOD400-ENVELOPE (prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md) — the MISSING LINK.
+-- material_layers is keyed by layer_set_name alone, and get_material_for_element() collapsed an element's
+-- whole IfcMaterialLayerSetUsage down to one material NAME string, so nothing recorded WHICH element is
+-- built of WHICH layers. Without this edge a 7-layer cavity wall is indistinguishable from a blank box and
+-- ships as an envelope — the fallback the NO-FALLBACK rule forbids. Pure extraction, no computation.
+CREATE TABLE IF NOT EXISTS rel_material_layer_set (
+    element_guid TEXT PRIMARY KEY,
+    layer_set_name TEXT,
+    layer_count INTEGER,
+    total_thickness_m REAL,
+    layer_set_direction TEXT,
+    direction_sense TEXT,
+    offset_from_reference_line REAL,
+    provenance TEXT DEFAULT 'ifc:IfcMaterialLayerSetUsage'
 );
 """
 
@@ -658,6 +676,69 @@ def extract_material_layers(ifc_file):
     return rows
 
 
+def extract_rel_material_layer_set(ifc_file):
+    """§LOD400-ENVELOPE — extract the element→layer-set edge from IfcMaterialLayerSetUsage.
+
+    Implementing prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-LAYERS-EXTRACT
+    Witness: W-LOD400-ENVELOPE
+
+    Verbatim from the source, nothing derived: the layer set an element declares, how many layers it has,
+    their summed thickness, and the placement data (LayerSetDirection / DirectionSense /
+    OffsetFromReferenceLine) that §LOD400-LAYERS-REAL needs to slice the envelope along the authored axis.
+    An element carrying a bare IfcMaterialLayerSet (no usage) is recorded too, with placement fields NULL.
+    """
+    rows = []
+    for rel in ifc_file.by_type('IfcRelAssociatesMaterial'):
+        mat = rel.RelatingMaterial
+        if mat is None:
+            continue
+        if mat.is_a('IfcMaterialLayerSetUsage'):
+            ls = mat.ForLayerSet
+            direction = getattr(mat, 'LayerSetDirection', None)
+            sense = getattr(mat, 'DirectionSense', None)
+            offset = getattr(mat, 'OffsetFromReferenceLine', None)
+        elif mat.is_a('IfcMaterialLayerSet'):
+            ls, direction, sense, offset = mat, None, None, None
+        else:
+            continue
+        if ls is None or not ls.MaterialLayers:
+            continue
+        layers = ls.MaterialLayers
+        total = 0.0
+        for lay in layers:
+            if lay.LayerThickness is not None:
+                total += float(lay.LayerThickness)
+        for obj in rel.RelatedObjects:
+            guid = getattr(obj, 'GlobalId', None)
+            if not guid:
+                continue
+            rows.append({
+                'element_guid': guid,
+                'layer_set_name': ls.LayerSetName,
+                'layer_count': len(layers),
+                'total_thickness_m': total,
+                'layer_set_direction': direction,
+                'direction_sense': sense,
+                'offset_from_reference_line':
+                    float(offset) if offset is not None else None,
+            })
+    return rows
+
+
+def write_rel_material_layer_set(conn, rows):
+    """Write rel_material_layer_set rows to DB (§LOD400-ENVELOPE)."""
+    for r in rows:
+        conn.execute(
+            "INSERT OR REPLACE INTO rel_material_layer_set "
+            "(element_guid, layer_set_name, layer_count, total_thickness_m, "
+            "layer_set_direction, direction_sense, offset_from_reference_line) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (r['element_guid'], r['layer_set_name'], r['layer_count'],
+             r['total_thickness_m'], r['layer_set_direction'],
+             r['direction_sense'], r['offset_from_reference_line']))
+    conn.commit()
+
+
 def write_surface_styles(conn, styles):
     """Write surface_styles rows to DB."""
     for s in styles:
@@ -752,6 +833,47 @@ def _open_library(library_path):
                 f"component_library.db missing table '{t}' — "
                 f"run schema migration first")
     return lib
+
+
+def is_void_consumed(elem, settings):
+    """§LODHELL-FIX-1 (RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LODHELL-FIX) — Witness: W-LODHELL-CLASSIFY.
+
+    An element can tessellate to NOTHING for two completely different reasons, and the extractor used to
+    report both as `§ILLEGAL_PARAMETRIC_FALLBACK` ("fix your IFC"):
+
+      (a) VOID-CONSUMED — the element has a perfectly good body, and its OWN authored IfcRelVoidsElement
+          openings subtract 100% of it. Measured on SampleCastle 2026-07-27: `kozijn` window-frame walls
+          are a 1.210 x 0.114 x 1.850 m strip whose opening is 1.210 x 0.342 x 1.850 m — same width and
+          height, thicker. The empty result is geometrically CORRECT; the window that fills the void is
+          what carries the visible geometry (74/74 fillings verified present). Not a failure.
+      (b) a real defect — no body, or an empty body with nothing voiding it.
+
+    Classified from authored data only: does a `Body` representation ITEM tessellate on its own (bypassing
+    the openings), and does the element declare any opening? No thresholds, no proximity, nothing inferred.
+
+    Returns True only for (a).
+    """
+    import ifcopenshell.geom          # module-level import is deferred in this file (see caller at :1047)
+    try:
+        if not getattr(elem, 'HasOpenings', None):
+            return False
+        rep = getattr(elem, 'Representation', None)
+        if not rep:
+            return False
+        for sub in rep.Representations:
+            if sub.RepresentationIdentifier != 'Body':
+                continue
+            for item in sub.Items:
+                try:
+                    shp = ifcopenshell.geom.create_shape(settings, item)
+                    geo = shp.geometry if hasattr(shp, 'geometry') else shp
+                    if len(geo.verts) >= 9:      # >= 3 vertices
+                        return True
+                except Exception:
+                    continue
+    except (AttributeError, TypeError):
+        return False
+    return False
 
 
 def extract_rel_fills_host(ifc_file, conn):
@@ -1115,18 +1237,26 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     settings.set(settings.USE_WORLD_COORDS, False)
     settings.set(settings.WELD_VERTICES, True)
 
-    # Tier 2: no boolean operations — fast fallback for complex CSG elements
-    settings_no_bool = ifcopenshell.geom.settings()
-    settings_no_bool.set(settings_no_bool.USE_WORLD_COORDS, False)
-    settings_no_bool.set(settings_no_bool.WELD_VERTICES, True)
-    settings_no_bool.set(settings_no_bool.DISABLE_BOOLEAN_RESULT, True)
-
-    # Boolean depth threshold — elements above this skip full tessellation
-    BOOL_DEPTH_THRESHOLD = 3
+    # §LODHELL-FIX-2 (2026-07-27) — the "Tier 2: no boolean operations" fallback that used to be declared
+    # here (`settings_no_bool` with DISABLE_BOOLEAN_RESULT, plus BOOL_DEPTH_THRESHOLD = 3) is DELETED, not
+    # disabled. It was unreferenced dead code, and it must never be revived, for two measured reasons:
+    #   1. It does not work. On ifcopenshell 0.8.4.post1, DISABLE_BOOLEAN_RESULT=True (setting readback
+    #      confirmed True) still returns verts=0 faces=0 at PRODUCT level for the SampleCastle `kozijn`
+    #      walls — the exact elements it was supposed to rescue.
+    #   2. It would be WRONG even if it worked. An element whose body is fully removed by its own authored
+    #      IfcRelVoidsElement opening is CORRECT as empty (see is_void_consumed()). Re-tessellating it
+    #      without booleans resurrects an uncut wall the author deliberately voided and presents it as real
+    #      geometry — inventing content, and a direct violation of the no-fake-LOD doctrine
+    #      (docs/internal/WalkerDoctrine.md §11).
+    # Full evidence: prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LODHELL-ROOTCAUSE FINDING 3.
 
     existing_hashes = set()
     next_id = 1
     imported = failed = simplified = bbox_fallback = 0
+    # §LODHELL-FIX-1: empty-tessellation elements whose OWN authored opening consumed the whole body.
+    # Expected, correct output — tracked and reported separately, never counted as a failure.
+    void_consumed = 0
+    void_guids = []
     mat_found = rgba_found = 0
     lib_geo_new = lib_igm_new = lib_prod_new = 0  # S168 counters
     ordinal_counter = {}  # S168: (ifc_class, storey) → next ordinal
@@ -1174,6 +1304,14 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 rot_x = rot_y = rot_z = 0.0
 
                 if len(verts) < 3 or len(faces) < 1:
+                    # §LODHELL-FIX-1: an empty tessellation is NOT automatically a defect — classify it
+                    # against the element's own authored openings before crying wolf (is_void_consumed()).
+                    if is_void_consumed(elem, settings):
+                        void_consumed += 1
+                        void_guids.append((shape.guid, cls, getattr(elem, 'Name', None)))
+                        if not iterator.next():
+                            break
+                        continue
                     # S185: parametric fallback is illegal — abort extraction
                     raise RuntimeError(
                         f"§ILLEGAL_PARAMETRIC_FALLBACK {cls} guid={shape.guid} — "
@@ -1425,8 +1563,9 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
 
             except Exception as exc:
                 failed += 1
-                if failed <= 5:
-                    print(f"  §FAIL {cls} {getattr(elem, 'GlobalId', '?')}: {exc}")
+                # §LODHELL-FIX-1: print EVERY real failure. The old `if failed <= 5` cap hid 60 of 65
+                # events on SampleCastle — a genuine geometry loss would have been invisible among them.
+                print(f"  §FAIL {cls} {getattr(elem, 'GlobalId', '?')}: {exc}")
 
             if not iterator.next():
                 break
@@ -1434,6 +1573,14 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         t_iter_elapsed = time.time() - t_iter_start
         print(f"  §ITER done: {imported:,} elements in {t_iter_elapsed:.1f}s "
               f"({imported/max(t_iter_elapsed,0.01):.0f} elem/s)")
+        # §LODHELL-FIX-1: expected output, so a summary + sample rather than one line per element.
+        if void_consumed:
+            print(f"  §VOID-CONSUMED {void_consumed} elements fully removed by their own authored "
+                  f"IfcRelVoidsElement opening (correct — the filling element carries the geometry)")
+            for _g, _c, _n in void_guids[:5]:
+                print(f"    §VOID-CONSUMED {_c} {_g} name={_n}")
+            if void_consumed > 5:
+                print(f"    … {void_consumed - 5} more (full list is the rel_fills_host host set)")
         # S173: Pre-normalize coordinate summary (FINE only)
         if FINE and imported > 0:
             cx_span = _cx_max - _cx_min
@@ -1562,15 +1709,20 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
     styles = extract_surface_styles(ifc_file, source_tag)
     layers = extract_material_layers(ifc_file)
+    lsu_rows = extract_rel_material_layer_set(ifc_file)
     if not dry_run:
         write_surface_styles(conn, styles)
         write_material_layers(conn, layers)
+        write_rel_material_layer_set(conn, lsu_rows)
+        multi = sum(1 for r in lsu_rows if (r['layer_count'] or 0) > 1)
+        print(f"  §LOD400-LAYERS rel_material_layer_set: {len(lsu_rows)} element→layer-set edges "
+              f"({multi} multi-layer) — provenance=ifc:IfcMaterialLayerSetUsage")
 
     # ── S173: PROOF BLOCK — self-checking summary ──────────────────────────
     # Each check prints PASS/FAIL with evidence. Read this block only.
     print(f"\n  {'─'*60}")
     print(f"  §PROOF {os.path.basename(ifc_path)}  elements={imported}  "
-          f"failed={failed}  bbox_fallback={bbox_fallback}")
+          f"failed={failed}  void_consumed={void_consumed}  bbox_fallback={bbox_fallback}")
     print(f"  {'─'*60}")
 
     _proof_pass = 0
@@ -1623,11 +1775,69 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                f"{_rot_ok} ok, {_rot_fail} fail  "
                f"(Euler decompose→reconstruct vs IFC iterator matrix)")
 
-        # P5: FAIL_RATE — extraction failures below 1%
+        # P5: FAIL_RATE — extraction failures below 1%.
+        # §LODHELL-FIX-1: `failed` now excludes VOID-CONSUMED elements (see is_void_consumed) — those are a
+        # correct authored outcome, and counting them kept this check permanently red on SampleCastle
+        # (65/3648 = 1.78%), which is exactly how a REAL loss would have gone unnoticed.
         fail_pct = (failed / max(imported + failed, 1)) * 100
         _check("FAIL_RATE",
                fail_pct < 1.0,
                f"{failed}/{imported+failed} ({fail_pct:.2f}%)")
+
+        # P9: VOID_CONSUMED — a fully-voided host is only correct if the thing that voided it is FILLED by
+        # an element that DOES have geometry. A consumed host whose filling is also missing is a genuine
+        # hole in the model — this is the check that would catch a real loss hiding behind the classifier.
+        # (Open voids — filling_guid NULL, an authored hole with no door/window — are legitimate.)
+        try:
+            orphan = conn.execute("""
+                SELECT COUNT(*) FROM rel_fills_host r
+                WHERE r.filling_guid IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM element_instances i WHERE i.guid = r.filling_guid)
+            """).fetchone()[0]
+            total_fills = conn.execute(
+                "SELECT COUNT(*) FROM rel_fills_host WHERE filling_guid IS NOT NULL").fetchone()[0]
+        except sqlite3.OperationalError:
+            orphan, total_fills = 0, 0
+        _check("VOID_CONSUMED",
+               orphan == 0,
+               f"{void_consumed} hosts consumed by own opening; "
+               f"{total_fills - orphan}/{total_fills} fillings have geometry, {orphan} orphaned")
+
+        # P10: LOD400_ENVELOPE — §LOD400-ENVELOPE, user directive 2026-07-29/30 ("the NO FALLBACK rule must
+        # never be broken.. simple throws exception and hard fail"). An element the SOURCE authored as N
+        # material layers, shipped as ONE undifferentiated solid, is an ENVELOPE FALLBACK: non-LOD400
+        # content presented as the element's real geometry. Fidelity is owed to what the source authored,
+        # NOT to whatever the tessellator handed back — "GIGO" is not a defence when the layers are right
+        # there in the file. A red §PROOF exits non-zero (see main()), so this gate has teeth by design:
+        # it must stay RED until §LOD400-LAYERS-REAL ships per-layer geometry. Do NOT soften it to a
+        # warning, do NOT add a threshold, do NOT add a per-building exemption.
+        try:
+            envelope = conn.execute("""
+                SELECT COUNT(*) FROM rel_material_layer_set r
+                JOIN element_instances i ON i.guid = r.element_guid
+                WHERE r.layer_count > 1
+            """).fetchone()[0]
+            multi_total = conn.execute(
+                "SELECT COUNT(*) FROM rel_material_layer_set WHERE layer_count > 1").fetchone()[0]
+            worst = conn.execute("""
+                SELECT r.element_guid, r.layer_count, r.layer_set_name
+                FROM rel_material_layer_set r
+                JOIN element_instances i ON i.guid = r.element_guid
+                WHERE r.layer_count > 1
+                ORDER BY r.layer_count DESC LIMIT 5
+            """).fetchall()
+        except sqlite3.OperationalError:
+            envelope, multi_total, worst = 0, 0, []
+        if envelope:
+            print(f"  §ILLEGAL_LOD_FALLBACK {envelope} element(s) authored MULTI-LAYER are shipped as a "
+                  f"single envelope solid — non-LOD400 content standing in for real geometry.")
+            for g, n, name in worst:
+                print(f"      §ILLEGAL_LOD_FALLBACK guid={g} layers={n} set={name!r}")
+            print(f"      → fix at source: §LOD400-LAYERS-REAL (slice the envelope along the authored "
+                  f"LayerSetDirection at the authored thicknesses). Never render the envelope as real.")
+        _check("LOD400_ENVELOPE",
+               envelope == 0,
+               f"{envelope}/{multi_total} multi-layer elements shipped as an envelope solid")
 
         # P6: MATERIALS — some materials found
         _check("MATERIALS",
@@ -1673,6 +1883,11 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     print(f"  {'─'*60}")
     print(f"  §PROOF RESULT: {_proof_pass} PASS, {_proof_fail} FAIL")
     print(f"  {'─'*60}")
+    # §LODHELL-FIX-1: a red §PROOF must FAIL THE RUN. Before this, the block printed FAIL and the process
+    # still exited 0 — verified 2026-07-27 on SampleCastle (P5 FAIL, exit 0), which is why a permanently
+    # red gate was tolerated for weeks. main() reads this and sets the exit status.
+    global LAST_PROOF_FAIL
+    LAST_PROOF_FAIL = _proof_fail
 
     # Summary by class
     if not dry_run:
@@ -1968,6 +2183,11 @@ def main():
                           library_path=args.library,
                           building_type=args.building_type,
                           skip_normalize=args.skip_normalize)
+        # §LODHELL-FIX-1: red §PROOF ⇒ non-zero exit. Exit code is not evidence on its own (Log Mandate),
+        # but a gate that can never fail the run is not a gate at all.
+        if LAST_PROOF_FAIL > 0:
+            print(f"  §PROOF gate FAILED ({LAST_PROOF_FAIL} check(s)) — read the log above")
+            sys.exit(1)
     else:
         print("ERROR: Must specify either:")
         print("  --ifc FILE -o OUTPUT       Full extraction (geometry + materials)")

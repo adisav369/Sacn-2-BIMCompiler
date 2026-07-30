@@ -120,7 +120,16 @@ All panels collapse with **−/+**.
 
 - 3D orbit, pan, zoom (mouse or touch)
 - Click any element → IFC class, GUID, storey, discipline, material
-- Fly-tour — auto-orbits rendered buildings, click to stop
+- Fly-tour — plays a routed flight through the building (entrance → highlight room → storey-by-storey);
+  drag the scrub bar to seek anywhere in the tour, `◀◀`/`▶▶` to step beat-by-beat, `0.5x`/`1x`/`2x` speed,
+  pause/resume and loop — every position is deterministic (same timestamp always gives the same camera
+  pose), so scrubbing back and forth never drifts
+
+  ![Fly Tour's scrub bar — beat counter ("Entrance 2/43"), elapsed/total time, tick marks per beat,
+  play/pause/step controls, and speed toggles](img/viewer/fly-tour-scrub-bar.png)
+- Film-Maker (**Alt+C**) — derives a complete cinematic film of the building from its own room graph,
+  then lets you edit the flight by dragging the flight itself, and records it to an mp4 in the browser.
+  See [Cinema Film-Maker](#cinema-film-maker-altc-the-bim-ootb-film-maker) below
 - Indoor walk-through — follows IfcSpace/door graph through the building
 - X-Ray mode (Alt+Z) — a 3-state cycle: **Off → X-Ray → Bounding Boxes → Off**. X-Ray is the transparent
   see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
@@ -274,6 +283,36 @@ stair flights it uses, and the rooms along the way stay highlighted.
 legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
 it passes through.
 
+![Aerial X-ray view of Hospital with the Find panel open on the same ≈ Level 1 R35 to ≈ Level 4 R8 route, the yellow line now hugging the real corridors and stair flights on both levels instead of cutting across the open roof between wings, the panel listing three numbered room stops with each hop labelled through door: / via stair: / along Corridor — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-topview.png)
+
+![Straight-on facade view of the same Hospital route with the Find panel still open, the yellow line now tracking the real ground-floor corridor and climbing through the stair flight against the building mass instead of floating in front of it, the same three numbered stops and through door: / via stair: / along Corridor hop labels visible in the list — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-frontview.png)
+
+![Angled view along the Hospital building's length, same route — the yellow line now runs along the real corridor windows and through the doorways it uses on its way up the stair instead of floating outside the floor plates — 3 doors · 1 stair · 124.7m](img/viewer/find-room-path-hospital-sideview.png)
+
+*Fixed and verified live (2026-07-26):* the drawn-line defect shown in earlier versions of the
+screenshots above — a room-to-room path cutting straight through open air or atrium space instead of
+hugging the real walkable floor — is fixed. The same Hospital route (`≈ Level 1 R35 → ≈ Level 4 R8`,
+124.69m, same 3 doors and 1 stair as before) was re-run live after the fix: the 5 legality checks that
+used to fail no longer need rescuing at all — most of those stretches are simply on real floor now, and
+where a detour is still required (3 of 9 same-storey chords) one is found. **Zero**
+`§PATH_LEGAL_DETOUR_FAIL` remain, and all 15 same-storey legs measure **0 illegal sample points** (was
+265 across 3 unroutable legs). The extra waypoints in the drawn line (`polyPts` 15 → 19) are the fix's
+fingerprint, not a longer route — the 124.69m distance and the doors used did not change, deliberately,
+because the fix only changes the drawn line, never which rooms or doors a route uses. Fleet-wide on
+Hospital, a detour-failure sweep over 3023 real room pairs went **63.3% → 0.0%** with zero newly-broken
+pairs, room-pair pathability rose **69.4% → 91.2%**, and unreachable (deg-0) rooms fell **26 → 7**;
+Terminal's off-floor sampling went 352 → 0, Clinic's 49 → 0. Root cause, plainly: (a) the walkable-floor
+raster was consulted *instead of* the room data rather than *together with* it, so rooms compiled in the
+browser after the raster was built had no floor under them; (b) doorways and stairs — the only ways
+through a wall or between floors — weren't counted as walkable at all; (c) the raster builder picked
+floor slabs in a fixed height window that missed Hospital's real floor plates by 5cm, dropping an
+8270m² Level 4 plate entirely. Still imperfect, worth saying plainly: on Level 4 two chords needed a
+wider-than-local detour search (`§PATH_LEGAL_DETOUR_NONLOCAL`), and the line passes one door twice — a
+real ~3m back-step out of room R9 — so the drawn route is on real floor but not always the tidiest
+line. Full technical trail, for anyone who wants it:
+`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §17 (supersedes §9–§16), shipped in
+bim-ootb PRs #1006–#1009.
+
 *Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the
 path list — one tap from any room to the nearest building exit.
 
@@ -309,9 +348,21 @@ one icon:
 - **Clash Matrix** (key **C**) opens the clash-detection engine (discipline-pair grid, tolerance, Review /
   Resolve / Accept status, HTML + CSV export) — full coverage: **[Clash Detection guide](CLASH_DETECTION.md)**.
 - **Time Machine** (key **T**) opens the 4D construction timeline — author a schedule, play it back,
-  try a What-if slip, share a `?tm=play` link. Full authoring/playback walkthrough already lives in
+  try a What-if slip, share a `?tm=play` link. On a large building (100K+ elements), a box-cube pill
+  in the panel header trims GPU cost by rendering already-built-but-out-of-view elements as lightweight
+  wireframe boxes, keeping whatever you're actually looking at full LOD400.
+
+  <figure style="margin: 12px 0;">
+  <a href="https://youtu.be/juwOrpqKhFE" target="_blank"><img src="https://img.youtube.com/vi/juwOrpqKhFE/hqdefault.jpg" alt="Time Machine box-proxy demo" style="width:100%; max-width:480px; border:1px solid #333; border-radius:8px;"/></a>
+  <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:6px;"><a href="https://youtu.be/juwOrpqKhFE">Watch on YouTube</a> — Time Machine playback on a large building with the box-cube proxy toggle.</figcaption>
+  </figure>
+
+  Full authoring/playback walkthrough already lives in
   **[Kernel-ERP User Guide → Time Machine](ERPUserGuide.md)** (not re-documented here — same building,
-  same feature, reached from either app).
+  same feature, reached from either app), including the
+  **[ERP-side entry point](ERPUserGuide.md#author-the-4d5d-schedule--build-it-up-from-the-model-live)** —
+  picking an element in 3D (or a red **Zoom Across** pill on an ERP record) jumps the Time Machine
+  straight to that element's construction moment.
 - **4D / 5D** (key **4**) opens the analytics dashboard (`boq_charts.html`) for the loaded building in a
   new tab — full coverage: **[4D/5D Analysis guide](4D5DAnalysis.md)**.
 
@@ -326,6 +377,91 @@ The **Camera / View** drawer (camera icon) bundles three camera-control toggles:
 - **Reset Camera** (key **A**) — snaps the camera back to its default orbit position.
 - **Auto-Pivot** (key **Q**) — toggles automatic pivot-point recentring as you orbit, so the camera keeps
   turning around whatever's in view instead of a fixed point.
+
+### Cinema Film-Maker (Alt+C) — the BIM OOTB Film-Maker
+
+**Alt+C** computes a complete cinematic film of the building — dive in, settle on the largest occupiable
+space, walk out through a real door, orbit the exterior — in well under a second, from the model's own
+room graph. No camera path is authored by hand; the defaults come from measured geometry (room area,
+reachability, door position, clearance), not a guess.
+
+Before recording starts, a **Cinema path** panel opens with the whole film drawn as a yellow tube
+through the building. You edit the flight by dragging the flight itself — there is no separate
+storyboard or keyframe list:
+
+![The Cinema path panel the moment Alt+C is pressed, before any editing — the derived flight drawn as a yellow tube diving into the building and running out along the roof, and the panel listing just three bands (settle, one stick, stop) each with its x / z / height / length fields and aim angles, then the Whole path block: reach 15%, clip "whole film", the buildup checkbox, "saved — none yet —", total 53.9 s / 808 frames, and the derived line "walk 36.9m · 1.69 m/s · natural 53.9s · replan 91ms"](img/viewer/filmmaker-path-editor-initial.png)
+
+That is the whole film, derived, before you touch anything — and the footer says so: *"Unedited · OK
+records exactly the film the preview just showed."* Pressing **OK** here is already a complete take.
+
+#### The bands — the rows in the panel
+
+Every row is one straight **band** of the flight, listed in flight order with its own x, z, **height**
+(green) and **length** (orange) fields, plus its aim angles:
+
+- **settle** — where the dive lands and the camera looks around. Always the first row.
+- **stop** — end of the *walk*, not the film; its far end stretches the exterior orbit that follows.
+  Always the last row.
+- **stick** — any band you added yourself, labelled with how far along the walk it sits. A derived path
+  opens with one; the screenshot below has four.
+
+To work with them:
+
+1. **Click the tube** anywhere along the walk to drop a new **stick** there. A fresh stick lies exactly
+   along the curve, so the film does not move until you move it — dropping one costs nothing.
+2. **Drag a band's end** to pivot it about its far end (length is fixed, so this aims a leg — use it to
+   turn through a different doorway).
+3. **Drag a band's middle** to move the whole band without pivoting.
+4. **Press `×` on a stick's row** to remove it. *settle* and *stop* have no `×` — the dive lands on one
+   and the orbit stretches off the other, so removing either would change what the beats mean.
+5. **Anywhere else orbits the scene as normal** — no freeze, no modifier key. A drag moves in the plane
+   you are currently facing, so orbit to a side view when you need to change height.
+
+![The same panel after authoring — the yellow flight tube now bent through the model with draggable band handles along it, and the list grown to settle, four added sticks (each labelled with how far along the walk it sits and carrying a × to remove it) and stop, above the same Whole path block and the Preview / Cancel / Save this path / OK row](img/viewer/filmmaker-path-editor.png)
+
+#### Whole path — the controls that act on the entire film
+
+- **reach %** — how far a drag on the tube carries along the walk. Drag the tube *between* the bands and
+  it bends like a hose, falling off over that reach; a small reach edits locally, a large one sweeps the
+  whole flight.
+- **clip · mark in / mark out / whole film** — trims the film to a window without changing the path.
+  ⚠ **Marking uses the point of the film nearest your camera**, so put the camera close to the spot *on
+  the yellow tube* where the cut belongs before pressing — marking from a wide exterior view lands on
+  whichever part of the flight happens to pass closest to your eye. **whole film** clears the window.
+- **build the model as the camera flies** — the construction reveal. See the 4D note below.
+- **saved** — plans you stored for this building, with **open** and **delete**. Choosing one and pressing
+  **open** replaces the path you are editing; the line under it says how many bands, how many hose pulls,
+  the clip window and when it was saved.
+
+#### Timing, preview and recording
+
+The **total** field is seconds, and the line beneath it reports the derived reality: walk length, walking
+speed in m/s, the natural duration, and how far your edit has moved it. Total duration is derived per
+building from real walk distance and pull-back distance, never a fixed number — a small building's film
+is shorter than a large one's by construction, not by a setting.
+
+- **Preview** flies the current edit so you can watch it before committing to a bake. The panel tells you
+  when what you are looking at is older than your last edit.
+- **Save this path** stores the plan — both into the building (so it travels with the file when you save
+  it) and as a named entry in the **saved** list above.
+- **Cancel** discards; **OK** records the film exactly as previewed. If you touched nothing, that is
+  byte-identical to the un-edited default — opening the panel to look costs you nothing.
+
+#### The 4D reveal — and what it may honestly be called
+
+With **build the model as the camera flies** ticked, the model assembles as the film runs. What drives
+that order depends on the data in *your* building, and the viewer picks automatically:
+
+| your data | what drives the reveal | what to call it |
+|---|---|---|
+| no dated tasks | the derived build order, re-keyed to the flight | **"derived build order"** — never "the schedule" |
+| real dated tasks (a 4D schedule authored or imported into the building) | each element's own `schedule_start` | **"a linked 4D schedule"** |
+
+A building with a real schedule reveals by that schedule and nothing is re-ordered. The practical
+workflow is to **preview the Time Machine first** — its Gantt is in the Inspect drawer — and then place
+your **mark in / mark out** against what the programme actually shows.
+
+[Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
 
 ### Display options — Palette, Night, Shadow + Ground, Background, Sound FX
 
@@ -427,9 +563,13 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | **Shift + Drag** / **Right-click drag** | Pan camera |
 | **Scroll / Pinch** | Zoom |
 | **Click** element | Identify — IFC class, name, GUID, storey, material |
+| **'** (apostrophe) | Toggle **Hover Name** — hovering (no click) shows the friendly name + room of whatever's under the cursor; also a checkbox in the Find panel. Dead key on some international keyboard layouts (US-International, Spanish, Portuguese, French-Canadian) — fails harmlessly there, use the checkbox instead. |
 | **Front / Back / Left / Right** | Elevation views |
 | **Roof** | Roof plan view |
 | **Alt+Z** | Toggle X-ray mode |
+| **Alt+C** | [Film-Maker](#cinema-film-maker-altc-the-bim-ootb-film-maker) — derive a cinematic film, edit the flight, record |
+| **Click the flight tube** (in the Film-Maker) | Add a stick — a new band you can drag |
+| **Ctrl+Z / Ctrl+Shift+Z** (in the Film-Maker) | Undo / redo a path edit |
 | **F11** | Toggle fullscreen |
 | **F1** | Help — the full, live list of every toolbar action and its shortcut key |
 

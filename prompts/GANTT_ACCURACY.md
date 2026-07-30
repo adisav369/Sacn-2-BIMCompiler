@@ -143,3 +143,127 @@ Keep it lightweight — no post-processing passes, no bloom shader. Emissive tra
 - Verify: roof elements appear AFTER wall elements in `§` log order
 - Export JSON, modify a sequence number, re-import, verify playback changes
 - Test on mobile: export/import buttons accessible and functional
+
+---
+
+# §4D_HOST_BEFORE_HOSTED — a window reveals BEFORE its supporting wall (user, observed in a baked film, 2026-07-29)
+> User, watching the Hospital MaxQ film: *"that window coming on first, before its supporting walls can
+> be noted to harden our 4D generater, its matter of data."*
+
+## Why this matters more than it looks
+It is a **build-order correctness** defect, not a cosmetic one, and it is the first thing a scheduler
+will notice — before the camera work, before the render. A window cannot be installed before the wall
+that hosts it. The whole defensible claim of the Cinema work is *"a film cut against a real 4D schedule
+by the engineer who built that schedule"* (`CINEMA_DELIGHT_BATCH.md` §SETTLED 2026-07-29c); an ordering
+violation visible on screen undercuts exactly that claim, on the one axis it is being sold on.
+
+**The user's own framing is right: it is a DATA/RULES matter, not a renderer bug.** The buildup now
+plays the timeline verbatim (§CPE_BUILDUP_FOLLOW_TM, PR #1082) — so whatever order the generator emits
+is what the film shows, faithfully. Fixing this in the camera or the reveal would be the wrong layer and
+is explicitly forbidden by that same ruling.
+
+## ⚠ MECHANISM — CORRECTED after reading `viewer/schedule_gate.js` (supersedes the guess below)
+> User: *"its again a Z stacking matrix required i reckon"*
+
+**Half right, and the wrong half is the useful part: the Z stacking matrix ALREADY EXISTS and works.**
+`schedule_gate.js` is built on it — two passes, both gated on vertical support:
+- **PASS A (structure, `seq<=4`)** — bottom-up by `base_z`: an element waits for the structure whose XY
+  footprint overlaps it and whose base is below. ε=0.05m so a thin slab under a duct still counts.
+- **PASS B (non-structure, `seq>4`)** — by TRADE then `base_z`: waits for the structure under its
+  footprint AND for the lower trades in its own Level.
+
+**A window beating its wall cannot be caught by that, structurally: a window is not ABOVE its wall, it
+is INSIDE it.** Same Level, same footprint line, overlapping Z range — "whose base is below" has nothing
+to bite on. So this is the OTHER axis, not a missing Z relation.
+
+Two candidate causes, needing different fixes — **determine which before building**:
+1. **Trade `seq` ordering.** If glazing's trade sorts before the wall's in PASS B, the window wins
+   regardless of geometry. Fix is a data/table correction. Cheap. **Check this first.**
+2. **No HOSTED-BY relation exists.** The gate has *supported-by* but not *hosted-by*. Fix is a third
+   constraint beside the two passes: bbox containment (or the real IFC host link), in the same style as
+   the support gate. This is the GENERAL answer — it covers doors, louvres, any opening filler, anything
+   recessed into a host.
+
+⚠ **Pre-empt the scope objection:** the file's own header states *"No CPM/dependency solving
+(planner's)"*. A hosting gate is NOT CPM — no float, no logic network, no critical path — it is one more
+geometric gate of exactly the kind already implemented. Say so when proposing it.
+
+## ~~Likely mechanism~~ — SUPERSEDED, kept only to show what was ruled out
+~~A window's `center_z` sorts below its host wall's centroid.~~ **Wrong** — the gate sorts on `base_z`,
+where a wall (0.0) is already below a window (sill ~0.9), so plain Z ordering would put the wall FIRST.
+The Z axis was never the problem. Read the corrected section above instead.
+**Verify first, in this order:** (1) query `elements_meta`/`element_transforms` for a real offending
+pair on Hospital and compare their `center_z` AND their emitted `start_ts` — name the actual guids;
+(2) confirm whether the two are in the same phase or different ones (if different, the phase order is
+the cause and Z is innocent); (3) only then decide where the constraint belongs.
+
+## The rule to add, once verified
+**HOST BEFORE HOSTED: an element may not reveal before the element that hosts it.** Applied as a
+constraint AFTER the existing sort, never as a replacement for it — the Z/phase ordering is doing real
+work and must not be discarded to fix a dependency.
+- The host relationship **already exists in this codebase** — see `project_openings_inherit_host_rotation`
+  (openings inherit their host wall's rotation), so the pairing is derivable, not new data to invent.
+- Scope it to what is provable: opening fillers (`IfcWindow`, `IfcDoor`) → host `IfcWall`. ⚠ **Do NOT
+  generalise to "MEP after structure" in the same pass** — that is a different rule with different
+  evidence, and bundling them makes both unfalsifiable.
+- ⚠ **Prime Directive:** the host link must be EXTRACTED (IFC relationship or measured containment),
+  never inferred from proximity alone. A window assigned to the nearest wall by distance is invention.
+
+## Witness claims
+- **W-HOST-ORDER (the gate).** For every hosted element on Hospital, `start_ts(host) <= start_ts(hosted)`.
+  Report the violation COUNT before and after — before must be > 0 or the defect was never reproduced,
+  and a witness that cannot show the RED is not a witness.
+- **W-HOST-NO-REGRESSION.** The storey-band bottom-up character survives: the Z-vs-reveal-order
+  correlation must not degrade, and `§GANTT_MINI` phase spans must not collapse into each other.
+- **W-HOST-COVERAGE.** Report how many elements actually HAVE a derivable host. Elements with none keep
+  their current order and are counted, not silently passed.
+
+## Where this sits
+Not in the Cinema lane — the film only EXPOSED it. It belongs to 4D generation and should be fixed there,
+which also means every consumer (Time Machine playback, the Gantt drawer, 4D/5D variance) gets it.
+
+### ▶ THE A/B IS ALREADY SET UP — the user still holds the path (2026-07-29)
+> User: *"that means if the windows stayed back it would have been dramatic"* · *"i still have the same
+> path script"*
+
+**Correctness and spectacle point the SAME way here, which is worth stating to any sceptic.** Correct
+order is wall first, glazing after — so on the same flight the camera approaches an open frame with the
+services exposed and the façade closes over them AS IT WATCHES. The reveal happens in front of the lens
+instead of having already happened. The defect did not merely mis-state the build order; **it cost the
+shot its drama.** Fixing the schedule sharpens the film rather than sanding it down.
+
+**And the experiment is already controlled.** The user retains the authored Hospital path
+(§CPE_IDB_PATH_STORE / the `cinema_path` record). So the fix can be demonstrated as a true A/B: same
+camera, same building, same duration, ONE variable changed. **Re-bake that exact path after the fix and
+compare against `BIM_MaxQ_Hospital_1785273910881.mp4`** (1852×960, 1186 frames, 79.067 s, 5.31 Mbps —
+the reference film, user-accepted 2026-07-29).
+- ⚠ Per the FUNDAMENTAL LAW the two films are the DEMONSTRATION, not the proof — W-HOST-ORDER's
+  violation count going >0 → 0 is the proof. Keep both; they answer different questions.
+- ⚠ The comparison is only valid if nothing else moved. Re-bake from the SAVED path, do not re-author,
+  and confirm `§CPE_OPEN src=authored` plus an unchanged band/hose count before baking.
+
+### ⚠ REFRAMED — Hospital did not need a heuristic at all (2026-07-29)
+> User: *"cant we make it strictly weigh to Z value?"* → *"then recall the 4d schedule prompts/# and
+> look at the CPM"*
+
+**1. Strict Z cannot express it.** A wall CONTAINS its window (wall 0.0→3.0, window 0.9→2.1 inside that
+span). Containment is not ordinal, so no weighting of one scalar encodes it — and pushing Z harder
+breaks the stacking cases the gate currently gets right.
+
+**2. The CPM data already answers it, and we are discarding it.** From `4D_CAPTURE_AND_FALLBACK.md`
+§2.1/§5.2, Hospital's captured IFC programme carries **deps + element links 46/46**, Early/Late
+Start/Finish 45/46, Free/Total Float 44/46, IsCritical 45/46 — *"the schema then discards the CPM/float/
+WBS/calendar that made it expert-grade."* The widening is **already specced as T1b/§5.2 and never built.**
+
+**So this defect is not a gate bug — it is the FALLBACK running on a building that did not need one.**
+A planner already stated wall-before-window; we are throwing the statement away and then re-deriving a
+worse answer geometrically. Two tracks, non-competing:
+1. **Captured programme → build T1b, use the planner's dependencies.** `schedule_gate` should not be
+   ordering Hospital at all. This is the higher-value track and it is already written.
+2. **No programme → the geometric gate stays**, and there the HOSTED-BY constraint above is the fix,
+   because there is nothing else to appeal to.
+
+⚠ **Boundary unchanged:** capture and replay CPM, **never recompute float** (`4D_CAPTURE_AND_FALLBACK.md`
+:359). Reading a planner's stated dependencies is not us solving CPM, and must not become that.
+⚠ **Honesty tiers move with this:** a film ordered by captured deps is tier 1 (*linked schedule*); the
+geometric gate stays tier 2 (*this model's derived 4D*). See `CINEMA_PATH_EDITOR.md` §5.

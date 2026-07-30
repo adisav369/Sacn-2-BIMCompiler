@@ -91,6 +91,25 @@ retreat across every tool below.
 That's the whole loop: **open → select → tool → commit → scrub**. Every tool below is a variation on it. Press
 **? Help** any time for the live list of pills and shortcuts, or **`Esc`** to cancel a mode.
 
+### Open your own building — straight from an `.ifc`
+
+The resident buildings are there so you can start in one click, but **📂 Open** takes your own model too.
+Besides a resident, it accepts an **`.ifc` file** and a local **`.db`**.
+
+1. Tap **📂 Open**.
+2. Choose **FROM IFC** and pick your `.ifc` — or pick a local `.db` you exported earlier.
+3. The building lands on the grid the same way a resident does: it walks the structure and seeds the
+   editable ARC substrate, so you can select and edit immediately.
+
+Two things to know. First, an IFC opens **filtered to ARC** — the architectural model only, the single
+editable substrate; the other disciplines follow by walking, exactly as they do for a resident. Second,
+it's parsed by the **same engine the Viewer uses** — not a second, differently-behaved importer — so a
+building reads the same in both tools.
+
+Because an IFC carries more than the pre-filtered resident `.db` does, an IFC-opened building often shows
+*more* ARC elements than the same building opened as a resident. That's the source file being richer, not
+a discrepancy.
+
 ---
 
 ## Outliner — find, focus, and manage what's shown
@@ -141,6 +160,43 @@ value the Viewer already used) and renders it faithfully: an element with real g
 transparent material at its true opacity, everything else is unaffected.
 
 ![A Duplex window rendered as real transparent glass, recessed into its wall opening — not an opaque panel](img/modeller/glass-window-transparent.png)
+
+## What a wall is made of
+
+A plain-looking wall box in the Modeller is real geometry, not a shortcut — the file itself only ever
+described the wall as one outer shape plus a list of layer thicknesses, never as separate layer shapes.
+
+Take a real one: the party wall between two Duplex units (`2O2Fr$t4X7Zf8NOew3FNbT`) is built from 7
+layers — plasterboard (16mm), metal stud (41mm), block (193mm), an air gap (50mm), block again (193mm),
+metal stud (41mm), plasterboard (16mm). That's real, measured construction. But the source file never
+draws those 7 slabs as 7 shapes — it draws **one outer box** the size of the whole stack, and records the
+7 thicknesses as a side list ("this box is made of, in order..."). The Modeller renders exactly what's
+there: one box — 14 triangles for this wall (a perfectly plain box tessellates to 12, two per face on
+six faces, and 35 of the Duplex's walls are exactly that; this one's outline carries two more). That's
+not a placeholder standing in for the real wall. It *is* the real wall, drawn at the detail the file
+actually authored.
+
+You can tell a real box from a broken one by whether it can be cut. A door or window cut through a wall
+only works if the wall has a real shape to cut — a stand-in box has nothing behind it to carve. In the
+Duplex, 18 walls carry a door or window hole and each ends up with 28–120 triangles once the cut is
+applied; that's proof the geometry underneath is real, not a fallback.
+
+**Why the Viewer looks richer on the same building.** Open Duplex in the Viewer and you'll see far more
+going on — because the Viewer loads everything the Modeller deliberately doesn't: pipes, ducts, and other
+services (904 extra parts). The walls themselves are identical in both — same boxes, same 12 triangles
+each. The Modeller is scoped to architecture + structure by design; it isn't missing wall detail the
+Viewer somehow has.
+
+**Why a July fix looked dramatic on one building and invisible on another.** An earlier pass removed
+*fake* placeholder boxes — geometry the pipeline invented when it couldn't resolve a real shape. On one
+test building (heavily irregular massing) that fix visibly cleaned up the model. On the Duplex it changed
+nothing you could see, because a plain wall's honestly-tessellated box and a fake placeholder box are both
+12 triangles — removing the fake ones simply left the real ones exactly as they were.
+
+**What changes next.** The file-side link from a wall to its own layer list is now extracted
+(`rel_material_layer_set`), so the data needed to draw those 7 slabs individually — instead of one box —
+already exists. Once that slicing ships (§LOD400-LAYERS-REAL), this same party wall will render as 7
+stacked slabs whose thicknesses sum to the wall's true 550mm, not a single block.
 
 ---
 
@@ -328,6 +384,13 @@ to disarm. `R` is reserved for Insert, so it doesn't arm anything here.
 2. Drag a **gridline**.
 3. Release to commit. Walls attached to that line **recompose** — a span stretches, an attached wall translates — as one signed operation. A hosted door or window **rides** its wall rather than stretching or divorcing from it, same as Move.
 
+The ride is not a guess about what looks hosted. It follows the **authored** host↔opening↔filling chain
+recovered verbatim from the building's own IFC, so a door rides the wall its designer actually put it in —
+and where a building's author never declared that relationship, the modeller says so rather than inventing
+one. In practice that means the ride is exact on *SampleHouse* (all 7 hosted openings) and *Duplex* (36 of
+its 38), and partial on *SampleCastle*, whose window-frame walls are consumed by their own openings and so
+aren't separate things to ride.
+
 ![Before — a wall spanning two gridlines](img/modeller/gridstretch-before.png)
 ![After — dragging the gridline stretched the attached wall by exactly the drag distance](img/modeller/gridstretch-after.png)
 
@@ -360,9 +423,23 @@ their discipline colour, room by room. This is the corrected placement too (2026
 version of this pipeline had a containment bug where roughly a quarter of placements landed outside the
 building's own walls — fixed (mesh-recovered true-midpoint host binding) and independently verified 5
 separate ways (containment count, real-oracle walk-back match, measured-pattern conformance, wall-clearance
-margin, mirror-symmetry residual on the Duplex's own A/B twin layout). The fixture mesh itself is still a
-box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
-honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.
+margin, mirror-symmetry residual on the Duplex's own A/B twin layout).
+
+**How real is the fixture mesh, up close?** It depends on whether the rule-set was mined from *this*
+building. Duplex is the building `duplex_rules.db`'s residential standard was mined from, so its own
+walked fixtures resolve to their own real extracted device mesh — a genuine ceiling fan, motor housing and
+all, not a box:
+
+![Close-up of a Duplex-walked ceiling fan — a real rule-mined LOD400 device mesh (motor housing, blades, mount stem), not a box stand-in](img/modeller/duplex-fixture-lod400-closeup.png)
+
+SampleCastle walks the *same* residential rule-set (it's a different building — see the table below), so
+it has no catalog match for its own fixture classes and falls back honestly to a measured box, sized from
+that class's real dimensions but not a finished model:
+
+![Close-up of a SampleCastle-walked fixture — an honest measured-box fallback (no catalog mesh match for this building's own classes) placed against its host wall](img/modeller/samplecastle-fixture-honestbox-closeup.png)
+
+Guessing at a fixture's real shape when no mesh is mined is exactly what this project's non-invent rule
+forbids — a plain box, correctly sized and positioned, beats an invented model every time.
 
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
@@ -447,6 +524,25 @@ score: of the joins the walker drew, how many land on a real pipe touch.
 The model **degrades gracefully** and never collapses. On **every** building **0 joins were fabricated** and
 **0 exceeded the gap bound**. An ARC-only building with no pipes routes **0**, never a guess.
 
+### Walk them all at once
+
+You don't have to pick the trades one at a time. Under **Not extracted — walk from …** in the Outliner,
+the first row is **▶▶ Walk ALL Disciplines**; its sub-label tells you how many trades the building is
+missing (e.g. *4 not extracted · x-ray reveal*).
+
+1. Open a bare ARC building.
+2. Click **▶▶ Walk ALL Disciplines**.
+
+It walks every absent discipline in turn, through exactly the same production path a single click uses —
+same rules, same gating, same honest refusal when a trade has nothing to hang on. The difference is the
+presentation: X-ray brackets the whole run so you can watch it land, and each discipline's placements
+flash amber and settle into their own trade colour just before they're committed, so you can see *which*
+trade just filled in rather than watching one undifferentiated wave.
+
+X-ray is restored afterwards even if a discipline refuses part-way. On a very large building the
+per-element flash is dropped in favour of one batched hold-and-settle — the geometry committed is
+identical either way, only the reveal animation is coarser.
+
 ### Seed-Trunk — route a service trunk
 
 After walking a discipline, route its **service trunk** from a real entry.
@@ -513,7 +609,7 @@ The toolbar is a **⋯ pill rail** at the right edge: tap **⋯** to fan the pil
 | **Fillet** | Round a selected solid's picked edges (`GEOM_FILLET`) |
 | **Apply** | Commit the pending fillet / chamfer |
 | **Insert** | Insert a library component — assemble, don't draw (`GEOM_INSERT`) |
-| **LOD 200** | Refine the selected component's level of detail (same signed row) |
+| **LOD 200** | Refine the last-placed component's level of detail (same signed row) — appears once you enter **Insert**, not on the resting rail |
 | **IFC** | Export the authored model as IFC4 |
 | **Undo / Redo** | Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) |
 | **Delete** | Delete the selection (`Del`) |

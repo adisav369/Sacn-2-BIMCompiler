@@ -7,7 +7,13 @@
 3. **One file at a time. Verify after each.**
 4. **Landing = `SYSNOVA/index.html`. Viewer = `deploy/dev/index.html`. DO NOT MIX.**
 5. **Local `deploy/dev/` → bucket `sandbox/`. Local `SYSNOVA/` → bucket root `index.html`.**
-6. **ALWAYS specify `--content-type` on EVERY upload.** OCI does NOT infer MIME from extension.
+6. **A patch destined for this bucket goes through `scripts/oci_patch_gate.js` (bim-ootb), never by hand.**
+   It records the served object's live etag/content-md5 AND the verifying worktree's SHA + behind/dirty
+   state, downloads the served bytes ITSELF, applies the patch, runs a verifier, and refuses the upload
+   unless all of it passes. Both axes have already failed silently: a 156-room raster judged a 224-room
+   DB (#996), and a provenance check ran from a 25-commit-stale checkout. Manual discipline did not hold;
+   the gate does. `--upload` performs the put + fetch-back verify only past a PASS.
+7. **ALWAYS specify `--content-type` on EVERY upload.** OCI does NOT infer MIME from extension.
    - `.js` → `--content-type "application/javascript"` (without this, browser blocks the script with MIME mismatch)
    - `.html` → `--content-type "text/html"`
    - `.json` → `--content-type "application/json"`
