@@ -46,6 +46,7 @@ Usage:
 
 import argparse
 import hashlib
+import math
 import os
 import sqlite3
 import struct
@@ -139,7 +140,13 @@ CREATE TABLE IF NOT EXISTS elements_meta (
     element_type TEXT,
     storey TEXT,
     material_name TEXT,
-    material_rgba TEXT
+    material_rgba TEXT,
+    -- §ANCHOR (RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §START HERE OPEN 1, USER-APPROVED 2026-07-30):
+    -- 1 = a VOID-CONSUMED host persisted as a non-rendered logical anchor. UNMISTAKABLE by design
+    -- (the user's binding condition): is_anchor=1 here AND transform_source='void_anchor' on its
+    -- element_transforms row. Anchors have NO element_instances row (nothing to render), are NOT in
+    -- elements_rtree (never pickable), and are excluded from every extractor count and §PROOF gate.
+    is_anchor INTEGER DEFAULT 0
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree USING rtree(
     id, minX, maxX, minY, maxY, minZ, maxZ
@@ -376,6 +383,29 @@ def infer_discipline(ifc_class):
 def geometry_hash(vertices_blob, faces_blob):
     """SHA256-based 16-char hash of centered geometry."""
     return hashlib.sha256(vertices_blob + faces_blob).hexdigest()[:16]
+
+
+def decompose_iterator_matrix(mat_flat):
+    """ONE implementation of the iterator-matrix → (center, Euler) decomposition (S173 math, factored
+    out VERBATIM from the S172 iterator loop — do not re-derive it elsewhere). Input is the flat
+    column-major 4x4 from ifcopenshell `shape.transformation.matrix`. Returns
+    (mat4, rot3, center, rot_x, rot_y, rot_z). Used by the normal geometry path AND the §ANCHOR
+    void-consumed path so both persist the SAME placement truth; P4 ROT_TRUTH checks this math at
+    the event on every normally-imported element.
+    """
+    mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
+    rot3 = mat4[:3, :3]
+    center = mat4[:3, 3]
+    sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
+    if sy > 1e-6:
+        rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
+        rot_y = math.atan2(-rot3[2, 0], sy)
+        rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
+    else:
+        rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
+        rot_y = math.atan2(-rot3[2, 0], sy)
+        rot_z = 0.0
+    return mat4, rot3, center, rot_x, rot_y, rot_z
 
 
 def boolean_depth(item, depth=0, _visited=None):
@@ -1562,15 +1592,19 @@ def is_void_consumed(elem, settings):
     Classified from authored data only: does a `Body` representation ITEM tessellate on its own (bypassing
     the openings), and does the element declare any opening? No thresholds, no proximity, nothing inferred.
 
-    Returns True only for (a).
+    Returns, for (a), the pre-boolean Body ITEM's LOCAL bbox extent as a truthy 3-tuple
+    (ext_x, ext_y, ext_z) in metres — §ANCHOR (USER-APPROVED 2026-07-30) persists it instead of
+    throwing the already-computed tessellation away (captured from THIS call, never a second
+    tessellation). Returns None for (b)/anything else, so `if is_void_consumed(...)` keeps its
+    original truthiness semantics.
     """
     import ifcopenshell.geom          # module-level import is deferred in this file (see caller at :1047)
     try:
         if not getattr(elem, 'HasOpenings', None):
-            return False
+            return None
         rep = getattr(elem, 'Representation', None)
         if not rep:
-            return False
+            return None
         for sub in rep.Representations:
             if sub.RepresentationIdentifier != 'Body':
                 continue
@@ -1579,12 +1613,14 @@ def is_void_consumed(elem, settings):
                     shp = ifcopenshell.geom.create_shape(settings, item)
                     geo = shp.geometry if hasattr(shp, 'geometry') else shp
                     if len(geo.verts) >= 9:      # >= 3 vertices
-                        return True
+                        _iv = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
+                        _ext = _iv.max(axis=0) - _iv.min(axis=0)
+                        return (float(_ext[0]), float(_ext[1]), float(_ext[2]))
                 except Exception:
                     continue
     except (AttributeError, TypeError):
-        return False
-    return False
+        return None
+    return None
 
 
 def extract_rel_fills_host(ifc_file, conn):
@@ -1968,6 +2004,10 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     # Expected, correct output — tracked and reported separately, never counted as a failure.
     void_consumed = 0
     void_guids = []
+    # §ANCHOR (USER-APPROVED 2026-07-30): void-consumed hosts whose already-computed placement + pre-boolean
+    # extent get persisted as non-rendered logical anchors. NEVER counted in `imported` — own counter only.
+    anchors = 0
+    anchor_rows = []
     mat_found = rgba_found = 0
     lib_geo_new = lib_igm_new = lib_prod_new = 0  # S168 counters
     ordinal_counter = {}  # S168: (ifc_class, storey) → next ordinal
@@ -2017,9 +2057,26 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 if len(verts) < 3 or len(faces) < 1:
                     # §LODHELL-FIX-1: an empty tessellation is NOT automatically a defect — classify it
                     # against the element's own authored openings before crying wolf (is_void_consumed()).
-                    if is_void_consumed(elem, settings):
+                    _anchor_ext = is_void_consumed(elem, settings)
+                    if _anchor_ext:
                         void_consumed += 1
                         void_guids.append((shape.guid, cls, getattr(elem, 'Name', None)))
+                        # §ANCHOR (RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §START HERE OPEN 1,
+                        # USER-APPROVED 2026-07-30): stop DISCARDING what is already computed. The
+                        # iterator's shape carries the host's world placement for free, and
+                        # is_void_consumed() just tessellated the pre-boolean Body ITEM to classify —
+                        # keep both (pure extract, zero defaults). Rows are flushed AFTER the loop so
+                        # normal elements keep bit-identical ids vs pre-anchor extractions.
+                        try:
+                            _, _, _a_c, _a_rx, _a_ry, _a_rz = decompose_iterator_matrix(
+                                list(shape.transformation.matrix))
+                            anchor_rows.append((shape.guid, cls, elem,
+                                                (float(_a_c[0]), float(_a_c[1]), float(_a_c[2])),
+                                                _a_rx, _a_ry, _a_rz, _anchor_ext))
+                        except Exception as _aexc:
+                            # Loud, named skip — this element simply stays absent (pre-anchor behaviour).
+                            print(f"  §ANCHOR-SKIP {cls} {shape.guid} — placement unavailable "
+                                  f"({_aexc}); host persists nothing")
                         if not iterator.next():
                             break
                         continue
@@ -2034,11 +2091,10 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     vblob = verts.astype(np.float32).tobytes()
                     fblob = faces.astype(np.int32).tobytes()
 
-                    # Transform from iterator (4x4 column-major in v0.8)
+                    # Transform from iterator (4x4 column-major in v0.8) — decomposition factored to
+                    # decompose_iterator_matrix() (§ANCHOR shares it; math unchanged, P4 still checks it)
                     mat_flat = list(shape.transformation.matrix)
-                    mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
-                    rot3 = mat4[:3, :3]
-                    center = mat4[:3, 3]
+                    mat4, rot3, center, rot_x, rot_y, rot_z = decompose_iterator_matrix(mat_flat)
 
                     # World-space bbox (from original verts + original centre)
                     local_min = verts.min(axis=0)
@@ -2056,17 +2112,6 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
                     minXYZ = world_corners.min(axis=0)
                     maxXYZ = world_corners.max(axis=0)
-
-                    # Euler rotation
-                    sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
-                    if sy > 1e-6:
-                        rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
-                        rot_y = math.atan2(-rot3[2, 0], sy)
-                        rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
-                    else:
-                        rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
-                        rot_y = math.atan2(-rot3[2, 0], sy)
-                        rot_z = 0.0
 
                     # S173: ROTATION TRUTH — at the event, compare Euler→matrix vs original rot3
                     if FINE:
@@ -2292,6 +2337,58 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 print(f"    §VOID-CONSUMED {_c} {_g} name={_n}")
             if void_consumed > 5:
                 print(f"    … {void_consumed - 5} more (full list is the rel_fills_host host set)")
+
+        # ── §ANCHOR flush (RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §START HERE OPEN 1, USER-APPROVED
+        # 2026-07-30 with ONE binding condition: anchors must be UNMISTAKABLE and excluded from every
+        # count/pick/audit). Persist each void-consumed host's already-computed world placement + the
+        # pre-boolean Body ITEM's LOCAL extent as ONE elements_meta row (is_anchor=1) + ONE
+        # element_transforms row (transform_source='void_anchor'). Deliberately NO element_instances
+        # row (no geometry hash — nothing to render) and NO elements_rtree row (never pickable).
+        # bbox_x/y/z here are the ITEM's LOCAL extent (the box the Modeller's invisible anchor mesh is
+        # built from, oriented by rotation_*) — NOT the world AABB the normal path stores; the
+        # 'void_anchor' transform_source is what tells a consumer which convention a row uses.
+        # Everything below is EXTRACTED (placement matrix + authored body tessellation) — zero defaults.
+        if anchor_rows and not dry_run:
+            for _a_guid, _a_cls, _a_elem, _a_ctr, _a_rx, _a_ry, _a_rz, _a_ext in anchor_rows:
+                _a_name = getattr(_a_elem, 'Name', None)
+                _a_storey = get_storey_for_element(_a_elem)
+                _a_disc = infer_discipline(_a_cls)
+                _a_type = None
+                try:
+                    for _rel in _a_elem.IsDefinedBy:
+                        if _rel.is_a("IfcRelDefinesByType"):
+                            _a_type = _rel.RelatingType.Name
+                            break
+                except (AttributeError, TypeError):
+                    pass
+                _a_mat = get_material_for_element(_a_elem)
+                _a_rgba = get_colour_for_element(_a_elem)
+                _a_eid = next_id
+                next_id += 1
+                conn.execute(
+                    "INSERT OR IGNORE INTO elements_meta "
+                    "(id, guid, discipline, ifc_class, element_name, element_type, "
+                    "storey, material_name, material_rgba, is_anchor) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,1)",
+                    (_a_eid, _a_guid, _a_disc, _a_cls, _a_name, _a_type, _a_storey,
+                     _a_mat, _a_rgba))
+                conn.execute(
+                    "INSERT OR IGNORE INTO element_transforms "
+                    "(guid, center_x, center_y, center_z, "
+                    "rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z, transform_source) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,'void_anchor')",
+                    (_a_guid, _a_ctr[0], _a_ctr[1], _a_ctr[2],
+                     float(_a_rx), float(_a_ry), float(_a_rz),
+                     _a_ext[0], _a_ext[1], _a_ext[2]))
+                anchors += 1
+                print(f"  §ANCHOR {_a_cls} {_a_guid} name={_a_name} "
+                      f"centre=({_a_ctr[0]:.3f},{_a_ctr[1]:.3f},{_a_ctr[2]:.3f})m "
+                      f"extent=({_a_ext[0]:.3f},{_a_ext[1]:.3f},{_a_ext[2]:.3f})m")
+            print(f"  §ANCHOR persisted anchors={anchors} void-consumed hosts as non-rendered logical "
+                  f"anchors (is_anchor=1, transform_source='void_anchor'; no element_instances/rtree "
+                  f"rows — excluded from imported/geometry totals and every §PROOF gate)")
+        elif anchor_rows and dry_run:
+            print(f"  §ANCHOR dry-run: {len(anchor_rows)} anchors would be persisted (skipped)")
         # S173: Pre-normalize coordinate summary (FINE only)
         if FINE and imported > 0:
             cx_span = _cx_max - _cx_min
@@ -2315,9 +2412,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     if skip_normalize:
         print(f"  §NORMALIZE skip (--skip-normalize: merge script handles post-merge normalization)")
     elif not dry_run and imported > 0:
+        # §ANCHOR: anchors must not SHIFT the centroid (offset stays bit-identical to a pre-anchor
+        # extraction) — but the offset UPDATE below applies to ALL rows including anchors, so anchors
+        # land in the same normalized building frame as everything else.
         row = conn.execute("""
             SELECT AVG(center_x), AVG(center_y), MIN(center_z)
             FROM element_transforms
+            WHERE COALESCE(transform_source,'') <> 'void_anchor'
         """).fetchone()
         if row and row[0] is not None:
             ox, oy, oz = row[0], row[1], row[2]
@@ -2357,6 +2458,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 vrow = conn.execute("""
                     SELECT AVG(center_x), AVG(center_y), MIN(center_z)
                     FROM element_transforms
+                    WHERE COALESCE(transform_source,'') <> 'void_anchor'
                 """).fetchone()
                 print(f"  §NORMALIZE offset=({ox:.1f}, {oy:.1f}, {oz:.1f}) stored in site_normalization")
                 print(f"  §NORMALIZE after: centroid=({vrow[0]:.1f}, {vrow[1]:.1f}, {vrow[2]:.1f}) — should be near (0,0,0)")
@@ -2439,8 +2541,10 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     # ── S173: PROOF BLOCK — self-checking summary ──────────────────────────
     # Each check prints PASS/FAIL with evidence. Read this block only.
     print(f"\n  {'─'*60}")
+    # §ANCHOR: anchors are their OWN count — never folded into elements/imported (binding condition).
     print(f"  §PROOF {os.path.basename(ifc_path)}  elements={imported}  "
-          f"failed={failed}  void_consumed={void_consumed}  bbox_fallback={bbox_fallback}")
+          f"failed={failed}  void_consumed={void_consumed}  bbox_fallback={bbox_fallback}  "
+          f"anchors={anchors}")
     print(f"  {'─'*60}")
 
     _proof_pass = 0
@@ -2457,11 +2561,14 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
 
     if not dry_run and imported > 0:
         # P1: SCALE — coordinates in metres (span 1-500m for real buildings)
+        # §ANCHOR: anchor rows excluded so the gate's evidence is bit-identical to a pre-anchor run
+        # (binding condition: anchors affect NO gate).
         cr = conn.execute("""
             SELECT MIN(center_x), MAX(center_x),
                    MIN(center_y), MAX(center_y),
                    MIN(center_z), MAX(center_z)
             FROM element_transforms
+            WHERE COALESCE(transform_source,'') <> 'void_anchor'
         """).fetchone()
         span_x = abs(cr[1]-cr[0])
         span_y = abs(cr[3]-cr[2])
@@ -2612,18 +2719,23 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     global LAST_PROOF_FAIL
     LAST_PROOF_FAIL = _proof_fail
 
-    # Summary by class
+    # Summary by class — §ANCHOR rows excluded (binding condition: anchors are never folded into the
+    # extractor's geometry totals; they get their own one-line count instead).
     if not dry_run:
         rows = conn.execute(
-            "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class ORDER BY COUNT(*) DESC"
+            "SELECT ifc_class, COUNT(*) FROM elements_meta WHERE COALESCE(is_anchor,0)=0 "
+            "GROUP BY ifc_class ORDER BY COUNT(*) DESC"
         ).fetchall()
         print(f"\n  By IFC class:")
         for cls, cnt in rows:
             print(f"    {cls:40s} {cnt}")
+        if anchors:
+            print(f"    (+{anchors} §ANCHOR rows — non-rendered void-consumed hosts, not geometry)")
 
         # Summary by discipline
         rows = conn.execute(
-            "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC"
+            "SELECT discipline, COUNT(*) FROM elements_meta WHERE COALESCE(is_anchor,0)=0 "
+            "GROUP BY discipline ORDER BY COUNT(*) DESC"
         ).fetchall()
         print(f"\n  By discipline:")
         for disc, cnt in rows:
@@ -2632,7 +2744,8 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         # Material summary
         rows = conn.execute(
             "SELECT material_name, COUNT(*), material_rgba FROM elements_meta "
-            "WHERE material_name IS NOT NULL GROUP BY material_name ORDER BY COUNT(*) DESC"
+            "WHERE material_name IS NOT NULL AND COALESCE(is_anchor,0)=0 "
+            "GROUP BY material_name ORDER BY COUNT(*) DESC"
         ).fetchall()
         if rows:
             print(f"\n  Materials ({len(rows)} distinct):")
