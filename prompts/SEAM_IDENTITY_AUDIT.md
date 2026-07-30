@@ -743,3 +743,38 @@ that reports a fallback/no-op should be visually distinct from one that reports 
   `BUILDINGS` map and the `import://` shapes — dead, listed here only so pass 2 does not rediscover it).
 
 **Pass 1 wrote zero production code, added no tests, created no memory files, and touched only this file.**
+
+---
+
+## ⚠ CORRECTION to C1 — 2026-07-30, user challenge: "Viewer / Modeller are different seams"
+
+**The user is right, and C1 as written was loose.** "One cache facade" must not be read as "one keyspace."
+
+**Viewer and Modeller do NOT load the same building files** — verified, not assumed:
+
+| | Viewer | Modeller |
+|---|---|---|
+| metadata | `<prodBase>buildings/Hospital_extracted.db` (63,415 elements, all disciplines) | `./Hospital_ARC.db?v=1` (ARC-only, `str_walker_outliner.js:56`) |
+| geometry | `<prodBase>buildings/Hospital_geo.db` (full) | `<prodBase>modeller/Hospital_geo.db?v=3` (small ARC-only, `GEO_BASE` `:49`, §GEO-SERVED 2026-07-30) |
+
+Same stem, different bytes, different purpose. **These must stay separate keys** — folding them is the
+wrong-geometry failure the §GUARDRAILS counter-case exists to prevent. F1's counter-case already said this;
+C1's one-line summary did not, and that is the line pass 2 would have read.
+
+**What they genuinely share, and must agree on:**
+1. **The container, not the contents** — one IndexedDB database, one store, one version, one eviction
+   policy, one inventory. F2 (four modules on v1 vs v2) and F4 (`timestamps` vs `dbs`) bite *regardless* of
+   whose files are inside. A Modeller write that skips `timestamps` breaks the Viewer's cap, and a Viewer
+   `open(name, 2)` breaks an ERP `open(name, 1)` — neither has anything to do with sharing a building.
+2. **`kernel_ops`** — the op-log is written *into* a building `.db`. A building edited in the Modeller and
+   opened in the Viewer must read the same table and the same `op_type` vocabulary. F11 stands.
+
+**So C1 splits in two:**
+- **C1a — the container contract** (open / version / key-normalisation / timestamp / evict). Shared by all
+  four apps. This is the real refactor.
+- **C1b — per-app keyspaces**, deliberately distinct, sitting *on top of* C1a. Viewer `buildings/…`,
+  Modeller `modeller/…`, imports `import://…`, ERP `ad_seed…`. **A pass-2 change that merges these is a
+  regression, not a fix.**
+
+The three live breakages (F2 boq_charts/ERP, F3 city.js, F4 unbounded `dbs`) are **all C1a**. None of them
+require Viewer and Modeller to share a single byte.
