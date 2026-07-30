@@ -134,6 +134,25 @@ def merge_part_dbs(dbs, out, scope=None):
         c.commit()
         warn.append('--scope %s kept %d of %d elements' % (scope, before - len(gone), before))
 
+    # ── §KUL001: the extractor never writes elements_meta.building, and writes no
+    # project_metadata. Without them the viewer's centres query fails with
+    # `no such column: m.building` -> §CENTRES_RESULT rows=0 -> §BOOTSTRAP centres=0, and
+    # A.startStreaming() takes a SILENT early return: the DB loads, reports its full size, and
+    # renders NOTHING. It reads like a size/perf problem and is neither.
+    # The self-heal patch route (viewer/buildings/patches/*.sql) does NOT cover this case — an
+    # opened local file arrives as `import://…` and the loader dies with
+    # `URL scheme "import" is not supported`. So it has to be written into the DB, here.
+    bld = 'T0_' + os.path.splitext(os.path.basename(out))[0].replace('_complete', '')
+    if 'building' not in cols('elements_meta'):
+        c.execute("ALTER TABLE elements_meta ADD COLUMN building TEXT")
+    c.execute("UPDATE elements_meta SET building=? WHERE building IS NULL", (bld,))
+    c.execute("CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)")
+    for k, v in (('building_name', bld), ('true_north_angle', '0')):
+        c.execute("INSERT OR REPLACE INTO project_metadata (key,value) VALUES (?,?)", (k, v))
+    c.commit()
+    warn.append('§KUL001 applied: elements_meta.building=%s + project_metadata '
+                '(without these the viewer loads the DB and renders NOTHING, silently)' % bld)
+
     # rtree keyed on elements_meta.id — verified in the source DBs (rtree.id == elements_meta.id)
     c.execute("DELETE FROM elements_rtree")
     c.execute("""INSERT INTO elements_rtree
