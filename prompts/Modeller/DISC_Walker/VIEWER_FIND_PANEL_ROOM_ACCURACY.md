@@ -2127,3 +2127,39 @@ Fixing that is exactness, not more dots (§21.9's two named fixes).
 3. Coverage: 37%/14.8% unroutable pairs, orphanDoors 16/92 — door→pocket adjacency DATA, not formula.
    **Never by re-adding rect slack** — that is what made the shipped predicate wall-blind.
 4. Only then a shipping proposal, with §20's R1-R6 as the before/after gate.
+
+### §21.12 THE PRIOR ART — this is a solved problem; use the named algorithm, do not re-derive one
+User, 2026-07-31: *"is there already a maths/algorithm to find a shortest link between 2 dots in a
+mapped area?"* Yes. Recorded here so §21.11's task 1 is implemented from the literature, not invented
+(this project's Prime Rule applies to algorithms too: extract, don't invent).
+
+**Exact optimum in a polygonal map.** The shortest path bends ONLY at obstacle corners — a theorem,
+not a heuristic. Two exact constructions:
+- **Visibility graph** — Lozano-Pérez & Wesley, *CACM* 1979. Nodes = obstacle corners, edge iff
+  mutually visible, then Dijkstra. O(n²) build. NOTE: `_detourForChord` in the shipped engine is a
+  degenerate visibility graph whose node set is door waypoints instead of corners — that is why its
+  results are legal but not optimal.
+- **Continuous Dijkstra / Shortest Path Map** — Mitchell, Mount & Papadimitriou 1987;
+  Hershberger & Suri 1999 at O(n log n) build, O(log n) query. Precomputes a subdivision of the plane
+  in which every region shares one combinatorial path structure. **This is the rigorous form of the
+  user's own "one time process … merely querying" proposal (§21.1/§21.8).**
+
+**Practical standard, and it maps 1:1 onto the user's 2-stage decomposition:** a **navigation mesh** —
+convex decomposition of walkable area, A* over cell adjacency, then the **funnel algorithm**
+(Lee & Preparata, *Networks* 1984, "shortest paths in a simple polygon"; the "simple stupid funnel"
+variant is the common implementation) to pull the taut string through the shared portal edges. Linear
+time, and EXACT for a given cell sequence.
+**Our pockets-and-doors map IS a navmesh**: compiled room pockets are the cells, doors are the portals.
+So §21.8's 1.206× / 1.114× door-centre penalty is not a new problem needing a new idea — it is the
+textbook symptom of treating a portal as a POINT, and the funnel is its named, exact fix.
+
+**A caveat on §21.6's measured 1.04× / 1.22× detour, in our favour:** 8-connected grid A* is optimal
+ON THE GRID, but quantises direction to 45° increments — a known digitisation bias up to ~8%, ~4% on
+near-straight runs. A good part of the residual 4% is therefore grid artifact, not real detour, and
+the true optimum is closer to 1.0 than measured. **Theta\*** (any-angle grid search, Nash et al. 2007)
+or the funnel removes it. So implementing the funnel earns twice: it kills the door-centre penalty AND
+the quantisation bias, and it makes §21.6's number honest.
+
+**Consequence for §21.11 task 1 — build the funnel, and measure against the visibility-graph exact
+answer on a small sample as the correctness oracle** (a slow exact method is a legitimate witness
+baseline even if it could never ship). Do not hand-roll a shortening heuristic.
