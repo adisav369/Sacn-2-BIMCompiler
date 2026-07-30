@@ -298,12 +298,13 @@ CREATE TABLE IF NOT EXISTS rel_material_layer_set (
 -- The mesh a multi-layer element's hash resolves is a CONCATENATION of N layer slabs, compiled by
 -- slicing the authored envelope solid at the authored cumulative layer thicknesses (see
 -- compile_layer_geometry()). One row per layer: faces[face_start : face_start+face_count] is that
--- layer's slab. face_count MUST be > 0 on every row (Watchdog directive 2026-07-30, MODELLER_MASTER
--- row 33): an authored layer whose interval lies wholly outside this element's own body (e.g. a
--- party wall trimmed by an authored half-space clip so the neighbour-side finishes belong to the
--- neighbour's body) is a §LAYER-REFUSE — the element keeps its envelope and stays gated RED. An
--- empty slab is a refusal, not a row. Lives in the SAME store as the mesh blobs
--- (component_geometries in library mode, this DB's base_geometries otherwise).
+-- layer's slab. Rows list the layers this instance's own BODY actually carries: an authored layer
+-- clipped away by authored geometry (e.g. a party wall's half-space trim handing the neighbour-side
+-- finishes to the neighbour's body) has NO row — an absent seq, announced as §LAYER-CLIP (user
+-- exception ruling 2026-07-31: honest whole-layer subsets are LOD400; the no-fallback rule bans
+-- invented content). face_count MUST be > 0 on every row that exists (row 33: an empty row is a
+-- lie). Lives in the SAME store as the mesh blobs (component_geometries in library mode, this DB's
+-- base_geometries otherwise).
 CREATE TABLE IF NOT EXISTS component_geometry_layers (
     geometry_hash TEXT,
     layer_seq INTEGER,
@@ -1159,9 +1160,10 @@ def _layer_intervals(off, sense, thicknesses, ymin, ymax, guid, axis_vals=None):
       ABSOLUTE — boundaries b_j = OffsetFromReferenceLine ± cumsum(thickness). Valid when BOTH body
         faces land on authored boundaries (±LAYER_TOL). The body may cover a contiguous WHOLE-layer
         subset (party walls: an authored half-space clip trims the neighbour-side finish layers,
-        whose material belongs to the neighbour's body) — but an uncovered layer is a REFUSAL in
-        compile_layer_geometry(), never an empty row (row 33, 2026-07-30). The subset classification
-        survives here only so the refusal can name the exact layer instead of "matches no anchoring".
+        whose material belongs to the neighbour's body). A clipped-away layer gets NO index row —
+        the remaining slabs are the element's own real material and ship as LOD400 (user exception
+        ruling 2026-07-31: the no-fallback rule bans invented content, not honest whole-layer
+        subsets). An empty ROW is still forbidden (face_count>0 on every row that exists, row 33).
       RELATIVE — body extent == authored total (±LAYER_TOL): boundaries anchor at the body face the
         DirectionSense stacks from (MlsBase). Needed where the exporter left the usage offset at the
         reference geometry while placing the body elsewhere in the local frame (Duplex ceilings:
@@ -1327,18 +1329,18 @@ def compile_layer_geometry(conn, geo_conn=None):
                 vol_sum = 0.0
                 face_cursor = 0
                 vert_cursor = 0
+                clipped = []
                 for seq, ((lo, hi, covered), (_s, mat, th)) in enumerate(zip(ivals, lay_rows)):
                     if not covered:
-                        # Row 33 (Watchdog 2026-07-30): an empty slab is a REFUSAL, not a row.
-                        # Measured on the Duplex party walls: the authored body is the full-set
-                        # prism trimmed by an authored half-space clip exactly at this boundary —
-                        # the material is genuinely absent here, so the element ships as an
-                        # envelope and stays gated RED; partial layer sets are never shipped.
-                        raise LayerRefusal(
-                            f"layer {seq} ({mat!r} {th:.3f} m) of set {lsn!r} lies wholly outside "
-                            f"this element's own body [{ymin:.4f},{ymax:.4f}] — an empty slab is "
-                            f"a refusal, not a row (row 33); the authored body does not contain "
-                            f"this layer's material")
+                        # User exception ruling 2026-07-31 (row 33 addendum): a whole layer the
+                        # authored geometry clips away (e.g. a half-space trim handing that layer
+                        # to the neighbour wall's body) is LEGIT — the slabs that remain are the
+                        # wall's own real material, not a fallback. The no-fallback rule bans
+                        # INVENTED/substituted content, not fewer parts than the type list. So:
+                        # NO row for this layer (an empty row is still a lie — face_count>0 holds
+                        # on every row that exists), announced loudly below, never invented.
+                        clipped.append(seq)
+                        continue
                     slab_v, slab_f = _slice_slab(verts, faces, k,
                                                  max(lo, ymin), min(hi, ymax),
                                                  ymin, ymax, 1.0 if env_vol > 0 else -1.0)
@@ -1360,10 +1362,18 @@ def compile_layer_geometry(conn, geo_conn=None):
                     raise LayerRefusal(f"slab volumes sum {vol_sum:.9f} != envelope volume "
                                        f"{env_vol:.9f} m³ — the slice lost or invented material")
 
+                if not layer_rows_out:
+                    raise LayerRefusal(
+                        f"every layer of set {lsn!r} lies outside the body — nothing to compile")
                 new_vblob = np.vstack(buf_v).astype(np.float32).tobytes()
                 new_fblob = np.vstack(buf_f).astype(np.int32).tobytes()
                 v_count = len(new_vblob) // 12
                 f_count = len(new_fblob) // 12
+                if clipped:
+                    print(f"  §LAYER-CLIP guid={guids[0]}{' (+%d sharer)' % (len(guids)-1) if len(guids)>1 else ''} "
+                          f"set={lsn!r}: layers {clipped} clipped away by authored geometry — outside "
+                          f"this element's own body [{ymin:.4f},{ymax:.4f}]; rows omitted (the "
+                          f"{len(layer_rows_out)} remaining slabs are the element's real material)")
 
                 if in_place:
                     write_hash = ghash
@@ -1461,22 +1471,34 @@ def verify_layer_geometry(conn, geo_conn=None):
         idx = store.execute("SELECT layer_seq, material_name, thickness_m, face_start, face_count "
                             "FROM component_geometry_layers WHERE geometry_hash=? ORDER BY layer_seq",
                             (ghash,)).fetchall()
-        if len(idx) != lc:
-            bad(guid, f"hash {ghash} carries {len(idx)} layer rows, authored layer_count={lc} — "
-                      f"element still ships as an envelope" if not idx else
-                      f"hash {ghash} carries {len(idx)} layer rows, authored layer_count={lc}")
+        if not idx:
+            bad(guid, f"hash {ghash} carries no layer rows, authored layer_count={lc} — "
+                      f"element still ships as an envelope")
             continue
+        if len(idx) > lc:
+            bad(guid, f"hash {ghash} carries {len(idx)} layer rows, MORE than authored "
+                      f"layer_count={lc}")
+            continue
+        # Rows may be a SUBSET of the authored set (clipped-away layers have no row — user
+        # exception ruling 2026-07-31), but every row that exists must MATCH the authored layer
+        # at its sequence and carry real geometry.
+        authored = {aseq: (amat, ath) for (aseq, amat, ath) in lay}
         ok = True
         cursor = 0
-        for ((seq, mat, th, fs, fc), (aseq, amat, ath)) in zip(idx, lay):
+        for (seq, mat, th, fs, fc) in idx:
             if fc is None or fc <= 0:
                 # Row 33 falsification surface: re-introducing an empty row must go RED here.
                 bad(guid, f"layer {seq} ({mat!r}) has face_count={fc} — an empty slab is a "
                           f"refusal, not a row (row 33)")
                 ok = False
                 break
-            if seq != aseq or abs(th - ath) > 1e-9 or (mat or "") != (amat or ""):
-                bad(guid, f"layer row {seq} ({mat!r},{th}) != authored ({aseq},{amat!r},{ath})")
+            if seq not in authored:
+                bad(guid, f"layer row seq={seq} does not exist in authored set {lsn!r}")
+                ok = False
+                break
+            amat, ath = authored[seq]
+            if abs(th - ath) > 1e-9 or (mat or "") != (amat or ""):
+                bad(guid, f"layer row {seq} ({mat!r},{th}) != authored ({amat!r},{ath})")
                 ok = False
                 break
             if fs != cursor:
@@ -2646,9 +2668,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         # there in the file. A red §PROOF exits non-zero (see main()), so this gate has teeth by design:
         # it must stay RED until §LOD400-LAYERS-REAL ships per-layer geometry. Do NOT soften it to a
         # warning, do NOT add a threshold, do NOT add a per-building exemption.
-        # §LOD400-LAYERS-REAL: an element is an envelope only if its (current) hash does NOT resolve
-        # a compiled per-layer index matching the authored layer_count. Compiled elements pass;
-        # refused elements keep firing — that is the gate doing its job, not a bug.
+        # §LOD400-LAYERS-REAL: an element is an envelope only if its (current) hash resolves NO
+        # compiled per-layer index rows at all. Rows may be FEWER than the authored layer_count
+        # (user exception ruling 2026-07-31: a layer clipped away by authored geometry has no row;
+        # the remaining slabs are the element's own real material — honest whole-layer subsets are
+        # LOD400, the no-fallback rule bans INVENTED content). Compiled elements pass; refused
+        # elements keep firing — that is the gate doing its job, not a bug.
         try:
             _lay_store = lib_conn if lib_conn else conn
             _layered = dict(_lay_store.execute(
@@ -2663,7 +2688,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             """).fetchall()
             multi_total = conn.execute(
                 "SELECT COUNT(*) FROM rel_material_layer_set WHERE layer_count > 1").fetchone()[0]
-            _offenders = [(g, n, s) for (g, n, s, h) in _multi if _layered.get(h) != n]
+            _offenders = [(g, n, s) for (g, n, s, h) in _multi if not _layered.get(h)]
             envelope = len(_offenders)
             worst = _offenders[:5]
         except sqlite3.OperationalError:
