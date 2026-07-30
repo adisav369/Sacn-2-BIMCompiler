@@ -20,17 +20,20 @@ construction data. This test proves/disproves:
      the authored layer axis equal each authored layer thickness, and EVERY row has face_count > 0;
      FALSIFIED by deleting one material_layers row and asserting --compile-layers hard-fails
      (never silently ships 6 slabs as 7 layers);
-  E. ROW 33 (Watchdog directive 2026-07-30) — an empty slab is a REFUSAL, not a row. The two
-     clip-trimmed party walls 2O2Fr$t4X7Zf8NOew3FNbT / 2O2Fr$t4X7Zf8NOew3FKRi (authored body =
-     the full 0.550 m prism minus an authored IfcPolygonalBoundedHalfSpace at the layer-4/5
-     boundary; ZERO openings — measured 2026-07-30, the opening-cut hypothesis is false) must be
-     §LAYER-REFUSE'd by name, keep their envelopes, and hold the gate RED — never ship 5 slabs
-     under a 7-layer set. FALSIFIED by re-introducing a face_count=0 row and asserting
-     --compile-layers goes RED naming the empty slab;
+  E. ROW 33 + the user's exception ruling (2026-07-31): an empty ROW is a refusal — but a layer
+     CLIPPED AWAY by authored geometry is legit and gets NO row. The two clip-trimmed party walls
+     2O2Fr$t4X7Zf8NOew3FNbT / 2O2Fr$t4X7Zf8NOew3FKRi (authored body = the full 0.550 m prism minus
+     an authored IfcPolygonalBoundedHalfSpace at the layer-4/5 boundary; ZERO openings — measured
+     2026-07-30) must COMPILE as an honest 5-slab whole-layer subset (seqs 0-4, Σ 0.493 m of real
+     material, every row face_count>0), announced by §LAYER-CLIP naming layers [5, 6] — "it is the
+     wall's own material, measured; the no-fallback rule bans invented content, not fewer parts
+     than the type list advertised" (user + Watchdog ruling). FALSIFIED by re-introducing a
+     face_count=0 row and asserting --compile-layers goes RED naming the empty slab;
   C. the gate query itself is falsifiable — remove the multi-layer population, it must count 0.
 
-Duplex therefore exits NON-ZERO by design since row 33 — the same honest-refusal posture as
-SampleCastle's sporenkap. Do not "fix" that by softening the refusal.
+Duplex is gate-GREEN again under the exception ruling (nothing invented, nothing hidden: subsets
+announced loudly). SampleCastle's sporenkap stays an honest refusal — its body does not align with
+the authored set at all, which is a different failure than a whole-layer clip.
 
 C/D-falsify are what stop the gate from being a light nobody can trust: it must be able to pass AND
 be provably able to fail.
@@ -125,7 +128,9 @@ def main():
         FROM rel_material_layer_set r
         JOIN element_instances i ON i.guid = r.element_guid
         WHERE r.layer_count > 1""").fetchall()
-    envelopes = sum(1 for (_g, n, h) in pairs if layered.get(h) != n)
+    # an envelope = NO layer rows at all; a whole-layer SUBSET is a legit compiled element
+    # (user exception ruling 2026-07-31)
+    envelopes = sum(1 for (_g, n, h) in pairs if not layered.get(h))
 
     m = re.search(r"^\s*(PASS|FAIL)\s+LOD400_ENVELOPE\s+(.*)$", log, re.M)
     check("P10_IN_LOG", m is not None,
@@ -203,19 +208,30 @@ def main():
               f"{n_empty_all} rows with face_count<=0 in the whole store (must be 0 — an empty "
               f"slab is a refusal, not a row)")
 
-        # ROW 33: the two clip-trimmed party walls are REFUSED BY NAME and keep their envelopes
+        # EXCEPTION RULING: the two clip-trimmed walls COMPILE as honest 5-slab subsets, announced
         trimmed = ("2O2Fr$t4X7Zf8NOew3FNbT", "2O2Fr$t4X7Zf8NOew3FKRi")
-        named = all(f"§LAYER-REFUSE guid={g}" in log for g in trimmed)
-        reason = "an empty slab is a refusal, not a row" in log
-        check("TRIMMED_WALLS_REFUSED", named and reason,
-              f"both clip-trimmed walls §LAYER-REFUSE'd by name={named}, row-33 reason stated={reason}")
-        t_rows = conn.execute("""
-            SELECT COUNT(*) FROM component_geometry_layers l
-            JOIN element_instances i ON i.geometry_hash = l.geometry_hash
-            WHERE i.guid IN (?, ?)""", trimmed).fetchone()[0]
-        check("TRIMMED_KEEP_ENVELOPE", t_rows == 0,
-              f"{t_rows} layer rows behind the refused walls' hashes (must be 0 — envelope kept, "
-              f"element stays gated RED)")
+        def _clip_line(g):
+            lines = [ln for ln in log.splitlines() if f"§LAYER-CLIP guid={g}" in ln]
+            return lines[0] if lines else ""
+        clip_announced = all("layers [5, 6]" in _clip_line(g) for g in trimmed)
+        check("TRIMMED_CLIP_ANNOUNCED", clip_announced,
+              f"both clip-trimmed walls announced §LAYER-CLIP naming layers [5, 6]")
+        sub_ok = True
+        sub_detail = []
+        for g in trimmed:
+            th_ = conn.execute("SELECT i.geometry_hash FROM element_instances i WHERE i.guid=?",
+                               (g,)).fetchone()[0]
+            trows = conn.execute(
+                "SELECT layer_seq, thickness_m, face_count FROM component_geometry_layers "
+                "WHERE geometry_hash=? ORDER BY layer_seq", (th_,)).fetchall()
+            seqs = [r[0] for r in trows]
+            tsum = sum(r[1] for r in trows)
+            if seqs != [0, 1, 2, 3, 4] or abs(tsum - 0.493) > 1e-9 or any(r[2] <= 0 for r in trows):
+                sub_ok = False
+            sub_detail.append(f"{g[-4:]}: seqs={seqs} Σ={tsum:.3f}")
+        check("TRIMMED_5SLAB_SUBSET", sub_ok,
+              f"5 real slabs each, seqs [0-4], Σ0.493 m of the wall's own material, no empty rows "
+              f"({'; '.join(sub_detail)})")
 
         # FALSIFY: delete one authored layer row -> --compile-layers must hard-fail, never ship 6 as 7
         fdb = os.path.join(tmp, "falsify.db")
