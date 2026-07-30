@@ -47,6 +47,7 @@ Usage:
 import argparse
 import hashlib
 import os
+import datetime as _dt
 import sqlite3
 import struct
 
@@ -139,8 +140,17 @@ CREATE TABLE IF NOT EXISTS elements_meta (
     element_type TEXT,
     storey TEXT,
     material_name TEXT,
-    material_rgba TEXT
+    material_rgba TEXT,
+    -- §KUL001: the Viewer's centres query (viewer/streaming.js) is
+    --   SELECT m.building, COUNT(*), AVG(t.center_*) ... GROUP BY m.building
+    -- Without this column it throws `no such column: m.building`, §CENTRES_RESULT rows=0,
+    -- §BOOTSTRAP centres=0, and A.startStreaming() takes a SILENT early return: the DB loads,
+    -- logs its full size, and renders NOTHING. Reads like a size/perf bug and is neither.
+    -- The browser importer has always written it (viewer/import_db_builder.js:38,48); this
+    -- extractor did not, which is why CLI-built DBs opened blank.
+    building TEXT
 );
+CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT);
 CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree USING rtree(
     id, minX, maxX, minY, maxY, minZ, maxZ
 );
@@ -1078,6 +1088,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             building_type = building_type.replace(suffix, "")
 
     print(f"  §BUILDING   {building_type}")
+    # §KUL001: the label the Viewer groups by. The two existing residents use the T0_<name> form
+    # (LTU_AHouse -> T0_LTU_AHouse x125,698; Terminal -> T0_Terminal x48,428), so match it rather
+    # than invent a third convention. Written into elements_meta.building on every row below, and
+    # mirrored into project_metadata, so a CLI-extracted DB opens in the Viewer with no post-process.
+    _building_label = building_type if building_type.startswith("T0_") else "T0_" + building_type
+    print(f"  §BUILDING_LABEL {_building_label}  (elements_meta.building, Viewer centres key)")
     print(f"  §OUTPUT     {output_path}")
     print(f"  §COORDS     LOCAL (USE_WORLD_COORDS=False, tack point = IFC origin)")
 
@@ -1410,10 +1426,10 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     conn.execute(
                         "INSERT OR IGNORE INTO elements_meta "
                         "(id, guid, discipline, ifc_class, element_name, element_type, "
-                        "storey, material_name, material_rgba) "
-                        "VALUES (?,?,?,?,?,?,?,?,?)",
+                        "storey, material_name, material_rgba, building) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (eid, guid, discipline, cls, name, elem_type, storey,
-                         material_name, material_rgba))
+                         material_name, material_rgba, _building_label))
                     conn.execute(
                         "INSERT OR IGNORE INTO elements_rtree "
                         "(id, minX, maxX, minY, maxY, minZ, maxZ) "
@@ -1573,6 +1589,23 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 print(f"  §NORMALIZE after: centroid=({vrow[0]:.1f}, {vrow[1]:.1f}, {vrow[2]:.1f}) — should be near (0,0,0)")
             else:
                 print(f"  §NORMALIZE skip — centroid=({ox:.1f}, {oy:.1f}, {oz:.1f}) already near origin")
+
+        # §KUL001: project_metadata — the Viewer reads true_north_angle from it and logged
+        # `no such table: project_metadata` on every CLI-extracted DB. Same shape the browser
+        # importer writes (viewer/import_db_builder.js:28).
+        conn.execute("CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)")
+        for _k, _v in (("project_name", building_type),
+                       ("building_name", _building_label),
+                       ("source_file", os.path.basename(ifc_path)),
+                       ("import_date", _dt.datetime.now(_dt.timezone.utc)
+                                          .strftime("%Y-%m-%dT%H:%M:%S.000Z")),
+                       ("true_north_angle", "0")):
+            conn.execute("INSERT OR REPLACE INTO project_metadata (key,value) VALUES (?,?)", (_k, _v))
+        conn.commit()
+        _bn = conn.execute("SELECT COUNT(*) FROM elements_meta WHERE building IS NOT NULL").fetchone()[0]
+        _bt = conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+        print(f"  §BUILDING_COL {_bn}/{_bt} rows carry building={_building_label}; "
+              f"project_metadata rows={conn.execute('SELECT COUNT(*) FROM project_metadata').fetchone()[0]}")
 
     # Extract IfcRelAggregates — parent-child decomposition
     agg_count = 0
