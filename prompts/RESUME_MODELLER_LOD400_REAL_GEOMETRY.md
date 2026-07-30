@@ -321,6 +321,10 @@ in the Modeller per the binding condition; ship the 65 SC rows by appending the 
 bim-ootb `modeller/patches/SampleCastle_ARC.db.sql` (loader `_applyPendingPatch` already exists);
 witness = SC `stretchRide` reach 9/74 → ≥70/74, counts identical before/after anchors load.
 
+## ⚠ 2026-07-30 WATCHDOG CORRECTIONS (post-ship, live-queried) — TWO OPEN ITEMS, next session starts here
+1. **Party wall renders 5 slabs, not 7.** Live `Duplex_geo.db`: layers 5-6 of `2O2Fr$t4X7Zf8NOew3FNbT` have `face_count=0`, `face_start=124` (past buffer). 4 empty rows/229, 2 walls/71 — both 7-layer, both opening-cut. The `§LAYER-PARTIAL` announcement made it non-silent in the LOG, but the brief said hard-fail, and the witness's two reconciliation sums are blind by construction (both reconcile with layers missing). **Directive: `face_count>0` per-layer assertion; an empty slab is a REFUSAL, not a row.** Root-cause first: 0.493 m authored-body-span vs opening-boolean-cut — measure, don't assume. → MODELLER_MASTER row 33.
+2. **Anchor export/save leak unchecked.** The §ANCHOR guardrail proved render/Outliner/pick/audit invisibility but no witness covers `bonsai_ifc.js` export or `sdg_save.js` snapshot — both fold from an op-log that now carries 65 anchor ops. → MODELLER_MASTER row 34.
+
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
 **Everything below §LODHELL-ROOTCAUSE is closed unless it is listed as OPEN here.** Do not re-walk the
