@@ -374,3 +374,62 @@ unaffected and stay.
 `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s 2026-07-09 dated section — that is now the
 canonical doc for this thread. Do not re-derive; do not re-attempt items 4/6's screenshots until that doc's §NEXT
 items 3/4 (the actual code fixes, numeric-witness-gated, spec-first) land.
+
+---
+
+## ▶ 2026-07-31 — RESUME HERE. The guide is worth re-shooting now, for a reason it wasn't before.
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: capture new/replacement screenshots for docs/ModellerGuide.md and publish. Read the log after
+every run. Screenshots here are GUIDE CONTENT, never proof of correctness — see §CAPTURE DISCIPLINE.
+User, 2026-07-31: "Good to update Modeller User Guide with some good pics?"
+```
+
+### Why now, and not before (this is the whole point — read it)
+Every existing guide image was captured on **localhost**. That was not a style choice, it was the only
+place the Modeller worked: `modeller/mesh.db` is Git-LFS-tracked and GitHub Pages does not resolve LFS, so
+the LIVE site received a 134-byte pointer, the geometry index came back empty, and every element fell back
+to its measured bounding box. **The live Modeller drew boxes for months while the guide showed real
+geometry.** Fixed 2026-07-30 (§GEO-SERVED): per-resident geo files on object storage + a guard that
+refuses non-SQLite bytes. So for the first time, **a screenshot of the live site and a screenshot of
+localhost show the same thing.** Shoot the LIVE site now — and if a shot looks like the old boxy render,
+that is a deployment regression, not a framing problem.
+
+### What is newly worth showing (all live-verified 2026-07-31, `geoV 6` / `sw v43`)
+1. **A wall's real material layers.** `component_geometry_layers` ships live. Duplex has **71 walls
+   indexed, 215 slabs**. Two good subjects: a full-span 7-layer wall (Σ0.550 m), and the party wall
+   `2O2Fr$t4X7Zf8NOew3FNbT` — **5 slabs, Σ0.493 m**, an honest whole-layer subset (the outer stud +
+   plasterboard belong to the neighbouring unit; §ROW33-EXCEPTION). The 5-slab one is the better teaching
+   image: it shows the model telling the truth about a boundary.
+2. **A window riding its wall on a grid stretch.** SampleCastle went **9/74 → 74/74** once void-consumed
+   hosts got invisible anchors. A before/after pair on one host wall is the clearest single image of what
+   the grid handle actually does.
+3. **The honest-refusal behaviour**, if a still can carry it — the Modeller now refuses rather than
+   substituting, and says why. Worth one image + the log line beside it.
+
+### Still open from §THREAD 1 — 7 bad frames, unfixed, verify before re-shooting
+`cut-select.png` / `cut-open.png` (random roof crop, no wall or cut visible) · `route-spine.png` /
+`sketch-profile.png` (unrecognisable wall-corner close-ups) · `route-run.png` (confusing interior angle) ·
+`gizmo.png` / `scale-stretched.png` / `rotate-yaw.png` (real captures that never zoom to the element —
+three near-identical wide shots). Root-cause hypothesis unchanged and still unproven: `shotClip()` /
+`shotPts()` / `bboxScreen()` in `modeller/tests/e2e_harness.js` pick the wrong element or camera state at
+capture time. **Fix the harness first** — re-shooting by hand papers over a capture bug that will keep
+producing bad frames. The guide currently carries **33 images**.
+
+### §CAPTURE DISCIPLINE — the one thing that must not drift
+A screenshot is guide content. It is **never** evidence that something works — that is FUNDAMENTAL LAW in
+`CLAUDE.md`, hardened twice. So: prove the state numerically FIRST (mesh counts, slab counts, thickness
+sums, ride deltas — read programmatically), and only then capture an image OF that proven state. Never the
+reverse, and never "it looks right" as a pass condition. Caption each new image with the number it
+illustrates, so the page teaches the measurement, not the impression.
+
+### Ship path
+Publish ONLY via `scripts/safe_gh_deploy.sh` — never bare `mkdocs gh-deploy` (it has silently wiped live
+pages twice). Verify after: the published page carries the new images AND the existing 33 stay
+byte-identical to the repo. Then poll the live URL for the new bytes — a merge is not a publish, and the
+edge can lag ~10 min.
+
+### Where the surrounding work is tracked
+`prompts/MODELLER_MASTER.md` — the objectives (O13 is this file) and the ranked queue. The three decisions
+still with the user, and the marked next build item (row 34, anchor export/save leak), are listed there.
