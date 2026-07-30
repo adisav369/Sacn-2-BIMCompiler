@@ -1994,3 +1994,42 @@ fail — per unroutable pair, is either endpoint's pocket door-isolated (no door
 or are two pockets adjacent with a door that the per-storey z-assignment put on the wrong storey?
 `RoomWalker.doorAdjacent()` already answers the first. **Do not tune `RES` or add slack to paper over
 this** — reintroducing inflation is precisely what made the shipped predicate wall-blind.
+
+### §21.8 THE 2-STAGE DECOMPOSITION, MEASURED (user, 2026-07-31: *"1. Get the walkable door to door
+### map of the whole building. 2. Placing the dots along the shortest path on door selection.
+### 2.1 connect all the dots"*) — structure CONFIRMED, one lossy step found and named
+Witness `witness_room_path_doormap.js`, log `/tmp/w_roompath_doormap.log`.
+Stage 1 stores a **door-adjacency graph** (doors sharing a pocket; edge weight = the MEASURED
+in-pocket walk from §21.6's free-space field), deliberately NOT an all-pairs table.
+```
+§DOORMAP_STAGE1 Clinic     doors=252 pockets=208 edges=584  orphanDoors=16 buildMs=54
+                           (all-pairs table would be 31,626 entries)
+§DOORMAP_STAGE1 LTU_AHouse doors=606 pockets=425 edges=2602 orphanDoors=92 buildMs=362
+                           (all-pairs table would be 183,315 entries)
+§DOORMAP_STAGE2 Clinic     pairs=110 doorGraph=2351m directGridAstar=1902m ratio median=1.206x
+                           within5pct=23/110 avgQueryMs=0.7
+§DOORMAP_STAGE2 LTU_AHouse pairs=76  doorGraph=3178m directGridAstar=2834m ratio median=1.114x
+                           within5pct=13/76  avgQueryMs=1.3
+```
+**Stage 1 works and is cheap: 54 ms / 362 ms one-time, 54×/70× smaller than all-pairs.**
+**Stage 2 queries in 0.7 ms / 1.3 ms — 20-35× faster than the 25-27 ms full grid A* of §21.6.**
+So the user's "one time process … merely querying the shortest distance" is confirmed on both counts.
+
+**But stage 2.1 as literally specified is LOSSY: 1.206× / 1.114× longer than the true grid path,
+within 5% on only 23/110 and 13/76 pairs.** The cause is structural and well known: connecting DOOR
+CENTRES forces every traversal through a point, while the real walk clips the doorway at an angle. A
+door is an **aperture (a segment), not a dot**. The standard correction is a funnel / string-pull
+across the portal openings — keep each door's measured width as the portal, pull the string through
+the sequence. That IS "2.1 connect all the dots", done against apertures instead of points, and it is
+what should recover the §21.6 grid-optimal 1.04× while keeping the 0.7 ms query.
+
+**Also surfaced by stage 1, and it is the same gap as §21.6's coverage:** `orphanDoors` = **16 (Clinic)
+/ 92 (LTU)** — real doors that touch no compiled pocket, so they carry no edge at all. That is the
+door→pocket adjacency data problem already named in §21.6, now with a direct count to fix against.
+
+**Revised task list (supersedes §21.7's single "next task"), spec-first, in order:**
+1. **Funnel across door apertures** in stage 2.1, then re-run this witness — target: median ratio
+   ≤1.05× against the direct grid A*, query time still ~1 ms.
+2. **Close the orphan-door / coverage gap** (16 · 92 doors; 37% · 14.8% unroutable pairs). Data, not
+   formula — `RoomWalker.doorAdjacent()` answers half of it. **Do not add rect slack to paper over it.**
+3. Only then propose replacing the shipped two-layer router, with §20's R1-R6 as the before/after.
