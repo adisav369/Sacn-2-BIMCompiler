@@ -2772,7 +2772,52 @@ read out of their live IndexedDB on the way did not.
 anchor `a` (`nullCount: 0`) — verified by reading the record, not by reasoning about it. So this is
 NOT ops re-projecting by arc-fraction onto a different polyline for want of an anchor.
 
-**Still open — the two candidates worth measuring first:** (a) the flown polyline the ops are applied
+**✅ ROOT CAUSE FOUND 2026-07-31, and it is one line — `_flownLength()` MEASURES THE UNDEFORMED CURVE.**
+Neither candidate below was it; the two functions measure two different curves:
+
+| | file:line | curve measured |
+|---|---|---|
+| editor | `cinema_path_editor.js:432` | `a.cinemaBandFlow(_state.bands)` — the RAW band flow, **hose never applied** |
+| plan | `effects.js:4936` → `:5004` | `_cinemaHoseApply(_cinemaBandFlow(_cpeBands), _cpeHose)` — the **deformed** curve |
+
+The editor already HAS the deformed curve (`_flowHosed()`/`_state.flowHosed`) and uses it for drawing
+and hit-testing — §CPE_STICK_ANCHOR's "what you grab is what you see" — but the LENGTH/DURATION maths
+reads the raw one. So 107.5 m (raw) vs 173.5 m (hosed) on the user's record is not a round-trip
+failure at all: **both numbers are correct measurements of different curves, and the editor is
+measuring the one that is never flown.**
+
+**⚠ THE REAL DAMAGE IS NOT THE NUMBER — IT IS THE PACING, AND IT IS IN THE USER'S OWN LOG.**
+`_naturalDuration()` (`:438`) divides that short length by the walk speed, and `_buildOverride`
+stores the result as `_total`. The bake then treats `_total` as an OVERRIDE. The user's line:
+```
+§CINEMA_PACING natural=145.0s = ... walk 112.3 ... (walk 173.5m @2.3m/s) override=true running=92.4s
+```
+The path's natural duration is **145.0 s**; the editor asked for **92.4 s** because it had costed a
+107.5 m walk. The film is therefore run **1.57x faster than the 2.3 m/s walk pace it claims** — every
+hose pull silently buys speed instead of time. That is the mechanism behind "the walk feels like
+flying", and it is not the 25 m climb alone.
+
+**Fix:** `_flownLength()` measures the hosed curve (`_state.flowHosed` when current, else
+`_flowHosed(_flowRaw())`). Cost is negligible — `cinemaHoseApply` over ~84 points x 7 ops, and it
+already runs every redraw.
+
+### ✅ FIXED AND WITNESSED 2026-07-31 — `bim-ootb` PR #1107, CPE v19, viewer sw v892
+`witness_cpe_hose_length.js`, **Duplex 5/5**. **RED with only the one expression reverted: 3/5** —
+`G-HL-3 clock=15.32m` against a flown `15.80m`, and `G-HL-5 _total=6.43s` against the `6.86s` the
+flown path needs. G-HL-4's tolerance was TIGHTENED after it passed on the RED build (0.5 m absolute
+swallowed Duplex's 0.48 m deformation) — **a gate that green-lights the bug it exists to catch is a
+decoration**, and this one nearly shipped as one.
+
+**Confirmed on the user's REAL record, not a synthetic case.** Read out of their live IndexedDB and
+run through the SHIPPED `cinemaBandFlow`/`cinemaHoseApply` (never a re-implementation):
+```
+raw   107.55 m  == the stored _pathLen 107.55, exactly
+hosed 173.53 m  == the pathLen the plan reported on reopen, exactly
+ratio 1.614
+```
+Both stored numbers were right all along. Nothing was lost in the round-trip.
+
+**Superseded candidates (recorded so they are not re-walked):** (a) the flown polyline the ops are applied
 to differs between save and load (`_flowRaw` → `cinemaBandFlow(bands)` → `cinemaHoseApply`), so the
 same displacement lands on a different curve; (b) `_pathLen` is captured at save from
 `_naturalDuration()`/`_flownLength()` at a moment when the deformed curve differed from the one the
