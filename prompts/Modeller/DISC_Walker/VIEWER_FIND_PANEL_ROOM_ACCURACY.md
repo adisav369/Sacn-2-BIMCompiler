@@ -2274,3 +2274,40 @@ bias is likely gone before the funnel is reached. **Treat the "funnel earns twic
 
 **Status unchanged: nothing deployed, engine byte-unchanged.** §21.11's task order stands; task 1 is
 now "run the convex-subset discriminator, then fix whichever cause it names".
+
+### §21.16 DISCRIMINATOR RUN — cause (B) RULED OUT as the primary fault; cause (A) CONFIRMED
+`CONVEX_ONLY=1 node witness_room_path_funnel.js` — restricted to pairs whose entire door sequence
+touches only SINGLE-RECT (convex) pockets, which is the funnel's actual precondition.
+```
+§FUNNEL_MODE Clinic     CONVEX_ONLY=1 convexPockets=145/208 skippedNonConvex=95
+§FUNNEL_T1   Clinic     funnelLongerThanCentres=11/15     ← STILL FAILS
+§FUNNEL_T3   Clinic     offMap funnel=1.87% (was 4.09%)   reference=0.00%
+§FUNNEL_MODE LTU_AHouse CONVEX_ONLY=1 convexPockets=353/425 skippedNonConvex=58
+§FUNNEL_T1   LTU_AHouse funnelLongerThanCentres=17/18     ← STILL FAILS
+§FUNNEL_T3   LTU_AHouse offMap funnel=0.51% (was 11.34%)  reference=0.11%
+  ❌ T1  ❌ T2  ❌ T3
+```
+**Verdict, and it contradicts the hypothesis §21.15 leaned toward:**
+- **(B) non-convex pocketsは NOT the primary fault.** On convex-only pairs T1 still fails 11/15 and
+  17/18. Convexity was never the reason the funnel is LONGER than joining centres.
+- **(B) IS real for T3 though** — off-map fell 4.09%→1.87% (Clinic) and 11.34%→0.51% (LTU) when
+  non-convex pockets were excluded. So non-convexity does cause the taut line to leave the floor; it
+  just is not what makes the path long. **Both facts are true and they are separate.**
+- **(A) portal orientation is CONFIRMED as the fault.** A funnel that is systematically LONGER than the
+  naive centre-joining, on a valid convex channel, is the textbook signature of inconsistent left/right
+  assignment.
+
+**Root cause, named for the fix:** `aperture()` orients each portal INDEPENDENTLY, from a local
+direction estimate (`nextCentre − prevCentre`). The funnel does not need each portal locally correct —
+it needs the whole channel **consistently wound**. Any portal whose local estimate flips (near-collinear
+doors, a door whose bbox long axis is perpendicular to travel, a U-turn in the sequence) breaks the
+invariant and the funnel then tightens against the wrong feeler.
+**Fix for attempt 2:** build the portal list, then enforce winding consistency ACROSS the sequence —
+for each consecutive pair, test the sign of `tri2(prevL, prevR, curL)` (and its mate) and swap the
+current portal's endpoints when the sign disagrees, rather than trusting a per-portal heuristic. Then
+re-run BOTH modes: full and `CONVEX_ONLY=1`. T1 must pass on the convex subset FIRST — that is the
+clean-precondition case — before any conclusion is drawn from the full set.
+**Then, and separately, (B):** convex decomposition of multi-rect pockets is still required for T3 to
+reach the reference's 0.00%/0.11%. It is a second task, not a prerequisite for T1/T2.
+
+**Still nothing deployed; engine byte-unchanged.** Witness carries the `CONVEX_ONLY` env switch now.
