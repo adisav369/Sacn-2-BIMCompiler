@@ -896,3 +896,64 @@ so **88.9% "SLD only" is an UPPER BOUND** — some hits may be incidental text o
 notes, revision blocks), not equipment tags. Before building the diff, parse the SLD properly (block
 attributes if a DWG converter is installed, or positional/layout parsing of the PDF) rather than trusting
 bag-of-tokens. **The direction of the finding is safe; the exact percentage is not yet.**
+
+## §FIND_PANEL_CABLE — where this surfaces: the Find panel, in the VIEWER (decided 2026-07-30)
+**Supersedes §DEFERRED_DECISION.** User: *"putting this in Find Panel room/type/path ← can also switch
+to cable path when such data is present in the DB … Later this can mature to a separate feature in
+Modeller as this is not Modeller but a IFC handoff to BIM5D in Viewer."*
+
+**The framing is the important part: this is an IFC → BIM5D HANDOFF, read-only, in the Viewer.** It is
+NOT Modeller work. Placement/authoring (§PATH_THEN_PLACE's second half) may graduate to the Modeller
+later; pathing and everything on this page does not.
+
+### It slots into a control that ALREADY EXISTS — no new UI
+`navigate_find.js:3028` — the **Room** facet already carries a sub-toggle
+`{ Storey | Type | Path }` (`_roomGroupBy`, `:327`), with `Path` driving `_drawPathHighlight()`
+(`:1264`) and `§PATH_ORANGE` highlighting. **Add `Cable` as a fourth value.** Same control, same
+highlight machinery, different graph — exactly §PATH_THEN_PLACE's "one engine, two graph sources".
+
+Facet gating is also already the house pattern (`_axes()`, `:830`): *"Storey + Discipline always;
+Room/Material/Phase only when their data is present"* via `_probeLenses()`. So **`Cable` is
+data-gated the same way** — it joins the `§RULE1 SINGLE TOGGLE` cycle only when the DB carries cable
+data. Nothing to invent; follow `present.room` / `present.material` / `present.phase`.
+
+```
+present.cable  =  port_connections > 0        (tray topology — needs T1)
+                  AND cable_runs > 0          (the schedule, ingested)
+```
+
+### The notice when it is absent — the user's exact requirement
+Most DBs will never have this, because **the KUL cabling data is local-only and is never shipped to the
+server/OCI** (private client data, `.gitignore IFC/KUL/*`). A silently-missing facet reads as a bug, so
+instead show, verbatim:
+
+> **Data Centre POC — where the data is local in DB only**
+
+Precedent to copy, not reinvent: the greyed-facet / needle notice already handles "the axis exists but
+your DB lacks the data" (`_needleState`, `:788-798`, and `§NEEDLE` in `_renderNeedle()`). Route this
+through the same surface. Log `§FIND_CABLE_GATE present=false reason=no-cable-data` so an absent facet
+is diagnosable from the console rather than guessed at.
+
+### The feature ladder — what each piece of KUL data unlocks
+Ordered by what it costs us, and marked with what it is BLOCKED on. Nothing here is built.
+
+| # | feature in Find | needs | status |
+|---|---|---|---|
+| F1 | **SLD ↔ schedule diff** — feed on the one-line with no cable; cable with no feed; breaker rating vs `Cable Specification` | SLD text + xlsx only. **No geometry, no engine, no rules.** | ready to build (§SLD) |
+| F2 | **Dead-end / island report** — 3,891 dead ends, 1,486 components | authored port graph (T1) | ready after T1 (§GRAPH_MEASURED) |
+| F3 | **Cable path highlight** — pick two endpoints, light the tray route in `§PATH_ORANGE` | T1 + §CS-JOIN name→element | **41% of runs** (geometry ceiling, §SLD) |
+| F4 | **Pull length readout** — metres along the route, vs the engineer's own figure | F3 | answer key exists: `W-PULL-LENGTH-VS-ENGINEER` |
+| F5 | **Tray fill / segregation** — % occupancy per segment, power-vs-data | F3 + `cable_std` OD (§CABLE_SPEC_STD) | needs published OD table |
+| F6 | **4D containment progress** — colour trays by `Status Cable Contain` + dates | schedule ingest only | free rider on F1 (§CABLE_SCHEDULE) |
+| F7 | **Auto-route proposal** — the engineer's #1 priority | free-space graph + MINED containment rules | **Modeller**, not here (§PRIORITY) |
+
+**F1, F2 and F6 need no pathing engine at all.** If anything ships first, it is those three — they are
+the cheapest, they audit documents the engineer keeps by hand, and F6 turns a spreadsheet column into
+BIM5D colour with no new maths.
+
+### Two guardrails for whoever builds it
+- **F3/F4 must return UNREACHABLE across the 1,486 components** (§PATH_THEN_PLACE). A path that bridges
+  a gap invents cable that cannot be pulled — the PRIME RULE forbids it, and the engineer would be the
+  one who discovers it on site.
+- **Never quote 92% for pathing.** That is the *naming* ceiling from the SLD; the *geometry* ceiling is
+  ~41% until a mechanical-equipment IFC arrives (§SLD).
