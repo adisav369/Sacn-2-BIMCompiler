@@ -144,3 +144,88 @@ opening a second file resets the canvas — not a data limit, not a memory limit
 - **Cross-check §KUL008_CACHE** in `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md` before testing any
   edit to a precached `viewer/*.js` — bump `sw.js CACHE_VERSION` + the file's `?v=`, reload twice,
   or the change is invisible and looks like a code failure.
+
+---
+
+## §SM-6 SESSION BRIEF — build §SCENE_MERGE (added 2026-07-30, ready to assign)
+```
+# ⚠ DO NOT REMOVE
+SCOPE: implement §SM-3 only — a merge-or-replace prompt on File Open, so a second IFC/DB joins the
+CURRENT canvas instead of navigating the page away. Wiring, not new machinery. Read the log after
+every run. Every DONE claim needs a § log line. Do NOT touch §SM-1..§SM-5 conclusions — they are
+verified. Do NOT widen into version/variant switching (§SM-5).
+```
+
+**All file:line below re-verified against `origin/main` on 2026-07-30. Trust them; don't re-derive.**
+
+### The driving use case (real, from the user, not hypothetical)
+KUL070 is delivered as multiple IFCs and **the ARCH/building-envelope package arrives later, separately.**
+Today the user must re-drop every file together to see them as one building; opening the ARCH addition
+into the loaded MEP model **replaces** it. That is the whole point of this work.
+
+Concrete proof of why it matters, measured 2026-07-30 on `KUL070-...-OVERALL_complete.db`:
+`doors=0  stairs=0  IfcSpace=0  walls=8  slabs=1` → `buildTour()` returns 0 actions → **Fly Tour (L)
+never starts and the timeline scrubber never appears** (`tour.js:364` `A._scrubShow()` is only reached
+from `_startFlyTour`). `ensureRooms` cannot rescue it — `navigate_find.js:1080` compiles rooms from
+walls/doors and "refuses honestly (roomsWritten=0) if the building lacks them — never invents rooms."
+**Merging the ARCH package in is what makes Fly/rooms/scrubber work on this building at all.**
+
+### What already works — do not rebuild it
+| capability | where | status |
+|---|---|---|
+| N IFCs → ONE building DB | `import.js:267` `A.importMultiIFC` | works, but only within a SINGLE drop |
+| fresh Worker per file, terminated after | `import.js:391` + `worker.terminate()` | works — merging N files does NOT compound wasm memory |
+| one shared frame across the drop | `import.js:299-310` `sessionGeorefOffset` → `§GEOREF_SESSION` | works |
+| GUID dedup on insert | `import_db_builder.js:45` `INSERT OR IGNORE INTO elements_meta` | works |
+| `building` + `project_metadata` written | `import_db_builder.js:28,38,48` (browser) and, as of 2026-07-30, `extractIFCtoDB.py` (CLI) | works both paths |
+| N DBs in ONE canvas | `city.js:11` `A.cityBuildingDbs`, `:701`, `:707-708` → `A.streamBuilding()` | works — City mode uses it |
+| the merge modal itself | `archive/gallery.html:1045` `showMergeModal()`, called `:1369` | written, orphaned in `archive/` — PORT it |
+
+### The blocker, exactly
+`scene.js:633` `A._openDbBytes` → `scene.js:644`
+`location.assign('viewer.html?db=' + … + '&ghost=1')` — a full page navigation. Two call sites feed it:
+`scene.js:735` (drag-drop) and `scene.js:744` (file picker, `input.accept = '.db,.sqlite'`).
+
+### Build order
+1. In `A._openDbBytes`, when a building is already loaded, show the ported `showMergeModal()` instead
+   of navigating. Cover BOTH call sites (735 and 744).
+2. **Replace** → today's `location.assign` path, byte-for-byte unchanged.
+3. **Merge** → do what City mode does: `A.cityBuildingDbs[newName] = { db, libDb }`, then
+   `A.db = …; A.libDb = …;` then `A.streamBuilding(newName)`. Naming the non-city key is the only
+   genuinely new decision.
+4. Frame: the ALREADY-OPEN building's `project_metadata.georef_offset_*` is the pin; the incoming DB
+   rebases to it — the same rule `import.js:299-310` applies within a drop, applied to a live scene.
+5. Widen `scene.js:744` `input.accept` to include `.ifc` and route to `A.importMultiIFC`, then feed the
+   produced DB into step 3. No new import path.
+
+### Witness — W-SCENE-MERGE (name the issue, per project rule)
+Open A, then Open→Merge B:
+- `A.buildingCentres` has **2** keys, not 1
+- element total = A + B minus shared GUIDs (`INSERT OR IGNORE`, already proven)
+- **no page navigation** — same `§HIST_SESSION` id before and after (today's reload mints a new one)
+- both buildings non-zero in one `§CONTRACT_CHECK`
+- **the real one for this use case:** merge the ARCH package into KUL070-OVERALL and assert
+  `doors>0 AND IfcSpace>0` in the merged scene, then that `buildTour()` returns ≥1 action and
+  `§SCRUB_PREPARE` appears on L. That is the user-visible payoff; a centres count alone doesn't prove it.
+
+### Landmines specific to this task — all measured, none speculative
+- **`import://` cannot be fetched.** An opened local file gets a `import://<name>/v0` DB_URL, so any
+  code deriving a URL from it fails: witnessed `Fetch API cannot load import://…/patches/v0.sql —
+  URL scheme "import" is not supported` → `§PATCH_APPLY_FAIL`. Harmless for the patch (opened files
+  have no curated patch) but **do not build the merge on any DB_URL-derived fetch.**
+- **Memory is the real ceiling, and it is per-DB not per-wasm.** KUL070's DB alone is 311 MB resident
+  in sql.js. Two of these in one tab is ~620 MB before geometry. City-mode DBs are far smaller.
+  **Measure before promising N-way merge** — and note `§QUOTA available=11816MB used=1576MB` is
+  IndexedDB, not heap.
+- **Every edit re-exports the WHOLE DB.** `kernel_ops.js:125` debounces 2 s then
+  `db.export()` → IDB put. At 311 MB per building that is already heavy; a merged 620 MB scene makes
+  it heavier. Not a blocker for this task, but do not add a per-merge persist on top of it.
+- **`§VERSION_MERGE` no longer exists** (grepped 2026-07-30: zero hits in `viewer/`, `common/`,
+  `archive/`). Its doctrine still stands — do not build on a path that OVERWRITES `_rec.metaDb`
+  instead of accumulating — but the code is gone, don't hunt for it.
+- **Precache: bump `sw.js CACHE_VERSION` + the file's own `?v=`, then reload TWICE**, or the edit is
+  invisible and looks like a code failure. Currently `v884`. See
+  `IFC_LARGE_PRIVATE_STRESS_TEST.md §KUL008_CACHE`.
+- **Envelope-dependent UI will change behaviour once ARCH merges in.** KUL070's envelope is 9 of
+  87,333 (0.01%), so `§BBOX_GHOST_ALL` currently fires for Alt+Z. After an ARCH merge it won't — that
+  is correct, not a regression. Don't "fix" it.
