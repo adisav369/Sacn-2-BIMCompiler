@@ -574,3 +574,66 @@ Not "which of the three" — that is settled. Ask instead: **are the 1,486 disco
 or modelling artifacts?** Nothing in the IFC distinguishes them (§THREE_WAY), and the answer decides
 whether T4's router should bridge gaps under a tolerance or refuse them outright. It is the difference
 between a useful tool and one that invents connections — which the PRIME RULE forbids.
+
+## §PRIORITY — the engineer said **#2 FIRST**, and a cable schedule is coming (2026-07-30)
+Relayed by the user: *"He said #2 first and cable schedule is a coming shortly."*
+
+**My §ANSWER prediction was wrong on priority.** I argued #1 (pull lengths) was the likely meaning
+because it is the clean graph problem. He wants **#2 — auto-routing the tray itself**. Correcting the
+record here rather than leaving the prediction standing; the *measurements* in §GRAPH_MEASURED,
+§AUTHORED_VS_DERIVED and §PULL_LENGTHS are unaffected, only the ranking was.
+
+### Why #2 is a different KIND of problem — read this before speccing it
+#1 and #3 are ANALYSIS: traverse or tally something already in the model. **#2 is GENERATIVE** — it
+produces tray runs that do not exist yet. That collides directly with the PRIME RULE (*EXTRACT OR
+COMPILE ONLY. Never invent*), so the framing has to be right from the start:
+
+**Auto-routing is COMPILING, not inventing — but only if every rule it obeys was MINED, not guessed.**
+That is this project's existing doctrine (`project_hba_compile_not_model.md`, and `room_walker`
+compiling rooms deterministically from walls). A generated route must carry
+`provenance='compiled:…'` and be presented as a **proposal**, never as extracted truth.
+
+### The rule substrate ALREADY EXISTS — and it is measured, not invented
+`build/terminal_rules.db` (mined by the RosettaStone gate runs, provenance on every row):
+
+| table | rows | what it holds | example |
+|---|---|---|---|
+| `rule_routing` | 11 | per-discipline joint gaps | `PLB IfcPipeFitting→IfcPipeSegment nn avg_gap_m=0.123 min=0.014 max=0.88 n_measured=200 provenance=measured:terminal/nn-chain` |
+| `rule_avoidance` | 10 | inter-discipline min clearance + who yields | `ACMV|ELEC min_clear_m=0.453 yields=ELEC n_measured=2403 provenance=measured:terminal/global-p05` |
+| `rule_connector` | 2 | connector face/type/standoff | `ELEC IfcLightFixture LIGHT TOP SUPPLY_IN 20mm → ELEC_CONDUIT` |
+| `rule_joint_piece` | 6 | fitting dimensions per class | `ACMV IfcDuctFitting DUCT_FITTING 347.5mm × 825mm n_measured=410` |
+
+**⚠ The gap that matters: there is NO cable-tray/containment rule in there.** Those rows are mined from
+Terminal (ACMV/PLB/ELEC/FP conduit) — nothing for ladder/tray. So #2 on KUL cannot run off today's
+rules DB.
+
+### The loop that closes — and it is the whole point
+**The engineer's own 19,142 hand-authored connections ARE the training data.** Mine `rule_routing` /
+`rule_joint_piece` for ELEC containment from CONTAINMENT.ifc's authored port graph, then replay those
+patterns to route. The survey already measured the rows that would be written: real joints are
+**97.8% `Segment|Fitting` at p50 gap 0.49 mm** (§AUTHORED_VS_DERIVED). That is a `rule_routing` row
+waiting to exist, with `n_measured=19142` and provenance `measured:KUL070/authored-ports`.
+
+So he hand-built the tray once; we extract HIS pattern and replay it. Nothing invented — his geometry,
+his gaps, his fitting choices. **This makes T1 (persist the ports) a hard prerequisite for #2, not just
+for #1.** Without ports there is no pattern to mine.
+
+### Revised sequencing
+1. **T1 persist ports** + **T2 stop stripping them** — now the prerequisite for the engineer's OWN
+   priority, not a nice-to-have.
+2. **Mine ELEC-containment rules** from the authored graph into `rule_routing`/`rule_joint_piece`
+   (new: `measured:KUL070/authored-ports`). This is the RosettaStone pattern applied to a discipline
+   it has never covered.
+3. **T5 dead-end / island report** — still ship this first if anything ships early. 3,891 dead ends and
+   1,486 components are defects he is currently finding by eye, and it needs no routing engine at all.
+4. **Route** = A* over free space, obeying mined clearances (`rule_avoidance`) and replaying mined
+   joints. Output labelled a proposal.
+5. **Where it lands is the Modeller, NOT the Viewer** — routing WRITES geometry. That is
+   `kernel_ops` / authoring territory. Do not bolt a generator into the read-only viewer path.
+
+### Cable schedule incoming → #3 becomes real
+Fill/segregation was blocked on data we do not hold (§THREE_WAY). **A schedule is coming shortly**, so:
+do NOT build #3 now, but do NOT design it out either — the persisted port graph (T1) is the natural
+place to hang a cable→segment assignment. **When it arrives, first question: does it name tray
+segments/routes, or only from-panel/to-load?** If the latter, #3 still needs #1's pathfinding to infer
+which segments a cable traverses — which is why T1 serves all three.
