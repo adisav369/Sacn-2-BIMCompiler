@@ -104,7 +104,10 @@ opening a second file resets the canvas — not a data limit, not a memory limit
 ### §SM-3 What to build (wiring only)
 1. In `A._openDbBytes` (`scene.js:747`): when a building is **already open**, show the prompt instead
    of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1045` — port it, don't rewrite it.
-   Note there are **two** call sites to cover — `scene.js:770` (drag-drop) and `:779` (file picker).
+   Note there are **two** call sites to cover — `scene.js:770` (FSA `showOpenFilePicker`) and `:779`
+   (hidden `<input type=file>` fallback). ⚠ **CORRECTED 2026-07-30 by the implementing session: 770 is
+   NOT drag-drop — there is no drag-drop caller of `_openDbBytes`. Both sites live inside
+   `A.openModelDb` (`scene.js:761`).**
 2. **Replace** → today's `location.assign` path, unchanged.
 3. **Merge** → do exactly what City mode does:
    - register the new DB: `A.cityBuildingDbs[newName] = { db, libDb }` (or the same shape under a
@@ -185,7 +188,8 @@ walls/doors and "refuses honestly (roomsWritten=0) if the building lacks them �
 ### The blocker, exactly
 `scene.js:747` `A._openDbBytes` → `scene.js:758`
 `location.assign('viewer.html?db=' + … + '&ghost=1')` — a full page navigation. Two call sites feed it:
-`scene.js:770` (drag-drop) and `scene.js:779` (file picker, `input.accept = '.db,.sqlite'`).
+`scene.js:770` (FSA picker) and `scene.js:779` (`<input type=file>` fallback) — **both inside
+`A.openModelDb` (`:761`); there is NO drag-drop caller, contrary to an earlier claim here.**
 
 > ⚠ **GREP THE SYMBOL, NOT THE LINE.** Every number in this file was re-verified against `origin/main`
 > on 2026-07-30 — and two earlier passes had them wrong precisely because they were read from a stale
