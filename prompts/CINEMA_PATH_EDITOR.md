@@ -2375,6 +2375,272 @@ turn witness is the instrument, and this change must be run against it, not mere
 Witness: `§CPE_AIM_DENSITY outside=1 nearDens=<n>/<floor> R=<m> cell=(x,y,z) elems=<n> perpDeg=<d>
 blend=<w>` — plus the unchanged peak-turn number, to prove the ramp did not buy the subject with a jerk.
 
+## §CPE_AIM_DEPTH — surrounded by close surfaces, face the FURTHEST dense one (2026-07-31, IMPLEMENTED)
+**User directive:** *"the camera auto faces where the building fills up its canvas scene POV and is
+furthest. Ie if it is flying into area with a floor, a left side wall and front wall, it turns to face
+which is further."* Clarified: *"must be logical as stated to also X depth distance where if it is near
+a wall along a corridor it wont face dense fleeting but look to a more distance facade."*
+
+**Mirror of §CPE_AIM_DENSITY, opposite trigger.** That rule fires OUTSIDE the perimeter with nothing
+near (an empty flight needs a subject). This fires when the camera is **surrounded by close surfaces**
+— a corridor, a corner — the opposite regime. Both reuse the SAME grid (`_aimGrid`/`_densPoints`) —
+one proximity system, not two.
+
+**Why "furthest" is not just taste:** a near subject sweeps across the frame far faster than a distant
+one for the same camera translation (angular rate ~ v/d). Facing the closest dense thing — the
+"fleeting" corridor wall the user named — is the worst subject choice available, not a neutral one:
+it maximises gaze angular velocity, the exact quantity §CPE_EVEN_TURN already exists to bound. This
+rule is that same argument applied to WHICH subject is chosen, not how fast the camera moves.
+
+**Trigger:** soft density (`_aimSoftDensity`, reused) within a TIGHT radius (`envelope × 0.05` —
+deliberately stricter than §CPE_AIM_DENSITY's `0.12` "near": that means "nothing substantial", this
+means "close enough to whip past") crosses a floor → continuous smoothstep, `§CPE_AIM_DENS_FLOOR`-style
+constant (10), same shape as the existing rule's trigger.
+
+**Subject — weighted centroid, weight = count × distance (inverted from §CPE_AIM_DENSITY's
+count/(1+d)³):** that rule rewards NEAR; this rewards FAR. Bounded to a search bubble
+(`envelope × 0.30`) so it stays "the furthest of the NEARBY facades", not a site-wide reach, and
+excludes cells inside the trigger's own close radius (the fleeting wall can't win by being dense).
+
+**MEASURED correction, found by the witness before shipping — the floor pollutes a plain distance-only
+centroid.** First cut: weighted centroid over ALL nearby cells beyond the close radius. `tests/
+test_aim_depth.js`'s synthetic corridor (floor + close left wall + further front wall, left wall made
+DENSER on purpose) came back **RED** — the subject landed near the floor centroid, 1.1m from the near
+wall, nowhere near the intended far wall. Cause: a floor is broad and moderately-close-on-average, and
+a plain distance-weighted average blends it in with the walls rather than choosing between them —
+"face the furthest wall" is a discrete choice among surfaces, not a blend of everything nearby.
+**Fix — verticality filter, reusing the SAME grid cells:** `§CPE_AIM_GRID` cells now also track
+`zMin`/`zMax` (purely additive, §CPE_AIM_DENSITY only ever reads `n/x/y/z`, unaffected). A cell only
+counts as a facade candidate if `zSpan > cellSize × 0.3` — a wall's points span real height within one
+cell, a floor/ceiling's do not. No new proximity data, no new pass over `element_transforms`.
+
+**Aim + blending — reused verbatim from §CPE_AIM_DENSITY, not reinvented:** the fading (never
+switching) perpendicular projection, and the seam taper that is gone by the walk→orbit hand-off. That
+rule's own comments record measuring TWICE that a hard switch — not the subject choice — was the
+actual jerk source; re-deriving that lesson here would be pointless when the exact same machinery
+applies unchanged.
+
+**Witness:** `tests/test_aim_depth.js` (pure-math replica, no browser needed — same whitebox convention
+as `tests/test_host_order.js`) — W-AIM-DEPTH-TRIGGER (boxed-in trigger fires), W-AIM-DEPTH-SUBJECT
+(picks the further wall, not the closer denser one — **RED before the verticality fix, GREEN after**),
+W-AIM-DEPTH-CONTROL (with the close-exclusion disabled, confirms the naive version really would have
+picked the close wall — proves the exclusion is load-bearing). **Not yet run:** a live/headless peak
+deg/frame regression witness (the `§W-HOSE A2`-style jerk gate `§CPE_AIM_DENSITY` itself was held to)
+— the pure-math witness proves the SUBJECT SELECTION is correct, not yet that composing it with
+§CPE_AIM_DENSITY and the rest of the gaze pipeline stays inside the turn-rate bound on a real building.
+Do that pass before calling this fully closed, same bar as the rule it mirrors.
+
+**Shipped:** `viewer/effects.js` (`_aimDepthWeight`/`_aimDepthSubject`/`_aimDepthBuild`/`_aimDepthAt`/
+`_aimDepthApply`, wired into `_beat3Pose` right after the existing `_aimApply` call — the two compose
+rather than race since their triggers are near-disjoint by construction: one needs low density nearby,
+the other needs high density AT CLOSE RANGE). Witness: `§CPE_AIM_DEPTH e3=<t> floor=<n>
+subject=(x,y,z) perpDeg=<d> blend=<w> seamTaper=<w>` + `§CPE_AIM_DEPTH_SERIES` (build-time probe/smooth
+report, mirrors `§CPE_AIM_SERIES`).
+
+### ⚠ LIVE-TEST FINDINGS 2026-07-31 — the "not yet run" caveat above was right to flag this
+The predicted gap surfaced the same day, live, on a Hospital buildup bake. Three distinct defects,
+found in order as the user tested — each one real, none guessed at:
+
+**D1 — radii saturate on a large building (MEASURED, PARTIALLY FIXED).** `_AIM_DEPTH_CLOSE_FRAC`/
+`_AIM_DEPTH_SEARCH_FRAC` are pure envelope fractions. On Duplex (envelope~15m) that's corridor-scale
+(0.75m/4.5m) and correct — the shipped witness (`tests/test_aim_depth.js`) used exactly that scale.
+On Hospital (envelope=147m) the SAME fractions give Rclose=7.4m/Rsearch=44m — big enough that
+`§CPE_AIM_DEPTH_SERIES` reported `active=65/65 maxBlend=1.00` (the rule never turned off for the
+whole walk) and the "furthest facade" subject landed at `(45.0,82.9,180.4)` — within a few metres of
+the building's own measured centroid (`§CENTRES_RESULT` gives `46.2,93.0,181.3`), not a specific
+nearby wall. **Fix applied:** clamp both radii to an absolute-metre range (`Rclose` 1.5–4.5m, `Rsearch`
+4–18m) so a huge building can no longer balloon the search into "half the site." **MEASURED this did
+NOT fully fix it**, and this matters more than the radius itself: 40 real sample points inside
+Hospital's actual geometry triggered "boxed in" 40/40 times at the old uncapped radius and STILL
+38/40 at the new clamped one. The real problem is `_AIM_DEPTH_DENS_FLOOR=10` (elements-within-radius
+to count as "surrounded") — a building with 63,182 elements puts 10+ within almost any few-metre
+radius almost everywhere, so shrinking the radius barely moves it. **What the floor actually needs:**
+scaled against the building's OWN typical local density (e.g. elements per m³ over its footprint),
+not a fixed absolute count — so "surrounded" means "denser than this building's own norm," which
+adapts across building sizes the way the radius clamp alone cannot. **Not built** — this is a
+calibration that needs live visual iteration (does the trigger feel right at the tuned value?), not
+something to guess at from a spreadsheet. Do this FIRST in the next session, before anything else in
+this file, using the same 40-point-sample harness as a starting instrument.
+
+**D2 — no incoming-seam taper (FIXED).** `§CPE_AIM_DENSITY`'s existing `wSeam` only taper the OUTGOING
+end (walk→orbit, near e3=1). Neither aim rule had the mirror for the INCOMING end (spin→walk, e3 near
+0) — the pre-existing `_openU`/`wOpen` blend (right before either aim rule runs) eases the gaze from
+wherever the spin left off, but §CPE_AIM_DEPTH then overrode that eased direction at near-full
+strength from e3=0 (D1's saturated trigger meant `blend=1.00` immediately), discarding the handoff the
+instant it happened. **Proof, from the user's own pasted log, not inferred:** `§CPE_SEAM_CONTINUOUS
+seamGapDeg=94.6–100.2` (that witness's own comment: *"must be ~0"*). **Fix:** `_aimDepthApply` now
+takes an `openU` parameter and applies the SAME smoothstep-over-`_openU` taper the caller's own seam
+blend uses — zero rate at the seam, by construction, same shape as the existing outgoing taper.
+Witness gains `openTaper=<w>` in the `§CPE_AIM_DEPTH` log line. **`§CPE_AIM_DENSITY` has the identical
+structural gap** (no incoming taper either) but wasn't touched — its trigger (outside+empty) rarely
+coincides with e3≈0 so it hasn't manifested; flagged here, not fixed, per minimal-blast-radius on a
+already-shipped, already-witnessed feature nobody reported broken.
+
+**D3 — blind to §CPE_BUILDUP (FOUND BY THE USER, GUARDED, NOT YET PROPERLY FIXED).** User, watching a
+buildup bake at frame 60/1386 (168/63,416 elements placed): *"it is turning when buildup has not shown
+any construction yet, so it has to look at actual bbxes that are formed?"* — exactly right. `_aimGrid`/
+`_densPoints` query the WHOLE finished building unconditionally; `_aimDepthBuild()` precomputes the
+entire gaze-subject series ONCE at EDIT time, before any bake exists. The buildup cursor
+(`window.tmSetCursor`/`tmPlacedCount`, `viewer/cinema_maxq.js` ~:780-805) only exists INSIDE the bake
+loop, advanced frame-by-frame — by the time it's known, the gaze targets were already locked in. This
+is not a coefficient to tune, it's an edit-time-vs-bake-time architecture mismatch: camera POSITION
+(`poseAt`) and construction STATE (`tmSetCursor`) both already update per-frame; only the GAZE got
+planned as a single precomputed pass that never talks to the buildup timeline at all.
+**Interim guard shipped:** `_aimDepthWeight` returns `null` (rule fully inert) whenever
+`A._cinemaPathEdit.buildup` is true, falling back to the plain look-ahead — buildup films stop staring
+at unbuilt geometry today, at the cost of §CPE_AIM_DEPTH doing nothing during buildup until the real
+fix lands. `§CPE_AIM_DENSITY` has the same blind spot and was NOT guarded — same reasoning as D2,
+not reported broken, its outside+empty trigger is a poor fit for buildup films anyway (buildup walks
+are normally interior).
+**The real fix, next session:** move subject-selection out of `_aimDepthBuild()`'s edit-time probe
+series and into `cinema_maxq.js`'s per-frame loop, where `_bkState`/`tmSetCursor`/`tmPlacedCount`
+already exist. Needs a new primitive — `tmPlacedCount(ms)` returns a COUNT, not positions; the aim
+rule needs the actual placed guids' centroids (or an equivalent "grid of only-placed elements as of
+this cursor") to score against. Also needs the per-frame ordering in `cinema_maxq.js` reconsidered:
+today `poseAt(_tn)` (which would call the aim rules) runs BEFORE `tmSetCursor(_bkMs)` advances the
+cursor for that frame — the aim rule would still see the PREVIOUS frame's placed-state unless that
+order changes too.
+
+**Deliverables:** bim-ootb PR #1101 (original D1/D2/D3-blind implementation, live-tested same day) +
+follow-up PR #1103 (D2 fix + D1 partial + D3 guard, this section). `sw.js`/`effects.js` cache-bust bumped.
+**Not closed** — D1 needs a live-tuned density floor, D3 needs the bake-loop restructure above. Both
+named precisely so neither needs rediscovery.
+
+### ⚠ D3 GUARD CONFIRMED DEAD ON ARRIVAL — root cause, traced not guessed (2026-07-31, same day)
+Re-tested live by the user immediately after #1103 deployed, on a `source=captured` (real linked
+schedule) buildup bake: `§CPE_BUILDUP_SOURCE ... capActive=true` fires, confirming buildup IS on, yet
+`§CPE_AIM_DEPTH_SERIES ... active=62/65 maxBlend=1.00` — the guard did not gate it. **Not a caching
+issue** (the seam-taper fix from the SAME deploy IS visibly active: `§CPE_SEAM_CONTINUOUS
+seamGapDeg=0.000`, was 94.6–100.2 — so the new code is definitely running).
+
+**Traced the actual wiring, `viewer/effects.js`:**
+- `A._cinemaPathEdit` — the field the guard reads — is set in exactly TWO places: `A.stageCinemaPath(ov)`
+  (`:6406-6416`, fired ONLY by the editor's "Save this path" named-plan button) and `_cpeLoadFromDb()`
+  (`:6381-6404`, the legacy `cinema_path` table restore). **Neither fires on a normal edit→OK→bake
+  flow.** For an ordinary session (author bands, hose-pull, tick buildup, OK, bake — exactly what was
+  tested) `A._cinemaPathEdit` is simply stale or `null` — it never reflects the override actually
+  driving that bake.
+- The override that DOES drive the bake travels a different path entirely:
+  `A.cinemaPathPlan(durationSec, ov)` (`:6463-6494`) receives `ov` as an **explicit function argument**
+  from the editor, not via `A._cinemaPathEdit`. It unpacks `ov.hose`/`ov.waypoints`/`ov.bands`/the four
+  `*Sec` timing keys into module-level `_cpeWp`/`_cpeBands`/`_cpeHose`/`_cpeSecOverride` before calling
+  the real planner `_cinemaPathPlan(durationSec)` (`:4572`, takes ONLY `durationSec` — no override
+  parameter at all, everything else arrives via those module-level vars).
+- **`ov.buildup` is never unpacked into anything.** `A.cinemaPathPlan` reads five specific keys off `ov`
+  and drops the rest — `buildup` is not one of the five. It has NO representation anywhere inside
+  `_cinemaPathPlan()`'s scope, which is the scope `_aimDepthWeight`/`_beat3Pose`/`poseAt` all live in.
+  `cinema_maxq.js` gets `buildup` a completely different way — straight off `_cpeRes.override.buildup`
+  in its own bake-loop closure, never through `A.cinemaPathPlan` at all.
+
+**Why the D3 spec (above) was already half-right and still wrong in the same breath:** it correctly
+identified that the buildup CURSOR doesn't exist until the bake loop. It missed that the buildup
+BOOLEAN doesn't reach the gaze-planning scope AT ALL, cursor or no cursor — there was never a wire to
+disconnect, one has to be built. `A._cinemaPathEdit.buildup` was a plausible-looking field that happens
+to share a name with the real thing and happens to be legitimately `true` right after a "Save this
+path" click (which is likely why it looked plausible during a first read of the code, without tracing
+an actual live call) — but it is not what a normal OK→bake reads.
+
+**The actual fix, next session, in order:**
+1. Thread `buildup` through `A.cinemaPathPlan(durationSec, ov)` the same way the four `*Sec` keys
+   already are — a new module-level var (e.g. `_cpeBuildupOn`), set/restored in the same
+   save/try/finally block at `:6472-6493`.
+2. Change `_aimDepthWeight`'s guard to read that module-level var instead of `A._cinemaPathEdit.buildup`.
+3. **Verify with a real live bake**, not just a code read this time — the exact mistake that shipped
+   the broken guard in the first place. `§CPE_AIM_DEPTH_SERIES active=0/65` on a `buildup=1` bake is
+   the pass condition; nothing less counts as fixed.
+This is a small, precisely-scoped fix — the size that was missing was accurate tracing, not code.
+
+### D4 — NEW, live-observed same session, NOT YET IN CODE: "facing the sky" — elevation-blind verticality filter (hypothesis, traced not proven)
+User, watching a buildup bake: *"it seems to be facing the sky.. perhaps its judgement of depth gone
+awry."* Measured from the `§CPE_AIM_DEPTH` lines around the cancel point (frame 348, e3≈0.199):
+subject Z holds 181.9→183.9 across consecutive frames — in-range for the building (`medZ` Level
+4/5 = 184.8/189.6), not an absurd floating value, `blend=1.00` throughout (mid-walk, no taper active).
+
+**Traceable mechanism, not a guess:** `§CPE_AIM_DEPTH_VERTICALITY` (D1's own fix, further up this
+file) explicitly REWARDS cells with large height-span to tell a wall from a floor. An atrium wall,
+lift shaft, or any feature spanning many storeys scores very highly on exactly that filter — including
+if the camera itself is several floors LOWER. A subject at Z~183 with a camera down around Z~165-170
+(a plausible lower-floor position on this walk) would perpendicular-project into a steep upward tilt —
+which is what "facing the sky" would look like from ground level with nothing solid above to block it.
+
+**Not confirmed** — the pasted log slice has the subject's Z but not the camera's own Z/pose at those
+frames, so the camera-vs-subject elevation delta that would prove this is not yet measured. **Next
+session, before touching the filter:** pull `p3`/camera Z alongside the existing `§CPE_AIM_DEPTH`
+line (it already has `p`/`p3` in scope in `_aimDepthApply`, just isn't logged) and compare against the
+reported subject Z at the same frame — if the delta is large and positive (subject well above camera),
+this is confirmed and the fix is straightforward: the verticality filter needs a "height relative to
+the CAMERA's current elevation" term, not just "does this cell span a lot of Z in isolation" — a tall
+atrium should not outscore an actual nearby wall at the camera's own floor.
+
+**User's own follow-up, same session, and it reframes this as the SAME root cause as D3, not a second
+one:** *"its densest must be behind it as the foundation got laid.."* — correct, and sharper than the
+elevation-delta framing above. In a buildup sequence, foundation and lower floors are laid FIRST
+chronologically, so "what is actually dense/already-built" at any point in the sequence should read as
+mass BEHIND/BELOW the camera's current progress, not an abstract "tall cell" from the finished
+building. `_aimGrid`/`_densPoints` has zero notion of construction order — same blind spot D3 already
+names. **This means D4 may not need a separate fix at all.** Once D3's real fix lands (subject
+selection restricted to only already-PLACED elements as of the buildup cursor, per the plan already
+written in D3's own section above), the density grid AIM_DEPTH scores against would correctly exclude
+not-yet-built upper floors — an unbuilt atrium wall could no longer win regardless of its raw height-
+span, because it simply wouldn't be in the candidate set. **Next session: build D3's real fix FIRST,
+then re-test D4's "facing the sky" scenario before assuming it needs its own change.** Only add the
+camera-elevation term (previous paragraph) if D4 still reproduces after D3 is genuinely buildup-aware.
+
+## §CPE_AIM_DEPTH — SESSION CLOSE 2026-07-31, RESUME HERE NEXT SESSION
+Four findings this session, D2 shipped and confirmed live, D1/D3/D4 open. **Read this block first,
+top to bottom, before touching any code** — the mistake made twice today (D1's radius clamp, D3's
+buildup guard) was shipping a fix verified only by reading code, never by a live bake. Every item
+below names its own live pass/fail condition; do not close one without running it.
+
+**Status:**
+- **D1 (radii saturate on large buildings) — PARTIAL, insufficient.** Metre-clamp shipped (no
+  regression, small improvement: 40/40→38/40 triggered on a 40-point Hospital sample). Root cause is
+  `_AIM_DEPTH_DENS_FLOOR=10`, a fixed count that means nothing on a 63K-element building. Needs scaling
+  against the building's own local density baseline. **Live pass condition:** the trigger should be
+  selective — off in open interior space, on only when genuinely boxed in — not near-universal like the
+  original 40/40.
+- **D2 (no incoming-seam taper) — FIXED, CONFIRMED LIVE.** User's own log: `§CPE_SEAM_CONTINUOUS
+  seamGapDeg=0.000` (was 94.6–100.2) and `§CPE_AIM_DEPTH ... blend=0.02 openTaper=0.02` easing in from
+  the seam instead of snapping to full strength. No further work needed on this item.
+- **D3 (blind to §CPE_BUILDUP) — GUARD SHIPPED BUT DEAD, ROOT CAUSE TRACED PRECISELY (see block above,
+  "D3 GUARD CONFIRMED DEAD ON ARRIVAL").** Confirmed live twice: `capActive=true` yet
+  `§CPE_AIM_DEPTH_SERIES active=62/65`. The exact 3-step fix (thread `buildup` through
+  `A.cinemaPathPlan`'s existing unpack pattern, `:6472-6493`) is written above with line numbers — this
+  is implementation-ready, not re-investigation. **Live pass condition:** `active=0/65` on a
+  `buildup=1` bake, nothing less.
+- **D4 (facing the sky, elevation-blind verticality) — HYPOTHESIS, TRACED, LIKELY THE SAME ROOT CAUSE
+  AS D3, NOT YET MEASURED OR FIXED.** User's own reframe: "densest must be behind it as the foundation
+  got laid" — the density grid has no construction-order awareness, same blind spot as D3. **May not
+  need a separate fix at all** — re-test after D3's real fix lands before adding anything new (see
+  block immediately above for the full reasoning).
+
+**Priority order:** D3 first (implementation-ready, smallest diff, AND per the reframe above may fix
+D4 as a side effect, so building D4-specific code before D3 risks solving a problem D3 was already
+going to solve). Re-test D4 against a real buildup bake once D3 is done — only add the
+camera-elevation term if it still reproduces. D1 last — it's the one that genuinely needs iterative
+visual tuning, not a one-shot fix, so don't start it until D3/D4 are settled and testing is clean.
+
+**Deliverables so far:** bim-ootb PR #1101 (D1/D2/D3-blind original implementation) + PR #1103 (D2 fix
++ D1 partial + D3 guard, later found dead). No PR yet for the D3 real fix or D4.
+
+## §CPE_TITLE_BAND_COUNT — SHIPPED BUT DID NOT FIX THE REPORTED BUG (2026-07-31)
+User report: reopening a stored path (`§CPE_IDB_PATH_STORE`) with more than 3 authored bands still
+shows only 3 in the editor panel. Found and fixed one real, confirmed bug on the way: the panel title
+text was hardcoded to `"— 3 bands"` at panel-build time and never updated afterward (`cinema_path_editor.js`,
+now reads `_state.bands.length` live, updated every `_renderRows()` call — shipped in bim-ootb PR #1101).
+
+**User re-confirmed the underlying bug is STILL PRESENT after that fix**, reported three times across
+the session (*"still not showing the extra node in the list during opening"*, twice more). **This has
+never actually been diagnosed** — every attempt so far, including this session's, lacked the one piece
+of evidence that would prove or disprove where the fault is: **a console log segment that includes
+`§CPE_PATH_LOADED`**, which only fires inside `_pathsApply()` when the user clicks **Open** next to a
+saved plan in the dropdown. Every log pasted this entire session was from a fresh Alt+C edit-and-bake
+session — none of them exercised that button. Code-reading `_pathsApply`/`_buildOverride`/`open()`
+found nothing obviously wrong (all three correctly use `.length`-driven arrays, no hardcoded counts),
+which is not evidence of correctness — see D3 above for what "looks right by reading" cost this
+session twice already. **Next session: get the `§CPE_PATH_LOADED` segment before any further code
+reading or guessing.** Ask for it explicitly if the user reports the bug again without it.
+
 ## §CPE_PREVIEW_BUTTON — a Preview button, NOT auto-preview (settled 2026-07-28)
 User, in sequence: *"and the preview must always repeat each time an edit is done"* → *"Or a preview
 button"* → **"thus no auto preview needed"**. Settled: **an explicit Preview button on the editor

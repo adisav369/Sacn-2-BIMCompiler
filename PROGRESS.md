@@ -107,6 +107,17 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   (#1089, live-preview witness gap closed #1092, user-confirmed on a real bake 07-30). LEFT:**
   `prompts/CINEMA_FIND_TO_FILM.md` (parked) · Task 2 (`§CPE_BE_HERE_WHEN`) of
   `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (Task 1 now DONE, see below).
+- ▶ **NEW LANE 07-31, `§CPE_AIM_DEPTH` OPEN — resume from `prompts/CINEMA_PATH_EDITOR.md` §CPE_AIM_DEPTH
+  "SESSION CLOSE 2026-07-31", read top to bottom before touching code.** User-requested camera feature
+  (face the furthest facade when boxed in) shipped same-day (bim-ootb #1101), then live-tested to 4
+  findings: D2 (no incoming seam taper) FIXED+confirmed live; D1 (radii saturate on large buildings)
+  partial only, needs live-tuned density floor; D3 (blind to buildup mode) guard shipped but DEAD —
+  root cause traced to exact line numbers, fix is implementation-ready; D4 (camera facing the sky) new,
+  traced to a plausible mechanism (elevation-blind verticality filter), not yet measured. Priority
+  order D3→D4→D1, all named in the spec file. Also unresolved, separately: reopening a stored path with
+  >3 bands still doesn't list them — one real bug found+fixed on the way (hardcoded "3 bands" title)
+  but the underlying report persists, diagnosis blocked on missing evidence (`§CPE_PATH_LOADED` log
+  segment never captured despite 3 asks) — get that first, don't re-read code blind again.
 - ✅ **§4D_FACADE_ORDER (Task 1 of `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`) CLOSED + LIVE (07-31),
   user-confirmed "yes it is working"** — glazed curtain-wall panels no longer erect ~250d before their
   host wall. FOUR fixes, not one — all detail + witness numbers in the RESUME file's ✅ TASK 1 CLOSED
