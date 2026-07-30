@@ -1829,3 +1829,107 @@ into a cable schedule — the one thing §SLACK exists to prevent.
 `witness_room_path_redundancy.js` (R1-R6 sweep), `witness_room_path_redundancy_attrib.js` (R7-R9
 attribution + the penalty A/B), `probe_redundancy_route.js` (single-route end-to-end dump). All three
 are building-parameterised; re-running any of them after a fix is a one-line change, not a rewrite.
+
+## §21 — "IS THE PATHING FORMULA ABSTRACT AND GENERAL?" (user, 2026-07-31) — ANSWERED: NO, with the
+## reason measured. Plus one PROTOTYPE THAT FAILED, recorded as a failure.
+
+```
+# ⚠ DO NOT REMOVE — W-ROOM-PATH-GRAPHLESS / W-ROOM-PATH-WALLAWARE scope (READ THE LOG)
+SCOPE: answer the generality question with numbers, not architecture opinion. Measure only — no
+engine file was modified in this section; both A/B variants are temp module copies deleted on exit.
+Logs: /tmp/w_roompath_graphless.log · /tmp/w_roompath_wallaware.log · /tmp/wall_model_check.js output.
+```
+
+### §21.1 How it actually works (the user's own question: "all possible routes, or a central map?")
+**It is a central map, precomputed once per building** — `RG.buildGraph()` runs once and is cached in
+`navigate_find.js` `_pathGraphCache` (shared with the Fly tour via `A.getRoomGraph`); every query is
+Dijkstra over that cached graph. The per-query cost is not the problem. **What the map is MADE OF is.**
+Nodes: room centroids · door waypoints · corridor `spine` points (`hallway_backbone.js`, derived by
+bucketing doors + rects) · **one synthetic `circ` hub per storey** · `stairwp` flight ends.
+Edges: room↔room through a door (E1), room↔spine (E2), spine↔spine along one chain, **chain↔chain
+only via the storey's single `circ` hub**, stair chains across storeys (E3).
+So a "most dense walkway" skeleton ALREADY EXISTS — `hallway_backbone.js` is exactly that idea. It
+wanders because the spine is inferred from door/rect clustering rather than from real free space, and
+because two corridors that physically meet are still bridged through one hub point (§20.5a: 14 m north
+to the hub, then a 161° turn straight back).
+
+### §21.2 THE ANSWER: it is general in the wrong layer and specific in the wrong layer
+The engine is **two layers optimising different objectives**:
+- **L1** Dijkstra over node centroids, weighted by edge length × `UTILITY_EDGE_PENALTY` — decides
+  WHICH rooms/doors.
+- **L2** A* over `_pointWalkable` + the door-visibility legalizer — decides HOW the line is drawn.
+L1 minimises a graph cost that is not walked metres; L2 then draws something else. That single split
+explains all three §20 findings at once (2× detour · distance ≠ drawn length · circ-hub correlation).
+
+**And the load-bearing discovery — `_pointWalkable` IS NOT WALL-AWARE.** Measured directly against
+real `IfcWall` footprints (`/tmp/wall_model_check.js`, segment sampled at 0.05 m):
+```
+§WALLCHK Clinic "First Floor R7"->"First Floor R17" straight=10.7m chordIllegalCount=0
+         realWallsCrossed=2  realDoorsOnSegment=0
+         => PREDICATE SAYS WALKABLE THROUGH 2 WALL(S), NO DOOR
+§WALLCHK LTU_AHouse "VÅNING 1 R27"->"VÅNING 1 R29" straight=4.5m chordIllegalCount=0
+         realWallsCrossed=1  realDoorsOnSegment=0  => same verdict
+```
+The raster is slab-mesh-derived (a floor slab physically continues under interior walls) and the rect
+fallback inflates every room rect by `DOOR_BUFFER_SLACK`, so **interior walls are invisible to the
+geometry layer either way**. Every "illegal chord" number in §11-§17 measures OFF-FLOOR, never
+THROUGH-WALL — that test has never existed.
+
+**Therefore:** wall-legality comes ONLY from L1's door topology. The geometry layer is fully general
+but blind; the wall knowledge lives entirely in a hand-tuned topological graph carrying ~12 constants,
+several documented in-code as calibrated to one building (`DETOUR_LOCALITY_MARGIN = 6.0` — *"chosen
+against real Clinic data"*). **That is why it does not transfer to a new building, and it is why the
+graph cannot simply be dropped.**
+
+### §21.3 Graphless A* — 2.19× shorter, and CONFOUNDED. Do not cite this as "the graph is waste."
+`witness_room_path_graphless_astar.js` runs the engine's OWN exported `astarHop` room-centre to
+room-centre with no graph (widened search window only — a temp copy, nothing else changed):
+```
+§GRAPHLESS_G1 Clinic     engineDrawn=10858m graphlessAstar=4639m straight=4581m
+              engine/astar median=2.19x p90=3.84x max=11.62x | engineLonger=150 astarLonger=0 of 150
+§GRAPHLESS_G1 LTU_AHouse engineDrawn=16217m graphlessAstar=8099m straight=7765m
+              engine/astar median=1.96x p90=4.73x max=18.50x | engineLonger=148 astarLonger=0 of 150
+§GRAPHLESS_RATIO Clinic vsStraight engine=2.37x graphlessAstar=1.01x
+```
+`graphlessAstar = 1.01× straight` is the tell: it is drawing the straight line — **through walls**,
+per §21.2. The comparison is not evidence the graph is wasteful. It is evidence of how much of the
+engine's length is topology the geometry layer cannot see.
+
+### §21.4 PROTOTYPE THAT FAILED — wall-aware occupancy grid. Recorded so nobody re-runs it blind.
+`witness_room_path_wallaware_astar.js`. Premise (still believed sound): `RoomWalker` ALREADY
+rasterises wall + door footprints at its own `RES = 0.20 m` to flood-fill rooms, then DISCARDS that
+grid — reuse it as the router's field instead of inventing an artifact. Prototype: walls from
+`RoomWalker.storeyWalls()` blocked (1-cell seal), doors from `RoomWalker.storeyDoors()` cleared after
+dilation, 8-connected A*, string-pulled against the same grid.
+```
+§WALLAWARE_W3 Clinic     pairs=42 noRoute=635 (93.8%) avgMsPerQuery=81.9
+§WALLAWARE_W3 LTU_AHouse pairs=3  noRoute=549 (99.5%) avgMsPerQuery=1779.7
+§WALLAWARE_W4 Clinic     throughWallViolations=49 on 31/42 routes (must be 0)
+  ❌ W4 ZERO through-wall violations   ❌ W3 routes the great majority of pairs
+```
+**FAILED, and the failure is mine, not the idea's.** Two causes, both identifiable from the numbers:
+1. `WALL_LIKE` includes `IfcWindow%`/`IfcCurtainWall%`/`IfcColumn%`, and a 1-cell seal on top of that
+   closes the building into isolated pockets — hence 94-99.5% unroutable. `RoomWalker` succeeds on the
+   SAME inputs because it has `§DOOR-RESCUE`/`§DOOR-PARTITION`/`doorAdjacent` handling the openings;
+   this prototype re-implemented the rasterisation and NOT that logic.
+2. The 49 violations are the endpoint `snap()` (up to 1.2 m) crossing a wall before the first
+   segment, plus sub-cell clipping between a cell-centre test and a raw wall box.
+**The one salvageable signal:** on the 12 Clinic pairs where the straight chord looks legal but a
+wall-aware route must go round, the shipped engine ALSO goes round on 9 — **75% topology agreement**.
+Small sample, but consistent with §21.2: the graph knows the right way round; its geometry is what wastes.
+
+### §21.5 NEXT — the corrected experiment, and why the user's skeleton idea is the right shape
+The user's proposal (2026-07-31): *"a main most dense walkway that has the most common paths possible …
+a preprocess will obtain this or stored as one time process where all paths then depend on … merely
+querying the shortest distance out of a path."* **That is the right architecture and it is one step
+beyond §21.4's prototype:** derive the walkway skeleton from the wall-aware free space (medial
+axis / distance-transform ridge), once per building, cached exactly where `_pathGraphCache` is cached
+today — instead of inferring a spine from door/rect buckets. Then the drawn line IS the skeleton
+polyline, so `distance` and drawn length cannot diverge (kills §20.6 FINDING 1 structurally), and no
+`circ` hub / utility penalty / locality margin is needed to make it behave.
+**Do this before any of it:** redo §21.4 by calling `RoomWalker.floodRooms()` / `partitionByDoors()` /
+`doorAdjacent()` — the exported functions that already solve the door-opening problem — rather than
+re-rasterising by hand. If the free-space grid from the walker's own pipeline routes >90% of pairs
+with 0 through-wall violations, the skeleton is buildable on top of it and §21.5 becomes a real spec.
+If it does not, the honest answer is that this building data cannot support a wall-aware router at all
+and the graph stays, with §20.7's task 2 (make the reported distance the drawn distance) as the fix.
