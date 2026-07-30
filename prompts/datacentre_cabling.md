@@ -1008,3 +1008,66 @@ toward 119, F3/F4 are viable. If it stays low, cable pathing on this model is no
 should say so plainly rather than ship a 7% tool.
 
 **Do not quote 41% for pathing again.** 41% = names resolve. 6.7% = a path exists today.
+
+## §NO_CABLES + §PANEL_PORTS + §HOW_MODELLED (2026-07-30) — and a correction to my own claim
+
+### 1. There is NO cable modelled. Anywhere.
+```
+IFCCABLESEGMENT  IFCCABLECARRIERSEGMENT  IFCCABLEFITTING  IFCELECTRICFLOWSTORAGEDEVICE
+   0 / 0              0 / 0                  0 / 0              0 / 0        (CONTAINMENT / OVERALL)
+```
+Only **containment** is modelled. **A cable's route is therefore never a lookup — it can only ever be
+DERIVED by pathing.** (Note the trays are `IfcFlowSegment`, not even `IfcCableCarrierSegment` — the
+semantically correct class is unused, which is why `ifc_class` tells you nothing here.)
+
+### 2. Panels DO have ports — but there is no tray↔panel handshake
+```
+EQUIPMENT.ifc     ports=465    portToElement=465    portToPort=0
+CONTAINMENT.ifc   ports=43187  portToElement=43187  portToPort=19142
+```
+The panels declare **465 connection points** — where cables enter and leave. But **zero
+`IFCRELCONNECTSPORTS`**: nothing joins a panel port to a tray port, and the two files were exported
+separately so nothing crosses between them. **This closes §THREE_WAY's "whether EQUIPMENT's ports join
+trays to panels" — they do not.** It is why §RUN_READY had to fall back on nearest-tray proximity
+(median 1.14 m), and that fallback is now confirmed as the only available method, not a shortcut.
+
+### 3. ⚠ CORRECTION — "he hand-authored 19,142 connections" is probably WRONG
+I wrote that in §ANSWER/§PRIORITY and it overstates the evidence. What the element types actually show:
+```
+Cable Tray with Fittings:Trunking / :Cable Tray / :Cable Ladder      11,441
+Cable Tray Vertical Outside/Inside Bend, Horizontal Bend/Tee : Standard
+Oglaend System_INS_vertical inside bend_OE FR:OE FR HDG
+Hilti_INS_endcap_MT-EC:MT-EC End Cap      20,138
+Hilti_INS_channel_MT channel:MT-40         8,864
+hanging Rod:M8                            12,316
+```
+**(inference, not measurement)** This is Revit's **parametric cable-tray tool** plus **manufacturer
+content libraries** — Oglaend (cable ladder) and Hilti (channel/rod/endcap support system); the `_INS_`
+prefix reads as library-inserted content. `Cable Tray with Fittings` is the Revit family that
+**auto-inserts bends/tees as you draw a run** — so the fittings were generated, not copied by hand.
+
+**Consequence: the 19,142 port links are most likely Revit's own connector model, written out by the
+IFC exporter — not typed by a human.** Still his data and still faithful; but the "his hand-authored
+graph is our training data" framing in §PRIORITY should be read as "Revit's connectivity, faithfully
+exported", which is a weaker claim about intent and a stronger one about consistency.
+
+**And it explains §RUN_READY's fragmentation exactly:** if ports mirror Revit *logical* connectivity,
+then **1,486 components = 1,486 separately-drawn runs that were never logically joined in Revit** —
+they abut visually but are not connected objects. A well-known Revit MEP modelling outcome, and it
+independently corroborates §RUN_READY's conclusion that the islands are artifacts.
+
+**Refines what Revit "cannot do" (§WHAT_REVIT_CANNOT_DO #2):** it *does* auto-insert **fittings** along
+a run. What it lacks is auto-**routing** — deciding the path from A to B. Do not conflate the two when
+talking to the engineer; he will know the difference immediately.
+
+### 4. Could we resolve all cabling from ARCH + disciplines alone, with no cable info?
+**No — and the distinction matters commercially.**
+- **Cable LENGTH is derivable** — given endpoints and a connected tray network, it is arithmetic.
+- **Cable RUNS are NOT** — "MV-A feeds RMU-HS" is electrical *design intent*. No amount of geometry
+  yields it. It comes from the SLD, the schedule, or the engineer.
+
+**But the useful middle case is strong: ARCH + trays + SLD (no cable schedule) ⇒ we could GENERATE the
+schedule.** The SLD supplies from/to, the trays supply the route, so lengths and runs both fall out.
+That is a bigger claim than checking his numbers — *producing* the deliverable rather than auditing it —
+and it is gated on exactly the same §RUN_READY connectivity fix. Worth stating to the DC that way, but
+**only after §RUN_READY's union-rule measurement passes.**
