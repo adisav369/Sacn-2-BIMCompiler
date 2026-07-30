@@ -360,3 +360,27 @@ level-code checker must survive this. It is the single best compliance test asse
 - Source IFCs available for 6 of 9 shipped buildings (Hospital, Clinic, Duplex, HHS, LTU_AHouse, Terminal
   via `~/Downloads/TerminalMerged.ifc`) + JKR now located. `Hospital_3` and `TermRooms` still unlocated.
 - `§TIER-COVERAGE` measurement was dispatched 2026-07-31 and may append below this section.
+
+---
+
+## §PIVOT 2026-07-31 — this lane is CLOSED-AS-PARKED; the forward work moved to buildingSMART
+**User directive:** *"So we leave it at that. Update the prompts to pivot to that buildingSMART viability."*
+
+**What redirected it.** We checked how Autodesk Revit satisfies local authorities. **It doesn't** — Revit
+holds no local-authority compliance certification in any jurisdiction. What Autodesk certifies is
+*data-exchange fidelity* via buildingSMART (IFC4 Architectural + Structural Reference Exchange export;
+IFC2x3 Coordination View 2.0 ARC/STR/MEP import+export). The largest BIM vendor on earth, facing every
+jurisdiction, certifies **"I don't corrupt your data"** and leaves lawfulness to the practice.
+
+So the credential worth pursuing is **buildingSMART IFC certification**, not "SKATA certified" — which
+likely does not exist as a software category. **New lane: `prompts/BUILDINGSMART_IFC_CERTIFICATION.md`.**
+Viability is good: the Global certification service is stated to be free, and the entry gate is technical
+(produce an IFC that validates clean) rather than commercial.
+
+**This lane is NOT wasted and NOT deleted.** Everything above stands as the *facilitation* layer — the
+thing that helps a client reach compliance rather than claiming it for them. It stays fully resumable
+per §RESUME the moment a real submission exercise appears. Nothing here needs redoing.
+
+**One thread carries directly across:** §THE DB IS A LOSSY PROJECTION is now the central risk of the
+certification lane, not a footnote — anything the extractor drops cannot survive a round trip, by
+construction. The first build there (`W-IFC-ROUNDTRIP`) exists precisely to measure that.
