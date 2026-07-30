@@ -763,3 +763,81 @@ User: *"decide later when put up in Find Panel as a feature or in Modeller when 
 other session."* **Do NOT decide this now and do NOT let it block the pathing work.** Pathing is
 read-only and surface-agnostic (§PATH_THEN_PLACE) — build the engine, defer the UI seam. Revisit only
 once pathing is stable, in its own session.
+
+## §CS_JOIN_MEASURED — the join works, and the ceiling is a MISSING MODEL, not a naming problem
+Measured 2026-07-30. Closes §CS-JOIN's "unverified".
+
+### The join key: the MIDDLE segment of the Revit `Family:Type:Id` name
+`EQUIPMENT.ifc` element names are `Family:Type:Id`, and **the Type segment IS the cable list's tag**:
+```
+33kV MV-A1 : MV-A : 56715819                                   -> MV-A          ✅ in the schedule
+(20260511) C18_Enclosure-6000L_GEN-HS : GEN - HS : 60412595     -> GEN-HS        ✅ (space variant)
+```
+292 elements, 292 distinct names, 274 distinct Type tags. **The vocabularies are the same one.**
+
+### Match rate, and what each normalisation step buys
+| pass | endpoints matched | runs with BOTH ends resolvable |
+|---|---|---|
+| exact + hyphen-space (`GEN - HS`→`GEN-HS`) | 81 / 300 = **27.0%** | 50 / 325 = 15.4% |
+| **+ strip `(…)` suffix, collapse hyphens (`CH-MEDS`→`CHMEDS`), map breaker positions `-BIB/-MIB/-MOB` to parent panel** | **137 / 298 = 46.0%** | **134 / 325 = 41.2%** |
+
+The `-BIB/-MIB/-MOB` suffixes are breaker positions *inside* a panel (e.g. `CHUPP-1.1MA1-MIB` →
+`CHUPP-1.1MA1`, which does exist) — resolving them to the parent panel is correct, not a fudge.
+
+### The remaining 54% is MECHANICAL PLANT THAT IS NOT MODELLED — verified, not assumed
+161 unmatched endpoints group cleanly by prefix, and they are all mechanical:
+`EF` 28 (exhaust fans) · `DAHU` 20 · `MSDB` 18 · `CRAC` 10 · `GPP` 9 · `HTP` 6 · `CH`/`CHWP`/`CT`/`CWP` 4 each.
+
+Searched **both** models for them:
+
+| prefix | in OVERALL_complete | in EQUIPMENT | needed |
+|---|---|---|---|
+| CRAC | 3 | 0 | 10 |
+| MSDB | 3 | 3 | 18 |
+| DAHU · EF- · CHWP · CH-1.1 · CT- · CWP · GPP | **0** | **0** | 71 |
+
+**So `EQUIPMENT.ifc` is the ELECTRICAL/genset plant only** (MV switchgear, RMU, GEN, UPS, distribution
+panels) — the mechanical plant the LV cables feed is in **no KUL file we hold.** No amount of string
+normalisation fixes that.
+
+**⛔ ASK THE BIM PERSON: is there a mechanical-equipment IFC (chillers, CRACs, AHUs, pumps, fans)?**
+That single file would take the join from 46% to potentially near-complete. Until it arrives, **41.2%
+of runs are pathable end-to-end and that is the honest ceiling** — enough to build and validate the
+engine (§CABLE_SCHEDULE's `W-PULL-LENGTH-VS-ENGINEER` needs only `MV-A→RMU-HS` etc., all of which
+resolve), not enough to deliver a complete cable-length report.
+
+## §CABLE_SPEC_STD — use standard cable data, per the user (2026-07-30)
+User: *"BIM person shall send cable thickness if use but do use std as in practice today as we want to
+address general needs."* **So: do NOT wait for KUL-specific diameters, and do NOT invent them.**
+
+### What the schedule already gives — 100% machine-readable
+`§CABLE_SPEC rows_with_spec=325 regex_parsed=325 (100.0%) distinct=27`. Format is consistent:
+```
+4 x 1C 300 MM.SQ CU/XLPE/LSHF + 1 x 1C 150 MM.SQ     (x86, the most common)
+1 x 4C 16  MM.SQ CU/XLPE/LSHF + 1 x 1C 16  MM.SQ     (x54)
+8 x 4 x 1C 300 MM.SQ CU/XLPE/LSHF + 4 x 1C 300       (x14 — nested sets)
+```
+Parses to `sets × [group ×] cores × area_mm² + earth`, plus conductor `CU`, insulation `XLPE`, sheath
+`LSHF`, voltage class MV/LV. **Every field needed to KEY a standard lookup is already present.**
+
+### What is MISSING and how to get it without inventing
+Fill needs **overall diameter (OD)**, which the schedule does not carry. Do it the same way this project
+does everything else — a lookup table with provenance, not magic numbers:
+
+```
+cable_std(voltage_class, cores, conductor_mm2, insulation, sheath) -> od_mm, weight_kg_per_m
+    provenance = 'std:<published source + edition>'      -- e.g. a manufacturer/standard table
+```
+**Rules, non-negotiable:** every row cites its source in `provenance`; **no row is hand-guessed**; a
+missing key returns UNKNOWN and the fill calc **refuses that segment** rather than estimating. This is
+the same contract as `rule_routing`'s `provenance=measured:…` — the difference is `std:` (published)
+vs `measured:` (mined), and both are traceable.
+
+Fill rule itself is also standard, not ours to invent: cite the tray standard (IEC 61537 / the
+manufacturer's load table) for the permitted fill basis, and record WHICH basis a given number used —
+single-layer for power vs percentage-area for control/data give different answers and must not be mixed
+silently.
+
+**Why this serves "general needs":** keying on (cores, mm², insulation, voltage) rather than on KUL part
+numbers means the table works for every project, and KUL-specific diameters — if the BIM person does
+send them — become an OVERRIDE layer on top, not a replacement.
