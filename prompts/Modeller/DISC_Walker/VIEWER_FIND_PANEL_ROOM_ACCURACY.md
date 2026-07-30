@@ -2077,3 +2077,53 @@ uses. Both are exactness changes, not new heuristics — and neither is more sub
 
 **Do not restate "no path cuts through empty space" as a property of the product until (a) the
 prototype is actually shipped and (b) this witness reads 0/0 on both buildings.**
+
+### §21.10 LOOP-CUT / "arrow ahead, trail of dots behind" (user, 2026-07-31) — the technique is right,
+### and in this formulation the redundancy it targets CANNOT OCCUR. Measured.
+User: *"if an arrow passes a stored dot, then it merely delete where it has been going to pick up that
+dot"* … *"thus it is always an arrow ahead between two dots, leaving the trail of recorded dots behind.
+As long that arrow does not cut thru space we are good."*
+
+That is **loop-cutting / path shortcutting**, and the second sentence is a verbatim statement of the
+**string-pull invariant** the prototype already runs: hold a current anchor, cast the arrow to the
+FURTHEST dot the map says is reachable in a straight run, commit that dot, repeat. The greedy maximal
+form subsumes the pairwise "passes a stored dot" version.
+
+Measured with §20.2's own R2/R3 definitions (`/tmp/loopcut.js`, 120 routes per building):
+```
+§LOOPCUT Clinic     prototype BEFORE string-pull (raw A* cells): R2=0  R3=0
+                    prototype AFTER  string-pull:                R2=0  R3=0   routesAffected=0/120
+                    SHIPPED engine drawn polyline:               R2=48 R3=136 (489.4m in reversals) 77/120
+§LOOPCUT LTU_AHouse prototype BEFORE string-pull (raw A* cells): R2=0  R3=0
+                    prototype AFTER  string-pull:                R2=0  R3=0   routesAffected=0/120
+                    SHIPPED engine drawn polyline:               R2=26 R3=192 (993.2m in reversals) 103/120
+```
+**The decisive detail: R2=R3=0 BEFORE string-pull, not just after.** A* with a closed set cannot
+re-expand a cell, so a loop or a >150° reversal is not something to clean up — it is **unconstructable**.
+So loop-cutting is a REPAIR for a router that can emit loops; this formulation never emits one. The
+string-pull is therefore doing length and turn-count reduction, not loop removal.
+Contrast with the shipped engine on the identical pairs: **77/120 and 103/120 routes carry a reversal**,
+489 m and 993 m of walk inside those reversals. That is the §20 redundancy, seen at route level.
+
+**The one caveat on "as long that arrow does not cut thru space we are good":** correct, and it is
+exactly the guard — but §21.9 measured it landing at 0.05% / 0.02% off-map rather than 0, because the
+guard tests at `RES/2` while the audit samples at 0.05 m, and the reported endpoint is the room centre
+rather than the snapped free cell. **The invariant is only as strong as the resolution you test it at.**
+Fixing that is exactness, not more dots (§21.9's two named fixes).
+
+### §21.11 WHERE THIS LANE STANDS (2026-07-31) — nothing live, three things proven, order of work
+**LIVE STATUS: nothing from §20 or §21 is deployed.** `bim-ootb` branch `review/roompath-redundancy`
+(6 witnesses) + this spec file. Viewer engine byte-unchanged. Do not describe any of this as shipped.
+**Proven, on Clinic + LTU_AHouse + Duplex, all measured:**
+1. The redundancy is real and large — 83.2%/91.3% of routes double back; drawn line +146%/+112%.
+2. Its cause is structural, not tuning — two layers with different objectives, and a geometry layer
+   with **no wall model** (`chordIllegalCount=0` across 2 real walls with no door).
+3. A one-layer wall-aware formulation, built from the walker's own compiled pockets, measures
+   **1.04×/1.22× detour** (vs 2.42×/2.04×), **0.05%/0.02% off-map** (vs 11.05%/8.22%), **R2=R3=0**
+   (vs 77/120 and 103/120 routes with reversals), map built in 54/362 ms, queries at 0.7/1.3 ms.
+**Open, in order — each spec-first, none started:**
+1. Funnel across door apertures (§21.8: door-centre hops cost 1.206×/1.114×).
+2. Endpoint/resolution exactness so §21.9 reads 0/0 (§21.9's two named fixes).
+3. Coverage: 37%/14.8% unroutable pairs, orphanDoors 16/92 — door→pocket adjacency DATA, not formula.
+   **Never by re-adding rect slack** — that is what made the shipped predicate wall-blind.
+4. Only then a shipping proposal, with §20's R1-R6 as the before/after gate.
