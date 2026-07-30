@@ -2754,6 +2754,50 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_REOPEN_PATHLEN — a saved path re-opens 61% LONGER than it was saved (OPEN, measured 2026-07-31)
+Found while answering the user's *"do u notice the fly to the front of the building before turning in,
+i dont see such a path"* — that question resolved as expected behaviour (see below), but the record
+read out of their live IndexedDB on the way did not.
+
+**Measured, from the user's own browser** (`bim_ootb_cinema_paths` / `paths`, key
+`Hospital|plan 07-30 19:41`, the record that baked the 92.4s / 1386-frame mp4):
+
+| field | at SAVE (stored in the record) | at RE-OPEN (`§CINEMA_BEATS` on load) |
+|---|---|---|
+| `_pathLen` / `pathLen` | **107.5 m** | **173.5 m** (+61%) |
+| bands | 3 — `(7.5,-11.6,12.2)`, `(-28.1,-10.3,-19.1)`, `(-25.6,14.3,22.7)`, len 4.52 each | same 3 |
+| hose ops | 7, all `s=0.10..0.27`, mags 4.0–15.4 m | same 7 |
+
+**Already ruled out, do not re-check:** §CPE_HOSE_REANCHOR. Every one of the 7 ops carries its world
+anchor `a` (`nullCount: 0`) — verified by reading the record, not by reasoning about it. So this is
+NOT ops re-projecting by arc-fraction onto a different polyline for want of an anchor.
+
+**Still open — the two candidates worth measuring first:** (a) the flown polyline the ops are applied
+to differs between save and load (`_flowRaw` → `cinemaBandFlow(bands)` → `cinemaHoseApply`), so the
+same displacement lands on a different curve; (b) `_pathLen` is captured at save from
+`_naturalDuration()`/`_flownLength()` at a moment when the deformed curve differed from the one the
+re-plan builds. Both are checkable headlessly: apply the stored override twice — once through
+`A.cinemaPathPlan(dur, ov)` and once through the editor's own `_refreshFlow()` — and compare the
+flown lengths. No live browser needed.
+
+**Why it matters:** the film's whole pacing hangs off `pathLen` (`§CINEMA_PACING walk = pathLen/2.3
+m/s`), so a path that re-opens 61% longer re-times every beat around it. The user has ALREADY accepted
+the fly-in as a quirk to live with (below); this one is not in that category — it is a saved artifact
+that does not restore to itself.
+
+## §CPE_DIVE_IS_DERIVED — "the fly to the front before turning in" is expected, and is a CAMERA-POSE effect (settled 2026-07-31)
+User: *"i dont see such a path, kinda strange"* → after the explanation: *"If it is due to the path
+just that it is an effect, then it is OK because the user can play with its quirks and enjoy living
+with it."* **Settled as expected behaviour — do not file it as a bug, do not "fix" it.**
+The saved record contains ONLY the walk (bands + hose ops) plus four beat DURATIONS. There is no
+fly-in geometry in it and there cannot be: the dive is Beat 1, computed at bake time from
+(a) `§CPE_CAM_BASIS` — the camera pose at the moment Alt+C was pressed, on that bake
+`cam=(135.8,181.0,135.8)`, 264 m out and 181 m up — to (b) the settle point §CINEMA_SPACE chose,
+`(-7.3,-14.4,18.0)`. That is `diveDist=269.3 m` in `diveSec=6.1 s` ≈ 44 m/s, arriving pointed inward.
+**The only lever today is where the camera is when Alt+C is pressed** — §CPE_STICK's "dive and orbit
+remain underivable" is what makes it so. Making the arrival face authorable was OFFERED and NOT taken
+up; treat it as an idea, not a queued item.
+
 ## §CPE_PREVIEW_BUTTON — a Preview button, NOT auto-preview (settled 2026-07-28)
 User, in sequence: *"and the preview must always repeat each time an edit is done"* → *"Or a preview
 button"* → **"thus no auto preview needed"**. Settled: **an explicit Preview button on the editor
