@@ -165,3 +165,55 @@ feature opt-in — no scheme configured for a locale ⇒ no compliance UI, zero 
 
 **The split that matters:** binding (layer 2, per-model) must stay separate from scheme (layer 3, per
 jurisdiction). Fuse them and a standards revision forces re-patching every building.
+
+---
+
+## §PRIMARY SPEC OBTAINED — 2026-07-31. The ⛔ BLOCKER ABOVE IS LIFTED.
+**SKATA Versi 2.0** (Dec 2011), *Kerajaan Malaysia — Sistem Kod Aset Tak Alih Kerajaan*, issued by
+**Urusetia JPAK, Pejabat Ketua Pengarah Kerja Raya Malaysia**. 97 pages, real text layer (not scanned).
+Source: `https://jpak.jkr.gov.my/jpak/documents/dasar/SISTEM%20KOD%20ASET%20TAK%20ALIH%20(SKATA).pdf`
+Text extracted to `reference/SKATA_v2.0_extracted_text.txt`. Public document on JKR's own portal.
+
+### The structure — TWO code families, not one (this changes our schema)
+- **DPA — Kod Daftar Premis Aset** (§3.3): level-1 code, identifies **location + ownership** of a premise.
+  **4 to 9 segments.** One code per PREMISE (building), *not* per element.
+- **DAK — Kod Daftar Aset Khusus** (§3.4): level-2 code, identifies **construction and components**.
+  **9 to 11 segments.** Explicitly "digunakan sebagai panduan pelabelan pada aset atau komponen" —
+  the labelling guide for assets/components. **This is the per-element code.**
+
+**DPA format for a Building (§5.1.1.1), verbatim:**
+```
+9 999 999 AAA 99 99 99 AA 9999
+ 1. Kod Kumpulan Agensi        1 digit
+ 2. Kod Kementerian            3 digits
+ 3. Kod Jabatan                3 digits
+ 4. Kod Negara                 3 alpha   (MYS)
+ 5. Kod Negeri                 2 digits
+ 6. Kod Daerah                 2 digits
+ 7. Kod Mukim                  2 digits
+ 8. Kod Kategori Premis Aset   2 alpha   (BA)
+ 9. Nombor ID                  4 digits
+```
+Notation, stated in the doc: **`9` = integer position, `A` = alphabetic position.** That is itself a
+pattern language and maps 1:1 onto our `segments[]` design — the Phase C shape was right.
+
+Worked examples carried in the doc: `1 101 113 MYS 01 02 02 BA 0003` · `1 105 101 00001` ·
+`1 105 101 00001 01 02` · `1 141 108 MYS 10 07 04 HJ 0001` · `1 147 103 MYS 08 02 UF LPG015`
+
+### ⚠ SCHEMA GAP THIS EXPOSES
+Our new `elements_meta.classification_code` covers only the **DAK** half. **DPA is a per-BUILDING code**
+(agency/ministry/department/country/state/district/mukim/category/ID) and belongs in `project_metadata`,
+not on every element row. Adding it per-element would repeat the same value 63,415 times. **Fix before
+the patch ships.**
+
+### ⚠ SKATA IS NOT SELF-CONTAINED (§PENAFIAN, p.i)
+It defers to two upstream standards that version independently: **DDSA** (Data Dictionary Sektor Awam)
+and **MS 1759** (Malaysia Standard Feature and Attribute Codes). The doc states these "akan berlaku
+perubahan dan pengemaskian dari semasa ke semasa" — they change over time, reviewed by the Jawatankuasa
+Kerja SKATA. **So the scheme file MUST carry a version + upstream-dependency block.** This vindicates
+keeping schemes as versioned data rather than compiled-in rules.
+
+### Coverage limit of THIS reading — be honest in pass 2
+Read and transcribed: §3.3, §3.4, §5.1.1.1 (DPA for Bangunan). **The DAK structure (the per-element one
+we most need) and the remaining ~90 pages of category tables are NOT yet transcribed.** Do not write the
+real `skata.json` from this section alone — it defines the premise code, not the component code.
