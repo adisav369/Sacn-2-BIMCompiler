@@ -637,3 +637,64 @@ do NOT build #3 now, but do NOT design it out either — the persisted port grap
 place to hang a cable→segment assignment. **When it arrives, first question: does it name tray
 segments/routes, or only from-panel/to-load?** If the latter, #3 still needs #1's pathfinding to infer
 which segments a cable traverses — which is why T1 serves all three.
+
+## §PATH_THEN_PLACE — the decomposition (user, 2026-07-30). **This is the architecture. Follow it.**
+User: *"yes it belongs to the modeller.. but pathing is, so what if we just calculate pathing first,
+then placement later?"*
+
+**Adopt this.** It splits #2 at exactly the right seam and resolves the PRIME RULE tension that
+§PRIORITY flagged — because the two halves have genuinely different natures:
+
+| | PATHING | PLACEMENT |
+|---|---|---|
+| output | a polyline + cost, in metres | tray segments + fittings, real geometry |
+| writes anything? | **NO — pure computation** | yes, authored objects |
+| PRIME RULE | not generative at all; a derived measurement | generative — needs mined rules + `provenance='compiled:…'` |
+| lives in | read-only analysis (Viewer / CLI) | **Modeller / `kernel_ops`** |
+| verifiable by | numbers: length, clearance, bend count — asserted programmatically | needs the full authoring + undo + op-log path |
+| blocked on | nothing beyond T1 | mined containment rules that DO NOT EXIST yet (§PRIORITY) |
+
+**The payoff: pathing is deliverable NOW and placement is not.** Placement needs cable-tray
+`rule_routing`/`rule_joint_piece` rows that no rules DB currently holds. Pathing needs none of them.
+
+### Why pathing is the right shared primitive — it serves ALL THREE confirmed issues
+- **#1 pull lengths** = path length over the tray graph that **already exists**
+- **#2 auto-routing** = path over **free space** → hand that polyline to placement later
+- **#3 fill/segregation** = *which segments a cable traverses* — that is a path, and it is how a
+  from/to-only cable schedule gets turned into per-segment occupancy
+
+**One engine, two graph sources, three consumers.** Build the engine once.
+
+### ⚠ The two graphs are DIFFERENT — same A*, do not conflate them
+| | #1 / #3 | #2 |
+|---|---|---|
+| nodes | existing tray segments/fittings | free-space cells / waypoints |
+| edges | authored `IFCRELCONNECTSPORTS` (19,142) | clear moves between voids |
+| cost | real centreline length | length + bend penalty + clearance violation |
+| may it bridge a gap? | **NO** — return UNREACHABLE (1,486 components are real, §GRAPH_MEASURED) | yes, that is its job — free space is meant to be traversed |
+
+Getting this backwards is the failure mode: a #1 query that bridges gaps invents cable that cannot be
+pulled; a #2 route that refuses gaps can never route anything.
+
+### Shared with the fly-tour lane — do not build the free-space graph twice
+#2's free-space graph is **the same problem** as `FLY_TOUR_CORRIDOR_GRAPH.md` §MEP_ONLY_FREE_FLY /
+§MOF-2 ("regard spaces as arbitrary corridors"), and it hits the same measured wall recorded there:
+`common/storey_raster.js` + `scripts/build_storey_walkable_raster.js` exist, but the builder takes its
+extent from `ifc_class LIKE 'IfcSlab%'` and **KUL070 has 1 slab**; and AABB-as-obstacle over-blocks
+badly because a tray's AABB dwarfs the tray. **Measure walkable fraction per storey BEFORE committing
+to AABB occupancy — one measurement decides both lanes.** If it comes out near zero, both need real
+mesh occupancy, not boxes.
+
+### Order of work, revised
+1. **T1 persist ports** — unblocks everything, still the one prerequisite.
+2. **Pathing engine over the AUTHORED graph** (#1) — deliverable, numerically witnessable
+   (`§TRAY_PATH` already proves the maths: 324.71 m / 249 hops / tortuosity 7.91), refuses across
+   components. **Ship this.**
+3. **T5 dead-end / island report** — 3,891 dead ends, 1,486 components; needs no engine, and it is
+   what makes the graph trustworthy enough to route on.
+4. **Walkable-fraction measurement** — one number, serves both this lane and §MOF-2.
+5. **Free-space pathing** (#2 half one) — still read-only, still just a polyline.
+6. **Placement** (#2 half two) — Modeller, after containment rules are mined. **Not before.**
+
+Cable schedule: not yet on this machine (checked `~/Downloads` 2026-07-30 — no `*cable*`/`*master*`
+match). When it lands, see §PRIORITY's question: does it name tray segments, or only from/to?
