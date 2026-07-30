@@ -60,6 +60,20 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 - ✅ **R5-A SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` frozen; `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
 
+- ▶ **KUL070 datacentre — 2GB IFC lane CLOSED, cabling lane OPEN. `prompts/datacentre_cabling.md` owns
+  cabling; `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md` owns ingestion (§KUL009-§KUL013).** Ingestion done:
+  the 62,500 "missing" elements were the **wasm32 4GB ceiling** (not the call stack) — 8-way split →
+  **87,333-element DB, 0 orphans**, and `extractIFCtoDB.py` now writes `elements_meta.building` +
+  `project_metadata` at source (§KUL001 retired). ⚠ §KUL013: `center_*` is the placement ORIGIN, median
+  11.31 m off the AABB centre — **`disc_walker.routeChains` misuses it, 0.00% vs 90.07% precision; needs
+  its own session.** Cabling: engineer confirmed all 3 pain points, wants **auto-routing first**.
+  **⛔ NEXT SESSION PRECONDITION (user): review ROOMS pathing first** — cable pathing inherits the same
+  A*/polyline/highlight engine and its unmeasured redundant-path defects. Then the gate: rebuild as
+  authored-ports ∪ corrected-geometric and re-run §RUN_READY (**today only 8 of 119 runs traversable =
+  6.7%**, NOT the 41% name-resolution figure). Ship F1/F2/F6 first — none need a pathing engine.
+  (⚠ this file is 100+ lines, over its 80 budget — compaction left to the owners of the 07-2x entries
+  below rather than risk clobbering concurrent edits.)
+
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ §LODHELL + Modeller guide + stranded-branch sweep ALL CLOSED (07-27/28), #1051/#1062/#1065, guide LIVE
   — **`RESUME_MODELLER_LOD400_REAL_GEOMETRY.md` §START HERE has closed/open/landmines, nothing to re-derive**
