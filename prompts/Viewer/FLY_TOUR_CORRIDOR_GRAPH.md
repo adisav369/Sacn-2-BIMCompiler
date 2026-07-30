@@ -2625,3 +2625,80 @@ bottom line go for the highlight").** `§HL-ORIGIN` already starts the walk corr
 no entrance node — every building in the fleet is one today — so the stroll ships end to end without
 exits. `§G1-EXTERIOR-DOOR-LANE` runs on its OWN track and improves the arrival/finale beats WHEN it
 lands; it is not a precondition for S1-S5 and must not be cited as one.
+
+## ▶ §MEP_ONLY_FREE_FLY — L on a model with NO architecture (SPEC, 2026-07-30)
+**User directive, verbatim across three messages:** *"the DC arch was not give yet as not the issue,
+thus L should extend to cover scene"* … *"Thus such without room info it can just free fly"* …
+*"unless it regard spaces as arbitrary 'corridors'"*.
+
+**Read this as a decision, not a question: the ARCH package is NOT coming and is NOT the blocker.
+Stop gating anything on it.** L must do something useful on a pure-MEP model.
+
+### The model, measured (KUL070-…-OVERALL_complete.db, 87,333 elements, 311 MB)
+`doors=0` · `stairs=0` · `IfcSpace=0` · `rel_contained_in_space=0` · `walls=8` · `slabs=1` ·
+`storeys=25` · `buildingCentres=1` · renders fine: **85,947 elements, 2,464 instanced groups**.
+
+### ⚠ FINDING THAT CHANGES THE DIAGNOSIS — do NOT start by "fixing buildTour returns null"
+`_buildTourInner` pushes **PART 1 orbit and PART 2 approach UNCONDITIONALLY** (`actions.push({type:
+'orbit'…})` then `({type:'moveTo'…,name:'Entrance'})`), and the only early `return null`s are
+`if (!firstDoor && !bldgCtr)` and the empty-`storeys` guard. **KUL070 has `bldgCtr` and 25 storeys, so
+`buildTour()` should already return ≥2 actions and `_startFlyTour` should already call `A._scrubShow()`.**
+Waypoint collection (PART 3) is what yields nothing — rooms-or-doors only, both zero — so `pathLen=0`
+and no interior flyPath. That degrades the tour; it should NOT suppress it.
+
+**So the reported "L opens no scrubber" is most likely NOT a null tour.** Two live suspects, both
+upstream of `buildTour`:
+1. **`§FLY_STREAM_WAIT`** — `while (A.streaming && A.flyActive) { await 500ms }` before the tour is
+   built. On 85,947 streaming elements this can park at *"Preparing tour…"* for a very long time.
+2. **`ensureRooms()`** — `_prepareGraphTour` awaits it; it lazy-loads `room_walker.js` and runs
+   `RoomWalker.walk()` over 87,333 elements to conclude, correctly, that 8 walls yield 0 rooms.
+   Expensive, and pointless on this model.
+
+**⛔ ONE LOG LINE SETTLES IT — get it before writing code.** Press L and capture the console. Which
+appears: `§FLY_STREAM_WAIT ms=…`, `§NEEDLE_INJECT … rooms=0`, `§TOUR_CACHE`, `[TOUR] §SCRUB_PREPARE`,
+or `buildTour crashed`? If `§SCRUB_PREPARE` *is* present, the bar renders and the real complaint is a
+tour with nothing in it — a different fix from a tour that never starts. **Do not guess between these.**
+
+### §MOF-1 The cheap, certain path — FREE FLY (do this first)
+When the DB has no rooms AND no doors, **short-circuit the whole room pipeline**: skip `ensureRooms`,
+skip `_buildGraphRoute`, skip the stream wait, and build a free-fly tour directly from geometry we
+already have — `buildingCentres` centre + envelope, plus per-storey element-cluster centroids from
+`element_transforms` (real positions, nothing invented). Orbit → descend → traverse the volume along
+storey centroids → rise out.
+
+Detect it in ONE cheap query, not by catching a failure:
+```sql
+SELECT (SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcDoor','IfcDoorStandardCase')),
+       (SELECT COUNT(*) FROM spatial_structure WHERE type='IfcSpace');
+```
+Log `§FREE_FLY_MODE reason=no-rooms-no-doors doors=0 spaces=0 storeys=25` so it is never mistaken for
+a failure. **This is not "inventing rooms"** — it claims no rooms, it claims a camera path. Say so in
+the log line; the `roomsWritten=0` refuse-honestly doctrine (`navigate_find.js`) stays intact.
+
+### §MOF-2 The user's richer idea — SPACES AS ARBITRARY CORRIDORS (design, then decide)
+Rasterise each storey and treat cells **not occupied by any element bbox** as walkable — corridors
+emerge from the voids between trays/ducts/racks instead of from walls. The machinery already exists:
+`common/storey_raster.js` (pack/unpack + O(1) point lookup) and
+`scripts/build_storey_walkable_raster.js`.
+
+⚠ **But it is starved on this model too, for a reason nobody has hit before:**
+`build_storey_walkable_raster.js` derives its extent from `WHERE m.ifc_class LIKE 'IfcSlab%'` — and
+**KUL070 has 1 slab.** So MOF-2 needs a second extent source (overall element bbox per storey) and an
+occupancy source (element bboxes as obstacles) before the existing raster is usable here. That is a
+real change to a shipped script — **spec it, measure it, do NOT bolt it on inside the tour.**
+
+Open question for MOF-2, worth answering before building: in a datacentre the walkable void is mostly
+*aisles between racks*, which is genuinely useful — but `bbox`-as-obstacle will over-block, because a
+tray's AABB is far larger than the tray. Measure the walkable fraction per storey first; if it comes
+out near zero, MOF-2 is dead on AABBs and would need real mesh occupancy.
+
+### §MOF-3 Witness — W-FREE-FLY
+- On KUL070: `§FREE_FLY_MODE` fires, `buildTour()` returns ≥1 action, `§SCRUB_PREPARE` appears, and
+  the camera position **actually changes over time** — assert a numeric position/tilt time series
+  against the intended path, per the project's FUNDAMENTAL LAW. **No screenshots, not even as a
+  supplement.**
+- **Regression, non-negotiable:** Clinic (118 spaces, 254 doors) and Duplex (5 spaces, 14 doors) must
+  take the UNCHANGED room-graph path — `§FREE_FLY_MODE` must NOT fire, and their action counts and
+  route must be byte-identical to `origin/main`. Free fly is a fallback, never a replacement.
+- Time-to-first-motion on KUL070 before vs after, in ms. If suspect 1 or 2 above is the real cause,
+  this is the number that proves it fixed.
