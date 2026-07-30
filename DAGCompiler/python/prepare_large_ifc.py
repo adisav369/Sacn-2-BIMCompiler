@@ -61,8 +61,109 @@ WASM_CEILING_B = 4294901760          # 2**32 - 65536, measured verbatim from the
 BYTES_PER_ENTITY = 520               # fleet-measured ifcopenshell residency
 
 
+EXTRACT = os.path.join(HERE, 'extractIFCtoDB.py')
+
+
 def _log(m):
     print(m, flush=True)
+
+
+def merge_part_dbs(dbs, out, scope=None):
+    """Merge extracted part DBs into one. Witness W-KUL-DB-MERGE.
+
+    A plain `INSERT OR IGNORE` across parts is WRONG TWICE and both modes were hit for real:
+      1. elements_meta.id is INTEGER PRIMARY KEY and per-part sequential -> ids collide and rows are
+         silently DROPPED (observed: element_transforms=87,333 beside elements_meta=14,191 — a DB
+         that looks fine until you join it). Fix: omit `id`, dedup on `guid UNIQUE`.
+      2. datum_plane.datum_id is per-part sequential and means a DIFFERENT coord in each part, while
+         rel_anchored/rel_spans reference it — a naive merge re-points ~500k relations at the wrong
+         planes. Fix: offset datum_id per part so each part's relations keep their own datums.
+      3. elements_rtree is a VIRTUAL table keyed on elements_meta.id — REBUILD it, never copy it,
+         and never touch its _node/_parent/_rowid shadows.
+    """
+    import sqlite3
+    import shutil
+    if os.path.exists(out):
+        os.remove(out)
+    shutil.copy(dbs[0], out)
+    c = sqlite3.connect(out)
+    c.execute("PRAGMA foreign_keys=OFF")
+    SHADOW = {'elements_rtree', 'elements_rtree_node', 'elements_rtree_parent', 'elements_rtree_rowid'}
+    tables = [r[0] for r in c.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        if r[0] not in SHADOW]
+    DATUM_DEP = {'datum_plane': ['datum_id'], 'rel_anchored': ['datum_id'],
+                 'rel_spans': ['datum_lo_id', 'datum_hi_id']}
+
+    def cols(t, schema='main'):
+        return [r[1] for r in c.execute('PRAGMA %s.table_info("%s")' % (schema, t))]
+
+    for p in dbs[1:]:
+        c.execute("ATTACH ? AS src", (p,))
+        off = c.execute("SELECT COALESCE(MAX(datum_id),0) FROM datum_plane").fetchone()[0]
+        for t in tables:
+            mc, sc = cols(t), cols(t, 'src')
+            if not sc:
+                continue
+            use = [x for x in mc if x in sc]
+            if t == 'elements_meta':
+                use = [x for x in use if x != 'id']
+            sel = ['"%s" + %d' % (x, off) if x in DATUM_DEP.get(t, []) else '"%s"' % x for x in use]
+            c.execute('INSERT OR IGNORE INTO "%s" (%s) SELECT %s FROM src."%s"'
+                      % (t, ','.join('"%s"' % x for x in use), ','.join(sel), t))
+        c.commit()
+        c.execute("DETACH src")
+
+    warn = []
+    if scope:
+        keep = [s.strip().upper() for s in scope.split(',')]
+        q = ','.join('?' * len(keep))
+        before = c.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+        gone = [r[0] for r in c.execute(
+            "SELECT guid FROM elements_meta WHERE UPPER(discipline) NOT IN (%s)" % q, keep)]
+        c.execute("DELETE FROM elements_meta WHERE UPPER(discipline) NOT IN (%s)" % q, keep)
+        for t, col in (('element_instances', 'guid'), ('element_transforms', 'guid'),
+                       ('rel_anchored', 'element_guid'), ('rel_spans', 'element_guid'),
+                       ('rel_contained_in_space', 'element_guid')):
+            if cols(t):
+                c.execute('DELETE FROM "%s" WHERE "%s" NOT IN (SELECT guid FROM elements_meta)' % (t, col))
+        c.execute("DELETE FROM rel_adjacency WHERE a_guid NOT IN (SELECT guid FROM elements_meta)"
+                  " OR b_guid NOT IN (SELECT guid FROM elements_meta)")
+        c.execute("DELETE FROM base_geometries WHERE geometry_hash NOT IN"
+                  " (SELECT geometry_hash FROM element_instances)")
+        c.commit()
+        warn.append('--scope %s kept %d of %d elements' % (scope, before - len(gone), before))
+
+    # rtree keyed on elements_meta.id — verified in the source DBs (rtree.id == elements_meta.id)
+    c.execute("DELETE FROM elements_rtree")
+    c.execute("""INSERT INTO elements_rtree
+      SELECT m.id, t.center_x-t.bbox_x/2, t.center_x+t.bbox_x/2,
+                    t.center_y-t.bbox_y/2, t.center_y+t.bbox_y/2,
+                    t.center_z-t.bbox_z/2, t.center_z+t.bbox_z/2
+      FROM elements_meta m JOIN element_transforms t ON t.guid = m.guid
+      WHERE t.bbox_x IS NOT NULL""")
+    c.commit()
+    ok = c.execute("PRAGMA integrity_check").fetchone()[0]
+    if ok != 'ok':
+        warn.append('INTEGRITY=' + ok)
+    for label, q2 in (
+        ('rel_anchored->datum_plane', "SELECT COUNT(*) FROM rel_anchored r LEFT JOIN datum_plane d ON d.datum_id=r.datum_id WHERE d.datum_id IS NULL"),
+        ('rel_spans->datum_plane', "SELECT COUNT(*) FROM rel_spans r LEFT JOIN datum_plane d ON d.datum_id=r.datum_lo_id WHERE d.datum_id IS NULL"),
+        ('element_instances->base_geometries', "SELECT COUNT(*) FROM element_instances i LEFT JOIN base_geometries g ON g.geometry_hash=i.geometry_hash WHERE g.geometry_hash IS NULL"),
+        ('element_transforms<->elements_meta', "SELECT (SELECT COUNT(*) FROM element_transforms t LEFT JOIN elements_meta m ON m.guid=t.guid WHERE m.guid IS NULL) + (SELECT COUNT(*) FROM elements_meta m LEFT JOIN element_transforms t ON t.guid=m.guid WHERE t.guid IS NULL)"),
+    ):
+        n = c.execute(q2).fetchone()[0]
+        if n:
+            warn.append('ORPHAN %s = %d' % (label, n))
+    # datum_plane is N partial cadence derivations, not one whole-model one — say so, don't bury it.
+    dn = c.execute("SELECT COUNT(*) FROM datum_plane").fetchone()[0]
+    if len(dbs) > 1:
+        warn.append('datum_plane=%d is %d PARTIAL cadence derivations, not one whole-model one — '
+                    're-derive if a walker needs true datums (§KUL012)' % (dn, len(dbs)))
+    n = c.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+    c.execute("VACUUM")
+    c.close()
+    return n, warn
 
 
 def _run(cmd, log_path=None):
@@ -216,7 +317,38 @@ def main():
         ok = 'OK' if mb <= target_mb * 1.1 else 'OVER'
         _log('    %-44s %8.1f MB   %s' % (f, mb, ok))
     _log('  §MANIFEST total %.1f MB across %d parts (largest decides RAM)' % (total, len(parts)))
-    _log('§PREPARE DONE — next: extractIFCtoDB.py per part (no --library), then merge.')
+
+    if '--no-extract' in args:
+        _log('§PREPARE DONE (--no-extract) — next: extractIFCtoDB.py per part (no --library), then merge.')
+        return
+
+    # ── 6. EXTRACT every part ────────────────────────────────────────────────
+    dbs = []
+    for i, f in enumerate(parts, 1):
+        p = os.path.join(outdir, f)
+        db = os.path.splitext(p)[0] + '.db'
+        _log('  §EXTRACT %d/%d %s' % (i, len(parts), f))
+        rc, out = _run([sys.executable, EXTRACT, '--ifc', p, '-o', db,
+                        '--building-type', prefix], os.path.splitext(p)[0] + '.extract.log')
+        # Log Mandate: the exit code is not the evidence — read the proof lines.
+        proof = re.search(r'§PROOF RESULT: (\d+) PASS, (\d+) FAIL', out)
+        fails = re.search(r'§PROOF \S+\s+elements=(\d+)\s+failed=(\d+)', out)
+        if rc != 0 or not proof or int(proof.group(2)) != 0:
+            _log('    §EXTRACT_FAIL rc=%d proof=%s — see the .extract.log' % (rc, proof.group(0) if proof else 'absent'))
+            sys.exit(6)
+        _log('    §PROOF %s PASS, %s FAIL   elements=%s failed=%s   %.1f MB'
+             % (proof.group(1), proof.group(2), fails.group(1) if fails else '?',
+                fails.group(2) if fails else '?', _mb(db)))
+        dbs.append(db)
+
+    # ── 7. MERGE into one DB ─────────────────────────────────────────────────
+    merged = os.path.join(outdir, prefix + '_complete.db')
+    _log('  §MERGE %d part DBs -> %s' % (len(dbs), os.path.basename(merged)))
+    n, warn = merge_part_dbs(dbs, merged, scope=opt('--scope', None))
+    _log('  §MERGE DONE elements=%s  %.0f MB' % (format(n, ','), _mb(merged)))
+    for w in warn:
+        _log('  §MERGE_NOTE ' + w)
+    _log('§PREPARE DONE -> %s' % merged)
 
 
 if __name__ == '__main__':
