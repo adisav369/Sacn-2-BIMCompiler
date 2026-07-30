@@ -228,6 +228,56 @@ an existing DB (the falsification surface + the future resident-patch generator)
 
 ---
 
+## ✅ 2026-07-30 — §ANCHOR-EXTRACT-SHIPPED: extractor half of the void-consumed anchor (OPEN item 1,
+## USER-APPROVED same day) — built, witnessed 7/7 incl. RED falsification. bim-ootb half still open.
+
+**What shipped (branch `feat/void-anchor-extract`, extractor half ONLY — no Modeller JS touched):**
+- `extractIFCtoDB.py`: when an element classifies VOID-CONSUMED, the extractor now KEEPS what it had
+  already computed instead of discarding it — `is_void_consumed()` returns the pre-boolean Body ITEM's
+  LOCAL bbox extent (captured from the SAME classification tessellation, never a second one), and the
+  world placement comes from `shape.transformation.matrix` via `decompose_iterator_matrix()`, the S173
+  decomposition factored out VERBATIM (one implementation, shared with the normal path; P4 ROT_TRUTH
+  still checks it at the event). Persisted as ONE `elements_meta` row + ONE `element_transforms` row
+  per host, flushed AFTER the iterator loop so normal elements keep bit-identical ids.
+- **Anchor marking (the user's binding condition, built in, not a follow-up):** `elements_meta.is_anchor
+  INTEGER DEFAULT 0` (=1 on anchors) AND `element_transforms.transform_source='void_anchor'` — doubly
+  unmistakable. One `§ANCHOR` log line per persisted host + an `anchors=N` count of their OWN on the
+  §PROOF header (never folded into `elements=`). NO `element_instances` row (no geometry hash — nothing
+  to render), NO `elements_rtree` row (never pickable). Excluded from: §NORMALIZE centroid (offset stays
+  bit-identical; the offset still APPLIES to anchors so they share the frame), P1 SCALE, the by-class /
+  by-discipline / materials summaries. `bbox_x/y/z` on a `void_anchor` row = the ITEM's LOCAL extent
+  (NOT the world AABB the normal path stores) — the marker names the convention. Placement/tessellation
+  unavailable ⇒ loud `§ANCHOR-SKIP` line, that host persists nothing (pre-anchor behaviour).
+- `scripts/gen_void_anchor_patch.py` (mirrors `gen_rel_fills_host_patch.py`): reads a fresh extraction,
+  emits the self-heal patch section for a shipped `modeller/<X>_ARC.db` (ALTER + `INSERT OR IGNORE` +
+  flag UPDATEs; `--append` for merging into an existing patch file). **Measured finding baked into its
+  frame guard:** shipped ARC `element_transforms.center_*` are world-AABB MIDPOINTS, not placement
+  origins — the guard compares fresh rtree midpoints vs target centers and REFUSES on a systematic
+  per-axis |meanΔ| > 0.05 m (SC measured: (0.0072, −0.0104, −0.0232) m, per-element scatter ≤ 2.6 m from
+  tessellator-version AABB drift, not a frame error).
+- **SC patch artifact (committed): `migration/modeller_patches/SampleCastle_ARC.db.sql`** — 65 anchors;
+  the target already carried all 65 as meta-only rows (the FINDING 2 population), 0/65 transforms.
+  Verified applied against a COPY of the real shipped `SampleCastle_ARC.db`: 65 flagged, transforms
+  3225→3290, `element_instances` 3225 unchanged, meta count 3342 unchanged.
+- Witness `scripts/witness_void_anchor_extract.py` — **7/7 PASS** (log: `logs/witness_void_anchor/`):
+  A1 65 anchor rows doubly-marked · A2 real data (0 null/degenerate; 65/65 in the `rel_fills_host` host
+  set; probe `1A9aTEU4z9SwaqEUwI8Lx4` extent = (1.210, 0.114, 1.850) m — the documented hand-probe) ·
+  A3 `element_instances` 3583→3583, 0 anchor instances/rtree rows · A4 `elements=3583 failed=0
+  void_consumed=65` identical pre↔post, `anchors=65` separate · A5 65 distinct `§ANCHOR` lines +
+  summary · A6 gate set identical pre↔post (7 PASS + P10 FAIL), both exits 1 attributable to the ONE
+  known honest `sporenkap` `2vGfAAaCDC$u2rePIbFqLy` §LAYER-REFUSE alone — unchanged by design, do not
+  chase · A7 FALSIFICATION RED on pre-change code (`4e1c5756d`): no `is_anchor` column, 0 anchor rows,
+  no `§ANCHOR` log. Regression: `witness_lod400_envelope.py` Duplex **12/12 exit 0**, `anchors=0`
+  (no-op where nothing is void-consumed).
+- ⚠ `§ANCHORED` (datum-plane cadence) is a DIFFERENT, pre-existing tag — grep `§ANCHOR ` with the
+  trailing space/boundary, or you will count 1426 datum edges as anchors.
+
+**Still open (the coordinated bim-ootb half, separate slice):** `buildSeedOps` `params.anchorOnly`
+branch → `foldInsert` invisible mesh (`visible=false`), anchors excluded from every count/pick/audit
+in the Modeller per the binding condition; ship the 65 SC rows by appending the generated section to
+bim-ootb `modeller/patches/SampleCastle_ARC.db.sql` (loader `_applyPendingPatch` already exists);
+witness = SC `stretchRide` reach 9/74 → ≥70/74, counts identical before/after anchors load.
+
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
 **Everything below §LODHELL-ROOTCAUSE is closed unless it is listed as OPEN here.** Do not re-walk the
@@ -284,6 +334,9 @@ an existing DB (the falsification surface + the future resident-patch generator)
    binary). Witness: SC `stretchRide` reach 9/74 → ≥70/74; anchors contribute 0 to every count/pick/audit
    (falsify by asserting counts identical before/after anchors load); a stretched kozijn host's window
    rides instead of warping.
+   **▶ EXTRACTOR HALF SHIPPED 2026-07-30 — see §ANCHOR-EXTRACT-SHIPPED at the top of this file
+   (witness 7/7 incl. RED falsification; SC patch SQL committed). Remaining: the bim-ootb
+   seeding/invisible-mesh half.**
 2. **Clinic / Hospital / Terminal have no `rel_fills_host`** — their source IFCs are not in this checkout,
    so there is nothing to recover from. Not an oversight. When a source lands, one command finishes it:
    `python3 scripts/gen_rel_fills_host_patch.py --ifc <src> --target ~/bim-ootb/modeller/<X>_ARC.db --out <wt>/modeller/patches/<X>_ARC.db.sql`
