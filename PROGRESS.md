@@ -24,6 +24,18 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 `lane/hr-overlay`, `lane/teams-overlay`.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
+- ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §20–§21.14; start
+  at §21.14 START HERE.** Redundancy MEASURED (2026-07-30/31): 83.2% (Clinic) / 91.3% (LTU_AHouse) of
+  routes double back, drawn line +146%/+112% over straight, and 11.05%/8.22% of the SHIPPED drawn line
+  is off walkable space. Root cause is structural, not tuning — two layers with different objectives,
+  and a geometry layer with **no wall model** (`chordIllegalCount=0` across 2 real walls, no door).
+  One-layer prototype (walker's own pockets + doors as portals) measures 1.04×/1.22× detour, 0.05%/0.02%
+  off-map, R2=R3=0 by construction, map built 54/362ms, queries 0.7/1.3ms. NEXT = funnel across door
+  apertures (Lee–Preparata; §21.12 cites it, §21.13 maps it to the user's own "arrow" framing).
+  7 witnesses on bim-ootb `review/roompath-redundancy`. **Nothing deployed; engine byte-unchanged.**
+  ⛔ This keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP — the
+  Find panel prints Dijkstra's penalty-weighted cost as metres (3.20× over on Clinic, 0.71× under on
+  LTU), and a cable schedule inheriting that is exactly what §SLACK exists to prevent.
 - ▶ **MODELLER — dispatch from `prompts/MODELLER_MASTER.md` (new 2026-07-30), NOT from the 15 scattered
   files.** It triages all of them (3,742 lines), maps 14 objectives (O1–O14) to their owning file, and
   carries an empty §OPEN LIST for a Fable5 harvest pass to fill; the 3 architecture calls it names need
