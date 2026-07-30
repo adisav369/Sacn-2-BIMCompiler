@@ -235,3 +235,167 @@ Open A, then Open→Merge B:
 - **Envelope-dependent UI will change behaviour once ARCH merges in.** KUL070's envelope is 9 of
   87,333 (0.01%), so `§BBOX_GHOST_ALL` currently fires for Alt+Z. After an ARCH merge it won't — that
   is correct, not a regression. Don't "fix" it.
+
+---
+
+## §SM-7 IMPLEMENTATION SPEC — §SCENE_MERGE (written 2026-07-30, BEFORE any code; Spec-First)
+
+Branch `lane/scene-merge` off `origin/main@41510da`, worktree `/tmp/wt-scene-merge`.
+
+### §SM-7.0 Recon corrections found while implementing (spec was slightly wrong)
+1. **`scene.js:770` is NOT drag-drop.** Both call sites of `A._openDbBytes` live inside
+   `A.openModelDb` — `:770` is the Chromium **FSA** `showOpenFilePicker` branch and `:779` is the
+   `<input type=file>` **fallback** branch. There is no third caller (`grep -n '_openDbBytes'
+   viewer/*.js` → 3 hits total, all in `scene.js`). Covering `_openDbBytes` itself covers both, so
+   the prompt/modal goes **inside `_openDbBytes`**, not at the two call sites.
+2. **`Clinic_extracted.db` is not one building — it is FIVE.** `elements_meta.building` holds
+   `Clinic_Architectural_IFC2x3 / _Electrical_ / _HVAC_ / _Plumbing_ / _Structural_` (2586 / 2118 /
+   3704 / 6585 / 1078 = 16,114 elements). So the witness's literal "`buildingCentres` has 2 keys"
+   cannot hold for Clinic: merging Clinic into Duplex gives **1 → 6**. Same proof, different number.
+   It is also the *exact* KUL070 shape (per-discipline packages arriving as separate names).
+3. **Column sets differ between real DBs.** `Duplex.component_geometries` has a `normals` column;
+   `Clinic.component_geometries` does **not**. A naive `INSERT INTO … SELECT *` therefore throws.
+   The merge must intersect the destination's column list with the source's.
+   Related: `A._libHasNormals` is probed **once** and cached (`streaming.js:868`) — the merge must
+   never invalidate it, which the intersect rule guarantees (dest schema never changes).
+4. **`A.modelOffset` must NOT be recomputed on merge.** Building A's meshes were already placed
+   using the current `modelOffset`; changing it would silently shift everything already drawn.
+   Building B rebases into A's existing frame instead. (This is why step 4 below is a *DB-side*
+   rebase, not a viewer-side offset change.)
+5. **City mode is not a drop-in template.** City mode swaps `A.db` because its `A.db` is the *city
+   index* — one metadata DB already holding every building; only geometry is per-archetype. The
+   faithful analogue for a single-scene merge is therefore: fold B's **metadata into the live
+   `A.db`** (and its geometry into `A.libDb`), keep B's own `building` names, and leave `A.db`
+   pointing at the one DB. Swapping `A.db` to B's DB would make A un-queryable → `§CONTRACT_CHECK`,
+   panels, rooms and tour would all lose building A.
+
+### §SM-7.1 Design (wiring only — every mechanism named already exists)
+- `A._showMergeModal(fileName, targetName)` — **port** of `archive/gallery.html:1045`
+  `showMergeModal()`: same two-button shape, Enter = merge, Esc = new, same "Merge X into Y?" copy.
+  Ported changes, all forced by the host page: (a) `viewer.html` has none of gallery's five modal
+  elements, so the DOM is built once on first use and reused (`#merge-modal`, `#merge-target`,
+  `#merge-btn`, `#merge-new-btn`); (b) the `>1 target` `<select>` branch is dropped — a Viewer scene
+  has exactly one active building, so there is never a list. **No card, no list surface** (HARD
+  CONSTRAINT above holds).
+- `A._mergeDbIntoScene(fileName, bytes)` — the merge itself:
+  1. `new (A._SQL).Database(bytes)` — `A._SQL` is the cached sql.js factory (`streaming.js:1836`).
+  2. **Frame rebase** — read `project_metadata.georef_offset_{x,y,z}` from both. If BOTH sides
+     report a value and they differ, `UPDATE element_transforms SET center_x = center_x + (inc-pin)`
+     on the *incoming* DB. This is `import.js:299-310`'s `sessionGeorefOffset` rule (first frame
+     pins, later files rebase) applied to a live scene. Log `§MERGE_GEOREF`. Neither Clinic nor
+     Duplex carries these keys → `mode=none` for the witness, which is correct, not a skip.
+  3. **Fold tables**, `INSERT OR IGNORE`, destination-column-intersected:
+     `elements_meta`, `element_transforms`, `element_instances` → `A.db`;
+     `component_geometries` (+`base_geometries` if present) → `A.libDb`;
+     plus `rel_contained_in_space`, `spatial_structure`, `tasks`, `task_elements`,
+     `task_sequences`, `schedules`, `bom_tree` when the table exists on BOTH sides (these are what
+     rooms / 4D read). `INSERT OR IGNORE` is the already-proven dedup (`import_db_builder.js:45`).
+  4. `src.close()` — free the source DB immediately (§SM-5 memory).
+  5. Register in the City shape for API symmetry: `A.cityBuildingDbs[name] = {db: A.db, libDb: A.libDb}`.
+  6. Add ONLY the new building names to `A.buildingCentres` (re-running the `GROUP BY m.building`
+     query from `streaming.js:2119`), carry `envelope` over from an existing centre, refresh
+     `A.totalElements` / `A.discCounts` / `updateHUD()` / `populateBuildingList()`.
+  7. Stream the new names **sequentially** via `A._mergePending` + `A._mergeStreamNext()`, drained
+     from the existing stream-complete hook (`streaming.js:721`, where City already drains
+     `_cityStreamNext`). One added line, mirroring the line above it.
+- `A._openDbBytes` gains a single guard at the top: a building already open → prompt; `merge` →
+  `_mergeDbIntoScene` and **return** (no navigation); `new`/Esc → falls through to today's
+  `location.assign` path, byte-for-byte unchanged.
+- Picker widened: `input.accept` `.db,.sqlite` → `.db,.sqlite,.ifc`, FSA `types` likewise; a `.ifc`
+  pick routes to the existing `A.importMultiIFC` (`import.js:267`) and feeds its produced DB into the
+  same merge. `importMultiIFC` gains a `return {key, record, buildingName, ...}` at its success tail
+  (additive — every existing caller ignores the return value).
+
+### §SM-7.2 Witness — W-SCENE-MERGE (`viewer/tests/witness_scene_merge_2026-07-30.js`)
+Names the issue: *does File Open still destroy the scene?* Real browser, real DBs, real Open pill
+path (`filechooser` → hidden input → `_openDbBytes` → modal → `#merge-btn` click). Asserts, all from
+`§` log lines plus live object state read out of the running page:
+| # | claim | evidence |
+|---|---|---|
+| 1 | scene not navigated away | `§HIST_SESSION id=` identical before/after; `performance.navigation`-independent `window.__sceneMergeEpoch` marker planted pre-Open survives |
+| 2 | centres grew | `§MERGE_CENTRES before=1 after=6 added=…` + `Object.keys(A.buildingCentres)` read live |
+| 3 | dedup arithmetic | `§MERGE_ROWS elements_meta src=… ins=… dup=…`, and `ins = src − (GUIDs already present)` recomputed in-page from the merged DB |
+| 4 | both buildings rendered | `§MERGE_CONTRACT` per-building count of `A.guidMap` GUIDs joined back to `elements_meta.building` — both sides > 0 — emitted next to `§CONTRACT_CHECK` |
+| 5 | replace path intact | Esc on the modal still reaches `§OPEN_DB … → navigate` |
+
+### §SM-7.3 Deploy-visibility (mandatory, else the edit is invisible)
+`viewer/sw.js CACHE_VERSION v884 → v885`; `viewer.html` `scene.js?v=54→55`, `streaming.js?v=58→59`,
+`import.js?v=3→4`. Per §KUL008_CACHE, reload twice.
+
+---
+
+## §SM-8 DONE — §SCENE_MERGE shipped 2026-07-30, bim-ootb PR #1093 (squash-merged to `main`)
+
+Branch `lane/scene-merge` off `origin/main@41510da`. Files: `viewer/scene.js` (+~250),
+`viewer/streaming.js` (+23), `viewer/import.js` (+4), `viewer/sw.js`, `viewer/viewer.html`,
+plus two new witnesses. **§SM-3 is CLOSED. §SM-5 (variants/versioning) untouched, as scoped.**
+
+### What landed (matches §SM-7.1 exactly; nothing improvised)
+`A._showMergeModal` (port of `archive/gallery.html:1045`, no card/list/dropdown) ·
+`A._mergeDbIntoScene` (metadata → live `A.db`, geometry → `A.libDb`, `INSERT OR IGNORE`,
+incoming `building` names preserved) · `A._mergeStreamNext` (sequential drain chained off the
+EXISTING stream-complete hook beside City's `_cityStreamNext`) · georef pin/rebase from
+`import.js:299-310`'s rule · Esc/New = today's `location.assign` byte-for-byte · Open door widened to
+`.ifc` → existing `A.importMultiIFC` (which now RETURNS its produced DB) → same merge.
+`sw.js` v884→**v885**, `scene.js?v=55`, `streaming.js?v=59`, `import.js?v=4`.
+
+### W-SCENE-MERGE — `viewer/tests/witness_scene_merge_2026-07-30.js`, 24/24 🟢 exit 0
+Duplex (A) → Open→Merge Clinic (B), driven through the real Open-pill path
+(`filechooser` → hidden input → `_openDbBytes` → modal → `#merge-btn`).
+
+| §SM-4 claim | proving § line |
+|---|---|
+| centres > 1 | `§MERGE_CENTRES before=1 after=6 added=[5 Clinic discipline buildings]` |
+| total = A + B − shared GUIDs | `§MERGE_ROWS table=elements_meta src=16114 before=1122 after=17236 added=16114 dup=0 errs=0` (0 overlap + the 4 shared geometry hashes both pre-verified offline via `ATTACH`) |
+| geometry folded | `§MERGE_ROWS table=component_geometries src=8461 before=814 after=9271 added=8457 dup=4 errs=0` |
+| **no page navigation** | in-page epoch marker + document URL both survive; `§HIST_SESSION` fires exactly ONCE (post-merge lines=0) and the live `sessionStorage` id is still `s…` from first load; **and PHASE 3's Esc/replace DOES wipe that marker** → the detector is real, not a no-op |
+| both buildings non-zero | `§MERGE_CONTRACT rendered={Duplex:1119, Clinic_ARC:2586, _ELE:2118, _HVAC:3704, _PLU:6585, _STR:1078}` alongside `§CONTRACT_CHECK guidMap=17190 streamed=17190 orphans=0`, zero `§CONTRACT_FAIL` |
+| dedup is real | re-merging the SAME DB: `added=0 dup=16114`, totals + centres unchanged |
+| schema mismatch survived | 5-col source into 4-col dest: `inserted=4 src=5 dst=4 errs=0` |
+| replace path intact | `§MERGE_CHOICE action=new` → `§OPEN_DB … → navigate` → browser lands on the `import://` URL |
+
+### W-SCENE-MERGE-IFC — `viewer/tests/witness_scene_merge_ifc_2026-07-30.js`, 12/12 🟢 exit 0
+`SampleHouse_ARC.ifc` (2.3MB) into a live Duplex scene: `accept=".db,.sqlite,.ifc"` read off the LIVE
+`<input>` · `§MULTI_IMPORT_DONE building=SampleHouse_ARC elements=60` · `§OPEN_IFC_DB bytes=1773568` ·
+`§MERGE_CENTRES before=1 after=2` (the literal "2 keys, not 1" of §SM-4) ·
+`§MERGE_CONTRACT rendered={Duplex:1119, SampleHouse_ARC:58}` · no navigation.
+No screenshots anywhere — every claim is a `§` value or a number read out of the running page.
+
+### NEW landmines found by doing it (add to §SM-6's list)
+1. **sql.js `exec` returns ONLY statements that produced rows.** `SELECT * … LIMIT 0` yields `[]`, not
+   a column list. The first cut used it for column discovery → the merge silently did **nothing**
+   (`§MERGE_DONE newBuildings=0` with zero `§MERGE_ROWS` lines, and every other assertion still
+   green). Fixed with `PRAGMA table_info` + a hard `§MERGE_FAIL` when `elements_meta` fails to fold,
+   so a silent no-op cannot recur.
+2. **Real DBs disagree on columns.** `Duplex.component_geometries` has `normals`, `Clinic`'s does not
+   → insert on the destination∩source intersection, driven by the destination so its schema never
+   changes (which is what keeps the once-probed, cached `A._libHasNormals` honest post-merge).
+3. **`§SM-6`'s "`scene.js:770` = drag-drop" is wrong.** Both `_openDbBytes` call sites are inside
+   `A.openModelDb` — the FSA branch and the `<input type=file>` fallback. There is no drag-drop caller.
+   Guarding `_openDbBytes` itself covers both.
+4. **`Clinic_extracted.db` is FIVE buildings, not one** (`Clinic_{Architectural,Electrical,HVAC,
+   Plumbing,Structural}_IFC2x3`), so §SM-4's literal "2 keys" reads 1→6 with this fixture. It is also
+   the exact KUL070 shape, which is why the sequential N-building drain (§SM-7.1 step 7) was needed
+   at all — `streamBuilding()` handles ONE name.
+5. **`A.modelOffset` must never be recomputed on merge** — A's meshes are already placed against it.
+   The rebase is DB-side (`UPDATE element_transforms`), never a viewer-side offset change.
+6. **DB-snapshot divergence bit this work directly** (cf. `project_db_snapshot_divergence_landmine`):
+   `?db=buildings/Duplex_extracted.db` resolves to **`viewer/buildings/`**, which in `~/bim-ootb` is a
+   symlink farm into `bim-compiler/deploy/buildings/` — a 9.2MB / 1122-element / no-`normals` Duplex,
+   NOT the 14.9MB / 1119-element / has-`normals` `~/bim-ootb/buildings/` copy. The witness harness now
+   logs the resolved realpath+size of every `.db` it serves. Related self-inflicted trap: running
+   `sqlite3 <path>` on a non-existent path **creates a 0-byte DB**, which then shadowed the real
+   fixture and made the whole viewer load fail (`§CENTRES_QUERY tables=[]`). Never probe a fixture
+   path with `sqlite3` inside a served tree.
+
+### Still open / deliberately NOT done
+- **§SM-4's KUL070 payoff assertion is UNPROVEN** — merging the ARCH package into `KUL070-OVERALL`
+  and asserting `doors>0 AND IfcSpace>0` → `buildTour()` ≥1 action → `§SCRUB_PREPARE` on L was not
+  run: the ARCH package is not on this machine (`KUL070-…-OVERALL_complete.db` has `0 doors /
+  0 IfcSpace` and there is no separate ARCH DB/IFC to merge into it). The mechanism it depends on is
+  proven above on Clinic+Duplex; the KUL070-specific payoff needs the ARCH file. **⛔ ONE QUESTION:
+  where is the KUL070 ARCH/envelope package?**
+- **§SM-5 memory is still unmeasured** for two 300MB-class DBs in one tab. Nothing here promises
+  N-way merge at that size; the merge streams rows one at a time and closes the source DB immediately
+  rather than materialising a second full table in JS, which is the cheap half of the problem only.
+- Version/variant switching (§SM-5) untouched, as scoped.
