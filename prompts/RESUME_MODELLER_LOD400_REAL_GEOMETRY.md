@@ -72,11 +72,13 @@ Worked example — the wall in the 2026-07-29 23:03 screenshot's building, `2O2F
   `IfcMaterialLayerSetUsage`, no computation, no invention — closes loss #1.
   **Measured on Duplex: 91 edges, 80 multi-layer, 91/91 carry DirectionSense, 91/91 a real summed
   thickness** (`§LOD400-LAYERS` log line). Witness `scripts/witness_lod400_envelope.py` **8/8**.
-- **§LOD400-LAYERS-REAL** — compute per-layer geometry by slicing the authored envelope along the authored
-  `LayerSetDirection` at the authored cumulative thicknesses. **This is COMPILATION FROM AUTHORED DATA, not
-  invention** — thickness, order, sense and offset are all in the source; it is precisely what
-  `IfcMaterialLayerSetUsage` *means*. Ship layers + `surface_styles` into the ARC residents (patch +
-  self-heal loader per the DB policy, never a binary).
+- **§LOD400-LAYERS-REAL — ✅ EXTRACTOR HALF DONE (witness) 2026-07-30, see the dated build record
+  below (§LOD400-LAYERS-REAL BUILD).** Per-layer geometry compiled by slicing the authored envelope
+  along the authored `LayerSetDirection` at the authored cumulative thicknesses. **This is COMPILATION
+  FROM AUTHORED DATA, not invention** — thickness, order, sense and offset are all in the source; it is
+  precisely what `IfcMaterialLayerSetUsage` *means*. Witness `scripts/witness_lod400_envelope.py`
+  **12/12**, Duplex gate GREEN exit 0. **Still OPEN (next slice):** ship layers + `surface_styles` into
+  the ARC residents (patch + self-heal loader per the DB policy, never a binary) + the Modeller half.
 - **§LOD400-ENVELOPE-GATE — ✅ DONE (witness) 2026-07-29, extractor half.** P10 `LOD400_ENVELOPE` prints
   `§ILLEGAL_LOD_FALLBACK` **naming every offender** (guid + layer count + layer-set name, not just a
   count) and turns §PROOF red ⇒ non-zero exit via the existing `f7d00240b` path. Witnessed on Duplex:
@@ -179,6 +181,50 @@ re-derive the measured facts below — they are witnessed; spend the session on 
 **Out of scope — do not touch:** the renderer's mesh resolution (measured clean), the VOID-CONSUMED
 classifier (§LODHELL FINDING 2-CORRECTED, closed), the ARC-only load filter (deliberate — the user set that
 purpose themselves and it is NOT the cause of anything here; do not "fix" it or re-explain it as the cause).
+
+### ✅ §LOD400-LAYERS-REAL BUILD — 2026-07-30 (Fable5, extractor half; branch `feat/lod400-layers-real`)
+**Built exactly per the CALL (option b):** `compile_layer_geometry()` in `DAGCompiler/python/extractIFCtoDB.py`
+rewrites every multi-layer element's envelope mesh as N concatenated layer slabs behind the SAME
+`geometry_hash`, indexed by the new `component_geometry_layers (geometry_hash, layer_seq, material_name,
+thickness_m, face_start, face_count, PK(hash,seq))` in the same store as the mesh blobs. Runs inside every
+extraction, before §PROOF; P10 now counts a multi-layer element as an envelope only when its hash does NOT
+carry a matching layer index — compiled elements pass, refusals keep it RED (gate semantics unchanged,
+nothing softened). New CLI `--compile-layers --ref <db> [--library <db>]` = idempotent compile + verify on
+an existing DB (the falsification surface + the future resident-patch generator).
+- **Slicing mechanism (stated per spec):** no OCC boolean available here (no pythonocc; ifcopenshell 0.8.4
+  exposes none in python) → plane-clip of the tessellated closed solid: Sutherland-Hodgman sides + caps from
+  edge-key-chained cross-section loops triangulated by GEOS constrained Delaunay (shapely 2.1, hole-aware,
+  no Steiner points). Every slab PROVEN: welded, watertight, extent==authored thickness (±0.5 mm stated
+  tol), slab volumes re-sum to the envelope volume (rel 1e-4). Any miss → loud `§LAYER-REFUSE`, envelope
+  kept, gate stays red — a wrong-but-silent slice is worse than a loud refusal.
+- **Two-mode boundary anchoring, both pure authored data (measured on Duplex):** ABSOLUTE — boundaries at
+  `offset_from_reference_line ± cumsum(thickness)` when both body faces land on authored boundaries; the
+  body may cover a contiguous WHOLE-layer subset. RELATIVE — body extent == authored total: anchor at the
+  DirectionSense face (needed for the 13 Duplex ceilings: offset=0, body at z≈2.6). Neither fits → refuse.
+- **MEASURED FINDING (corrects this file's own witness claim):** the party wall `2O2Fr$t4X7Zf8NOew3FNbT`'s
+  authored BODY spans only **0.493 m of its 0.550 m layer set** — body faces sit exactly on authored
+  boundaries b₀/b₅; layers 5-6 (neighbour-side stud+plasterboard) have NO body in this element (they belong
+  to the neighbour wall's own body, Revit unit-demising). So it compiles as **7 index rows summing 0.550
+  (5 slabs with geometry, extents 16/41/193/50/193 mm exact; L5/L6 face_count=0)**, announced loudly as
+  `§LAYER-PARTIAL` — never invented. The "72 tris = 7×12" guess in the CALL was wrong anyway (buffer = 124
+  tris); the witness asserts structure, not triangle counts.
+- **Two real upstream defects found + fixed en route:** (1) `extract_material_layers`/
+  `extract_rel_material_layer_set` stored RAW source units into `*_m` columns — correct only for metre
+  files; SampleCastle is mm (total 90.0 vs body 0.09 m). Now scaled by the authored length unit. (2) some
+  source envelopes carry MIXED triangle winding (castle party wall: ~21 m³ solid, signed volume −2.08) —
+  `_orient_coherently()` normalizes winding (BFS propagation + positive-volume flip; refuses non-orientable
+  or nested-cavity meshes).
+- **Witness `scripts/witness_lod400_envelope.py` 12/12** (kept the original 8, now green-path): Duplex
+  fresh extraction gate GREEN exit 0; 79/79 multi-layer elements compiled (230 slabs, 4 authored-empty
+  rows, 0 refused); party-wall rows/tiling/extents as above; FALSIFY: delete one `material_layers` row →
+  `--compile-layers` exits 1 with `§LAYER-VERIFY-FAIL` naming the element (never ships 6 slabs as 7).
+- **SampleCastle measured: 74/75 compiled, 1 honest refusal** (`2vGfAAaCDC$u2rePIbFqLy` "sporenkap", a
+  pitched rafter-roof IfcSlab whose body spans 0.692 m along AXIS3 vs an authored flat 0.206 m set — not
+  sliceable from authored data). Castle extraction therefore still exits 1 BY DESIGN. Consequence:
+  `scripts/witness_lodhell_classify.py` L3 (castle §PROOF green) was already red since the gate landed
+  2026-07-29 (75/75 offenders then) and stays red for this 1 element — do not "fix" it by softening P10.
+- **Still OPEN (next slice, NOT this branch):** ship layers + `surface_styles` to the ARC residents
+  (patch + self-heal loader), then the Modeller half of §LOD400-ENVELOPE-GATE.
 
 ---
 
