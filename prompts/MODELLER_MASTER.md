@@ -115,6 +115,10 @@ where its detail lives. **None of these may be quietly dropped to make a report 
 **Harvest rule for these, same as before:** verify against shipped code before listing anything as open —
 two of these files claim DONE with no PR reference, which is exactly the stale-claim shape the first pass
 found 11 of. Add the surviving rows to §OPEN LIST tagged `O15`.
+**✅ HARVESTED 2026-07-30 (same day):** surviving rows = **28–31** in §OPEN LIST. Everything else in this
+table verified SHIPPED against origin/main — including both suspect ✅s ("PR TBD" landed; tilt-guard merged
+as PR #722 squash) — see the O15 stale-claims block. The one contradiction finding: row 28 (code present,
+live measurement says inert).
 
 ### §2D-AND-PDF — the vision question, answered 2026-07-30 (user: *"Vision from there on can we do 2D
 ### professional drawing exporting to PDF?"*)
@@ -191,6 +195,10 @@ Format, one row per item, ranked most-blocking first:
 | 25 | O14 | PBR texture maps (biggest lift) · per-instance hide + full virtualization · BCF IMPORT (export MVP shipped #620) | `RESUME_MODELLER_COMPETITIVE_POLISH.md` items 9, §DECISIONS 2, §COMPETITIVE | — | verified-open (deferred by design, in this order) |
 | 26 | O4 | solid-scale B-rep (occt `Copy=true` recompile or shape-lifecycle rework) | `RESUME_MODELLER_POLISH.md` 3b | — | ⛔ user-gated deferred ("only if authored-wall scaling becomes a real need") |
 | 27 | O14 | accept an EXTERNAL (FreeCAD/neutral) IFC → snap to substrate → walkers complete it | `prompts/Modeller/COMPETITIVE_FREECAD_INTEROP.md` §4 | — | ⛔ BLOCKED: future feature, user greenlight |
+| 28 | O15 | render-layer tilt gap: **293** tilted elements in the shipped `SampleCastle_ARC.db` (post-embed-8) measured rendering with IDENTITY transforms live 2026-07-10 — yet `§ARC-3AXIS` code exists on main (`arc_editable.js:231` passes rotX/rotY, `bonsai_library.js:78` applies the Euler); the branch is not firing on this data and nobody knows why | `GRID_ROTATION_GUARD.md` §5 | re-measure fids 933/1291/2514 on today's main; if still identity, trace why the tilt branch never fires; witness vs analytic 3-axis AABB | verified-open (code present + live measurement contradict — a contradiction finding) |
+| 29 | O15 | ⛔ `CONSTRUCTION_GRID_BOM_DUAL_MODEL.md`: grid ⊗ BOM as ONE authoring substrate — spec-only, 3-stage build plan + 5 witnesses, 0 built (except W-TYPICAL-N 26/26 which already exists via `bom_extract`) | that file §STATUS/NEXT | — | ⛔ BLOCKED: user — is this still the intended architecture? (Watchdog-flagged 2026-07-30) |
+| 30 | O15 | `WALL_HEIGHT_SCALE` cascade hardcodes `axis:'y'` as vertical (Y-up assumption, wrong for the Z-up Modeller) — dead code today (`isRoof` always false) but armed the day roof/ifcClass support arrives | `GRID_ROTATION_GUARD.md` §8 note | own design pass when roofs become grid-governed | deferred — documented in-code, in-file, and here |
+| 31 | O15 | oblique (non-orthogonal) grids — the scale-hardening lane's one genuinely open question; a NEW feature never requested | `GRID_ROTATED_SCALE_HARDENING.md` §3 | — | ⛔ BLOCKED: user interest; do not build unasked |
 
 ### STALE-CLAIMS — verified SHIPPED on origin/main; do NOT re-open (grep-verified 2026-07-30)
 - **O12 zoom-to-selection**: SHIPPED — `§ZOOM-SEL` (#711), `modeller.html:1057`, `witness_e2e_zoom_to_selection.js` exists. The triage's "small, well-specified" read was stale.
@@ -204,6 +212,14 @@ Format, one row per item, ranked most-blocking first:
 - **§LODHELL-FIX-2 dead no-boolean tier**: DELETED (`extractIFCtoDB.py:1179` records the deletion).
 - **O4 direct-manipulation spine + H1 top-view Z-drag + polish batch**: all shipped (PRs #423-#631 arc) — the 2026-07-07 correction in `MODELLER_DIRECT_MANIPULATION.md` already said so; re-confirmed.
 - **Resident roster changed under the triage**: RESIDENTS is now EIGHT per-building split entries (SH/DX/SC/HHS/Clinic/Hospital/Garage/Terminal, each `geoDb` on object storage, `str_walker_outliner.js:51-58`) — any older "4 residents"/"mesh.db" wording in the 15 files is historical.
+
+**O15 stale-claims (grid family, verified 2026-07-30 — grep/sqlite against origin/main, do NOT re-open):**
+- **Smart element scope**: SHIPPED — `_STRUCTURAL_CLASSES`/`_localityRadius` (`bonsai_gridmove.js:64/109`) + `witness_gridmove_smart_scope.js` on main. The triage's "harvest — 10 open" was stale; the file's own §4 records DONE 2026-07-09.
+- **Green/orange pre-drag preview**: SHIPPED — `toggleOverride`/`applyOverrides` in `bonsai_gridmove.js` + `witness_e2e_grid_greenorange.js`.
+- **Clear-state-leak rounds 1+2**: SHIPPED — all three `onClear()` wires live in `bClear.onclick` (`modeller.html:516`) + `witness_grid_clear_leak_round2.js`. The round-2 file's "PR TBD" resolved: it landed. Its cross_edges anchor-correction fork was ALSO resolved separately — PR #650 (real per-element AABB).
+- **Tilt-guard + axis-scope**: MERGED as PR #722 (squash `3252d50`) — `_hasTilt`/`tiltXRad` + the x/y/z skip are on main, `witness_grid_tilt_guard.js` shipped, `W-GRID-SCALE-YAW-HARDENING` 21/21. The file's own §6-§9 "not merged, per instruction" is stale (it predated the push-pause lift). The remote branch `fix/grid-tilt-guard` is now redundant.
+- **Kinematics sandbox**: all four tiers + the §3 worker-fold gap DONE 2026-07-09 per its own §5; `witness_grid_rotation_guard.js`/kinematics witnesses on main.
+- **Scale hardening**: MERGED PR #721; only its §3 (oblique grids, row 31) stays open.
 
 Rules that produced this list (keep for the next harvest):
 - **Verbatim, with its home.** Never paraphrase an open item away from its file/section pointer.
