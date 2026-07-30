@@ -136,6 +136,91 @@ tool proposes and a person decides.
 
 ---
 
+## What you actually do — step by step
+
+Concretely, for a BIM Manager holding a model that has to go to JKR. Numbers below are the real ones
+from the hospital model, so you can picture the shape of your own.
+
+### Step 1 — Ask how bad it is (seconds)
+
+```bash
+python3 build/classification_checker.py --db buildings/YourBuilding.db
+```
+
+You get, in the log:
+
+```
+§CLASSIFY_CHECK[YourBuilding] locale=en-US scheme=uniformat status=verified-from-data
+  §CLASSIFY_CODES coded=4546/63917 (7.11%) uncoded=59371 distinct=15 invalid=0
+  §CLASSIFY_FACETS {"element":true,"space":false,"level":false}
+  §CLASSIFY_VERDICT GREEN — 4546/4546 carried codes are well-formed, uncoded=59371
+```
+
+**Read both numbers.** `invalid=0` says the codes present are well-formed. `uncoded=59371` says almost
+nothing is present. Those are different questions and only the second one decides whether you can hand
+over.
+
+### Step 2 — Turn 59,371 elements into a list a person can work
+
+The gap is *not* 59,371 decisions. Codes live on family **types**, and instances inherit them. The
+generator collapses the model to its types and ranks them by how many elements each one covers:
+
+```bash
+python3 build/measure_classification_tiers.py <scratch-dir>
+→ build/classification_tier_worklist_YourBuilding.csv
+```
+
+For the hospital that is **341 uncoded types**, not 59,371 elements — and the top twenty of them cover
+**61.7%** of the building. Your first afternoon is worth two-thirds of the job.
+
+### Step 3 — Let the tool do the part it can prove
+
+Each row is tiered, and the tool only claims what it can evidence:
+
+```
+rank,type_key,ifc_class,instances,tier,proposed_code,evidence_sibling_type,join_key_ambiguous
+1,Pipe Types:Standard,IfcPipeSegment,5950,derived:sibling,D2090800,Pipe Types:Threaded…,NO
+53,M_Single-Flush:0915x2032mm_Wood,IfcDoor,193,derived:sibling,B2020200,M_Curtain Wall Sgl Glass,YES
+174,M_RPC Tree - Deciduous:Japanese Cherry,IfcBuildingElementProxy,10,derived:sibling,C1030220,Shower-Head…,YES
+```
+
+Row 1 is safe — the only code on that IFC class in your model, corroborated by 12,182 sibling elements.
+Rows 53 and 174 are flagged `join_key_ambiguous=YES` because their class carries several codes, and they
+are exactly the ones you would not want applied silently: *"Curtain Walls"* for a wooden door, *"Bath &
+Toilet Accessories"* for a cherry tree.
+
+**Sort by the flag.** Accept the clean ones in bulk, review the flagged ones, decide the rest.
+
+### Step 4 — Fix the **template**, not the model
+
+This is the step that pays for the other three. Take the confirmed type→code table into your authoring
+tool and set `Assembly Code` on those types **in your project template** (`.rte`), not just this job's
+model.
+
+- Fixing the model helps **one** project.
+- Fixing the template means every future project from it **starts** coded — step 1 on the next job
+  reports 90%+ instead of 7%.
+
+Then check the export mapping is on, or the codes stay in the authoring tool and never reach the IFC.
+
+### Step 5 — Re-export and re-run step 1
+
+Same command, and the coverage number is the proof. It is reproducible, so it survives being quoted at
+a handover review.
+
+### Where the work actually sits
+
+| | Who | Effort on the hospital model |
+|---|---|---|
+| Find the gap, rank it | the tool | seconds |
+| Propose what is provable | the tool | 179 types, 63 of them unambiguous |
+| Decide the rest | **you** | ~162 types |
+| Make it permanent | **you**, in the template | once |
+
+**Today steps 1–3 are command-line scripts and step 4 is manual.** The in-app version — the gap surfaced
+in the element info panel, proposals reviewable in the browser, one-click CSV round-trip — is designed
+but not built. What exists now is the measurement and the worklist, which is the part that was hard.
+
 ## What this does not do (yet)
 
 - **No SKATA verdict.** The shipped SKATA scheme is an explicitly-labelled example, and the checker
