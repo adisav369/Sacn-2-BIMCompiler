@@ -97,3 +97,71 @@ change to the same file.
 - https://infinitywave.io/blog/malaysia-bim-mandate-2025/ — the 1 July 2025 RM10m mandate, LOD 500,
   PeDATA + SKATA conformance
 - https://theedgemalaysia.com/node/724693 — JKR BIM adoption scale (455 projects)
+
+---
+
+## §ARCHITECTURE 2026-07-30 — layering, patch-vs-binary, and the version-marker gap
+User questions: (1) how do we mark which DB has a fix, and is SQL-migration-to-OCI better practice than
+shipping an updated DB? (2) can classification injection ride with room topology as a general feature?
+(3) is the injection an abstract layer, locale-updatable, not hard-set?
+
+### A. Patch beats binary, and the machine already exists — measured
+`viewer/scene.js:1223` `A._applyPendingPatch()` is LIVE, called from `streaming.js:1984` (split/meta path)
+and `:2130` (single-DB path). Convention: `buildings/patches/<dbFile>.sql`, fetched from the same directory
+the DB came from. **Eight patches already ship** (Hospital_extracted, Hospital_meta, Terminal_extracted,
+Terminal_meta, HHS_Office_Federated, JKR_extracted, …). There is also a provenance manifest convention
+(`oci-patch-provenance/1`) recording engine SHA, served-DB etag, artifact md5, a verification command with
+its exit code, and a PASS/FAIL verdict.
+
+**The ratio settles the question:**
+```
+Hospital_extracted.db        263,307,264 bytes   (served object, per manifest)
+its existing patch .sql          226,962 bytes   → ~1160x smaller
+our rel_aggregates payload    ~9,527 rows        → est. <1MB  → still ~300x smaller
+```
+**The decisive argument is not size, it is the cache.** `scene.js:1218-1219`: the IDB cache always stores
+the RAW server bytes; only the buffer handed to `SQL.Database` is patched. So a patch reaches an existing
+user **without invalidating their cached 251MB copy**. Replacing the binary forces a full re-download for
+every user who already has it — the exact bandwidth failure `SEAM_IDENTITY_AUDIT.md` F1 was about.
+**Ship the patch. Reserve a new binary for a genuine re-extraction (new geometry), not a data fix.**
+
+### B. ⚠ THE GAP — nothing marks which fixes a DB carries
+Measured on the shipped Hospital DB:
+```
+sqlite> SELECT * FROM project_metadata;
+building_name|Hospital
+import_date|2026-05-02
+```
+**No version row, no patch level, no applied-patch list.** And `_applyPendingPatch` applies the patch on
+EVERY load unconditionally, relying on each script being idempotent (`scene.js:1220`). That works, but:
+- you cannot ask a DB which fixes it has;
+- `§PATCH_APPLY` proves the script RAN, not that the data is now correct;
+- one patch file per DB means a second fix must be hand-merged into the same file, with no record of what
+  is already in it — this WILL drift once there are two authors;
+- the manifest records provenance server-side; nothing is written INTO the DB.
+
+**Recommendation:** every patch script's first act is to write its own identity into `project_metadata`
+(e.g. `patch_level`, or an append-only `applied_patches` row carrying id + date + engine SHA). Cheap,
+idempotent, and it makes "which DB has this fix" answerable from the DB itself instead of by inference.
+This is the same one-identity-no-owner shape as the audit's C1/C2 clusters.
+
+### C. Three layers — and yes, it rides with room topology
+| layer | what | changes when | ships as |
+|---|---|---|---|
+| 1 · base extract | geometry + raw IFC facts | re-extraction only | big binary, OCI |
+| 2 · overlay | room topology, `rel_aggregates`, classification BINDINGS (which code on which element) | independently of geometry | **SQL patch + self-heal loader** |
+| 3 · scheme | what a valid code LOOKS like per jurisdiction | when a standard changes | **locale JSON, no DB at all** |
+
+Layer 2 answers the user's "together with room topology" — room topology and classification bindings are
+the same *kind* of thing (derived/authored facts layered over immutable geometry, changing on their own
+cadence). They should share ONE patch file and ONE loader, not grow a third mechanism. ⚠ Note the repo
+already has TWO overlay mechanisms — the SQL patch above AND sidecar DBs (`Terminal_rooms.db` carries its
+own `elements_meta`/`spatial_structure`/`rel_contained_in_space`/`m_bom`). Adding a third would be a
+textbook `SEAM_IDENTITY_AUDIT.md` C4 repeat. **Pick one; the patch path is the one with a live loader.**
+
+Layer 3 answers "abstract, manageable later, not hard-set": the scheme is DATA, so a new jurisdiction is a
+new JSON file and touches **zero building DBs**. Phase C already built this locale-keyed. It also makes the
+feature opt-in — no scheme configured for a locale ⇒ no compliance UI, zero cost to users who don't need it.
+
+**The split that matters:** binding (layer 2, per-model) must stay separate from scheme (layer 3, per
+jurisdiction). Fuse them and a standards revision forces re-patching every building.
