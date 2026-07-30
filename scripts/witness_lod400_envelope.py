@@ -14,12 +14,23 @@ construction data. This test proves/disproves:
   A. the element -> layer-set edge is EXTRACTED at all (it did not exist in the schema before);
   B. a multi-layer element still shipping as an envelope makes P10 go RED and exit NON-ZERO —
      while elements whose hash resolves COMPILED per-layer slabs pass (§LOD400-LAYERS-REAL);
-  D. the compiled layers are REAL and AUTHORED: the 7-layer party wall 2O2Fr$t4X7Zf8NOew3FNbT
-     resolves 7 component_geometry_layers rows summing to the authored 0.550 m, whose face ranges
-     tile the concatenated buffer exactly and whose per-slab extents along the authored layer axis
-     equal each authored layer thickness; FALSIFIED by deleting one material_layers row and
-     asserting --compile-layers hard-fails (never silently ships 6 slabs as 7 layers);
+  D. the compiled layers are REAL and AUTHORED: the full-span 7-layer party wall
+     2O2Fr$t4X7Zf8NOew3FKRH resolves 7 component_geometry_layers rows summing to the authored
+     0.550 m, whose face ranges tile the concatenated buffer exactly, whose per-slab extents along
+     the authored layer axis equal each authored layer thickness, and EVERY row has face_count > 0;
+     FALSIFIED by deleting one material_layers row and asserting --compile-layers hard-fails
+     (never silently ships 6 slabs as 7 layers);
+  E. ROW 33 (Watchdog directive 2026-07-30) — an empty slab is a REFUSAL, not a row. The two
+     clip-trimmed party walls 2O2Fr$t4X7Zf8NOew3FNbT / 2O2Fr$t4X7Zf8NOew3FKRi (authored body =
+     the full 0.550 m prism minus an authored IfcPolygonalBoundedHalfSpace at the layer-4/5
+     boundary; ZERO openings — measured 2026-07-30, the opening-cut hypothesis is false) must be
+     §LAYER-REFUSE'd by name, keep their envelopes, and hold the gate RED — never ship 5 slabs
+     under a 7-layer set. FALSIFIED by re-introducing a face_count=0 row and asserting
+     --compile-layers goes RED naming the empty slab;
   C. the gate query itself is falsifiable — remove the multi-layer population, it must count 0.
+
+Duplex therefore exits NON-ZERO by design since row 33 — the same honest-refusal posture as
+SampleCastle's sporenkap. Do not "fix" that by softening the refusal.
 
 C/D-falsify are what stop the gate from being a light nobody can trust: it must be able to pass AND
 be provably able to fail.
@@ -135,14 +146,15 @@ def main():
               f"exit={proc.returncode} — a green gate must not fail the run")
 
     # ── D. §LOD400-LAYERS-REAL — the compiled layers are real, authored, and falsifiable ─────
-    party = "2O2Fr$t4X7Zf8NOew3FNbT"
+    # Exemplar since row 33: the FULL-SPAN 7-layer party wall (body covers the whole authored set).
+    exemplar = "2O2Fr$t4X7Zf8NOew3FKRH"
     prow = conn.execute("""
         SELECT i.geometry_hash, r.total_thickness_m, r.layer_set_direction, r.layer_set_name
         FROM element_instances i
         JOIN rel_material_layer_set r ON r.element_guid = i.guid
-        WHERE i.guid = ?""", (party,)).fetchone()
+        WHERE i.guid = ?""", (exemplar,)).fetchone()
     if prow is None:
-        check("PARTY_WALL_PRESENT", False, f"{party} not in element_instances⋈rel_material_layer_set")
+        check("EXEMPLAR_PRESENT", False, f"{exemplar} not in element_instances⋈rel_material_layer_set")
     else:
         ghash, total, direction, lsn = prow
         axis = {"AXIS1": 0, "AXIS2": 1, "AXIS3": 2}.get(direction)
@@ -150,7 +162,7 @@ def main():
             "SELECT layer_seq, thickness_m, face_start, face_count FROM component_geometry_layers "
             "WHERE geometry_hash = ? ORDER BY layer_seq", (ghash,)).fetchall()
         lsum = sum(t for (_s, t, _f, _n) in lrows)
-        check("PARTY_7_LAYER_ROWS", len(lrows) == 7 and abs(lsum - total) < 1e-9,
+        check("EXEMPLAR_7_LAYER_ROWS", len(lrows) == 7 and abs(lsum - total) < 1e-9,
               f"hash {ghash}: {len(lrows)} layer rows, SUM(thickness_m)={lsum:.3f} "
               f"== authored total {total:.3f}")
 
@@ -169,24 +181,41 @@ def main():
               f"ranges tile [0,{cursor}) == buffer {len(faces)} tris == face_count col {blob[2]}")
 
         ext_ok = True
-        n_empty = 0
         detail = []
         for (seq, th, fs, fc) in lrows:
-            if fc == 0:
-                n_empty += 1
+            if fc <= 0:
+                ext_ok = False
+                detail.append(f"L{seq}=EMPTY")
                 continue
             idx = np.unique(faces[fs:fs + fc])
             ext = float(verts[idx, axis].max() - verts[idx, axis].min())
             detail.append(f"L{seq}={ext:.4f}/{th:.3f}")
             if abs(ext - th) > 5e-4:
                 ext_ok = False
-        check("SLAB_EXTENTS_AUTHORED", ext_ok and len(lrows) - n_empty >= 5,
-              f"per-slab extent == authored thickness (±0.5mm): {' '.join(detail)}")
-        # empty rows are legal ONLY when announced loudly as authored-outside-body (§LAYER-PARTIAL:
-        # the party wall's neighbour-side finishes belong to the neighbour element's body)
-        check("EMPTY_ONLY_ANNOUNCED", n_empty == 0 or
-              (f"§LAYER-PARTIAL guid={party}" in log),
-              f"{n_empty} empty slab rows; §LAYER-PARTIAL announced={f'§LAYER-PARTIAL guid={party}' in log}")
+        check("SLAB_EXTENTS_AUTHORED", ext_ok and len(lrows) == 7,
+              f"all 7 slabs real, extent == authored thickness (±0.5mm): {' '.join(detail)}")
+
+        # ROW 33: no row anywhere in the compiled store may carry face_count <= 0
+        n_empty_all = conn.execute(
+            "SELECT COUNT(*) FROM component_geometry_layers WHERE face_count IS NULL "
+            "OR face_count <= 0").fetchone()[0]
+        check("NO_EMPTY_ROWS_ANYWHERE", n_empty_all == 0,
+              f"{n_empty_all} rows with face_count<=0 in the whole store (must be 0 — an empty "
+              f"slab is a refusal, not a row)")
+
+        # ROW 33: the two clip-trimmed party walls are REFUSED BY NAME and keep their envelopes
+        trimmed = ("2O2Fr$t4X7Zf8NOew3FNbT", "2O2Fr$t4X7Zf8NOew3FKRi")
+        named = all(f"§LAYER-REFUSE guid={g}" in log for g in trimmed)
+        reason = "an empty slab is a refusal, not a row" in log
+        check("TRIMMED_WALLS_REFUSED", named and reason,
+              f"both clip-trimmed walls §LAYER-REFUSE'd by name={named}, row-33 reason stated={reason}")
+        t_rows = conn.execute("""
+            SELECT COUNT(*) FROM component_geometry_layers l
+            JOIN element_instances i ON i.geometry_hash = l.geometry_hash
+            WHERE i.guid IN (?, ?)""", trimmed).fetchone()[0]
+        check("TRIMMED_KEEP_ENVELOPE", t_rows == 0,
+              f"{t_rows} layer rows behind the refused walls' hashes (must be 0 — envelope kept, "
+              f"element stays gated RED)")
 
         # FALSIFY: delete one authored layer row -> --compile-layers must hard-fail, never ship 6 as 7
         fdb = os.path.join(tmp, "falsify.db")
@@ -202,9 +231,28 @@ def main():
         with open(os.path.join(tmp, "falsify.log"), "w") as fh:
             fh.write(flog)
         check("FALSIFY_LAYER_DELETE", fproc.returncode != 0 and "§LAYER-VERIFY-FAIL" in flog
-              and party in flog,
+              and exemplar in flog,
               f"one material_layers row deleted -> exit={fproc.returncode}, "
-              f"§LAYER-VERIFY-FAIL names the element (never silently ships 6 slabs)")
+              f"§LAYER-VERIFY-FAIL names the compiled element (never silently ships 6 slabs)")
+
+        # ROW 33 FALSIFY: re-introduce an empty row -> --compile-layers must go RED naming it
+        edb = os.path.join(tmp, "falsify_empty.db")
+        shutil.copyfile(db, edb)
+        ec_ = sqlite3.connect(edb)
+        ec_.execute("UPDATE component_geometry_layers SET face_count = 0 "
+                    "WHERE geometry_hash = ? AND layer_seq = 6", (ghash,))
+        ec_.commit()
+        ec_.close()
+        eproc = subprocess.run([sys.executable, EXTRACTOR, "--compile-layers", "--ref", edb],
+                               capture_output=True, text=True)
+        elog = eproc.stdout + eproc.stderr
+        with open(os.path.join(tmp, "falsify_empty.log"), "w") as fh:
+            fh.write(elog)
+        check("FALSIFY_EMPTY_ROW", eproc.returncode != 0
+              and f"§LAYER-VERIFY-FAIL guid={exemplar}" in elog
+              and "has face_count=0" in elog,
+              f"face_count=0 re-introduced on layer 6 -> exit={eproc.returncode}, "
+              f"§LAYER-VERIFY-FAIL names the empty slab on {exemplar} (row 33)")
 
     # ── C. falsification: strip the envelope population, gate must go green ──
     # Same DB, same code path, only the offending JOIN population removed. If P10 still reports

@@ -298,10 +298,12 @@ CREATE TABLE IF NOT EXISTS rel_material_layer_set (
 -- The mesh a multi-layer element's hash resolves is a CONCATENATION of N layer slabs, compiled by
 -- slicing the authored envelope solid at the authored cumulative layer thicknesses (see
 -- compile_layer_geometry()). One row per layer: faces[face_start : face_start+face_count] is that
--- layer's slab. face_count = 0 records an authored layer whose interval lies wholly outside this
--- element's own body (e.g. a party wall whose neighbour-side finishes belong to the neighbour's
--- body) — recorded, never invented. Lives in the SAME store as the mesh blobs (component_geometries
--- in library mode, this DB's base_geometries otherwise).
+-- layer's slab. face_count MUST be > 0 on every row (Watchdog directive 2026-07-30, MODELLER_MASTER
+-- row 33): an authored layer whose interval lies wholly outside this element's own body (e.g. a
+-- party wall trimmed by an authored half-space clip so the neighbour-side finishes belong to the
+-- neighbour's body) is a §LAYER-REFUSE — the element keeps its envelope and stays gated RED. An
+-- empty slab is a refusal, not a row. Lives in the SAME store as the mesh blobs
+-- (component_geometries in library mode, this DB's base_geometries otherwise).
 CREATE TABLE IF NOT EXISTS component_geometry_layers (
     geometry_hash TEXT,
     layer_seq INTEGER,
@@ -1156,8 +1158,10 @@ def _layer_intervals(off, sense, thicknesses, ymin, ymax, guid, axis_vals=None):
     Two deterministic anchorings, both pure authored data (measured on Duplex 2026-07-30):
       ABSOLUTE — boundaries b_j = OffsetFromReferenceLine ± cumsum(thickness). Valid when BOTH body
         faces land on authored boundaries (±LAYER_TOL). The body may cover a contiguous WHOLE-layer
-        subset (party walls: the neighbour-side finish layers belong to the neighbour's body) —
-        uncovered layers are recorded empty, loudly, never invented.
+        subset (party walls: an authored half-space clip trims the neighbour-side finish layers,
+        whose material belongs to the neighbour's body) — but an uncovered layer is a REFUSAL in
+        compile_layer_geometry(), never an empty row (row 33, 2026-07-30). The subset classification
+        survives here only so the refusal can name the exact layer instead of "matches no anchoring".
       RELATIVE — body extent == authored total (±LAYER_TOL): boundaries anchor at the body face the
         DirectionSense stacks from (MlsBase). Needed where the exporter left the usage offset at the
         reference geometry while placing the body elsewhere in the local frame (Duplex ceilings:
@@ -1257,7 +1261,6 @@ def compile_layer_geometry(conn, geo_conn=None):
     compiled_elems = 0
     compiled_hashes = 0
     total_slabs = 0
-    empty_slabs = 0
     n_already = 0
 
     def refuse(guid, ghash, reason):
@@ -1322,14 +1325,20 @@ def compile_layer_geometry(conn, geo_conn=None):
                 buf_f = []
                 layer_rows_out = []
                 vol_sum = 0.0
-                uncovered = []
                 face_cursor = 0
                 vert_cursor = 0
                 for seq, ((lo, hi, covered), (_s, mat, th)) in enumerate(zip(ivals, lay_rows)):
                     if not covered:
-                        uncovered.append(seq)
-                        layer_rows_out.append((seq, mat, float(th), face_cursor, 0))
-                        continue
+                        # Row 33 (Watchdog 2026-07-30): an empty slab is a REFUSAL, not a row.
+                        # Measured on the Duplex party walls: the authored body is the full-set
+                        # prism trimmed by an authored half-space clip exactly at this boundary —
+                        # the material is genuinely absent here, so the element ships as an
+                        # envelope and stays gated RED; partial layer sets are never shipped.
+                        raise LayerRefusal(
+                            f"layer {seq} ({mat!r} {th:.3f} m) of set {lsn!r} lies wholly outside "
+                            f"this element's own body [{ymin:.4f},{ymax:.4f}] — an empty slab is "
+                            f"a refusal, not a row (row 33); the authored body does not contain "
+                            f"this layer's material")
                     slab_v, slab_f = _slice_slab(verts, faces, k,
                                                  max(lo, ymin), min(hi, ymax),
                                                  ymin, ymax, 1.0 if env_vol > 0 else -1.0)
@@ -1355,10 +1364,6 @@ def compile_layer_geometry(conn, geo_conn=None):
                 new_fblob = np.vstack(buf_f).astype(np.int32).tobytes()
                 v_count = len(new_vblob) // 12
                 f_count = len(new_fblob) // 12
-                if uncovered:
-                    print(f"  §LAYER-PARTIAL guid={guids[0]}{' (+%d sharer)' % (len(guids)-1) if len(guids)>1 else ''} "
-                          f"set={lsn!r}: layers {uncovered} lie outside this element's own body "
-                          f"[{ymin:.4f},{ymax:.4f}] of authored span — recorded empty, not invented")
 
                 if in_place:
                     write_hash = ghash
@@ -1399,7 +1404,6 @@ def compile_layer_geometry(conn, geo_conn=None):
                 compiled_elems += len(guids)
                 compiled_hashes += 1
                 total_slabs += sum(1 for r in layer_rows_out if r[4] > 0)
-                empty_slabs += len(uncovered)
             except LayerRefusal as exc:
                 for guid in guids:
                     refuse(guid, ghash, str(exc))
@@ -1417,7 +1421,7 @@ def compile_layer_geometry(conn, geo_conn=None):
     if geo_conn is not None:
         geo_conn.commit()
     print(f"  §LOD400-SLICE compiled {compiled_elems} element(s) / {compiled_hashes} hash(es) into "
-          f"{total_slabs} layer slabs ({empty_slabs} authored-outside-body empty rows); "
+          f"{total_slabs} layer slabs (every row face_count>0 — row 33); "
           f"refused={len(refusals)}; already-layered={n_already}")
     return compiled_elems, refusals, n_already
 
@@ -1465,6 +1469,12 @@ def verify_layer_geometry(conn, geo_conn=None):
         ok = True
         cursor = 0
         for ((seq, mat, th, fs, fc), (aseq, amat, ath)) in zip(idx, lay):
+            if fc is None or fc <= 0:
+                # Row 33 falsification surface: re-introducing an empty row must go RED here.
+                bad(guid, f"layer {seq} ({mat!r}) has face_count={fc} — an empty slab is a "
+                          f"refusal, not a row (row 33)")
+                ok = False
+                break
             if seq != aseq or abs(th - ath) > 1e-9 or (mat or "") != (amat or ""):
                 bad(guid, f"layer row {seq} ({mat!r},{th}) != authored ({aseq},{amat!r},{ath})")
                 ok = False

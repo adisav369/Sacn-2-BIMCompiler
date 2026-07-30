@@ -219,7 +219,8 @@ def main():
     unresolved = sorted(need - have)
     lay_hashes = set(h for (h,) in out.execute(
         "SELECT DISTINCT geometry_hash FROM component_geometry_layers"))
-    # per-hash: slab extents along the thinnest axis must match authored thicknesses (>0 rows only)
+    # per-hash: slab extents along the thinnest axis must match authored thicknesses; face_count=0
+    # rows are a hard failure (row 33 — the extractor refuses instead of emitting them)
     ext_bad = 0
     for h in sorted(lay_hashes):
         vb, fb = out.execute(
@@ -230,7 +231,12 @@ def main():
                 "SELECT layer_seq, material_name, thickness_m, face_start, face_count "
                 "FROM component_geometry_layers WHERE geometry_hash=? ORDER BY layer_seq", (h,)):
             if fc == 0:
-                continue                 # authored-outside-body empty row (§LAYER-PARTIAL) — honest
+                # Row 33 (Watchdog 2026-07-30): an empty slab is a refusal, not a row — the
+                # extractor no longer emits these; one in a rebuilt resident is a hard failure.
+                log("§GEO-LAYER-VERIFY-FAIL hash=%s layer=%d %s face_count=0 — an empty slab "
+                    "is a refusal, not a row (row 33)" % (h, seq, mat))
+                ext_bad += 1
+                continue
             idx = f[fs * 3:(fs + fc) * 3]
             slab = v[idx]
             ext = slab.max(axis=0) - slab.min(axis=0)
