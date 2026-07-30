@@ -77,8 +77,10 @@ Worked example — the wall in the 2026-07-29 23:03 screenshot's building, `2O2F
   along the authored `LayerSetDirection` at the authored cumulative thicknesses. **This is COMPILATION
   FROM AUTHORED DATA, not invention** — thickness, order, sense and offset are all in the source; it is
   precisely what `IfcMaterialLayerSetUsage` *means*. Witness `scripts/witness_lod400_envelope.py`
-  **12/12**, Duplex gate GREEN exit 0. **Still OPEN (next slice):** ship layers + `surface_styles` into
-  the ARC residents (patch + self-heal loader per the DB policy, never a binary) + the Modeller half.
+  **12/12**, Duplex gate GREEN exit 0. ~~Still OPEN (next slice): ship layers + `surface_styles` into
+  the ARC residents (patch + self-heal loader per the DB policy, never a binary) + the Modeller half.~~
+  **✅ SHIPPED 2026-07-30 — see §LOD400-LAYERS-RESIDENTS below (Duplex live; SampleCastle deliberately
+  NOT shipped while its `sporenkap` refusal stands).**
 - **§LOD400-ENVELOPE-GATE — ✅ DONE (witness) 2026-07-29, extractor half.** P10 `LOD400_ENVELOPE` prints
   `§ILLEGAL_LOD_FALLBACK` **naming every offender** (guid + layer count + layer-set name, not just a
   count) and turns §PROOF red ⇒ non-zero exit via the existing `f7d00240b` path. Witnessed on Duplex:
@@ -223,8 +225,49 @@ an existing DB (the falsification surface + the future resident-patch generator)
   sliceable from authored data). Castle extraction therefore still exits 1 BY DESIGN. Consequence:
   `scripts/witness_lodhell_classify.py` L3 (castle §PROOF green) was already red since the gate landed
   2026-07-29 (75/75 offenders then) and stays red for this 1 element — do not "fix" it by softening P10.
-- **Still OPEN (next slice, NOT this branch):** ship layers + `surface_styles` to the ARC residents
-  (patch + self-heal loader), then the Modeller half of §LOD400-ENVELOPE-GATE.
+- ~~**Still OPEN (next slice, NOT this branch):** ship layers + `surface_styles` to the ARC residents
+  (patch + self-heal loader), then the Modeller half of §LOD400-ENVELOPE-GATE.~~ ✅ DONE — next section.
+
+### ✅ §LOD400-LAYERS-RESIDENTS — 2026-07-30 (Fable5, residents half; bim-compiler `feat/lod400-layers-ship`
+### + bim-ootb `feat/layers-to-residents`). Duplex ONLY (SampleCastle excluded while `sporenkap` refuses).
+**The compiled layer slabs now reach the live Modeller, and the Modeller-half §LOD400-ENVELOPE-GATE is armed.**
+- **HASH LANDMINE (measured, do not assume otherwise):** a fresh extraction's `geometry_hash` ids do NOT
+  match the shipped residents' — all 155 Duplex ARC hashes are absent from a fresh extraction (old store:
+  unwelded buffers, different local anchors, some rotation baked into the blob; e.g. one wall is 17.8 m
+  along Y with rot 0 in the old store vs 17.8 m along X with rot π/2 fresh). So layered buffers carry over
+  **by GUID with a per-guid measured change of basis** `v_old = R_old⁻¹(C_f − C_o + R_f·v_fresh)` — both
+  transforms are extracted data; VERIFIED per guid: all 79 layered guids agree old-vs-fresh in world space
+  < 1e-5 m; layered guids are yaw-only in both stores (script REFUSES tilt rather than guess an Euler).
+- **`scripts/gen_layered_geo_db.py`** — rebuilds a resident `*_geo.db`: swaps the layered buffers in under
+  their EXISTING old hashes + adds `component_geometry_layers`, dedup-regroup aware (a guid whose group
+  representative fails the world-AABB check gets a split hash + an `element_instances` re-point emitted for
+  the patch — Duplex needed 0 splits), then verifies the OUTPUT: 155/155 hashes resolve, per-slab thin-axis
+  extents == authored thicknesses (±1.5 mm). Duplex result: 71 buffers swapped, 229 layer rows / 71 hashes.
+- **`scripts/gen_layer_tables_patch.py`** — sibling of `gen_void_anchor_patch.py`: emits
+  `rel_material_layer_set` (91) + `material_layers` (41) + `surface_styles` (33) as the idempotent
+  self-heal section appended to bim-ootb `modeller/patches/Duplex_ARC.db.sql`.
+- **bim-ootb (`feat/layers-to-residents`):** `arc_editable.js` **§LAYER-GATE** — runtime-schema-armed
+  (only when the ARC db carries `rel_material_layer_set` AND a geometry substrate exists): an authored
+  multi-layer element whose resolved hash has no `component_geometry_layers` rows is REFUSED
+  (`§LAYER-ENVELOPE-REFUSE` console.error + skip, mirror of §GEOM-HARDFAIL, never softened). Residents
+  without the tables take zero new code paths. Duplex `geoV` 3→4, sw.js CACHE v40→v41. New witness
+  `modeller/tests/witness_e2e_layers_residents.js` **8/8** (L0-L7): party wall `2O2Fr$t4X7Zf8NOew3FNbT`
+  hash `d4bad00ddbda7d4e` = 124 tris (pre-fix 14, RED run against the old geo file proves the witness sees
+  it), 7 rows Σ0.550 m, slab extents 16/41/193/50/193 mm + 2 honest empty rows, full face coverage,
+  196 ops / 0 hardfail / 0 refusals armed, falsification (delete one hash's rows → refusal fires, op count
+  drops by exactly 1), unpatched-ARC disarmed. Regressions: W-ARC-EDITABLE 10/10, W-GLASS-PARITY 4/4,
+  anchor sweep green. **W-E2E-LOD-MATCH A3/A4 were RED on pristine origin/main BEFORE this branch**
+  (SampleHouse door verts 3230 vs db 762, tris equal — a welding-count drift, likely the mesh-dedup lane;
+  verified identical on untouched main) — pre-existing, NOT introduced here, left for its own lane.
+- **Geo hosting (§GEO-SERVED pipeline reused):** rebuilt `Duplex_geo.db` uploaded to the same OCI object
+  `bim-ootb/o/modeller/Duplex_geo.db` with `--content-type application/octet-stream`; fetched BACK and
+  byte-verified (SQLite magic + the party-wall 124-tri/7-row query against the fetched copy).
+- **Per-layer render COLOR deliberately not wired** (optional item): the data ships (surface_styles joins
+  material_layers.material_name 17/17 clean — fully non-invent), but painting slabs needs face-group
+  material arrays threaded through the signed-op fold payload into `bonsai_kernel._buildMesh` — not cheap,
+  its own slice. Nothing invented, nothing lost: the tables are already in the resident.
+- **Still OPEN after this:** SampleCastle layer shipping (blocked on its honest `sporenkap` refusal);
+  per-layer slab colors (above); other residents' layer tables when their extractions go gate-green.
 
 ---
 
