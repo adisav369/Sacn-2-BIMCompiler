@@ -1933,3 +1933,64 @@ re-rasterising by hand. If the free-space grid from the walker's own pipeline ro
 with 0 through-wall violations, the skeleton is buildable on top of it and §21.5 becomes a real spec.
 If it does not, the honest answer is that this building data cannot support a wall-aware router at all
 and the graph stays, with §20.7's task 2 (make the reported distance the drawn distance) as the fix.
+
+### §21.6 THE USER'S FORMULATION, TESTED — and it beats the shipped engine on every measured axis
+User, 2026-07-31, verbatim: *"u got a common dense map that covers all doors, and its walkable area is
+marked out … thus this walkable map simply return the shortest possible length between 2 doors."*
+
+**The correction that made it work:** §21.4 built the field from WALLS (block + dilate) and sealed the
+building shut. This builds it from WALKABLE AREA — the room pockets `RoomWalker` already compiled.
+A compiled pocket **stops at a wall by construction** (it is the flood-fill of space the exterior
+cannot reach), so the field is wall-aware without ever rasterising a wall; doors are the only
+connectors between pockets. Room rects are taken RAW — **no `DOOR_BUFFER_SLACK` inflation**, which is
+exactly what makes today's `_pointWalkable` blind to walls thinner than 0.4 m (§21.2).
+Witness: `witness_room_path_freespace_map.js`, log `/tmp/w_roompath_freespace.log`.
+
+```
+§FREESPACE_MAP Clinic     storeys=3 cells=158130 walkableCells=93377 (59.1%) buildMs=4
+§FREESPACE_MAP LTU_AHouse storeys=4 cells=935440 walkableCells=553780 (59.2%) buildMs=8
+§FREESPACE_F3 Clinic     engineDrawn=9209m  freeSpaceMap=4394m  straight=3799m
+              engine/freeSpace median=2.03x p90=3.53x | engineLonger=149 freeSpaceLonger=1 of 150
+§FREESPACE_F3 LTU_AHouse engineDrawn=15755m freeSpaceMap=11350m straight=7711m
+              engine/freeSpace median=1.54x p90=4.07x | engineLonger=127 freeSpaceLonger=19 of 150
+§FREESPACE_DETOUR Clinic     vsStraight engine=2.42x  freeSpaceMap median=1.04x p90=1.44x
+§FREESPACE_DETOUR LTU_AHouse vsStraight engine=2.04x  freeSpaceMap median=1.22x p90=2.18x
+```
+**The detour ratio §20 measured at 2.42× / 2.04× drops to 1.04× / 1.22×** — 1.04 is essentially the
+optimal walk. The map is a **one-time 4-8 ms preprocess per building** (the user's own "stored as one
+time process"), and a query costs 25-27 ms.
+
+**F2 as written was an INVALID gate — control run first, conclusion corrected.** The test flags a
+segment touching any `IfcWall` bbox, but a wall element's bbox spans its own door opening, so every
+legitimate doorway crossing scores a hit. Control (`/tmp/viol_control.js`, same test, same pairs):
+```
+§VIOL_CONTROL Clinic     ENGINE drawn polyline: 1976 violations on 150/150 routes
+§VIOL_CONTROL LTU_AHouse ENGINE drawn polyline: 1924 violations on 150/150 routes
+   vs free-space map:        Clinic 547 / LTU 612
+```
+So it cannot say "0 violations". As a RELATIVE measure on identical inputs it is meaningful: the
+free-space map touches walls **3.6× less (Clinic) and 3.1× less (LTU)** than the shipped engine.
+
+**The one real cost, stated plainly:** coverage. `noRoute` = **37.0% (Clinic) / 14.8% (LTU)** vs the
+engine, which routes those pairs — partly by walking through walls (§21.2), so some of that "coverage"
+is not honest. But some is real: pockets that no door connects. **That is the next problem to solve,
+and it is a DATA problem (missing/misassigned door→pocket adjacency), not a routing-formula problem.**
+
+### §21.7 WHERE THIS LANDS — the formulation to build, and what it retires
+| | shipped (2 layers) | free-space map (1 layer) |
+|---|---|---|
+| detour vs straight | 2.42× / 2.04× | **1.04× / 1.22×** |
+| wall-touching (relative, same test) | 1976 / 1924 | **547 / 612** |
+| reported distance vs drawn line | 3.20× over / 0.71× under | **identical by construction** |
+| coverage | higher (some of it through walls) | 63% / 85% — the open gap |
+| tuned constants needed | ~12 (`UTILITY_EDGE_PENALTY`, `DETOUR_LOCALITY_MARGIN`, 4 A* margins…) | `RES` only |
+Retires structurally, not by tuning: §20.6 FINDING 1 (distance ≠ drawn length), FINDING 2 (utility
+penalty), FINDING 3 (`circ` hub), §17's `DETOUR_LOCALITY_MARGIN`/`§DETOUR-NO-REVISIT` machinery, and
+the R1/R2/R3 revisit classes — a grid A* cannot revisit a cell, so double-backs are impossible by
+construction rather than guarded against.
+
+**Next task, spec-first before any engine change:** close the coverage gap. Measure WHY the 37%/14.8%
+fail — per unroutable pair, is either endpoint's pocket door-isolated (no door footprint touching it),
+or are two pockets adjacent with a door that the per-storey z-assignment put on the wrong storey?
+`RoomWalker.doorAdjacent()` already answers the first. **Do not tune `RES` or add slack to paper over
+this** — reintroducing inflation is precisely what made the shipped predicate wall-blind.
