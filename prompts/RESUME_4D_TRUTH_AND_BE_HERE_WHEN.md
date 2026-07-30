@@ -189,3 +189,157 @@ containment (window bbox inside wall bbox), never proximity, per the Prime Direc
 
 **Not verified in this pass:** that these 7 are the elements the user saw in the baked film. That needs the
 film or a §-logged run, and this pass ran neither.
+
+---
+
+## §STAGE A 2026-07-30 — GATE NOT PASSED: the specced defect does not reproduce; a much larger one does
+
+**Worker session. No production code changed.** The Stage A gate ("W-HOST-ORDER must report >0 BEFORE
+the change, or stop") was run honestly and came back **0**. Per the standing rule — *a witness that
+cannot show RED is not a witness, and you do not build a fix for a defect you failed to reproduce* —
+Stage A and Stage B were **not implemented**. What follows is the spec that was written first, the
+measurements that closed the gate, and the real defect those measurements found instead.
+
+Measured against `~/bim-ootb/buildings/Hospital_extracted.db` (+ 5 more buildings) and `origin/main`
+`be88cce`. Every number below comes from `tests/test_host_order.js` (new, committed to `bim-ootb`
+branch `fix/4d-host-before-hosted`) running the REAL deployed `viewer/schedule_gate.js`.
+
+### A.0 Spec written before any code (the contract this session held itself to)
+
+- **W-HOST-ORDER (crude proxy, as specced in the brief).** Count seq-7 openings (`IfcWindow`/`IfcDoor`)
+  whose `start_ts` precedes the earliest seq-6 wall (`IfcWall`/`IfcWallStandardCase`) in the building.
+  *Proves/disproves:* "openings in a wall-less storey bucket fall through the per-Level trade gate and
+  schedule at project start." **Must be >0 before, 0 after.**
+- **W-HOST-ORDER (real, per-host).** Derive host by MEASURED bbox containment from `element_transforms`
+  (`center_*`/`bbox_*`) — opening bbox ⊆ host bbox inflated by `tol` on every axis. Never proximity.
+  Ambiguous (>1 candidate) ⇒ **no host, counted, never guessed.** Assert `start_ts(host) <= start_ts(hosted)`.
+- **W-HOST-COVERAGE.** hosted / ambiguous / noHost out of 571 openings, swept over `tol ∈ {0, .05, .1, .25, .5}` m
+  so the coverage number is visibly tolerance-sensitive rather than a single cherry-picked figure.
+- **W-HOST-NO-REGRESSION.** Run the whole element build twice — with and without §STOREY-Z — and compare
+  per-storey first-wall / first-opening days numerically. Bottom-up character must survive.
+- **Reveal semantics (checked, not assumed).** `viewer/time_machine.js:1132-1157` puts an element on screen
+  at `op.start_ts` (as `frontier`), so **start order IS reveal order** and `start_ts` is the correct thing
+  to assert on. Confirmed before writing any assertion.
+
+### A.1 The gate: RED was never reached — every form of W-HOST-ORDER is already 0
+
+| witness | tol | hosted | ambiguous | noHost | **violations** |
+|---|---|---|---|---|---|
+| crude proxy (opening before FIRST wall) | – | – | – | – | **0 / 571** |
+| per-host, measured containment | 0.00 m | 433 | 47 | 91 | **0 / 433** |
+| per-host, measured containment | 0.05 m | 488 | 51 | 32 | **0 / 488** |
+| per-host, measured containment | 0.25 m | 486 | 68 | 17 | **0 / 486** |
+| per-host, measured containment | 0.50 m | 452 | 110 | 9 | **0 / 452** |
+| **widened superset** — EVERY 3D-overlapping wall must precede | 0.05 m | 565 | 0 | 6 | **0 / 565** |
+
+The crude proxy is also 0 on **Duplex, HHS_Office_Federated, Terminal, LTU_AHouse, JKR** — with and
+without §STOREY-Z. It is not merely 0 on Hospital; it is **structurally incapable of going RED**, because
+`geoGate` + the project-wide `§CREW-CAP` crew pool already push every seq-7 element hundreds of days past
+the first seq-6 wall regardless of bucket. Stage B's constraint `start_ts(host) <= start_ts(hosted)` is
+**already satisfied for every derivable host at every tolerance**. Adding it would be a no-op.
+
+### A.2 Two factual corrections to §DIAGNOSIS 2026-07-30 (D2 and D3 are wrong)
+
+**D3 is wrong at the code level.** §STOREY-Z is **already reaching the gate**. `assignStoreyByZ` is applied
+at `viewer/time_machine.js:3269` while the `elements` array is built, and *that same array* is what is
+handed to `ScheduleGate.computeSchedule` at `viewer/time_machine.js:3358-3359`. There is exactly ONE
+`computeSchedule` call site in the repo. Measured: `reassigned=9457` on Hospital. There is no
+raw-vs-reassigned split between Gantt and gate — the "one identity derived two ways" C2 shape does not
+apply here. **Stage A's premise is void; there is nothing to single-source.**
+
+**D2's mechanism does not occur.** The 7 `storey='Unknown'` openings do **not** schedule at project start.
+Measured with §STOREY-Z force-disabled, so the raw bucket is genuinely wall-less:
+
+```
+§PER_STOREY Unknown   walls=0  firstWallDay=n/a   openings=7  firstOpeningDay=295.56
+            (earliest wall anywhere in the building = day 261.15)
+```
+
+`tg` does stay at `baseMs` for that bucket exactly as D2 says — but `start = Math.max(geoGate(el), tg,
+slot.time)` (`schedule_gate.js:116`), and the other two terms dominate. D2 read line 113-114 and stopped
+before line 116. **The diagnosis was never run; it was reasoned from source.**
+
+### A.3 What the user actually saw — RED, reproduced, 2211/2211
+
+The user reported *"a window revealed before its supporting wall."* It was not an `IfcWindow`.
+
+`viewer/rates/sequence_rules.json` classifies by IFC class alone:
+`IfcMember` → **seq 3**, `IfcPlate` → **seq 4** (both *Superstructure*, `STEEL_ERECTOR`);
+`IfcWall`/`IfcWallStandardCase` → seq 6; `IfcWindow`/`IfcDoor`/**`IfcCurtainWall`** → seq 7.
+`seq <= 4` routes an element into **PASS A, the structural pass**.
+
+On Hospital that classification is materially wrong:
+
+- **2211 / 2211** `IfcPlate` are named `System Panel:**Glazed**:…` — curtain-wall glazing.
+- **7122 / 7127** `IfcMember` are named `Curtain Wall:Profilit-…Framing…` — curtain-wall mullions.
+- All 9333 **have meshes** (`element_instances`) — they are on screen.
+
+So the entire glazed façade is erected as *structure*:
+
+```
+§CLASS_SPAN  (reveal start day; project = 1335 days)
+  IfcMember            n=7127  seq=3  Superstructure  min=13.2  p50=84.4  max=146.6
+  IfcPlate             n=2211  seq=4  Superstructure  min=14.1  p50=90.2  max=146.1
+  IfcWall              n= 158  seq=6  Architecture    min=261.2 p50=274.0 max=281.4
+  IfcWallStandardCase  n=1310  seq=6  Architecture    min=261.2 p50=270.8 max=281.5
+  IfcWindow            n= 131  seq=7  Architecture    min=289.4 p50=291.2 max=295.3
+  IfcCurtainWall       n= 178  seq=7  Architecture    min=281.6 p50=283.4 max=285.3
+
+§W-FACADE-ORDER glazed panels revealed BEFORE the FIRST wall in the building = 2211/2211
+§W-FACADE-ORDER panelsWithTouchingWall=1445  violations=1445/1445  worstLateDays=251.19
+   e.g. glazed 3sbXgwO310x8BAlsfLa$g4 @day14.13 vs touching IfcWallStandardCase @day264.73 late=250.6d
+   e.g. glazed 3sbXgwO310x8BAlsfLa$WY @day14.13 vs touching IfcWall            @day261.68 late=247.5d
+```
+
+**A glazed panel appears on day 14. The wall it physically touches appears on day 265.** That is the
+window-before-its-wall the user saw, 251 days wide, on 1445 measured touching pairs. This IS the RED the
+gate was looking for — it was just never going to be found by looking at `IfcWindow`.
+
+**Corollary, same root cause:** `IfcCurtainWall` (seq 7, day 281-285) is scheduled **~250 days after its own
+`IfcPlate`/`IfcMember` children** (seq 4/3, day 14-146). The IFC aggregate is built after its parts. Note
+the 178 `IfcCurtainWall` rows have **no `element_transforms` row and no `element_instances` row** — the gate
+sees them at world origin (`COALESCE(...,0)`), ~169 m below a building whose median Z is 168.9 m, with a
+zero-area footprint, and they are never rendered. A fix must target `IfcPlate`/`IfcMember`, not the container.
+
+**Fleet scope — and the trap that makes this NOT a one-line fix.** A raw `IfcPlate` count is misleading;
+what matters is whether the plate is glazing or genuinely structural. Measured by name:
+
+| building | `IfcPlate` | glazing? | witness verdict |
+|---|---|---|---|
+| Hospital | 2211 | 2211 × `System Panel:Glazed` | **RED** 2211/2211 before any wall; 1445/1445 touching pairs; worst **251.19 d** |
+| HHS_Office_Federated | 629 | 438 × `Systemelement:**Verglasung**` (German) | **RED** 154/438 before any wall; 145/145 touching pairs; worst **20.58 d** |
+| Terminal | 33,324 | **0** — all `Metal Deck` | **GREEN** — seq 4 is *correct* here; witness does not false-positive |
+| LTU_AHouse / JKR / Duplex | 145 / 120 / 0 | – | crude + per-host witnesses all 0 |
+
+So the defect is confirmed on **two independent buildings**, and Terminal proves a blanket
+"`IfcPlate` is not structure" reclassification would be **wrong** — its 33,324 metal-deck plates belong in
+Superstructure exactly where they are. Note also that HHS names its glazing `Verglasung`: **a name-based
+rule is locale-dependent** and will silently miss buildings authored in other languages. The witness
+therefore prints `§PLATE_UNMATCHED` (count + name breakdown of every `IfcPlate` its regex did *not* claim)
+so that blind spot is always a number on the log rather than a silent omission. This is the concrete
+evidence behind the ⛔ decision below: the robust discriminator is the IFC decomposition
+(`IfcCurtainWall` ⊃ `IfcPlate`/`IfcMember`), which is **not in this schema** — a bim-compiler extraction task.
+
+### A.4 Why this was NOT fixed in this session
+
+The fix is a **class→sequence reclassification**, not a scheduling-gate change — a different file
+(`viewer/rates/sequence_rules.json`), a different blast radius, and a decision that is not the worker's to
+make. `IfcPlate`/`IfcMember` at seq 3-4 is *correct* for structural steel plates, gusset plates and bracing;
+it is wrong only when the element is curtain-wall fabric. Distinguishing them requires a rule the brief did
+not authorise and this session will not invent. **⛔ BLOCKED on one decision:** may the sequence lookup be
+widened beyond `ifc_class` — e.g. to consult `element_name` (`/glazed|curtain wall/i`), or to consult the
+IFC decomposition (`IfcCurtainWall` ⊃ `IfcPlate`/`IfcMember`, which is **not extracted** into this schema
+and would be a bim-compiler task)? Both are EXTRACTION, not invention; the choice between them is an
+architecture call.
+
+Whatever is chosen, `tests/test_host_order.js` already gates it: today it prints `§VERDICT RED`, and it is
+the artifact that turns green. `viewer/schedule_gate.js` and `viewer/rates/sequence_rules.json` are both
+precached (`viewer/sw.js:192`, `CACHE_VERSION` currently `v884`) — the fix commit must bump it. This
+session changed no precached file, so no bump was made.
+
+### A.5 Deliverables
+
+- `bim-ootb` branch **`fix/4d-host-before-hosted`** (off `origin/main` `be88cce`), worktree `/tmp/wt-4dorder`
+  — adds `tests/test_host_order.js` only. **Zero production files touched.** Not wired into CI
+  (`.github/workflows/ci.yml` runs an explicit list; nothing globs `tests/`).
+- Stage B not started — correctly gated off by Stage A.
