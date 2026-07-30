@@ -2033,3 +2033,47 @@ door→pocket adjacency data problem already named in §21.6, now with a direct 
 2. **Close the orphan-door / coverage gap** (16 · 92 doors; 37% · 14.8% unroutable pairs). Data, not
    formula — `RoomWalker.doorAdjacent()` answers half of it. **Do not add rect slack to paper over it.**
 3. Only then propose replacing the shipped two-layer router, with §20's R1-R6 as the before/after.
+
+### §21.9 "CAN WE NOW SAY NO PATH EVER CUTS THROUGH EMPTY SPACE?" (user, 2026-07-31) — measured. NO,
+### not today; and the user's subdivide-until-inside idea is ALREADY the string-pull guard.
+**Status check first, because the question assumed deployment: NOTHING IN §20/§21 IS LIVE.** All of it
+sits on `bim-ootb` branch `review/roompath-redundancy` + this spec file. The shipped viewer engine is
+byte-unchanged; no OCI upload, no GH Pages deploy. These are measurement witnesses and a prototype.
+
+Direct test (`/tmp/offmap_check.js`): sample every produced polyline at **0.05 m** and count samples
+the walkable map itself calls not-free. Same test applied to the SHIPPED engine's drawn line, as the
+control — 120 routes per building.
+```
+§OFFMAP Clinic     prototype (grid A* + string-pull): 36/73204 samples off-map (0.05%) 32/120 routes
+                   SHIPPED engine drawn polyline:  15404/139438 samples off-map (11.05%) 91/120 routes
+§OFFMAP LTU_AHouse prototype (grid A* + string-pull): 38/197090 samples off-map (0.02%) 32/120 routes
+                   SHIPPED engine drawn polyline:  21820/265385 samples off-map (8.22%)  109/120 routes
+```
+**Today, live: 11.05% / 8.22% of the drawn line is outside walkable space, on 76% / 91% of routes.**
+That is the honest answer to the question as asked.
+**Prototype: 0.05% / 0.02% — a 200× / 400× reduction — but NOT zero.**
+
+**On the user's proposed helper** (*"keep placing dots … until it is entirely within the walkable
+map"*): it is worth separating two things the shipped engine conflates.
+- As **post-hoc repair of an arbitrary chord**, this is exactly what `_legalizePath` +
+  `_detourForChord` already do — and §20 measured the cost: it is the mechanism behind the 83-91%
+  double-backs. Repairing a chord chosen by a different cost function can only add wiggle.
+- As a **validation on string-pull simplification**, it is exactly right and it is already implemented
+  — `_simplifyLOS` in the shipped engine, and `simplify()`/`clear()` in the prototype, both test the
+  collapsed run against the map at sub-cell resolution and keep more points when it fails. **That
+  guard is what buys the 200× above.** So: already resolved, and the user's instinct matches the
+  mechanism that is doing the work.
+
+**Why it still is not zero — named, so nobody assumes the guard is broken.** 36 and 38 bad samples
+spread over 32 routes each ≈ **one sample per affected route**, i.e. boundary residue, not a wandering
+line. Two identified causes, neither fixed by more dots:
+1. **Endpoint snap.** A* snaps start/goal up to 1.5 m onto a free cell, but the REPORTED polyline
+   still begins at the room centre, which can sit marginally outside its own inscribed rect.
+2. **Half-cell rounding.** The guard tests at `RES/2` while the audit samples at 0.05 m, so a sample
+   can land in a cell the guard never tested.
+**Fix for a true zero, when this is built for real:** clamp the reported endpoints to the snapped free
+cell (do not report a point the map rejects), and test the guard at the SAME resolution the audit
+uses. Both are exactness changes, not new heuristics — and neither is more subdivision.
+
+**Do not restate "no path cuts through empty space" as a property of the product until (a) the
+prototype is actually shipped and (b) this witness reads 0/0 on both buildings.**
