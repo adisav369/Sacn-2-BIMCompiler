@@ -142,6 +142,24 @@ re-derive the measured facts below — they are witnessed; spend the session on 
    Recommend (b) first — it is reversible, ships behind the existing hash, and answers the visual question
    without a fleet-wide migration. State the choice, then proceed. Do not build both.
 
+   **✅ CALL MADE 2026-07-30 (Sonnet, dispatched per MODELLER_MASTER.md §OPEN LIST row 1): (b) — one row
+   per element, one layered mesh (concatenated per-layer slab buffer) behind the existing `geometry_hash`,
+   with a new sibling index table keyed by hash. Not (a).** Grounds (verified, cited by the deciding
+   session): every mesh-resolution path assumes one geometry per guid (`real_geometry.js:93`,
+   `viewer/streaming.js:71-137`, `arc_editable.js:129` + `§GEOM-HARDFAIL :159-166`); geometry is already
+   addressed by HASH not element (dedup), so a hash can carry a richer composite mesh with zero guid-side
+   change; (a) would force new guid rows onto every guid-keyed consumer (BOM lines, rooms, 4D
+   `task_elements`) — the fleet-wide migration is real, not hypothetical. **Index location:**
+   `component_geometry_layers (geometry_hash, layer_seq, material_name, thickness_m, face_start,
+   face_count, PK(geometry_hash, layer_seq))` in the same geo store as `component_geometries` — the
+   geometry-side analogue of `rel_material_layer_set`. **Witness claim for §LOD400-LAYERS-REAL:** the hash
+   resolved for `2O2Fr$t4X7Zf8NOew3FNbT` contains 7 concatenated slab solids (72 tris = 7×12);
+   `component_geometry_layers` has exactly 7 rows for it; `SUM(thickness_m)` == `total_thickness_m`
+   (0.550 m); falsified by deleting one `material_layers` row and asserting extraction hard-fails (never
+   silently ships 6 slabs). Step 1's guide subsection: **✅ DONE same day** — "What a wall is made of" in
+   `docs/ModellerGuide.md` (after Realistic glass; deploy via `safe_gh_deploy.sh` once merged).
+   §LOD400-LAYERS-REAL (step 3) is now unblocked for Fable5.
+
 3. **§LOD400-LAYERS-REAL — build it. Fable5-suitable once step 2 is chosen (mechanical, fully specified).**
    Slice the authored envelope across its thickness at the authored cumulative thicknesses, in the authored
    direction. Every number comes from `rel_material_layer_set` (just added: `layer_set_name`, `layer_count`,
@@ -188,6 +206,22 @@ purpose themselves and it is NOT the cause of anything here; do not "fix" it or 
    because 65 of its 71 hosts are void-consumed. Making those hosts participate in the cascade WITHOUT
    rendering them would close the gap — but it means inventing a scene participant that has no geometry,
    which is a doctrine question, not an implementation one. **Do not build this unilaterally.**
+   **▶ SONNET ANALYSIS 2026-07-30 (dispatched per MODELLER_MASTER.md §OPEN LIST row 4; user's word still
+   required before any build):** recommendation = **yes-but-only-after-Y**, Y = the extractor first
+   persisting the host's placement+extent. Data finding: the shipped DBs carry NOTHING for the 65 hosts
+   (no `element_transforms`, no `element_instances`) — but the extractor DISCARDS data it already touches,
+   it doesn't lack it: `shape.transformation.matrix` is free on the shape object, and `is_void_consumed()`
+   (`extractIFCtoDB.py:770-808`) already tessellates the pre-boolean Body ITEM to classify, then throws
+   the verts away (`:1247-1252` early `continue`). So persisting is "keep what's already computed," pure
+   extract, no invention. Mechanism constraint (verified): a bare `fidByGuid` map entry will NOT work —
+   `bonsai_gridmove.js:220-231 _buildBoxByFid()` requires a real `m.isMesh` in the scene group; the anchor
+   must be an actual `THREE.Mesh` with `.visible=false` (seams: extractor flag row → `buildSeedOps`
+   `params.anchorOnly` branch → `foldInsert` invisible-mesh branch; `sdg_cascade.js` untouched).
+   Doctrine-against noted honestly: the extent is the PRE-boolean body repurposed, and §GEOM-HARDFAIL's
+   skip is by design — carving an exception class needs its own spec. **THE ONE QUESTION FOR THE USER:
+   should void-consumed hosts (65/71 on SampleCastle) get an invisible-but-real scene mesh — built from
+   the host's own pre-boolean placement and body extent, never rendered — purely so `stretchRide()` can
+   ride their fillings, or should this gap stay closed (SampleCastle 9/74 stays as-is)?**
 2. **Clinic / Hospital / Terminal have no `rel_fills_host`** — their source IFCs are not in this checkout,
    so there is nothing to recover from. Not an oversight. When a source lands, one command finishes it:
    `python3 scripts/gen_rel_fills_host_patch.py --ifc <src> --target ~/bim-ootb/modeller/<X>_ARC.db --out <wt>/modeller/patches/<X>_ARC.db.sql`

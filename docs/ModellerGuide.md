@@ -161,6 +161,42 @@ transparent material at its true opacity, everything else is unaffected.
 
 ![A Duplex window rendered as real transparent glass, recessed into its wall opening — not an opaque panel](img/modeller/glass-window-transparent.png)
 
+## What a wall is made of
+
+A plain-looking wall box in the Modeller is real geometry, not a shortcut — the file itself only ever
+described the wall as one outer shape plus a list of layer thicknesses, never as separate layer shapes.
+
+Take a real one: the party wall between two Duplex units (`2O2Fr$t4X7Zf8NOew3FNbT`) is built from 7
+layers — plasterboard (16mm), metal stud (41mm), block (193mm), an air gap (50mm), block again (193mm),
+metal stud (41mm), plasterboard (16mm). That's real, measured construction. But the source file never
+draws those 7 slabs as 7 shapes — it draws **one outer box** the size of the whole stack, and records the
+7 thicknesses as a side list ("this box is made of, in order..."). The Modeller renders exactly what's
+there: one box, 12 triangles (a rectangular solid always tessellates to 12 triangles — 2 per face, 6
+faces). That's not a placeholder standing in for the real wall. It *is* the real wall, drawn at the
+detail the file actually authored.
+
+You can tell a real box from a broken one by whether it can be cut. A door or window cut through a wall
+only works if the wall has a real shape to cut — a stand-in box has nothing behind it to carve. In the
+Duplex, 21 walls carry a door or window hole and each ends up with 28–120 triangles once the cut is
+applied; that's proof the geometry underneath is real, not a fallback.
+
+**Why the Viewer looks richer on the same building.** Open Duplex in the Viewer and you'll see far more
+going on — because the Viewer loads everything the Modeller deliberately doesn't: pipes, ducts, and other
+services (904 extra parts). The walls themselves are identical in both — same boxes, same 12 triangles
+each. The Modeller is scoped to architecture + structure by design; it isn't missing wall detail the
+Viewer somehow has.
+
+**Why a July fix looked dramatic on one building and invisible on another.** An earlier pass removed
+*fake* placeholder boxes — geometry the pipeline invented when it couldn't resolve a real shape. On one
+test building (heavily irregular massing) that fix visibly cleaned up the model. On the Duplex it changed
+nothing you could see, because a plain wall's honestly-tessellated box and a fake placeholder box are both
+12 triangles — removing the fake ones simply left the real ones exactly as they were.
+
+**What changes next.** The file-side link from a wall to its own layer list is now extracted
+(`rel_material_layer_set`), so the data needed to draw those 7 slabs individually — instead of one box —
+already exists. Once that slicing ships (§LOD400-LAYERS-REAL), this same party wall will render as 7
+stacked slabs whose thicknesses sum to the wall's true 550mm, not a single block.
+
 ---
 
 ## Assemble & draw
