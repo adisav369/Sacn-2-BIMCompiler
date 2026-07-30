@@ -2754,6 +2754,48 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_ROOM_TITLE_HEIGHT_BLIND — a title card names the room you are FLYING OVER (spec 2026-07-31)
+**User, flying the Hospital film:** *"u can see the room labels are Level 2 two rooms when we are
+flying quite high."* Correct, and the mechanism is exact.
+
+`cpe_room_title.js:_roomAtIfcPoint(ix, iy, iz)` (`:27-43`) decides "which room is the camera in" with
+a **plan-rect test only**:
+```js
+if (ix < r.x0 || ix > r.x1 || iy < r.y0 || iy > r.y1) continue;   // x/y only
+var dz = Math.abs((n.cz || 0) - iz);
+if (dz < bestDz) { bestDz = dz; best = n; }                        // z only RANKS, never REJECTS
+```
+Height is used to disambiguate stacked storeys and **nothing else** — it can never disqualify a
+match. So a camera 40 m above the roof, or mid-pullback, still resolves to whichever room's footprint
+it happens to be over, and the z-closest tie-break hands it the nearest storey — "Level 2". The room
+graph carries no vertical extent (`{guid, kind:'room', rects, cx, cy, cz}` — `cz` is the space
+centroid's z, `common/room_graph.js:248` and `:327`), so there is nothing to test against today.
+
+**Why this bites HERE and not in the Find panel:** every other consumer of `_roomAtIfcPoint`-shaped
+logic asks about a point that is already known to be inside the building (a picked element, a walk
+node on a storey raster). The cinema camera is the first consumer that spends most of its runtime
+OUTSIDE the building — dive, pullback and orbit are all above or beyond it — and it asks the same
+question from up there.
+
+**The rule (deterministic, derived from the building, no constants invented):** a room may only claim
+the camera if the camera is within **half a storey pitch** of that room's own `cz`. The pitch is the
+median gap between the distinct storey z values the graph already carries — the building states its
+own floor-to-floor, nothing is assumed. Outside that band: **no title**, never a fabricated one
+(the same rule `:78` already applies to "no room here").
+
+**Explicitly NOT in scope:** giving rooms real vertical extents in the room graph. That is the
+better long-term answer and it is a `common/room_graph.js` change affecting every consumer — this
+section fixes the title card against the data that exists today.
+
+### Witness claims — `witness_cpe_room_title_height.js`
+| gate | proves / disproves |
+|---|---|
+| G-RTH-1 | control: a synthetic pose AT a real room's own `cz`, over its rect, still titles that room. Guards against the fix simply switching titles off. |
+| G-RTH-2 | **RED today.** The SAME x/y raised by two storey pitches yields NO segment. Today it returns the room and captions it. |
+| G-RTH-3 | the boundary is the stated one, not an accident: at 0.4 x pitch above `cz` a title is still produced; at 0.9 x pitch it is not. |
+| G-RTH-4 | the log tells the story — `§CPE_ROOM_TITLE_TIMELINE` gains `storeyPitch=<m> rejectedByHeight=<n>`, so "why did my film have no captions" is answerable from the console instead of guessed. |
+| G-RTH-5 | no regression at floor level: a walk sampled at storey height produces the same segment count as before the change. |
+
 ## §CPE_REOPEN_PATHLEN — a saved path re-opens 61% LONGER than it was saved (OPEN, measured 2026-07-31)
 Found while answering the user's *"do u notice the fly to the front of the building before turning in,
 i dont see such a path"* — that question resolved as expected behaviour (see below), but the record
