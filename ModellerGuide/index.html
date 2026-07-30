@@ -970,6 +970,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-a-wall-is-made-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a wall is made of
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#assemble-draw" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2280,6 +2291,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-a-wall-is-made-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a wall is made of
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#assemble-draw" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2782,6 +2804,36 @@ around them. The Modeller reads each element's real material transparency (the s
 value the Viewer already used) and renders it faithfully: an element with real glass data gets a
 transparent material at its true opacity, everything else is unaffected.</p>
 <p><img alt="A Duplex window rendered as real transparent glass, recessed into its wall opening — not an opaque panel" src="../img/modeller/glass-window-transparent.png" /></p>
+<h2 id="what-a-wall-is-made-of">What a wall is made of<a class="headerlink" href="#what-a-wall-is-made-of" title="Permanent link">&para;</a></h2>
+<p>A plain-looking wall box in the Modeller is real geometry, not a shortcut — the file itself only ever
+described the wall as one outer shape plus a list of layer thicknesses, never as separate layer shapes.</p>
+<p>Take a real one: the party wall between two Duplex units (<code>2O2Fr$t4X7Zf8NOew3FNbT</code>) is built from 7
+layers — plasterboard (16mm), metal stud (41mm), block (193mm), an air gap (50mm), block again (193mm),
+metal stud (41mm), plasterboard (16mm). That's real, measured construction. But the source file never
+draws those 7 slabs as 7 shapes — it draws <strong>one outer box</strong> the size of the whole stack, and records the
+7 thicknesses as a side list ("this box is made of, in order..."). The Modeller renders exactly what's
+there: one box — 14 triangles for this wall (a perfectly plain box tessellates to 12, two per face on
+six faces, and 35 of the Duplex's walls are exactly that; this one's outline carries two more). That's
+not a placeholder standing in for the real wall. It <em>is</em> the real wall, drawn at the detail the file
+actually authored.</p>
+<p>You can tell a real box from a broken one by whether it can be cut. A door or window cut through a wall
+only works if the wall has a real shape to cut — a stand-in box has nothing behind it to carve. In the
+Duplex, 18 walls carry a door or window hole and each ends up with 28–120 triangles once the cut is
+applied; that's proof the geometry underneath is real, not a fallback.</p>
+<p><strong>Why the Viewer looks richer on the same building.</strong> Open Duplex in the Viewer and you'll see far more
+going on — because the Viewer loads everything the Modeller deliberately doesn't: pipes, ducts, and other
+services (904 extra parts). The walls themselves are identical in both — same boxes, same 12 triangles
+each. The Modeller is scoped to architecture + structure by design; it isn't missing wall detail the
+Viewer somehow has.</p>
+<p><strong>Why a July fix looked dramatic on one building and invisible on another.</strong> An earlier pass removed
+<em>fake</em> placeholder boxes — geometry the pipeline invented when it couldn't resolve a real shape. On one
+test building (heavily irregular massing) that fix visibly cleaned up the model. On the Duplex it changed
+nothing you could see, because a plain wall's honestly-tessellated box and a fake placeholder box are both
+12 triangles — removing the fake ones simply left the real ones exactly as they were.</p>
+<p><strong>What changes next.</strong> The file-side link from a wall to its own layer list is now extracted
+(<code>rel_material_layer_set</code>), so the data needed to draw those 7 slabs individually — instead of one box —
+already exists. Once that slicing ships (§LOD400-LAYERS-REAL), this same party wall will render as 7
+stacked slabs whose thicknesses sum to the wall's true 550mm, not a single block.</p>
 <hr />
 <h2 id="assemble-draw">Assemble &amp; draw<a class="headerlink" href="#assemble-draw" title="Permanent link">&para;</a></h2>
 <h3 id="insert-assemble-from-the-catalog">Insert — assemble from the catalog<a class="headerlink" href="#insert-assemble-from-the-catalog" title="Permanent link">&para;</a></h3>
