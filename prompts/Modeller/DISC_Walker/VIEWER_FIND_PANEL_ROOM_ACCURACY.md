@@ -2180,3 +2180,51 @@ the arrow is cast between **portal EDGES (segments)**, never between points or g
 makes it exact and O(n) instead of sampled-and-verified — and it is the same statement as "a door is an
 aperture, not a dot". Implement it over the door apertures already produced by §21.8's stage-1 map;
 do not re-sample the raster inside the funnel.
+
+### §21.14 START HERE — handoff for the implementation session (written 2026-07-31, measurement session)
+Read §21.11 (status + task order), §21.12 (the algorithm + citation), §21.13 (arrow↔funnel mapping).
+Everything below is verified, not assumed — re-verify anything you are about to depend on.
+
+**Setup.**
+```
+cd ~/bim-ootb && git worktree list        # reuse an existing wt-* for this branch before adding one
+GIT_LFS_SKIP_SMUDGE=1 git worktree add /tmp/wt-roompath review/roompath-redundancy
+```
+`GIT_LFS_SKIP_SMUDGE=1` is required — mesh/geo LFS blobs are not needed here and pulling them burns
+quota (CLAUDE.md §Worktree Hygiene). ⚠ **A /tmp worktree can be removed by another session mid-run**
+(happened 2026-07-31). Everything is pushed; recreate and continue, don't re-derive.
+
+**Engine baseline: `origin/main`, NOT the shared `~/bim-ootb` checkout** — it was 119 commits behind on
+2026-07-30 and its `common/room_graph.js` genuinely differs (no §DOOR-THRESHOLD-WALKABLE, no
+§STAIR-FOOTPRINT-WALKABLE, no §DETOUR-NO-REVISIT). Measuring there reports fixed defects as live.
+
+**Fixtures** (`~/bim-ootb/buildings/`, never OCI, never the bim-compiler copy):
+`Clinic_extracted.db` 118 spaces/254 doors · `LTU_AHouse_extracted.db` 369/606 — the user's reported
+criss-crossing building · `Duplex_extracted.db` 5/14. All three are the RECT-FALLBACK regime (no
+`storey_walkable_raster`, no `patches/*.sql`). ⚠ `bim-compiler/deploy/dev/buildings/LTU_AHouse_extracted.db`
+(440 MB) has NO `spatial_structure` table — it cannot be the rooms source; and that folder's
+`Clinic_extracted.db` is a 0-byte file.
+
+**Regime fidelity is mandatory (§20.1)** — all three carry only `RM_` rooms with no `rooms_meta`, so
+the browser recompiles via `RoomWalker.walk()` on every load. **Any witness MUST run
+`RoomWalker.walk(db,{write:true})` before `buildGraph`**, or it measures a room set the browser never
+routes ([[feedback_witness_headless_regime_gap]]).
+
+**Witnesses already on the branch** (all building-parameterised, all measure-only):
+`witness_room_path_redundancy.js` (R1-R6 sweep — **the before/after gate**) ·
+`witness_room_path_redundancy_attrib.js` (R7-R9 + penalty A/B) · `probe_redundancy_route.js`
+(single-route dump) · `witness_room_path_graphless_astar.js` · `witness_room_path_wallaware_astar.js`
+(FAILED, kept as a record) · `witness_room_path_freespace_map.js` (the free-space map) ·
+`witness_room_path_doormap.js` (stage 1+2). Logs: `/tmp/w_roompath_*.log`.
+
+**The task: funnel across door apertures (§21.11 task 1).**
+- Implement Lee & Preparata over the door apertures stage 1 already produces. Do NOT re-sample the
+  raster inside the funnel, and do NOT hand-roll a shortening heuristic (§21.12).
+- **Correctness oracle:** a visibility graph on a small sample — too slow to ship, valid as a witness
+  baseline. Assert funnel length == oracle length within float tolerance.
+- **Falsification test, write it BEFORE the code:** the funnel must LOWER §21.6's measured
+  1.04×/1.22× detour, because it removes the 45° grid-quantisation bias as well as the door-centre
+  penalty. **If the number does not move, the MAP is wrong, not the funnel.**
+- Re-run `witness_room_path_doormap.js` — target: median ratio ≤1.05× vs direct grid A*, query ~1 ms.
+- Nothing here authorises touching `common/room_graph.js` or `viewer/navigate_find.js`. Shipping is
+  §21.11 task 4, gated on §20's R1-R6.
