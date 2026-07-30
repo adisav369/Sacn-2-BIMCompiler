@@ -2163,3 +2163,20 @@ the quantisation bias, and it makes §21.6's number honest.
 **Consequence for §21.11 task 1 — build the funnel, and measure against the visibility-graph exact
 answer on a small sample as the correctness oracle** (a slow exact method is a legitimate witness
 baseline even if it could never ship). Do not hand-roll a shortening heuristic.
+
+### §21.13 THE "ARROW" ↔ FUNNEL CORRESPONDENCE — for whoever implements §21.11 task 1
+The user's arrow conjecture (§21.10) and Lee & Preparata's funnel (§21.12) are the SAME procedure,
+reached from opposite directions. Recording the mapping so the implementer can read either language:
+
+| user's terms | funnel algorithm |
+|---|---|
+| the last committed dot / "trail behind" | **apex** |
+| the arrow cast ahead | the **funnel wedge** — two feelers, not one ray, narrowing per portal |
+| "arrow passes a stored dot → delete where it has been" | apex advance: next portal endpoint falls OUTSIDE the wedge → apex jumps there, everything between is discarded |
+| "as long that arrow does not cut thru space we are good" | guaranteed by construction — the wedge is bounded BY the portal edges |
+
+**The one refinement the formal version adds, and it is exactly §21.8's finding from the other side:**
+the arrow is cast between **portal EDGES (segments)**, never between points or grid cells. That is what
+makes it exact and O(n) instead of sampled-and-verified — and it is the same statement as "a door is an
+aperture, not a dot". Implement it over the door apertures already produced by §21.8's stage-1 map;
+do not re-sample the raster inside the funnel.
