@@ -957,3 +957,54 @@ BIM5D colour with no new maths.
   one who discovers it on site.
 - **Never quote 92% for pathing.** That is the *naming* ceiling from the SLD; the *geometry* ceiling is
   ~41% until a mechanical-equipment IFC arrives (§SLD).
+
+## §RUN_READY — ⚠ THE REAL CEILING IS ~7%, NOT 41%. Attachment is fine; the GRAPH is too broken.
+Measured 2026-07-30, `scratchpad/check_134.py`. **This supersedes the "41% pathable" figure used in
+§SLD and §FIND_PANEL_CABLE for F3/F4 — 41% was the NAME-resolution ceiling, not the traversal ceiling.**
+
+Graph rebuilt independently from CONTAINMENT.ifc and it reproduces the survey exactly — good
+cross-validation of both passes:
+```
+§G nodes=20550 edges=19142 components=1486 largest=2134
+```
+⚠ Parse gotcha that cost a run: in `IFCRELCONNECTSPORTS('guid',#ownerHist,'name','Flow',#PortA,#PortB,$)`
+and `IFCRELCONNECTSPORTTOELEMENT(…,#RelatingPort,#RelatedElement)` the **FIRST `#` is the owner-history
+ref, not a port.** Take `ids[1]`/`ids[2]`, never `ids[0]`.
+
+### The two numbers that matter
+```
+§RUN_READY  runs with both ends positioned            = 119
+§RUN_READY  …of those, both ends on the SAME component =   8  (6.7%)
+§ATTACH_GAP panel -> nearest tray  median=1.14m  p90=2.15m  max=10.79m  under_2m=87%
+```
+**Attachment is NOT the problem** — 87% of panels sit within 2 m of a tray, median 1.14 m. Panels are
+where they should be. **Traversal is the problem: 93% of otherwise-ready runs cannot be walked**
+because their two ends sit on different disconnected pieces of the tray graph.
+
+### His own numbers PROVE the graph is under-connected, not the building
+```
+from        to          HIS length   compA  compB  same?
+RMU-1.1A -> RMU-1.1B      10.0 m      c5     c1     NO
+RMU-1.1B -> RMU-1.1C      38.0 m      c1     c711   NO
+MV-A     -> RMU-HS        64.0 m      c52    c1     NO
+```
+Two panels **10 m apart**, with a cable he has already measured and installed — and the model says
+there is no connected tray between them. **A physical route demonstrably exists.** So the 1,486
+components are overwhelmingly *missing couplings in the model*, not separate physical runs.
+
+**This flips §CONFIRMED_SCOPE's open question from "worth asking" to ANSWERED BY EVIDENCE**: the islands
+are artifacts. It does NOT license bridging arbitrary gaps — it licenses *fixing the edge rule*, which
+is a different and legitimate thing.
+
+### So the fix is the ADJACENCY RULE, and the survey already found it
+§AUTHORED_VS_DERIVED measured a corrected geometric rule at **F1 95.83 vs the shipped 74.19**, and
+`RULE_A` at **99.99% recall**. The authored 19,142 ports are the *skeleton*; a corrected face/overlap
+rule supplies the couplings the export never wrote. **Union of the two is what makes the network
+traversable — neither alone does it.**
+
+**The measurement that decides the feature (do this before building anything):** rebuild the graph as
+`authored ports ∪ corrected-geometric edges`, then re-run `§RUN_READY`. If same-component rises from 8
+toward 119, F3/F4 are viable. If it stays low, cable pathing on this model is not deliverable and we
+should say so plainly rather than ship a 7% tool.
+
+**Do not quote 41% for pathing again.** 41% = names resolve. 6.7% = a path exists today.
