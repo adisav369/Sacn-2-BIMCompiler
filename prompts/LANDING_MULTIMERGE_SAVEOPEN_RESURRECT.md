@@ -93,7 +93,8 @@ re-derive.
 > `city.js` and `import_db_builder.js` line above was checked and is correct as written.
 
 ### §SM-2 The ONLY blocker
-`scene.js:723`, inside `A._openDbBytes` (declared `scene.js:712`):
+`scene.js:758`, inside `A._openDbBytes` (declared `scene.js:747`) — **line numbers verified against
+`origin/main` 2026-07-30; they drift every week, so GREP THE SYMBOL, never trust the number**:
 ```js
 location.assign('viewer.html?db=' + encodeURIComponent(dbUrl) + '&lib=' + … + '&ghost=1');
 ```
@@ -101,9 +102,9 @@ File Open **navigates the page**. The scene is destroyed and rebuilt. That is th
 opening a second file resets the canvas — not a data limit, not a memory limit.
 
 ### §SM-3 What to build (wiring only)
-1. In `A._openDbBytes` (`scene.js:712`): when a building is **already open**, show the prompt instead
+1. In `A._openDbBytes` (`scene.js:747`): when a building is **already open**, show the prompt instead
    of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1045` — port it, don't rewrite it.
-   Note there are **two** call sites to cover — `scene.js:735` (drag-drop) and `:744` (file picker).
+   Note there are **two** call sites to cover — `scene.js:770` (drag-drop) and `:779` (file picker).
 2. **Replace** → today's `location.assign` path, unchanged.
 3. **Merge** → do exactly what City mode does:
    - register the new DB: `A.cityBuildingDbs[newName] = { db, libDb }` (or the same shape under a
@@ -115,7 +116,7 @@ opening a second file resets the canvas — not a data limit, not a memory limit
    (`sessionGeorefOffset`, pinned by the first file that reports a non-zero offset), applied to an
    existing scene instead of the first file of a batch.
 5. **Open source IFC in the same door:** the picker currently accepts `.db,.sqlite` only
-   (`scene.js:739` `input.accept = '.db,.sqlite'`). Widen to `.ifc`, route to the existing
+   (`scene.js:774` `input.accept = '.db,.sqlite'`). Widen to `.ifc`, route to the existing
    `A.importMultiIFC` (`import.js:267`), then feed the produced DB into step 3. No new import path.
 
 ### §SM-4 Witness (name the issue, per project rule)
@@ -182,9 +183,14 @@ walls/doors and "refuses honestly (roomsWritten=0) if the building lacks them �
 | the merge modal itself | `archive/gallery.html:1045` `showMergeModal()`, called `:1369` | written, orphaned in `archive/` — PORT it |
 
 ### The blocker, exactly
-`scene.js:633` `A._openDbBytes` → `scene.js:644`
+`scene.js:747` `A._openDbBytes` → `scene.js:758`
 `location.assign('viewer.html?db=' + … + '&ghost=1')` — a full page navigation. Two call sites feed it:
-`scene.js:735` (drag-drop) and `scene.js:744` (file picker, `input.accept = '.db,.sqlite'`).
+`scene.js:770` (drag-drop) and `scene.js:779` (file picker, `input.accept = '.db,.sqlite'`).
+
+> ⚠ **GREP THE SYMBOL, NOT THE LINE.** Every number in this file was re-verified against `origin/main`
+> on 2026-07-30 — and two earlier passes had them wrong precisely because they were read from a stale
+> local checkout (`~/bim-ootb` was 113 commits behind, and a `/tmp/wt-*` worktree 61 behind). `main`
+> moves daily. Always `git show origin/main:viewer/scene.js | grep -n '_openDbBytes'` first.
 
 ### Build order
 1. In `A._openDbBytes`, when a building is already loaded, show the ported `showMergeModal()` instead
@@ -195,7 +201,7 @@ walls/doors and "refuses honestly (roomsWritten=0) if the building lacks them �
    genuinely new decision.
 4. Frame: the ALREADY-OPEN building's `project_metadata.georef_offset_*` is the pin; the incoming DB
    rebases to it — the same rule `import.js:299-310` applies within a drop, applied to a live scene.
-5. Widen `scene.js:744` `input.accept` to include `.ifc` and route to `A.importMultiIFC`, then feed the
+5. Widen `scene.js:774` `input.accept` to include `.ifc` and route to `A.importMultiIFC`, then feed the
    produced DB into step 3. No new import path.
 
 ### Witness — W-SCENE-MERGE (name the issue, per project rule)
