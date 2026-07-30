@@ -677,7 +677,7 @@ layers and must not be conflated.
    151 geometries = 14% of that model; 12 in OVERALL_partial).
 3. **✅ DONE (2026-07-30) — read §KUL011 + §KUL012.** Split run to true fixpoint (`--max-rounds 18`;
    the DEFAULT 12 is TOO LOW and its WARNING is real), all 8 parts extracted `7 PASS / 0 FAIL`, and
-   merged into **`~/bim-ootb/IFC/KUL/KUL070_OVERALL_complete.db` — 311 MB, 87,333 elements, zero
+   merged into **`~/bim-ootb/IFC/KUL/KUL070-SWC-01-XX-3D-E-0001-OVERALL_complete.db` — 311 MB, 87,333 elements, zero
    orphans.** Beat the estimate: 87,333 rows (not 66,214 — the extractor walks 81 product types vs
    the viewer's 68) and all 66,214 viewer-class GUIDs present, MISSING=0. **From 3,955 to 87,333.**
 4. **✅ DONE (2026-07-30) — spec lives in `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`
@@ -963,8 +963,8 @@ Witness **W-KUL-DB-MERGE** (2026-07-30). Closes §NEXT_SESSION item 3 outright.
 Logs `/tmp/kul_db/extract_all.log` + `KUL070_OVERALL_P0*.log`; merge script `/tmp/kul_db/merge_parts.py`.
 
 **Artifacts (local only, `.gitignore`d — never git/LFS, per the DB rule):**
-- `~/bim-ootb/IFC/KUL/KUL070_OVERALL_complete.db` — **311 MB, the whole building in one DB**
-- `~/bim-ootb/IFC/KUL/parts/KUL070_OVERALL_P0{0..7}.db` — the 8 per-part DBs, 492 MB total
+- `~/bim-ootb/IFC/KUL/KUL070-SWC-01-XX-3D-E-0001-OVERALL_complete.db` — **311 MB, the whole building in one DB**
+- `~/bim-ootb/IFC/KUL/parts/KUL070-SWC-01-XX-3D-E-0001-OVERALL_P0{0..7}.db` — the 8 per-part DBs, 492 MB total
 
 ### Extraction: 8/8 clean
 Each fixpoint part through `extractIFCtoDB.py` under `systemd-run -p MemoryMax=12G`, sequentially,
