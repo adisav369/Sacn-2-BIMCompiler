@@ -360,12 +360,26 @@ two trimmed elements → **per the directive, the refusal stands; the walls are 
   message) — the blind-witness shape the Watchdog flagged is dead.
 - ⚠ The 2026-07-30 §LOD400-LAYERS-REAL claim "12/12 exit 0 / gate GREEN on Duplex" above is
   SUPERSEDED by this policy: Duplex exits 1 by design while the two trimmed walls refuse.
-**Residents half (same session, second slice):** live `Duplex_geo.db` still carried the partial ship
-(2 hashes `582223c5f6b2c1ae` + `d4bad00ddbda7d4e`, 124-tri layered buffers + 7 index rows of which 2
-empty). Fix = restore both hashes' ORIGINAL envelope buffers (12/14 tris, recovered from the
-pre-layer store) + delete their 14 index rows → the live Modeller's armed §LAYER-GATE then refuses
-both walls loudly (`§LAYER-ENVELOPE-REFUSE`), which is the row-33 "honestly RED" end-state on the
-surface the user sees. Status: see the dated record below this line once shipped.
+**✅ Residents half SHIPPED (same session, second slice — bim-ootb PR #1099):** live `Duplex_geo.db`
+still carried the partial ship (2 hashes `582223c5f6b2c1ae` + `d4bad00ddbda7d4e`, 124-tri layered
+buffers + 7 index rows of which 2 empty). Fixed = both hashes' ORIGINAL envelope buffers restored
+(12/14 tris, recovered from the pre-layer store) + their 14 index rows deleted → store now 215
+rows / 69 layered hashes / ZERO `face_count<=0`; re-uploaded to OCI, fetch-back **byte-identical**
+(md5 match, `application/octet-stream`). `geoV` 4→5, sw v41→v42. Witness
+`witness_e2e_layers_residents.js` rewritten for the refusal posture and **8/8 against the LIVE geo
+URL** — RED-first: against the pre-fix live bytes exactly the row-33 checks fail (4/8). Exemplar
+moved to the full-span party wall `…FKRH` hash `50e205190088c27a` (7 real slabs
+16/41/193/50/193/41/16 mm exact); L5 proves BOTH trimmed walls refused BY NAME with 2 loud
+`§LAYER-ENVELOPE-REFUSE` console.error lines, ops 196→194, and all 215 instances / 155 hashes still
+resolve; L6 falsification deletes the EXEMPLAR's rows → layerRefused=3 (gate live per-hash, not
+hardcoded). Headless real-user open: 194 meshes, `§LAYER-GATE armed multiLayer=80 layeredHashes=69
+refused=2`, `§GEOM-HARDFAIL total=0 of 194`. Regressions: W-ARC-EDITABLE 10/10, W-GLASS-PARITY 4/4
+(after fixing ITS latent race: it sampled before the ARC seed landed on a cold OCI fetch — now
+waits on the real seeded-meshes condition), W-E2E-VOID-ANCHOR 19/19, anchor sweep green through
+HHS (later untouched residents cut by runner timeout only). **The live Duplex now renders the two
+trimmed walls NOT AT ALL, by design — loud console refusal instead of a 5-slabs-as-7 partial.
+"Until resolved" = a future authored-data decision (e.g. trim the authored usage to 5 layers at
+source), not a rendering compromise.**
 
 ## 🧭 START HERE — handoff as of 2026-07-28. Read this block, then only the sections it points at.
 
