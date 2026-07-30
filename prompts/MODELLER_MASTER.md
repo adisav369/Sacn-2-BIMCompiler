@@ -70,6 +70,8 @@ where its detail lives. **None of these may be quietly dropped to make a report 
 | O12 | **Zoom-to-selection parity** with the Viewer Find panel | `MODELLER_ZOOM_TO_SELECTION.md` |
 | O13 | **Guide-worthy** — the public guide's screenshots are honest and current | `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md` |
 | O14 | **Competitive polish** — outline-pass selection, shadows/AO, BCF/IFC interop | `RESUME_MODELLER_COMPETITIVE_POLISH.md` |
+| O15 | **3D Grid editing is the primary handle** — drag a gridline and the building RECOMPOSES (stretch, not scale); openings stay host-bound; rotated bays stay square; no state leaks between clears | the 9 `GRID_*.md` files + `CONSTRUCTION_GRID_BOM_DUAL_MODEL.md` — triaged below |
+| O16 | **2D views ARE the drawings, and they are an INPUT surface** — orthographic elevations F/B/L/R + sections flatten ALL geometry, storey markers at real Z; end-state: drag a gridline in plan → write Δ to DB → recompile → services re-route | `[[project_2d_views_roadmap]]`; ⛔ **PDF/DXF sheet export is NOT yet an objective** — see §2D-AND-PDF below |
 
 ## 📋 TRIAGE — the 15 files, 3,742 lines total. Consolidation rule: this MASTER owns the OPEN LIST and
 ## the objectives; each file keeps its own history and detail. **Do not delete any of them.**
@@ -92,6 +94,52 @@ where its detail lives. **None of these may be quietly dropped to make a report 
 | `RESUME_MODELLER_CONFORMITY_GATE.md` | 77 | O9 — RED/ORANGE gate | harvest |
 | `MODELLER_SAVE_COMPLETEIT.md` | 61 | O8 — Save semantics | harvest |
 | dir `prompts/Modeller/` | — | `COMPETITIVE_FREECAD_INTEROP.md`, `DISC_Walker/` | read, fold pointers in here |
+
+### O15 — the GRID family, added 2026-07-30 (reviewer gap: the first harvest swept only `MODELLER_*`/
+### `RESUME_MODELLER_*` filenames, so 10 files / 1,613 lines covering the Modeller's PRIMARY HANDLE were
+### never triaged. The grid is how a user edits the building; it cannot be a single row in the queue.)
+
+| file | lines | owns | first action |
+|---|---|---|---|
+| `GRID_ROTATION_GUARD.md` | 445 | rotated-bay correctness — the deepest of the family (20 done-marks) | verify the guard shipped, then harvest its 5 remaining |
+| `GRID_ROTATED_SCALE_HARDENING.md` | 260 | scale hardening in `bonsai_kernel_worker.js` + its own witness | mostly ✅ — confirm, retire to a pointer if so |
+| `GRID_KINEMATICS_SANDBOX_PROOF.md` | 233 | the 3D authoring-grid system proof (`bonsai_grid.js`, `grid_kinematics.js`) | this is the doctrine file for O15 — read FIRST |
+| `CONSTRUCTION_GRID_BOM_DUAL_MODEL.md` | 162 | **grid ⊗ BOM as ONE authoring substrate** — 6 open, 0 done | spec-only, never built; decide if it is still the intended architecture |
+| `GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md` | 151 | master design dialogue (reference only) — feeds O8 + pre-drag preview | reference; do not build from it directly |
+| `GRID_SMART_ELEMENT_SCOPE.md` | 136 | which elements a drag legitimately takes with it | harvest — 10 open |
+| `GRID_CLEAR_STATE_LEAK_FIX_ROUND2.md` | 100 | state leaking across a grid clear, round 2 | claims ✅ 2026-07-04 with "PR TBD" — **verify it actually landed** |
+| `GRID_CLEAR_STATE_LEAK_FIX.md` | 72 | round 1 of the same | superseded by round 2 — confirm, then pointer |
+| `GRID_PREDRAG_GREENORANGE_PREVIEW.md` | 54 | green/orange pre-drag preview | states shipped — confirm |
+| plus queue row 7 | — | 🟥 the grid-lock crux, 0.104 m residual | already ranked; its own heavy session |
+
+**Harvest rule for these, same as before:** verify against shipped code before listing anything as open —
+two of these files claim DONE with no PR reference, which is exactly the stale-claim shape the first pass
+found 11 of. Add the surviving rows to §OPEN LIST tagged `O15`.
+
+### §2D-AND-PDF — the vision question, answered 2026-07-30 (user: *"Vision from there on can we do 2D
+### professional drawing exporting to PDF?"*)
+
+**Recorded position (`[[project_2d_views_roadmap]]`), unchanged:** *"The 2D views ARE the architectural
+drawings. Full-screen + print-screen replaces export for now… No DXF/PDF export needed yet."* So PDF is a
+**deliberate deferral, not a missing capability**, and the roadmap deliberately aims PAST export:
+
+> *"End state: drag grid lines → write Δ to DB (like DXFSyncVerb) → recompile building → RouteWalker
+> recomputes MEP. This is the BIM Designer Browser round-trip: 2D view is both output AND input surface."*
+
+That is the same handle as O15 seen in plan. **O15 and O16 are one mechanism, two views — do not build
+them as separate features.**
+
+**Substrate that already exists** (verify each before assuming, per §PRIME LESSON): orthographic
+elevations F/B/L/R, cross-sections showing slab/ceiling/roof heights, storey markers from
+`detectStoreys()` at real Z, subtle gridlines with click-a-bay highlight (`viewer/elevation.js`).
+Requirements already fixed by the roadmap: an elevation must flatten **ALL** geometry onto the view plane
+(no empty spaces), and stairs must read from every side like a real drawing.
+
+**⛔ NOT an objective until the user says so.** Professional PDF sheets = sheet frame + titleblock + real
+scale + dimension strings + line-weight hierarchy — a genuinely new lane, not a small addition, and it
+would be the first thing this product exports for print. Do NOT start it off this file. If greenlit it
+becomes O17 with its own spec; until then the answer to "can we?" is **yes, and the 2D substrate is
+already there — but the recorded priority is the round-trip, not the printout.**
 
 ## 🚚 THE DISPATCH — model allocation, stated honestly
 Per `[[feedback_model_allocation_mastermind_vs_execution]]`:
