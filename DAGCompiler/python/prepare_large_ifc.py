@@ -153,15 +153,41 @@ def merge_part_dbs(dbs, out, scope=None):
     warn.append('§KUL001 applied: elements_meta.building=%s + project_metadata '
                 '(without these the viewer loads the DB and renders NOTHING, silently)' % bld)
 
-    # rtree keyed on elements_meta.id — verified in the source DBs (rtree.id == elements_meta.id)
+    # ── R-tree: CARRY THE PRISTINE AABB ACROSS, never recompute it from center ± bbox/2.
+    # elements_rtree is virtual and keyed on elements_meta.id, and ids are reassigned by this merge,
+    # so it must be rebuilt — but rebuilt from each part's OWN rtree rows, joined by guid.
+    # WHY (measured 2026-07-30, and a first cut of this function got it wrong):
+    # `element_transforms.center_*` is the placement-matrix TRANSLATION (extractIFCtoDB.py
+    # `center = mat4[:3, 3]`), i.e. the element's placement ORIGIN — NOT the centre of its AABB.
+    # The gap between them is real and data-dependent: median 0.11 m on OVERALL_P00 (14,183 rows,
+    # only 23.9% within 10 mm) and median 11.31 m on KUL_CONTAINMENT (21,009 rows, 3.6% within
+    # 10 mm — cable-ladder placements sit far from their geometry). `bbox_*` is only the EXTENT
+    # (maxK-minK, verified exact to 0.5 mm on 100% of rows), so center ± bbox/2 puts the box in the
+    # wrong PLACE while giving it the right SIZE. That silently corrupts every spatial query built
+    # on the r-tree (adjacency derivation, nearest-neighbour, picking) without touching rendering,
+    # which uses center + origin-relative vertices and stays correct — so it would not be visible
+    # on screen. Rendering being fine is NOT evidence the r-tree is fine.
     c.execute("DELETE FROM elements_rtree")
-    c.execute("""INSERT INTO elements_rtree
-      SELECT m.id, t.center_x-t.bbox_x/2, t.center_x+t.bbox_x/2,
-                    t.center_y-t.bbox_y/2, t.center_y+t.bbox_y/2,
-                    t.center_z-t.bbox_z/2, t.center_z+t.bbox_z/2
-      FROM elements_meta m JOIN element_transforms t ON t.guid = m.guid
-      WHERE t.bbox_x IS NOT NULL""")
-    c.commit()
+    carried = 0
+    for p in dbs:
+        c.execute("ATTACH ? AS src", (p,))
+        cur = c.execute("""INSERT INTO elements_rtree (id, minX, maxX, minY, maxY, minZ, maxZ)
+            SELECT dm.id, sr.minX, sr.maxX, sr.minY, sr.maxY, sr.minZ, sr.maxZ
+            FROM src.elements_rtree sr
+            JOIN src.elements_meta sm ON sm.id = sr.id
+            JOIN main.elements_meta dm ON dm.guid = sm.guid
+            WHERE dm.id NOT IN (SELECT id FROM elements_rtree)""")
+        carried += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+        c.commit()
+        c.execute("DETACH src")
+    _nm = c.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+    _nr = c.execute("SELECT COUNT(*) FROM elements_rtree").fetchone()[0]
+    if _nr != _nm:
+        warn.append('R-TREE INCOMPLETE %d rows for %d elements — spatial queries will silently '
+                    'miss the difference' % (_nr, _nm))
+    else:
+        warn.append('r-tree carried pristine AABBs for %d/%d elements (NOT recomputed from '
+                    'center+-bbox/2 — see the comment for why that is wrong)' % (_nr, _nm))
     ok = c.execute("PRAGMA integrity_check").fetchone()[0]
     if ok != 'ok':
         warn.append('INTEGRITY=' + ok)

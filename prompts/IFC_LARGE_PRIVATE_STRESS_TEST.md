@@ -1032,3 +1032,53 @@ guid/hash-keyed union with no such caveat.
   [bim-ootb#1076](https://github.com/red1oon/bim-ootb/pull/1076), auto-merge enabled) — the
   `.gitignore` carries a `!IFC/KUL/README.md` negation so the README tracks while the sibling
   `.ifc` sources stay local-only.
+
+## §KUL013 — `element_transforms.center_*` is the PLACEMENT ORIGIN, not the element centre
+**A defect I introduced in §KUL012's merge, found 2026-07-30 while verifying the cabling survey, now
+fixed and the shipped DB regenerated.** Witness **W-RTREE-PRISTINE-AABB**.
+
+### The fact, from the extractor's own source
+`extractIFCtoDB.py` (geometry loop): `mat4 = …reshape(4,4).T` → **`center = mat4[:3, 3]`**. That is the
+placement matrix's TRANSLATION — where the element's local origin sits — **not** the centre of its
+geometry. `element_transforms.bbox_x/y/z` is only the EXTENT (`maxK-minK`; verified exact to 0.5 mm on
+100% of rows). The true AABB *position* lives ONLY in `elements_rtree`, written from real vertices.
+
+**How far apart they are — data-dependent, and sometimes enormous:**
+
+| DB | rows | median ‖center − AABB centre‖ | within 10 mm |
+|---|---|---|---|
+| `KUL_CONTAINMENT_extracted.db` | 21,009 | **11.31 m** | 3.6% |
+| `KUL070-…-OVERALL_P00.db` | 14,183 | 0.11 m | 23.9% |
+| `KUL_EQUIPMENT_extracted.db` | 292 | 1.14 m | 0.0% |
+
+Cable-ladder placements sit metres from their geometry. **This is fleet-wide behaviour of the
+extractor, not a KUL quirk** — the code path is building-agnostic.
+
+### What I got wrong
+§KUL012's merge rebuilt `elements_rtree` as `center ± bbox/2`. Right SIZE, **wrong PLACE**:
+```
+§RTREE_DELTA old(center±bbox/2) vs pristine: n=87333 median=0.109m p90=31.01m max=86.43m
+             wrong_by_over_10mm=62114 (71.1%)
+```
+**71% of boxes misplaced, 10% of them by >31 m.** Every r-tree consumer — adjacency derivation,
+nearest-neighbour, spatial picking, `rel_adjacency` regeneration — silently reads corrupt boxes.
+
+**And rendering stays perfect throughout**, because the renderer uses `center` + origin-relative
+vertices. The screenshot at 85,947 elements looked right the whole time. **A correct render is NOT
+evidence of a correct r-tree.** That is the transferable lesson.
+
+### The fix
+`prepare_large_ifc.py` `merge_part_dbs` now CARRIES each part's own `elements_rtree` rows across,
+joined `src.elements_rtree → src.elements_meta.id → guid → dest.elements_meta.id` (ids are reassigned
+by the merge, so the table still must be rebuilt — but from the pristine AABBs, never recomputed). It
+warns if the row count ever falls short of `elements_meta`.
+
+Shipped DB regenerated 2026-07-30 11:01 — `elements_meta 87,333 = elements_rtree 87,333`, renderable
+85,947, `integrity ok`, zero null/zero bbox. The superseded copy is kept out of the way at
+`/tmp/kul_db/superseded_rtree_wrong.db` — **do not put it back.**
+
+### Consequence beyond this merge — flagged, NOT fixed
+The cabling survey found the same column misused in shipped code: `disc_walker.routeChains` pairs
+elements by `element_transforms.center_*` and scores **0.00% precision** on CONTAINMENT (2 of 9,568
+fittings paired) versus **90.07%** with r-tree face geometry — same algorithm, only the column differs.
+See `prompts/datacentre_cabling.md` §SUBSTRATE_LANDMINE. **Needs its own session; not touched here.**
