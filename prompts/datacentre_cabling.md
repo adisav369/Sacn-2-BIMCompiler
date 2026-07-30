@@ -1094,6 +1094,23 @@ The user reports **redundant pathing errors** in the existing room path (`_roomG
 - Read `docs/internal/WalkerDoctrine.md` first. It is **LOCKED** — do not re-litigate it.
 - Fix or document each defect, then hand the *clean* engine to the cable lane.
 
+### Step 0 STATUS 2026-07-30 — ⛔ MEASURED, PRECONDITION NOT LIFTED
+Done and written up in `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §20-§20.7
+(witnesses `witness_room_path_redundancy.js` / `_attrib.js` / `probe_redundancy_route.js`, bim-ootb
+branch `review/roompath-redundancy`). The redundancy is real and measured on Clinic, Duplex and
+**LTU_AHouse** (the building the user named as where the criss-crossing was seen):
+- **83.2% (Clinic) / 91.3% (LTU) of routes contain a >150° reversal**; drawn line **+145.9% / +112.2%**
+  over straight line; still 1.88×/2.00× on 40 m+ pairs where the baseline is robust.
+- **`res.distance` is not metres** — it is Dijkstra's penalty-weighted edge cost, and the Find panel
+  prints it with an `m` suffix. 3.20× over on Clinic, 0.71× *under* on LTU. **This is the one that
+  matters here**: cable pathing inheriting it would put a policy-weighted number into a cable
+  schedule, exactly what §SLACK forbids.
+- Two candidate causes ELIMINATED by measurement (the ×8 utility penalty; SUSPECT rooms). The ~2×
+  detour itself is **not yet root-caused** — surviving candidate is the per-storey `circ` hub.
+
+**So: still do not start cable pathing.** The two tasks that lift this, in order, are named in
+§20.7 — root-cause the 2× detour, then make the reported distance the drawn distance.
+
 ### Then, and only then — the cable gate
 §RUN_READY's measurement stands as the gate: rebuild the graph as
 **authored ports ∪ corrected-geometric edges** and re-run it. Today `same-component = 8 of 119

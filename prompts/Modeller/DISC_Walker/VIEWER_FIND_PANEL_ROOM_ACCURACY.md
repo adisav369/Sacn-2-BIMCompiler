@@ -1582,3 +1582,250 @@ file or a sibling one (`tour.js`, `history_tap.js`).
   engine bug, but unconfirmed — needs the user's exact steps before any fix.
 - Branch/worktree cleanup for this session's work is being handled by a separate concurrent session —
   not part of this file's scope.
+
+## §20 — REDUNDANT PATHING, MEASURED (2026-07-30) — the cabling lane's blocking precondition
+## Spec written BEFORE any code, per project Spec-First. Witness: `W-ROOM-PATH-REDUNDANCY`
+
+```
+# ⚠ DO NOT REMOVE — W-ROOM-PATH-REDUNDANCY scope (READ THE LOG after every run)
+SCOPE: characterise the user's long-standing "redundant pathing errors" NUMERICALLY on Clinic
+(118 spaces, 254 doors) and Duplex (5 spaces, 14 doors). Measure only — this section authorises
+no engine change; fixes are specified separately once the numbers say which defect is real.
+Evidence is §-tagged values and computed numbers ONLY. Screenshots are not evidence here, not
+even as a supplement (project FUNDAMENTAL LAW). Read the saved log before any conclusion.
+```
+
+### Why this section exists (the precondition, not a suggestion)
+`prompts/datacentre_cabling.md` §NEXT_SESSION blocks the whole cable-pathing lane on this:
+*"similar to what we done for rooms path even though i still find redundant pathing errors, but it
+is a substrate to walk further on … put a precondition to review rooms pathing first."* Cable
+pathing inherits the SAME A*, the SAME polyline builder and the SAME highlight layer
+(§PATH_THEN_PLACE: *one engine, two graph sources*). Ship on top of an engine with unmeasured
+redundancy and every future cable complaint is ambiguous — is the route wrong, or the router?
+**Nobody has ever measured the redundancy.** Every number in §11-§18 is a *legality* statistic
+(illegal sample points, DETOUR_FAIL counts) — legality asks "does the line stay on real floor",
+redundancy asks "does the line waste the walk". A route can be 100% legal and still double back.
+That is exactly the gap the user keeps seeing and this file has never quantified.
+
+### §20.1 Regime fidelity — measure what the BROWSER routes, not what node happens to read
+Non-negotiable, and it is the trap [[feedback_witness_headless_regime_gap]] names:
+- Clinic and Duplex both carry **only `RM_`-prefixed compiled rooms and no `room_guid` column**
+  (verified: `SELECT ... spatial_structure WHERE type='IfcSpace'` → Clinic 118/118 `RM_`,
+  Duplex 5/5 `RM_`). So `A.ensureRooms` reaches state `recompute`, finds no `rooms_meta`, scores
+  `versionStale=true` and **recompiles with `RoomWalker.walk()` on every load**. A witness that
+  calls `RG.buildGraph()` on the raw file measures a room set the browser never routes.
+  → the witness MUST run `RoomWalker.walk(db, {write:true})` first, sql.js in node, exactly as
+  `witness_containment_alias_js.js` already does.
+- Neither building has a `storey_walkable_raster` table and neither has a
+  `viewer/buildings/patches/*.sql` — both are the **rect-fallback** regime (`_pointWalkable`'s
+  room-rect + corridor-rect + §DOOR-THRESHOLD/§STAIR-FOOTPRINT union). That is deliberate: it is
+  the WEAKER evidence regime, where redundancy should be worst and most visible.
+- Engine under test = **`origin/main`**, read from a fresh worktree. The shared `~/bim-ootb`
+  checkout was 119 commits behind on 2026-07-30 and its `common/room_graph.js` genuinely differs
+  (no §DOOR-THRESHOLD-WALKABLE, no §STAIR-FOOTPRINT-WALKABLE, no §DETOUR-NO-REVISIT). Measuring
+  there would have reported already-fixed defects as live.
+
+### §20.2 The six metrics — exact definitions, so a re-run is comparable
+Per room-pair route, from `RG.shortestPath(g, a, b)` → `{path, doors, distance, polyline}`.
+`path` = logical anchors; `polyline` = the DRAWN line (what the user sees and calls redundant).
+
+| id | metric | definition |
+|---|---|---|
+| **R1** | **anchor revisit** | a guid appearing ≥2× in `path`. Split into BENIGN (`stairwp` hops sharing one `stairBaseKey` — one stair counted per flight, §17 proved this is not a revisit) and REAL (any other repeat). Report `excess = path.length − distinct`. |
+| **R2** | **point revisit** | polyline vertices within **0.05 m** of an EARLIER non-adjacent vertex — the line physically returns to a spot it already occupied. |
+| **R3** | **doubled-back segment** | interior turn angle **> 150°** between consecutive polyline segments (unit-dot < −0.866). Report count AND the metres inside those reversal pairs. |
+| **R4** | **detour ratio** | `polylineLength / straightLineDistance(endpoints)`, 2D, **same-storey pairs only** (a stair climb is not a detour). Report median / p90 / max and the counts over 1.5× / 2× / 3×. |
+| **R5** | **room re-entry** | classify every polyline vertex by which compiled room rect contains it; a room occupying ≥2 **non-contiguous** runs = one re-entry. This is the user's own words — "detours through a room the route already left". |
+| **R6** | **detour-quality events** | counts of the engine's existing `§PATH_LEGAL_DETOUR_FAIL` / `_NONLOCAL` / `_REVISIT_KEPT` / `_NOREVISIT` log lines over the sweep. Free instrumentation, already shipped; it attributes R2/R3 to a mechanism instead of leaving them anonymous. |
+
+**Headline number** = `excessMetres = polylineLength − straightLine`, summed and per-route, because
+that is the one an engineer can picture and the one that becomes cable cost downstream.
+
+### §20.3 Sweep
+All room→room pairs on each building (Clinic ≈ n(n−1)/2 after the walker's own room count; Duplex
+trivially small). Skip null (disconnected) pairs and report their count separately — an unreachable
+pair is a connectivity fact, not a redundancy fact, and conflating them is how "41%" happened in the
+cabling lane. Perf budget is not a concern at this scale (§17 measured 8.89 ms/path on Hospital).
+
+### §20.4 DONE WHEN
+1. `witness_room_path_redundancy.js` runs green on both buildings, output saved to a log file, log
+   read before any conclusion is written here.
+2. Each of R1-R6 has a real number for Clinic AND Duplex recorded in a §20.5 results table.
+3. Every defect the numbers expose is either FIXED (own spec section, own witness) or DOCUMENTED
+   here with the number that proves it — then the cable lane's precondition is lifted explicitly in
+   `prompts/datacentre_cabling.md` §NEXT_SESSION, citing this section.
+
+### §20.5 RESULTS — the redundancy, measured (2026-07-30). Engine `origin/main` `8bf6035`.
+Witness `witness_room_path_redundancy.js`, log `/tmp/w_roompath_redundancy.log`, read before writing
+this. Every building here is the **rect-fallback** regime (no `storey_walkable_raster`, no patch) and
+every room set is the browser's own `RoomWalker.walk()` recompile, per §20.1.
+
+| | Clinic | Duplex | LTU_AHouse |
+|---|---|---|---|
+| rooms after walker recompile | 208 (from 118 `RM_` spaces) | 7 (from 5) | 425 (from 369) |
+| graph nodes / edges | 500 / 468 | 20 / 9 | 1103 / 790 |
+| pairs / routed | 21,528 / 16,195 (75.2%) | 21 / 2 (9.5%) | *see §20.5b* |
+| **R1** real anchor revisits | **9,121** on 6,697 routes (**41.4%**) | 0 | |
+| **R2** point revisits (≤0.05 m) | 8,827 on 6,698 routes (41.4%) | 0 | |
+| **R3** doubled-back segments (>150°) | **29,064**, 119,076 m, on **83.2%** of routes | 2 on 1 of 2 | |
+| **R4** detour ratio median / p90 / max | **2.29** / 4.54 / 41.29 | 2.73 | |
+| **R5** room re-entries | 168 on 2.0% of same-storey routes | 0 | |
+| **R6** `DETOUR_FAIL` / `REVISIT_KEPT` / `MID` | 358 / 1,066 / 464 | 2 / 0 / 0 | |
+| **headline** drawn vs straight | 532,260 m vs 216,443 m = **+145.9%** | +153.3% | |
+
+**The redundancy the user has been reporting for weeks is real and it is large.** 83.2% of Clinic
+routes contain at least one >150° reversal; the drawn line is on average 2.3× the straight line.
+**Zero stair-flight repeats were miscounted as redundancy** (`benignStairFlights=0` — §17's
+`repeatedPortals` distinction is preserved), so R1's 9,121 are all genuine anchor revisits.
+
+**R4 is not an adjacent-room artifact — checked, not assumed** (`/tmp/ratio_buckets.js`, strided
+representative sample, ratio bucketed by straight-line distance):
+| straight-line | Clinic median / p90 | LTU median / p90 |
+|---|---|---|
+| 0-5 m | 3.82 / 14.42 | 5.24 / 11.71 |
+| 5-15 m | 2.52 / 8.35 | 3.09 / 8.04 |
+| 15-40 m | 2.40 / 3.91 | 2.60 / 4.27 |
+| **40 m+** | **1.88** / 2.43 | **2.00** / 2.68 |
+Even on long same-floor trips, where the straight-line baseline is robust and a real building's
+walked/straight ratio should sit near 1.2-1.4, the drawn line is ~2×.
+
+### §20.5a The probed route — one case, dumped end to end (`probe_redundancy_route.js`)
+`Clinic ≈ Second Floor R4 → ≈ Second Floor R8`, two rooms **2.57 m apart**:
+```
+§PROBE_LOGICAL distance=251.32m anchors=17 doors=6
+   A0 room R4 (-44.14,20.33) → A1 door 238171 → A2 room R3 → A3 door 241616 → A4 room ⚠R12
+   → A5 door 250602 → A6 room R39 → A7 door 241351 → A8 spine (-17.76,16.56)
+   → A9 spine (-13.53,22.91) → A10 door (-19.28,22.91) → A11 door (-18.62,37.14)
+   → A12 circ (-16.66,39.28) → A13 spine (-33.43,30.12) → A14 spine (-39.27,18.23)
+   → A15 door 238316 → A16 room R8 (-41.57,20.14)
+   P12 seg=2.90m turn=161°  <<< REVERSAL
+§PROBE_TOTAL drawn=106.25m straight=2.57m ratio=41.29 logicalDistance=251.32m
+```
+Three separate things are visible in that one dump:
+1. **A8→A9→A10**: 7.63 m east to a corridor spine, then 5.75 m straight back west past where it
+   started. A pure excursion.
+2. **A12 `circ`**: the per-storey circulation hub at (-16.66,39.28). The route climbs 14 m north to
+   reach it and immediately turns 161° back south-west — the reversal R3 counts.
+3. **`distance=251.32m` for a 106.25 m line.** See §20.6.
+
+### §20.6 ATTRIBUTION — what is actually causing it (`witness_room_path_redundancy_attrib.js`)
+Log `/tmp/w_roompath_attrib.log`. A/B = the same engine file with **one constant** changed.
+
+**FINDING 1 — `res.distance` is not a distance, and the Find panel prints it as metres. CONFIRMED.**
+`_dijkstraCore` accumulates EDGE WEIGHTS, and `_buildAdjacency` multiplies any edge touching a
+utility-tagged room by `UTILITY_EDGE_PENALTY = 8`. `viewer/navigate_find.js:3358` renders
+`res.distance.toFixed(1) + 'm'` in the panel header and `:1398` puts it in `§ROOM_PATH`.
+```
+§ATTRIB_R7 Clinic     costVsDrawn median=3.20x mean=3.49x max=6.77x over1.05x=400/400
+§ATTRIB_R7 LTU_AHouse costVsDrawn median=0.71x mean=0.72x max=0.98x over1.05x=0/400
+```
+On Clinic every one of 400 sampled routes reports a number **3.2× larger** than the line drawn. On
+LTU (no utility rooms → penalty never fires) it goes the other way and reports **29% short**, because
+the cost sums node-to-node Euclidean hops while the drawn polyline is the longer legalized/A* route.
+Two different signs, one defect: **the number labelled "m" is not the length of the line on screen.**
+This is precisely what `datacentre_cabling.md` §SLACK forbids downstream — a figure presented as
+calculated that silently contains a policy factor — and the cable lane would inherit it verbatim.
+
+**FINDING 2 — the utility penalty fires on 95.7% of Clinic's rooms. CONFIRMED, and it no longer
+steers anything.** (`/tmp/util_breakdown.js`)
+```
+§UTIL Clinic     rooms=208 utility=199 (95.7%)   196 x "utility:ACMV"  ·  3 x "utility:footing"
+§UTIL LTU_AHouse rooms=425 utility=0   (0.0%)
+```
+§10's `ignoreDoorExemption:true` classifies by element composition alone — and in a clinic, every
+room has ceiling diffusers, so nearly every room reads as a plant room. An ×8 penalty meant to steer
+around a few service closets is applied to almost every edge, where it is close to a no-op as a
+*selector* but is the whole of FINDING 1 as a *number*. Measured:
+```
+§ATTRIB_R8 Clinic penalty8 vs penalty1, 400 identical pairs:
+   drawnMetres 28642 -> 27745 (-3.1%)   medianRatio 2.20 -> 2.18   reversals 630 -> 854
+```
+**Removing the penalty is NOT the fix** — it changes drawn length by 3.1% and makes reversals *worse*
+(630→854). Report the honest conclusion: the penalty is the distance-label corruptor, not the
+redundancy driver. LTU is the control that proves it — penalty never fires there, A/B is byte-identical
+(`drawnMetres 49385 -> 49385`, `reversals 587 -> 587`), and LTU still shows the same ~2× redundancy.
+
+**FINDING 3 — the per-storey `circ` hub correlates with the worst detours on LTU. NOT YET ROOT-CAUSED.**
+```
+§ATTRIB_R9 Clinic     routesThroughCircHub=150/400 (37.5%) medianRatio withCirc=2.07 withoutCirc=2.30
+§ATTRIB_R9 LTU_AHouse routesThroughCircHub=36/400  (9.0%)  medianRatio withCirc=2.32 withoutCirc=1.66
+```
+On LTU — **the building the user named as where the criss-crossing was seen** (2026-07-30) — a route
+through the circulation hub is **40% more wasteful** than one that avoids it, and §20.5a shows the
+mechanism shape: two corridor spine chains that physically meet are bridged only via one hub point, so
+a chain-to-chain transfer detours to the hub and turns straight back. Clinic shows the opposite sign,
+so this is **correlation with a plausible mechanism, not a proven cause** — it needs its own probe on a
+real LTU route before anyone changes `circNode`/§CIRC-SPINE-BRIDGE. Do not treat it as diagnosed.
+
+### §20.5b LTU_AHouse — the building the user named (2026-07-30, mid-session: *"the redundancy
+### criss-crossing i encountered was in LTU-AHouse"*). Full sweep, 90,100 pairs, 22 min.
+```
+§REDUN_REGIME  LTU_AHouse walkerRooms=422 rects=529 suspect=121 raster=NO(rect-fallback)
+§REDUN_GRAPH   LTU_AHouse rooms=425 nodes=1103 edges=790 storeys=4
+§REDUN_SWEEP   pairs=90100 routed=80684 (89.5%) unreachable=9416 sameStoreyMeasured=25707
+               noPolylineFallback=0 msPerRoute=16.60
+§REDUN_R1  anchorRevisit excess=11636 benignStairFlights=0 REAL=11636 on 8882 routes (11.0%)
+§REDUN_R2  pointRevisits=12617 on 9744 routes (12.1%)
+§REDUN_R3  doubledBackSegments=191498  metresInReversals=2098100.6  on 73690 routes (91.3%)
+§REDUN_R4  detourRatio median=2.09 p90=3.57 max=42.41  over1.5x=22179 over2x=14187 over3x=4405 of 25707
+§REDUN_R5  roomReentries=624 on 624 routes (2.4% of same-storey)
+§REDUN_R6  DETOUR_FAIL=1955 NONLOCAL=401 REVISIT_KEPT=2727 NOREVISIT=2 MID=17115 legalizeCalls=80684
+§REDUN_HEADLINE drawnMetres=2836008 straightMetres=1336535 excessMetres=1499474 (+112.2%)
+                avgExcessPerRoute=58.3m
+```
+**91.3% of LTU routes contain at least one >150° reversal** — the highest of the three, and it is the
+building the user reported the criss-crossing on. The drawn line runs **2.09× the straight line at the
+median**, and **58.3 m of pure excess per route** on average. Worst offenders are again adjacent-room
+pairs: `≈ VÅNING 3 R90 → ⚠ VÅNING 3 R91`, 3.7 m apart, **158.8 m drawn** (ratio 42.41).
+
+### §20.5c SUSPECT rooms are NOT the cause — a negative result, recorded so nobody re-chases it
+Four of LTU's worst-eight routes end at a `⚠` (walker-flagged SUSPECT) room, which looks like a lead
+and also closes §18's filed-but-unexamined question about the `⚠` prefix. Split by endpoint
+(`/tmp/suspect_split.js`, strided sample):
+```
+§SUSPECT_SPLIT LTU_AHouse suspectRooms=121/425 (28.5%) | withSuspectEndpoint median=2.09 p90=3.84
+                                                       | cleanBothEnds       median=2.02 p90=3.57
+§SUSPECT_SPLIT Clinic     suspectRooms=26/208 (12.5%)  | withSuspectEndpoint median=2.12 p90=5.47
+                                                       | cleanBothEnds       median=2.33 p90=4.62
+```
+**No effect.** LTU 2.09 vs 2.02; on Clinic a SUSPECT endpoint is marginally *better* (2.12 vs 2.33).
+`⚠` rooms appear in the worst-eight simply because 28.5% of LTU's rooms carry the flag. **§18's `⚠`
+question is answered: the SUSPECT classification does not degrade routing.** Do not re-open it.
+
+### §20.7 VERDICT — what is proven, what is not, and why the cable precondition STAYS UP
+**Proven, with numbers, on three buildings:**
+- The redundancy the user reports is real, large and fleet-wide: **83.2% (Clinic) / 91.3% (LTU) of
+  routes double back**, drawn line **+145.9% / +112.2%** over straight line, and the effect survives
+  the obvious objection (40 m+ pairs still run 1.88×/2.00× — §20.5's bucket table).
+- **`res.distance` is not metres** and the Find panel prints it as metres (FINDING 1, §20.6) — 3.20×
+  over on Clinic, 0.71× under on LTU, 400/400 sampled routes affected on Clinic.
+- **The ×8 utility penalty fires on 95.7% of Clinic's rooms** (FINDING 2) and is NOT the redundancy
+  driver — removing it moves drawn metres 3.1% and makes reversals worse.
+- **SUSPECT rooms are not a factor** (§20.5c).
+
+**NOT proven — and this is the honest gap:** what actually causes the ~2× detour. Two of three
+candidate mechanisms are now eliminated by measurement, not by argument. The surviving candidate is
+FINDING 3 (per-storey `circ` hub transfers: on LTU, routes through the hub run 2.32 vs 1.66), and it
+is **correlation with a plausible shape**, not a root cause — Clinic's sign is opposite.
+
+**Therefore `datacentre_cabling.md` §NEXT_SESSION's precondition is NOT lifted.** Step 0 asked for the
+redundancy to be characterised numerically and it now is; the engine is not yet clean. Handing cable
+pathing an engine that reports a penalty-weighted cost as metres would put the same defect straight
+into a cable schedule — the one thing §SLACK exists to prevent.
+
+**The next two tasks, in order, each needing its own spec section before any code:**
+1. **Root-cause the 2× detour.** Take one real LTU route with a high ratio (`probe_redundancy_route.js
+   LTU_AHouse_extracted.db "VÅNING 3 R90" "VÅNING 3 R91"` reproduces a 42.41× case) and dump it the way
+   §20.5a dumped Clinic's. The question to answer: are the corridor spine chains bridged ONLY through
+   the single per-storey `circ` node, forcing every chain-to-chain transfer through one point? If yes
+   that is the mechanism, it is testable by adding chain-to-chain edges where two chains physically
+   meet, and it is measurable with the exact R3/R4 metrics above as the before/after.
+2. **Make the reported distance the drawn distance** (FINDING 1). Cheap, self-contained, already
+   root-caused: either report the polyline's own length, or keep the penalised value strictly as a
+   routing cost and never render it with a `m` suffix. Needs a witness asserting
+   `|reported − drawnLength| < ε` on all three buildings.
+
+**Reusable assets committed with this section** (bim-ootb branch `review/roompath-redundancy`):
+`witness_room_path_redundancy.js` (R1-R6 sweep), `witness_room_path_redundancy_attrib.js` (R7-R9
+attribution + the penalty A/B), `probe_redundancy_route.js` (single-route end-to-end dump). All three
+are building-parameterised; re-running any of them after a fix is a one-line change, not a rewrite.
