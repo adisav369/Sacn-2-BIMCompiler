@@ -4351,3 +4351,55 @@ records that a fixed-radius probe measured `maxChange=0` on both buildings and w
 **Gate G-WB-2 is the one that matters** and it is now precisely statable: two paths of EQUAL length and
 EQUAL total turning, through areas of DIFFERENT content-change score, must get different walk seconds.
 Today they get identical ones, because the only thing the budget can see is degrees.
+
+# §CPE_PATH_NOT_PORTABLE — a saved path CANNOT leave the machine, and nothing says so (user, 2026-08-01)
+
+**User, after saving Hospital's 'Ajaib' path and exporting the DB so it could be baked elsewhere:**
+*"I saved under bim-ootb/buildings/HospitalAjaibPath.db"* → measured: **no `cinema_path` table in it**
+→ *"if not extractable that means it is a faulty design on our part"*. **They are right.**
+
+**MEASURED:** `~/bim-ootb/buildings/HospitalAjaibPath.db` (262 MB, saved 05:02) versus the original
+`Hospital_extracted.db` — the export GAINED `kernel_ops`, `rooms_meta`, `storey_walkable_raster` and
+**did not gain `cinema_path`**. The named plan exists only in IndexedDB.
+
+## The chain, all three links verified by reading
+1. `scene.js:663` `_writeCinemaPathTable(db)` writes the table **only if `A._cinemaPathEdit` is set** —
+   in-memory, current-page-session state.
+2. `cinema_path_editor.js:~993` — opening a named plan from IndexedDB sets `_state.staged = false` and
+   **never calls `A.stageCinemaPath`**. After any reload, `A._cinemaPathEdit` is `null`.
+3. The guard `if (!ov || !ov.bands || ov.bands.length < 2) return;` returns **SILENTLY** — no `§` line.
+
+⇒ *Open a saved plan → Ctrl+S → a 260 MB file with no path in it and no warning.*
+
+## Why this is a DESIGN fault, not a bug
+Three places promise portability and the code delivers it only in the one case the user is least
+likely to be in (authored and saved without ever reloading):
+- §CINEMA_PATH_EDITOR_MODEL: *"stores the edit as a `cinema_path` table in the building DB exactly the
+  way `staffage_instances` already round-trips."*
+- `cinema_path_editor.js:906`: *"the building DB's `cinema_path` table = the PORTABLE format, still
+  written on Save … so the plan travels with the file when it is saved to disk."*
+- `§CINEMA_PATH_STAGE`'s own log line: *"STAGED ONLY; Ctrl+S (Save Building) writes the cinema_path
+  table into the .db."*
+The IDB store was added as the WORKING store beside the portable one (§CPE_IDB_PATH_STORE). In
+practice it **replaced** it: every route that populates IDB leaves the DB path unwritten.
+
+**Same species as §CPE_GHOST_GROUND's lesson, which this lane already paid for once:** a cross-module
+feature whose early exits log nothing. It was written down; it happened again in a different file.
+
+## The fix
+1. **Opening a named plan RE-STAGES it** — `A.stageCinemaPath(ov)` in the IDB open handler, so
+   `_cinemaPathEdit` reflects what is actually loaded. One line, and it makes Ctrl+S honour its own log.
+2. **The guard must SPEAK.** `§CINEMA_PATH_WRITE skipped reason=no-staged-path` (or `bands=<n><2`), so
+   a save that drops the path is visible instead of silent. **A silent early exit on the only route
+   that makes a feature portable is the defect**, more than the missing call is.
+3. Consider staging on load of the editor itself, so "authored" survives a reload — but rule 1 first;
+   do not widen this into a session-persistence feature without asking.
+
+### Witness claims — `witness_cpe_path_portable.js`
+| gate | proves / disproves |
+|---|---|
+| G-PP-1 | **RED today.** Save a plan → reload → open it from IDB → write the DB → no `cinema_path` table. After the fix the table is present with the same band count. |
+| G-PP-2 | round-trip fidelity: bands read back from `cinema_path` reproduce the same anchors/directions/lengths (IFC space) within float tolerance. |
+| G-PP-3 | the skip is LOUD: with nothing staged, the save logs a named reason instead of returning silently. |
+| G-PP-4 | `§CINEMA_PATH_RESTORE` on a fresh load of that written DB reports the path restored and `§CINEMA_BEATS route=authored` — end-to-end, not just table presence. |
+| G-PP-5 | no regression: a save with no authored path still produces a valid DB and does not create an empty `cinema_path`. |
