@@ -2754,6 +2754,69 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_GHOST_GROUND — the foundation is BUILT and BURIED; ghost the ground until it rises (spec 2026-07-31)
+**User, watching a buildup bake of Hospital:** *"or because cam was too high, and foundation has not
+emerged?"* → *"How about we reveal the foundation by eliminating the night ground mode? ... Or is
+there a way to make the foundation beams seen thru? at least until its above slabs appears that we
+can have then back to underground hidden?"* → *"and it be cool when they return back to opaque
+gradually rather than right away"*.
+
+**Their diagnosis beat mine, and the log settles it.** I had blamed the spin rate
+(`finalSpinDeg=-534.4` executed against a budget costed on a capped 180°, still a real defect, still
+open). But the opening of a buildup film is worse than fast — it is **occluded**:
+```
+§CPE_BUILDUP frame=120/2219 t=0.054 placed=210/63421     ← 0.3% built at the spin
+§GROUND_Y src=gf-storey-slab(Level 1) z=165.36            ← the ground plane sits at the L1 slab
+§SFX_PLAY src=tm phase=Substructure                       ← every beat through the opening
+```
+Those 210 placed elements are **substructure — below `z=165.36`, under an opaque paved plane**
+(`§GROUND_MAP key=paved`, `§PHOTO_SHADOW casters=4043`). They are not missing from the film; they are
+buried in it. No camera or gaze change could have revealed them.
+
+**Rejected: switching the ground off** (the user's own first idea, and they flagged the risk
+themselves). It takes `§PHOTO_SHADOW`'s 4,043 casters and the sense of a site with it — the
+foundation would float in blackness. Fixing visibility by deleting the thing that makes it read as
+construction is not a fix.
+
+**The rule:** while the buildup has placed NOTHING at or above the ground plane, the ground renders
+at low opacity — you see the pile caps and ground beams through it, like a survey drawing. The
+moment the first at-or-above-ground element lands, the ground fades **gradually** back to opaque and
+stays there for the rest of the film.
+
+**Trigger, and why it needs no new data:** `element_transforms` already carries each element's bottom
+(`center_z - bbox_z/2`) and the Time Machine already orders every op in time. One pass gives the
+cursor timestamp of the first op placing an element with `bottom >= groundZ - 0.05` — the ground-floor
+slab itself qualifies, which is exactly the user's *"until its above slabs appears"*. `tools.js`
+already computes `groundZ` for the plane's own placement (§GROUND_Y); it just needs exposing.
+
+**Fade, per the user's follow-up:** not a cut. Opacity eases (smoothstep) from `GHOST` to 1.0 over a
+fixed span of FILM time after the trigger, computed in film-fraction so it is identical in the
+10 s preview and the 148 s bake.
+
+**Applies to preview AND bake, one function.** Both already drive the cursor —
+`cinema_path_editor.js:1054` and `cinema_maxq.js:797` — so the tick hangs off those two call sites and
+the rehearsal cannot disagree with the film (the §CPE_ROOM_TITLE precedent: one draw routine, two
+consumers).
+
+⚠ **Restore on exit, unconditionally.** The ground material is shared with normal viewing; a bake
+that leaves `transparent=true, opacity=0.22` behind ghosts the ground for the rest of the session.
+
+### Known risks, stated not buried
+1. **Shadows on a ghosted plane read thin.** `receiveShadow` stays on; if it looks wrong the answer
+   is holding shadows until the fade completes, not lowering the ghost further.
+2. **Night mode is dark-on-dark** — grey concrete under a dark translucent plane. May need the
+   substructure lifted (brighter material / the xray treatment) to actually read. NOT in this section.
+
+### Witness claims — `witness_cpe_ghost_ground.js`
+| gate | proves / disproves |
+|---|---|
+| G-GG-1 | the trigger is real: `tmFirstAboveGroundMs(groundZ)` returns a timestamp strictly INSIDE the project span, and the ops before it are all below-ground. Disproves "it fires at t=0" (which would make the feature a no-op) and "it never fires". |
+| G-GG-2 | **RED before this section.** At a cursor early in the buildup the ground is fully opaque (`opacity=1`), so a below-ground element is occluded. After: opacity is the ghost value. |
+| G-GG-3 | the fade is GRADUAL and monotone — sampled across the trigger, opacity rises from ghost to 1.0 in more than one step, never decreases, and reaches exactly 1.0. (The user asked for this explicitly; a cut would pass a naive before/after test.) |
+| G-GG-4 | it never ghosts again after the fade: sampled at the end of the film, opacity is 1.0. |
+| G-GG-5 | no leak — after the run ends, `A.ground.material.transparent/opacity` are back to their pre-run values. A ghosted ground left behind would follow the user into normal navigation. |
+| G-GG-6 | preview and bake agree: the same film-fraction yields the same opacity through both call sites. |
+
 ## §CPE_ROOM_TITLE_HEIGHT_BLIND — a title card names the room you are FLYING OVER (spec 2026-07-31)
 **User, flying the Hospital film:** *"u can see the room labels are Level 2 two rooms when we are
 flying quite high."* Correct, and the mechanism is exact.
