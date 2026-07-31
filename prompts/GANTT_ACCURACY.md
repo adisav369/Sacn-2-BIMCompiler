@@ -267,3 +267,79 @@ worse answer geometrically. Two tracks, non-competing:
 :359). Reading a planner's stated dependencies is not us solving CPM, and must not become that.
 ⚠ **Honesty tiers move with this:** a film ordered by captured deps is tier 1 (*linked schedule*); the
 geometric gate stays tier 2 (*this model's derived 4D*). See `CINEMA_PATH_EDITOR.md` §5.
+
+---
+
+# §4D_ROOF_LOAD_PATH — a slab's role is DERIVED from what carries it, never from a storey name (spec 2026-08-01)
+
+**User, watching a Hospital buildup:** *"how do we solve the 2 top boxes next to helicopter in Hospital
+getting their roofs first before the walls?"* — then, before any code: *"but i like to understand from
+the 4D principles we following first so we know what rules we are still missing."*
+
+**⚠ THIS SUPERSEDES §Current Problems item 1 at the top of this file.** That entry proposed *"check
+storey name AND ifc_class together — slabs on 'Roof' storey should be treated as roof elements."*
+**That fix is already implemented (`time_machine.js:3296`, `/roof/i` + `IfcSlab` → seq 8) and it CANNOT
+work.** Measured 2026-08-01:
+- Hospital's storeys are `Level 1..7`, `Level 7A`, `Unknown` — **`roofOverrides` fires ZERO times**.
+  The two offending slabs' storey is literally `Unknown`.
+- LTU_AHouse's top storey is `TAKPLAN` (Swedish for roof plan) — also zero.
+Any name list is an invented list. Do not extend the regex. Delete the premise.
+
+## The measured defect — `Hospital_extracted.db`, the user's own two boxes
+```
+band 67 (z 201..204)          base_z    top_z    bbox_z
+  IfcSlab              x2     202.80    203.59     0.80
+  IfcSlab                     202.83    203.62     0.80
+  IfcWallStandardCase  x8     199.61    203.08     3.47   (…199.61-200.06 base, 203.08-203.35 top)
+```
+Two slabs bearing on eight wall heads, **all inside one 3 m Z-band**, so the bottom-up rule cannot
+separate them and the sort falls through to trade order — `IfcSlab` seq 4 beats `IfcWall*` seq 6.
+Roofs first, walls after.
+
+## The three missing rules (stated as principles, in the order they must be fixed)
+
+### M1 — a slab's ROLE is a load-path fact, not a label
+`IfcSlab` covers both a floor slab (walls stand ON it) and a roof slab (it stands ON walls). One class
+carries one `seq`, and it was set to the floor case. **The rule to add:**
+> For each `IfcSlab`, take the walls (`IfcWall*`) whose XY footprint overlaps it. If the slab's
+> `base_z` is above the **midheight of those walls** (`(wall.base_z + wall.top_z) / 2`), the slab is
+> CARRIED BY them → roof role → `seq = 8`, `phase = 'Architecture'`. Otherwise it stays a floor slab.
+
+**No epsilon, no constant, no name list.** The wall states its own midheight. The discriminator is
+enormous in both directions: on the measured case, slab `base_z` 202.80 vs wall midheight ~201.4 →
+**1.4 m above** = roof. In the floor case the walls stand on the slab, so `wall.base_z ≈ slab.top_z`
+and the slab's base sits a full wall-height *below* midheight. Nothing is near the boundary.
+
+### M2 — "support" is a LOAD PATH, not a trade number
+`schedule_gate.js:90` admits only `seq <= 4` into the support grid, and walls are seq 6, so **a wall
+can never be found carrying anything**. PASS A schedules every slab before PASS B schedules any wall.
+For a rooftop plant box the wall IS the structure. **The rule to add:** an element promoted to roof
+role by M1 must be scheduled in PASS B (it is no longer `seq <= 4`), and the walls that carry it must
+be visible to its gate. Simplest correct form: M1's reseq to 8 moves the slab into PASS B by itself —
+**verify that is sufficient before adding anything to the grid**, and only widen the grid if the
+witness proves it is not.
+
+### M3 — the auditor shares the scheduler's blind spot
+`auditFloating` (`schedule_gate.js:139`) builds its support grid from `seq <= 4` **too**, so it asks
+the same question with the same assumption and returned `floating=0` on a building whose roofs
+demonstrably float. Its own header calls it an *"independent XY-aware audit"* — it is not independent.
+**The rule to add:** the audit must find a support by GEOMETRY (anything below it, overlapping in XY,
+whose `top_z` reaches its `base_z`), not by trade number. Until it does, `floating=0` proves nothing
+about this class of defect — which is exactly why the user found it and no gate did.
+
+## Witness claims — `witness_4d_roof_load_path.js`
+| gate | proves / disproves |
+|---|---|
+| G-RLP-1 | **RED today, on the user's own case.** Hospital band 67: both slabs are scheduled BEFORE all eight walls that carry them. After the fix, both start after the last of those walls finishes. |
+| G-RLP-2 | the role is derived, not named: with every storey string blanked, the same two slabs are still classified as roofs. A name test scores 0 here; this must score 2/2. |
+| G-RLP-3 | a FLOOR slab is NOT promoted — walls standing on a slab keep that slab at seq 4 and before them. Measured on a real floor/wall pair from the same DB, so the fix cannot pass by promoting everything. |
+| G-RLP-4 | `§GANTT_OVERRIDE` reports how many slabs were promoted by load path, and the old `/roof/i` count is gone — a stale build cannot silently serve the name rule. |
+| G-RLP-5 | M3: the rebuilt audit finds the two floating slabs BEFORE the fix (proving it can now falsify) and reports 0 after. An audit that reads 0 both times is not a gate. |
+| G-RLP-6 | no regression in total ops or project window on Hospital and LTU_AHouse: same element count placed, monotone cursor, `§SUPPORT_CHECK` still 0 for everything it already covered. |
+
+## ⛔ Explicitly OUT of scope
+- The room-title / caption lane (`cpe_room_title.js`, §CPE_ROOM_TITLE_*) — shipped and working, do not touch.
+- `MIN_DWELL` — user ruled it KEPT 2026-08-01.
+- Re-keying the Time Machine, changing `sequence_rules.json` seq numbers for any class, or touching
+  the captured/linked-schedule path (`source=captured`). This is the GENERATED 4D only.
+- Extending the `/roof/i` regex with more languages. That is the premise being deleted.
