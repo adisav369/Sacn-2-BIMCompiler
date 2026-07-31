@@ -2839,6 +2839,38 @@ lap. **Measure this before deciding whether the orbit should caption at all** �
 | G-GZ-7 | cost: the pre-pass stays within the same order as the point test on Hospital's 987 samples (`ms=` in §CPE_ROOM_TITLE_TIMELINE), so the slab test's budget claim is checked, not assumed. |
 | G-GZ-8 | the log names which rule produced the timeline, so a stale cache cannot silently serve containment captions while the spec says gaze. |
 
+## §CPE_ROOM_TITLE_GAZE_LIVE — measured on LTU_AHouse, v902, and MIN_DWELL RULED ON (2026-08-01)
+**User, after previewing both buildings on the shipped gaze build:** *"Previews shows labels coming
+out fine for both Hospital and LTU so lets leave it and await the full bake mp4."*
+
+Same building, same editor, one version apart:
+```
+v901 containment:  segments=3/4  suppressed=6   rejectedByHeight=9    ms=25.4  totalSec=51.5
+v902 gaze:         segments=5/6  suppressed=42  gazeMissedAll=56/338  ms=37.7  totalSec=50.7  lead=4/5
+```
+3 → 5 captions. `rejectedByHeight=0` because the point test is no longer on the path at all;
+`gazeMissedAll=56/338` = 17% of samples where the ray left the building entirely (sky). Cost 25 → 38 ms,
+inside the budget §CPE_ROOM_TITLE_GAZE predicted from the slab test.
+
+**⚠ `MIN_DWELL` is now the dominant filter, and it STAYS — user ruled, do not re-litigate.** 338 samples
+→ 282 hit a room → 48 candidate runs, of which `MIN_DWELL` deletes **42 (87%)**, up from 6 under
+containment. The gaze sweeps across rooms, so it manufactures short-lived candidates that containment
+never produced. **This makes retiring it MORE dangerous, not less** — the arbitration is greedy and
+takes the FIRST candidate in each 3s window, so without the filter a 0.15s sweep glimpse could claim a
+slot ahead of the room the camera actually flew through. Open item #5 is therefore CLOSED as
+"deliberately kept", not "not yet done".
+
+**The refinement that was offered and NOT taken (record it, do not build it):** when several candidates
+compete for one 3s slot, caption the one the gaze rested on LONGEST rather than the first seen. That
+would replace the 1.4s constant with a comparison — nothing invented — and make a glimpse unable to
+outrank a dwell. Offered 2026-08-01; the user chose to leave the behaviour alone pending a full bake.
+Pick this up only if the baked mp4 shows a wrong room winning a caption.
+
+**Also confirmed in the same run — the 4D refresh took:** `§CPE_BUILDUP_SOURCE source=captured
+leafTasks=6 covered=122667/122667 pct=100% — REAL LINKED SCHEDULE`, and `§CPE_WORK_SCHEDULE
+workInFirst10%OfCalendar=0.1%` against 32.1% on the previously generated timeline. LTU now drives its
+buildup from the user's authored 6-phase schedule at full coverage.
+
 ## §CPE_ROOM_TITLE_FLYOVER_BLIND — a 148s film gets ONE caption, and the lead is not why (measured 2026-08-01)
 **BUILT AND LIVE (PR #1118, v901). The lead works — and it made a bigger problem visible.** The user's
 own preview log on Hospital, a 147.9s buildup film:
