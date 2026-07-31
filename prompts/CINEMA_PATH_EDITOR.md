@@ -2807,35 +2807,67 @@ tweak: for ~2s the caption names a space the camera has not reached, which is ex
 (a viewer reads the name as the doorway approaches, the way a documentary lower-third arrives just
 before the subject does), but it must be described as a lead-in, never as "where the camera is".
 
-**Shape (to spec properly before any code):** each segment's `tStart` moves earlier by
-`LEAD = 2.0s`, clipped by three things:
-1. the start of the film (no negative time);
-2. the PREVIOUS caption's guaranteed hold — a lead-in must not steal the 3s §CPE_ROOM_TITLE_HOLD
-   just granted to the room the camera is still inside. Clip to `prev.tStart + MIN_HOLD`;
-3. nothing else — the lead deliberately DOES cut the previous caption's *hold tail*, because the
-   user's own precedence rule from §CPE_ROOM_TITLE_HOLD is that the newer room wins
-   (*"if another room cuts in by 2 secs, then it can replace so"*).
+**SETTLED 2026-08-01 — three user rulings, asked and answered before any code:**
+> Q: does the lead apply to the film's FIRST caption (a room name over the dive)?
+> **A: "Yes, clipped to dive end."**
 
-**Interaction with the hold, which must be settled in the spec, not discovered in code:** the lead
-extends the FRONT and the hold extends the BACK of the same segment. A caption's on-screen span
-becomes `[tStart - LEAD, max(tEnd, tStart + MIN_HOLD)]`, then neighbour clipping. Total legibility
-therefore goes UP (a 1.5s crossing becomes 2 + 3 = up to 5s of screen time), so §CPE_ROOM_TITLE_HOLD's
-3s floor may want re-measuring once this lands rather than both being applied blindly.
+> *"for every room too... not wait till inside room it can be too late as 3 secs optimum label
+> appearance"*
 
-**Open question for the user, do NOT guess it:** should the lead apply to the FIRST caption of a
-film? Leading into it means a room name appears over the dive, before the camera is anywhere near
-the building. Cheap either way; it is a taste call, and the honest default is probably yes-but-clipped
-to the dive's end.
+> *"even though just left room,.. but when new room appears, it tries to show also up to 3 secs..
+> and if misses, then skips"*
 
-### Witness claims — `witness_cpe_room_title_lead.js` (when built)
+**The rule, in the user's own terms — a caption is a 3-SECOND SLOT that OPENS 2s BEFORE the doorway:**
+1. **`LEAD = 2.0s`.** A caption appears at `show = tStart - LEAD`, never at entry. *"not wait till
+   inside room, it can be too late."*
+2. **Every room is a candidate for the lead, including the first.** The first caption's `show` is
+   clipped to the END OF THE DIVE, so a room name never appears over empty sky with the building
+   still distant — the user's ruling, and the reason the plan must expose its beat fractions.
+3. **A shown caption gets its full `MIN_HOLD = 3.0s`, or it is not shown at all.** *"it tries to show
+   also up to 3 secs.. and if misses, then skips."* This RETIRES the flash: today a room entered 1.5s
+   after the last one produces a 1.5s label that nobody can read. It is now either a proper 3s
+   caption or nothing.
+4. **Skipped, never DELAYED.** A candidate whose slot would open inside the previous shown caption's
+   guaranteed 3s is dropped. Pushing it later instead would put the name on screen after the camera
+   is already through the door — the exact failure rule 1 exists to kill.
+5. **The new caption's APPEARANCE ends the previous one** — *"even though just left room... when new
+   room appears"*, the user's own replacement rule from §CPE_ROOM_TITLE_HOLD (*"it can replace so"*).
+   So spans never overlap and the 0.4s FADE does the crossfade, exactly as today.
+6. **The hold stays a FLOOR, not a cap.** An 8s dwell is still an 8s caption:
+   `end = min( max(show + MIN_HOLD, tEnd), nextShow or totalSec )`.
+
+**What this makes TRUE that was not true before:** `MIN_HOLD` becomes a real guarantee. The shipped
+§CPE_ROOM_TITLE_HOLD could still be cut below 3s by a fast next room (its own G-TH-3), so a caption
+could still flash. Under rule 3 the only caption that may be shorter than 3s is the last one, clipped
+by the end of the film — and that is gated, not assumed.
+
+**⚠ `MIN_DWELL` (1.4s) STAYS, deliberately.** Rule 3 makes strobing impossible on its own, so the
+dwell filter is no longer load-bearing for that — but it still stops a 0.15s clip through the corner
+of a toilet from claiming a 3s slot and starving the hall entered a second later. Retiring it is
+open item #5 from the 2026-08-01 session close and is still the user's call, not something this
+section smuggles in. The log keeps reporting `suppressed=` beside the new `skipped=`.
+
+**Seam this needs — and it ALREADY EXISTS, do not add it again.** The dive end is
+`plan.beats.dive * totalSec`. `_cinemaPathPlan` has exported `beats:{dive,spin,out,rise}` since
+`effects.js:6336`. ⚠ This section originally specced adding it, and the build did — as a DUPLICATE
+key in the same object literal, silently legal JS and completely dead. It was caught only because a
+regression baseline run made `git show HEAD:viewer/effects.js` grep-positive for a line that was
+supposed to be new. **Zero lines of `effects.js` are needed for this feature.** **Degrade, don't
+disable** (this lane's own lesson): a plan without `beats` — a re-opened authored path, a stale
+cached `effects.js` — still leads, it just skips the dive clip and says so in `§CPE_ROOM_TITLE_DIVE`.
+
+### Witness claims — `witness_cpe_room_title_lead.js`
 | gate | proves / disproves |
 |---|---|
 | G-TL-1 | **RED today.** A caption appears LEAD seconds before the camera enters the room, not at entry. |
-| G-TL-2 | the lead never produces negative time on the film's first caption. |
-| G-TL-3 | a lead-in never starts before the previous caption has had its full §CPE_ROOM_TITLE_HOLD — the guarantee just shipped is not silently taken back. |
-| G-TL-4 | every caption still gets at least MIN_HOLD of screen time after both rules are applied. |
-| G-TL-5 | ordering and monotonicity survive: starts stay ordered, no segment ends before it starts. |
-| G-TL-6 | on a REAL timeline every caption satisfies all of the above — the synthetic gates cannot drift from the product (the §CPE_ROOM_TITLE_HOLD precedent, G-TH-7). |
+| G-TL-2 | the lead never produces negative time, and the first caption never opens before the dive ends. |
+| G-TL-3 | **the skip rule.** A room entered too soon after the last caption is DROPPED, not flashed — no shown caption is ever shorter than MIN_HOLD. |
+| G-TL-4 | the replacement rule: the previous caption ends exactly when the new one APPEARS, so no two captions are ever on screen at once (the fade still crosses them). |
+| G-TL-5 | the hold is still a floor, not a cap — an 8s dwell is not cut to 3s. |
+| G-TL-6 | ordering and monotonicity survive: starts stay ordered, no segment ends before it starts. |
+| G-TL-7 | on a REAL timeline every caption satisfies all of the above — the synthetic gates cannot drift from the product (the §CPE_ROOM_TITLE_HOLD precedent, G-TH-7). |
+| G-TL-8 | the log says how many captions led, and how many were skipped for want of 3s. |
+| G-TL-9 | **degrade, not disable:** a plan with no `beats` still produces led captions, and names the missing dive clip in the log. |
 
 ## §CPE_BUILDUP_WORK_PACED — the film advances DAYS; the building goes up in BURSTS (spec 2026-08-01)
 **User, after two buildup bakes:** *"but construction came on too fast.. is the path and TM
