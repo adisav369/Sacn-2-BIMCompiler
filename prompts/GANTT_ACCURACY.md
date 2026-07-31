@@ -343,3 +343,37 @@ about this class of defect — which is exactly why the user found it and no gat
 - Re-keying the Time Machine, changing `sequence_rules.json` seq numbers for any class, or touching
   the captured/linked-schedule path (`source=captured`). This is the GENERATED 4D only.
 - Extending the `/roof/i` regex with more languages. That is the premise being deleted.
+
+## §4D_ROOF_LOAD_PATH — BUILT AND MERGED (PR #1120, sw v903, 2026-08-01). Two limits ON RECORD.
+**RED→GREEN, the user's own two helipad boxes:** slabs started `2022-07-27` (phase Superstructure)
+while the walls carrying them finished `2023-04-30` — **277 days before their own walls**. Now they
+start `2023-10-19` as Architecture. Witness `witness_4d_roof_load_path.js` 9/9; Hospital 63415/63415
+and LTU_AHouse 122330/122330 placed; `§SUPPORT_CHECK floating=0` on both. Re-run independently by the
+dispatching session, not accepted on the builder's report.
+
+**M1 needed a SECOND clause the spec stated in prose but the formula above omitted.** `base_z above
+the walls' average midheight` alone promoted **23 of 35** Hospital slabs — including a genuine
+intermediate floor at `base_z 176.81` with five levels above it — because a slab that CAPS the walls
+below it satisfies that test whether or not it ALSO carries walls above. The shipped rule adds the
+spec's own floor-case definition as an explicit test: no XY-overlapping wall may have
+`base_z >= slab.top_z`. Still epsilon-free, still no name list. Hospital lands on 10 promoted.
+
+### ⚠ LIMIT 1 — M3's blind spot is NARROWED, NOT REMOVED. Do not read `floating=0` as proof.
+The rebuilt audit still keys on **trade number** (`T.seq > 4`) with one extra branch, not on geometry
+as this spec's M3 asked. `witness_4d_roof_load_path.js` G-RLP-5 feeds `seq=8` in BOTH its RED and
+GREEN arms, so what it proves is: *given a slab M1 already promoted, the audit can falsify a bad
+schedule where the old one could not.* **It does not prove the audit would catch a roof M1 FAILED to
+promote** — such a slab keeps `seq=4`, gets the structure-only pool, and reads `floating=0` exactly as
+before. Two wider scopes were tried and rejected with measured false-positive counts (grid = every
+element → 3421/10979 on Hospital, mostly beams "floating" over unrelated walls; grid = structure+walls
+for every slab → 24, all ordinary floor slabs vs walls on other storeys). A reasoned compromise —
+but the geometric audit M3 actually specifies is STILL NOT BUILT.
+
+### ⚠ LIMIT 2 — parapets defeat the rule, silently.
+Clause (b) excludes any slab with an XY-overlapping wall standing on it. **A roof with a parapet wall
+is ordinary construction** and would be excluded → not promoted → the original defect returns for that
+roof, with no log line saying so. On Hospital, (a) alone gave 23 and (b) cut it to 10; the 13 blocked
+include genuine intermediate floors (correct) and would include any parapeted roof (incorrect). Not
+exercised by Hospital or LTU. **A parapet is a wall whose top is BELOW the tops of the walls it sits
+among, and which carries nothing** — that is the discriminator to add when a building exercises it.
+Do not fix this speculatively; wait for a model that shows it.
