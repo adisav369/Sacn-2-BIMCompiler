@@ -2754,6 +2754,48 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_ROOM_TITLE_LEAD — name the room you are HEADING INTO, ~2s early (requested 2026-08-01, NOT built)
+**User, while a bake was running:** *"room labelling i got a suggestion is that should not wait to be
+in the room but as it is heading towards a room, about 2 secs before will be view point friendly.
+Take note."*
+
+**What this changes, stated plainly:** §CPE_ROOM_TITLE's premise to date is *"the room you are IN"* —
+a caption starts at the first sample whose camera position falls inside that room's plan rect. The
+request changes it to *"the room you are ENTERING"*. That is a real semantic shift, not a timing
+tweak: for ~2s the caption names a space the camera has not reached, which is exactly the point
+(a viewer reads the name as the doorway approaches, the way a documentary lower-third arrives just
+before the subject does), but it must be described as a lead-in, never as "where the camera is".
+
+**Shape (to spec properly before any code):** each segment's `tStart` moves earlier by
+`LEAD = 2.0s`, clipped by three things:
+1. the start of the film (no negative time);
+2. the PREVIOUS caption's guaranteed hold — a lead-in must not steal the 3s §CPE_ROOM_TITLE_HOLD
+   just granted to the room the camera is still inside. Clip to `prev.tStart + MIN_HOLD`;
+3. nothing else — the lead deliberately DOES cut the previous caption's *hold tail*, because the
+   user's own precedence rule from §CPE_ROOM_TITLE_HOLD is that the newer room wins
+   (*"if another room cuts in by 2 secs, then it can replace so"*).
+
+**Interaction with the hold, which must be settled in the spec, not discovered in code:** the lead
+extends the FRONT and the hold extends the BACK of the same segment. A caption's on-screen span
+becomes `[tStart - LEAD, max(tEnd, tStart + MIN_HOLD)]`, then neighbour clipping. Total legibility
+therefore goes UP (a 1.5s crossing becomes 2 + 3 = up to 5s of screen time), so §CPE_ROOM_TITLE_HOLD's
+3s floor may want re-measuring once this lands rather than both being applied blindly.
+
+**Open question for the user, do NOT guess it:** should the lead apply to the FIRST caption of a
+film? Leading into it means a room name appears over the dive, before the camera is anywhere near
+the building. Cheap either way; it is a taste call, and the honest default is probably yes-but-clipped
+to the dive's end.
+
+### Witness claims — `witness_cpe_room_title_lead.js` (when built)
+| gate | proves / disproves |
+|---|---|
+| G-TL-1 | **RED today.** A caption appears LEAD seconds before the camera enters the room, not at entry. |
+| G-TL-2 | the lead never produces negative time on the film's first caption. |
+| G-TL-3 | a lead-in never starts before the previous caption has had its full §CPE_ROOM_TITLE_HOLD — the guarantee just shipped is not silently taken back. |
+| G-TL-4 | every caption still gets at least MIN_HOLD of screen time after both rules are applied. |
+| G-TL-5 | ordering and monotonicity survive: starts stay ordered, no segment ends before it starts. |
+| G-TL-6 | on a REAL timeline every caption satisfies all of the above — the synthetic gates cannot drift from the product (the §CPE_ROOM_TITLE_HOLD precedent, G-TH-7). |
+
 ## §CPE_BUILDUP_WORK_PACED — the film advances DAYS; the building goes up in BURSTS (spec 2026-08-01)
 **User, after two buildup bakes:** *"but construction came on too fast.. is the path and TM
 consistent?"* → *"as long it is consistent as i find this seems to be at random"*.
