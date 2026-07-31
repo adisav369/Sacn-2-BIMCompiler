@@ -4308,3 +4308,46 @@ change makes the walk obey it; it does not add a second one.
 | G-WB-4 | a degree of turning costs the same in the walk as in the spin — the claim `effects.js:5150-5153` already makes in prose. |
 | G-WB-5 | constant speed survives (§CINEMA_PATH_EDITOR_MODEL rule 9): with busyness held flat, time ratio still equals length ratio — the existing `witness_cinema_path_editor.js` G9 must stay green. |
 | G-WB-6 | the total the editor DISPLAYS equals the total the bake runs — the §CPE_HOSE_LENGTH_BLIND invariant is not re-broken by re-costing the walk. |
+
+## ⚠ §CPE_WALK_BUDGET_NOISE_BLIND — CORRECTION to Defect 1 above, read this BEFORE building
+**"The walk budget has NO noise term at all" is WRONG and must not be built against.** Read after the
+correction below; the measured table and Defect 2 stand unchanged.
+
+`effects.js:5751` states the author's actual intent, in the comment on `_natSec` itself:
+> *"the user's rule, **already applied to the walk in `out` below via `_walkTurnDeg`**"*
+
+So the walk's budget DOES carry a term meant to be its noise term — the turn charge. **The real defect
+is that it measures the WRONG QUANTITY.** `_walkTurnDeg()` sums the path's **direction change**; the
+user's settled law (2026-07-27, `effects.js:5648`, *"100% rate of change"*) is the **rate of change of
+CONTENT**. A corner in an empty yard is billed exactly the same as a corner inside a dense plantroom.
+
+**And the content signal already exists, one beat away.** `effects.js:6272-6284` probes 33 points along
+the walk, differences them into `nzC`, and normalises by `nzMax` into `noiseAt(e) ∈ [0,1]` — the same
+shape as the dive's `_diveBusy`. But the cumulative cost it feeds is then normalised to 1
+(`c[i] /= acc`), so **it redistributes frames and buys ZERO seconds**. Its own log line already claims
+the behaviour the budget does not have: *"tempers the turn-driven crawl: a corner whose CONTENT is not
+changing stays cheap."* It tempers the spacing. It does not temper the bill.
+
+**Restated defect 1:** the walk's seconds are bought by GEOMETRY (degrees turned); the user's law
+prices CONTENT (rate of change). The dive already does it right — `_diveEff / CINEMA_DIVE_MPS *
+(1 + (PACE_SWING - 1) * _diveBusy)`. The walk must take the same shape.
+
+**Target form (one law, same shape as the dive, no new dial):**
+```js
+out: (totalLen / CINEMA_WALK_MPS + _walkTurnDeg() / CINEMA_TURN_DPS)
+       * (1 + (CINEMA_PACE_SWING - 1) * _walkBusy)
+```
+The `/3` disappears **because its job is now done honestly**: it existed to inflate the turn charge as
+a stand-in for busyness, and busyness is now measured. This also settles Defect 2 — a degree costs
+`CINEMA_TURN_DPS`, exactly as `effects.js:5150-5153` already claims in prose.
+
+**⚠ SEQUENCING CONSTRAINT, found by reading — do not discover it in the debugger.** `_walkBusy` is
+`mean(nzC) / nzMax`, derivable from the EXISTING series with no new probe and no new constant — but
+that series is built inside `_etBuild` (~L6272), which runs **after** `_natSec` (L5748) needs it. The
+mean must be hoisted, or computed early from the same primitives (`_densityAt`, `_noiseRadius`,
+`_beat3Pose`). **Reuse them; do not write a second density probe** — §CPE_NOISE_LAW's own comment
+records that a fixed-radius probe measured `maxChange=0` on both buildings and was inert.
+
+**Gate G-WB-2 is the one that matters** and it is now precisely statable: two paths of EQUAL length and
+EQUAL total turning, through areas of DIFFERENT content-change score, must get different walk seconds.
+Today they get identical ones, because the only thing the budget can see is degrees.
