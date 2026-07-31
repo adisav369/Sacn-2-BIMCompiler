@@ -2373,3 +2373,36 @@ to detect. **But T1, T2 and T3 all still fail their thresholds. Attempt 2 is pro
 **Status: nothing deployed, engine byte-unchanged.** The reference to beat is unchanged: §21.6's
 free-space map at **1.04× / 1.22×**. Order for attempt 3: residual 2 (T3, cheapest and the only one
 that is a correctness issue rather than a quality one), then 1, then 3.
+
+### §21.19 BUDGET CHECK — how much of the gap CAN the door-aperture effect explain? (2026-07-31)
+Prompted by the user asking whether the door-spot distinction is significant at all. It is a fair
+challenge and it should have been the FIRST thing measured — §21.11 ranked the funnel as task 1 because
+it had a named algorithm attached, not because anything showed it was the dominant term.
+```
+§FUNNEL_BUDGET Clinic     avgDoorsPerRoute=4.0 maxDoors=9 | GAP centres-vs-reference=427m
+   MOST the door-spot effect could explain=233m (54% of the gap)  actually closed by funnel=84m (20%)
+§FUNNEL_BUDGET LTU_AHouse avgDoorsPerRoute=4.0 maxDoors=8 | GAP centres-vs-reference=332m
+   MOST the door-spot effect could explain=204m (61% of the gap)  actually closed by funnel=93m (28%)
+```
+Ceiling computed as Σ(half the door's own measured width) over each route's door sequence — the most
+you could ever save by clipping an edge instead of the centre.
+
+**Three facts, and they revise the plan:**
+1. **The aperture effect IS material — ~54-61% of the gap** (4 doors per route, not the 1-2 a quick
+   mental estimate assumes). A same-session verbal claim that it "cannot account for the gap" was
+   wrong arithmetic and is corrected here.
+2. **The funnel is collecting only 20-28% of the total gap — under half of the ~57% available to it.**
+   So there is real headroom INSIDE the funnel, consistent with §21.18 residual 2 (aperture endpoints
+   inflated by `RES` sit inside the wall, so the string bends around a peg in the brickwork).
+3. **~40-46% of the gap is NOT the aperture at all.** That is §21.18 residual 3 — the door SEQUENCE is
+   chosen by Dijkstra over centre-to-centre weights. **This is the same structural error as the shipped
+   engine** (§21.2): choose the route with one measure, draw it with another. It is not a smaller
+   version of the funnel problem, it is the original problem again one level down.
+
+**Revised priority for attempt 3 — two roughly equal prizes, do the cheap correctness one first:**
+- **(a)** clamp aperture endpoints to the real opening (residual 2). Cheap, fixes a genuine off-floor
+  defect, and unlocks the rest of the ~57% the funnel should already be collecting.
+- **(b)** re-weight the door graph by the FUNNELLED in-pocket length rather than centre-to-centre
+  (residual 3), then re-run. This is the larger structural fix and the one the user's own instinct
+  pointed at ("shouldn't the dot be in front of the door?" — i.e. the approach, not the spot).
+- Residual 1 (7/110 orientation flips) stays last: smallest term, and (a) may move it anyway.
