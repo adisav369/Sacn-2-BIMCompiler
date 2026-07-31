@@ -2860,6 +2860,31 @@ shipped the day before against the user's own complaint — *"u can see the room
 rooms when we are flying quite high"*. Widening it re-introduces exactly that bug. `MIN_DWELL` is not
 the lever either: retiring it buys at most 2 captions here, out of 306 losses.
 
+**⚠ LTU_AHouse FAILS DIFFERENTLY — measured 2026-08-01 on the same v901 build, and it changes the
+`MIN_DWELL` decision.** User's own preview log, a 51.5s film:
+```
+§CPE_ROOM_TITLE_TIMELINE segments=3/4 suppressed=6 rejectedByHeight=9 storeyPitch=3.2m
+                         lead=2/3@2s held=0/3@3s skipped=1(<3s) totalSec=51.5 ms=25.4
+```
+| | Hospital (147.9s) | LTU_AHouse (51.5s) |
+|---|---|---|
+| samples | 987 | 344 |
+| rejected by height (flying over) | **306 = 31%** | **9 = 2.6%** |
+| suppressed by `MIN_DWELL` | 2 | **6** |
+| captions shown | 1 | 3 |
+
+LTU is NOT flyover-blind — its camera is down among the rooms. Its dominant loss is `MIN_DWELL`
+dropping SIX rooms crossed in under 1.4s, before the 3s-slot arbitration ever saw them. So
+§CPE_ROOM_TITLE_GAZE is the fix for Hospital's failure mode and barely touches LTU's. **This is the
+first real evidence for open item #5 (retire `MIN_DWELL`)**: the skip rule already makes strobing
+impossible, so the dwell filter's only remaining job is stopping a sub-frame corner-clip from
+claiming a 3s slot — and on LTU it is instead deleting two thirds of the film's rooms. Still the
+user's call, still not smuggled in.
+
+Also on record from that run, NOT part of this lane: `§CINEMA_SPACE` reported `enclosed=0%` for all
+six candidate rooms on LTU, so `§CINEMA_DIVE` fell back to `src=bbox-centre` instead of settling
+inside a room. The enclosure measure finds nothing on this building. Worth its own look.
+
 **The real statement:** room titles answer *"which room am I in / entering"*, and a wide buildup
 flyover is never in one. The feature is sound; it is aimed at the walk beat and this film mostly has
 no walk beat. Two honest directions, NOT yet chosen by the user, do not build either unasked:
