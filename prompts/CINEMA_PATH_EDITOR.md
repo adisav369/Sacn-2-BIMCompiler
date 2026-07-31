@@ -26,6 +26,47 @@ every measured number with the log line that produced it, and the 7 known issues
 It opens by naming the highest-risk thing to check first (I changed two failing gates and they
 went green — verify I corrected the instruments rather than lowered the bar).
 
+## ▶ SESSION CLOSE 2026-08-01 — READ THIS FIRST, then §CPE_ROOM_TITLE_LEAD
+**Live: viewer sw v900, CPE v19, MAXQ v20.** Nine PRs shipped, all merged, all witnessed. Nothing in
+this session is half-landed; there is no cleanup owed.
+
+**SHIPPED (each RED-first, each with its own witness):**
+| § | PR | what it fixed | witness |
+|---|---|---|---|
+| §CPE_REOPEN_NODE | #1104 | an added stick did not survive OK→re-open; OK now stages. Provenance travels at 3 seams. | 9/9 |
+| §CPE_STICK_RED_BAR | #1105 | a stick is a RED bar with BLUE dots (all-blue read as a smudge) | 10/10 |
+| §CPE_HOSE_LENGTH_BLIND | #1107 | **the editor costed a curve that is never flown** — 107.55 m vs 173.53 m on the user's own record; films ran 1.57x fast | 5/5 |
+| §CPE_ROOM_TITLE_HEIGHT_BLIND | #1108 | captions named rooms 11–21 m BELOW the camera | 5/5 |
+| §CPE_GHOST_GROUND (+RATIO, +arm, +degrade) | #1110/#1112/#1113/#1114/#1115 | the foundation is built and BURIED under the ground plane; ghost it until the building rises | 11/11 |
+| §CPE_BUILDUP_WORK_PACED | #1116 | **the film advanced DAYS, the building went up in bursts** — 24% of the model in the first 5% of the film | 7/7 Duplex + 7/7 Hospital |
+| §CPE_ROOM_TITLE_HOLD | #1117 | captions flashed past unread (4 of 6 under 2s); 3s floor, next room replaces | 8/8 |
+
+**OPEN, in the order I would take them:**
+1. **§CPE_ROOM_TITLE_LEAD** (specced this session, NOT built) — name the room ~2s BEFORE entering.
+   Has one question the user must answer, do not guess it: does the lead apply to the film's FIRST
+   caption (a room name over the dive)?
+2. **§CPE_AIM_DEPTH D4 — buildup-aware gaze.** `§CPE_AIM_GRID elems=63182` is the FINISHED building,
+   so the camera aims at mass that is not poured yet; measured `active=0/65` on the user's last three
+   paths. Design already sketched: per grid cell, the earliest placement time, then a prefix count at
+   the cursor. Cheap, and now that §CPE_BUILDUP_WORK_PACED exists the cursor is trustworthy.
+3. **The 534° spin whip.** `§CINEMA_SPIN class=behind(full-lap) finalSpinDeg=-534.4` executed against
+   a budget costed on a CAPPED 180° — same defect family as the hose length (budget on one number,
+   motion on another). Turn the short way, or cost the real angle.
+4. **Orbit loses the ground.** `requested=72.2 granted=132.7 clamped=true dY=26.92` — the elastic
+   band's floor overrode the ask by 84% and lifted it 27 m, so the final beat is silhouettes against
+   sky with no ground in frame.
+5. `MIN_DWELL` (1.4s) still DROPS rooms crossed faster than that, before the new hold applies. Would
+   ADD captions rather than lengthen them — the user has not asked for it; do not smuggle it in.
+
+**⚠ TWO PROCESS LESSONS THIS SESSION COST REAL TIME — both already in the code as comments:**
+- **A witness that sets up a state the browser never reaches is worse than no witness.**
+  §CPE_GHOST_GROUND shipped 9/9 green and could not fire in a real bake, because the witness set
+  `ground.visible = true` before arming while photoreal staging only turns it on INSIDE the frame
+  loop. Two live rounds lost. Every new gate now arms in the regime the bake actually has.
+- **A cross-module feature must DEGRADE, not disable.** Ghost ground spans cinema_maxq + time_machine
+  + tools; one stale service-worker copy silently killed it, and three of its early exits logged
+  nothing. Both are fixed, and §CPE_BUILDUP_WORK_PACED was built with the fallback from the start.
+
 **RESUME AT:** **§CPE_JERK_SETTLED** (the LATER 2026-07-27 session-end block, near the end of this
 file). Jerk and drag are both SOLVED and witnessed there; the elegant formula that solved them is
 recorded as settled doctrine and must not be re-derived.
