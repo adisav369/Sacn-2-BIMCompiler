@@ -139,9 +139,15 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   Post-mortem: `prompts/HISTORY_PERSIST_RECALL.md` §VERIFY-FIRST ITEM 1 (its open question #1, answered).
   ⛔ STILL OPEN, needs a look: Hospital **missing walls on one side** — hypothesis (UNPROVEN) is the
   re-fetch racing the geometry stream; verify on a clean `§CACHE_HIT` open now that the re-fetch is gone.
-- ▶ **NEW LANE, pass-1 list-only: `prompts/SEAM_IDENTITY_AUDIT.md`** (Opus tier, NOT Fable) — generalises
-  the above: hunt every identity CONSTRUCTED at N call sites instead of DERIVED from one pure function.
-  Comb to exhaustion, chase to root cause, cluster by shared cause, **fix nothing** until the user reviews.
+- ▶ **`prompts/SEAM_IDENTITY_AUDIT.md`** (Opus tier, NOT Fable) — pass-1 list-only, 18 findings, hunt every
+  identity CONSTRUCTED at N call sites instead of DERIVED from one pure function. ✅ **F2 CLOSED + LIVE
+  (07-31, bim-ootb #1106+#1109), user-reviewed** — `boq_charts.html`/`erp/kernel_ops.js` hardcoded
+  `indexedDB.open('bim_ootb_cache', 1)` vs `scene.js`'s canonical v2, throwing `VersionError` forever once
+  a profile's cache DB was at v2: 4D/5D charts always re-downloaded the whole building, ERP edits never
+  survived a refresh. Fixed (versionless open / mirrors `viewer/kernel_ops.js`'s proven fix); two witnesses
+  PASS: `tests/witness_idb_cache_version_drift.js` (the version-drift mechanism) +
+  `tests/witness_offline_meta_db_cache_hit.js` (offline read still works post-fix, meta-only AND
+  full-only cache scenarios, real extracted source). F1/F3–F18 still open, un-triaged.
 
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches

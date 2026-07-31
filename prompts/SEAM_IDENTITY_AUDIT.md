@@ -778,3 +778,38 @@ C1's one-line summary did not, and that is the line pass 2 would have read.
 
 The three live breakages (F2 boq_charts/ERP, F3 city.js, F4 unbounded `dbs`) are **all C1a**. None of them
 require Viewer and Modeller to share a single byte.
+
+---
+
+## §F2 CLOSED — 2026-07-31 (fixed, live, user-reviewed)
+
+User reported the exact live symptom unprompted ("4D/5D charts re-downloading the whole building on
+every open, and ERP edits not surviving a refresh") — traced straight to F2 above; code confirmed the
+finding was still exactly as described (blame: `boq_charts.html:725/745` last touched 2026-06-16/05-23,
+`erp/kernel_ops.js:133` 2026-07-03 — latent for weeks, not a regression from a recent change).
+
+**Fix:** `viewer/boq_charts.html` drops the hardcoded version (`indexedDB.open('bim_ootb_cache')` — the
+same versionless idiom the table above already calls canonical). `erp/kernel_ops.js` mirrors
+`viewer/kernel_ops.js`'s proven fix: `APP.openCacheDB()` when present, else the same versionless
+fallback. bim-ootb PR #1106 (squash-merged `origin/main` 2026-07-30T22:42:42Z).
+
+**Witnessed, not just argued** (per this project's whitebox rule — code+maths, no screenshot):
+- `tests/witness_idb_cache_version_drift.js` — `fake-indexeddb`, no browser: seeds the shared DB at v2
+  (scene.js's canonical opener), proves the OLD hardcoded `open(name,1)` throws `VersionError` (matches
+  the reported bug exactly) and the NEW versionless open succeeds + reads back the cached entry. PASS.
+- `tests/witness_offline_meta_db_cache_hit.js` (PR #1109, squash-merged 2026-07-31T13:51:28Z) — followed
+  up on "does offline mode still work after this fix" by extracting `peekDbCache`/`fetchDbBuffer`
+  **verbatim** from the live file and running them against a cache seeded the way `scene.js` really
+  writes it. Confirms both scenarios boq_charts.html's own comment promises ("meta OR full"): meta.db-only
+  cached → hit on meta key; whole `_extracted.db` cached (no split) → hit on full key; `fetchDbBuffer`'s
+  cache-hit path never reaches its own network fallback. PASS, all 3 sub-scenarios.
+
+**Key-consistency check (relevant to F1, NOT reopening it):** confirmed `viewer/tools.js:377` passes the
+raw `?db=` query string through to `boq_charts.html` unrewritten, and both `viewer/streaming.js:1676`
+(the writer) and `boq_charts.html`'s own `_metaUrl` derivation (the reader) apply the identical
+`_extracted.db`→`_meta.db` string replace on that same raw string — so this specific meta/full caching
+path does NOT hit F1's raw-url-vs-canonical-key drift. F1 itself is untouched and still open.
+
+**Still open, untouched by this fix:** F1, F3–F18. Pass-1's "fix nothing" directive no longer holds
+blanket — this was a targeted, user-reviewed exception for the two live-reported symptoms; the rest of
+the list is still fix-nothing-until-reviewed.
