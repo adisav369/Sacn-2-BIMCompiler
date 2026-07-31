@@ -2795,6 +2795,39 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_ROOM_TITLE_FLYOVER_BLIND — a 148s film gets ONE caption, and the lead is not why (measured 2026-08-01)
+**BUILT AND LIVE (PR #1118, v901). The lead works — and it made a bigger problem visible.** The user's
+own preview log on Hospital, a 147.9s buildup film:
+```
+§CPE_ROOM_TITLE_DIVE src=plan.beats diveEndSec=10.13
+§CPE_ROOM_TITLE_TIMELINE segments=1/1 suppressed=2 rejectedByHeight=306 storeyPitch=5.0m
+                         lead=1/1@2s held=0/1@3s skipped=0(<3s) totalSec=147.9 ms=34.2
+```
+| number | what it means |
+|---|---|
+| 987 | samples over the film (147.9s ÷ `SAMPLE_DT` 0.15s) |
+| **306 (31%)** | over a room's FOOTPRINT but >1 storey pitch (5.0 m) from its datum — **flying over it, not in it** |
+| 3 | room-dwells that existed at all; 2 more died to `MIN_DWELL` |
+| **1** | captions in a 148-second film |
+| `lead=1/1@2s` | the one caption DID lead its doorway by the full 2.0s — §CPE_ROOM_TITLE_LEAD is not the defect |
+
+**Do NOT "fix" this by relaxing the height band.** That band IS §CPE_ROOM_TITLE_HEIGHT_BLIND (PR #1108),
+shipped the day before against the user's own complaint — *"u can see the room labels are Level 2 two
+rooms when we are flying quite high"*. Widening it re-introduces exactly that bug. `MIN_DWELL` is not
+the lever either: retiring it buys at most 2 captions here, out of 306 losses.
+
+**The real statement:** room titles answer *"which room am I in / entering"*, and a wide buildup
+flyover is never in one. The feature is sound; it is aimed at the walk beat and this film mostly has
+no walk beat. Two honest directions, NOT yet chosen by the user, do not build either unasked:
+- **(a) Accept the scope.** Captions are for walk-heavy films; a flyover legitimately has few. Cheapest,
+  and arguably correct — naming a room you are 20 m above is the lie the height band exists to prevent.
+- **(b) Name what the camera is LOOKING AT, not what it is inside.** `§CPE_AIM_DEPTH` already computes
+  and logs a per-frame `subject=(x,y,z)` — the point the gaze is resolved onto. Resolving THAT to a room
+  would caption a flyover truthfully ("looking into Ward 3") without touching the containment rule or
+  the height band. Reuses a number that already exists; needs its own spec before any code, and needs
+  the user to rule on the wording, because "the room you are heading into" and "the room you are looking
+  at" are different promises to a viewer.
+
 ## §CPE_ROOM_TITLE_LEAD — name the room you are HEADING INTO, ~2s early (requested 2026-08-01, NOT built)
 **User, while a bake was running:** *"room labelling i got a suggestion is that should not wait to be
 in the room but as it is heading towards a room, about 2 secs before will be view point friendly.
