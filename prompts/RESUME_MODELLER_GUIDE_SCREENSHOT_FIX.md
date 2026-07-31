@@ -433,3 +433,65 @@ edge can lag ~10 min.
 ### Where the surrounding work is tracked
 `prompts/MODELLER_MASTER.md` — the objectives (O13 is this file) and the ranked queue. The three decisions
 still with the user, and the marked next build item (row 34, anchor export/save leak), are listed there.
+
+## ▶ 2026-07-31, later same day — TEXT SHIPPED, screenshots (1) and (2) above are NOT achievable as
+## conceived; do not re-attempt either without reading why first.
+
+Picked this up directly (not delegated — see [[feedback_model_allocation_mastermind_vs_execution]], a
+blanket Sonnet-only restriction landed mid-session). Verified every number above **live**, myself, against
+`https://red1oon.github.io/bim-ootb/modeller/modeller.html` (not trusted from this file or from a separate
+Fable session's own report, which arrived independently and agrees): `§LAYER-GATE armed multiLayer=80
+layeredHashes=71 refused=0`; party wall `2O2Fr$t4X7Zf8NOew3FNbT` resolves to a real mesh, 124 triangles,
+bbox thickness exactly 0.493m; SampleCastle `§ANCHOR seeded n=65`, `stretchRide` reach **74/74** exactly;
+a real production-path ride (`Bonsai.oplog.commitGesture`, the same call the app uses) moved a filling by
+precisely the host's delta, rigid, no scale.
+
+**Then tried to capture subjects 1 and 2 above and both failed the "does the image show what the caption
+claims" test** (§ORIGINAL CARD's own lesson, reconfirmed):
+- **Subject 1 (wall layers) is not photographable at all right now** — not a bug, a separate un-shipped
+  gap: per-layer render COLOUR was deliberately never wired (`MODELLER_MASTER.md` row 3: "needs face-group
+  materials through the fold payload — own slice; data already ships"). All 5 slabs render in one
+  material, so no camera angle shows 5 visually distinct pieces — the wall looks exactly like it did
+  before, from outside. The geometry is real (verified above); the *picture* of that fact doesn't exist
+  until layer colour ships.
+- **Subject 2 (window riding its wall) actively misleads if captured the obvious way.** Picked a real
+  anchor host+filling pair, ran the real ride, screenshotted before/after
+  (`samplecastle-ride-before.png`/`-after.png`, not committed — scratch only). The window visibly slides
+  AWAY from the wall/frame next to it in the frame — because that visible neighbour is a DIFFERENT,
+  untouched element; the actual host it rides (fid 3266, guid `1xkmYzLHD1VPKdNI8y8Me1`) is one of the 65
+  void-consumed hosts and was never rendered to begin with, by construction, since long before this fix.
+  Every one of the 65 anchor cases has this exact shape (invisible host, unrelated visible neighbours) —
+  no different pick avoids it. The math is provably correct; the optics of illustrating an intentionally
+  invisible mechanism are not achievable with a simple before/after pair.
+- Also worth naming for whoever next tries this: the Duplex/SampleCastle default "fit-to-building" camera
+  frame is itself a bad crop (a roof-corner close-up, not a whole-building shot) — the SAME `e2e_harness.js`
+  framing gap §THREAD 1 already tracks, encountered here independently while looking for a clean base shot.
+
+**User's call, asked directly rather than guessed:** ship the text only, no new images this pass. Done:
+- `docs/ModellerGuide.md` "What a wall is made of" — the stale closing "**What changes next**" paragraph
+  (which promised 7-slab rendering as a future feature) is gone; replaced with a present-tense "**What ships
+  now**" paragraph carrying the real, live-verified numbers (5 slabs not 7, 493mm of 550mm, 71 walls / 80
+  multi-layer edges resolved building-wide). The two paragraphs immediately above it (plain-box case, why
+  the July fix was invisible here) were kept but edited so they no longer contradict the new paragraph —
+  they now read "until 2026-07-30" instead of stating the pre-fix box count as still-current.
+- Grid-Stretch section's SampleCastle sentence ("partial... whose window-frame walls are consumed by their
+  own openings and so aren't separate things to ride") was equally stale — replaced with the shipped
+  74/74 figure and one sentence on how the invisible-anchor mechanism gets there.
+- Drive-by: fixed an unrelated pre-existing `mkdocs build --strict` failure (`docs/MigrateComparisonPaper.md`
+  had `../migrate_status_panel.html` where both files sit in the same `docs/` dir — should never have had
+  the `../`). Confirmed pre-existing on this branch before my edit (same failure with my change stashed
+  out), so not something I introduced — just something that would have blocked ANY deploy, including
+  someone else's unrelated one, so fixed it in passing.
+- `mkdocs build --strict` exit 0. Committed `be3e6f694` on `fix/layer-count-assert` (PR #64), pushed.
+  `scripts/safe_gh_deploy.sh` run for real (not dry-run): guard PASS (269/269 files, superset), published,
+  all 7 canaries 200. **Live-byte-verified after, not assumed**: fetched
+  `https://red1oon.github.io/BIMCompiler/ModellerGuide/` fresh (`x-cache: MISS`, `Last-Modified` matching
+  the deploy timestamp to the second) and grepped the actual served HTML for the new paragraphs — both
+  present verbatim (`grep -c` on "493mm"/"5 real slabs"/"ROW33"/"all 74 of 74" all non-zero).
+
+**Still open, unchanged from this file's earlier sections:** §THREAD 1's 7 bad frames (harness fix needed
+first) · `move-gizmo.png` recapture (queue row 19) · a real photographable capture of subjects 1/2 above,
+which needs either per-layer render colour to ship (subject 1) or a genuinely different illustration
+strategy for an intentionally-invisible mechanism, e.g. a diagram/annotation rather than a plain
+before/after screenshot (subject 2) — do not re-attempt either as a plain screenshot without addressing
+the root gap named above first.
