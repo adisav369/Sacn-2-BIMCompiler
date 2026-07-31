@@ -2795,6 +2795,50 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_ROOM_TITLE_GAZE — caption the room the camera is LOOKING INTO (user ruling 2026-08-01)
+**User ruled on §CPE_ROOM_TITLE_FLYOVER_BLIND's two options: "Label what the camera looks at".** Not
+as a fallback — as THE rule. Containment is replaced, not supplemented.
+
+**Why this is not a bigger change than it sounds.** The gaze ray STARTS at the camera, so when the
+camera is inside a room the nearest hit IS that room. Walk films keep the captions they have, with a
+forward bias through doorways — which is §CPE_ROOM_TITLE_LEAD's own semantics arriving for free from
+geometry instead of from a 2s offset. The flyover case is where the two rules diverge, and that is
+exactly the case with one caption in 148 seconds.
+
+**The mechanism — ray vs. room AABB, and NOTHING is invented.**
+1. `plan.poseAt(tn)` already returns the look target `(tx,ty,tz)` beside the position. Direction is
+   `target − position`, converted to IFC by the existing `A.three2ifc`. No new aim machinery, and
+   deliberately NOT `§CPE_AIM_DEPTH`'s `subject` — that lives inside `_cinemaPathPlan`'s closure, only
+   exists during the walk beat, and is a density centroid rather than a point on the model.
+2. Each room node is already an AABB: its `rects` give x/y, and the storey band already used by
+   `_roomAtIfcPoint` gives z (`cz ± pitch`). Standard slab test, nearest positive hit wins.
+3. **⚠ Do NOT ray-MARCH.** Stepping needs a step size, and any step size is an invented constant that
+   either skips through small rooms or costs 400 steps a sample. The slab test is exact, needs no
+   constant, and is the SAME O(rooms-per-sample) cost the point test already pays — 34 ms on Hospital's
+   987 samples today, so the budget is known before a line is written.
+4. **The storey band is REUSED, not relaxed.** A ray that passes 20 m above a room does not hit its
+   AABB, so §CPE_ROOM_TITLE_HEIGHT_BLIND's rule survives intact — captions still cannot name a room the
+   camera never geometrically reaches. This is what keeps the fix from re-opening PR #1108's bug.
+5. Everything downstream is untouched: §CPE_ROOM_TITLE_LEAD's 3s-slot-or-skip arbitration is what stops
+   a sweeping gaze from strobing captions, and it already exists and is already gated.
+
+**⚠ The wording promise changes, and the honest limit must be stated.** A caption now means "the room
+being looked into", not "the room you are in". During the ORBIT beat the target is the building pivot,
+so the gaze resolves to whatever central room the ray crosses and would hold one caption for the whole
+lap. **Measure this before deciding whether the orbit should caption at all** — do not assume either way.
+
+### Witness claims — `witness_cpe_room_title_gaze.js`
+| gate | proves / disproves |
+|---|---|
+| G-GZ-1 | **RED today, on the real thing.** Hospital's 147.9s plan yields 1 caption by containment; gaze yields more, measured as a number, not "some". |
+| G-GZ-2 | truthfulness: every captioned room is one the ray DEMONSTRABLY enters — recompute the hit independently and assert the room's AABB contains the hit point. Never a fabricated name. |
+| G-GZ-3 | the storey band still bites: a ray passing above a room's AABB does not caption it (PR #1108's bug stays closed). |
+| G-GZ-4 | nearest-hit, not any-hit: with two rooms on the same ray, the NEAR one is captioned. |
+| G-GZ-5 | a camera INSIDE a room still captions that room — walk films do not regress. |
+| G-GZ-6 | the orbit beat is MEASURED and reported: how many captions it produces and whether one name holds the whole lap. |
+| G-GZ-7 | cost: the pre-pass stays within the same order as the point test on Hospital's 987 samples (`ms=` in §CPE_ROOM_TITLE_TIMELINE), so the slab test's budget claim is checked, not assumed. |
+| G-GZ-8 | the log names which rule produced the timeline, so a stale cache cannot silently serve containment captions while the spec says gaze. |
+
 ## §CPE_ROOM_TITLE_FLYOVER_BLIND — a 148s film gets ONE caption, and the lead is not why (measured 2026-08-01)
 **BUILT AND LIVE (PR #1118, v901). The lead works — and it made a bigger problem visible.** The user's
 own preview log on Hospital, a 147.9s buildup film:
