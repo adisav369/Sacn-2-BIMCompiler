@@ -2406,3 +2406,65 @@ you could ever save by clipping an edge instead of the centre.
   (residual 3), then re-run. This is the larger structural fix and the one the user's own instinct
   pointed at ("shouldn't the dot be in front of the door?" — i.e. the approach, not the spot).
 - Residual 1 (7/110 orientation flips) stays last: smallest term, and (a) may move it anyway.
+
+### §21.21 THE DOOR→POCKET LINK IS A PROXIMITY GUESS, AND THERE IS NO GOOD THRESHOLD (2026-07-31)
+Found by dumping real door sequences (`roompath_diagnostics/door_seq_dump.js`) after the user asked
+whether routes really cross more than 2 doors. The dump answered that (Clinic: 1 door ×15, 2 ×23,
+3 ×15, 4 ×14, 5 ×13, 6 ×11, 7 ×11, 8 ×7, 9 ×1 — 2 is the modal case, but 65% cross 3+, mean 4.0) and
+exposed something worse: **every door in the dump claimed to join THREE pockets.** A door joins two.
+```
+§DOORADJ Clinic tol=0.4m  0 rooms ×14  1 ×52  2 ×97  3 ×85  4 ×6  → joins>2: 91/254 (36%)
+§DOORADJ Clinic tol=0.2m  0 ×21  1 ×73  2 ×98  3 ×59  4 ×3       → joins>2: 62/254 (24%)
+§DOORADJ Clinic tol=0.0m  0 ×102 1 ×150 2 ×2                     → joins>2: 0/254  (0%)
+§DOORADJ LTU   tol=0.4m  → joins>2: 75/606 (12%)   tol=0.0m → only 11/606 join 2 rooms
+```
+**No threshold works.** At 0 m only 2 of 254 Clinic doors connect two pockets — the graph is empty. At
+0.4 m a third of doors claim 3-4 pockets — every extra claim is a SHORTCUT the router can take through
+a door that does not open into that room.
+**Cause:** the walker's room rects are INSCRIBED inside the flood-filled pocket, so they stop short of
+the walls; a door sits IN the wall. At zero tolerance it touches nothing; widen it and it touches
+whatever rect is nearby, including rooms on the same side of the wall.
+**This is upstream of everything in §21.18/§21.19.** A door sequence cannot be chosen sensibly from a
+connectivity map that is wrong a third of the time, and it plausibly also explains the coverage gap
+(37%/14.8% unroutable, orphanDoors 16/92 — those are the doors that linked to nothing).
+**Fix — do NOT tune the tolerance.** `RoomWalker` already computes the true relation: it PARTITIONS
+pockets by doors during the flood fill (§DOOR-PARTITION) and exposes `doorAdjacent()`. This lane
+reconstructed that relation by measuring distances instead of asking for it. Same error class as the
+shipped engine: a proximity heuristic substituted for a fact that is already computed.
+
+### §21.22 THE MAP HAS NO CORRIDOR/ROOM DISTINCTION — and the prototype threw away something the
+### shipped engine got right (user question, 2026-07-31: "does it include also inner rooms?")
+Yes — every compiled pocket is equally walkable, with no notion of circulation vs occupied space.
+```
+§INNER Clinic pockets=208 medianArea=10.2m² medianAspect=1.37 medianLongestSide=3.7m
+              corridorLike(aspect>=3 or side>=8m)=36/208 (17%)   largest: 166,146,111,104,76,63 m²
+§INNER LTU    pockets=425 medianArea=13.1m² medianAspect=1.41 medianLongestSide=4.4m
+              corridorLike=135/425 (32%)                        largest: 1255,935,866,865,832,816 m²
+```
+The typical pocket is a compact ~3.7 m room, not a corridor; only 17% (Clinic) are corridor-shaped.
+With ~3 intermediate pockets per route, **routes thread through INNER ROOMS rather than running along
+corridors.** Three consequences, in order of importance:
+1. **Implausible routes.** You do not reach a clinic room by walking through three other rooms. The
+   geometry can be optimal and the route still wrong.
+2. **Some of it is probably invented** — §21.21's false door adjacencies create phantom room↔room
+   links that a router will use as shortcuts. Re-measure this AFTER §21.21 is fixed before concluding
+   the layout is genuinely enfilade.
+3. **Wrong shape for the lane that started this.** Cable trays run in corridors and ceiling voids, not
+   through offices (`datacentre_cabling.md`). A cabling substrate built on room-threading routes
+   inherits a wrong answer.
+
+**Conclusion — and it is a correction to this lane's own direction, not a new idea:** the answer is NOT
+to drop rooms (a route starts and ends in one). It is **rooms as endpoints, corridors as the
+through-route** — the user's original "main most dense walkway" framing (§21.1), now supported by
+measurement. **The shipped engine ALREADY has this**: `hallway_backbone.js`, corridor labels, `spine`
+nodes, §CORRIDOR-ROOM-BACKPROP. §21.6's free-space prototype discarded all of it and treated every
+pocket as equal. So: **keep the walkable map for GEOMETRY, restore the corridor/room distinction for
+TOPOLOGY.** This lane proved the geometry layer needed rebuilding, then rebuilt it while throwing away
+something the old engine had right.
+
+**Revised order (supersedes §21.19's):**
+1. **§21.21** — real door↔pocket adjacency from `RoomWalker.doorAdjacent()`/§DOOR-PARTITION, not
+   proximity. Upstream of everything; re-run §21.19's budget after it.
+2. **§21.22** — restore corridor/room topology on top of the walkable map.
+3. Only then revisit the funnel residuals (§21.18) — they are a quality term on a map that is
+   currently wrong.
