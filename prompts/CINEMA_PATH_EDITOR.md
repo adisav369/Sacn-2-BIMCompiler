@@ -2754,6 +2754,53 @@ two identical words. Non-stick middles are `exit door` again. New gate G-RN-3c.
   chosen pixel, plus re-finding the pixel after G-CS-2 bends the pipe away from it). **Now 4/4.**
   Any future CPE witness that clicks the pipe needs the same two helpers.
 
+## §CPE_BUILDUP_WORK_PACED — the film advances DAYS; the building goes up in BURSTS (spec 2026-08-01)
+**User, after two buildup bakes:** *"but construction came on too fast.. is the path and TM
+consistent?"* → *"as long it is consistent as i find this seems to be at random"*.
+
+**Not consistent, and their own logs prove it — same film fraction, two runs:**
+| run | film t | placed | ops total |
+|---|---|---|---|
+| A | 0.054 | **210** / 63,421 | 63,421 |
+| B | 0.053 | **15,485** / 63,416 | 63,416 |
+
+0.3% of the building up in one run and **24%** in the other, at the same moment in the film. The op
+totals differ too (63,421 / 63,426 / 63,416 across three runs) because Hospital has no linked
+schedule — `§CPE_BUILDUP_SOURCE mode=T reason=generated-timeline` — so the 4D is DERIVED FRESH each
+time. That is the "random".
+
+**Root cause, one line:** `cinema_maxq.js` advances the buildup by CALENDAR —
+`cursor = projectStart + t * (projectEnd - projectStart)` — and the derived order does not spread work
+evenly over days. Thousands of elements share nearby timestamps, so a quarter of the model lands in
+the first 5% of the film and the remaining 95% has little left to raise. Every downstream feature
+inherits it: §CPE_GHOST_GROUND's reveal window collapsed to a few frames on run B
+(`groundOpacity=1.000` by frame 60) for exactly this reason, not because its own rule was wrong.
+
+**The rule: pace by WORK, not by date.** Film fraction `t` maps to the **k-th element placed**, not
+the k-th day: `k = round(t * totalOps)`, `cursor = sortedEnds[k-1]`. Then 10% of the film is 10% of
+the building on ANY model, and it no longer depends on how the generated timestamps happen to
+cluster — which is precisely the consistency the user is asking for. Calendar pacing remains the
+fallback when the op schedule is unavailable, and the log says which is in force.
+
+**⚠ Deliberately NOT a re-key.** This changes only which cursor value a given FRAME asks for. The
+Time Machine's own op order and timestamps are untouched (§CPE_BUILDUP_FOLLOW_TM stands — the film
+plays the timeline, it does not author one). `tmRestoreDerivedOrder` still hands the user's timeline
+back exactly as it was.
+
+**⚠ And it must not repeat §CPE_GHOST_GROUND's mistake:** the schedule lives in `time_machine.js`
+while the pacing lives in `cinema_maxq.js`, so a stale cached copy of either must DEGRADE to calendar
+pacing with a named log line, never silently disable the film.
+
+### Witness claims — `witness_cpe_work_pacing.js`
+| gate | proves / disproves |
+|---|---|
+| G-WP-1 | the claim itself: at t = 0.1/0.25/0.5/0.75, the placed fraction equals t within tolerance. This is what "10% of the film is 10% of the building" means, and it is measured on the real op schedule. |
+| G-WP-2 | **RED on calendar pacing.** The same model, same fractions, paced by date — the deviation is large (Hospital run B: 24% of the work at 5% of the film). Without this the gate above could pass on a model that happens to be evenly spread. |
+| G-WP-3 | the cursor is monotone non-decreasing across the film — a building does not un-build. |
+| G-WP-4 | **determinism**: two independent arms produce identical cursors for identical fractions. The user's "seems to be at random" must be answerable with a number. |
+| G-WP-5 | degrade, don't disable: with `tmWorkSchedule` hidden the way a stale cache would, pacing falls back to calendar and says so — the film still bakes. |
+| G-WP-6 | preview and bake ask for the same cursor at the same film fraction. |
+
 ## §CPE_GHOST_GROUND — the foundation is BUILT and BURIED; ghost the ground until it rises (spec 2026-07-31)
 **User, watching a buildup bake of Hospital:** *"or because cam was too high, and foundation has not
 emerged?"* → *"How about we reveal the foundation by eliminating the night ground mode? ... Or is
