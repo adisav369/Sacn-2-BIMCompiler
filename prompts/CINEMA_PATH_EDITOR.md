@@ -4234,3 +4234,77 @@ the build order again, which is exactly what §CPE_BUILDUP_FOLLOW_TM removed on 
 `prompts/CINEMA_FIND_TO_FILM.md` stays the next POC: it is the CORRECTNESS instrument, and it is what
 makes a route trustworthy. This is the one that makes a route CINEMATIC. **They compose** — pick the
 ward in Find, film the route, arrive as it is built. Build them in that order, not this one first.
+
+# §CPE_WALK_BUDGET_NOISE_BLIND — the walk's SECONDS bypass the noise law entirely (user, 2026-08-01)
+
+**User, after adding nodes:** *"also look at the timing overall, when at extra node length, it seems
+to slow down too much"* → then the ruling: *"it shuld be controlled by that noise-speed ratio we setup
+before to govern thruout"*.
+
+**They are right, and it is measurable from their own LTU_AHouse log — same session, one edit apart:**
+```
+derived  (3 waypoints)  §CINEMA_PACING walk 15.2s   pathLen 29.6m
+authored (6 waypoints)  §CINEMA_PACING walk 19.9s   pathLen 34.6m
+```
+| | derived | authored | change |
+|---|---|---|---|
+| path length | 29.6 m | 34.6 m | **+16.9%** |
+| walk seconds | 15.2 s | 19.9 s | **+30.9%** |
+| ↳ travel (`len / 2.3`) | 12.87 s | 15.04 s | +16.9% |
+| ↳ **turn charge** | **2.33 s** | **4.86 s** | **+108.4%** |
+| ↳ implied degrees | 35.0° | 72.8° | +108% |
+
+Travel tracks length exactly, as constant speed requires (§CINEMA_PATH_EDITOR_MODEL rule 9). **More
+than half the extra time from adding a node is TURN CHARGE**, and the turn charge is where two things
+go wrong.
+
+## Defect 1 — the walk budget has NO noise term at all
+`effects.js:5755-5757`:
+```js
+dive:  Math.max(CINEMA_DIVE_MIN_SEC, _diveEff / CINEMA_DIVE_MPS * (1 + (CINEMA_PACE_SWING - 1) * _diveBusy)),
+out:   totalLen / CINEMA_WALK_MPS + _walkTurnDeg() / (CINEMA_TURN_DPS / 3),
+```
+The **dive**'s seconds are multiplied by `(1 + (PACE_SWING-1) * busy)` — the user's rate-of-change law,
+applied to the budget. The **walk**'s seconds are raw metres plus raw degrees. `PACE_SWING` still
+governs the walk's frame SPACING (§CPE_EVEN_TURN, `speedRange=1.60x`), so the film redistributes time
+inside the beat correctly — but the size of the beat is decided before the noise law is ever consulted.
+`§CPE_NOISE_LAW beat=walk`'s own log line claims it *"tempers the turn-driven crawl: a corner whose
+CONTENT is not changing stays cheap"*. It tempers the spacing. It does not temper the bill.
+
+## Defect 2 — the turn rate contradicts its own comment
+`effects.js:5150-5153`, immediately above `_walkTurnDeg`:
+> *"No new constant — rotation is charged at `CINEMA_TURN_DPS`, the rate the spin and the orbit lap
+> already turn at, so a degree of turning costs the same wherever it occurs."*
+
+The code charges `CINEMA_TURN_DPS / 3` = **15°/s**, not 45°/s. A degree of walk turning costs **three
+times** what the spin pays for the same degree, and the `/3` is exactly the kind of unexplained
+constant the comment is asserting does not exist. At the honest 45°/s the authored path's turn charge
+would be 1.62 s instead of 4.86 s, and walk seconds would rise +22% instead of +31% for a +17% path.
+
+## ⚠ THIS IS THE THIRD INSTANCE OF ONE DEFECT FAMILY — name it and check the rest
+Budget computed on one number, motion executed on another:
+1. **§CPE_HOSE_LENGTH_BLIND** (FIXED, PR #1107) — clock costed 107.55 m, camera flew 173.53 m, films ran 1.57x fast.
+2. **The 534° spin whip** (OPEN, session-close item #3) — `finalSpinDeg=-523.0` executed against a budget costed on a **capped 180°** (`§CINEMA_PACING`: *"spin raw 523deg capped 180deg @45deg/s"*, visible in the same LTU log).
+3. **This** — walk budget priced without the noise law that governs everything else.
+A sweep for any other place where a cost and its motion read different quantities is worth one pass.
+
+## The rule to apply — one law, every beat
+> The walk's seconds go through the SAME `(1 + (PACE_SWING - 1) * busy)` treatment the dive already
+> uses, with `busy` from the walk's own `§CPE_NOISE_LAW beat=walk` probe — so a corner in a static
+> area is cheap and a corner where content is changing buys its frames. And a degree of turning is
+> charged at `CINEMA_TURN_DPS`, matching the comment that is already there, with the `/3` removed or
+> justified in writing.
+
+**⚠ Do NOT introduce a new dial.** `CINEMA_PACE_SWING = 1.6` is the single bounded knob and the user
+settled its meaning 2026-07-27 (*"100% rate of change"*, no density term — `effects.js:5648`). This
+change makes the walk obey it; it does not add a second one.
+
+## Witness claims — `witness_cpe_walk_budget.js`
+| gate | proves / disproves |
+|---|---|
+| G-WB-1 | **RED today, on the user's own case.** Adding waypoints that lengthen the path 16.9% raises walk seconds 30.9%; after the fix the excess over length is attributable to measured busyness, not to a flat degree tax. |
+| G-WB-2 | the walk budget responds to busyness at all: two paths of EQUAL length and EQUAL turning through areas of different `§CPE_NOISE_LAW` change score get different walk seconds. Today they get identical ones — that is the RED. |
+| G-WB-3 | bounded by the one dial: across any path, walk seconds/metre never varies by more than `PACE_SWING` (1.6x). No new knob appears in any log line. |
+| G-WB-4 | a degree of turning costs the same in the walk as in the spin — the claim `effects.js:5150-5153` already makes in prose. |
+| G-WB-5 | constant speed survives (§CINEMA_PATH_EDITOR_MODEL rule 9): with busyness held flat, time ratio still equals length ratio — the existing `witness_cinema_path_editor.js` G9 must stay green. |
+| G-WB-6 | the total the editor DISPLAYS equals the total the bake runs — the §CPE_HOSE_LENGTH_BLIND invariant is not re-broken by re-costing the walk. |
