@@ -148,6 +148,13 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   PASS: `tests/witness_idb_cache_version_drift.js` (the version-drift mechanism) +
   `tests/witness_offline_meta_db_cache_hit.js` (offline read still works post-fix, meta-only AND
   full-only cache scenarios, real extracted source). F1/F3–F18 still open, un-triaged.
+- ✅ **O13 guide text CLOSED + LIVE (07-31)**, PR #64 — party-wall/grid-stretch paragraphs in
+  `docs/ModellerGuide.md` rewritten from stale future-tense promises to the shipped reality (5 slabs
+  Σ0.493m not 7; SampleCastle stretchRide 74/74 not 9/74), every number live-verified against the real
+  production URL. **New screenshots for either subject are NOT yet possible** — per-layer render colour
+  unwired (separate gap) and every void-anchor case has an invisible host by construction (a before/after
+  shot reads as breakage, not riding). Detail + why: `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md`'s
+  2026-07-31 "later same day" section — do not re-attempt either screenshot without reading it first.
 
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches
