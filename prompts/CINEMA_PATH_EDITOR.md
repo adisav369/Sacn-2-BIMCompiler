@@ -5249,3 +5249,46 @@ the `witness_cpe_room_title_*` family to **8443**. A run against the wrong port 
 3. **§CPE_HOLD_TURN decouple + rebase v912 → v913** — the user reaffirmed it live on 2026-08-02.
 4. **The HEAD of a bake log** — still the cheapest unblock for the pacing verdict (~14 `§CPE_BUILDUP`
    checkpoints + `§GANTT_CACHE_HIT/SAVE` + `§CPE_BUILDUP_PACING mode=`).
+
+## ✅ §4D_BAND_MONOTONIC BUILT 2026-08-02 — Ruling A implemented, measured on real Hospital
+`viewer/schedule_gate.js` + `_GANTT_CACHE_VERSION` **6 → 7** (mandatory — 35,484 elements re-ordered).
+Witness `witness_4d_band_monotonic.js` **6/6**; it runs **BOTH** schedulers over the same geometry
+(`origin/main`'s saved as `tests/_schedule_gate_main.js`) so "before" is MEASURED, not asserted.
+
+| | before | after |
+|---|---|---|
+| non-structure cross-storey inversions | **29,824** | **0** |
+| structure inversions | 551 | 551 (intentionally unchanged) |
+| project span | 170d | 176d (+3.5%) |
+| trades at project midpoint | 5 | 5 (trade train survives) |
+| floating elements | 0 | 0 (`tests/test_schedule_gate.js`) |
+
+**67% of all cross-storey pairs were inverted, worst by 107 days.** The user's "upper floors gets
+walled first" was not a misread of the film — it was the dominant behaviour of the scheduler.
+
+**TWO AUDIT CATCHES — this is why the ladder is logged rather than trusted:**
+1. **`Unknown@184.5m(9457)` took a rank between Level 3 and Level 4** on the very first run. The
+   §GANTT_STOREY_Z population is scattered through the whole building, so its median z is a centroid,
+   not a level; ranking it gated 9,457 elements against Level 3 and held all of Level 4 behind a
+   fiction. Excluded from the ladder, keeps every geometric gate. **The ruling's warning was exactly
+   right and it fired on the first attempt.**
+2. **PASS A is intentionally UNGATED — both alternatives measured and rejected.** Gate without
+   re-sorting: 551→519 (6%, a lower bound that does nothing). Gate WITH re-sorting by rank:
+   inversions→0 **but 2,341 elements FLOAT again** (members 2304/7127, beams 15/1970, slabs 22/35) —
+   `geoGate` reads a grid of already-placed elements, so re-ordering places elements before their own
+   supports. **Floating wins; "nothing without support" is the hard gate.** Cross-storey STRUCTURAL
+   ordering is now a named open item, gated as *unchanged* (T2b) so nothing can move it silently.
+
+🔴 **"Slabs coming on too fast" is NOT fixed and is a DIFFERENT problem.** It is a RATE, not an
+ordering defect — structure inversions were only 551/2316 while non-structure was 29,824. A whole
+floor plate becomes eligible the instant its columns top out, then competes only for CONCRETE_GANG's
+**3** crews (MASON has 2, ROOFER 1). The fix is crew caps / eligibility smoothing, not monotonicity.
+
+## 🔴 REMAINING after 2026-08-02
+1. **Slab burst** (above) — crew-cap / eligibility smoothing.
+2. **Cross-storey STRUCTURAL ordering** — 551 inversions; needs a way to order PASS A without
+   re-sorting it (the re-sort floats 2,341). Perhaps a second structural pass, or gating on
+   `bandTrade[r-1]` computed from a pre-pass rather than read live.
+3. **Staging dirty-check** — ~46% of a light bake frame; restage only when the placed-set changed.
+4. **§CPE_HOLD_TURN decouple + rebase v912 → v913.**
+5. **HEAD of a bake log** — still the cheapest unblock for the buildup-pacing verdict.
