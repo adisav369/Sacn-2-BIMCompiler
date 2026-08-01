@@ -2607,3 +2607,96 @@ had grouped `spatial_structure` by `s.guid` instead of `s.room_guid`, counting �
 (304 rows) as if they were rooms (207). The absurd number is what exposed it. Checker before code
 under test, again ([[feedback_verify_checker_before_code_under_test]]); the fix is recorded as a
 load-bearing comment in `spine2.js` so the next session does not repeat it.
+
+### §21.25 HOW TO OVERCOME — the three levers §21.24 named are MEASURED, and they are the wrong
+### lever. The map is not what is broken any more; **the SPINE DEFINITION is.** Two-layer design: GO.
+bim-ootb `review/roompath-redundancy` @ `a9cf261`, pushed. Engine still byte-unchanged, nothing
+deployed. The committed §DOOR-APERTURE relation is untouched — every lever below is opt-in via
+`compileRooms(db,{doorAdjacency:true,experiment:true})`, and §ADJ2 T1/T2/T3 were re-run to prove it.
+
+**Lever A — §APERTURE-AXIS. ADOPT (correctness).** §DOOR-APERTURE takes the wall normal from the
+door bbox's SHORT axis. That is an assumption, and it is the same proxy §21.15's funnel was burned
+by. Measure it instead: from the door centre the blocked band is THIN across the wall and LONG along
+it, because the wall continues. Take the axis with the shorter crossing — no tolerance, no name
+matching, degrades to the bbox answer on a tie.
+```
+§LEVER_A Clinic doors resolving to 2 sides 192 -> 206/252   orphans 9 -> 3
+§LEVER_A LTU                               404 -> 487/606   single-sided 181 -> 110
+```
+**Lever B — re-gate §DOOR-RESCUE on the aperture. ADOPT (correctness), but it does NOT buy
+connectivity.**
+```
+§LEVER_B Clinic dropped regions=38  reached by a real door aperture=19 (26 m²)
+§LEVER_B LTU    dropped regions=134 reached by a real door aperture=81 (140 m²)
+```
+Those are real rooms §DOOR-RESCUE deleted because the broken proximity test said they had no door.
+**Lever C — §OPEN-THRESHOLD as a first-class link. ADOPT, and it is load-bearing on Clinic**
+(44.8% unroutable with it, 83.6% without) and nearly irrelevant on LTU. Same split as §21.24 found.
+
+**§OVERCOME — the falsification fired, exactly as written before the run.**
+```
+Clinic  baseline(§21.24)  spine 8 components  unroutable 43.3%
+        +A                       9                       44.2%
+        +A+B                    11                       83.6%
+        +A+B+C                   9                       44.8%
+LTU     baseline                17                       32.4%
+        +A+B+C                  17                       35.5%
+```
+**Correct rooms, correct links, and the spine is no more connected than before.** Adding rooms adds
+NODES faster than LINKS. **Relation-level repair is not the way through, and continuing down §21.24's
+list would have burned a session to learn that.** Levers A/B/C are still worth taking — they fix real
+defects — but not one of them is the thing standing between this lane and a working two-layer map.
+
+**§SPINE_DEF — the actual answer, and it vindicates the user's ORIGINAL framing.** Every corridor
+test this lane has tried asks what a pocket *looks like* (§21.23's shape rule) or how its doors *line
+up* (`hallway_backbone.js`). Neither asks the only question routing cares about: **does traffic have
+to pass through it?** That is betweenness centrality, computed from the room graph itself — no shape
+rule, no name matching, nothing invented. Head-to-head on the same graph, same run, inside the
+largest component:
+```
+Clinic  hallway_backbone     size  9  components  4  leaves within 1 hop 65%
+        betweenness top 15%  size 15  components  2                      81%
+        betweenness top 25%  size 25  components  1                      92%
+LTU     hallway_backbone     size 26  components 15  leaves within 1 hop 56%
+        betweenness top 10%  size 39  components  1                      79%
+        betweenness top 25%  size 97  components  1                     100%
+```
+**The betweenness spine CONNECTS — one component — where `hallway_backbone` gives 4 and 15.** And
+leaf attachment, which is the two-layer design's actual requirement (spine + rooms hanging off it),
+goes 65%→92% and 56%→100%. **§21.23's design is buildable. Layer 1 must be derived from the graph,
+not from corridor shape.**
+
+This is §21.1's *"main most dense walkway"* — the user's own first formulation — implemented
+correctly for the first time. `hallway_backbone.js` was the wrong implementation of the right idea,
+and §21.22's "the shipped engine already has this" was too generous to it.
+
+**§CEILING — and a correction to my own first reading of it.** The first pass reported "largest
+component = 45% of rooms (Clinic)" as a hard ceiling. That conflated storeys: this relation has **no
+vertical links**, so whole floors necessarily land in separate components. Per storey:
+```
+Clinic  First Floor 129 rooms, largest component 78%   Second Floor 96 rooms, 52% (split 50 + 37)
+LTU     VÅNING 1/2/3  128/158/195 rooms, largest 82% / 83% / 77%      VÅNING 4 (22 rooms) 18%
+```
+So the substrate is healthier than the first number suggested — but **Clinic's Second Floor is
+genuinely cut in two** (50 and 37), and that is a real defect still to find, not a storey artefact.
+
+**REVISED ORDER — supersedes §21.24's:**
+1. **Build the betweenness spine** as layer 1 of §21.23's design, on the committed §DOOR-APERTURE
+   relation + §OPEN-THRESHOLD. Falsification: spine must stay 1 component per storey and leaf
+   attachment ≥90% at top-25%, on a THIRD building neither of these two (over-fitting guard — both
+   fixtures have now been looked at many times).
+2. **Fold in levers A and B** as correctness fixes with their own witnesses. Note §ADJ2_T1
+   (compile invariance) is expected to FAIL by design once B lands — the room set is *meant* to
+   change — so re-baseline it on the identity of newly-kept rooms instead of on equality.
+3. **Add vertical links** (stairs/lifts) before any cross-storey claim is made. Every number in
+   §21.24 and §21.25 is same-storey only.
+4. **Chase Clinic Second Floor's 50/37 split** — the one remaining map defect with a specific
+   address.
+5. Funnel residuals (§21.18) LAST, unchanged. They are still a quality term, and now clearly a
+   small one next to the spine.
+
+**Known limitation, stated rather than discovered later.** A betweenness spine will sometimes select
+a room that is not circulation — an office that happens to be a cut vertex. That is not a bug in the
+metric: where the graph forces traffic through an office, either the building does too, or the map is
+wrong at that spot. It is self-diagnosing, and it is the reason step 1's witness should report the
+spine's membership, not just its component count.
