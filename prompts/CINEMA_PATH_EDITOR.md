@@ -5208,11 +5208,20 @@ DELIBERATE one. `#cpe-rows` is now a MIXED list — every row carries `data-cpe-
 because the existing witness counted bare children and would otherwise have gone red for no product
 reason.
 
-**MEASURED, and it settles an open question:** the first caption's 2s lead really is destroyed on a
-real film — `§CPE_ROOM_TITLE_TIMELINE … firstLead=0.00s/2s (TRUNCATED by the dive clamp)` on Duplex.
-⛔ **BLOCKED on one user decision, deliberately not guessed:** when the dive clamp eats the lead,
-should caption #1 be shown **on-the-nose** (today) or **SKIPPED** per the user's own *"if misses, then
-skips"*? One line either way; it is a taste call about the film's opening, not a correctness bug.
+**⚠ RETRACTED — this block previously claimed the dive clamp was measured destroying the first
+caption's lead. It was an instrument fault, mine.** The `firstLead=` line printed
+"TRUNCATED by the dive clamp" for ANY short first lead, but `show = Math.max(0, tStart - LEAD)`
+clamps at the FILM START too. Corrected instrument, same Duplex film:
+`firstLead=0.00s/2s(filmStart)` — **the dive clamp does not bite here at all.**
+The instrument now names its cause (`full` / `filmStart` / `diveClamp` / `other`).
+⇒ **The design question is NOT live.** Do not spend a user decision on "on-the-nose vs skip" until a
+real film actually reports `(diveClamp)`. Also tried and REVERTED: giving the first caption its full
+lead when `tStart <= diveEndSec` (reasoning: entering mid-dive means the room IS the dive target, so
+the name is over its own subject, not empty sky). It turned **G-TL-2** red, and G-TL-2 encodes the
+USER'S OWN RULING. A witness encoding a user ruling is not a gate to lower on a hunch — doubly so
+once the motivating evidence had evaporated. Documented in the code so it is not retried.
+**The twelfth broken instrument in this lane.** `feedback_verify_checker_before_code_under_test`
+applies to instruments you add THIS session, not only inherited ones.
 
 **§BAKE_FAST_PATH_COST — second data point, from the 1670-frame bake of 2026-08-02.** The staging
 overhead is **near-CONSTANT, not proportional to scene weight**, which is the signature of a fixed
