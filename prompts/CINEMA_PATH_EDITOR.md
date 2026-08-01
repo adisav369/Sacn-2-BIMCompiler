@@ -4988,3 +4988,20 @@ already print the shape — extend, do not invent.
 ⚠ Only **6 leaf tasks / 6 phases** cover 63,415 elements (`§AUTHOR_MATERIALIZE … phases=6 leafTasks=6
 assignments=63415`). With that few buckets, one phase moving re-shapes a large fraction of the curve at
 once — a strong prior for the schedule being the cause rather than the film.
+
+### ⚠ AND CHECK THE 4D GENERATE PATH ITSELF (user, 2026-08-01: *"i think the recent change in the 4D generate"*)
+The user suspects the **4D generate/apply flow**, not only §4D_WALLS_BEFORE_ROOF. Treat these as ONE
+suspect set — they all rewrite the same op stream the film is paced by:
+- `§AUTHOR_UI_DRAFT` → `§AUTHOR_MATERIALIZE schedule=SCH_AUTHORED mode=dated phases=6 leafTasks=6
+  assignments=63415` → `§AUTHOR_UI_APPLY` → `§TM_REFOLD wasActive=true clearedPlaceOps=63415`.
+  A regenerate CLEARS and re-injects all 63,415 place ops, so any change in how they are dated or
+  distributed re-shapes the buildup curve wholesale.
+- `§AUTHOR_UI_DATES start=2026-01-01 span=180d phases=6` — the film's whole span comes from here.
+- **`_GANTT_CACHE_VERSION` was bumped 5→6 by §4D_WALLS_BEFORE_ROOF**, and #1123 exists precisely because
+  a stale cache once stopped a sequencing fix reaching a browser. So a user can be running a MIX: new
+  code, cached old ops (`§GANTT_CACHE_HIT ops=63417` vs `§GANTT_CACHE_SAVE ops=63418` appear in the same
+  session log). **Confirm which op set produced the reported film before drawing any conclusion from it.**
+
+**Cheapest discriminator, do this FIRST:** compare the 20-slice element histogram for (a) cached ops,
+(b) a forced regenerate on `origin/main`, (c) a forced regenerate on the merged fix. If (a) differs from
+(c), the user was watching a stale-cache film and there may be no pacing defect at all.
