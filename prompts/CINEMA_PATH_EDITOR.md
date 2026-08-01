@@ -26,7 +26,75 @@ every measured number with the log line that produced it, and the 7 known issues
 It opens by naming the highest-risk thing to check first (I changed two failing gates and they
 went green — verify I corrected the instruments rather than lowered the bar).
 
-## ▶ SESSION CLOSE 2026-08-01 — READ THIS FIRST, then §CPE_ROOM_TITLE_LEAD
+## ▶ SESSION CLOSE 2026-08-01 (LATE) — READ THIS FIRST, it supersedes the earlier 2026-08-01 block
+
+**Live: viewer sw v906.** Six PRs shipped, ALL MERGED, all witnessed. Nothing half-landed.
+
+| § | PR | what it fixed |
+|---|---|---|
+| §CPE_ROOM_TITLE_LEAD | #1118 | caption opens 2s before the doorway; 3s slot or SKIP (no flash) |
+| §CPE_ROOM_TITLE_GAZE | #1119 | caption the room the camera LOOKS INTO — Hospital 1 → 15 captions |
+| §4D_ROOF_LOAD_PATH | #1120 | helipad-hut roofs scheduled 277 days BEFORE their own walls |
+| §CPE_WALK_BUDGET_NOISE_BLIND | #1121 | walk seconds priced by CONTENT change, not degrees turned; `/3` turn tax removed |
+| §CPE_PATH_NOT_PORTABLE | #1122 | a saved path could not leave the machine, and the skip was silent |
+| §GANTT_CACHE_VERSION 4→5 | #1123 | §4D_ROOF_LOAD_PATH could not REACH an already-cached browser |
+
+**⚠ THE LAST ONE IS THE LESSON OF THE DAY.** #1120 was correct, witnessed 9/9, merged — and the user
+still saw roofs first, twice, including after a hard reset. Cause: `_GANTT_CACHE_VERSION` gates the
+`gantt:v<N>:<building>` **IndexedDB** key, and its own comment already said to bump it "whenever
+schedule-GENERATION logic changes — sequence rules, schedule_gate.js gating logic" and warned that
+"a logic fix alone does NOT reach a browser that already generated+cached a schedule". #1120 changed
+BOTH named things and the bump was missed — by the builder AND by my review of the diff. The v4 note
+already recorded the identical miss from 2026-07-18 in the user's own words ("hard reset didn't fix
+it"). **Written down once, repeated anyway. Before closing ANY fix that changes ordering, rates,
+gating or rules, ask: what caches this?**
+
+**RESUME AT — one spec, two coupled halves, agreed with the user and NOT yet built:**
+1. **§CPE_GAZE_CONSTANT_RATE.** User: *"its turning speed be at a constant speed thus allowing the
+   user to define the arc well ... couldn't turn in time before the user has dragged the path to
+   another spot."* MEASURED this session on Hospital: the gaze closes 87.7° → 0° off the building bulk
+   monotonically over t=0.56→0.80, peak **3.9°/s** — under 9% of `CINEMA_TURN_DPS` (45°/s), the film's
+   own single turn rate used by the spin and the orbit lap. The gaze is the THIRD turn and the only
+   one not rate-governed; its speed is an emergent by-product of a weight field (`blend`/`seamTaper`/
+   `openTaper`). Make it rate-governed, and LOG a shortfall (`needed X° in Y s at 45°/s → short by Z s`)
+   instead of silently lagging. ⚠ Must still taper to zero at the seams — §CPE_AIM_DEPTH_OPEN_TAPER
+   exists because a rule at full strength on a beat boundary produced "cam turning is too abrupt".
+   **⚠ AMENDED by the user at session close — this is the load-bearing half:** *"the turn should be
+   AWARE AT ONSET."* Not "turn at a constant rate once triggered" — **plan the turn from the start of
+   the leg**. A weight-driven blend is late BY CONSTRUCTION: it can only rise after its trigger
+   condition is met, so it always begins reacting after the thing it should have anticipated. The rule
+   is: at the START of a leg, compute the bearing the gaze must END on, and slew toward it at the
+   constant rate from t0 — arriving on time by construction rather than by luck. That also makes the
+   shortfall knowable AT PLAN TIME (before a single frame is baked), which is what makes the arc
+   authorable: the editor can say "this leg is 1.2 s short of the turn you asked for" while the user
+   is still dragging.
+2. **§CPE_STICK_HOLD.** User's own proposal: a `hold` property per stick row, default 0; set 1s and
+   the path eases to a stop at that stick's midpoint and away again. **These two are ONE feature, not
+   two:** model rule 2 makes the gaze LOS-derived, so a hold ALONE just hovers with the camera still
+   pointing where it already pointed. Hold gives the turn a budget; constant rate spends it.
+   Three constraints, each already bitten this lane: (a) the clock must COST the hold or it is
+   §CPE_HOSE_LENGTH_BLIND a fourth time, and it is AUTHORED so it is added AFTER the noise multiplier,
+   never scaled by it; (b) it amends §CINEMA_PATH_EDITOR_MODEL rule 9 ("constant speed") — amend it
+   explicitly, do not let it quietly stop being true; (c) `cinema_path` needs a `hold_sec` column and
+   the loader must tolerate tables written without it (portability was only fixed today).
+
+**⚠ ONE THING NOT YET DIAGNOSED — do not assume it is the same mechanism.** The user reports the turn
+should begin ~3-4s in and only starts by ~6s. On the full 148s film those marks land at **t≈0.02–0.04,
+inside the DIVE**, not the pull-back. The dive has its OWN drift: gaze goes **0° → 23° off the bulk over
+the first 15s** while descending toward the settle point. Measure that beat before speccing it.
+
+**Still open, unchanged:** the 534° spin whip (`spinDeg=487` on the crafted Hospital path — costed on a
+CAPPED 180°, same budget-vs-motion family as §CPE_HOSE_LENGTH_BLIND and the walk budget: **that family
+has now produced FOUR instances, sweep for more**); orbit loses the ground (`granted=132.7` vs
+`requested=72.2`, +27m); §CPE_AIM_DEPTH D4 buildup-aware gaze. `MIN_DWELL` is CLOSED as deliberately
+kept (user ruled).
+
+**Test asset built this session:** `~/bim-ootb/buildings/HospitalAjaibPath.db` carries a hand-written
+`cinema_path` — 3 bands derived from Level 1's own element cloud by PCA, verified end-to-end
+(`§CINEMA_PATH_RESTORE bands=3 total=81.9s`, `route=authored`). Note it also reproduces the spin whip.
+The user's real 'Ajaib' is still only in their IndexedDB; #1122 makes Ctrl+S export it from now on.
+
+## ▶ SESSION CLOSE 2026-08-01 (EARLIER, superseded above) — READ THIS FIRST, then §CPE_ROOM_TITLE_LEAD
 **Live: viewer sw v900, CPE v19, MAXQ v20.** Nine PRs shipped, all merged, all witnessed. Nothing in
 this session is half-landed; there is no cleanup owed.
 
