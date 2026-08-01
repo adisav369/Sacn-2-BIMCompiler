@@ -546,3 +546,82 @@ the partitions beneath it in a frame-first concrete schedule (this is #1120's re
   the number instead of gating on it).
 - The captured/linked-schedule path (`source=captured`). GENERATED 4D only.
 - `sequence_rules.json` seq numbers, the room-title lane, `MIN_DWELL`.
+
+## 🔴 §SUPPORT_ALL — the invariant is NOT held: structure bearing on WALLS is scheduled before them
+**User's standing requirement, 2026-08-02, after declining to adjudicate film pacing:** *"as long as
+the 4D schedule does not put anything without support first."* That is the whole acceptance test for
+this lane now. **It currently FAILS on real Hospital: 6,778 violations.**
+
+Instrument: `audit_support_roleblind.js` (branch `fix/helipad-roof-separation`, `86b8535`).
+
+| carried on carrier | n |
+|---|---|
+| IfcPipeSegment on IfcWallStandardCase | 1768 |
+| IfcPipeFitting on IfcWallStandardCase | 1396 |
+| **IfcBeam on IfcWallStandardCase** | **1048** |
+| IfcMember on IfcWallStandardCase | 590 |
+| IfcDuctSegment / IfcDuctFitting on IfcWallStandardCase | 533 / 437 |
+| **IfcBeam on IfcWall** | **246** |
+| **IfcColumn on IfcWallStandardCase** | **162** |
+| IfcSlab on IfcWallStandardCase | 19 |
+
+Worst single: `IfcPipeFitting 0dMvF9TX5F1PPX5xJ4dTQX` starts **100.5 days** before its carrying wall
+`0jzYl7FRDEExmTLzqqEZZo` finishes.
+
+**For the structural rows this is not a near-miss — it is guaranteed by the two-pass design, and it is
+provable from the code rather than only measured:**
+1. `place()` writes the support grid ONLY for `el.seq <= 4` (`schedule_gate.js:162`).
+2. `geoGate()` reads that grid — so it can gate you on STRUCTURE and nothing else.
+3. Walls are `seq 6` → PASS B. Beams/columns/members/slabs are `seq <= 4` → PASS A.
+4. **PASS A runs to completion before PASS B begins.**
+→ A beam bearing on a wall CANNOT be gated on that wall. Ever. Same for columns, members, plates.
+
+**§SUPPORT_CHECK cannot see this** — `auditFloating`'s wall pool is handed only to `IfcSlab && seq>4`
+(`schedule_gate.js:304`), i.e. exactly the roof case. `floating=0` is true and uninformative for every
+other class. This is the SAME defect §4D_ROOF_LOAD_PATH (#1120) and §4D_WALLS_BEFORE_ROOF (#1128)
+fixed **for roof slabs only**, by promoting them out of PASS A into PASS B so they wait for walls. The
+general case was never done, which is why "roof before walls" kept coming back in a new costume.
+
+**TWO SELF-CORRECTIONS on the way to 6,778 — recorded so the number is checkable, not trusted:**
+- Role-blind carriers (every class supports every class) → **40,754**. Top pair
+  `IfcPipeFitting on IfcCovering` (5,606): a pipe above a ceiling tile is not held up by that tile.
+  That audit over-reports exactly as badly as the shipped one under-reports.
+- Carrier pool narrowed to structure+walls but keeping `S.top_z >= T.base_z - GAP` → **29,759**. That
+  predicate accepts ANY carrier taller than my base, so a riser threading past a 3 m wall read as
+  "carried by" it. The rests-on/runs-past discriminator is that the carrier tops out AT my underside
+  (`|S.top_z - T.base_z| <= GAP`): **29,759 → 6,778**.
+
+⚠ **DO NOT "fix" this by re-sorting PASS A.** Already measured and rejected under §4D_BAND_MONOTONIC:
+re-sorting PASS A drives inversions to 0 and **floats 2,341 elements**, because `geoGate` reads only
+what is already placed. The likely shape is the #1120 move generalised — an element whose real carrier
+is a wall belongs after walls — but it needs its own spec, its own measurement, and a floating gate
+that stays at 0.
+
+## ✅ §HELIPAD_ROOF_SEPARATION — the reported roof defect was NOT an ordering defect
+`audit_helipad_roof_walls.js` (`8bc0532`): **roofsBeforeTheirWalls = 0/11**. The promotion reproduces
+the shipped `§GANTT_OVERRIDE` counts exactly (`seed=10 m4=1 total=11`), so the audit measures the real
+rule. The two helipad huts (`3eq15PZlbCi8$6xdfFtxpB`, `3Vxmv9vT1DBOVGP9f4HeYO`) are the only elements
+in the building with a lag of **exactly 0.0 days** — the gate is binding to the millisecond.
+
+The film is what hides it: 63,415 elements / 1,735 frames = **36.6 elements per frame**. The hut roofs
+are rank 63,404–63,405 of 63,415 and land on frame **1735**; their carrier walls land on 1734. The
+whole hut is **2 frames = 133 ms** at 15 fps. Correct order, zero visual separation.
+
+**Volume-weighted pacing was specced, simulated and DISPROVEN before any code was written** (user
+chose it; the measurement says no):
+
+| policy | biggest single | top 0.1% hold | hut roof frame | rooftop span |
+|---|---|---|---|---|
+| count (current) | 0.00% | 0.1% | 1735 | 1267f = 84.5s |
+| volume (raw) | **8.03%** | **49.9%** | 1726 | 1389f = 92.6s |
+| volume^1/2 | 0.44% | 7.6% | 1731 | 1125f = 75.0s |
+| volume^1/3 | 0.10% | 2.5% | 1733 | 1099f = 73.3s |
+| log1p(volume) | 0.07% | 3.1% | 1732 | 1052f = 70.1s |
+
+Raw volume hands 8% of the film to ONE element and half of it to 63, and still buys the hut only 9
+frames. The compressions fix the tail but move the hut 2–4 frames. **No proportional weighting can
+work**: the hut is genuinely the last 0.02% of the building, and every one of these is a monotone
+cumulative map, so the last 0.02% lands in the last 0.02% of the film by construction. Buying the
+topping-out a beat requires a NON-proportional tail — the §CPE_STICK_HOLD precedent (a hold buys its
+own time), not a re-weighting. **Parked: the user declined the pacing lane and set the support
+invariant above as the priority instead.**
