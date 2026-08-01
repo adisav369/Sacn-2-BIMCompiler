@@ -78,7 +78,17 @@ gating or rules, ask: what caches this?**
    explicitly, do not let it quietly stop being true; (c) `cinema_path` needs a `hold_sec` column and
    the loader must tolerate tables written without it (portability was only fixed today).
 
-**⚠ ONE THING NOT YET DIAGNOSED — do not assume it is the same mechanism.** The user reports the turn
+**⚠ LOCALISED AT SESSION CLOSE — the user's "turn starts too late" is the DIVE→SPIN SEAM, and it is
+the SPIN WHIP.** User: *"It was coming out of the dive towards the edge is what i saw."* Measured on
+Hospital, gaze angle off the building bulk: **t=0.150 → 35.8°, t=0.200 → 76.9°, t=0.250 → 101.9°**
+(dive ends 0.170, spin ends 0.186). Coming out of the dive the gaze does not merely fail to turn
+toward the mass — it **opens AWAY from it by 66°** across the seam, which is where
+`§CINEMA_SPIN class=behind(full-lap) finalSpinDeg=-523` executes. So this is open item #3 (the spin
+whip costed on a CAPPED 180°) with a measured signature and a named moment, NOT a separate defect.
+Fix the spin's budget-vs-motion mismatch and re-measure this seam BEFORE building the gaze rate law —
+the rate law may be treating a symptom of the whip.
+
+**⚠ AND ONE THING STILL NOT DIAGNOSED — do not assume it is the same mechanism.** The user reports the turn
 should begin ~3-4s in and only starts by ~6s. On the full 148s film those marks land at **t≈0.02–0.04,
 inside the DIVE**, not the pull-back. The dive has its OWN drift: gaze goes **0° → 23° off the bulk over
 the first 15s** while descending toward the settle point. Measure that beat before speccing it.
