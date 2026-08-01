@@ -23,27 +23,26 @@ commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `for b
 echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-verified 07-30). Undelivered:
 `lane/hr-overlay`, `lane/teams-overlay`.
 
-## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §20–§21.14; start
-  at §21.14 START HERE.** Redundancy MEASURED (2026-07-30/31): 83.2% (Clinic) / 91.3% (LTU_AHouse) of
-  routes double back, drawn line +146%/+112% over straight, and 11.05%/8.22% of the SHIPPED drawn line
-  is off walkable space. Root cause is structural, not tuning — two layers with different objectives,
-  and a geometry layer with **no wall model** (`chordIllegalCount=0` across 2 real walls, no door).
-  One-layer prototype (walker's own pockets + doors as portals) measures 1.04×/1.22× detour, 0.05%/0.02%
-  off-map, R2=R3=0 by construction, map built 54/362ms, queries 0.7/1.3ms. NEXT = funnel across door
-  apertures (Lee–Preparata; §21.12 cites it, §21.13 maps it to the user's own "arrow" framing).
-  **Funnel attempts 1-2 done (§21.15-§21.18): cause was a convention inversion, fixed, T1 100/110→7/110,
-  but all 3 thresholds still fail. THEN a bigger defect surfaced UPSTREAM (§21.21): the door↔pocket link
-  is a proximity guess with NO valid threshold (0.4m→36% of Clinic doors claim >2 rooms; 0.0m→only 2 of
-  254 connect anything), because walker rects are inscribed and stop short of the walls. Likely also
-  explains the coverage gap AND (§21.23) the apparent corridor fragmentation — one defect, three symptoms.
-  NEXT = real door adjacency via `RoomWalker.doorAdjacent()`/§DOOR-PARTITION, then corridors via
-  `hallway_backbone.js`, then re-measure the 2-layer corridor-spine design. Funnel residuals LAST.**
-  8 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy`.
-  **Nothing deployed; engine byte-unchanged.**
-  ⛔ This keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP — the
-  Find panel prints Dijkstra's penalty-weighted cost as metres (3.20× over on Clinic, 0.71× under on
-  LTU), and a cable schedule inheriting that is exactly what §SLACK exists to prevent.
+- ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`; start at
+  §21.28 START HERE** (then §21.14 for setup/fixtures, then §21.24→§21.27 in order).
+  **ROOT CAUSE FOUND AND REMOVED (§21.26/§21.27): the raster had NO DOOR VOIDS** — `_rasterizeWalls`
+  stamps wall bounding boxes and never subtracts the opening, so 99% (Clinic) / 100% (LTU) of door
+  centres sat on solid masonry. Doorways did not exist in the geometry. §SPINE-RASTER carves them;
+  gate passes 99%/100% → 0%/0%, no leak signature. One fact that retro-explains §21.21–§21.25.
+  ✅ §DOOR-APERTURE replaces the proximity door↔pocket guess: over-claims 36%/12% → **0**, interior
+  doors 2/254 → 192/252 and 11/606 → 404/606. §21.21's *prescribed* fix did not exist (verified).
+  ❌ DISPROVEN: §21.23's "one defect, three symptoms" — fixing adjacency did NOT connect the spine.
+  ❌ RETRACTED: §21.26's `rotation_z` claim (it is RADIANS; non-issue). Do not re-open either.
+  Corridor-by-shape, by `hallway_backbone.js`, and by betweenness all tried — betweenness is best
+  (1 component, 92%/100% leaf attachment) but all three were measured on the UNCARVED substrate.
+  **NEXT = classify the 140 (Clinic) / 107 (LTU) STRANDED rooms** into its three possible causes (no
+  door element · carve did not pierce · pocket never formed) and let the count choose the fix. Layer 1
+  builds correctly now but still loses: unroutable 91.3%/87.7% vs room-graph baseline 43.3%/32.4%.
+  Open too: LTU enclosed area 22,311 → 9,696 m² under carving with no leak signature — unexplained,
+  57% of the floor. Funnel residuals (§21.18) LAST.
+  13 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `2d2d069`.
+  **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
+  ⛔ Still keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP.
 - ▶ **MODELLER — dispatch from `prompts/MODELLER_MASTER.md` (new 2026-07-30), NOT from the 15 scattered
   files.** It triages all of them (3,742 lines), maps 14 objectives (O1–O14) to their owning file, and
   carries an empty §OPEN LIST for a Fable5 harvest pass to fill; the 3 architecture calls it names need
@@ -94,70 +93,22 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   (⚠ this file is 100+ lines, over its 80 budget — compaction left to the owners of the 07-2x entries
   below rather than risk clobbering concurrent edits.)
 
-## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ §LODHELL + Modeller guide + stranded-branch sweep ALL CLOSED (07-27/28), #1051/#1062/#1065, guide LIVE
-  — **`RESUME_MODELLER_LOD400_REAL_GEOMETRY.md` §START HERE has closed/open/landmines, nothing to re-derive**
-  (⚠ `git cherry` lied on all 4 branches, verify by CONTENT · ⛔ ONE user design call left, don't build alone).
-- ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011, user-CONFIRMED live — `PHOTOREAL_STILL_RENDER.md`.
-- ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26) #1012/#1013/#1014, Terminal 8/92→**0/84**; T4/exits is its
-  OWN track (`§G1-EXTERIOR-DOOR-LANE`), never a blocker.
-- ✅ §STAKEHOLDER_STROLL S1+S2+S3 SHIPPED (07-26) — S1 28/28, S2 37/37, S3 55/55, new gate G6.
-  **All detail + the ⚠ landmines (Hospital=18 not 22 · JKR §SCENE-COMPONENT fix · JKR/LTU "gaps" are
-  data not bugs) in `FLY_TOUR_CORRIDOR_GRAPH.md` §S1/§S2/§S3 — read there, do NOT re-derive.**
-- ✅ Room→Path FIXED + LIVE (07-25/26) #1006-#1010, 11/11, Hospital pathability 69.4%→91.2% (`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17`) · ✅ Occupant-pathfinder CLOSED #997/#998.
-- 🟡 P2P Material Receipt UNBLOCKED, signed M_MatchPO (07-23), PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md §Fix 07-23`.
-- ✅ Blank Viewer landing card + local `.db` Open — CLOSED, user-confirmed live (07-27/28) #1068+#1070;
-  detail `Viewer/BLANK_VIEWER_LANDING_CARD.md`, lesson `feedback_bimootb_sw_cache_bump_on_viewer_change.md`.
-  🟢 non-blocking: a stray idempiere-seed-db status message at the Viewer — pick up only if it resurfaces.
+## Archive — DONE/shipped (one-line pointers only; detail lives in the named prompts file)
+- ✅ §LODHELL + Modeller guide + stranded-branch sweep (07-27/28) #1051/#1062/#1065 — `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md` §START HERE (⛔ 1 user design call left).
+- ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011 — `PHOTOREAL_STILL_RENDER.md`.
+- ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26) #1012-#1014, Terminal 8/92→0/84 — T4/exits is its own track `§G1-EXTERIOR-DOOR-LANE`.
+- ✅ §STAKEHOLDER_STROLL S1+S2+S3 (07-26) 28/28, 37/37, 55/55, gate G6 — `FLY_TOUR_CORRIDOR_GRAPH.md` §S1/§S2/§S3 (⚠ landmines there, do not re-derive).
+- ✅ Room→Path LIVE (07-25/26) #1006-#1010, Hospital 69.4%→91.2% — `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17` · ✅ Occupant-pathfinder #997/#998.
+- ✅ Blank Viewer landing card + local `.db` Open (07-27/28) #1068/#1070 — `Viewer/BLANK_VIEWER_LANDING_CARD.md`.
+- ✅ §HOVER_NAME (12/12, #1085) · §CPE_ROOM_TITLE (#1089, gap closed #1092, user-confirmed on a real bake 07-30).
+- ✅ §4D_FACADE_ORDER (07-31) #1098/#1100, sw v885→v887, user-confirmed — `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` §TASK 1 CLOSED.
+- ✅ §CACHE_KEY re-download (07-30, #1088) Hospital 251MB refetch per click → 0 network on load B, W-DB-CACHE-KEY 16/16 — `HISTORY_PERSIST_RECALL.md` §VERIFY-FIRST ITEM 1.
+- ✅ §SEAM_IDENTITY_AUDIT F2 (07-31) #1106/#1109 — IDB version drift; F1/F3–F18 still open, un-triaged — `SEAM_IDENTITY_AUDIT.md`.
+- ✅ O13 guide text (07-31) PR #64 — `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md` (⚠ do not re-attempt either screenshot without reading it).
+- ✅ 2026-08-02 batch LANDED #1129 `fc58210` — §4D_BAND_MONOTONIC (29,824→0 non-structure inversions), §CPE_DAY_COUNTER, §CPE_GHOST_PULL, room-title dwell/lead; sw v913, gantt cache 7, verified served.
+- 🟡 P2P Material Receipt unblocked, signed M_MatchPO (07-23) PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md`.
+- ⛔ Hospital **missing walls on one side** — unproven hypothesis was the re-fetch race; re-verify on a clean `§CACHE_HIT` now the re-fetch is gone.
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
-
-- ▶ **Of the four lanes specced 2026-07-29: §HOVER_NAME DONE (12/12, #1085) · §CPE_ROOM_TITLE DONE
-  (#1089, live-preview witness gap closed #1092, user-confirmed on a real bake 07-30). LEFT:**
-  `prompts/CINEMA_FIND_TO_FILM.md` (parked) · Task 2 (`§CPE_BE_HERE_WHEN`) of
-  `prompts/RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` (Task 1 now DONE, see below).
-- ▶ **NEW LANE 07-31, `§CPE_AIM_DEPTH` OPEN — resume from `prompts/CINEMA_PATH_EDITOR.md` §CPE_AIM_DEPTH
-  "SESSION CLOSE 2026-07-31", read top to bottom before touching code.** User-requested camera feature
-  (face the furthest facade when boxed in) shipped same-day (bim-ootb #1101), then live-tested to 4
-  findings: D2 (no incoming seam taper) FIXED+confirmed live; D1 (radii saturate on large buildings)
-  partial only, needs live-tuned density floor; D3 (blind to buildup mode) guard shipped but DEAD —
-  root cause traced to exact line numbers, fix is implementation-ready; D4 (camera facing the sky) new,
-  traced to a plausible mechanism (elevation-blind verticality filter), not yet measured. Priority
-  order D3→D4→D1, all named in the spec file. Also unresolved, separately: reopening a stored path with
-  >3 bands still doesn't list them — one real bug found+fixed on the way (hardcoded "3 bands" title)
-  but the underlying report persists, diagnosis blocked on missing evidence (`§CPE_PATH_LOADED` log
-  segment never captured despite 3 asks) — get that first, don't re-read code blind again.
-- ✅ **§4D_FACADE_ORDER (Task 1 of `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`) CLOSED + LIVE (07-31),
-  user-confirmed "yes it is working"** — glazed curtain-wall panels no longer erect ~250d before their
-  host wall. FOUR fixes, not one — all detail + witness numbers in the RESUME file's ✅ TASK 1 CLOSED
-  section, do not re-derive. bim-ootb #1098+#1100, `sw.js` v885→v887.
-  Landmine: `project_rates_json_viewer_never_fetched_landmine.md`.
-- ✅ **§CACHE_KEY re-download bug CLOSED + LIVE (07-30, #1088)** — the ERP red pill re-fetched the whole
-  building (Hospital 251MB, ~2min) on every click while a good copy sat in IndexedDB: `cachedFetch` keyed
-  the blob on the RAW url, and the landing (`index.html:489`, absolute OCI) vs the red pill
-  (`erp/idempiere.html:4716`, `../buildings/`) build two strings for one file. Now one canonical key
-  (`DbResolve.cacheKey`, rules K1-K4, dev/prod bench kept apart) + `§PERSIST` at boot + quota abort
-  evicts LRU instead of `.clear()`-ing every building + legacy entries re-keyed in place. Also closed the
-  `§OFFLINE-GATEWAY-LEAK` in `_checkCache` (`§DB_SIZE_CHECK src=network` on a cached building).
-  W-DB-CACHE-KEY 16/16 pure (fails on old code) + 7/7 live, 0 pageerr, load B = **0 network requests**.
-  Post-mortem: `prompts/HISTORY_PERSIST_RECALL.md` §VERIFY-FIRST ITEM 1 (its open question #1, answered).
-  ⛔ STILL OPEN, needs a look: Hospital **missing walls on one side** — hypothesis (UNPROVEN) is the
-  re-fetch racing the geometry stream; verify on a clean `§CACHE_HIT` open now that the re-fetch is gone.
-- ▶ **`prompts/SEAM_IDENTITY_AUDIT.md`** (Opus tier, NOT Fable) — pass-1 list-only, 18 findings, hunt every
-  identity CONSTRUCTED at N call sites instead of DERIVED from one pure function. ✅ **F2 CLOSED + LIVE
-  (07-31, bim-ootb #1106+#1109), user-reviewed** — `boq_charts.html`/`erp/kernel_ops.js` hardcoded
-  `indexedDB.open('bim_ootb_cache', 1)` vs `scene.js`'s canonical v2, throwing `VersionError` forever once
-  a profile's cache DB was at v2: 4D/5D charts always re-downloaded the whole building, ERP edits never
-  survived a refresh. Fixed (versionless open / mirrors `viewer/kernel_ops.js`'s proven fix); two witnesses
-  PASS: `tests/witness_idb_cache_version_drift.js` (the version-drift mechanism) +
-  `tests/witness_offline_meta_db_cache_hit.js` (offline read still works post-fix, meta-only AND
-  full-only cache scenarios, real extracted source). F1/F3–F18 still open, un-triaged.
-- ✅ **O13 guide text CLOSED + LIVE (07-31)**, PR #64 — party-wall/grid-stretch paragraphs in
-  `docs/ModellerGuide.md` rewritten from stale future-tense promises to the shipped reality (5 slabs
-  Σ0.493m not 7; SampleCastle stretchRide 74/74 not 9/74), every number live-verified against the real
-  production URL. **New screenshots for either subject are NOT yet possible** — per-layer render colour
-  unwired (separate gap) and every void-anchor case has an invisible host by construction (a before/after
-  shot reads as breakage, not riding). Detail + why: `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md`'s
-  2026-07-31 "later same day" section — do not re-attempt either screenshot without reading it first.
 
 ## OCI Deployment · Reference
 Live: `bim-ootb-live` (landing+viewer+single DBs); viewer CODE is served from **GH Pages**, DBs+patches
