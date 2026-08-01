@@ -5292,3 +5292,49 @@ floor plate becomes eligible the instant its columns top out, then competes only
 3. **Staging dirty-check** — ~46% of a light bake frame; restage only when the placed-set changed.
 4. **§CPE_HOLD_TURN decouple + rebase v912 → v913.**
 5. **HEAD of a bake log** — still the cheapest unblock for the buildup-pacing verdict.
+
+## ✅ LANDED 2026-08-02 — the 2026-08-02 batch is on `main` and SERVED (PR #1129, `fc58210`)
+**The batch was built, witnessed and pushed on 2026-08-01 — and no PR was ever opened.** `origin/main`
+sat at `fcc06a1` (v911 behaviour) for the whole session that followed, which is why the user's 01:43
+bake (`BIM_MaxQ_Hospital_1785606234882.mp4` — 111.3s, 15fps, 1852×960, 1670 frames) could not contain
+§4D_BAND_MONOTONIC, §CPE_DAY_COUNTER, §CPE_GHOST_PULL or the room-title dwell/lead fixes. User's own
+words on that bake: *"not yet applied latest changes though"*. **Built ≠ landed. Check for an open PR
+before reporting a lane as shipped.**
+
+**One CI failure on the way in, and it was a plain omission:**
+```
+viewer/main.js  16:54  error  'setupCpeDayCounter' is not defined  no-undef
+```
+`§CPE_DAY_COUNTER` added `viewer/cpe_day_counter.js` (a global-scope `<script>` engine,
+`function setupCpeDayCounter(A)`), wired it into `main.js`'s setup list and into `sw.js`'s
+`PRECACHE_ASSETS` — but never added the name to `eslint.globals.json`. Its sibling
+`setupCpeRoomTitle` was already registered. Fixed in `2893866`. **Adding a new `viewer/*.js` engine is
+a THREE-place edit: `viewer.html` `<script>`, `sw.js` `PRECACHE_ASSETS`, and `eslint.globals.json`.**
+
+⚠ **Local `npx eslint` cannot be trusted as the gate on this machine.** `eslint.config.js:7` pulls
+`globals.browser` from the npm `globals` package; a bare `npx` resolves a version WITHOUT the WebCodecs
+globals, so it reports 3 phantom `VideoEncoder`/`VideoFrame` errors in `cinema_maxq.js` that CI does not
+have (CI's lock-pinned copy has them — its log reported exactly ONE error). Node here is v18.19.1, which
+also breaks eslint 10's `stylish` formatter (`util.styleText is not a function`) — use `-f json`. Read
+the CI log for the truth, not the local run.
+
+**Verified SERVED by fetching the files back (not by trusting the merge):**
+`viewer/sw.js` → `CACHE_VERSION="v913"` + `cpe_day_counter.js` in `PRECACHE_ASSETS`;
+`viewer/time_machine.js` → `_GANTT_CACHE_VERSION=7`; `viewer/cpe_day_counter.js` → HTTP 200 with
+`setupCpeDayCounter` present. Both CI checks green (`fast-checks` 23s, `e2e-tests` 57s).
+
+**▶ THE NEXT BAKE IS A ONE-SHOT MEASUREMENT — do not waste it.** The 6→7 gantt bump forces a schedule
+REGENERATE rather than a cache hit, so this is the run that settles §NEED (open item 5, "the HEAD of a
+bake log"): `§GANTT_CACHE_HIT` vs `§GANTT_CACHE_SAVE`, `§CPE_BUILDUP_PACING mode=`, the ~14
+`§CPE_BUILDUP` checkpoints, `§GANTT_STOREY_Z`. It decides whether the front-loaded buildup pacing is a
+real defect or was a stale gantt all along. Also confirm the Day #/total badge is in the EXPORTED BYTES,
+not merely on screen — the trap `cpe_day_counter.js`'s header names.
+
+## 🔴 REMAINING after the #1129 landing
+1. **Slab burst** — a RATE, not ordering (CONCRETE_GANG has 3 crews); crew-cap / eligibility smoothing.
+2. **Cross-storey STRUCTURAL ordering** — 551 inversions; the re-sort fix floats 2,341 elements.
+3. **Staging dirty-check** — ~46% of a light bake frame.
+4. **§CPE_HOLD_TURN** — `feat/cpe-hold-turn` is 2 ahead / **1 behind** `main`, still NO PR. Rebase onto
+   `fc58210` (v913). Per the user's ruling the turn must NOT be gated on `perpMag` — the Hospital 0.15°
+   RED goes green by removing the coupling, not by lowering the gate.
+5. **§NEED — the HEAD of a bake log** (see the one-shot above).
