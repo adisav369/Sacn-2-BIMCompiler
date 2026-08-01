@@ -4792,3 +4792,51 @@ Both laws are to govern **the whole film**, not selected beats. Status against t
   (built, unmerged). They do **NOT** govern **Beat 1 (dive — heading held at `yaw0` BY DESIGN)** or
   **Beat 5 (orbit — aims at `pivot` by its own geometry)**. "Thruout" means those two beats next;
   the dive is the one the user's original "turn starts too late" report actually landed in.
+
+## ⚠ CORRECTIONS 2026-08-01 (latest) — one user correction, one of MY OWN hypotheses DISPROVEN
+
+### A. §CPE_STICK_HOLD default was on the WRONG BAND — fixed
+> *"u placed that 1 sec in the middle instead of the last ie exit. I corrected that."*
+
+The first cut read *"last stick"* as the last **spawned** band (`length-2`, since the stop row is not
+a spawned stick) and so put the 1 s in the **middle of the walk**. The user means the **EXIT** — the
+last band, where the camera pauses before the pull-back. Now `i === bs.length - 1`.
+G-SH-7's expectations move with it: 3 bands → `[0,0,1]`, 5 → `[0,0,0,0,1]`, 2 → `[0,1]`.
+
+### B. 🔴 THE BLIND FAN — my "BatchedMesh" hypothesis is WRONG, do not chase it
+The previous entry guessed `_cinemaFanMeshes()` does not collect `BatchedMesh`. **Read the code: it
+already does.**
+```js
+return (o.isMesh || o.isInstancedMesh || o.isBatchedMesh) && o.visible &&
+       !o.isSprite && o.userData.staffageKind === undefined && !(A.sky && o === A.sky) &&
+       !_isGhostGeometry(o);
+```
+`A.collectMeshes` is a plain `scene.traverse` + predicate, so nothing is lost there either.
+**The live URL is the clue I missed the first time:**
+`viewer.html?db=…Hospital_extracted.db**&ghost=1**`, and the log carries
+`§SHELL_GHOST_AUTO meshCacheKeys=20609` + `§SHELL_GHOST_BBOX boxes=4316`.
+**So the leading hypothesis is now `!_isGhostGeometry(o)` excluding the ENTIRE building** whenever the
+viewer is opened in ghost mode — which is exactly how the user opens it. Every ray then returns the
+`CINEMA_FAN_FAR` sentinel, every §CINEMA_SPACE candidate reads `enclosed=0%`, and the dive falls back
+to bbox-centre. The remaining candidate cause, if that is not it, is `o.visible` being false under
+`§DLOD_ENABLE … mode=per_slot_frustum` at plan time.
+**Verify before fixing** (this hypothesis has already been wrong once): log
+`§CINEMA_FAN_MESHES n=<count> ghost=<bool> dlod=<bool>` inside `_cinemaFanMeshes()`, open with and
+without `&ghost=1`, and compare. If ghost is the cause, the fan must fall back to the ghost/shell
+geometry rather than treating a ghosted building as empty space.
+
+### C. 🔴 ORBIT OVER-ROTATION — mechanism narrowed, fix NOT obvious, do not guess it
+> *"it is also spinning more than one full round in the end"*
+
+Narrowed by reading, still unmeasured. **POSITION is not the problem:** `_orbitPose` sets
+`az = exitAz + _cinemaAzU(u)·2π` — exactly one lap — and Beat 4 moves `exitOuter → orbitStart` which
+sit at the SAME `exitAz`, so Beat 4 is radial, contributing no azimuth. **The excess is the GAZE:**
+Beat 4 turns the gaze from `_beat3EndDir` onto the pivot bearing (`turnW4`, up to ~180°), and then
+Beat 5's inward aim rotates a further full 360° across the lap. Apparent total = *Beat 4's turn + 360°*.
+Same family as §CPE_SPIN_WHIP (a lap ADDED to an existing displacement rather than being the total) —
+**the fifth instance.**
+⚠ **The obvious fix is wrong.** Shortening the lap to `360° − beat4turn` would stop the orbit being a
+full circle, and the user explicitly wants one: *"the last spin is all a 'straight circle'"*. The real
+answer is that **Beat 4 should approach the orbit tangentially** so its turn is the FIRST PART of the
+lap rather than extra rotation before it. Measure first: accumulate gaze yaw separately across
+`[tO, tR]` and `[tR, 1]` on a real path, then decide.
