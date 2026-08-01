@@ -4601,3 +4601,136 @@ POSITION moves, with no turn at all. That is precisely the *"dive has its OWN dr
 bulk over the first 15s"* item flagged **NOT DIAGNOSED** at session close. **§CPE_GAZE_CONSTANT_RATE
 inherits the seam**, with this measurement as its starting evidence — and it should be built against
 the DIVE's held heading, not against the spin.
+
+---
+
+# §CPE_STICK_HOLD + §CPE_AIM_LATCH — a hold buys the turn, density×depth aims it, the latch keeps it (user, 2026-08-01)
+> *"Putting hold at 1 sec (put that as default for the last stick) will teach them 'ah, it slows a sec
+> stop a sec, then ease out while the cam is turning to the building'."*
+> *"while aimed already at a centre, and when the path continues, it should remain so"* … *"ie at
+> perpendicular angle"* … *"the last spin is all a 'straight circle'"*
+
+## What already exists — do NOT rebuild any of it (verified in code this session)
+- **The aim target is already `density × depth`:** `_aimDepthSubject` (`effects.js:5563`) weights grid
+  cells `w = c.n * d` (far-favouring), mirrored by `_aimSubject` (`:5315`) at `c.n / (1+d)³`
+  (near-favouring). Both are POSITION-derived, so a stationary camera still has a subject.
+- **The perpendicular aim is the DESIGN, not a defect** — §CPE_AIM_DENSITY's own directive is *"turns
+  perpendicular towards the densest nearest part"*. `_aimDepthApply` strips the along-travel component
+  (`px = vx − T.x·dot·k`, `k=1` beyond ~20° off travel, fading only where the subject is dead ahead and
+  the perpendicular is degenerate). **A session briefly called this a defect needing rethink; the user
+  corrected it. It is correct as built. Do not "fix" it.**
+- **Turn budgets exist** in Beat 3: §CPE_SEAM_CONTINUOUS's `_openU`, §CPE_EVEN_TURN's cost
+  parameterization, and `_walkTurnDeg`'s charge at `CINEMA_TURN_DPS`.
+
+## The three real gaps
+1. **No hold.** `cinema_path` has 13 columns and none is `hold_sec`; the panel row has x/z/y/len only.
+   (`_hold()` in `cinema_path_editor.js:1142` is the SELECTION handler — a name collision, not dwell.)
+2. **The aim does not persist.** `w = A0.w · wSeam · wOpen2` is re-derived every frame: `A0.w` decays
+   with local density, so leaving the pocket drifts the gaze back to look-ahead; `wSeam` is forced to
+   **zero across the final 25%** of the walk (`e3 > 1 − CINEMA_TURN_OVERLAP`). That taper IS the
+   "forceful turn at the end" the aim rule was introduced to prevent.
+3. **Nothing turns during a stop.** Not because the subject is missing (it isn't) but because there is
+   no stop to turn during.
+
+## The build
+**§CPE_STICK_HOLD.** A `hold` seconds field per stick row, **default 0, and 1.0 on the LAST stick** so
+the beat teaches itself on first open. Costed as AUTHORED time: `walkSec = out + Σhold`, added **AFTER**
+the noise multiplier, never scaled by it (§CPE_HOSE_LENGTH_BLIND's family, fourth-instance rule).
+Amends §CINEMA_PATH_EDITOR_MODEL rule 9 ("constant speed") explicitly — speed is constant *except* at
+authored holds.
+
+*Shape — a raised-cosine RATE DIP, not a flat freeze,* so velocity is continuous and there is no jerk
+to pace away. Per hold `h`: plateau `P = h/2` at zero rate, cosine ramps `R = h/2` either side. Then
+`∫dip = P + R = h` exactly — the hold costs precisely its authored seconds, with a genuine full stop
+in the middle and a graceful slow-in/ease-out around it, which is the beat the user described. Total
+window `1.5h`. Built as a table and inverted monotonically — the same idiom as `_diveRemap` /
+`_evenTurnRemap`, no new constant.
+
+**§CPE_AIM_LATCH.** Once the aim engages (weight crosses its floor, or a hold begins), **latch the
+subject point and pin the weight at 1**; keep the perpendicular projection unchanged. Tracking a
+latched world point from a moving camera is continuous by construction, so this does not reintroduce
+the hard-switch jerk whose two measurements `_aimApply`'s comments already record. **Drop `wSeam`'s
+outgoing taper:** on the orbit, perpendicular-to-travel IS radially inward — the user's *"the last spin
+is all a straight circle"* — so the aim law and Beat 4 already agree and the taper was severing an
+agreement, not preventing a conflict.
+
+**Persistence.** `hold_sec` column on `cinema_path`; the loader must tolerate tables written without it
+(portability was only fixed in #1122 — read the column list defensively, default 0).
+
+## Witness claims — `witness_cpe_stick_hold.js` (must be RED on `origin/main`)
+| gate | proves / disproves |
+|---|---|
+| G-SH-1 | the column exists end-to-end: a `hold` set in the panel survives save → reload → re-open. **RED:** no `hold_sec` column at all. |
+| G-SH-2 | **the clock costs it.** `walkSec(hold=1) − walkSec(hold=0) == 1.0 s` exactly, and the difference is NOT scaled by the noise multiplier (same path, two busy regimes, same delta). **RED:** hold is free time. |
+| G-SH-3 | **the camera actually stops.** Speed at the hold centre is ~0 while time advances, and `∫` of the removed travel time equals the authored seconds within tolerance. |
+| G-SH-4 | **no jerk buying it.** Peak deg/frame and peak m/frame across the hold window stay inside the bounds §CPE_EVEN_TURN already gates — the raised-cosine dip must not trade a stall for a whip. |
+| G-SH-5 | **the turn happens during the stop.** Gaze angle toward the latched subject closes measurably across the hold window (camera stationary, so this can only be rotation). **RED:** nothing turns. |
+| G-SH-6 | **it remains so.** After the hold, as the path continues, the aim stays perpendicular-to-travel toward the SAME latched centre — subject identity unchanged and blend still 1 at the final walk frame. **RED:** `wSeam` forces it to 0 over the last 25%. |
+| G-SH-7 | the last stick defaults to 1.0 s on a freshly derived path, and every other stick to 0. |
+| G-SH-8 | no regression: `naturalTotal == Σ naturalSec.*`, replan deterministic, and a path with all holds 0 is byte-identical to today. |
+
+## §CPE_GAZE_CONSTANT_RATE — BUILT 2026-08-01, and it exists because §CPE_AIM_LATCH exposed the need
+**Not specced ahead of time; found by a gate.** Removing §CPE_AIM_LATCH's outgoing `wSeam` taper (the
+user's *"the turning should be thruout, till the end of clip"*) made G-SH-4 measure a **29.01
+deg/sample gaze whip at w=0.850 on Hospital**, against **2.62** there on `origin/main`. So the taper
+had been **masking a fast swing INSIDE the walk** — not merely smoothing the Beat 4 hand-off, which is
+all its own comment claimed. Re-tapering would have undone the user's directive, so the swing is
+bounded at its cause.
+
+**The law:** the COMPOSED gaze — look-ahead, seam blend, §CPE_AIM_DENSITY and §CPE_AIM_DEPTH together
+— is sampled and rate-limited to **`CINEMA_TURN_DPS`**. Not a new constant and not a new opinion: it
+is the rate the spin, the orbit lap and the walk's own turn charge are already priced at, finally
+applied to the thing that actually rotates.
+
+Three properties that make it safe, each for a stated reason:
+- **Sampled in TIME, not in `e3`.** With §CPE_STICK_HOLD a hold stops travel while time runs, so a
+  limit per unit of travel would be unbounded exactly where the camera is parked and turning — the
+  one place the feature deliberately creates rotation.
+- **Forward-only, so it LAGS rather than anticipates** — correct for a camera operator, and safe only
+  because §CPE_AIM_LATCH already made Beat 4 open on Beat 3's real final gaze. `_beat3EndDir` reads
+  the LIMITED series, never the raw pose; handing Beat 4 the raw direction would reintroduce the seam
+  step this pair of rules exists to remove.
+- **Applied in `poseAt`, not inside `_beat3Pose`** — so `_beat3Pose` stays the raw signal
+  §CPE_EVEN_TURN's cost table samples, and that table keeps measuring turn DEMAND rather than the
+  post-limit result.
+
+**Measured:** Hospital walk peak **29.01 → 3.40 deg/sample** with the limiter in (and the residual
+3.40 turned out to be the Beat2→3 boundary, not the walk — see the witness correction below).
+
+### Two witness corrections this session, both MEASURED, both worth keeping written down
+1. **G-SH-5's path had no turn in it.** The first cut used three COLLINEAR bands, so the look-ahead
+   gaze had nothing to turn toward and the gate measured 0.02° of rotation across a genuinely parked
+   camera — reading as *"the hold does not turn the camera"* when the truth was *"this path never
+   asked it to."* A hold buys time for a turn; a test with no turn to make cannot show it. Now a
+   dog-leg with the held stick on the corner.
+2. **G-SH-4 measured a beat boundary, not the walk.** `walk[0]` sits exactly on `t = beats.spin`,
+   which `poseAt` routes to **Beat 2** (`if (tNorm <= tS)`), so the first delta was the Beat2→3 seam.
+   That seam is §CPE_SEAM_CONTINUOUS's gate, not this file's.
+   **This is the eighth and ninth broken instrument in this lane** — `feedback_verify_checker_before_code_under_test`.
+
+G-SH-4 now asserts the law ABSOLUTELY (`45 deg/s × sampling interval`) rather than comparing against
+an `origin/main` baseline: a baseline compare accepts whatever main happened to do; this accepts only
+what the law claims.
+
+### ⚠ G-SH-5 passes, but read what it actually says — the hold buys DWELL, not (yet) TURN
+`witness_cpe_stick_hold.js` is **8/8 Hospital, 8/8 Duplex**, RED-first at 3/8 and 2/8. G-SH-5 is the
+one gate whose green needs reading rather than trusting:
+
+```
+camera parked=true (moved 4.6e-4m over 12 samples; at mean speed it would have covered 0.89m)
+Gaze off the building bulk: 58.9deg -> 58.9deg across the stop (rotation 0.00deg)   [Hospital]
+                            42.6deg -> 42.6deg                                       [Duplex]
+```
+The camera genuinely stops, and it does not drift away — but it rotates **0.00°** during the hold.
+Two reasons, both structural and both fine:
+1. The aim rules **saturate** (`maxBlend 1.00`, `active=65/65`) well before the stick, so the turn onto
+   the building has already happened by the time the hold arrives.
+2. The residual 40–60° off the bulk is the **perpendicular projection doing its job** — a broadside
+   tracking shot points side-on, not at the centre. 0° off the bulk would mean the perpendicular rule
+   had stopped working.
+
+So `_holdBoostAt` (the time-indexed weight ramp) is built, wired, and correct, but **inert on paths
+where the aim is already saturated** — it has nothing left to add. It will do work on a path whose
+walk heads away from the mass. **Do not "fix" this by forcing rotation during a hold**; the honest
+next step, if the user wants a visible turn at the stick, is a path/subject where the aim is not
+already committed, or an explicit "look at X during this hold" author control — not a synthetic spin.
