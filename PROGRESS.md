@@ -32,10 +32,13 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   One-layer prototype (walker's own pockets + doors as portals) measures 1.04×/1.22× detour, 0.05%/0.02%
   off-map, R2=R3=0 by construction, map built 54/362ms, queries 0.7/1.3ms. NEXT = funnel across door
   apertures (Lee–Preparata; §21.12 cites it, §21.13 maps it to the user's own "arrow" framing).
-  **Funnel ATTEMPT 1 FAILED all 3 pre-written falsification tests (§21.15) and the CONVEX_ONLY
-  discriminator (§21.16) named the cause: portal WINDING, not pocket convexity — `aperture()` orients
-  each portal independently instead of enforcing consistency across the channel. Convexity is a
-  separate, real fault for off-map only (4.09%→1.87%, 11.34%→0.51%). Attempt 2 is specified in §21.16.**
+  **Funnel attempts 1-2 done (§21.15-§21.18): cause was a convention inversion, fixed, T1 100/110→7/110,
+  but all 3 thresholds still fail. THEN a bigger defect surfaced UPSTREAM (§21.21): the door↔pocket link
+  is a proximity guess with NO valid threshold (0.4m→36% of Clinic doors claim >2 rooms; 0.0m→only 2 of
+  254 connect anything), because walker rects are inscribed and stop short of the walls. Likely also
+  explains the coverage gap AND (§21.23) the apparent corridor fragmentation — one defect, three symptoms.
+  NEXT = real door adjacency via `RoomWalker.doorAdjacent()`/§DOOR-PARTITION, then corridors via
+  `hallway_backbone.js`, then re-measure the 2-layer corridor-spine design. Funnel residuals LAST.**
   8 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy`.
   **Nothing deployed; engine byte-unchanged.**
   ⛔ This keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP — the

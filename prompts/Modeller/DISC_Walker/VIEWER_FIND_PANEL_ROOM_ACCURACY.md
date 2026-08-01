@@ -2468,3 +2468,36 @@ something the old engine had right.
 2. **§21.22** — restore corridor/room topology on top of the walkable map.
 3. Only then revisit the funnel residuals (§21.18) — they are a quality term on a map that is
    currently wrong.
+
+### §21.23 TWO-LAYER MAP (corridor spine + room leaves) — the user's design, feasibility MEASURED but
+### the measurement is BUILT ON §21.21's DEFECT. Read the caveat before acting on the numbers.
+User, 2026-07-31: *"a 2 layer mapping … the common corridor that stops at first doors and not bother
+rooms whether there are connecting rooms in them … then an inner room has to route nearest to that
+corridor map."*
+
+**Why the design is right, beyond plausibility:** it DISSOLVES §21.21. Today a door must answer "which
+two ROOMS do I join?" — ambiguous against small inscribed rects, wrong 36% of the time, with no valid
+threshold. In the two-layer design a door answers "which CORRIDOR do I open onto?" — one big
+unambiguous target. That question is robust where the other never can be.
+```
+§SPINE Clinic  Q1 corridorLike=38/208  components=18  largest=8 (21%)  sizes=8,7,3,3,2,2,2,1
+               Q2 rooms with a door onto a corridor = 105/170 (62%)
+               Q3 doors joining 2+ rooms with NO corridor = 67/254 (26%)
+§SPINE LTU     Q1 corridorLike=135/425 components=33  largest=37 (27%) sizes=37,16,15,8,8,5,4,4
+               Q2 205/290 (71%)      Q3 32/606 (5%)
+```
+**⚠ DO NOT read Q1 as "the design fails."** Both inputs to it are built on the broken foundation:
+corridors were identified by a crude SHAPE rule (aspect≥3 / side≥8m / area≥4×median) invented here,
+and "do two corridors join?" was tested by rect-touch within 0.5m — and rects are INSCRIBED, so two
+halves of one real corridor separated by a door opening read as NOT touching. **§21.21's root cause
+almost certainly produces this fragmentation too** — one defect, two symptoms that looked unrelated.
+Q3's 26% is provisional for the same reason.
+
+**Forced order (supersedes §21.22's):**
+1. **Real door↔pocket adjacency** — `RoomWalker.doorAdjacent()` / §DOOR-PARTITION, never proximity.
+2. **Real corridor identification** — the engine's own `common/hallway_backbone.js`, never a shape rule.
+3. **Re-measure spine connectivity** (`roompath_diagnostics/spine.js`, re-pointed at 1+2). If the spine
+   connects, the two-layer design is buildable and everything downstream simplifies.
+4. Expect the end state to be **spine + genuine room-to-room links**, not spine-only — Q3 says some
+   adjoining rooms really do connect directly, and forcing those out to a corridor would be its own error.
+5. Funnel residuals (§21.18) LAST — a quality term on a map that is currently wrong.
