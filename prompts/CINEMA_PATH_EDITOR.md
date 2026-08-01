@@ -5014,3 +5014,229 @@ suspect set — they all rewrite the same op stream the film is paced by:
 **Cheapest discriminator, do this FIRST:** compare the 20-slice element histogram for (a) cached ops,
 (b) a forced regenerate on `origin/main`, (c) a forced regenerate on the merged fix. If (a) differs from
 (c), the user was watching a stale-cache film and there may be no pacing defect at all.
+
+---
+
+# ▶ SESSION 2026-08-02 — the FAST-PATH bake, analysed from its log tail
+**Bake recipe (user, verbatim):** *"without adding any sticks. Just T to 4Dgenerate applied, then alt-C,
+set opening canvas position, then just record."* Hospital, URL carries **`&ghost=1`**.
+**Evidence:** the user's console tail, frames ~790→820 only. Head of log NOT yet supplied — see §NEED below.
+
+## §BAKE_FAST_PATH_COST — where the 21.6 minutes went (measured, not estimated)
+`§MAXQ_DONE frames=820 bytes=35795585`, `§MAXQ_MP4 … 54.7s of footage`, final
+`§MAXQ_FRAME i=819/820 elapsedMs=1297897`.
+
+| quantity | value | source |
+|---|---|---|
+| wall clock | **1,297,897 ms = 21.6 min** for **54.7 s** of film | `§MAXQ_FRAME` final |
+| lifetime mean | **1,583 ms/frame** (1297897/820) | derived |
+| tail rate | **2,184 ms/frame** (frames 794→819) | `perFrameMs=2159…2204` |
+| still refine | ~**850 ms**/frame, `samples=16` | `§STILL_REFINE done elapsedMs=843…918` |
+| photo AO | ~**670 ms**/frame, `frames=24`, `avgRenderMs≈25.7` | `§PHOTO_AO done` |
+| **unaccounted (staging churn)** | **~660 ms/frame ≈ 9 min of the 21.6** | 2184 − 850 − 670 |
+| mp4 encode | **16,309 ms total (1.3%)** | `§MAXQ_MP4 encoded … ms=16309` |
+
+**The bake gets ~38% SLOWER as it runs** (1,583 mean vs 2,184 at the tail) — scene weight rises with the
+buildup, so the film's last third is where the time is. Encoding is NOT the bottleneck; staging is.
+
+**⚠ Do NOT read `§STILL_REFINE cancelled … elapsedMs=1800` as 1.8 s of wasted work.** That `elapsedMs`
+is cumulative-since-refine-START (850 refine + 670 AO + teardown), and the refine had already logged
+`done` at 845 ms. It is a bookkeeping cancel at frame end, not a discarded pass. (Recorded because the
+number is 1.8 s and sits next to a real 660 ms of overhead — easy to double-count.)
+
+**The churn itself, per frame:** `PHOTO_STAGING on → NIGHT_MODE on → GLOW_SPRITE staged 1272 →
+GROUND_MAP paved → PHOTO_SHADOW enabled casters=4054 → refine → AO →` then the entire teardown
+(`AO off, GLOW_SPRITE removed 1272, NIGHT_MODE off, PHOTO_SHADOW disabled, GROUND_MAP cleared,
+GROUND_ALBEDO restored, PHOTO_STAGING off`) and immediately re-staged for the next frame. `cinema_maxq.js`
+~L96 already documents this as deliberate ("staging … runs per frame INSIDE the capture loop … and off
+again after each frame").
+**It is justified in principle** — the buildup changes which meshes exist, so sprites/casters must be
+rebuilt — **but at the tail it is provably a no-op**: `1272 → 1272` sprites and `casters=4054` identical
+every frame. A dirty-check (restage only when the placed-set changed) reclaims the 660 ms where nothing
+moved. Quality is not the constraint: `§MAXQ_QUALITY frames=820 unconverged=0` — every frame converged,
+so `samples=16`/`AO frames=24` have headroom too, but those are the user's quality call, the churn is not.
+
+## §4D_UPPER_FLOORS_WALLED_FIRST — user, 2026-08-02: *"upper floors gets walled first.. as seen on last stretch"* + *"the floor slabs coming on too fast"*
+**Both symptoms are ONE mechanism, and it is a KNOWN, DELIBERATE trade — not a regression.**
+
+`viewer/time_machine.js` L3454-3460 records it in its own words: the **support gate REPLACED the band
+gate** on 2026-05-30 — *"REPLACES the old center-Z band gate ('band N waits N-1') that floated beams over
+still-building tall columns"*. That swap fixed floating (**1127/1970 → 0/1970**) and, in exchange, **gave
+up floor-by-floor progression entirely.** Nothing in the current model orders one storey against another
+for non-structure.
+
+**Why walls go top-down-ish** (`viewer/schedule_gate.js` L128-140, PASS B):
+```js
+var nonst = elements.filter(e => e.seq > 4)
+  .sort((a,b) => (a.seq - b.seq) || (a.base_z - b.base_z));   // trade FIRST, height second
+…
+var ph = collapsePhase(el.storey);                            // per-STOREY trade gate
+for (s in pt) if (+s < el.seq && pt[s] > tg) tg = pt[s];
+```
+A wall (`seq 6`) is gated by exactly two things: (1) `geoGate` — overlapping **structure strictly below**
+it; (2) `phaseTrade[ph][seq]` — earlier trades **on its own collapsed storey**. There is **no cross-storey
+term**. So Level 3's walls need only Level 3's structure + Level 3's earlier trades; if Level 2 carries a
+slow earlier trade, **Level 3 is walled first and the model considers that correct.** Exactly what the
+user saw.
+
+**Why slabs burst:** slabs are `seq ≤ 4` → PASS A, sorted `(base_z, seq)`, gated only by overlapping
+structure strictly below, then crew-capped project-wide. A whole floor plate's slabs become eligible the
+instant the columns/beams under them top out, so they arrive **plate-at-a-time**. The rate ratio against
+walls is real and readable from `rates.js?v=7` (confirmed loaded, `viewer.html:861` — this is NOT the
+`rates.js` JSON landmine): **CONCRETE_GANG `max_crews:3`** vs **MASON `max_crews:2`** (ROOFER 1,
+STEEL_ERECTOR 3). Slabs get 50% more crews AND sit in the unblocked pass; walls trickle behind two gates.
+⇒ *"slabs too fast"* and *"upper floors walled first"* are the same asymmetry seen from two ends.
+
+**This is Design Ruling A, already settled 2026-08-01 — the fix is specified, just not built:**
+*band-monotonic WITHIN a phase, with a lag between phases*, keeping "nothing without support" as the
+role-blind gate. The user has now reported the predicted symptom on **WALLS (Architecture)** as well as
+the beams/slabs case. **Do NOT re-litigate the ruling; implement it.** ⚠ Audit
+`§GANTT_STOREY_Z reassigned=9457` FIRST — PASS B's trade gate is keyed on `collapsePhase(el.storey)`, a
+**storey NAME**, so 9,457 elements reassigned by median Z are grouped by that reassignment. A band rule
+laid on top of a wrong grouping enforces a wrong order confidently.
+
+## §CPE_ROOM_TITLE_TIMING — user, 2026-08-02: *"look into the rooms labelling timing"*
+Read from `viewer/cpe_room_title.js` @ `origin/main`. Constants: `SAMPLE_DT 0.15s`, `MIN_DWELL 1.4s`,
+`FADE 0.4s`, `MIN_HOLD 3.0s`, `LEAD 2.0s`. Four findings, ranked:
+
+1. **TWO independent strobe-limiters, and the first one silently loses rooms.** `MIN_DWELL=1.4s`
+   pre-filters segments (L245, `suppressed++`) *before* the lead/hold arbitration ever runs. But the
+   arbitration's own spacing rule — `if (show < lastShow + MIN_HOLD) skip` (L317) — **already** guarantees
+   captions are ≥3 s apart, which is the anti-strobe property `MIN_DWELL`'s comment claims to provide
+   ("six small rooms in four seconds must not strobe six titles"). `MIN_DWELL` is now **redundant AND
+   lossy**: a room genuinely crossed in 1.2 s is discarded even though LEAD+HOLD would have given it a
+   perfectly readable 3 s caption opening 2 s before the doorway. **Highest-value single change.**
+2. **The film's first caption gets ZERO lead.** L316:
+   `if (!sel.length && diveEndSec > 0) show = Math.max(show, Math.min(s.tStart, diveEndSec));`
+   When `diveEndSec >= s.tStart` this collapses to `show = s.tStart` — the caption lands **exactly on the
+   doorway**, not 2 s ahead. The clamp exists so caption #1 isn't thrown over the dive (correct intent),
+   but it converts the lead-in to an on-the-nose label for the one caption the viewer meets first. The
+   in-code comment even names this failure ("the exact failure the lead exists to kill") while the
+   arithmetic reintroduces it for `sel.length === 0`.
+3. **A skipped caption is dropped, never re-slotted.** `lastShow` is the previous caption's SHOW time, not
+   its END. If A opens at t=10 and its room ends at 11.5, a B entered at 12.5 (`show=10.5`) fails
+   `10.5 < 13` and is **dropped**, even though the screen is free from 11.5. The user's own rule was
+   *"if misses, then skips"*, so this is defensible — but on a dense walk it is the main caption-loss
+   term, and `skipped=` in `§CPE_ROOM_TITLE_TIMELINE` is the number that says how much.
+4. **No hysteresis on the sample run.** Segments are contiguous same-`guid` samples at 0.15 s. One stray
+   sample (a gaze flicking through a wall) splits a single 2 s dwell into two ~1 s fragments and
+   **both** die to `MIN_DWELL` — the room vanishes entirely. Merging same-`guid` segments separated by a
+   1-sample gap costs nothing and removes a whole class of missing captions.
+
+⚠ **This bake may not have had captions on at all** — `_roomTitle = !!_ov.roomTitle` (`cinema_maxq.js`
+L840) and the editor checkbox is **off by default** (`cinema_path_editor.js` L1609). The recipe the user
+described does not tick it. The head-of-log `§CPE_ROOM_TITLE_TIMELINE`/`_DIVE` lines settle it.
+
+## §CPE_DAY_COUNTER — user, 2026-08-02: *"a Day # counter should be at a corner, to indicate progress"*
+**Position: TOP RIGHT** (user, 2026-08-02: *"Suggesting top right"*) — and it does not collide with
+§CPE_ROOM_TITLE, which is a documentary lower-third. Two overlays, two corners, no arbitration needed.
+**Spec (follow the §CPE_ROOM_TITLE precedent exactly, do not invent a new overlay path).**
+- **Composite into the 2D canvas, never the DOM.** `cinema_maxq.js` L446-448 already states why: the
+  title is drawn onto the 2D frame so it reaches *"the actual exported bytes (a DOM caption never
+  would)"*. A DOM day-counter would be invisible in the mp4 — the same trap, already documented.
+- **The value is already computed** — no new derivation. The per-frame cursor is `_bkMs =
+  _workCursorAt(_bkT, _bkState)` (`cinema_maxq.js` L1000) and the epoch is the schedule's `baseMs`.
+  `Day # = floor((_bkMs − projectStart)/86400000) + 1`. **EXTRACT, do not re-date.**
+- **It is also the honest instrument for the pacing complaint.** Burning the day number into the frame
+  makes *"faster at the start, not enough in the mid"* a number the user can read off the film instead of
+  a feeling — and it satisfies the FUNDAMENTAL LAW (maths, not eyeballing) for a symptom that has so far
+  only ever been reported visually. **Build this before re-baking for pacing.**
+- Log line: `§CPE_DAY_COUNTER frame= day= of= cursor=` so the on-screen value is checkable against
+  `§CPE_BUILDUP` without watching the film.
+
+## §NEED — the ONE thing that unblocks the pacing verdict (no re-bake required)
+`§CPE_BUILDUP` is logged at `i === 0 || i === nFrames-1 || i % 60 === 0` (`cinema_maxq.js` L1004).
+For an 820-frame bake that is **~14 checkpoints already printed in the SAME log the user pasted** — each
+carrying `t=` and `placed=N/63419`. **That IS the buildup histogram, at 1/60-frame resolution, for free.**
+Even pacing ⇒ `placed` rises ~4,645 per checkpoint. Front-loaded ⇒ the early deltas are larger.
+**Ask for the HEAD of that same console log, nothing else.** It also carries the four other missing
+answers: `§GANTT_CACHE_HIT` vs `§GANTT_CACHE_SAVE` (which op set produced this film — the stale-cache
+discriminator), `§CPE_BUILDUP_PACING mode=work|calendar`, `§CPE_ROOM_TITLE_TIMELINE`, and
+`§CINEMA_BANDS`/`§CINEMA_SPACE`/fan lines.
+
+**Two facts the tail already settles:**
+- **`placed=63419/63419`** — this bake's op count. Prior sessions logged 63415 / 63417 / 63418. The count
+  drifts per regenerate; quote it when comparing histograms or the arms won't be comparable.
+- **`&ghost=1` is confirmed present in the user's real bake URL**, and `§GHOST_GROUND restored opacity=1`
+  fired. That is the standing lead for the blind fan (open item 2) observed live, not assumed. Still needs
+  the `§CINEMA_FAN_MESHES n= ghost= dlod=` line before any fix — this has been wrong once.
+- **Sticks: none.** `connectors=0`, so this bake **cannot** reproduce the jerk-at-stick-join item
+  (`unmeasuredJoins=2/2`). That item needs a stick-bearing bake; do not grade it from this film.
+
+## §CPE_HOLD_TURN — REAFFIRMED BY THE USER ON THE LIVE BUILD, 2026-08-02
+User, on this bake: *"cam face turning is working but at that last secound hold, it stops turning is the
+issue i raised before.. cam facing should be independent"*.
+
+**This is a confirmation, not a new defect — and it is the strongest possible one.** This bake ran
+**`origin/main` = v911, where §CPE_HOLD_TURN is NOT merged**. The shipped behaviour there is exactly
+"a hold buys DWELL but no TURN", so the user is watching the precise failure `feat/cpe-hold-turn` (v912,
+worktree `/tmp/wt-spin`) already exists to fix. **Stop treating v912 as speculative — it has a live repro
+from the user, twice, in their own words.**
+
+**The user has now also answered the open design question, and the answer is a principle, not a case
+split.** The session close left it open as *"when the subject is already dead ahead at a hold, what
+should the camera turn onto?"* — the user's reply is **"cam facing should be independent"**.
+
+⚠ **Read the consequence before building:** v912 currently fades the turn with
+`k = smoothstep(perpMag/0.35)`, i.e. the turn is *derived from the subject's perpendicular offset*. That
+is the very coupling the ruling rejects, and it is the named cause of the **Hospital 0.15° RED**. If the
+facing is independent, the turn at a hold must **not** be gated on `perpMag` at all — which means the
+Hospital RED is expected to go GREEN by removing the coupling, **not** by lowering the gate (the
+session-close prohibition still stands, and this satisfies it: the gate is unchanged, the derivation is).
+Re-measure Duplex (currently 0.00 → 22.99°) after decoupling; it must not regress.
+
+**Also note the standing "thruout" law applies here too** — same directive as the noise ratio and the
+facing law. An independent facing must hold at EVERY seam (band joins, Beat2→3, 3→4, 4→5, and the orbit),
+not only at the last-second hold the user happened to name. ⚠ **Rebase to v913 before landing — the 4D
+merge took v911.**
+
+## ✅ BUILT 2026-08-02 — branch `feat/cpe-0802-batch` (off `fcc06a1`, pushed, sw v913)
+| § | what | witness |
+|---|---|---|
+| §CPE_DAY_COUNTER | Day N / total, TOP RIGHT, composited into the exported bytes | `witness_cpe_day_counter.js` **11/11** |
+| §CPE_GHOST_PULL | a hose pull now has a ROW (+ an `x`) — the "working but ghost stick" | `witness_cpe_click_slop.js` **6/6** (G-CS-5/6 new) |
+| §CPE_ROOM_TITLE_DWELL_FLOOR + _HYSTERESIS | 1.4s→0.45s floor, one-sample dropout bridged | `..._lead` **10/10**, `..._hold` **8/8** |
+
+**§CPE_GHOST_PULL — the diagnosis, since it was NOT what it looked like.** Not a race:
+`_spawnStick` is synchronous and calls `_renderRows` before returning, so no click can be lost in a
+window. §CPE_STICK splits one grab by what the hand does — release inside `CLICK_SLOP_PX` = STICK,
+move first = HOSE PULL. Press-and-drag is a PULL *by design*. The defect was downstream: `_renderRows`
+iterated `_state.bands` only, and pulls live in `_state.hose`, so a pull bent the path for real and
+had **no representation in the panel** — unseeable, unselectable, unremovable, and past Ctrl+Z's reach
+once buried. Same family as §CPE_CLICK_SLOP (which fixed the ACCIDENTAL case); this fixes the
+DELIBERATE one. `#cpe-rows` is now a MIXED list — every row carries `data-cpe-row="band"|"pull"`,
+because the existing witness counted bare children and would otherwise have gone red for no product
+reason.
+
+**MEASURED, and it settles an open question:** the first caption's 2s lead really is destroyed on a
+real film — `§CPE_ROOM_TITLE_TIMELINE … firstLead=0.00s/2s (TRUNCATED by the dive clamp)` on Duplex.
+⛔ **BLOCKED on one user decision, deliberately not guessed:** when the dive clamp eats the lead,
+should caption #1 be shown **on-the-nose** (today) or **SKIPPED** per the user's own *"if misses, then
+skips"*? One line either way; it is a taste call about the film's opening, not a correctness bug.
+
+**§BAKE_FAST_PATH_COST — second data point, from the 1670-frame bake of 2026-08-02.** The staging
+overhead is **near-CONSTANT, not proportional to scene weight**, which is the signature of a fixed
+teardown/restage and makes the dirty-check the single biggest win available:
+| | frame ~800/820 (full building) | frame ~110/1670 (nearly empty) |
+|---|---|---|
+| `avgRenderMs` | 25.7 | 4.0 |
+| refine + AO | 850 + 670 = 1520 ms | 370 + 280 = 650 ms |
+| `perFrameMs` | 2184 | 1200 |
+| **overhead** | ~660 ms | **~550 ms (46% of the frame)** |
+⚠ **Correction to this file's earlier reading:** `cand=0` in `§PERF_TRAVERSE` is NOT "nothing placed".
+`§GROUP_SPARK_TICK … recent=27..128` is the placement signal and it is healthy. Do not build a
+pacing argument on `cand`.
+
+⚠ **Witness PORT trap, cost 300s of dead run:** `witness_cpe_click_slop.js` defaults to **8433**,
+the `witness_cpe_room_title_*` family to **8443**. A run against the wrong port hangs on
+`waitForFunction` and reads as a product failure. Serve the worktree and pass `PORT=` explicitly.
+
+## 🔴 STILL OPEN after 2026-08-02 — in priority order
+1. **§4D generate band-monotonic (Design Ruling A)** — the user's own top ask (*"4D generate need to
+   really studied"*). Diagnosis is DONE and written above (§4D_UPPER_FLOORS_WALLED_FIRST): PASS B has
+   no cross-storey term, so walls are free to run top-down. Not yet implemented. Audit
+   `§GANTT_STOREY_Z reassigned=9457` FIRST — the trade gate keys on a storey NAME.
+2. **Staging dirty-check** — restage only when the placed-set changed; ~46% of a light frame.
+3. **§CPE_HOLD_TURN decouple + rebase v912 → v913** — the user reaffirmed it live on 2026-08-02.
+4. **The HEAD of a bake log** — still the cheapest unblock for the pacing verdict (~14 `§CPE_BUILDUP`
+   checkpoints + `§GANTT_CACHE_HIT/SAVE` + `§CPE_BUILDUP_PACING mode=`).
