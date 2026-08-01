@@ -2700,3 +2700,92 @@ a room that is not circulation — an office that happens to be a cut vertex. Th
 metric: where the graph forces traffic through an office, either the building does too, or the map is
 wrong at that spot. It is self-diagnosing, and it is the reason step 1's witness should report the
 spine's membership, not just its component count.
+
+### §21.26 THE SPINE-FIRST DESIGN, BUILT — and the STOPPER, which sits under this whole lane:
+### **the raster has no door voids.** 99–100% of doors are solid masonry in the wall raster.
+bim-ootb `review/roompath-redundancy` @ `40ab3a0`, pushed. `RoomWalker.spineMap()`/`storeySpine()`
+added read-only; the room compile is untouched; nothing deployed.
+
+User, 2026-08-02: *"a corridor walkable spine mapping first which should traverse whole building to
+the first layer of doors. And further layer of rooms hidden by the first are resolved separately."*
+This is a **better construction than §21.25's betweenness spine** and it was built as specified,
+because it defines the corridor as a fact about walkable space — *what you can walk without opening
+a door* — instead of picking corridor-ish rooms out of an already-fragmented room graph.
+
+**Three constructions, each failing for its own measured reason. Recorded so none is retried.**
+1. `enclosed` + readmitted seal-band groups. **Wrong:** the seal halo is one continuous ribbon
+   around the entire wall network, so readmitting a group merges rooms wherever a wall merely ENDS.
+   16,594 halo cells came back on Clinic First Floor alone → spine 7% of the floor, 130 fragments.
+2. Raw walls, no dilation — every real opening open, which is what the spine wants. **Wrong:** the
+   exterior floods in through gaps in the wall extraction and swallows the corridor. Measured
+   exterior region **1,094 m² against a 134 m² spine** on the same floor. That leak is exactly what
+   `SEAL` exists to prevent.
+3. Sealed (leak-free) base + LOCAL gap detection — from each raw-free cell no pocket owns, march
+   both ways on x and y; different pockets on opposite sides = a genuine opening; then ask only
+   "is there a door in it?". **Correct construction, and it finds nothing to fuse:**
+```
+§S1 Clinic First Floor  spine 93 m² of 1203 m² interior (8%)   openings: doorless=12 withDoor=5
+    Clinic Second Floor spine 206 m² of 777 m² (26%)           openings: doorless=10 withDoor=3
+    LTU VÅNING 3        spine 876 m² of 4787 m² (18%)          openings: doorless=0  withDoor=0
+```
+
+**THE STOPPER, measured directly, and it explains all three failures at once:**
+```
+§VOID Clinic  doors=252  door centre cell BLOCKED in the RAW wall raster = 250 (99%)
+§VOID LTU     doors=606  door centre cell BLOCKED                        = 606 (100%)
+```
+`_rasterizeWalls` stamps each wall's **BOUNDING BOX**. A door is a *void in a wall*, and no void is
+ever subtracted. **Doorways do not exist in the geometry at all.** Every pocket is sealed by solid
+masonry on every side, so "everywhere you can walk without opening a door" has nothing to flood
+through — layer 1 cannot be constructed from walkable space on this substrate, no matter how it is
+coded.
+
+**This is the root under the whole lane, and it retro-explains everything:** why door↔pocket
+adjacency had to be a proximity guess at all (§21.21 — there is no opening to find); why
+§DOOR-APERTURE has to march *across* the wall band rather than through a gap; why corridors read as
+16–38 fragments (§21.22–§21.24); why levers A+B+C could not connect the map (§21.25). One substrate
+fact, six sections of symptoms.
+
+**Second substrate defect, found in the same pass:**
+```
+§WALLGEOM Clinic 113/1080 (10%) · LTU 495/2617 (19%) walls have bbox aspect < 4 — the axis-aligned
+   bbox covers far more floor than the wall does. element_transforms HAS rotation_x/y/z columns;
+   _rasterizeWalls ignores them, so a rotated wall is stamped as an oversized solid block.
+```
+
+**HOW TO OVERCOME — and the user's own architecture is what makes it tractable.**
+User, 2026-08-02: *"during injection, that metadata is laid down. The rest is algorithm that is
+abstract for 1. Any room (both origin and target) to reach that spine. 2. Traverse within that spine
+where the path issues from and to."* That separation is right, and it **routes around the stopper**:
+the router never needs a walkable opening, it needs *metadata*, and the door ELEMENTS carry the
+truth even when the raster does not. Concretely, injection lays down and stores:
+- **door↔room adjacency** — §DOOR-APERTURE, already built and passing (0 over-claims vs 36%/12%;
+  192/252 and 404/606 interior doors vs 2 and 11 under the proximity guess);
+- **spine membership** — with no doorless openings in the substrate, the spine must come from the
+  door graph; §21.25's betweenness gives ONE component and 92%/100% leaf attachment;
+- **per-room attachment**: its spine entry door + depth.
+Routing is then the abstract 3-step the user describes, with no geometry in it at all.
+
+**Answering the user's question — "any room has to get to the spine through its connecting room/s.
+Is that easy?"** *The traversal is trivial and is not where the difficulty lives.* It is a BFS from
+the spine over the door graph; depth 1 = opens onto the spine, depth 2+ = "hidden by the first",
+resolved through its parent, exactly as described. **The cost is that every hop inherits the door
+relation's error rate, and errors COMPOUND with depth**: at depth 1 a bad link mis-attaches one
+room; at depth 3 it orphans a whole subtree. So the entire two-layer design reduces to one
+requirement — **every room must have at least one CORRECT door link** — which is why §21.21 was
+correctly identified as upstream of everything, and why it must be fixed at injection rather than
+patched in the router.
+
+**REVISED ORDER — supersedes §21.25's:**
+1. **Carve door voids into the raster** (`_rasterizeWalls` subtracts IfcDoor bboxes) — for the SPINE
+   map only, NOT the room compile, which would then leak through carved doorways. This is the one
+   change that makes layer 1 constructible as designed. Witness first: re-run §VOID and require the
+   blocked-centre rate to fall from 99–100% to ~0.
+2. **Honour `rotation_z` in `_rasterizeWalls`** — 10%/19% of walls are currently stamped as
+   oversized axis-aligned blocks. Check whether IfcOpeningElement is extracted at all while here;
+   doorless archways cannot exist in the map without it.
+3. **Move the metadata to injection** per the user's architecture: door↔room adjacency + spine
+   membership + per-room attachment/depth, written once, consumed by an abstract router.
+4. Re-run §21.26's §S1–§S4 on the carved raster. Only then is the two-layer design's feasibility
+   actually testable; every number in §21.23–§21.26 was taken on a substrate with no doorways in it.
+5. Funnel residuals (§21.18) LAST, unchanged.
