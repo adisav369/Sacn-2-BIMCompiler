@@ -7,6 +7,15 @@ do not touch `_cinemaPathPlan`'s §CINEMA_SPACE block (~L3486-3610)**; see §Out
 **Read the log after every run.** Verification on this project is `§`-tagged console output, not
 screenshots — and for anything continuous (camera path, angles, Z) it is the NUMBERS, per CLAUDE.md's
 FUNDAMENTAL LAW. Honour this block until this file is DONE.
+**▶ RESUME 2026-08-02 — read `§ SESSION CLOSE 2026-08-01 (final)` at the END of this file first (search
+`SESSION CLOSE 2026-08-01 (final)`). Live sw v911. Take them in this order: (1) the 20-slice element
+histogram — cached vs forced-regenerate ops — because the reported buildup pacing may be a STALE GANTT
+CACHE and not a defect at all; (2) jerks at every stick join (`unmeasuredJoins=2/2` is the tell);
+(3) the blind fan (`ghost=1` is the lead — my BatchedMesh guess is DISPROVEN, verify with a log line
+first); (4) orbit over-rotation (it is the GAZE, and Beat 4 must approach tangentially); (5) noise ratio
+still missing on `rise`+`orbit`, and facing absent in Beat 1+Beat 5. `feat/cpe-hold-turn` (v912) is
+UNMERGED and RED on purpose — rebase to v913, and do NOT close its open question by lowering the gate.**
+
 **⚠ READING ORDER for a fresh session:** §CINEMA_PATH_EDITOR_MODEL (settled data model) → §CPE_BUILT
 (what shipped) → §CPE_LIVE (browser run + the defect it caught) → **§CPE_BANDS (next build, spec ready,
 NOT implemented)** → **§CPE_PACING (measured, ONE user decision open)**. The "graph dialog" framing in
