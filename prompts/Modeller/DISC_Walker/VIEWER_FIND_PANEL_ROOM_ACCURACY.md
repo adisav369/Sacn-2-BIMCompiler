@@ -2854,3 +2854,61 @@ problem.
 3. **Then, and only then, re-run §S1–§S4** and compare against §21.24 honestly.
 4. Move the metadata to injection per the user's architecture (§21.26) once the map earns it.
 5. Funnel residuals (§21.18) LAST, unchanged.
+
+### §21.28 START HERE — handoff for the next session (written 2026-08-02 at session close)
+Read §21.14 first for setup/fixtures/landmines (still current), then §21.24→§21.27 in order. Below
+is only what a fresh session needs that is not obvious from those.
+
+**Setup.** `cd ~/bim-ootb && git worktree list` (reuse before adding), then
+`GIT_LFS_SKIP_SMUDGE=1 git worktree add /tmp/wt-roompath review/roompath-redundancy` @ `2d2d069`.
+⚠ A /tmp worktree can be removed by another session mid-run — it happened twice in this lane
+(2026-07-31 and again 2026-08-01). Everything is pushed; recreate and continue, never re-derive.
+
+**State: nothing is deployed. The viewer engine is byte-unchanged.** `common/room_graph.js` and
+`viewer/navigate_find.js` have not been touched by any of §21.20–§21.27. The room compile
+(`walk()`/`compileRooms()`) is byte-identical — every addition is opt-in
+(`{doorAdjacency:true}`, `{experiment:true}`, `spineMap()`), and §ADJ2_T1 exists to prove it.
+The cabling precondition (§20) is still up.
+
+**What is SETTLED — do not re-litigate, do not re-measure:**
+- §DOOR-APERTURE replaces proximity for door↔pocket. Over-claims 36%/12% → **0**; interior doors
+  2/254 → 192/252 and 11/606 → 404/606. §21.21's *prescribed* fix (`doorAdjacent()`/§DOOR-PARTITION)
+  **does not exist** — `doorAdjacent()` is itself a proximity test, §DOOR-PARTITION is an HHS-only
+  fallback. Verified, not assumed.
+- The raster had **no door voids** (99%/100% of doors on solid masonry). §21.27 carves them; gate
+  passes to 0%/0% with no leak signature. This is the root that retro-explains §21.21–§21.25.
+- **Corridor identification by shape, by `hallway_backbone.js`, and by betweenness have all been
+  tried.** Betweenness is the best of the three (1 component, 92%/100% leaf attachment); the other
+  two are dead ends. But all three were measured on the UNCARVED substrate.
+- **`rotation_z` is a NON-ISSUE** — §21.26 claimed otherwise and §21.27 retracts it. It is stored in
+  RADIANS. Do not re-open this.
+- Fixtures differ IN KIND, so never generalise from one: Clinic has 182 doorless openings and 0
+  `IfcOpeningElement`; LTU has 5 and 3,368. Any rule that works on one must be checked on the other.
+
+**THE ONE THING TO DO NEXT — the stranded rooms.** Layer 1 now builds correctly (real doorways, real
+door links, depth chains 1..5) and still loses to the room graph: unroutable **91.3%/87.7%** vs the
+§21.24 baseline **43.3%/32.4%**, with **140 (Clinic) / 107 (LTU)** rooms having no door path to the
+spine. That count IS the gap — the spine's small share of floor area is a symptom of it, not a
+separate problem. For each stranded room there are exactly three possible causes, and they are three
+different fixes:
+1. no door element exists for it at all;
+2. a door exists but its carve did not pierce the host wall;
+3. the sealed flood never formed the pocket (dropped by a §DOOR-RESCUE-class gate).
+**Classify all 140/107 first and let the count choose the fix.** Do not guess; this lane has lost two
+sessions to plausible-sounding causes that measurement then refuted (§21.23's "one root cause",
+§21.26's rotation claim).
+
+**Second open item, unexplained and 57% of the floor:** LTU's enclosed area drops 22,311 → 9,696 m²
+under carving with NO leak signature. Probably legitimate (floor-level doorless openings to outside
+on a residential building — balcony thresholds) but that is a guess, and it is large enough that a
+guess is not good enough.
+
+**Method notes that earned their place this lane:**
+- **Write the gate before the fix.** All three carving bugs in §21.27 were caught by gates, not by
+  reading code — and one of them (`withDoor=0`) presented as a clean 100% unroutable rather than as
+  an error.
+- **Verify the checker before the code under test.** Two self-inflicted bugs this lane: grouping
+  `spatial_structure` by `s.guid` instead of `s.room_guid` (§MULTI-RECT — read 91.5% unroutable), and
+  treating radians as degrees. Both were caught only because the number was absurd.
+- **Never infer a defect from a derived statistic without checking the raw value** — that is what
+  produced the retracted rotation finding.
