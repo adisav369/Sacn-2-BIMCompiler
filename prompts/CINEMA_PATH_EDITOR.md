@@ -4481,3 +4481,123 @@ feature whose early exits log nothing. It was written down; it happened again in
 | G-PP-3 | the skip is LOUD: with nothing staged, the save logs a named reason instead of returning silently. |
 | G-PP-4 | `§CINEMA_PATH_RESTORE` on a fresh load of that written DB reports the path restored and `§CINEMA_BEATS route=authored` — end-to-end, not just table presence. |
 | G-PP-5 | no regression: a save with no authored path still produces a valid DB and does not create an empty `cinema_path`. |
+
+---
+
+# §CPE_SPIN_WHIP — the spin turns 523°, is billed for 180°, and pays no noise ratio (user, 2026-08-01)
+> *"Also reduce the spin whip in the end to be not more than 360 degrees, and to also apply the noise
+> speed ratio."*
+
+Open item #3 of the session-close list, now with the user's own two-part directive attached. It is the
+**DIVE→SPIN seam** localised at session close: coming out of the dive the gaze opens **AWAY** from the
+building bulk by 66° (t=0.150→35.8°, t=0.200→76.9°, t=0.250→101.9°, dive ends 0.170, spin ends 0.186),
+and that is exactly where `§CINEMA_SPIN class=behind(full-lap) finalSpinDeg=-523` fires.
+
+## The two defects, both read directly out of `viewer/effects.js` (not inferred)
+
+**Defect 1 — the "long way around" is implemented as short-way-PLUS-a-whole-extra-lap.**
+`effects.js:5090-5091`:
+```js
+} else if (dYawAbsDeg > CINEMA_BEHIND_DEG) {     // BEHIND_DEG = 120
+  dYaw += (dYaw >= 0 ? 1 : -1) * 2 * Math.PI;    // |raw| + 360  →  480°..540°
+}
+```
+For the behind class `|raw| ∈ (120°, 180°]`, so the executed sweep is `|raw| + 360 ∈ (480°, 540°]` —
+the measured 523° and 534°. **The genuine long way around is the OPPOSITE direction, not one more
+lap:** `360 − |raw| ∈ [180°, 240°)`. It ends on the identical bearing (`yaw0 + dYaw ≡ spinTo mod 2π`,
+so `_handYaw`/`_handDir` — which go through `cos`/`sin` — are unchanged), it is still longer than the
+short way for every angle in the class, so §CINEMA_SPIN_MOTIVATED's *"helps shows around the place"*
+survives intact, and it satisfies the user's ceiling with 120° of margin. The ceiling is then a
+**structural invariant, not a clamp**: no branch can produce > 360°.
+
+**Defect 2 — the BUDGET is costed on a capped 180° and carries no noise term.** `effects.js:5785,5799`:
+```js
+var _spinDeg = Math.min(180, Math.abs(dYaw) * 180 / Math.PI);   // ← the cap IS the defect
+spin: Math.max(CINEMA_SPIN_MIN_SEC, _spinDeg / CINEMA_TURN_DPS),
+```
+523° of motion bought 180°/45 = 4.0 s of film. That is the **fourth instance** of the
+budget-on-one-number / motion-on-another family (§CPE_HOSE_LENGTH_BLIND, §CPE_WALK_BUDGET_NOISE_BLIND,
+the dive's envelope cap, this). And it is the **only beat with no noise term left** — the dive
+(`effects.js:5798`) and the walk (`:5804`) both carry `* (1 + (SWING−1)·busy)`; the spin does not,
+in a law the user settled as *"it governs thrughout"*.
+
+## The fix — two lines of law, one new probe
+1. **Motion.** Behind case turns the other way: `dYaw -= sign(dYaw) · 2π` (magnitude `360 − |raw|`).
+   Class name in the log becomes `behind(long-way)`; `full-lap` is retired because no lap is flown.
+   A defensive `Math.abs(dYaw) <= 2π` assertion logs `capped=` if it ever trips — it cannot, by
+   construction, and the log line says so.
+2. **Budget = the angle actually flown.** `_spinDeg = |dYaw|·180/π`, no `Math.min(180, …)`. With
+   defect 1 fixed this is ≤ 360, so removing the cap cannot produce the 12 s runaway the cap was
+   presumably guarding against (523/45 = 11.6 s); the worst case is now 240/45 = 5.3 s.
+3. **The noise ratio applies.** `spin: max(MIN_SEC, _spinDeg / TURN_DPS · (1 + (SWING−1)·spinBusy))`,
+   the identical shape the dive and walk use — same `_densityAt`/`_noiseRadius` primitives, same
+   `CINEMA_PACE_SWING` dial, **no new constant**.
+
+**`spinBusy` — how a beat that travels ZERO metres gets a rate-of-change signal.** The camera does not
+translate, so `_densityAt(settle)` is constant and the dive's line-probe shape cannot be reused as-is.
+What DOES change is the neighbourhood the gaze sweeps THROUGH. So probe the ARC, exactly as the dive
+probes its line: 32 points at `settle + r·(cos θ, sin θ)` for θ stepping from `yaw0` to `yaw0 + dYaw`,
+count with `_densityAt(p, r)`, then the same normalised mean |central difference|. The radius comes
+from the existing rule (`_noiseRadius(travel)` = half the beat's own travel, capped at the fan
+horizon) applied to the spin's own travel — **the arc the gaze sweeps at the fan horizon**,
+`|dYaw| · CINEMA_FAN_FAR`. Derived from the beat, not picked. A spin that sweeps across a dense wing
+buys more seconds than one that sweeps across an empty yard, which is the whole point of the law.
+
+## Witness claims — `witness_cpe_spin_whip.js` (must be RED on `origin/main`)
+| gate | proves / disproves |
+|---|---|
+| G-SW-1 | **the ceiling.** Over ≥ 12 forced spin geometries per building (start yaw swept round the circle), `|finalSpinDeg| ≤ 360` on every one. **RED on main:** the behind class produces 480–540°. |
+| G-SW-2 | **the turn is still MOTIVATED.** For every behind-class case the executed sweep is still LONGER than the short way (`|final| > |raw|`) — the fix must not silently degrade "turn around to it" into the short turn. |
+| G-SW-3 | **the end bearing is unchanged.** `(yaw0 + finalSpin) − spinTo ≡ 0 (mod 360)` on every case, and `§CPE_SEAM_CONTINUOUS handoffYawDeg` is congruent to main's for the same geometry — the whip is removed without moving where Beat 3 starts. |
+| G-SW-4 | **budget == motion.** `naturalSec.spin · CINEMA_TURN_DPS / busyMult == \|finalSpinDeg\|` within log precision. **RED on main:** it equals a flat 180 for every behind case, whatever the motion. |
+| G-SW-5 | **the noise ratio is in force.** Two spins of the SAME angle at different content-change scores (same geometry translated bodily 3000 m into empty space — translation cannot change the angle) get DIFFERENT spin seconds, and the multiplier stays within `[1, CINEMA_PACE_SWING]` read from the log, not hardcoded. **RED on main:** no busy term exists, the two are identical. |
+| G-SW-6 | **the seam.** Re-measure the reported signature on Hospital: gaze angle off the building bulk across t=0.150/0.200/0.250. Main opens AWAY by 66°; the fix must reduce that opening. Reported as a NUMBER either way — if it does not shrink, the seam has a second mechanism and §CPE_GAZE_CONSTANT_RATE inherits it. |
+| G-SW-7 | no regression: `naturalTotal == Σ naturalSec.*` and replanning twice is byte-identical (the new density read introduces no nondeterminism) — the §CPE_HOSE_LENGTH_BLIND invariant. |
+
+## ✅ BUILT + WITNESSED 2026-08-01 (late) — `fix/cinema-spin-whip`, **7/7 Hospital, 7/7 Duplex**
+RED-first: the same file scored **3/7 on both** against `origin/main` (`RED_spin_whip.log`), with the
+whip measured at **534.0 / 523.5 / 511.5 / 501.0 / 494.4°** across the swept headings and `spinSec`
+pinned at a flat **4.00 s** (= the capped 180/45) for every behind-class case whatever the motion.
+
+| gate | after |
+|---|---|
+| G-SW-1 ceiling | Hospital worst `\|final\|` **534.0 → 231.0°**, Duplex **494.4 → 225.6°**, over-360 count **0/16** on both |
+| G-SW-2 still motivated | 5 behind cases Hospital / 1 Duplex, degraded-to-short **0** (e.g. raw 151.5 → 208.5, raw 174 → 186.0) |
+| G-SW-3 end bearing | worst residual **0.000°** over 14 spinning cases — Beat 3 starts exactly where it did |
+| G-SW-4 budget == motion | `flownDeg == \|finalSpinDeg\|` on all 16; mismatches **0**; e.g. flown 208.5° × busyMult 1.2614 → **5.844 s** (was a flat 4.00) |
+| G-SW-5 noise ratio | Hospital **4.9989 s busy vs 4.0000 s** at 3000 m out (Duplex 4.4153 vs 4.0000); busyMult ∈ [1.0000, 1.3842] against `swing=1.6` **read from the log** |
+| G-SW-6 | see below — the finding |
+| G-SW-7 no regression | self-consistency **0.00e+0** over 16 plans; replan-twice diffs all **0.00e+0** |
+
+**Regression sweep, all against the same rig:** `witness_cpe_noise_law` 0, `witness_cpe_walk_budget`
+**6/6 both buildings**, `witness_cpe_hose_length` 5/5, `witness_cpe_gaze_spin` 0.
+`witness_cinema_path_editor` (G10, G7) and `witness_cpe_even_turn` (T2, T6) fail — **identical
+failure sets on `origin/main`, verified by running both against it**, so pre-existing and untouched
+(T6 is the stall the user already ruled ACCEPTED). One real break was found and fixed: G-WB-4 parses
+the spin's rate out of `§CINEMA_PACING`, whose *"spin raw 523deg capped 180deg @45deg/s"* clause this
+change rewrote — the regex now reads the new phrasing and still accepts the old.
+
+## 🔴 THE SESSION-CLOSE LOCALISATION IS **DISPROVEN** — the seam is NOT the whip
+The header of this file states *"the user's 'turn starts too late' is the DIVE→SPIN SEAM, and it is
+the SPIN WHIP"*, and told the next session to fix the whip and re-measure the seam. **Done, measured,
+and the hypothesis is false.** G-SW-6 samples the gaze angle off the building bulk BEAT-RELATIVE
+(25 points from dive-end to spin-end — a fixed `t=0.200` is unsound here, because this fix re-paces
+the spin and moves `tD`/`tS`, so the same `t` lands in a different beat before and after):
+
+| | spin motion | seam peak, gaze off bulk |
+|---|---|---|
+| Hospital | 534.0 → 231.0° (**2.31× less**) | 141.2 → 143.2° (**+2.0**) |
+| Duplex | 494.4 → 225.6° (**2.19× less**) | 114.3 → 114.3° (**0.0**) |
+
+**The spin magnitude more than halved and the swing-away did not move.** So the seam does not track
+the spin at all. G-SW-6 was rewritten to assert that measured fact rather than the refuted prediction
+— deliberately, and recorded in the witness itself, because a gate whose tolerance was widened until
++2.0 passed would have buried exactly this result.
+
+**Where it actually lives:** Beat 1 holds the HEADING at `yaw0` for the whole dive *by design*
+(`poseAt`, "HEADING **UNTOUCHED**" — load-bearing, since the exit is chosen at t=4 s by position AND
+facing). The gaze angle off the bulk therefore grows across the dive purely because the camera
+POSITION moves, with no turn at all. That is precisely the *"dive has its OWN drift, 0° → 23° off the
+bulk over the first 15s"* item flagged **NOT DIAGNOSED** at session close. **§CPE_GAZE_CONSTANT_RATE
+inherits the seam**, with this measurement as its starting evidence — and it should be built against
+the DIVE's held heading, not against the spin.
