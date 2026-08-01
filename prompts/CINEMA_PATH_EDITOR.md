@@ -4862,3 +4862,105 @@ the walls' `seq` really is later than the slab's, or whether they simply landed 
 a new probe. §SUPPORT_CHECK reported `floating=0/10979 … gated=63415 (0=solved)`, so the support
 invariant believes it is satisfied — if the walls really are late, that check is ALSO wrong and is
 the better place to start.
+
+---
+
+# ▶ SESSION CLOSE 2026-08-01 (final) — START HERE NEXT SESSION
+**Live: viewer sw v911.** Read this block, then the §-sections it points at. Do NOT re-walk the file.
+
+## SHIPPED AND LIVE (verified by fetching the served files back, not by trusting the merge)
+| § | PR | what it fixed | witness |
+|---|---|---|---|
+| §CPE_SPIN_WHIP | #1125 | the spin flew 534°, was billed for 180°, paid no noise ratio | 7/7 + 7/7 |
+| §CPE_STICK_HOLD + §CPE_AIM_LATCH + §CPE_GAZE_CONSTANT_RATE | #1126 | a hold buys the turn its time; the aim never weakens; the gaze is capped at `CINEMA_TURN_DPS` across Beats 3+4 (Duplex raw **339 → 45 deg/s**) | 8/8 + 8/8 |
+| §CPE_STICK_HOLD default → exit band | #1127 | the 1 s was landing mid-walk, not on the exit | 8/8 + 8/8 |
+| §4D_WALLS_BEFORE_ROOF | `fcc06a1` | the main roof deck started **277 days before its own walls** | 7/7 (RED 1/7 first) |
+
+## ⚠ UNMERGED, and it is RED on purpose — `feat/cpe-hold-turn` (v912)
+**§CPE_HOLD_TURN.** The hold shipped buying DWELL but no TURN, because the turn was made contingent on
+the aim WEIGHT having headroom — and §CPE_AIM_DEPTH saturates at `maxBlend=1.00` on any real building.
+User: *"the visible turn must happen independently … Otherwise why the pause?!"*
+**The fix, derived not invented:** the aim rules point PERPENDICULAR TO TRAVEL, and the live log records
+what that costs — `perpDeg=62.8` / `perpDeg=112.9`. **Perpendicular-to-travel is undefined when there is
+no travel**, so the projection now fades with the camera's own speed (`_holdDipAt`, the same dip that
+removes the travel seconds — the signal itself, not a proxy).
+**Measured: Duplex 0.00 → 22.99° of turn, gaze closing 24.4° → 1.6° off the building. Hospital 0.15°, RED.**
+Named cause for Hospital, not guessed: `k = smoothstep(perpMag/0.35)` already fades the projection where
+the subject is near the travel axis, so at that stop there is no perpendicular component left to release.
+**The open design question — do NOT answer it by lowering the gate:** when the subject is already dead
+ahead at a hold, what should the camera turn onto? (bulk instead of the density×depth subject? or is
+dwell-only correct there?) ⚠ **Rebase to v913 before landing — the 4D merge took v911.**
+
+## 🔴 OPEN, each with its measurement named
+1. **Orbit over-rotation** (user: *"spinning more than one full round in the end"*). Position is fine —
+   the lap is exactly `exitAz + _cinemaAzU(u)·2π` and Beat 4 is radial. The excess is the GAZE: Beat 4
+   turns onto the pivot bearing (~180°) and Beat 5 then adds a full 360°. Fifth §CPE_SPIN_WHIP-family
+   instance. ⚠ Shortening the lap breaks the user's *"the last spin is all a 'straight circle'"* — the
+   answer is Beat 4 approaching **tangentially**. Measure gaze yaw across `[tO,tR]` and `[tR,1]` first.
+2. **The blind fan.** `fanMin=fanMax=fanMean=60.0` (all sentinel), all 7 §CINEMA_SPACE candidates
+   `enclosed=0%`, dive falls back to bbox-centre — **in live Chrome, not the headless rig**. ⚠ My
+   "BatchedMesh" hypothesis is **DISPROVEN**, `_cinemaFanMeshes` already collects it. The lead is
+   `&ghost=1` (the user's own URL) making `!_isGhostGeometry(o)` exclude the whole building. **Verify
+   with a `§CINEMA_FAN_MESHES n= ghost= dlod=` line before fixing — this has been wrong once.**
+3. **Noise ratio still missing on `rise` and `orbit`** — every other beat has it. Open since 2026-07-27,
+   re-asked directly: *"noise speed ratio and auto cam head facing algorithm thruout"*.
+4. **Facing absent in Beat 1 (dive, heading held at `yaw0` BY DESIGN) and Beat 5 (orbit, aims at pivot)**.
+   "Thruout" is not yet true. The dive is where the original *"turn starts too late"* actually landed.
+
+## ⚖ TWO DESIGN RULINGS FROM THE USER THIS SESSION — build against these, do not re-litigate
+**A. Sequencing: "nothing appears without support" + "build floor by floor".** These are ONE idea —
+floor-by-floor is the **cycle-free approximation** of the support DAG, because gravity makes the band
+index a topological order. Agreed shape: **band-monotonic WITHIN a phase, with a lag between phases**
+(a global floor gate would serialize the project and destroy the trade train — the bands already carry
+`Superstructure:119, MEP Rough-in:4272, Architecture:1203, …` simultaneously). Keep **"nothing without
+support" as the role-blind GATE** policing what banding cannot see (roof-on-its-own-walls, cantilevers,
+the uncoped parapet §4D_WALLS_BEFORE_ROOF left open). ⚠ Audit `§GANTT_STOREY_Z reassigned=9457` FIRST —
+a beam at an interface can band either way by median Z, and a band rule enforces a wrong order
+confidently. User's live repro: *"beams on upper floors going further without waiting for slabs on lower
+floors"* — beams and slabs are both `Superstructure`, so it needs **no role inference at all** and is the
+better witness subject than the roof case.
+**B. The ending's framing must not be the opening's.** User set a near-full-frame opening and the ending
+matched it. **They are NOT coupled** — `fillDistance = (boundingRadius / looseTan) · CINEMA_FILL_MARGIN`
+reads the building and the FOV, never the opening pose; they coincide because "fill the frame" is what
+the user chose for the opening too. **So pulling the opening back will NOT give the ending room — tell
+the user before they spend a bake on it.** The opening is a CONTINUITY anchor (§CINEMA_POV), the ending
+is a FRAMING decision; one control must not serve both. ⚠ Check the clamp first:
+`§CINEMA_ORBIT_ELASTIC requested=103.8 granted=132.7 clamped=true` — the ending control may already
+exist and simply not be honoured (session-close open item #4). A bookend mode is worth having as an
+OPT-IN, and ties into open item 1 above since both live on the orbit.
+
+## ⚠ INSTRUMENTS BROKEN THIS SESSION — the count is now ELEVEN in this lane
+- G-SH-5 used three **collinear** bands (no turn to make) → read as "the hold does not turn the camera".
+- G-SH-4's first sample sat on `t=beats.spin`, which `poseAt` routes to **Beat 2** → gated the wrong seam.
+- G-SH-5 again: passed on *"already aimed"*, which is what let a **0.00° hold ship to the user**.
+- `§SUPPORT_CHECK floating=0/10979` — `auditFloating` only offers its wall pool to `seq>4` slabs, so a
+  roof it FAILED to promote read clean. **This is why the 277-day defect survived a merge.**
+`feedback_verify_checker_before_code_under_test` is not a formality in this lane; it is the main failure mode.
+
+## 🔴 OPEN, NEW — "some jerks at each stick change … must be a smooth handler thruout" (user, live mp4)
+Reported from the baked film, at **every band-to-band join** — not at one stick, at each of them.
+
+**Do NOT start by widening a smoothing constant.** Three candidates, and the existing logs already
+narrow them:
+1. **The join geometry itself.** `§CINEMA_BANDS bands=3 waypoints=6 flown=84 connectors=2 k=[0.55,0.55]
+   maxBow=0.55m unmeasuredJoins=2/2`. **`unmeasuredJoins=2/2` is the tell** — the fan measured NOTHING
+   at either join (same blind-fan family as open item 2), so the connector radius fell back to the
+   conservative cap instead of the real clearance. A join built on a guessed radius is where a
+   position kink would live.
+2. **The pace, not the path.** §CPE_EVEN_TURN parameterizes the walk by blended cost, and a band change
+   steps `dθ/ds` discontinuously — cost-rate discontinuity ⇒ speed step ⇒ read as a jerk even on a
+   geometrically smooth curve. `§CPE_EVEN_TURN … boundPerFrameTurn=1045.9deg/N speedRange=1.60x x1.5`.
+3. **§CPE_HOLD_TURN interaction** (only on the unmerged branch): the projection fade is driven by the
+   dip, so a hold AT a join composes a gaze swing with a join — check whether jerks coincide with the
+   held band or appear on all of them.
+
+**Measure first, and measure the RIGHT quantity:** sample `poseAt` densely across the walk and report
+**per-frame position step AND per-frame gaze degrees**, then locate the peaks against the band-join
+fractions. If the peak is in POSITION → candidate 1. If in GAZE only → candidate 2 (and
+§CPE_GAZE_CONSTANT_RATE already caps gaze at 45 deg/s, so a gaze jerk would mean the limiter is not
+covering that seam). `witness_cpe_even_turn`'s T2/T5 already compute both — extend it to report the
+band-join fractions rather than writing a new probe.
+
+⚠ **The user's words are "smooth handler THRUOUT"** — same standing directive as the noise ratio and the
+facing law. Whatever is built must cover every seam (band joins, Beat2→3, Beat3→4, Beat4→5), not the
+one that was reported.
