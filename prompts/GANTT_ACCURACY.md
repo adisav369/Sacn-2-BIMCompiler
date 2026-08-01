@@ -625,3 +625,47 @@ cumulative map, so the last 0.02% lands in the last 0.02% of the film by constru
 topping-out a beat requires a NON-proportional tail — the §CPE_STICK_HOLD precedent (a hold buys its
 own time), not a re-weighting. **Parked: the user declined the pacing lane and set the support
 invariant above as the priority instead.**
+
+## ⛔ §4D_WALL_BORNE_STRUCTURE — ATTEMPTED 2026-08-02, PARKED. Fixes support, regresses the band.
+Branch `fix/helipad-roof-separation` @ `a36b71c` — **NOT FOR MERGE**, `origin/main` untouched at
+`fc58210`. Recorded so the next attempt starts from the measurements, not from re-deriving them.
+
+**DESIGN A — "a wall that carries structure IS structure."** 1,229 load-bearing walls move PASS B →
+PASS A and into the structure grid, so `geoGate` gates everything resting on them; `wallGate` widened
+from `IfcSlab`-only to every `seq>4` class.
+
+| gate | before | after | |
+|---|---|---|---|
+| support violations (§SUPPORT_ALL) | 6,778 | **377** (structural 2,379 → **0**) | ✅ |
+| floating (`tests/test_schedule_gate.js`) | 0 | **0** | ✅ |
+| band inversions (T2a) | 0 | **1,026** | ❌ |
+| project span | 170d | **213d** (+25%) | ❌ |
+
+**The band failure IS the user's own "upper floors gets walled first" returning through the fix for a
+different defect.** That is why this cannot ship, even though it satisfies the invariant they asked
+for. Trading one reported defect for another is not progress.
+
+**Two attempts at the band regression, both measured, neither worked:**
+1. **Live `bandGate` on the promoted walls only** — 1,026 unchanged, worst 115d → 108d. PASS A is
+   ordered by `base_z`, so `bandTrade[r-1]` is still filling when rank *r* is reached. This is the
+   same "gate without re-sorting is a lower bound" already recorded for structure.
+2. **TWO-PHASE PASS A — this file's own open item 2** ("gating on `bandTrade[r-1]` computed from a
+   PRE-PASS rather than read live"): phase 1 places PASS A ungated and yields a COMPLETE ladder,
+   phase 2 resets `grid`/`wallGrid`/`out`/`crews`/`bandTrade` and replays the **identical** element
+   order against the frozen ladder. Result: **1,026 unchanged, span 177d → 213d.** The frozen gate
+   does not bind and **why is the open question** — the order is preserved byte-for-byte and every
+   term enters through `Math.max`, so Ruling A's re-sort prohibition is NOT what is blocking it.
+   ⚠ **Next session: instrument WHICH elements are inverted before touching the gate again.** Both
+   attempts assumed the inverted population was the promoted walls; that was never verified, and the
+   count sitting at exactly 1,026 across three different gate configurations is the tell that it is
+   probably NOT them.
+
+**DESIGN B — the #1120 shape (move the CARRIED thing, not the carrier) — REJECTED BY MEASUREMENT,
+do not retry.** Promoting wall-borne structure past the walls requires its transitive closure or its
+dependents float: **7,279 / 12,500 structural elements (58.2%)** — members 4,092, beams 1,628, plates
+1,028, columns 497, slabs 34. Converges in 8 rounds, but it empties PASS A rather than fixing it.
+
+**What is now known that was not before:** the support invariant and cross-storey band monotonicity
+are in genuine tension in this scheduler, and the tension is located precisely at the walls. Any
+future attempt has to hold BOTH counters at once — `audit_support_roleblind.js` and
+`witness_4d_band_monotonic.js` are the pair, and passing one while breaking the other is the trap.
