@@ -626,7 +626,10 @@ topping-out a beat requires a NON-proportional tail — the §CPE_STICK_HOLD pre
 own time), not a re-weighting. **Parked: the user declined the pacing lane and set the support
 invariant above as the priority instead.**
 
-## ⛔ §4D_WALL_BORNE_STRUCTURE — ATTEMPTED 2026-08-02, PARKED. Fixes support, regresses the band.
+## ⛔ §4D_WALL_BORNE_STRUCTURE — 5 DESIGNS BUILT AND MEASURED 2026-08-02. ALL REJECTED. ROOT CAUSE FOUND.
+**Superseded by the section at the end of this file — read `§ROOT CAUSE — CONFLICTING SORT ORDERS` first.**
+
+## (earlier, kept for the measurements) ATTEMPTED 2026-08-02, PARKED. Fixes support, regresses the band.
 Branch `fix/helipad-roof-separation` @ `a36b71c` — **NOT FOR MERGE**, `origin/main` untouched at
 `fc58210`. Recorded so the next attempt starts from the measurements, not from re-deriving them.
 
@@ -669,3 +672,56 @@ dependents float: **7,279 / 12,500 structural elements (58.2%)** — members 4,0
 are in genuine tension in this scheduler, and the tension is located precisely at the walls. Any
 future attempt has to hold BOTH counters at once — `audit_support_roleblind.js` and
 `witness_4d_band_monotonic.js` are the pair, and passing one while breaking the other is the trap.
+
+
+## §ROOT CAUSE — CONFLICTING SORT ORDERS. The support invariant needs a scope decision, not a bug fix.
+Branch `fix/helipad-roof-separation` @ `a40cf16`. **Scheduler reverted to shipped, byte-for-byte** —
+`witness_4d_band_monotonic` **6/6 all green**, `test_schedule_gate` **PASS (0 floating)**. The audits
+stay; they are pure additions and are what made any of this measurable.
+
+**THE FINDING, in one sentence:** the support gate needs carriers placed first (sort by `base_z`,
+z-major) and the band gate needs lower ranks placed first (sort by `(seq, rank)`, rank-major) — and
+because walls BOTH carry structure AND rest on structure, the two requirements demand **conflicting
+sort orders of the same elements**. `geoGate` and `bandGate` each read only what is ALREADY PLACED,
+so each is a correct constraint under its own sort and a weak lower bound under the other's. **No
+gate-only change can resolve this.** Every design below is a different attempt to have both orders.
+
+| # | design | support | floating | band (T2a) | span |
+|---|---|---|---|---|---|
+| — | **shipped (`fc58210`)** | 6,778 | **0** | **0** | 176d |
+| 1 | load-bearing walls → PASS A | **377** (structural **0**) | 0 | 1,026 ❌ | 213d |
+| 2 | ALL walls → PASS A | — | 0 | 1,157 ❌ (T2b 551→545 ❌) | 213d |
+| 3 | two-phase PASS A, frozen ladder | — | 0 | 1,026 ❌ | 177d |
+| 3b | …iterated to a fixed point | — | 0 | 1,157 ❌ **diverged 11/11** | 535d ❌ |
+| 4 | whole-schedule relaxation | 6,778 ❌ | 0 | **0** ✅ **diverged 6/6**, moved=62783 | 671d ❌ |
+| 5 | **ONE geometry-ordered sweep** | support-correct | 0 | 34,980 ❌ | **147d** ✅ trades 5→**7** ✅ |
+
+**What each failure taught, so none of it is repeated:**
+- **(1)** splitting a trade across two passes is fatal on its own — PASS B runs wholly after PASS A, so
+  every moved wall inverts against the ones left behind. All 1,026 offenders were the moved walls
+  (verified by dumping them, not assumed).
+- **(3) is the important one.** Instrumented: the frozen gate **fired 1,157 times and 1,157 inversions
+  remained** — it was gating against numbers from a run that no longer existed, because round 1 is
+  ungated so its ladder is stale *by construction*. This kills this file's own open item 2
+  ("gate on `bandTrade[r-1]` computed from a PRE-PASS rather than read live") **as written**.
+- **(3b/4)** relaxation does not converge here. Crews are a shared project-wide pool, so delaying walls
+  reshuffles crew slots and the iteration **oscillates**. My "starts only increase, therefore monotone,
+  therefore convergent" reasoning was **WRONG** and the run disproved it.
+- **(5) is the most promising and the closest to physically correct.** There is no real cycle: a carrier
+  is ALWAYS lower than what it carries, so sorting the whole model by `base_z` is already a valid
+  topological order of the support relation. It is also SIMPLER than the two passes it replaces, and it
+  *improved* the schedule — span 170→**147d**, trades at midpoint 5→**7**. It fails only because a
+  z-major sort makes `bandGate` a weak lower bound: **storey z-ranges overlap**, so rank r-1 is not
+  finished when rank r is reached.
+
+**⚠ THE DECISION THIS NEEDS FROM THE USER — it is scope, not a bug.** Design 5 works if the band gate
+stops depending on placement order, i.e. band ends come from a dependency solve instead of being read
+live. That is **CPM**, and this file's own header scopes it out: *"No CPM/dependency solving
+(planner's)"*. Adding it is a deliberate widening of what the generated 4D is allowed to be — not
+something to slip in under a bug fix. **Do not let a future session "just add a topological solve"
+without that ruling.**
+
+**Meanwhile the shipped behaviour is the honest one:** cross-storey ordering is correct (the user's
+reported defect), nothing floats, and ~2,000 structural elements bearing on walls are scheduled before
+those walls — now MEASURED and named by `audit_support_roleblind.js` rather than hidden behind
+`§SUPPORT_CHECK floating=0`, which only ever asked the question about roof slabs.
