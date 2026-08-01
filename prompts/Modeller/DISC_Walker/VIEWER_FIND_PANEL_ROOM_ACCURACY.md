@@ -2501,3 +2501,109 @@ Q3's 26% is provisional for the same reason.
 4. Expect the end state to be **spine + genuine room-to-room links**, not spine-only — Q3 says some
    adjoining rooms really do connect directly, and forcing those out to a corridor would be its own error.
 5. Funnel residuals (§21.18) LAST — a quality term on a map that is currently wrong.
+
+### §21.24 §21.23's FORCED ORDER EXECUTED (2026-08-01). Steps 1+2 BUILT; step 3's go/no-go is
+### **NO-GO** — the corridor spine does NOT connect, and §21.23's "one root cause" call is DISPROVEN.
+bim-ootb `review/roompath-redundancy` @ `1cf5711`, pushed. Engine still byte-unchanged: nothing
+deployed, `common/room_graph.js` and `viewer/navigate_find.js` untouched, cabling precondition up.
+
+**FIRST, a correction to §21.21 itself — its prescribed fix does not exist.** §21.21 said "`RoomWalker`
+already computes the true relation: it PARTITIONS pockets by doors during the flood fill
+(§DOOR-PARTITION) and exposes `doorAdjacent()`". Verified before depending on it, per §21.14:
+- `doorAdjacent()` (`viewer/lib/room_walker.js:242`) is **itself a proximity test** — buffer = the
+  door's own half-span + `DOOR_BUFFER_SLACK` — and returns a **boolean**, not a pocket pair.
+- `§DOOR-PARTITION` is a **fallback** for storeys where flood-fill structurally fails (`roomsFlood <
+  0.15 × doors`, the HHS case). Clinic and LTU never enter it.
+So "ask the walker" was not available. What the walker *does* have is the flood-fill **cell sets**,
+which reach the wall face, and which it discards after inscribing rects. That is the fix.
+
+**Step 1 — §DOOR-APERTURE, BUILT.** A door is a gap in a wall: march from the door centre along the
+wall normal (the door bbox's SHORT axis), both directions, 3 rays offset along the leaf, and take the
+first flood component each ray clears into. At most 2 pockets **by construction** — a fact off the
+same raster the rooms came from, not a threshold. Additive and opt-in
+(`compileRooms(db,{doorAdjacency:true})`); `walk()` untouched.
+```
+§ADJ2_T1 compileInvariant=PASS  Clinic 207 vs 207   LTU 422 vs 422    ← regression guard first
+§ADJ2_T2 joins>2 = 0/252 and 0/606          (proximity guess: 91/254=36%, 75/606=12%)
+§ADJ2_T3 interior doors = 192/252 and 404/606   (proximity: 2/254 and 11/606 at tol=0m;
+                                                 97 and 275 at tol=0.4m but with 91 and 75 over-claims)
+§ADJ2_T4 orphans = 9/252 (3.6%) and 21/606 (3.5%)   single-sided = 51 and 181
+§ADJ2_LINKS distinctRoomPairs 183/207 rooms · 385/422 rooms
+```
+**§21.21 is SOLVED on its own terms.** No threshold, no over-claims, and the door relation went from
+unusable (2 interior doors on Clinic) to 192. **Symptom 1 fixed.**
+
+**Step 2 — real corridors, DONE.** `common/hallway_backbone.js` `classifyCorridorRooms()` in place of
+the shape rule. It is far more conservative: **Clinic 16/207, LTU 28/422**, vs the shape rule's 38 and
+135. §21.23's shape rule is kept as a CONTROL in the probe so corridor-definition and adjacency
+changes stay separately attributable.
+
+**Step 3 — spine re-measured. THE ANSWER IS NO.**
+```
+§SPINE2 Clinic [hallway_backbone] Q1 components=8  largest=5 (31%)   [§21.23 was 18, largest 8 (21%)]
+§SPINE2 LTU    [hallway_backbone] Q1 components=17 largest=7 (25%)   [§21.23 was 33, largest 37 (27%)]
+   shape-rule CONTROL on the corrected adjacency: Clinic 10/largest 9 · LTU 40/largest 43
+§SPINE2_Q4 unroutable same-storey pairs  Clinic 43.3%  LTU 32.4%   [proximity map claimed 37% / 14.8%]
+```
+**§21.23's central prediction — "§21.21's root cause almost certainly produces this fragmentation
+too, one defect two symptoms" — is DISPROVEN.** With the adjacency defect removed the spine is still
+in 8 and 17 pieces, largest fragment 31% and 25%. The control shows why the numbers barely moved on
+the shape-rule set: the fragmentation was never the adjacency.
+
+**Routability got WORSE, and that is honest, not a regression.** The proximity map's 37%/14.8% was
+flattered by phantom edges — a third of its doors claimed 3-4 rooms, and every false claim is a link.
+A correct map is a sparser map. The real constraint is arithmetic: **192 door edges cannot connect 207
+rooms** (a spanning tree needs 206). The old map hid this behind invented shortcuts.
+
+**NEW FINDING — §OPEN-THRESHOLD, and it is building-dependent.** `SEAL=2` dilates walls 0.4 m to stop
+exterior leaks, which also closes any genuine opening narrower than ~0.8 m. So a corridor continuing
+through a doorless archway is split by a wall that does not exist in the model, and **no door-based
+relation can ever rejoin it — there is no door there to ask about.** Measured exactly (cells blocked
+in the dilated mask but free in the raw one, flooded and attributed):
+```
+§SPINE2_OPEN Clinic doorLinks=192  openThresholdLinks=182   ← about HALF of Clinic's real connectivity
+             LTU    doorLinks=404  openThresholdLinks=5
+§SPINE2_Q4   Clinic doorsOnly 82.0% -> doors+open 43.3% unroutable
+             LTU    doorsOnly 38.9% -> doors+open 32.4%
+```
+Clinic is a doorless-opening building and LTU is not. **Any design that models circulation purely as
+door-to-door is wrong on Clinic by construction** — that is a fact about the map, independent of which
+router sits on top, and it applies to §21.23's two-layer design as much as to the shipped engine.
+
+**WHY the map is still shattered — measured, and the obvious suspect is REFUTED.** Hypothesis: a big
+region (main corridor/lobby) dropped by `MAX_AREA_FRAC` for being too large.
+```
+§SHATTER Clinic kept=207 droppedRegions=38   STAIR_EXCLUDE 4 (25m²) · MIN_AREA_no_door 14 (12m²) · NOISE_FLOOR 20 (7m²)
+         LTU    kept=422 droppedRegions=134  STAIR_EXCLUDE 17 (124m²) · MIN_AREA_no_door 78 (109m²) · NOISE_FLOOR 39 (11m²)
+         largest single dropped region: 8 m² (Clinic), 11 m² (LTU).  MAX_AREA_FRAC never fired.
+§SHATTER_DOORS interior single-sided doors = 31/252 (Clinic), 62/606 (LTU)
+§SHATTER_MISS  interior rays that found no pocket: Clinic {MASONRY 250, ENCLOSED_UNCLAIMED 35, EXTERIOR 23}
+                                                  LTU    {MASONRY 221, ENCLOSED_UNCLAIMED 87, EXTERIOR 8}
+```
+`ENCLOSED_UNCLAIMED` = the ray cleared into real enclosed floor that **no surviving pocket owns**, and
+its count (35 / 87) tracks the small-region drop count (34 / 117). Those regions were dropped by
+**§DOOR-RESCUE's `MIN_AREA`-and-no-door gate — and the "has a door" half of that decision is made by
+the same broken proximity `doorAdjacent()` §21.21 condemned**, applied to the pocket's BOUNDING BOX.
+So §21.21's root cause does have a second victim after all — just not the one §21.23 guessed. It is
+not corridor fragmentation; it is **small rooms being deleted from the map for appearing doorless.**
+
+**NEXT — in this order, and note that (1) is now the cheap high-yield one:**
+1. **Re-gate §DOOR-RESCUE on §DOOR-APERTURE, not on `doorAdjacent()`.** Compute apertures against ALL
+   enclosed components *before* the drop gates, then keep a sub-`MIN_AREA` pocket iff a door aperture
+   genuinely reaches it. Directly attacks the 34/117 wrongly-deleted rooms and the 31/62 interior
+   one-sided doors. Falsification test: interior single-sided doors must FALL; `ENCLOSED_UNCLAIMED`
+   must approach 0; §ADJ2_T1 compile-invariance is now expected to FAIL by design (the room set is
+   meant to change) — so re-baseline it against the *count and identity* of newly-kept rooms instead.
+2. **Decide §OPEN-THRESHOLD's status as a first-class relation**, not a diagnostic. On Clinic it is
+   half the connectivity. Either the router consumes it, or `SEAL` stops inventing the walls that
+   create it — the second is riskier (SEAL exists to stop exterior leaks) so prefer the first.
+3. **Re-run step 3 only after 1+2.** The two-layer design is NOT refuted — it is UNTESTED, because
+   its precondition (a connected spine) has never yet been measured on a complete map. §21.23's own
+   caveat now applies to §21.24: these numbers rest on a map that still deletes rooms.
+4. Funnel residuals (§21.18) stay LAST, unchanged.
+
+**Method note, worth keeping.** This section's first spine run reported 91.5% unroutable — the probe
+had grouped `spatial_structure` by `s.guid` instead of `s.room_guid`, counting §MULTI-RECT sub-rects
+(304 rows) as if they were rooms (207). The absurd number is what exposed it. Checker before code
+under test, again ([[feedback_verify_checker_before_code_under_test]]); the fix is recorded as a
+load-bearing comment in `spine2.js` so the next session does not repeat it.
