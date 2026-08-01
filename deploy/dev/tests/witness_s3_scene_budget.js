@@ -68,7 +68,15 @@ const CASES = [
   { key: 'LTU_AHouse', src: path.join(LOCAL_SRC, 'LTU_AHouse_extracted.db') },
   { key: 'JKR', src: path.join(LOCAL_SRC, 'JKR_extracted.db') },
 ];
-const linkName = c => '_ws3_' + path.basename(c.src);
+// ⚠ SERVE UNDER THE REAL FILENAME — user directive 2026-07-26: "if it is the injection then we need
+// not apply but simply pick up the raw DB and let the browser script handles that - this is the
+// preferred path for newbies." The viewer's self-heal fetches `patches/<dbFileName>.sql` BY NAME, so
+// an earlier `_ws3_`-prefixed symlink silently resolved to a 404 and the building loaded with NO
+// patch — measured: JKR, Hospital and Terminal all ran without theirs. There is no error, just a
+// quieter, worse graph (JKR: 75 components, §FLY_ROUTE_REJECT thin-path). Keeping the real name
+// means the harness exercises the SAME path a new user gets, which is the whole point of the gate.
+// See `/home/red1/Downloads/OPEN SOURCE BIM/JKR_README.md` §5.
+const linkName = c => path.basename(c.src);
 
 // ── The BASELINE tree: a directory of symlinks to every deploy/dev entry, with ONE real file —
 // the pre-S3 tour.js extracted from git. Serving that gives the old selection code against the
@@ -137,6 +145,8 @@ async function flyAndRead(browser, port, dbRel) {
     pool: (sb.match(/pool=(\d+)/) || [])[1],
     comps: (line(logs, /§FLY_SCENE_COMPONENT/).match(/§FLY_SCENE_COMPONENT (.*)$/) || [])[1],
     reject: line(logs, /§FLY_ROUTE_REJECT/),
+    patch: (line(logs, /§S1_PATCH_APPLY|§S1_PATCH_NONE/).match(/§S1_PATCH_(APPLY|NONE)[^\n]*/) || ['none'])[0].slice(0, 90),
+    raster: (line(logs, /§PATH_LEGAL_RASTER/).match(/§PATH_LEGAL_RASTER (.*)$/) || [])[1],
     actions: await page.evaluate(() => (window.APP.walkActions || []).length),
     err: line(logs, /PAGEERROR|§LOAD_FAIL/),
     fly, hl, sb,
@@ -149,12 +159,30 @@ async function flyAndRead(browser, port, dbRel) {
   console.log('══ W-S3-SCENE-BUDGET — a stroll, not a survey: whole-building scene checklist replaces the per-storey budget ══\n');
 
   for (const c of CASES) { if (!fs.existsSync(c.src)) { console.log('⚠ fixture absent: ' + c.src); } }
+  // Link the DB under its real name, AND link the patches/ directory beside it so the loader's
+  // `patches/<dbFileName>.sql` fetch resolves exactly as it does for a real user.
+  const PATCH_SRC = path.join(LOCAL_SRC, 'patches');
+  const patchDest = path.join(DEV, 'buildings', 'patches');
+  let patchLinked = false;
+  const preExisting = new Set();
   for (const c of CASES) {
     const dest = path.join(DEV, 'buildings', linkName(c));
+    // Never clobber a REAL file that lives in the repo tree under the same name (deploy/dev/buildings
+    // holds its own stale mirrors) — record it, move it aside, restore it after.
+    if (fs.existsSync(dest) && !fs.lstatSync(dest).isSymbolicLink()) { fs.renameSync(dest, dest + '.ws3bak'); preExisting.add(dest); }
     try { fs.unlinkSync(dest); } catch (e) {}
     if (fs.existsSync(c.src)) { fs.symlinkSync(c.src, dest); c.db = 'buildings/' + linkName(c); }
   }
-  const cleanup = () => { for (const c of CASES) { try { fs.unlinkSync(path.join(DEV, 'buildings', linkName(c))); } catch (e) {} } };
+  if (!fs.existsSync(patchDest) && fs.existsSync(PATCH_SRC)) { fs.symlinkSync(PATCH_SRC, patchDest); patchLinked = true; }
+  console.log('   patches/ ' + (patchLinked ? 'symlinked from ' + PATCH_SRC : (fs.existsSync(patchDest) ? 'already present' : 'ABSENT — patches will 404')));
+  const cleanup = () => {
+    for (const c of CASES) {
+      const dest = path.join(DEV, 'buildings', linkName(c));
+      try { if (fs.lstatSync(dest).isSymbolicLink()) fs.unlinkSync(dest); } catch (e) {}
+      if (preExisting.has(dest)) { try { fs.renameSync(dest + '.ws3bak', dest); } catch (e) {} }
+    }
+    if (patchLinked) { try { fs.unlinkSync(patchDest); } catch (e) {} }
+  };
   process.on('exit', cleanup);
 
   const base = baselineBlob();

@@ -4840,3 +4840,25 @@ full circle, and the user explicitly wants one: *"the last spin is all a 'straig
 answer is that **Beat 4 should approach the orbit tangentially** so its turn is the FIRST PART of the
 lap rather than extra rotation before it. Measure first: accumulate gaze yaw separately across
 `[tO, tR]` and `[tR, 1]` on a real path, then decide.
+
+## 🔴 OPEN, NEW 2026-08-01 (late) — "the roof before the walls still happening on the roof top"
+**Different subsystem from everything above — this is 4D buildup sequencing, not the camera path.**
+Reported live during a MaxQ buildup bake on Hospital (`§MAXQ_FRAME i=55/921`, cancelled at frame 55).
+
+**Do NOT assume §4D_ROOF_LOAD_PATH (#1120) failed.** That fix promoted slabs to roof role by load
+path and the earlier log shows it FIRING on this very building:
+`§GANTT_OVERRIDE 10 slabs promoted to roof role (seq=8) by load path — base_z above the average
+midheight of their XY-overlapping walls`. So 10 slabs *were* re-roled. The user still sees roof
+before walls **on the roof top**, which means either (a) more than 10 slabs need promoting and the
+`base_z > avg midheight of XY-overlapping walls` test misses the rest, or (b) the ordering defect is
+not slab ROLE at all but the storey BAND — note `§GANTT_STOREY_Z reassigned=9457 no-storey elements
+to nearest real storey by median Z`, which is a very large reassignment and could place rooftop walls
+in a band ABOVE their own roof.
+
+**Measure before touching either:** for the specific rooftop elements the user can see, dump
+`storey / band / seq / class / base_z` for the roof slabs AND the walls under them, and check whether
+the walls' `seq` really is later than the slab's, or whether they simply landed in a different band.
+`§GANTT_OPS_FIRST20` already prints that shape — widen it to the rooftop band rather than inventing
+a new probe. §SUPPORT_CHECK reported `floating=0/10979 … gated=63415 (0=solved)`, so the support
+invariant believes it is satisfied — if the walls really are late, that check is ALSO wrong and is
+the better place to start.
