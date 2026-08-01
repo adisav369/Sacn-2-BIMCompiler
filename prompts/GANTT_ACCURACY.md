@@ -377,3 +377,172 @@ include genuine intermediate floors (correct) and would include any parapeted ro
 exercised by Hospital or LTU. **A parapet is a wall whose top is BELOW the tops of the walls it sits
 among, and which carries nothing** — that is the discriminator to add when a building exercises it.
 Do not fix this speculatively; wait for a model that shows it.
+
+---
+
+# §4D_WALLS_BEFORE_ROOF — #1120 promoted the boxes' roofs and left the roof they stand on (spec 2026-08-01)
+
+> **User, live, on a MaxQ buildup bake of Hospital, 2026-08-01:**
+> *"The roof before the walls still happening on the roof top"*
+
+## §4D_ROOF_LOAD_PATH did NOT fail — it fired, and this is what it could not reach
+The user's own run logs `§GANTT_OVERRIDE 10 slabs promoted to roof role (seq=8) by load path`. Ten
+slabs WERE re-roled. The defect survives that. This section does not re-litigate #1120; it names the
+slab #1120 structurally cannot promote and closes it.
+
+**This is `⚠ LIMIT 2` on record from #1120, arriving for real** — and wider than LIMIT 2 predicted.
+LIMIT 2 anticipated a *parapet* defeating clause (b). What actually defeats it on Hospital is the two
+helipad boxes whose OWN roofs #1120 promoted: their walls stand on the main roof slab, so clause (b)
+("no XY-overlapping wall may have `base_z >= slab.top_z`") disqualifies the roof underneath them.
+#1120 fixed the boxes and left the roof they sit on. LIMIT 2's proposed discriminator ("a parapet is
+a wall whose top is BELOW the tops of the walls it sits among, and which carries nothing") would NOT
+have caught this: these walls are 3.05–3.47 m tall and they DO carry something (the box roofs).
+
+## THE MEASUREMENT — Hospital, generated 4D, `origin/main` @ `9945364`
+Probe: every `IfcSlab` in `Hospital_extracted.db` (35), each against the walls that physically carry
+it (XY-overlap, `wall.base_z < slab.base_z - 0.05`, `wall.top_z >= slab.base_z - 0.5` — the same
+carrier test `schedule_gate.js` `auditFloating` already uses), read off the REAL `kernel_ops`
+timestamps after `tmActivateForBake()`. Log: `scratchpad/probe_rooftop_main.log`.
+
+```
+§PROBE_SUMMARY slabs=35 violating=24 promoted(phase=Architecture)=10
+               violating_and_promoted=0   violating_and_NOT_promoted=24
+```
+
+**The rooftop row — the user's defect, in numbers:**
+
+| | slab `3Csn1z$1v5Q8DXdumWYJUE` |
+|---|---|
+| what it is | the topmost main roof slab, 2091.5 m², the building silhouette |
+| storey / z-band | `Level 7` / band 66 (the highest band with a slab that is not a box roof) |
+| base_z / top_z | 199.66 / 199.81 |
+| phase / role | **`Superstructure`, seq 4 — NOT promoted** |
+| starts | **2022-07-27** |
+| its 14 wall carriers finish | **2023-04-30** |
+| error | **277 days before its own walls** |
+
+277 days is the identical figure #1120 reported *fixing*. It was never fixed for this slab — #1120
+measured it on the two box roofs (`3eq15PZlbCi8$6xdfFtxpB`, `3Vxmv9vT1DBOVGP9f4HeYO`, base_z 202.80/
+202.83) which sit ON this one. Those two now start 2023-10-19. The 2091 m² deck beneath them still
+starts 2022-07-27.
+
+## Which of the three candidate causes is real — measured, not chosen
+**CAUSE 1 — the load-path role test misses slabs. REAL, and it is the operative cause.**
+All 24 violating slabs are non-promoted (`phase=Superstructure`); **0 of the 10 promoted slabs
+violate**. Promotion is exactly the thing that fixes the ordering, and the roof-top slab does not get
+it. The blocker is clause (b): 3 XY-overlapping walls (`3Vxmv9vT1DBOVGP9X4HeGE` base 199.87,
+`3Vxmv9vT1DBOVGP9X4HeDp` and `3eq15PZlbCi8$6xdXFtxz7` base 200.06) stand on it. Clause (a) is
+satisfied — the slab is a roof by load path in every respect except that two boxes sit on it.
+
+**CAUSE 2 — the storey BAND. NOT the cause of the defect, but a REAL latent hole in the fix.**
+`§GANTT_STOREY_Z reassigned=9457` does not misplace the rooftop walls: the slab's own band is 66,
+its carriers sit in bands below it, and the bottom-up `base_z` sort is correct. The band is
+irrelevant while the slab is seq 4, because a seq≤4 slab is scheduled in PASS A where walls are not
+consulted at all. **But it becomes real the moment the slab is promoted:** a promoted slab's only
+dependency on walls is `schedule_gate.js`'s per-*phase* trade gate, keyed on
+`collapsePhase(storey)`. This slab's key is `Level 7` while **12 of its 14 carriers are phase-key
+`Level 6`** (`{"Level 6":12,"Level 7A":1,"Level 7":1}`). Promotion alone would leave the wait on
+those 12 walls to coincidence, not to a rule. Must be closed in the same change.
+
+**CAUSE 3 — the support invariant is wrong. REAL, confirmed, and it is why this survived a merge.**
+`§SUPPORT_CHECK floating=0/10979 … (0=solved)` on the very same run in which 24 of 35 slabs start
+~290 days before the walls carrying them. `auditFloating` offers its `wallGrid` only to
+`T.cls === 'IfcSlab' && T.seq > 4` — i.e. **only to slabs M1 already promoted**. A roof M1 *failed*
+to promote keeps seq 4, gets the structure-only pool, and reads clean. This is `⚠ LIMIT 1` verbatim
+("It does not prove the audit would catch a roof M1 FAILED to promote") — now demonstrated on a real
+slab. A `floating=0` that cannot see the defect being reported is not evidence.
+
+## The rule to add — M4, one clause, measured against the alternatives
+**M4 — a wall standing on a roof is not "the next storey" if that wall is itself capped by a slab
+already known to be a roof.** A helipad box, a plant enclosure, a coped parapet — their walls top out
+in a roof, they do not continue the building. Formally, with the shipped M1(a+b) promotion set as
+the seed (computed once, frozen — NOT iterated):
+
+> slab `S` is also a roof if clause (a) holds AND every wall `w` standing on `S`
+> (`w.base_z >= S.top_z`, XY-overlap) is *capped by a seed roof slab* `C` — some `C` in the seed set
+> with `C` XY-overlapping `w` and `w.base_z <= C.base_z <= w.top_z + GAP`.
+> A wall capped by nothing does NOT qualify.
+
+**Depth 1, deliberately, because full recursion was measured and it collapses.** Letting newly
+promoted slabs re-enter the seed set cascades straight down the stack: Level 7's box walls excuse the
+199.66 deck → the deck excuses `3064w0y0nDv9wdb1cWL_Gu` → Level 6 (191.66) promotes → its walls excuse
+Level 5 → Level 4 → the entire building becomes "roof". Depth-1 on the frozen seed set terminates.
+
+**Measured outcome on Hospital (`scratchpad/probe4.py`, same DB, offline replication that reproduces
+the shipped count of 10 exactly): 10 → 11.** The single addition is `3Csn1z$1v5Q8DXdumWYJUE`, the
+user's slab. Every other candidate is blocked and the reason is logged:
+
+| slab | base_z | walls above | blockers | verdict |
+|---|---|---|---|---|
+| `3Csn1z$1v5Q8DXdumWYJUE` | 199.66 | 3 | **0 — all capped by the two box roofs** | **PROMOTED** |
+| `0e8pm26Tv5vPrj6zU55MQt` Level 6 | 191.66 | 16 | 3 (`3aD_wpAY…` h=0.10 capped by nothing; `1EW479yk…`; `3064w0y0…`) | blocked ✓ |
+| `0e8pm26Tv5vPrj6zU55MQv` Level 5 | 186.66 | 54 | 33 | blocked ✓ |
+| `0e8pm26Tv5vPrj6zU55MQh` Level 4 | 181.66 | 535 | 514 | blocked ✓ |
+| `1OV06Y3c5D8vODNyxVnSVI` (#1120's control) | 176.81 | 56 | 56 | blocked ✓ |
+| …9 more intermediate panels at 176.81 | | 1–64 | all ≥1 | blocked ✓ |
+
+**Rejected alternative, measured and discarded:** a footprint-extent ratio (bbox of the walls-above,
+clipped to the slab, over the slab's own area). It does not separate — the Level 7 roof scores 0.040
+while genuine intermediate panels at 176.81 score 0.024 / 0.024 / 0.029 / 0.044 and Level 6 scores
+0.170. Any cut that promotes the roof also promotes at least four ordinary floors. No threshold exists;
+this is why M4 is a load-path rule and not an area rule. (`scratchpad/probe3.py`.)
+
+## M5 — the promoted slab must wait for its carriers by GEOMETRY, not by phase key (closes CAUSE 2)
+`schedule_gate.js` `computeSchedule` PASS B sorts by `(seq, base_z)`, so walls (seq 6) are always
+placed before roof slabs (seq 8) within the same pass. Build a wall support grid incrementally as
+PASS B places walls, and gate any `seq > 4` `IfcSlab` on the XY-overlapping walls that carry it
+(`w.base_z < S.base_z - EPS && w.top_z >= S.base_z - GAP`) in addition to the existing structure
+gate and trade gate. No new pass, no cycle, no new constant — `EPS`/`GAP` are the module's own, and
+the pool is **the same pool `auditFloating` already uses for `seq>4` slabs**, so scheduler and
+auditor finally test the same thing instead of the auditor being narrowed to match the scheduler's
+blind spot.
+
+## M6 — stop the instrument from lying (narrows CAUSE 3 / LIMIT 1)
+`§SUPPORT_CHECK floating=0` stays as it is (its scope is defended in #1120), but it must no longer be
+the ONLY number. Add a role-blind measurement line so the blind spot is visible in the log rather
+than hidden behind a zero:
+
+```
+§ROOF_GATE roofSlabs=<n> lateVsWallCarriers=<must be 0> | otherSlabs=<n> lateVsWallCarriers=<n> (frame-first, expected — see LIMIT 1)
+```
+
+`lateVsWallCarriers` counts slabs whose `start` precedes the max `end` of their XY-overlapping wall
+carriers, computed for EVERY slab regardless of seq. The roof-role half is a **gate** (0 required).
+The other half is a **measurement, not a gate** — an ordinary intermediate floor legitimately precedes
+the partitions beneath it in a frame-first concrete schedule (this is #1120's rejected "attempt 2",
+24 false positives, and it is still the right call). Printing it is what makes LIMIT 1 auditable.
+
+## Witness claims — `witness_4d_walls_before_roof.js`
+- **G-WBR-1** RED→GREEN, the user's slab. RED on `origin/main`: `3Csn1z$1v5Q8DXdumWYJUE`
+  starts 2022-07-27 (`phase=Superstructure`) while its 14 wall carriers finish 2023-04-30 — 277 days
+  early. GREEN: `start >= max(carrier.end)` and `phase=Architecture`.
+- **G-WBR-2** no cascade. `§GANTT_OVERRIDE` reports **11** (was 10), and the four named controls —
+  Level 6 191.66, Level 5 186.66, Level 4 181.66, and #1120's own floor control
+  `1OV06Y3c5D8vODNyxVnSVI` — are all still `phase != Architecture`. The fix cannot pass by promoting
+  everything, and specifically cannot pass by re-entering its own output.
+- **G-WBR-3** the role is still DERIVED, not named: with every `storey` string blanked, the same slab
+  is still promoted. A name test scores 0 here.
+- **G-WBR-4** CAUSE 2 is closed by geometry, not luck: 12 of the slab's 14 carriers are phase-key
+  `Level 6` while the slab's key is `Level 7`, so the per-phase trade gate provably cannot cover
+  them; assert the slab starts at/after the max end **of those 12 specifically**. Also asserted
+  directly against `ScheduleGate.computeSchedule` on the real 15-element subset with the trade gate
+  neutralised (all carriers given a different storey), where the pre-M5 code returns a start EARLIER
+  than the carriers' end and the post-M5 code does not.
+- **G-WBR-5** the instrument no longer hides it: `§ROOF_GATE` is present, its roof half is 0, and its
+  other half is a non-zero *reported* number. On `origin/main` the line is absent entirely while
+  `§SUPPORT_CHECK` reads `floating=0/10979` — i.e. the only instrument said "solved".
+- **G-WBR-6** no regression: `placed == total` on Hospital **and** LTU_AHouse, and `§SUPPORT_CHECK`
+  is still `floating=0` on both.
+
+## Cache/version obligations
+- `_GANTT_CACHE_VERSION` **5 → 6** in `viewer/time_machine.js`. Without it a browser holding a cached
+  gantt never re-generates and the fix cannot reach the user — the exact failure PR #1123 had to
+  ship as its own follow-up for #1120.
+- `viewer/sw.js` `CACHE_VERSION` bump (`viewer/time_machine.js` and `viewer/schedule_gate.js` are
+  precached).
+
+## ⛔ Out of scope
+- Making `§SUPPORT_CHECK` role-blind (that is #1120's measured-and-rejected "attempt 2"; M6 reports
+  the number instead of gating on it).
+- The captured/linked-schedule path (`source=captured`). GENERATED 4D only.
+- `sequence_rules.json` seq numbers, the room-title lane, `MIN_DWELL`.
