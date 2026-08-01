@@ -2789,3 +2789,68 @@ patched in the router.
 4. Re-run §21.26's §S1–§S4 on the carved raster. Only then is the two-layer design's feasibility
    actually testable; every number in §21.23–§21.26 was taken on a substrate with no doorways in it.
 5. Funnel residuals (§21.18) LAST, unchanged.
+
+### §21.27 DOOR VOIDS CARVED — §21.26's stopper is REMOVED (99%/100% → 0%). Layer 1 now builds, but
+### does not yet beat the room graph. **And §21.26's rotation finding is RETRACTED — it was wrong.**
+bim-ootb `review/roompath-redundancy` @ `2d2d069`, pushed. Room compile untouched throughout —
+carving is spine-only by design, because carving doorways would let the room flood-fill leak through
+them, which is the very thing `SEAL` exists to stop. Nothing deployed.
+
+**Step 1 of §21.26 done, and gated before any spine number was believed.** `§SPINE-RASTER` carves
+IfcDoor + floor-level IfcOpeningElement voids out of the wall stamps, so doorways exist in the
+geometry for the first time in this lane.
+```
+§G1 door centres on solid wall   Clinic 99% -> 0%      LTU 100% -> 0%          PASS
+§G2 stamped wall area            Clinic 1018 -> 827 m²  LTU 4104 -> 2614 m²
+§G3 leak signature (largest enclosed pocket as % of plan)
+                                 Clinic 2.5% -> 2.5%   LTU 8.5% -> 8.5%   unchanged => no leak
+```
+**Three corrections were needed, and every one was caught by a gate rather than by reading the
+code** — which is the argument for writing the gate first:
+1. **Carving alone let the exterior flood straight in** — 99% of enclosed floor lost on the first
+   run. Fixed by `§SEAL-DOORS-FIRST`: the ENCLOSURE is derived from a mask with all doors re-closed,
+   while OPENINGS are detected on the carved mask where they are open. Two masks, one raster, each
+   question asked of the one that can answer it.
+2. **Carving `IfcOpeningElement` indiscriminately removed 55.6% of LTU's wall** — those 3,368
+   openings include WINDOWS. Fixed by `§VOID-AT-FLOOR`: test the void's own sill height against its
+   storey datum. No name matching. (Clinic carries 0 openings at all; LTU 3,368 — the two fixtures
+   differ in kind here, as they did on §OPEN-THRESHOLD.)
+3. **The opening→door match reach (`SEAL+1`) was shorter than the re-sealed door stamp it has to
+   cross**, giving `withDoor=0` on every storey — i.e. no door links at all, which read as a clean
+   100% unroutable rather than as a bug. Reach is now derived from the stamp depth.
+
+**RETRACTION — §21.26's second finding is WITHDRAWN.** It claimed `_rasterizeWalls` ignores
+`rotation_z` and therefore stamps 2,051 LTU walls at the wrong orientation. **`rotation_z` is stored
+in RADIANS** (measured range ±π); both that check and my first stamp implementation treated it as
+degrees, which turned a 180° wall into a 3.14° one and made the knob a no-op. With the unit
+corrected and rotation isolated as its own knob, it is measurably a **non-issue**:
+```
+wall area, rotate-only vs base:  Clinic 1018 -> 1022 m²   LTU 4104 -> 4106 m²   enclosure identical
+```
+**Step 2 of §21.26's plan is dropped.** The lesson is the one this lane keeps relearning: a
+"defect" inferred from a derived statistic (§WALLGEOM's chunky-aspect count) and never confirmed
+against the raw value is not a finding. §21.24's §MULTI-RECT grouping bug and this are the same
+error twice.
+
+**STATUS — carving removed the stopper but has NOT yet produced a better map. Stated plainly:**
+```
+Clinic  spine 9% / 31% of interior floor   openings doorless=23/11  withDoor=114/73
+        depth chains 1..5 now present (were absent entirely)   unroutable 91.3%  [baseline 43.3%]
+LTU     unroutable 87.7%  [baseline 32.4%]        stranded: Clinic 140, LTU 107 rooms
+```
+Layer 1 is now mechanically correct — real doorways, real door links, real depth — and still loses
+to §21.24's room graph on the only number that has decided anything in this lane. **The next thing
+to chase is the STRANDED count, not the spine definition.** 140 and 107 rooms with no door path to
+the spine is the whole gap; the spine's own share of floor area is a symptom of it, not a separate
+problem.
+
+**NEXT:**
+1. **Chase the stranded rooms.** For each, why: no door element, a door whose carve did not pierce
+   its host wall, or a pocket the sealed flood never formed. Those are three different fixes and the
+   count says which dominates.
+2. **Explain LTU's enclosed-area drop** (22,311 → 9,696 m² under carving, with NO leak signature).
+   Most likely legitimate — floor-level doorless openings to outside on a residential building
+   (balcony thresholds) — but "most likely" is not measured, and it is 57% of the floor.
+3. **Then, and only then, re-run §S1–§S4** and compare against §21.24 honestly.
+4. Move the metadata to injection per the user's architecture (§21.26) once the map earns it.
+5. Funnel residuals (§21.18) LAST, unchanged.
