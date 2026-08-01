@@ -4964,3 +4964,27 @@ band-join fractions rather than writing a new probe.
 ⚠ **The user's words are "smooth handler THRUOUT"** — same standing directive as the noise ratio and the
 facing law. Whatever is built must cover every seam (band joins, Beat2→3, Beat3→4, Beat4→5), not the
 one that was reported.
+
+## 🔴 OPEN, NEW — "the building up is getting faster in the starting.. and not enough in the mid"
+Reported on the same baked film, immediately after §4D_WALLS_BEFORE_ROOF landed. **That timing is the
+first thing to check, and it is NOT a coincidence to dismiss:** that change re-roled a 2091 m² deck
+from `Superstructure` to `Architecture` and moved it **+450 days**, and it added geometric wall-carrier
+dependencies. Both alter how many elements fall in each slice of the timeline — which is exactly what
+§CPE_BUILDUP_WORK_PACED paces the film by.
+
+**The suspect, and it is measurable in one query.** §CPE_BUILDUP_WORK_PACED advances the film by
+ELEMENTS PLACED, not calendar days ("10% of the film is 10% of the building"). That is only even
+pacing if the work CURVE is even. Re-sequencing bulk work later leaves a front-loaded curve: many
+cheap elements early, a starved middle. So the reported symptom is what a *correct* work-paced film
+looks like over a *newly lumpy* schedule — the defect may be in the SCHEDULE, not the pacing.
+
+**Measure before touching either:** bin `kernel_ops` placement timestamps into 20 equal slices of the
+project span and print elements-per-slice, on `origin/main` and on the merged 4D fix. If the curve got
+more front-loaded, the fix is in the sequencing (or in a deliberate re-balance), NOT in the film. If
+the curve is unchanged, then §CPE_BUILDUP_WORK_PACED's cursor is at fault and the pacing is the bug.
+`§GANTT_SOURCE captured tasks=6 covered=63415` and `§4D_COVERAGE … pct=100 window=2026-01-01..2026-06-30`
+already print the shape — extend, do not invent.
+
+⚠ Only **6 leaf tasks / 6 phases** cover 63,415 elements (`§AUTHOR_MATERIALIZE … phases=6 leafTasks=6
+assignments=63415`). With that few buckets, one phase moving re-shapes a large fraction of the curve at
+once — a strong prior for the schedule being the cause rather than the film.
