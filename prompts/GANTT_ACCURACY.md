@@ -1,5 +1,37 @@
 # ⚠ DO NOT REMOVE — Read the log after every run
 
+## ▶ RESUME 2026-08-02 (session close) — START HERE
+**ONE open item, specced and de-risked, needing ONE user ruling before code.**
+
+**USER-CONFIRMED LIVE, 2026-08-02, on a FRESH generate from a CLEARED IndexedDB** (so this is the
+current rules, not a stale gantt cache): *"Still noticing from cleared IndexDB initial Time Machine
+has beams without support."* This is EXACTLY what `audit_support_roleblind.js` measures — **1,294
+`IfcBeam` bearing on walls** are scheduled before those walls, out of 6,778 total / 2,379 structural.
+The live symptom and the headless number are the same defect. **No re-diagnosis needed.**
+
+**DO NOT re-attempt the five pass-level repairs** — all built and measured 2026-08-02, all rejected,
+table + reasons in `§ROOT CAUSE — CONFLICTING SORT ORDERS` at the END of this file. Read that first.
+
+**THE FIX IS SPECCED:** `§ELEMENT_CPM` (last section of this file). Element-level precedence is
+EXTRACTED from geometry, not authored — the user's own framing, and it is correct: *"Isn't CPM for
+Phase level? CPM at element level is what supposed to be granted innately."* The header's
+"No CPM/dependency solving (planner's)" scopes out PHASE-level authored programmes and still does.
+It never scoped out extracted element precedence. **My earlier framing of this as a scope widening
+was WRONG and the user corrected it.**
+
+**⛔ THE ONE RULING NEEDED BEFORE BUILDING:** 21,502 element pairs where extracted geometry says
+*wall before beam* and the trade convention says *structure before walls*. That is the cycle. My
+reading is that Ruling A already settles it — "nothing without support" is the hard role-blind gate,
+floating wins over ordering — so **SUPPORT WINS and the trade edge is dropped, with every drop
+counted in a `§` line**. Get the user to confirm or override, then build.
+
+**Gates that must ALL pass (the trap of this lane is passing one by breaking another):**
+`node audit_support_roleblind.js` → 0 · `node tests/test_schedule_gate.js` → 0 floating ·
+`node witness_4d_band_monotonic.js` → T2a 0, T2b ≤ 551, T4 span ≤ 2× · run from a `/tmp/wt-*` worktree.
+
+**State:** `origin/main` = `fc58210`, scheduler byte-for-byte shipped, all witnesses green.
+Audits live on branch `fix/helipad-roof-separation` (`a40cf16`) — **audits only, scheduler reverted**.
+
 ## Gantt Accuracy & User-Editable Construction Schedule
 
 ### Goal
@@ -725,3 +757,59 @@ without that ruling.**
 reported defect), nothing floats, and ~2,000 structural elements bearing on walls are scheduled before
 those walls — now MEASURED and named by `audit_support_roleblind.js` rather than hidden behind
 `§SUPPORT_CHECK floating=0`, which only ever asked the question about roof slabs.
+
+
+## §ELEMENT_CPM — the specced fix. Extracted precedence, not an authored programme.
+**User's framing, 2026-08-02, and it is the correct one:** *"Isn't CPM for Phase level? CPM at element
+level is what supposed to be granted innately as u just did."* Right. Phase-level CPM is a planner
+authoring activities and logic links — out of scope, stays out. Element-level precedence is a FACT OF
+THE GEOMETRY: S carries T when `S.base_z < T.base_z - EPS`, `|S.top_z - T.base_z| <= GAP`, and they
+overlap in XY. The edges already exist; nothing is invented and nothing is solved to obtain them.
+
+**WHY ALL FIVE PASS-LEVEL REPAIRS FAILED, restated in one line:** `base_z` and `(seq, rank)` are both
+PROXIES for a topological order. Each encodes one constraint family and loses the other. The fix is to
+stop using a proxy and use the graph.
+
+**MEASURED FEASIBILITY on real Hospital (this is small, not a rewrite risk):**
+
+| | |
+|---|---|
+| nodes | 63,415 |
+| support edges | **74,942** (1.2/element avg, **max in-degree 1,101**) |
+| graph build | **709 ms** |
+| sync nodes for band + trade | **72** — so those families are O(N), not O(N²) |
+| trade-vs-support conflicts | **21,502** ← the ruling above |
+
+~63k nodes / ~200k edges. Topological sort + forward pass is milliseconds — CHEAPER than the two-pass
+scheduler it replaces, and negligible against the 21.6-minute bake it feeds (`§BAKE_FAST_PATH_COST`).
+
+**THE BUILD, in order:**
+1. **Support edges from geometry.** Acyclic BY CONSTRUCTION — `base_z` strictly decreases downward, so
+   no cycle is possible. Already implemented and timed inside `audit_support_roleblind.js`; lift it.
+2. **Trade + band edges via 72 sync nodes** — one per `(storey, seq)` and per `(rank, seq)`, instead of
+   pairwise. **Skip any edge that contradicts a support path** and COUNT the skips in a `§` line
+   (expected ≈21,502; a wildly different number means the predicate drifted).
+3. **Topological sort + forward pass** with the existing `§CREW-CAP` project-wide crew pool. This is a
+   CPM forward pass over an EXTRACTED graph.
+4. ⚠ **Max in-degree is 1,101** — one element carried by 1,101 others (the 2,092 m² deck,
+   `3Csn1z$1v5Q8DXdumWYJUE`). Give wide fan-in the sync-node treatment too or that single node
+   dominates the edge count.
+
+**EXPECT IT TO BEAT SHIPPED, not merely match it.** Design 5 (the one geometry-ordered sweep) already
+demonstrated that once ordering is right the schedule IMPROVES: span 170d → **147d**, trades at
+midpoint 5 → **7**. It failed only on the band gate, which is exactly what an explicit graph fixes.
+
+**Instruments already built and committed** (branch `fix/helipad-roof-separation`):
+`audit_support_roleblind.js` — the invariant, carriers = structure+walls offered to EVERY class, with
+the rests-on predicate. `audit_helipad_roof_walls.js` — roof-role slabs vs their carriers (0/11, and
+it reproduces the shipped `§GANTT_OVERRIDE` counts exactly, which is what makes it trustworthy).
+
+**⚠ TWO PREDICATE TRAPS — both cost a wrong answer this session, do not fall in again:**
+1. **Carrier pool.** Role-blind (every class carries every class) gives 40,754 — it counts
+   `IfcPipeFitting on IfcCovering` (5,606) as support. A pipe above a ceiling tile is not held by it.
+   Carriers are STRUCTURE + WALLS.
+2. **Rests-on vs runs-past.** `S.top_z >= T.base_z - GAP` accepts ANY carrier taller than my base, so a
+   riser threading past a 3 m wall reads as carried: **29,759 phantom vs 6,778 real**. The carrier must
+   top out AT my underside: `|S.top_z - T.base_z| <= GAP`. **This trap is already recorded in
+   `auditFloating`'s own header as evidence that "walls do not carry beams in this DB" — that
+   conclusion is WRONG and is corrected in `§SUPPORT_ALL` above.** Walls carry structure in 1,243 places.
