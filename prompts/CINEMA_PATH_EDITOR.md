@@ -4734,3 +4734,61 @@ where the aim is already saturated** — it has nothing left to add. It will do 
 walk heads away from the mass. **Do not "fix" this by forcing rotation during a hold**; the honest
 next step, if the user wants a visible turn at the stick, is a path/subject where the aim is not
 already committed, or an explicit "look at X during this hold" author control — not a synthetic spin.
+
+---
+
+# ▶ LIVE REPORTS 2026-08-01 (late) — read before resuming; two are OPEN, one was a deploy gap
+User tested LIVE (`github.io`, `§BUILD_VERSION v907`) and reported three things.
+
+## 1. "i dont notice the hold time" — NOT A DEFECT, a DEPLOY GAP
+`v907` is PR #1125 (§CPE_SPIN_WHIP) and nothing else. Their own log proves it:
+`§EFFECTS_LOADED v17 (§CINEMA_LOOKAHEAD_ARC … §CPE_EVEN_TURN … §CPE_SEAM_CONTINUOUS)` — no
+`§CPE_STICK_HOLD` and no `§CPE_GAZE_CONSTANT_RATE` line anywhere in 300+ lines. The hold/latch/rate
+work is on **`feat/cpe-stick-hold`** (v909), unmerged. §CPE_SPIN_WHIP *is* live and working
+(`§CPE_SPIN_WHIP flownDeg=0.0 ceilingDeg=360`, `§CINEMA_SPIN class=already-facing(no-spin) capped=false`).
+
+## 2. 🔴 OPEN — "it is also spinning more than one full round in the end"
+**NOT YET DIAGNOSED — do not assume the mechanism.** The reading so far, from code not measurement:
+`_orbitPose` sets `az = exitAz + _cinemaAzU(u)·2π` — a hardcoded **FULL 2π lap** anchored at `exitAz`.
+Beat 4 then translates `exitOuter → orbitStart`, and `orbitStart = _orbitPose(0)` sits at that SAME
+`exitAz` (since `exitAz = atan2(exitOuter − pivot)`), so Beat 4 is radial, not azimuthal — meaning the
+lap alone should be exactly 360°. So the extra rotation is more likely the **Beat 4 turn-to-face
+(`turnW4`, up to 180° of gaze) landing ON TOP of a full 360° lap**, which reads as "more than one
+round". **This is the §CPE_SPIN_WHIP family again** (a full lap ADDED to an existing angular
+displacement instead of being the total) — the fifth instance if it holds.
+**Measure first:** accumulate camera azimuth about `pivot` AND gaze yaw across `[tR, 1]`, and
+separately across `[tO, tR]`, on a real path. If total apparent rotation > 360°, decide whether the
+lap should be `360° − whatever Beat 4 already covered`, exactly as the spin's long-way fix did.
+
+## 3. 🔴 OPEN — THE BLIND FAN IS REAL IN A LIVE BROWSER, not a headless-rig artifact
+The §CPE_NOISE_LAW session recorded the blind fan as a *rig* finding ("on Terminal in the headless
+rig"). **It is not rig-specific.** Live Chrome, Hospital, 63182 elements fully streamed:
+```
+§CINEMA_DIVE src=bbox-centre (no enclosed candidate among top 6)
+  fanMin=60.0 fanMax=60.0 fanMean=60.0     ← every ray = the CINEMA_FAN_FAR sentinel: ZERO hits
+  settle=(-7.3,-14.4,18.0) floorY=-16.09
+§CINEMA_SPACE … enclosed=0%   on ALL SEVEN candidates (315.7m², 219.4m², 97.1m², …)
+```
+So §CINEMA_SPACE disqualifies every real room and the dive falls back to **bbox-centre** — the film
+never dives into a space at all. **Likely cause, unverified:** the scene is BatchedMesh-dominated
+(`§CONTRACT_CHECK batch=38172 instanced=25010 merged=0`) and `_cinemaFanMeshes()` almost certainly
+does not collect `BatchedMesh`, so the raycast has nothing to hit. **Check that first** — it is one
+grep, and if true it invalidates every fan-derived number on every large building, live and headless.
+
+**Corroboration for §CPE_STICK_HOLD's G-SH-5 caveat, from the user's own live log:**
+`§CPE_AIM_SERIES active=0/65 maxBlend=0.00` and `§CPE_AIM_DEPTH_SERIES active=65/65 maxBlend=1.00`.
+The depth rule is **saturated everywhere** on a real building, exactly as the witness measured — which
+is why a hold currently buys DWELL and not TURN. That caveat is confirmed live, not a rig artifact.
+
+## 4. User directive, same session — the next lane
+> *"noise speed ratio and auto cam head facing algorithm thruout"*
+
+Both laws are to govern **the whole film**, not selected beats. Status against that bar:
+- **Noise ratio:** dive ✅, walk ✅ (#1121), spin ✅ (§CPE_SPIN_WHIP). **Still missing: `rise` and
+  `orbit`** — `_natSec.rise = _pullDist/CINEMA_PULLBACK_MPS` and `_natSec.orbit = 360/CINEMA_TURN_DPS`
+  carry no `(1 + (SWING−1)·busy)` term. This was already named as open in the 2026-07-27 session
+  ("Give `orbit`/`rise` the noise term the dive has") and is now re-asked directly. Finish it.
+- **Auto cam head facing:** §CPE_AIM_LATCH + §CPE_GAZE_CONSTANT_RATE now govern **Beats 3 and 4**
+  (built, unmerged). They do **NOT** govern **Beat 1 (dive — heading held at `yaw0` BY DESIGN)** or
+  **Beat 5 (orbit — aims at `pivot` by its own geometry)**. "Thruout" means those two beats next;
+  the dive is the one the user's original "turn starts too late" report actually landed in.
