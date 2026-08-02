@@ -973,3 +973,57 @@ actually plays. `§STAGGER_HOST movedAfterHost=N` is the new live §-line; expec
 **Verify on the user's next fresh generate:** `§CPE_BUILDUP_SOURCE source=captured` +
 `§STAGGER_HOST` present + beams no longer preceding their walls from a cleared-IndexedDB Time
 Machine.
+
+---
+
+# ▶ §Z_STACK_XRAY_STAGING — the support fix that touches NO ordering: unsupported = X-RAY until carriers land (specced 2026-08-02, NOT built)
+**User, during the v918 bake, three escalating proposals:** *"introduce some sort of peek forward to
+pull over elements... Or better, simply store away those until their supporting elements arrive —
+study which method is viable"* → *"or make them x-ray to indicate the item is there but to be
+assembled. More meaningful."* The third one wins the study, and the study is MEASURED:
+
+| method | support | side effects | verdict |
+|---|---|---|---|
+| peek-forward (pull carriers earlier) = §ROOT CAUSE design 1 | 6,778→377 | band inversions 0→1,026, span +25% | ❌ measured, rejected |
+| store-away at SCHEDULER (defer dates) = design B | — | transitive cascade floats 58.2% of structure | ❌ measured, rejected |
+| full graph = §ELEMENT_CPM | 6,778→**0** | band inversions 29,824→34,595+ (user-confirmed-good ordering regresses visibly) | ❌ built, NOT merged |
+| store-away at REVEAL (defer display only) — NEW, simulated 2026-08-02 | 7,861→**0**, span unchanged | **moved=16,680 (26.3%) mean 144.65d, max 253.7d** — clumped pops, film no longer matches its own gantt dates | ❌ §REVEAL_DEFER_STUDY, this file |
+| **X-RAY STAGING** | invariant reframed: nothing appears SOLID before support | **schedule untouched** — gantt, day counter, band ordering keep the user's live confirmation | ✅ **build this** |
+
+**Why the scheduler cannot simply "resolve it in the first place" (user's question, answered from
+the record):** §ROOT CAUSE — support wants carriers placed first (z-major), the band gate wants
+lower storeys' trades first (rank-major), and walls BOTH carry structure AND rest on structure, so
+the two constraints demand conflicting sort orders of the same elements. Nine engine shapes built
+and measured across §ROOT CAUSE + §ELEMENT_CPM; each satisfies one invariant by breaking the other.
+The engine question stays parked; X-ray staging makes the FILM honest without reopening it.
+
+## The rule
+An element revealed at its scheduled time whose support carriers (the §SUPPORT_ALL predicate:
+structure+walls, XY-overlap, rests-on `|S.top_z - T.base_z| <= GAP`) are NOT all placed renders
+X-RAY (the existing ghost material treatment — precedent: §GHOST_GROUND, ghostglass, Alt+X bbox
+ghost) and turns SOLID the moment its last carrier places. "The item is there but to be assembled."
+- Support edges: EXTRACTED once per building — the §ELEMENT_CPM machinery, already measured at
+  74,942 edges / 0.7s build on Hospital's 63,415. Acyclic by construction (base_z strictly down).
+- Applies to the GENERATED path in Time Machine playback AND the film (same reveal machinery —
+  §CPE_BUILDUP_FOLLOW_TM stays true: the film still plays the timeline verbatim; material state is
+  presentation, not order). Captured path (source=captured) already support-clean per element
+  within tasks (#1133); cross-task ghosting can use the same pass unchanged.
+- Expected magnitude, from §REVEAL_DEFER_STUDY: ~16,680 elements (26.3%) will spend time staged —
+  that is the DEFECT being made visible, not a cost. Log it: `§XRAY_STAGED n=... solidified=...`.
+
+## Witness claims
+- **W-XRAY-1 (the invariant, reframed):** role-blind audit over SOLID-transition times → 0 on
+  Hospital generated 4D. RED first: on main, solid==reveal, audit reads ~6,778.
+- **W-XRAY-2 (no ordering change):** kernel_ops timestamps byte-identical before/after; gantt bars,
+  §CPE_DAY_COUNTER, and witness_4d_band_monotonic outputs unchanged.
+- **W-XRAY-3 (no orphan ghosts):** every staged element eventually solidifies ≤ project end;
+  count staged-at-film-end must be 0 (its carriers are scheduled too).
+- **W-XRAY-4 (perf):** edge build once per generate (~0.7s measured), per-tick check O(newly
+  placed), §PERF_TRAVERSE budget unchanged on Hospital.
+- ⚠ Mobile/TM-lite (`_isMobileTM`, §S259_TM_LITE >50K): decide explicitly whether staging is
+  skipped there like other effects — do not let it silently break the 50K path.
+
+## ⛔ Out of scope
+Re-opening the scheduler engine (§ELEMENT_CPM stays parked behind its ruling) · the captured-path
+task windows (planner's data) · any change to kernel_ops timestamps — this feature is material
+state ONLY.
