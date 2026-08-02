@@ -3625,3 +3625,50 @@ and §C40c (far-end slivers must fall from 39/41).
 raster had no door voids (§21.26) → carve added, but plugged the enclosure shut (§21.30) → §PRECARVE
 → unhosted voids over-admitted (§21.33) → `W:3.0` → pierce too shallow for 33/51 crossings (§21.38)
 → `10*RES` → **doorway pockets terminate the graph (§21.41)** → provenance merge, next.
+
+### §21.42 START HERE — handoff (written 2026-08-02, session close)
+**Read `ROOM_PATHING_SUBSTRATE.md` FIRST** (same folder, new this session). It carries the concept,
+the architecture, the settled invariants, every failed trial with what killed it, the four method
+rules, how other systems solve this, and a §0 READING MAP indexing all 30 docs in the lane. Then read
+§21.29→§21.41 here for the dated detail. **Everything before §21.29 is superseded — do not re-derive it.**
+
+**Setup.** `cd ~/bim-ootb && git worktree list` FIRST — reuse `/tmp/wt-roompath` if it is there. If not:
+`GIT_LFS_SKIP_SMUDGE=1 git worktree add /tmp/wt-roompath review/roompath-redundancy`. It has vanished
+three times in this lane; everything is pushed, so recreate and continue, never re-derive.
+
+**State.** Nothing deployed. `common/room_graph.js` and `viewer/navigate_find.js` byte-unchanged
+across §21.20–§21.42. Defaults now: `voidMode = 'W:3.0'`, `pierce = 10 * RES`.
+```
+LTU     stranded  18/277   unroutable 18.4%   (room-graph baseline 32.4%)  BEATEN, phantom-tested
+Clinic  stranded  50/186   unroutable 49.3%   (baseline 43.3%)             still short
+```
+
+**THE ONE THING TO DO NEXT — §21.41's fix, and it needs no constant.**
+> A pocket whose cells lie ENTIRELY within carved void footprints is a DOORWAY, not a room. Merge it
+> into its neighbours, or emit it as a pass-through edge, before grouping.
+
+Why: 39 of 41 links leaving Clinic's largest stranded cluster end in a ~1 m² pocket that is itself
+unreachable. `SEAL`'s band cuts the carved doorway off from the rooms on both sides, so it becomes its
+own pocket; room→doorway is emitted, doorway→far-room is not, and the graph dies inside the doorway.
+The carve rects are already computed in `_rasterizeSpine`, so the provenance test is free.
+**Falsification, write it before the code:** doorway-provenance pockets must be a large share of
+Clinic's sub-2 m² pockets and near-zero of its >10 m² ones. If real rooms classify as doorways, the
+test is wrong and must not ship.
+
+**THEN — the free win, and it closes a hole the lane has had from day one.** `rel_contained_in_space`
+already names **208/606 (LTU) and 98/254 (Clinic)** authored door↔space containments. Clinic has them
+despite having zero opening geometry. Use them as a **verification ORACLE**: check our derived
+door→room links against the ~300 authored ones. Measure-only, cheap, and it is the first independent
+check on link correctness this lane has ever had — see `ROOM_PATHING_SUBSTRATE.md` §11.
+
+**GATE after any substrate change — all five, no exceptions:**
+`witness_room_path_aperture_tier.js` (§T1–§T5, retention must stay 100%/100%) ·
+`witness_room_path_overlink.js` (§O2 sweep, §O3 phantom share must not rise) ·
+`witness_room_path_stranded_cause.js` (§SC3 breaks must fall from 9/14) ·
+`witness_room_path_cluster_boundary.js` (§CB5 sealed suites from 7/8) ·
+`roompath_diagnostics/clinic17_dump.js` (§C40c far-end slivers from 39/41).
+Merging pockets is a FUSION — the direction that manufactured phantom adjacency in §21.33 — so §O3
+is the gate that matters most for this particular change.
+
+**Still open, unchanged:** §21.33's 101/30 `noVoid` fusions (gaps in the wall EXTRACTION, never
+examined; on Clinic they are 100% of all fusion) · funnel residuals (§21.18) LAST.

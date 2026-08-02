@@ -44,17 +44,19 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   trade gate and the band gate onto the elevation key (band alone isn't enough — trade still keys on
   label, 23,121 elements sit in two groupings, barrier deadlocks). Engine/support-extraction/crew-pool
   built and reusable.
-- ▶ **ROOM PATHING** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, resume at
-  §21.39 (then §21.14 for setup only). ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
+- ▶ **ROOM PATHING** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, read `ROOM_PATHING_SUBSTRATE.md` FIRST (new: concept,
+  invariants, every failed trial, prior art, §0 index of all 30 lane docs), then resume at §21.42. ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
   re-derive. Three defects found and fixed 2026-08-02: §PRECARVE (retention 84%/43%→100%/100%), the
   unhosted-void admission (default `W:3.0`), and the door pierce (6*RES→10*RES). **LTU stranded
   107→18/277, unroutable 87.7%→18.4% — beats the room-graph baseline 32.4% AND survives the
   phantom-adjacency cap test (share 104%→20%).** Standing 4-witness gate all green: §T1–T5 (retention
   100%/100%), §O3, §SC3 breaks 11/34→9/14, §CB5 sealed suites 9/23→7/8.
-  ⛔ **Clinic barely moved: 50/186 @ 49.3%, its 31-room sealed cluster stands.** §21.38 predicted it —
-  17 of its 51 door-crossings sit INSIDE both the pierce and the march, so no depth change reaches
-  them. NEXT: (1) instrument ONE of those 17 cell-by-cell (enumeration, not aggregate — that rule has
-  paid twice now), (2) re-run the full gate, (3) the 101/30 `noVoid` fusions. Funnel §21.18 LAST.
+  ⛔ **Clinic still short: 50/186 @ 49.3%.** ROOT CAUSE FOUND (§21.41): the carved doorway becomes its
+  own ~1 m² pocket and TERMINATES the graph — 39 of 41 links leaving its largest cluster end in one.
+  Fix is provenance-based, no constant: a pocket made entirely of carved-void cells is a doorway, not
+  a room — merge it. NEXT: (1) that merge + the 5-witness gate (§O3 matters most, merging is fusion),
+  (2) ⭐ FREE WIN: `rel_contained_in_space` already names 208/606 LTU and 98/254 Clinic authored
+  door↔space links — use as the lane's first independent ORACLE, (3) the 101/30 `noVoid` fusions.
   19 witnesses on bim-ootb `review/roompath-redundancy`, worktree `/tmp/wt-roompath` live/clean/pushed
   — REUSE it. Nothing deployed; engine byte-unchanged. Blocks `datacentre_cabling.md` cable-pathing.
 - ▶ **MODELLER** — dispatch from `prompts/MODELLER_MASTER.md` (⚠ landmine found compacting this file
