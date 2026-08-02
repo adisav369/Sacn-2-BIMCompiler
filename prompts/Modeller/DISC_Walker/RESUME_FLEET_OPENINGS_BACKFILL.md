@@ -363,7 +363,8 @@ anywhere in this lane.
 - OCI: 4 objects uploaded+verified BEFORE the stop directive, then DEFERRED — §4.11 lists them by
   md5. ⚠ those 4 dev-bucket objects are now ALSO one generation behind local (pre-ghost shape) —
   the §4.11 divergence landmine got one notch deeper; local remains truth.
-- Git: witness+injector `review/roompath-redundancy` @ `8c3d12c` pushed, 0 local-only; extractor
-  fix + this file on `fable/meshdb-livewire` (commit hash in final push, recorded below)
+- Git: witness+injector `review/roompath-redundancy` @ `8c3d12c` + disc-default fix @ `1995de4`,
+  pushed, 0 local-only; extractor fix + this file on `fable/meshdb-livewire` @ `42bcc3745`, pushed,
+  0 local-only (this hash-recording line lands in the immediate follow-up commit on the same branch)
 - NOT done / out of scope by §3+§5: LTU untouched (S184 shape live, §5.4); no walker changes; no
   voidMode/pierce/constant changes; live + common OCI buckets untouched; no `.db` in any git repo
