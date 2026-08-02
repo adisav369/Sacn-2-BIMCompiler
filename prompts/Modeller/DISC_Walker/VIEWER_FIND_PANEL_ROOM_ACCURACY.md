@@ -3454,3 +3454,49 @@ sufficient**, which is exactly why §21.36 said to measure before changing anyth
 byte-unchanged across §21.20–§21.37. Default `voidMode` is `W:3.0`. Worktree `/tmp/wt-roompath` @
 `5f01fb5` — REUSE it (`git worktree list` first); it has vanished three times in this lane, and
 everything is pushed, so recreate rather than re-derive if it is gone again.
+
+### §21.38 THE HISTOGRAM DECIDES: **PIERCE-limited.** Fix (b) would address 1 crossing of 51.
+bim-ootb `review/roompath-redundancy` @ `39d5fbb`, pushed. `roompath_diagnostics/cluster31_dump.js`
+(§C37 block), log `roompath_diagnostics/w_c31b.log`. Nothing changed in the engine. Nothing deployed.
+```
+§C37 door-adjacent crossings (n=51)   reach = 2.00 m   pierce = 1.20 m
+     <= 1.20 m  (inside BOTH)                = 17   <- neither mechanism explains these
+     1.20–2.00 m (beyond pierce, in reach)   = 33   <- PIERCE-limited: the raster is still SOLID
+     >  2.00 m  (beyond reach too)           =  1   <- MARCH-limited as well
+§C37 VERDICT = PIERCE
+```
+**Fix (b) — lengthening `_openings`' march — is now off the table as the primary.** It would recover
+exactly **one** crossing. For 33 of 51 the march already reaches; there is simply nothing to find,
+because the carve never broke through the wall. §21.37 was right to demand this count before changing
+a constant: the safer-looking fix was the wrong one, and the tail statistic (max 2.60 m) had made it
+look plausible.
+
+**⚠ The 17 sub-1.20 m crossings are a SECOND, separate defect and must not be swept into the fix.**
+Those are inside both limits — the carve should have broken through and the march should have found
+it, and neither happened. Whatever is wrong there is not a constant. Do not tune `pierce` until these
+are explained, or a deeper carve will paper over them and they will resurface as phantom fusions.
+
+**THE CHANGE, specced but deliberately NOT MADE — it is one constant and a four-witness gate.**
+`_rasterizeSpine`, `viewer/lib/room_walker.js` ~line 1009:
+```js
+var pierce = v[5] ? 6 * RES : RES;      // 1.20 m — insufficient for 33/51 measured crossings
+```
+Sizing it from the measurement rather than by feel: the crossing spans wall + 2×`SEAL`×`RES`
+(= 0.80 m of dilation), so clearing a 0.6 m wall needs ~1.40 m and the observed band tops out at
+2.00 m for all but one crossing. **`10 * RES` (2.00 m) is the value the data supports.**
+
+**GATE — mandatory, all four, because a deeper carve is exactly the direction that manufactured
+phantom adjacency in §21.33 and dissolved 57% of LTU's floor in §21.30:**
+1. `witness_room_path_aperture_tier.js` — §T1–§T5. **§T5 retention must stay 100%/100%.** A deeper
+   carve removes more wall; if retention drops, the carve is reaching the envelope and it is wrong.
+2. `witness_room_path_overlink.js` — §O2 sweep + §O3. **The phantom share must not rise.** A deeper
+   carve widens every aperture's effective footprint and can fuse pockets that a 1.20 m carve kept apart.
+3. `witness_room_path_stranded_cause.js` — §SC3. Breaks must FALL from 11/34. This is the point of it.
+4. `witness_room_path_cluster_boundary.js` — §CB5. Sealed-suite count must fall from 9/23.
+**If (1) or (2) regresses, revert — do not tune the constant to satisfy both.** That trade is the
+signal that pierce depth is the wrong lever, and the 17 unexplained crossings are where to look next.
+
+**Why this session stopped here rather than making a one-line change:** the change is trivial, the
+gate is four full witness runs, and a constant that lands unverified is worse than one not landed —
+§21.30 and §21.33 both caught a plausible-looking change doing structural damage that only the full
+gate revealed. Everything needed is committed, measured, and named.
