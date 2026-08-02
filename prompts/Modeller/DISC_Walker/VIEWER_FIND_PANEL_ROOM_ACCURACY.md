@@ -3266,3 +3266,57 @@ provenance remains refuted as the stranded cause, now measured three times on th
    ever looked at them, and they are what the spine is currently built from on a door-only building.
 3. Ask the user for the `W:3.0` vs `W:6.0` ruling when the stranded classification needs it; it does
    not block item 1.
+
+### §21.34 STRANDED-ROOM CAUSES — the lane has been counting the wrong thing. 55/60 stranded rooms
+### are **11 / 34 independent BREAKS**, and a third of them have no cause anyone has looked for yet.
+bim-ootb `review/roompath-redundancy` @ `90a45c6`, pushed. `witness_room_path_stranded_cause.js`,
+log `roompath_diagnostics/w_stranded_cause.log`. W:3.0 substrate. Nothing deployed.
+
+```
+§SC1                        Clinic 55            LTU 60
+ (1) NO DOOR ELEMENT AT ALL     5  (9%)   26m²      16 (27%)  1490m²
+ (3) DOOR EXISTS, NO OPENING    1  (2%)   44m²      10 (17%)   982m²
+ (-) links ONLY to other stranded 49 (89%) 508m²    34 (57%)  1838m²
+ (?) unclassified               0            —       0           —
+§SC3 INDEPENDENT BREAKS       11 clusters         34 clusters
+     largest cluster          31 regions          22 regions
+     mean cluster             5.0                 1.8
+```
+
+**FINDING — "N stranded rooms" was never the unit of work.** 89% (Clinic) and 57% (LTU) of stranded
+regions have a door AND a working door-opening; those openings just reach other stranded regions.
+They are not failures, they are *downstream* of one. Collapsing the stranded subgraph into connected
+components gives the honest number: **11 breaks on Clinic, 34 on LTU.** Clinic's largest single break
+strands 31 rooms by itself. Every count this lane has quoted — 140/107 (§21.28), 320 (§21.30), 295
+(§21.32), 55/60 (§21.33) — over-stated the work by the mean cluster size. **The job is 11 and 34.**
+
+**FINDING 2 — and this one is a gap, not a result. Roots found < clusters, on BOTH fixtures.**
+Clinic 6 roots for 11 clusters; LTU 26 for 34. So **5 (Clinic) and 8 (LTU) clusters contain no member
+with a missing door and no member with a missing opening** — internally they are fully connected by a
+working door graph, and yet nothing reaches the spine. The break is therefore on the cluster
+**BOUNDARY**: an opening that should exist between the cluster and the rest of the building, and does
+not. **Nothing in §21.20–§21.34 has ever examined a boundary.** Every construction so far has asked
+"does this region have a door / an aperture / a link", never "is the link that SHOULD leave this
+cluster missing". That is a new class and it is roughly a third of all breaks.
+
+**Cause (2) was not tested here and must not be re-added** — tier B vs tier C moved 295 → 295 across
+three substrates (§21.30, §21.32, §21.33). It is settled.
+
+**NEXT — the order is now different from §21.33's, because §SC3 changed what the work IS:**
+1. **The rootless clusters first — 5 Clinic / 8 LTU, the unexamined class.** For each, walk its
+   boundary cells and ask what separates it from the neighbouring group: solid modelled wall (then it
+   is genuinely sealed and the model is right), `SEAL` dilation only (an invented wall — the
+   §OPEN-THRESHOLD case, and the fix is known), or a carve that reached nothing. Falsification test
+   before the code: if most boundaries are `SEAL`-invented, `SEAL` is the last big structural defect
+   in the lane; if most are solid wall, these rooms are correctly unreachable and the remaining
+   unroutable figure is a property of the BUILDINGS, not of the engine — which would close the lane's
+   core question either way.
+2. **Then the 6 + 26 named roots**, which are ordinary: 21 of them are "no door element exists",
+   fixable only upstream in extraction, and 11 are "door exists, no opening", which is this lane's.
+3. The 101/30 `noVoid` fusions (§21.33 item 2) — still unexamined, still 100% of Clinic's fusion.
+4. Funnel residuals (§21.18) LAST, unchanged.
+
+**Method note:** the classifier deliberately carried a third bucket for "links only to other
+stranded" instead of forcing every region into cause (1) or (3). Had it not, Clinic would have read
+as 55 failures with 49 of them unexplained, and the next session would have hunted a defect that does
+not exist in 89% of the cases it was handed.
