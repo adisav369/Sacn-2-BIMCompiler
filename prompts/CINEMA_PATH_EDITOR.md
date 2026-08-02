@@ -5573,3 +5573,19 @@ single owner file. Harden while fixing, not after:
 4. **Boundary rule going forward:** pacing PRs may not touch the gaze module and vice versa —
    reviewable from the diff's file list alone, the same way this session PROVED non-disruption in
    one `git show --stat` because captions live in their own file.
+
+## §CPE_GAZE_SKYLINE_STARE addendum — how it "crept back in" despite refreshed code (user challenge 2026-08-02)
+**"Pre-existing" above means pre-dating the 2026-08-02 PRs ONLY — not "was always there."** The
+user's accepted reference film is 2026-07-29; since then `effects.js`'s gaze law was rebuilt SIX
+times: #1101/#1103 (§CPE_AIM_DEPTH), #1121 (walk budget), #1125 (spin whip), #1126 (§CPE_STICK_HOLD
++ §CPE_AIM_LATCH + §CPE_GAZE_CONSTANT_RATE), #1131 (§CPE_GAZE_ACQUIRE). Refreshing code prevents
+STALE code; it does not protect against NEW code changing composed behaviour — and no merge in that
+list was gated by a film-level "gaze stays on the building bulk" witness. Each gated its own rule's
+property; the COMPOSITION regressed in green. That is §CPE_GAZE_SOC's case in one sentence, and the
+standing composed-gaze angle-series witness it prescribes is the guard that was missing.
+**Bisect order for the next session:** #1126 first (constant-rate slews toward a bearing computed
+at LEG START — faithful to a bad target by construction; the authored path's leg-end bearings are
+the thing to dump), then #1131 (acquire re-timing), then the aim-depth pair. ⚠ Second variable:
+the path is AUTHORED and has been re-edited since 2026-07-29 — the leg pointing at the skyline may
+itself be newer than the accepted film. Dump `§CPE_CAM_BASIS` + the band directions from the saved
+path record BEFORE blaming any law.
