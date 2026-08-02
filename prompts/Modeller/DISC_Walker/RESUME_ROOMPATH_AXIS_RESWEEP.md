@@ -264,3 +264,27 @@ Reading: the two tuned fixtures (LTU, Terminal) are the only healthy ones. The p
 quadratic in fragmentation, so the hospitals' ~50–58% stranded-room share compounds to ~96–97%
 of room-pairs unroutable. Duplex is 3/7 rooms stranded on a tiny denominator. No conclusions
 drawn beyond the numbers — no fixes attempted, per this file's stop condition and DONE state.
+
+### 2026-08-02 §8 FLEET UNROUTABLE ATTRIBUTION — it is an EXTRACTION gap, not the engine, not a class dictionary
+
+User hypothesis: "a dictionary set of meta-data mapping." Probed at three layers (scratchpad
+`fleet_door_probe.js` / `fleet_void_probe.js`, logs read):
+
+1. **ifc_class/discipline dictionary: CLEAN, refuted as the cause.** In all 9 DBs,
+   `doorsAll == doorsWalkerSees` (walker's exact WHERE: `ifc_class LIKE 'IfcDoor%' AND
+   discipline='ARC' AND center_x NOT NULL`) — Clinic 254/254, Hospital 440/440, JKR 65/65,
+   LTU 606/606, Terminal 135/135; zero doors lack transforms; all doors are ARC. §DPROBE lines.
+2. **Aperture provenance: THE split.** `IfcOpeningElement` rows: **LTU 3,368 — every other DB 0**
+   (§VPROBE). This is why `voidMode`/`pierce` are inert outside LTU (§7: cur==W:3.0 on 8/9
+   buildings; §6.3: Clinic sweep collapsed to one row) and why the carve machinery §21.31→§21.43
+   tuned on LTU cannot transfer.
+3. **Source vs extractor: the openings EXIST in source.** `IFC/Duplex_ARC.ifc` contains **50
+   IFCOPENINGELEMENT** entities; `Duplex_extracted.db` has 0. The extraction pipeline used for
+   these 8 DBs drops IfcOpeningElement; whatever pipeline produced LTU_AHouse kept them.
+
+**Consequence for the §6.4 stop-condition finding:** unchanged — no constant fixes this. The
+fleet's unroutable% is dominated by missing aperture rows upstream of the walker. Next lane (a
+DATA job, no engine change): re-extract the fleet with the openings-preserving path (diff the LTU
+extraction path vs the others' to find where IfcOpeningElement is dropped), redistribute
+`*_extracted.db` via OCI per policy (never git), then re-run the §FLEET witness — the delta per
+building is the measure of how much was data vs how much remains sealed-suite scope limit (§21.38).
