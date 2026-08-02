@@ -54,7 +54,7 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   enough: the trade gate still keys on the label, so 23,121 elements sit in two groupings and the
   barrier deadlocks). Engine, support extraction and crew pool are built and reusable.
 - ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`; start at
-  §21.33** (then §21.14 for setup/fixtures only).
+  §21.37 RESUME HERE** (then §21.14 for setup/fixtures only).
   **ROOT CAUSE FOUND AND REMOVED (§21.26/§21.27): the raster had NO DOOR VOIDS** — `_rasterizeWalls`
   stamps wall bounding boxes and never subtracts the opening, so 99% (Clinic) / 100% (LTU) of door
   centres sat on solid masonry. Doorways did not exist in the geometry. §SPINE-RASTER carves them;
@@ -69,8 +69,11 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   numbers, they were taken on a broken raster.** Two defects found and FIXED 2026-08-02: (a) the carve
   admitted 1,595 non-door-hosted voids on LTU, and (b) `§SEAL-DOORS-FIRST` re-closed every door as a
   +1.2 m plug across a ~0.2 m wall. **§PRECARVE** derives enclosure from the pre-carve mask, exactly:
-  retention 84%/43% → **100%/100%**. Aperture provenance is REFUTED as the cause (tier B vs C =
-  295→295); §21.28's cause (2) is struck for good.
+  retention 84%/43% → **100%/100%**. Aperture PROVENANCE does not matter (tier B vs C = 295→295).
+  ⚠ **CORRECTION (§21.36): "cause (2) is refuted" was WRONG** and §21.30/§21.32/§21.33/§21.34 all
+  repeated it. The tier test varied the aperture SOURCE, never the `pierce = 6*RES` DEPTH, and Clinic
+  has no openings so B==C there by construction — it could not have tested cause (2). **Cause (2) is
+  BACK on the candidate list.**
   ❌ **§21.32's `cur` 26.1% was PHANTOM** — the over-linking sweep (§21.33 §O2) shows the 20.1-pt gain
   appears only when the width cap is lifted entirely, i.e. it rests on 25 m/55 m atrium+facade voids.
   Third phantom-adjacency result in this lane. Do not resurrect `cur`.
@@ -78,9 +81,17 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   is >6 m): **Clinic 55/208 @ 49.5%, LTU 60/308 @ 45.3%** — 235 LTU stranded rooms recovered
   legitimately. `W:6.0` (53/297 @ 42.7%) is the aggressive alternative, a ⛔ USER RULING not a
   measurement. Standing gates all green: §T1 fidelity · §T2 tier-C · §T4 no-leak · §T5 retention 100%.
-  NEXT = (1) re-classify stranded on the W:3.0 substrate (Clinic 55/208, LTU 60/308) on causes (1)/(3),
-  (2) the 101/30 `noVoid` fusions from WALL-EXTRACTION gaps, never examined. Funnel residuals (§21.18) LAST.
-  15 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `b669a59`
+  ✅ **§21.34–§21.37 narrowed the work by 10×:** 55/60 stranded rooms are only **11/34 independent
+  BREAKS** (the rest are chains hanging off them). SEAL is EXONERATED (1 cluster of 45). Vertical
+  access via stairs explains 2/11 and 11/34 — never previously accounted for, so every past
+  "unroutable" was inflated ~18%/32%. The residue is **9 (Clinic) / 23 (LTU) sealed suites** with
+  solid wall and no stair, which no real building has. **Mechanism identified §21.36:** doors ARE on
+  the boundary (nearest 0.04 m, 51/195 crossings within 1.5 m) but the enclosed-to-enclosed gap is
+  median 1.40 m / max 2.60 m against a **1.20 m pierce** and a **2.00 m** `_openings` march reach.
+  NEXT = (1) histogram §C31's 51 door-crossings vs 2.00 m → decides deepen-pierce vs lengthen-march,
+  (2) apply + re-run the FULL gate (§T1–§T5, §O2, §SC3, §CB5), (3) the 101/30 `noVoid` fusions.
+  Funnel residuals (§21.18) LAST.
+  18 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `5f01fb5`
   (worktree `/tmp/wt-roompath` is live, clean and pushed — REUSE it, don't add a second).
   **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
   ⛔ Still keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP.
