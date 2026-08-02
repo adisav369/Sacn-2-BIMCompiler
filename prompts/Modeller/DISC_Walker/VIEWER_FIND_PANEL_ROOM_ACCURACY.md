@@ -13,6 +13,10 @@ constraint: a real shared JS module between them is now a live option, not just 
 Read this before touching the Room axis / Room Lens / `_buildRoomTree()` / `_roomLensOn()` /
 `_allRoomVolumes()`. Read `ROOM_INJECTION_HYBRID.md` in full first — this task PORTS its settled
 conclusions into the Viewer, it does not re-derive them.
+⭐ CONCEPT DOC: `prompts/Modeller/DISC_Walker/ROOM_PATHING_SUBSTRATE.md` — READ IT FIRST if you are
+new to this lane. It explains WHAT the walkable map is, HOW it is built, the settled invariants, every
+trial that failed and why, the method rules that came out of them, how other systems solve the same
+problem, and where we stand. THIS file is the dated working log; that one is the explanation.
 ANCHORS: prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md (the Modeller-side work this ports)
 · bim-ootb modeller/disc_walker.js `spaceHabitable()`/`_substrateEnv()` (the classifier to share/
 port, exported on the API already) · bim-ootb scripts/compile_rooms.py (§DOOR-RESCUE/§DOOR-PARTITION,

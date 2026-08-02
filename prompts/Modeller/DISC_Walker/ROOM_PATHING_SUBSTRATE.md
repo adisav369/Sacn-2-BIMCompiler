@@ -1,0 +1,238 @@
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
+# ROOM PATHING SUBSTRATE — how a walkable map is built from an IFC, and every way we got it wrong
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: the CONCEPT and the ARCHITECTURE of room-to-room pathing. This is the explanatory
+document. The working log — dated sections, witness output, per-session findings — stays in
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §21.x. Read this first to understand WHY the code is
+shaped the way it is; read the §21.x log to find out where the work currently stands.
+Read the log after every run (§Log Mandate). Honour this preamble until the lane is DONE.
+ANCHORS: bim-ootb `viewer/lib/room_walker.js` (the substrate — `spineMap`, `storeySpine`,
+`_rasterizeSpine`, `_openings`, `storeyVoids`) · `common/room_graph.js` (the shipped router,
+BYTE-UNCHANGED by this lane so far) · `viewer/navigate_find.js` (the Find panel UI) ·
+`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` (the running log).
+```
+
+## §1 The problem, in one paragraph
+
+An IFC file says where the walls and doors are. It does **not** say how to walk from one room to
+another. Nothing in the file states "the ward connects to the corridor through this door." A viewer
+that wants to fly a camera between two rooms, route a cable tray, or answer "how far is the fire exit"
+has to **derive** that connectivity from geometry. This lane builds that derivation and proves it.
+
+## §2 The architecture — the user's own framing, which turned out to be the right one
+
+User, 2026-08-02: *"during injection, that metadata is laid down. The rest is algorithm that is
+abstract for 1. Any room (both origin and target) to reach that spine. 2. Traverse within that spine
+where the path issues from and to."*
+
+Two layers, and the separation is what makes it tractable:
+
+- **Layer 1 — the SPINE.** Everywhere you can walk *without opening a door*. Corridors, lobbies,
+  landings, open-plan areas. It is one connected region per storey if the building is normal.
+- **Layer 2 — ATTACHMENT.** Every room reaches the spine through its door, at some depth. Depth 1
+  opens straight onto the spine; depth 2 is reached through another room; and so on.
+
+Routing then has no geometry in it at all: leave the origin room to the spine, traverse the spine,
+enter the target room. **The cost of this design is one requirement — every room must have at least
+one CORRECT door link** — because errors compound with depth. A bad link at depth 1 mis-attaches one
+room; at depth 3 it orphans a whole subtree.
+
+## §3 The substrate — what actually gets built, in order
+
+All of this lives in `viewer/lib/room_walker.js`. Per storey, at `RES = 0.20 m` per cell:
+
+1. **Stamp the walls** into a grid — `_rasterizeSpine()`. Each wall is drawn as an oriented rectangle
+   from `element_transforms`.
+2. **Carve the door voids** — a door is a *hole in a wall*, and the wall stamp does not know that.
+   Each door (and each door-hosted `IfcOpeningElement`, where the file has them) is subtracted.
+   Carve depth is `pierce = 10 * RES` = 2.00 m.
+3. **Keep the PRE-CARVE mask** — `§PRECARVE`. Enclosure must be measured on the walls *as modelled*,
+   with all doors shut. This is the mask that answers "what is indoors".
+4. **Dilate by `SEAL = 2` cells** (0.40 m) — closes hairline gaps where wall stamps do not quite meet,
+   which would otherwise let the outdoors flood into the building.
+5. **Flood from outside** — whatever the flood cannot reach is enclosed floor.
+6. **Split enclosed floor into POCKETS** — connected components. Roughly, rooms.
+7. **Find OPENINGS** — `_openings()`. Scan the band that is blocked but is not real wall, march both
+   axes up to `reach = 10` cells (2.00 m); if the two sides land in different pockets, they are open
+   to each other. Then ask the only question that defines the spine: **is there a door in that gap?**
+8. **Fuse across DOORLESS openings** → layer-1 groups. The spine is the largest group.
+9. **Link across DOOR openings** → the layer-2 attachment graph. BFS from the spine gives each group
+   its depth. Depth `−1` means *stranded*: no door path to the spine at all.
+
+## §4 The invariants — settled by measurement, do not re-litigate
+
+| # | Invariant | Established by |
+|---|---|---|
+| I1 | Enclosure is derived from the PRE-CARVE mask, never from a re-stamped door plug | §21.30–§21.32 |
+| I2 | Carving may never reduce enclosed floor — retention ≥ 90%, observed 100% | §T5 |
+| I3 | An aperture's SOURCE does not matter; its DEPTH does | §21.30 vs §21.38 |
+| I4 | `rotation_z` is in RADIANS | §21.27 |
+| I5 | Tier C (door bbox) can never be removed — 6 of 7 fixtures have no opening geometry | §21.29 |
+| I6 | A connectivity gain must survive a width cap, or it is phantom | §21.33 |
+| I7 | Vertical access (stairs) must be excluded before calling anything unreachable | §21.35 |
+
+## §5 The trials — what was tried, what it cost, and what killed it
+
+This is the expensive part of the document. Each of these looked right at the time.
+
+| Attempt | Result | What disproved it |
+|---|---|---|
+| Proximity door↔room adjacency | **Dead.** A third of doors claimed 3–4 rooms | §DOOR-APERTURE: over-claims 36%/12% → 0 |
+| Corridor by SHAPE (aspect ratio) | **Dead.** Inherits the room compile's fragmentation | 16–38 corridor fragments |
+| Corridor by `hallway_backbone.js` | **Dead.** Same inheritance | same |
+| Corridor by BETWEENNESS | Best of the three, still not enough | 1 component but measured on an uncarved raster |
+| `rotation_z` was being read as degrees | **RETRACTED — the claim was wrong** | It is radians; §21.26 asserted otherwise, §21.27 withdrew it |
+| Readmit the seal halo to build the spine | **Dead.** The halo is one ribbon round the whole wall net | Rooms merged wherever a wall merely ENDS; 16,594 cells |
+| Raw walls, no dilation | **Dead.** The outdoors floods in and swallows the corridor | Exterior region 1,094 m² vs a 134 m² spine |
+| Admit every floor-level opening (`cur`) | **Dead — phantom.** Looked like the best result in the lane | Width sweep: 104% of the gain came from 25 m/55 m atrium voids |
+| Re-close doors by re-stamping a plug | **Dead.** The plug is thicker than the wall by construction | Cost Clinic 312 m² of 1,980 m²; §PRECARVE replaced it |
+| "Aperture provenance is the stranded cause" | **Dead — and the refutation itself was wrong twice over** | Tier B vs C: 295→295. But that test never varied pierce DEPTH, so it could not test what it claimed to (§21.36) |
+| Lengthen the `_openings` march | **Rejected on measurement** | Would have fixed 1 crossing of 51 |
+| Deepen the pierce to `10*RES` | **LANDED** | LTU unroutable 45.3% → 18.4%, all gates green |
+| "`area >= 2.0` filter is hiding the break" | **Wrong.** The filter hid it from reports only | The ENGINE's own depth is −1 for all 41 far ends |
+
+## §6 What it cost, and the four method rules that came out of it
+
+Three sessions, roughly forty measured findings, and **five claims that had to be retracted** —
+including two of the assistant's own, repeated across four sections before being caught. The rules
+below are not aspirations; each one is named after the failure that produced it.
+
+1. **Write the gate before the fix.** All three of §21.27's carving bugs were caught by gates, not by
+   reading code — and one presented as a clean-looking 100%, not as an error.
+2. **A gate that cannot see a failure class is not coverage.** The leak-signature test passed at 8.5%
+   on a raster that had lost 57% of its floor: carving an exterior wall lets the flood *escape*, it
+   does not merge pockets into a blob. Ask what a new gate structurally cannot detect, and add that too.
+3. **Set the pass threshold to a MATERIAL effect before running.** A test that passed on 320 → 319
+   proved nothing and briefly read as success.
+4. **When a conclusion is about a MECHANISM, an aggregate that does not vary that mechanism cannot
+   test it — and will look like confirmation.** This produced the single most expensive error in the
+   lane: "cause (2) is refuted", inherited unchallenged through four sections. Dumping 195 boundary
+   crossings of ONE cluster exposed it in a single run. **Enumerate before you aggregate.**
+
+Corollary, learned the same way: **verify the checker before the code under test.** Two self-inflicted
+bugs — grouping by the wrong key, and treating radians as degrees — were caught only because the
+number was absurd.
+
+## §7 Generality — the standing constraint on every rule here
+
+User, 2026-08-02: *"as long as this can generally apply to most IFCs a user may import."*
+
+Measured across the shipped fleet:
+```
+Clinic 254/0 · Duplex 14/0 · HHS 133/0 · Hospital 440/0 · Hospital_3 440/0
+JKR 65/0 · Terminal 135/0 · LTU 606/3368            (IfcDoor / IfcOpeningElement)
+```
+**One building in nine carries opening geometry.** So any rule that needs it is an upgrade, never the
+method. That is why the aperture resolver is tiered (A: `bom_tree` VOIDS/FILLS from a live user
+import · B: `IfcOpeningElement` · C: `IfcDoor` bbox) with **C as a floor that is never removed.**
+
+Two kinds of rule, and the difference matters:
+- **Provenance rules** ask *where did this come from* — no constant, no sweep, no-op where
+  inapplicable. Example: "a pocket made entirely of carved void cells is a doorway, not a room."
+- **Threshold rules** ask *how big is this* — they need a measured sweep to justify and they must be
+  re-swept when anything upstream changes. Example: `W:3.0`, justified only because the attributed
+  widths have p90 = 3.60 m and the phantom cliff sits above 6 m.
+**Prefer provenance. When a threshold is unavoidable, sweep it and record the sweep.**
+
+## §8 Fixture notes — the buildings themselves
+
+- **LTU_AHouse is the best-modelled fixture we have**, not the worst: 125,698 elements, 601 of 606
+  doors carry a real void, 0 missing transforms, 3.2% unassigned storeys, 8 disciplines, 42,071 pipe
+  segments. Every fix in this lane moved it hard. Its one defect: all 3,368 `IfcOpeningElement` carry
+  `storey='Unknown'` — attribute them by Z against door sills, never by the column.
+- **Clinic is the constrained one**: 0 opening geometry, 32% unassigned storeys, 43 elements with no
+  transform. It can only ever use tier C, which is exactly why it is the fixture that proves generality.
+- **Terminal is federated with two storey-naming conventions in one file** — Malay (`Aras Tanah`,
+  `Aras 01`–`Aras 04`) *and* English (`GROUND FLOOR LEVEL`, `03 SECOND FLOOR LEVEL`), plus 70%
+  genuinely unassigned. Any storey matching that assumes one convention silently mis-files half of it.
+
+## §9 The gate suite — run all of it after ANY substrate change
+
+| Witness | Asserts |
+|---|---|
+| `witness_room_path_aperture_tier.js` | §T1 tier fidelity · §T2 tier-C non-regression · §T4 no-leak · **§T5 enclosure retention ≥90%** |
+| `witness_room_path_overlink.js` | §O2 width sweep · **§O3 phantom share must not rise** |
+| `witness_room_path_stranded_cause.js` | §SC1 cause split · **§SC3 independent breaks** |
+| `witness_room_path_cluster_boundary.js` | §CB1 separation kind · §CB4 vertical access · **§CB5 sealed suites** |
+| `roompath_diagnostics/clinic17_dump.js` | §C40 per-crossing enumeration · §C40c far-end groups |
+
+**Report BREAKS, not stranded rooms.** 55 stranded rooms on Clinic were 11 independent breaks; the
+rest were chains hanging off them. Quoting the room count overstates the work by the cluster size.
+
+## §10 Where it stands, and what is next
+
+Measured on the current substrate (`W:3.0` default, `pierce = 10*RES`):
+```
+LTU     stranded  18/277   unroutable 18.4%   (room-graph baseline 32.4%)  — beaten, and phantom-tested
+Clinic  stranded  50/186   unroutable 49.3%   (baseline 43.3%)             — still short
+```
+**Open root cause (§21.41): the carved doorway becomes its own ~1 m² pocket and terminates the
+graph.** `SEAL`'s band separates it from the rooms on both sides, so room→doorway is emitted and
+doorway→far-room is not. 39 of 41 links leaving Clinic's largest stranded cluster end in one.
+The named fix is a provenance rule (§7): **a pocket whose cells lie entirely within carved void
+footprints is a doorway, not a room** — merge it, or emit it as a pass-through edge. No constant.
+
+Nothing from this lane is deployed. `common/room_graph.js` and `viewer/navigate_find.js` are
+byte-unchanged. Current work sits on bim-ootb `review/roompath-redundancy`.
+
+## §11 PRELIMINARY — how others solve this, and what we should take from them
+
+⚠ **This section is background knowledge, NOT measured on our fixtures**, except where a number is
+given. Treat every claim about another system as *to be verified* before it is acted on. It is here
+to stop us re-inventing solved parts and to name the places our approach is genuinely different.
+
+**The five families:**
+
+1. **Space-boundary graphs (the OpenBIM-native way).** `IfcSpace` + `IfcRelSpaceBoundary` (2nd level)
+   states which spaces share which wall, and `IfcRelFillsElement` says which door fills which opening.
+   Where the exporter wrote them, the connectivity is *authored*, not derived — no raster at all.
+   **Why we cannot rely on it:** exporters routinely omit space boundaries, and our fleet confirms the
+   pattern (0 of 7 fixtures carry `bom_tree` VOIDS/FILLS). This is the same argument as our tier A.
+2. **IndoorGML (OGC).** Formalises exactly the two-layer model of §2 as a *Node-Relation Graph*:
+   spaces become nodes, adjacency and connectivity become two separate edge types, by Poincaré
+   duality. **Take from it: the vocabulary.** Our "spine / attachment / depth" is its dual graph under
+   another name, and aligning terms would make this lane legible to anyone from that world.
+3. **Navigation meshes (games — Recast/Detour lineage).** Voxelise the walkable surface → filter
+   walkable spans → segment into regions → build contours → convex polygons → A* + funnel string-pull.
+   **Our pipeline is structurally the same thing**, which is reassuring rather than surprising.
+   ⭐ **The one to actually learn from:** that family hit our §21.41 defect long ago — narrow passages
+   fragmenting into their own tiny regions — and solves it with an explicit *region merge* step
+   (minimum region area, plus merging small regions into their largest neighbour). Our named fix is
+   the provenance variant of the same move, and is stronger because it needs no area constant. Worth
+   reading their region-merge stage before implementing ours.
+4. **Medial axis / straight skeleton / space syntax.** Derive corridor centrelines from the floor
+   polygon, or rank spaces by betweenness. **We tried betweenness (§21.25) and it was the best of
+   three failed corridor heuristics** — but every one of them was measured on an uncarved raster, so
+   the family is not fairly refuted, only shelved.
+5. **Authoring-tool features (Revit "Path of Travel" and similar).** Build a navigation surface per
+   level and treat doors as explicit portals. **Take from it: doors as first-class portals** — which
+   is precisely what our layer-1/layer-2 split does, and confirms the design choice.
+
+**⭐ FINDING WHILE WRITING THIS, and it is actionable — an authored relation we have never used.**
+`rel_contained_in_space` (IFC's element→space containment) is present in every fixture and **already
+names some door↔space relations directly**:
+```
+LTU_AHouse   208 of 606 doors carry an authored space containment   (34%)
+Clinic        98 of 254 doors                                        (39%)
+```
+Partial, so it cannot be the method — but **Clinic has it, and Clinic has no opening geometry at
+all**, which makes it the first IFC-native connectivity signal available on the constrained fixture.
+Two uses, in priority order:
+- **As a VERIFICATION ORACLE (do this first, it is free and it is measure-only):** check our derived
+  door→room links against the ~300 authored ones. If they disagree, one of them is wrong and we have
+  been flying without any independent check on link correctness for this entire lane. This is exactly
+  the "verify the checker" rule of §6 applied to the one thing we never verified.
+- **As another provenance tier**, below authored VOIDS/FILLS and above geometry — same tier discipline
+  as §7, never as a replacement for the derived path.
+
+**Where our approach is genuinely better, stated without hype:** it derives connectivity from a raw
+IFC that has no space boundaries, no authored navigation data, and often no opening geometry — in the
+browser, with no preprocessing server — and every rule is gated by a falsification suite (§9). The
+tiering discipline (§7) and the provenance-over-threshold preference are, as far as we know, not
+standard practice in any of the five families above.
+
+**Where we are behind:** we have no independent oracle for link correctness (the point above fixes
+that), no published benchmark to compare against, and our funnel/string-pull stage (§21.15–§21.18)
+is still unresolved where the game-engine lineage has had a settled answer for years.
