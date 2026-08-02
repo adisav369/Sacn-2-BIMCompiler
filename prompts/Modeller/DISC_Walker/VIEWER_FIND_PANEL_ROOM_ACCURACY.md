@@ -3205,3 +3205,64 @@ map. So `cur`'s 26.1% is a LEAD, not a result, until an over-linking test says o
 (254 × ~1.3 m² of plug ≈ 300 m² ≈ the observed 312 m² loss) BEFORE running anything. The measurement
 then confirmed a specific prediction rather than being searched for a cause — which is how §21.26's
 rotation claim should have been handled and was not.
+
+### §21.33 OVER-LINKING TEST — §21.32's 26.1% is PHANTOM. Verdict FAIL, and the width sweep
+### hands back a real result anyway: W:3.0 cuts LTU's stranded rooms 295 → 60.
+bim-ootb `review/roompath-redundancy` @ `b669a59`, pushed. `witness_room_path_overlink.js`, log
+`roompath_diagnostics/w_overlink.log`. Tests written before the run, per §21.32 item 1. Nothing deployed.
+
+**§O2 THE SWEEP — and the shape of it is the whole finding.**
+```
+LTU     fusions  spine  stranded   unroutable
+C          24     30%   295/536     46.5%
+B          24     30%   295/536     46.2%
+W:1.5     180     37%   160/387     54.7%
+W:2.0     230     38%   136/340     47.0%
+W:3.0     273     43%    60/308     45.3%
+W:6.0     287     44%    53/297     42.7%
+cur       290     45%    32/294     26.1%      <- §21.32's lead
+§O3 gain(cur vs B)=20.1pts · kept under a 2 m cap=-0.8pts · PHANTOM SHARE 104% · VERDICT FAIL
+```
+**The gain is not gradual — it appears only when the cap is removed entirely.** Every cap up to 6 m
+leaves unroutable in the 42–55% band; lifting it drops to 26.1%. So the entire 20-point advantage
+comes from voids **wider than 6 m** — the 25 m and 55 m atrium/facade voids §21.29 measured. Fusing
+across one asserts "these two spaces are one walkable room" on the strength of a hole that is not an
+aperture. Identical in kind to §21.21's proximity edges and §21.24's phantom shortcuts, and it is the
+third time in this lane that a flattering connectivity number turned out to be invented adjacency.
+**§21.32's lead is dead. Do not resurrect `cur`.**
+
+**§O1 ATTRIBUTION — where the fusions actually come from.**
+```
+LTU  total=290  doorVoid=0  hostedOpening=0  unhosted<=2m=133  unhosted>2m=56 (19.3%)
+                noVoid (pre-existing gap in the wall extraction)=101
+     attributed void width: median=1.20m  p90=3.60m  max=25.80m
+Clinic total=30  ALL 30 = noVoid — Clinic's fusions are wall-extraction gaps, not carve-induced.
+```
+`doorVoid=0` and `hostedOpening=0` are correct, not a bug: a void with a door in it produces a
+*doorway* opening (`g.doors` non-empty), which links rather than fuses. Only doorless voids fuse.
+
+**THE REAL RESULT — capping is not excluding, and it is worth a lot.** Tier B throws away every
+archway; `cur` throws away the distinction. A width cap keeps the genuine ones: **W:3.0 takes LTU's
+stranded rooms from 295/536 to 60/308** — 235 rooms recovered *legitimately*, with unroutable
+essentially flat (46.2% → 45.3%). That is a bigger structural win than the phantom 26.1% ever was,
+and it survives the test that killed the other.
+
+**DEFAULT SET TO `W:3.0`.** Chosen off the sweep, not invented: p90 of attributed void widths is
+3.60 m, and the phantom cliff sits far above it at >6 m. **`W:6.0` (53/297 @ 42.7%) is the aggressive
+alternative and it is a USER RULING, not a measurement** — it admits genuinely open-plan thresholds
+at the cost of moving nearer the cliff. Flagged, not taken.
+
+**Standing invariants after this section** (all four re-verified at the new default): §T1 fidelity,
+§T2 tier-C non-regression, §T4 no-leak, §T5 enclosure retention 100%/100%. §T3 still FAIL — aperture
+provenance remains refuted as the stranded cause, now measured three times on three substrates.
+
+**NEXT:**
+1. **Re-classify the stranded rooms on the W:3.0 substrate — Clinic 55/208, LTU 60/308** — on causes
+   (1) *no door element exists* and (3) *the sealed flood never formed the pocket* ONLY. Cause (2) is
+   struck for good. These counts are 4× and 5× smaller than the ones §21.28 sent the last session to
+   classify, so the job is now tractable.
+2. **The 101 LTU / 30 Clinic `noVoid` fusions are a separate, unexamined class** — gaps in the WALL
+   EXTRACTION, not in the carve. On Clinic they are 100% of all fusion. Nothing in §21.20–§21.33 has
+   ever looked at them, and they are what the spine is currently built from on a door-only building.
+3. Ask the user for the `W:3.0` vs `W:6.0` ruling when the stranded classification needs it; it does
+   not block item 1.

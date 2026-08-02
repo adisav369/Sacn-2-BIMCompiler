@@ -73,8 +73,8 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   Aperture provenance is REFUTED as the cause (tier B vs C = 295→295); §21.28's cause (2) is struck.
   **LEAD, not yet a result:** with §PRECARVE the reason to exclude unhosted voids is gone, and `cur`
   posts LTU **32/294 @ 26.1%** — beating the §21.24 room-graph baseline of 32.4% for the first time.
-  NEXT = (1) over-linking test on `cur` before making it default (§21.21's phantom-edge lesson),
-  (2) re-classify Clinic's 55 / LTU's 295 on causes (1)/(3). Funnel residuals (§21.18) LAST.
+  NEXT = (1) re-classify stranded on the W:3.0 substrate (Clinic 55/208, LTU 60/308) on causes (1)/(3),
+  (2) the 101/30 `noVoid` fusions from WALL-EXTRACTION gaps, never examined. Funnel residuals (§21.18) LAST.
   14 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `9e31374`
   (worktree `/tmp/wt-roompath` is live, clean and pushed — REUSE it, don't add a second).
   **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
