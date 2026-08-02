@@ -5550,3 +5550,26 @@ into unrelated work.
 The proof is a NUMERIC time series: gaze-direction-vs-building-bulk angle (the same measurement
 that localised the spin whip: "t=0.150 → 35.8°, t=0.200 → 76.9°") across the reported window,
 before and after any fix — never a screenshot, never "it looks better".
+
+## §CPE_GAZE_SOC — harden separation of concern while fixing it (user directive 2026-08-02)
+The stare is hard to attribute because THREE camera concerns are interleaved inside `effects.js`'s
+~7k-line planner: WHERE the camera is (waypoints/bands/beats), WHEN it moves (noise law, budgets,
+holds), and WHERE IT LOOKS (gaze sense, spin, acquire, aim series, depth aim, latch, constant-rate
+— at least seven rules composing one direction, each a weight field inside the plan). Any session
+editing pacing is one merge conflict away from disrupting facing, and a facing failure has no
+single owner file. Harden while fixing, not after:
+1. **Extract the gaze into its own module** (`viewer/cinema_gaze.js` or equivalent): input = the
+   flown position series + the building fields; output = ONE direction per t. `poseAt` COMPOSES
+   position + gaze; nothing else may write the look target. The precedent is already in this lane:
+   `cpe_room_title.js` is exactly this shape for captions — own file, pure functions, witnessable
+   without a bake — and it is why the caption lane ships without breaking the camera.
+2. **Provenance per frame, logged:** a `§GAZE_SRC` series naming WHICH rule owns the direction at
+   each probe (base-path | spin | acquire | aim | depth-aim | latch). The skyline stare would have
+   named its owner from the user's own console paste instead of costing a diagnosis session. Same
+   move as §CPE_BUILDUP_SOURCE: the log states the rule in force, a stale cache cannot lie.
+3. **The gaze module gets its own witness harness**: feed it a synthetic path + a real building,
+   assert the angle-vs-bulk time series — no bake, no camera, no screenshot. The G-SH/G-GZ pattern,
+   applied to the thing that currently can only be measured through a full plan.
+4. **Boundary rule going forward:** pacing PRs may not touch the gaze module and vice versa —
+   reviewable from the diff's file list alone, the same way this session PROVED non-disruption in
+   one `git show --stat` because captions live in their own file.
