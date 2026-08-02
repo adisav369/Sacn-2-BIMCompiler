@@ -883,3 +883,54 @@ support extraction, and the crew pool are all built and measured and can be reus
 elevation, the witness must be given an elevation-keyed metric ALONGSIDE the label one, and BOTH
 reported. Changing it to elevation only would be lowering the bar, which this lane has a standing
 warning about.
+
+## ▶ RESUME 2026-08-02 (late) — START HERE. The Z fix is ONE swap, in a place nobody looked.
+**⭐ THE NEXT ACTION, and it is small:** `viewer/time_machine.js` §PLAYBACK-STAGGER (see the comment
+above `window.tmOrderBySchedule`, ~L5223) distributes each captured task's guids **bottom-up by
+`center_z`** inside that task's window. **`center_z` is a CENTROID, not a bearing surface** — a 6.87m
+Hospital column's centroid sits above a slab it carries. Swap that ordering for the **support DAG
+topological order** (already built and proven, `feat/z-stacking-oneshot`). Gate it with
+`audit_support_roleblind.js` run against the CAPTURED order.
+
+**WHY THIS IS THE RIGHT PLACE AND THE WHOLE SESSION MISSED IT:** the user's Hospital reveal runs
+`§CPE_BUILDUP_SOURCE source=captured leafTasks=6` — a 6-leaf-task linked programme covering all
+63,415 elements. **`schedule_gate.js` IS NEVER CONSULTED for that film.** Every scheduler experiment
+below therefore could not have changed one frame of what the user was watching. Check
+`§CPE_BUILDUP_SOURCE` FIRST on any "bad build order" report.
+
+**✅ SOLVED (generated path), branch `feat/z-stacking-oneshot`, NOT merged:**
+`audit_support_roleblind` **6,778 → 0**, `test_schedule_gate` **0 floating**. 63,415 nodes / 81,658
+support edges, graph 2.0s, walk 0.4s. The maths is settled: a carrier is always lower than what it
+carries, so `base_z` is a valid topological potential and a walk in that order cannot place anything
+before its support.
+
+**⛔ WHY IT IS NOT MERGED:** band inversions regress and the span blows out (170d → 236d).
+| band inversions, non-structure | shipped | this engine |
+|---|---|---|
+| by storey label | 29,824 | 39,074 |
+| by ELEVATION | **8,333** | **28,262** |
+
+**❌ HYPOTHESIS DISPROVEN — do not retry.** I claimed the storey LABEL was the culprit (labels
+contradict gravity in 1,735 of 81,722 edges, `audit_rank_vs_support.js`) and that keying both gates on
+elevation would fix it. Built it, measured it: **4x WORSE on the elevation key itself**. The engine
+genuinely sequences worse across floors; it is not a metric artifact. The both-keys reporting added to
+`witness_4d_band_monotonic.js` (`§4D_BAND_BY_Z`) is what caught this — keep it, it is the only thing
+that stopped a bad merge.
+
+**Four engine shapes now measured and rejected** (sync nodes · priority-only · group-barrier
+preconditions · both-gates-on-elevation) — tables in §ROOT CAUSE and §ELEMENT_CPM. Do not re-attempt.
+
+**Other open items from this session:**
+- `feat/preview-support-probe` — role-blind support §-line at buildup-arm time. **Witness 0/1, probe
+  never fires** (`_ops` empty at arm time). Unverified, unmerged. Fix the wiring or drop it.
+- **Bake has no WebGL-context-loss recovery.** User lost a full mp4: context died, frames stayed in
+  IndexedDB `bim_ootb_cinema_maxq`/`frames` (integer keys, webp blobs), and the next bake calls
+  `deleteDatabase` (`cinema_maxq.js:1171`). A `maxqRestitch()` entry point would salvage it.
+  A `§MAXQ_GL_LOST` salvage path exists (L993) but did not save this one.
+- `§GANTT injected=... 1335 days, start=12/6/2022` while the project window is 2026-01-01..2026-06-30
+  — a stray 2022-dated op stretches the gantt span. Day counter itself is correct (spanDays=214).
+- §CPE_ROOM_TITLE_MULTI — specced in `prompts/CINEMA_PATH_EDITOR.md`, not built. Evidence:
+  `gazeMissedAll=257/740` (35% of single-ray samples hit no room).
+
+**Shipped and live this session (main, sw v915):** §CPE_DAY_COUNTER_POS (#1130), §CPE_GAZE_ACQUIRE
+(#1131, 90° in 0.90s vs 2.00s), G-SH-4 bound read from the shipped curve (#1132).
