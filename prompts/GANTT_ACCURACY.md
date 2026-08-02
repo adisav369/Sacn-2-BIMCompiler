@@ -1040,3 +1040,119 @@ ghost) and turns SOLID the moment its last carrier places. "The item is there bu
 Re-opening the scheduler engine (§ELEMENT_CPM stays parked behind its ruling) · the captured-path
 task windows (planner's data) · any change to kernel_ops timestamps — this feature is material
 state ONLY.
+
+---
+
+# ⛔ §CPM_DUAL_ELEVATION — MEASURED AND PARKED 2026-08-03. Shape 10 and 11. Branch `feat/element-cpm-elevation-dual-gate`, NOT merged, NO PR.
+**The open design question from §ELEMENT_CPM ("move BOTH gates onto the same elevation key — or drop
+the group barrier and gate on time alone") is now CLOSED BY MEASUREMENT. Both halves were built.
+Support and floating hit zero; band-by-LABEL still regresses; span still blows out. Do not re-attempt.**
+
+**⚠ FIRST, A CORRECTION TO THIS FILE'S OWN NAVIGATION — it cost a session's reading time.** §ELEMENT_CPM
+(L888-893) says "the next attempt must move BOTH gates onto the same elevation key", and that reads as
+untried. It is NOT — the ▶RESUME block at L920-934 records `feat/z-stacking-oneshot` @ `1265411` as
+exactly that (`phOf[i] = 'Z' + rkOf[i]`, the trade gate's group IS the elevation band) and rejects it.
+**The genuinely untried half was only ever the SECOND clause: "drop the group barrier and gate on time
+alone."** That is what this section builds, plus the walk-order and banding variants around it.
+
+## What was built (all on the reused §ELEMENT_CPM machinery — support extraction and crew pool verbatim)
+Four orthogonal knobs on ONE code path (`viewer/schedule_gate.js`, env-selected so the shapes are the
+same code, not four hand-edits): `CPM_PRIO` seq-major|**rank-major**, `CPM_BARRIER` both|**none**,
+`CPM_BAND` median|**mid**, `CPM_ORPHAN` off|**on**.
+
+**⭐ THE ONE REAL DISCOVERY, and it is worth keeping even though the engine is parked: with both gates
+on elevation, a BAND-MAJOR walk `(rank, seq, base_z)` is a VALID TOPOLOGICAL ORDER of the support DAG.**
+`audit_rank_vs_support.js` already proved carrier_band_ABOVE_carried=0 — no carrier is ever in a higher
+elevation band than what it carries — so "finish band r before starting band r+1" can never contradict
+"nothing before its carrier". That makes the band gate EXACT with **no barrier machinery at all**, and
+it drives §4D_BAND_BY_Z to **0/50,327**. Every prior shape used a seq-major priority and needed a
+barrier to approximate what this ordering gives for free.
+
+**And it settles the barrier question outright: THE GROUP BARRIER IS DEAD WEIGHT.** On the shipped
+elevation shape it fires and is then waived for **51,774 of 63,415 nodes (82%)** — it is not a
+constraint, it is bookkeeping. Removing it entirely is neutral-to-better on every counter
+(seq-major: label 39,074→38,874, byZ 28,262→27,834, span 236d→229d) and deletes the deadlock detector,
+the dual waiver flags, the defer heap and the wait lists. If this engine is ever revived, revive it
+WITHOUT the barrier — three of the nine prior shapes died on barrier deadlocks that need never exist.
+
+## The measurements — real Hospital, 63,415 nodes / 81,722 support edges
+| shape | support | floating | band BY LABEL (T2a) | band BY ELEVATION | span | trades@mid | build/solve |
+|---|---|---|---|---|---|---|---|
+| **shipped (`fc58210`)** | **6,778 FAIL** | 0 | **29,824** | **8,333** | 170d | 5 | — |
+| prior 4th shape: both gates z + barrier (`1265411`, reproduced) | **0** ✅ | **0** ✅ | 39,074 ❌ | 28,262 ❌ | 236d ❌ | 5 | 1.1s / 0.26s |
+| **10a** both gates z, **no barrier**, seq-major | **0** ✅ | **0** ✅ | 38,874 ❌ | 27,834 ❌ | 229d ❌ | 5 | 1.1s / 0.17s |
+| **10b** both gates z, **no barrier**, **band-major** | **0** ✅ | **0** ✅ | 35,468 ❌ | **0** ⚠(see below) | 259d ❌ | **7** ✅ | 1.1s / 0.13s |
+| **10c** = 10b with **midpoint band bounds** | **0** ✅ | **0** ✅ | **33,261** ❌ (best of any support-correct engine) | 10,420 ❌ | 252d ❌ | **7** ✅ | 1.1s / 0.14s |
+| **11** = 10c + §SUPPORT_ORPHAN fallback | **0** ✅ | **0** ✅ | 33,264 ❌ | 9,563 ❌ | 260d ❌ | **7** ✅ | 1.7s / 0.13s |
+| — 10b + orphan fallback | **0** ✅ | **0** ✅ | 35,526 ❌ | 0 ⚠ | 278d ❌ | 7 | 1.7s / 0.13s |
+
+**⚠ WHY 10b's `byZ=0` IS NOT A WIN, and any future session must not quote it as one.** The witness's
+`§4D_BAND_BY_Z` derives its bands from the SAME storey-median bounds the gate uses, so a band-major
+walk scores 0 BY CONSTRUCTION — it is marking its own homework, exactly what the L895-898 standing
+warning is about. **Shape 10c is the honest reading of the elevation key**: it gates on midpoint bounds
+while the witness still measures median bounds, so the two keys are independent — and it scores
+**10,420 vs shipped 8,333. The shipped scheduler is BETTER on the elevation key too, when the elevation
+key is measured independently.** The 8,333→0 improvement was an artifact both times it appeared.
+
+**Midpoint band bounds are, however, a genuine improvement to the ladder and are worth lifting on their
+own.** `_zBounds` = each storey's MEDIAN base_z means every element sitting below its own storey's
+median is demoted into the band beneath it: `relabelledByZ` **23,121 → 8,816** when the boundary moves
+to halfway between consecutive medians, and label inversions fall 35,468 → 33,261 for free.
+
+## Verdict — NO MERGE, NO PR, by the decision rule stated up front
+- support **0** ✅ · floating **0** ✅ — the user's invariant is closed, again, for the third engine family.
+- band BY LABEL **33,261 vs 29,824 = +11.5%** ❌ — a visible regression of the ONE ordering the user
+  confirmed live on a real bake ("no more roof coming on before the walls", Day 282). This is the same
+  wall this lane has now hit eleven times.
+- span **252d vs 170d = +48%** ❌ — inherent to a band-major walk (floors serialize), not a tuning miss.
+- ✅ Regressions checked and GREEN on untouched `main`: `witness_stagger_support_order` (G-SSO-1..4 all
+  PASS, facade 0, movedAfterHost=105) and `witness_zstack_xray_staging` (G-XRAY-1..4 all PASS, RED=5687
+  → GREEN=0). Nothing shipped was touched; the work is confined to an unmerged branch.
+
+**THE STANDING CONCLUSION IS NOW STRONGER THAN "not yet solved", and future sessions should treat it as
+closed:** eleven engine shapes across four sessions — five pass-level repairs, sync nodes, priority-only,
+group-barrier, both-gates-on-elevation, no-barrier band-major, no-barrier band-major+midpoint bounds —
+**every single one drives support to 0 and lands band-by-label in the 33k-39k range against shipped's
+29,824.** That is not eleven near-misses; it is a measured floor. Enforcing "nothing before its carrier"
+COSTS roughly 3,400-9,000 label-band inversions and 50-90 days of span on this building, because walls
+genuinely both carry structure and rest on it. **The trade is real, and the user has already chosen:
+§Z_STACK_XRAY_STAGING (#1139, shipped) makes the defect HONEST on screen without paying that price.
+Do not re-open the engine without a NEW ruling that explicitly accepts the band/span cost.**
+
+## §SUPPORT_ORPHAN — the new requirement, MEASURED FIRST (`audit_orphan_support.js`, committed)
+User, 2026-08-03: elements with no valid carrier under strict §SUPPORT_ALL should not schedule
+unconstrained; defer them until "some nearby support" exists. **Measured before building, and the
+measurement reframes the requirement:**
+```
+§SUPPORT_ORPHAN nodes=63415 groundZ=158.61m noCarrier=40700
+§SUPPORT_ORPHAN grounded(<=1m above groundZ, legitimate DAG seeds)=678  IfcFooting=444 IfcCurtainWall=178
+§SUPPORT_ORPHAN TRUE_ORPHAN(airborne, zero carriers)=40022 (63.1%)  IfcPipeSegment=11385 IfcPipeFitting=10897 IfcDuctFitting=4248 ...
+§SUPPORT_ORPHAN true-orphan by trade seq: seq5=30808 seq6=7176 seq3=1215 seq4=542
+§SUPPORT_ORPHAN relaxed-reach: carrier below for 39729/40022; drop <=1m:4621 <=2m:6530 <=5m:39309 none-below-at-all=293
+```
+**It is NOT near-zero — it is 63.1% — but it is also NOT a population of anomalies.** The strict
+rests-on predicate bounds the gap on BOTH sides (`|S.top_z - T.base_z| <= GAP`), so every suspended
+service is an orphan by definition: a pipe at mid-storey has its slab 2.5m BELOW it. seq5 MEP alone is
+30,808 of the 40,022. **Deferring them is a schedule-wide redesign affecting two thirds of the model,
+not an exception path** — which is the opposite of what the requirement assumed, and is the reason it
+must not be switched on casually. The population that actually matches the user's words ("floating with
+nothing under it") is the `none-below-at-all` line: **293 elements, 0.46%.**
+
+**⚠ A DATUM TRAP, paid for once here — do not use `Math.min(base_z)` as ground.** One stray element sits
+at z=0 while the building's own lowest storey median is 168.8m (site datum), so a min-based ground
+reported every element as "168m in the air" and the airborne/grounded split was meaningless. The audit
+now uses the 1st percentile of `base_z` (158.61m), which correctly finds the 444 footings on the earth.
+
+**Built anyway and measured (`CPM_ORPHAN=on`, shape 11):** one edge per orphan to its NEAREST
+XY-overlapping carrier below, tolerance = **ONE STOREY HEIGHT taken from the ladder this function
+already derives** (max gap between consecutive band medians, **6.1m** on Hospital — extracted, not a
+constant, so a bungalow gets a bungalow's storey). One edge, never all candidates, because the strict
+graph already carries a max in-degree of 1,101. Result: **39,445 orphan edges, 1,255 left
+unconstrained, +8d span (252→260d), every other counter unchanged, no cycle (placed=63,415/63,415).**
+It works and it is cheap. It is also carried by a parked engine, so it ships nowhere for now.
+
+## Reusable, and where it lives
+Branch `feat/element-cpm-elevation-dual-gate` (off `feat/z-stacking-oneshot`), pushed, no PR.
+`audit_orphan_support.js` is the durable deliverable — it answers "what has no support at all" for any
+building, independently of any scheduler. The four env knobs are left in `computeSchedule` so shape 12,
+if it is ever justified, is a flag flip and not a re-derivation.
