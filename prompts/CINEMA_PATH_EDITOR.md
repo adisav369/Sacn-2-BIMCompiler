@@ -5338,3 +5338,54 @@ not merely on screen — the trap `cpe_day_counter.js`'s header names.
    `fc58210` (v913). Per the user's ruling the turn must NOT be gated on `perpMag` — the Hospital 0.15°
    RED goes green by removing the coupling, not by lowering the gate.
 5. **§NEED — the HEAD of a bake log** (see the one-shot above).
+
+## 🔴 §CPE_GAZE_ACQUIRE — user 2026-08-02: *"the cam head turning to face density*depth ... Seems a bit slow during this baking. It be nice if it does so right away gracefully"*
+**DIAGNOSED IN CODE, not guessed. The cause is a deliberate, documented mechanism — so this is a
+design change with a ruling attached, not a bug fix.**
+
+`viewer/effects.js:6748` — the composed gaze (look-ahead, seam blend, §CPE_AIM_DENSITY, §CPE_AIM_DEPTH)
+is passed through a HARD RATE CAP:
+```js
+var maxAng = CINEMA_TURN_DPS * stepSec * Math.PI / 180;   // CINEMA_TURN_DPS = 45  (effects.js:4077)
+var nxt = _rotToward(cur, raw[i], maxAng);                // effects.js:6754
+```
+and `_rotToward`'s own header states the intent plainly: *"Forward-only, so it LAGS rather than
+anticipating; that is correct for a camera operator."* **The lag the user is seeing is the feature.**
+
+**THE ARITHMETIC OF THE COMPLAINT** — the cap is CONSTANT, so acquiring a subject θ° off-axis costs
+θ/45 seconds at a flat rate with no fast start: 45° → 1.0 s, 90° → 2.0 s, 150° → 3.3 s, and the whole
+way it turns at exactly the same speed. That is why it reads as "slow" rather than "smooth": a real
+operator whips onto a subject and *decelerates* onto it. A constant rate has no acquisition at all.
+
+**THE FIX SHAPE (specced, not built): keep a bounded peak, replace the flat rate with an EASE-OUT
+acquisition.** Let the per-probe cap scale with the residual angle — fast while far off-axis, decaying
+as it converges — e.g. `maxAng = CINEMA_TURN_DPS * stepSec * (1 + k*smoothstep(residual/θ0))`. Peak
+turn rate stays explicitly bounded and logged; the crawl goes away; the arrival is *graceful* because
+the rate is smallest exactly where the gaze settles. Still a pure function of `w3`, so `poseAt` stays
+order-independent and replans stay byte-identical.
+
+**⛔ THE RULING THIS NEEDS — do not change `CINEMA_TURN_DPS` to "fix" it.** That constant is NOT a
+gaze setting: `effects.js:5932-5943` prices the **spin**, the **orbit lap** and the **walk's own turn
+charge** off the same 45 — raising it re-times every film ever baked, including the one the user just
+approved. The acquisition curve must be a SEPARATE, gaze-only multiplier over the shared cap. Decision
+needed: what peak is acceptable (2×=90°/s? 3×=135°/s?), knowing §CPE_GAZE_CONSTANT_RATE exists
+*because* an unbounded swing measured **29.01 deg/sample at w=0.850 on Hospital** and was judged a whip.
+
+**WITNESS CLAIM before any code** — `witness_cpe_gaze_acquire.js`, RED on `origin/main`:
+1. time-to-acquire (residual ≤5° of the density×depth subject) DROPS for a θ≥60° acquisition;
+2. peak deg/sample stays ≤ the agreed multiple of `CINEMA_TURN_DPS` — no whip reintroduced;
+3. the rate at arrival is STRICTLY LOWER than the rate at onset (that is what "gracefully" means, and
+   a flat-rate implementation fails it while still passing 1 and 2).
+The numbers already exist to compare against — `§CPE_GAZE_CONSTANT_RATE` logs `rawPeakDps` vs
+`limitedPeakDps` every bake, which is the before/after instrument, not a new one.
+
+**⚠ Not the same thing as `feat/cpe-hold-turn` (v912, still unmerged, still no PR).** That branch is
+about the turn during a §CPE_STICK_HOLD and carries the user's standing ruling that the turn must NOT
+be gated on `perpMag`. This item is the acquisition RATE anywhere in beats 3+4. Fix them separately.
+
+**Unrelated finding while measuring, recorded so it is not rediscovered:**
+`witness_cinema_path_editor.js` **G10** ("LOS aim points at the next waypoint ≤25°") is **RED on clean
+`origin/main`** — Duplex `aimErr=150.5deg d=0.01m`, Terminal `aimErr=25.4deg d=0.22m`. Duplex's is a
+degenerate probe (aim direction over a 1 cm baseline is meaningless), Terminal's is 25.4 against a 25
+threshold. **The instrument is at fault, not the gaze** — G10 needs a minimum-baseline guard before it
+can be trusted either way. It is NOT evidence for or against §CPE_GAZE_ACQUIRE.
