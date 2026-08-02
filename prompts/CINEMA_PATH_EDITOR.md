@@ -5868,3 +5868,426 @@ user to make, not something to invent unilaterally — named here as an open que
 `git show origin/main:viewer/cpe_room_title.js` content check — not fire-and-assume). **Deploy:**
 sw.js CACHE_VERSION v922 → v923 (cpe_room_title.js is precached; no new precached files added).
 PR: https://github.com/red1oon/bim-ootb/pull/1140 (auto-squash-merge enabled; verified merged — see below).
+
+## 2026-08-02 — §CPE_STICK_APPROACH DONE: MaxQ bake HUD shows "approaching Stick k/N"
+
+**User ask:** the bake status bar should also show which "stick" (waypoint band on the authored
+camera path — confirmed as `cinema_path_editor.js`'s established term, `_stick===true` on a band the
+user explicitly dropped, per §CPE_REOPEN_NODE's own rule: settle/exit-door/stop bands are never
+sticks even though they're also entries in `bands`) the camera is currently heading toward, so a user
+watching a live bake gets structural feedback ("about to swing past stick 4, that doesn't look right").
+
+**Grounding confirmed, not the user inventing a word:** read `§CPE_STICK`, `§CPE_STICK_RED_BAR`,
+`§CPE_STICK_HOLD`, `§CPE_STICK_ANCHOR`, `A.cinemaSeedStick` (effects.js:4433-4445), and the
+`_stick`/`_s` fields riding on bands per §CPE_REOPEN_NODE (effects.js:6864-6870, then 6910-6947 after
+this change). `_s` is each stick's arc-length fraction along the WALK (0=settle, 1=stop), assigned at
+spawn time (`cinema_path_editor.js` `hit.s`) and already carried through the override → plan
+round-trip — no new authored field, just reading what's already there.
+
+**The math reused, not re-derived:** Beat 3's own `poseAt` branch (effects.js ~6259-6260) computes
+`var e3 = _evenTurnRemap(_cinemaEaseFloored(_holdMap(w3)));` — the walk's live arc-fraction chain,
+holds included. `stickApproachAt(tNorm)` calls the SAME chain (same closures, same tables, built by
+the same `_evenTurnBuild()`/`_holdBuild()` calls already in `_cinemaPathPlan`) rather than a cheaper
+second estimate, because a stick with a `§CPE_STICK_HOLD` dwell on it spends beat-seconds without
+advancing arc — a naive time-fraction estimate would report the camera "past" a held stick while it
+is still parked in front of it. Measured directly: G-STK-6 below.
+
+**Implementation:**
+- `effects.js` `_cinemaPathPlan()`: new `_stickList` (built from `_cpeBands` filtered to `_stick===true`,
+  ordered along the path, `{index, s}` per stick) + `_stickApproachAt(tNorm)` (dive/spin → stick 1;
+  walk → `e3` via the reused chain, first stick with `s >= e3` wins; rise/orbit → null, nothing left
+  to approach). Exposed on the returned plan as `stickCount` and `stickApproachAt`. `stickCount===0`
+  (no editor bands, or bands with no user-dropped sticks — the common unedited-bake case) is a
+  complete no-op: `stickApproachAt` always returns null, exactly the old behaviour.
+- `cinema_maxq.js`: a thin `stickApproachAt(tNorm)` wrapper next to `poseAt`, applying the SAME
+  `_tFilm` clip remap so a clipped bake reports the stick that matches the pose actually flown that
+  frame. Called once per frame alongside `pose = poseAt(_tn)`. The `§MAXQ_ETA_TICK` status-bar text
+  gets one appended clause: `, approaching Stick k/N` — same per-frame cadence as the rest of the bake
+  HUD, no separate timer.
+
+**Before / after (example):**
+- Before: `🎬 MaxQ frame 342/576 — 210s, ~45s left (Alt+C / cinema icon cancels + saves partial)`
+- After (path has sticks, nearing the 4th of 9): `🎬 MaxQ frame 342/576 — 210s, ~45s left, approaching
+  Stick 4/9 (Alt+C / cinema icon cancels + saves partial)`
+
+**Witness — `witness_cpe_stick_approach.js` (new), G-STK-1..7, Duplex 7/7, first green run, no fudging:**
+a 5-band fixture (settle, 3 sticks at explicit KNOWN `_s = [0.25, 0.50, 0.75]`, stop) with a hold on
+the middle stick. G-STK-1 wiring (stickCount + `_s` echo survive band→plan). G-STK-2 start (before the
+walk, and at w3=0, reports stick 1). G-STK-3 monotonic (801-sample scan, index never regresses).
+G-STK-4 mid-stick-1/just-past-stick-1 (found via the function's own 1→2 transition, ±1 sample: stick 1
+then stick 2). G-STK-5 near-end (at `beats.out` and through the rise, always null — every stick passed).
+G-STK-6 **hold-awareness, the reason this reuses the real chain**: at the no-hold twin's own measured
+2→3 transition w3, the HELD plan (same w3, its own beats) is still ≤ stick 2 — the dwell measurably
+delays the transition, and far from the hold both plans agree. G-STK-7 the unedited derived plan
+(`A.cinemaPathPlan(DUR)`, no override) has `stickCount=0` and is null everywhere — the common case.
+
+**Regression, all green, unchanged:** `witness_cpe_stick_hold.js` 8/8 (the `_holdMap`/`_holds` chain
+this feature reads), `witness_cpe_reopen_node.js` 10/10 (the `_stick`/`_s` provenance this feature
+reads). `witness_cinema_bands.js` B5/B7 FAIL — confirmed **pre-existing**, not caused by this change:
+stashed this feature's edits and reran on the identical base commit, same two failures, same numbers
+(peak=104.0 deg/frame, aimErr pattern identical) — a real baseline defect in that witness/path shape,
+tracked separately, not this session's to fix.
+
+**`witness_maxq_mp4.js` — environmental, not a regression, verified by direct baseline comparison
+(not assumed):** both CASE A and CASE B timed out at their own internal 240s cap under real machine
+load (load avg 6.66, 26 concurrent chrome/node processes from other agents at the time — the same
+condition #1138's DONE entry above already documented as making this class of full-bake witness
+unreliable). Zero page errors both runs — not a crash, a genuinely slow frame cook under contention.
+Verified NOT caused by this change: swapped this branch's `effects.js`/`cinema_maxq.js` back to the
+pre-change commit (`8f31606`) in the same loaded environment and reran — CASE A failed identically
+(elapsed 243251ms vs this change's 243289ms, same `§MAXQ_MP4 configured/encoded/mux: NONE` signature).
+Restored this branch's files immediately after (verified `git status --short` clean against HEAD).
+
+**PR:** #1143, merged `1768db4` (verified via `gh pr view --json state,mergeable,autoMergeRequest`
+showing `state:MERGED` + `git show origin/main:viewer/effects.js` containing 4 `§CPE_STICK_APPROACH`
+hits + `git show origin/main:viewer/sw.js` showing v924 — not fire-and-assume). CI (`fast-checks`,
+`e2e-tests`) both passed before auto-merge landed. **Deploy:** sw.js CACHE_VERSION v923 → v924
+(effects.js + cinema_maxq.js are both precached).
+PR: https://github.com/red1oon/bim-ootb/pull/1143
+
+## ✅ DONE 2026-08-02 — §CPE_MAXQ_STATUS_DAY_LABEL (Day # + room label on the bake HUD)
+
+Same family as §CPE_STICK_APPROACH directly above: two more live values appended to the SAME
+per-frame MaxQ bake status line, while a bake is running (NOT the exported video — that overlay
+path was already confirmed correct and untouched). User asked for the current **Day #** and the
+current **room label** to be visible during the cook, the same way stick-approach already is.
+
+**Grounded in already-computed values, nothing recomputed:** `cinema_maxq.js`'s per-frame loop
+already computes `_dayInfo` (via `A.dayCounterAt(_bkMs, ...)`, null when the day-counter is off for
+this bake — `_dayPos === 'off'`) and `_titleInfo` (via `A.roomTitleOpacityAt(_titleSegs, i/fps)`,
+returning `{name, guid, opacity}` or null between rooms / when §CPE_ROOM_TITLE is off) — both
+purely for the `_captureFrame(w, h, _titleInfo, _dayInfo)` canvas-compositing call that already
+existed. This feature reads those SAME two variables at the SAME point in the loop where the
+stick-approach clause is appended — no second computation, no new state.
+
+**Implementation:** `cinema_maxq.js` gets one new pure function, `_maxqStatusDayRoomSegs(dayInfo,
+titleInfo)`, declared next to `_status()` and exposed on `window.APP` (as
+`maxqStatusDayRoomSegs`) through the file's existing `_attach` `setInterval` poll — the same
+"APP may not exist at parse time" pattern `startMaxQualityOrbit`/`ghostGroundArm`/etc. already use
+(⚠ a first attempt assigned `window.APP.maxqStatusDayRoomSegs` directly at module top-level and
+would have thrown `TypeError: Cannot set properties of undefined` — `main.js` creates `window.APP`
+in a LATER `<script>` tag than `cinema_maxq.js`; caught before commit by checking every other
+top-level `window.APP.*` assignment in the file, all of which go through `_attach`). The formatter
+returns `{dayTxt, roomTxt}`:
+- `dayTxt = dayInfo ? ', Day ' + dayInfo.day + '/' + dayInfo.totalDays : ''`
+- `roomTxt = (titleInfo && titleInfo.name) ? ', "' + titleInfo.name + '"' : ''`
+
+Both are appended into the existing `_status(...)` call, ordered Day → room label → stick-approach
+(existing segments untouched). Exposing this as a pure, witnessable function follows the exact
+precedent `A.dayCounterAt`/`A.roomTitleOpacityAt`/`stickApproachAt` already set — the witness gates
+the real formatter directly, no live bake needed.
+
+**Before / after (example, all three live features present):**
+- Before: `🎬 MaxQ frame 342/576 — 210s, ~45s left, approaching Stick 4/9 (Alt+C / cinema icon
+  cancels + saves partial)`
+- After: `🎬 MaxQ frame 342/576 — 210s, ~45s left, Day 42/214, "Level 2 R3", approaching Stick 4/9
+  (Alt+C / cinema icon cancels + saves partial)` — this exact string is asserted verbatim by
+  witness G-DRL-7 below, not paraphrased.
+
+**Witness — `witness_cpe_maxq_status_day_label.js` (new), G-DRL-1..7, 11/11 GREEN, RED confirmed
+pre-fix** (`git stash` reverting only `cinema_maxq.js` → `T0 module loaded` fails, `maxqStatusDayRoomSegs`
+absent, exit 1 — then `git stash pop` restored and reran GREEN): G-DRL-1 Day # at day-1/mid-span/
+last-day checkpoints, exact `dayInfo.day`/`dayInfo.totalDays` echo, no off-by-one on the final day.
+G-DRL-2 day-counter off (`dayInfo=null`) → empty segment, never "Day null/null". G-DRL-3 room label
+present → exactly `, "Level 2 R3"`. G-DRL-4 room label absent (`titleInfo=null`) → empty segment.
+G-DRL-5 **the gap case**: `titleInfo` a real non-null object but with an empty/null `.name` (mid-
+crossfade with nothing covering the frame) → still empty, never `', ""'` — a present-but-nameless
+object must be told apart from an absent one, and both must produce nothing. G-DRL-6 a 4-frame
+sequence (day-counter on throughout; room label on → gap → on(different room) → off) proving the
+segments track frame-to-frame, not just in isolation — the gap frame's room segment goes empty and
+the NEXT frame's real room recovers cleanly, no staleness. G-DRL-7 composition order: both segments
+present, assembled into the exact spec status line, asserted Day-index < room-index < stick-index.
+
+**Regression, all green:** `witness_cpe_stick_approach.js` 7/7 (needed an external server —
+`feedback_witness_needs_external_server_port.md` — self-served a temp dual-root server: worktree
+code first, `~/bim-ootb` fallback for gitignored `buildings/*.db`, same technique
+`witness_cpe_day_counter.js` already uses internally). `witness_cpe_day_counter.js` 17/17.
+`witness_cpe_room_title_collective.js` all 7 checks green (self-serving, no server needed).
+
+**PR:** #1145, merged `d128648` (verified via `gh pr view --json state,mergeCommit,mergedAt` showing
+`state:MERGED` + `git show origin/main:viewer/sw.js` showing `CACHE_VERSION = 'v926'` +
+`git show origin/main:viewer/cinema_maxq.js | grep -c CPE_MAXQ_STATUS_DAY_LABEL` = 3 — not
+fire-and-assume). CI (`fast-checks`, `e2e-tests`) both passed before auto-merge landed. **Deploy:**
+sw.js CACHE_VERSION v925 → v926 (no new precached files — `cinema_maxq.js` was already listed).
+PR: https://github.com/red1oon/bim-ootb/pull/1145
+
+# ✅ SESSION 2026-08-03 — §CPE_BUILDUP "fast start, slow middle" investigated (NO DEFECT FOUND) + §CPE_PACE_SWING_SOFTEN (direct tuning, 1.6→1.45)
+
+**Bug report:** user, on a real Hospital §MAXQ bake: the buildup reveal (elements appearing as the
+film plays) starts too FAST, then the MIDDLE is relatively SLOW. Ground truth from that session's own
+logs: `§CPE_WORK_SCHEDULE workInFirst10%OfCalendar=0.6%` (this model's raw calendar is extremely
+bursty — exactly what `§CPE_BUILDUP_WORK_PACED` (PR #1116) was built to fix by pacing on ELEMENT
+INDEX instead of calendar days), `§CINEMA_PACING natural=148.5s = dive 8.7 + spin 0.8 + walk 117.3
++ pullback 13.7 + orbit 8.0`, `§CPE_BUILDUP_TOPOUT topoutU=0.938`.
+
+## Part 1 — is the buildup ELEMENT-PLACEMENT RATE actually uneven? Measured: NO.
+
+Read `_workCursorAt`/`_buildupTAt` in `viewer/cinema_maxq.js` (§CPE_BUILDUP_WORK_PACED,
+§CPE_BUILDUP_TOPOUT) — by construction, `bkT = min(1, tFilm/topoutU)` and `tFilm = i/(nFrames-1)`
+is uniform per FRAME (constant fps), so the element-index target `k = round(bkT * total)` is
+provably linear in real seconds. Confirmed no cross-contamination from `§CPE_NOISE_LAW`'s busy-
+weighted camera pacing (`_walkBusy`/`_diveBusy`) — grepped, neither symbol appears anywhere in
+`_workCursorAt`/`_buildupTAt`.
+
+**Measured on the real Hospital DB** (`~/bim-ootb/buildings/Hospital_extracted.db`, 63,415 ops),
+replaying the EXACT per-frame bake pipeline (`buildupTAt` then `buildupCursorAt`, nFrames=1905 —
+the user's own log's frame count) and sampling `tmPlacedCount` every 20 frames:
+
+| checkpoint (tFilm) | placed | rate (elements/frame) |
+|---|---|---|
+| 0.10 | 6,878 | 36.23 |
+| 0.25 | 17,236 | 36.15 |
+| 0.50 | 34,465 | 36.23 |
+| 0.75 | 51,697 | 36.20 |
+
+Full 20-frame-resolution sweep (0→1755, the whole pre-topout film): rate stayed in **36.15–36.30
+elements/frame, worst deviation 0.7%** — a flat line, not fast-then-slow. Post-topout (frames
+1760–1904): placed stays pinned at 63,415/63,415 (the designed dwell). `tmWorkSchedule().ends` tie-
+cluster check: **49,903 distinct timestamps / 63,415 ops, largest tied group = 9, median group = 1**
+— ruled out the other candidate mechanism (a burst-then-plateau from many ops sharing one `end_ts`,
+since `tmPlacedCount` counts by `end_ts <= cursor`); the ties are too small to matter.
+
+**Conclusion: the buildup index-pacing mapping is not the defect — it already delivers what its
+own spec promises, an even elements-per-second rate, measured to within noise.** No code change
+made to `_workCursorAt`/`_buildupTAt`/`_buildupTopoutU`. Root-cause read (not directly measured,
+stated as the most likely explanation): the CAMERA beat structure makes a genuinely flat placement
+rate LOOK uneven — the dive is a fast ~8.7s swoop covering a lot of ground quickly (reads as
+"fast"), the walk is a slow deliberate ~117s amble through the SAME even rate (reads as "slow"
+purely because the camera itself creeps), and the walk's own busy-area slowdown (Part 2 below)
+most likely compounds this further.
+
+**Witness:** extended `witness_cpe_work_pacing.js` (not duplicated — this is the file G-WP-1..7
+already live in) with **G-WP-8** (frame-by-frame reveal rate stays within a 25% band of its own
+mean across the pre-topout film — real numbers logged, not just pass/fail) and **G-WP-9** (the
+post-topout dwell stays exactly flat at `total`). G-WP-8's rate uses a windowed block (not a raw
+1-frame diff) — Duplex is small enough (1,119 ops/1,905 frames) that a literal per-frame diff is
+pure integer-count noise, which isn't what a viewer perceives as "fast/slow" either. **Result:
+`witness_cpe_work_pacing.js` 18/18 GREEN (Duplex 9/9, Hospital 9/9)** — real numbers in both logs,
+not synthetic.
+
+## Part 2 — §CPE_PACE_SWING_SOFTEN: direct tuning request, independent of Part 1's finding
+
+Mid-task instruction: soften `CINEMA_PACE_SWING` (`viewer/effects.js`) — the "the noise density×depth
+ratio that slows the camera walk in busy/dense areas" — "the slowdown is currently too strict." This
+constant is extensively documented earlier in this file (§CPE_EVEN_TURN, §CPE_NOISE_LAW sessions) as
+"the user's ONE pacing dial," reached at `1.6` after a real widen/narrow jerk trade-off ("widen
+PACE_SWING, accept the stall, or accept more jerk") and flagged "not tunable by feel."
+
+**Grounded, not guessed, per the ask.** The user's own suggested range (1.3-1.4x) was tested FIRST,
+not assumed: at both 1.35 and 1.4, `witness_cpe_even_turn.js`'s **T5** (the fast-side jerk cap,
+`1.5 * PACE_SWING`) goes RED on Duplex — the walk's real cost-parameterized step hits **3.0x its
+own mean**, and the narrower cap (2.0x-2.025x at 1.35-1.4) flags a legitimate fast turn as a
+discontinuity. Binary-searched from there: **1.5 safe, 1.45 safe, 1.4 unsafe** (repeated runs,
+same result each time) → **settled on `CINEMA_PACE_SWING = 1.45`**, the largest reduction from 1.6
+that introduces no new T5 failure on either regression building (Duplex, Terminal).
+
+**Real before/after on Hospital** (`A.cinemaPathPlan(24, null)`, real `§CPE_WALK_BUDGET_NOISE_BLIND`
+log line, `busy=0.432` both times — same building, same walk):
+
+| | swing | busyMult | outSec |
+|---|---|---|---|
+| before | 1.6 | 1.2591 | 18.322s |
+| after | 1.45 | 1.1943 | 17.380s |
+
+A 25% cut in the busyness CORRECTION itself (`busyMult - 1`: 0.2591 → 0.1943), same mechanism
+(`w = 1-1/PACE_SWING` in §CPE_EVEN_TURN still derives from this one constant — nothing duplicated,
+nothing hand-tuned separately).
+
+**Pre-existing gap found, NOT caused by this change, NOT fixed here:** `witness_cpe_even_turn.js`'s
+**T6** (the SLOW-side stall floor, `1/PACE_SWING`) is RED at the ORIGINAL `1.6` baseline too —
+confirmed by testing `origin/main` unmodified before touching anything (`git stash`, re-ran, same
+FAIL at `swing=1.6`: "slowest frame is 49% of the ease's own prediction... floor is 62.5%"). Out of
+scope for this task; named here for whoever picks up `§CPE_PACE_FLOOR` next.
+
+**Witness mirrors updated to match** (`witness_cpe_even_turn.js` line ~157, `witness_cpe_noise_law.js`
+line ~26) — neither witness can import the source constant, both hardcode a local copy that must be
+kept in sync by hand; both were stale-checked and fixed as part of this change.
+
+**Regression, all green:** `witness_cpe_noise_law.js` **10/10** (Duplex 5/5, Terminal 5/5).
+`witness_cpe_even_turn.js` **8/10** (Duplex 4/5, Terminal 4/5) both BEFORE and AFTER this change —
+identical pass/fail pattern, confirming T6 is untouched by this PR (same failure, same magnitude
+class) and T5 (the one gate this change could plausibly break) stays green.
+
+**Deploy:** sw.js CACHE_VERSION v926 → v927 (`effects.js` is precached). `EFFECTS_V` bumped v17→v18.
+
+**PR:** https://github.com/red1oon/bim-ootb/pull/1147 — verify merge status before treating this as
+landed (see this file's own standing rule: never fire-and-assume a PR merge).
+
+# ✅ DONE 2026-08-03 — §CPE_GHOST_GROUND_TRIGGER: reverted to first-above-ground-element, not 5% share
+
+**The complaint (user, twice, direct, from real bakes):** the ground plane stays x-ray/ghosted
+"quite further on" than it should — it should go opaque essentially the MOMENT the first slab(s)
+appear above ground. Real log evidence on Hospital: `revealFrac=0.05` — opaque only once 5% of ALL
+above-ground work (3,123 elements) is placed.
+
+**The historical tension (read in full before touching this threshold again):**
+- `#1110` (`ed10bb9`/`fb2e053`) shipped the ORIGINAL rule: opaque at the first at-or-above-ground
+  element (`tmFirstAboveGroundMs`, MIN(end_ts) over above-ground ops). Measured on Hospital:
+  t=0.0162 — 2.4s of a 147.9s film.
+- `#1112` (`74a8e27`/`6397e45`) REPLACED that with `§CPE_GHOST_GROUND_RATIO`: opaque once
+  `GHOST_REVEAL_FRAC=0.05` (5%) of the model's own above-ground total is placed. This was a
+  DELIBERATE, REASONED widening — the commit's own rationale: the first-element trigger fired
+  "before the camera lands," judged too brief to be legible. Not a bug; a design call, measured
+  and stated at the time.
+- 2026-08-03: the user watched real bakes and said, twice, directly, that even 5% reads as "quite
+  further on" than wanted. This is current, live, repeated testimony overriding a documented prior
+  design rationale — per this task's own instruction, implemented literally (revert to
+  first-above-ground-element), NOT split the difference at some self-chosen value between 1.6% and
+  5%.
+- **Flagged, not decided unilaterally:** #1112's "too early to be legible" concern was real and
+  measured, not invented. Reverting trades back into that exact risk — a ~2-3s-of-100+s-film ghost
+  window. Worth a look on a real bake to confirm the ghost still reads as intentional before it's
+  gone. If it doesn't, the next lever is `GHOST_FADE_SEC` (currently 3.0 film-seconds, unchanged
+  by this PR) or camera pacing near the opening — not re-widening the trigger back toward a ratio.
+
+**The fix — `viewer/cinema_maxq.js` `_ghostGroundAt`:** dropped the `byWork` ratio curve
+(`frac = placedAbove/aboveTotal`, gated at `GHOST_REVEAL_FRAC`) entirely. The function now runs a
+single smoothstep (`byTime`, unchanged formula/constants — `GHOST_OPACITY=0.22`,
+`GHOST_FADE_SEC=3.0`) from `_ggSpan.firstT`, which was ALREADY being computed from
+`tmGroundSchedule`'s `firstAboveMs = sched.ends[0]` (`time_machine.js`, added in #1112 as
+infrastructure but previously only used as a secondary time-floor under the byWork ratio gate) —
+the identical `MIN(end_ts) over above-ground ops` value #1110's now-superseded
+`tmFirstAboveGroundMs` computed. No new data path, no invented condition — this is the pre-#1112
+diff's trigger, read via `git show 74a8e27`/`git show ed10bb9` before writing a line of code, wired
+onto the already-shared `tmGroundSchedule` plumbing.
+
+**Kept unchanged, confirmed by explicit check before editing:**
+- Opacity MECHANICS (smoothstep math, `GHOST_OPACITY`, `GHOST_FADE_SEC`, `depthWrite` handling) —
+  shared between the Alt+M bake and the `cinema_path_editor.js` REHEARSAL via the same
+  `window.APP.ghostGroundArm/ghostGroundAt/ghostGroundRestore` exports (`cinema_maxq.js:1267-1269`,
+  called from `cinema_path_editor.js:1286/1307/1330`). Only the THRESHOLD moved, confirming the
+  task's own premise — no shared-rendering-code changes needed.
+- All #1113-1115 hardening: degrade-not-disable fallback (`tmGroundSchedule` missing → coarse
+  proxy, `firstAboveMs = bkState.projectStart`, i.e. essentially-immediate — consistent with, not
+  contradicting, the new intent), every arm-refusal names itself in the log, lazy arm-on-first-tick
+  (`_ggTried`), arm-while-hidden (`A.ground.visible` never gated).
+- `effects.js`'s Alt+S still-photo shadow system — untouched, different lane, not read or edited.
+
+**WITNESSED** — `witness_cpe_ghost_ground.js`, extended (not replaced) G-GG-8: computes, from the
+SAME real `tmGroundSchedule` data the product uses, both (a) the new opaque-point and (b) where the
+RETIRED 5%-share rule would have fired, as a real quantified RED-vs-GREEN — not a re-run of old
+code, a direct read of the same schedule the old rule consumed:
+
+| Building | first above-ground element (new trigger) | ground reaches opaque | retired 5%-rule would have fired | gap closed |
+|---|---|---|---|---|
+| Hospital | t=0.0227 | t=0.0550 (gap 0.0323, one fade window) | t=0.0648 (3,123rd above-ground element) | 0.0422 film-fraction, 3,122 elements |
+| Duplex   | t=0.0083 | t=0.0400 (gap 0.0317, one fade window) | t=0.1315 (50th above-ground element) | 0.1232 film-fraction, 49 elements |
+
+`witness_cpe_ghost_ground.js`: **Duplex 11/11, Hospital 11/11** (all 11 gates, including the
+existing G-GG-1..7/9/10/11 hardening gates, unaffected by the trigger-only change).
+
+**Regression:**
+- `witness_cpe_buildup_topout.js` **4/4** — buildup pacing/topout mapping untouched (expected;
+  this PR never touched that code).
+- `witness_cpe_ok_bake.js` K3 — **FAILS**, but confirmed a PRE-EXISTING, UNRELATED flake: reproduced
+  identically (2/2 runs) on a pristine, unmodified `origin/main` checkout at the exact commit this
+  branch was based on AND rebased onto (`4d617b9`), with zero files from this change present. K3
+  gates `cinema_path_editor.js`'s waypoint-apply guardrail (`§CPE_APPLIED none` on an untouched OK)
+  — nothing this PR touched. Named here per this file's `§CPE_PACE_FLOOR`-style precedent (flag for
+  whoever picks it up next), not fixed under this task's scope.
+
+**Deploy:** sw.js CACHE_VERSION v927 → v928 (`cinema_maxq.js` is precached). `MAXQ_V` bumped v20→v21.
+
+**PR:** https://github.com/red1oon/bim-ootb/pull/1148 — merged (`06a6c79`), verified via
+`gh pr view 1148 --json mergedAt,mergeCommit,state` (`MERGED`, not just auto-merge-enabled).
+
+**Worktree:** `/tmp/wt-ghost-ground-trigger` — pruned after merge verification (branch fully pushed,
+tree clean, no other session found inside it).
+
+## 2026-08-03 §GHOST_GROUND_LIVE_TRIGGER — #1148 was correct in isolation, broken live (RESOLVED)
+
+**The report:** user watched a REAL Hospital MaxQ bake, not the witness. Log:
+```
+§CPE_DAY_COUNTER frame=60 day=50 of=214 pos=bl cursor=1771488418668
+§CPE_BUILDUP frame=60/1820 t=0.035 cursor=1771488418668 placed=2238/63418 groundOpacity=0.220
+```
+`groundOpacity=0.220` is EXACTLY `GHOST_OPACITY` — the floor, `v=0`, not mid-fade — at `t=0.035`
+with 2,238 elements already placed. #1148's own G-GG-8 measured the trigger firing at t≈0.0227 and
+reaching full opacity by t≈0.0550 on Hospital; t=0.035 sits BETWEEN those, where the ground should
+already be mid-ramp. #1148's code (`rule=first above-ground element`) was confirmed present and
+unmodified on `origin/main` — the code hadn't regressed, the live BEHAVIOR had never matched what
+G-GG-8 measured.
+
+**Root cause, found from real logging (not guessed):** `_ghostGroundArm` (`viewer/cinema_maxq.js`)
+computed the trigger threshold ONCE, as a CALENDAR-TIME fraction:
+`firstT = (sched.firstAboveMs - bkState.projectStart) / span` — both `firstAboveMs` and `span` are
+epoch-ms, so `firstT` answers "what fraction of the CALENDAR has elapsed when the first
+above-ground op's `end_ts` occurs." `_ghostGroundAt` then compared this against `tFilm` every
+frame. That was correct back when the buildup cursor stepped linearly through the calendar — but
+**`§CPE_BUILDUP_WORK_PACED` landed the SAME DAY as #1148** and changed `tFilm` into an
+ELEMENTS-PLACED fraction instead (`_workCursorAt`: `t=0.10` means the 10th-percentile element by
+completion order, not 10% of the calendar — confirmed directly: `t=0.035`,
+`placed=2238/63418=0.0353≈t`). Two different clocks were being compared directly, and #1148's own
+witness (G-GG-8) never caught it because it fed synthetic `t` values straight into `ghostGroundAt`
+in isolation — it never replayed a REAL cursor the way the bake loop actually drives it. Measured
+divergence on the real schedules: Hospital `calendarFractionT=0.0218` vs the CORRECT
+`elementsFractionT=0.0074` (rank 468/63,415); Duplex `calendarFractionT=0.0083` vs
+`elementsFractionT=0.0052` (rank 6/1,143) — on both buildings the old rule stayed ghosted LONGER
+than correct, matching the user's exact observation.
+
+**New diagnostic logging added (the user explicitly asked for this, not just the fix):**
+`§GHOST_GROUND_TICK` — periodic, every ~5 FILM seconds while the ground is still ghosted/fading,
+shows `tFilm`, `firstT`, `cursorMs`, `firstAboveMs`, `fired`, `fallback`, `opacity` — the exact gap
+that made this bug take this long to pin down (previously ONLY an "armed" and a "restored" line
+existed, nothing in between). `§GHOST_GROUND_TRIGGER_FIRED` — one-shot, logged the exact frame the
+trigger condition first becomes true, with `cursorConfirms=1/0` cross-checking the precomputed
+threshold against the real cursor independently.
+
+**The fix — `viewer/cinema_maxq.js`:** `_ghostGroundArm` now precomputes the trigger threshold in
+the SAME domain `tFilm` is actually in: when work-pacing is armed (`_wpSched` present — reused via
+`_workPacingArm()`, not re-derived), binary-search `sched.firstAboveMs`'s RANK within
+`_wpSched.ends` (the full sorted end_ts order every op is placed in) and use `rank/total` — this is
+provably the exact value at which `_workCursorAt(elementsFirstT) === firstAboveMs`, i.e. the same
+indexing the bake loop's own cursor mapping uses. When work-pacing is NOT armed, falls back to the
+calendar-fraction (mirroring `_workCursorAt`'s own degrade branch) — same "degrade, don't disable"
+discipline as #1113-1115. `_ghostGroundAt` compares `tFilm` against this single precomputed
+`_ggSpan.firstT`, unchanged shape otherwise (still one smoothstep, still `GHOST_OPACITY`/
+`GHOST_FADE_SEC` unchanged).
+
+**A live-latch design was tried and rejected before committing** (per an early coordinator
+suggestion: "when any above-ground gets rendered, off — foolproof, state not clock"). Implemented
+as `_ggFiredAtT = tFilm` on the first frame the real cursor crossed `firstAboveMs`, then faded from
+that latched value. This BROKE the pre-existing `G-GG-6` gate (preview/bake curve agreement):
+latching on "whatever `tFilm` the function first happens to be called with" makes the fade curve
+depend on sampling density — exactly the class of bug G-GG-6 was written to catch (measured
+2026-07-31, a 2219-frame bake vs a 600-frame rehearsal tracing different curves for the identical
+film under an earlier per-call rate limiter). Caught by re-running the FULL witness suite before
+committing, not assumed safe. Reverted to the precomputed-constant design above; `cursorMs` is
+still threaded through as a parameter but used ONLY for the confirmatory one-shot log, never to
+move the threshold.
+
+**Real per-frame evidence (Hospital, from the witness's new G-GG-12 replay — real cursors from
+`A.buildupCursorAt`, the same call the bake loop makes, not synthetic `t` values):**
+```
+armed rule=first above-ground element aboveOps=62450 belowOps=965 firstAboveMs=1654644218000
+  triggerT=0.0074 (domain=elements-placed) calendarFractionT=0.0218 elementsFractionT=0.0074(rank 468/63415)
+G-GG-12c REGRESSION PROOF: old (calendar-fraction, #1148) would fire at frame 9 (t=0.0225)
+  | new (real cursor, this fix) fires at frame 3 (t=0.0075) | frame gap=6
+```
+Before the fix's threshold is crossed, opacity is pinned EXACTLY at `0.22` on every real-cursor
+frame (G-GG-12a); once crossed, opacity rises monotonically to `1.0` by end of film (G-GG-12b).
+
+**WITNESSED** — `witness_cpe_ghost_ground.js` extended with:
+- **G-GG-12a/b/c** — real per-frame replay (400 synthetic frames per building, real cursors via
+  `A.buildupCursorAt`): opacity pinned at floor pre-trigger, monotone rise to opaque post-trigger,
+  and the regression proof above (old vs new trigger frame, computed from real schedule data, not
+  by invoking retired code).
+- **G-GG-13** — asserts both new log lines (`§GHOST_GROUND_TRIGGER_FIRED`, `§GHOST_GROUND_TICK`)
+  actually appear.
+- Added a small read-only accessor, `window.APP.ghostGroundDebugState()`, so the witness asserts
+  against the ACTUAL live `firstT` the fix computed rather than re-deriving its own guess.
+
+**Duplex 15/15, Hospital 15/15 (30/30 total)** — every pre-existing #1148 gate (G-GG-1..11) stays
+green alongside the four new ones.
+
+**Regression:** `witness_cpe_buildup_topout.js` **4/4** — unaffected (exercises `_buildupTAt`, not
+the ghost-ground trigger).
+
+**Deploy:** sw.js CACHE_VERSION v928 → v929 (`cinema_maxq.js`/`cinema_path_editor.js` already
+precached, no new files). `MAXQ_V` bumped v21→v22.
+
+**PR:** https://github.com/red1oon/bim-ootb/pull/1149 — merged (`4f6e9a9`), verified via
+`gh pr view 1149 --json state,mergedAt,mergeCommit` (`MERGED`, not just auto-merge-enabled).
+
+**Worktree:** `/tmp/wt-ghost-ground-live-fix` — to be pruned after this record is written (branch
+fully pushed, tree clean, nobody else found inside it).
