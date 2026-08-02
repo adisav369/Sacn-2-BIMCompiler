@@ -2884,6 +2884,8 @@ The cabling precondition (§20) is still up.
   RADIANS. Do not re-open this.
 - Fixtures differ IN KIND, so never generalise from one: Clinic has 182 doorless openings and 0
   `IfcOpeningElement`; LTU has 5 and 3,368. Any rule that works on one must be checked on the other.
+  ⚠ **READ THAT LINE CAREFULLY — it says DOORLESS openings, not doors.** It misled a reader on
+  2026-08-02 into "LTU has 5 doors." LTU has **606 real IfcDoor** (median 0.91 m × 2.11 m). See §21.29.
 
 **THE ONE THING TO DO NEXT — the stranded rooms.** Layer 1 now builds correctly (real doorways, real
 door links, depth chains 1..5) and still loses to the room graph: unroutable **91.3%/87.7%** vs the
@@ -2912,3 +2914,103 @@ guess is not good enough.
   treating radians as degrees. Both were caught only because the number was absurd.
 - **Never infer a defect from a derived statistic without checking the raw value** — that is what
   produced the retracted rotation finding.
+
+### §21.29 APERTURE PROVENANCE — where the doorway hole actually comes from, and the TIER contract
+### that makes it general. (2026-08-02, measure-only session. Nothing built, nothing deployed.)
+User challenge that started this: *"how the LTU is done then without doors, i tot i saw a lot when
+doing fly thru timeline scrub to view. Investigate deeper first if it is really true."* The user was
+right on the facts and the investigation found a defect in §21.26's premise, not just a wording bug.
+Probes: `scratchpad/probe_ltu_doors.py`, `probe_ltu_openings.py`, `probe_ltu_arch.py`; logs
+`ltu_doors.log`, `ltu_openings.log`, `ltu_arch.log`. Fixture `~/bim-ootb/buildings/*_extracted.db`.
+
+**FACT 1 — LTU is door-rich. The §21.28 "5" is doorless ARCHWAYS, not doors.**
+```
+§LTUDOOR_1 LTU doors=606 openings=3368 windows=976
+§LTUDOOR_2 door bbox maxHoriz median=0.91m p10=0.91 p90=1.68 | height median=2.11m
+§LTUDOOR_3 doors with maxHoriz<0.6m = 1/606
+   storeys VÅNING 3=219 · 2=198 · 1=180 · 4=9   types Basdörr 16=550, Dörr 16=13, Vikdörr=11, Skjutdörr=9
+```
+
+**FACT 2 — §21.26's stopper is OVERSTATED, and this is the real finding.** It says *"a door is a void
+in a wall, and no void is ever subtracted… doorways do not exist in the geometry at all."* True of the
+RASTER everywhere, and true of Clinic's DATA (0 `IfcOpeningElement`). **False of LTU's data:**
+```
+§LTUDOOR_4 doors with an IfcOpeningElement centre within 0.3m = 601/606 (99.2%)  [0.6m: 604, 1.0m: 604]
+§LTUDOOR_5 matched-opening maxHoriz median=0.93m height median=2.11m (n=604)
+§LTUDOOR_6 windows with an opening within 1.0m = 956/976
+```
+The apertures were in `element_transforms` all along, dimensionally matching their doors. §21.27
+carved **door bounding boxes** as a proxy for a void LTU already had. Not a wrong fix — a coarser one
+than that fixture's data supports, and it is the substrate the 140/107 stranded rooms were measured on.
+
+**FACT 3 — the §21.28 "second open item" guess is off by ~24×, and its unit was wrong.**
+```
+§ARCH_2 LTU floor-level doorway-sized voids with NO door and NO window = 122
+        (VÅNING 1=50 · 2=36 · 3=27 · 4=9)      ← §SPINE2_OPEN reported openThresholdLinks=5
+§ARCH_3 unhosted voids >=2.0m wide = 125, widths up to 25.4m and 55.1m
+§LTUOPEN_1 openings=3368  door-hosted=715  window-hosted=1438  UNHOSTED=1250
+§LTUOPEN_4 unhosted tiny (<0.4m, MEP-penetration shaped) = 406/1250
+```
+`5` is a RASTER-derived count that survived `SEAL=2`'s 0.4 m dilation; `122` is the element count. Both
+are "right", of different things — never compare them. The balcony-threshold story for the
+22,311 → 9,696 m² drop is now testable instead of a guess, **but the 20–55 m "openings" are not
+archways** (atrium / stair / facade voids) and flooding them would destroy an area figure.
+
+**LANDMINE — every `IfcOpeningElement` carries `storey='Unknown'` (all 3,368).** Attribute openings to
+a storey by Z against the door-sill medians (VÅNING 1/2/3/4 = 2.70 / 6.00 / 9.30 / 12.30 m), never by
+the `storey` column. §LTUOPEN_5 silently returned `{Unknown: 1250}` before this was caught.
+
+**THE GENERALITY TEST the user imposed** — *"as long as this can generally apply to most IFCs a user
+may import."* It does NOT, in the naive form. Fleet, measured:
+```
+Clinic 254/0 · Duplex 14/0 · HHS 133/0 · Hospital 440/0 · Hospital_3 440/0 · JKR 65/0
+Terminal 135/0 · TermRooms 135/0 · LTU 606/3368            (doors / IfcOpeningElement)
+```
+**1 of 9.** "Use IfcOpeningElement" cannot be the method. But the LIVE USER-IMPORT PATH is richer than
+every shipped fixture — `viewer/import_worker.js` already parses, for any IFC a user drops in:
+- `IFCRELVOIDSELEMENT` → wall→opening (`relType:'VOIDS'`, ~line 322)
+- `IFCRELFILLSELEMENT` → opening→door/window (`relType:'FILLS'`, ~line 334) → `§BOM_TREE_RELS`
+- and opens the model `USE_FAST_BOOLS:true` — the wall MESH already has the hole subtracted.
+That relation pair is the *authoritative* host-wall↔aperture↔door binding, straight from IFC, with no
+proximity guess anywhere in it. ⚠ **It is absent from every shipped fixture** — only `Duplex` has a
+`bom_tree` table at all and it holds `AGGREGATES=11`, zero VOIDS, zero FILLS. So it is reachable for
+user imports and NOT measurable on the lane's current fixtures without re-extraction.
+
+**§APERTURE_TIER — the design that satisfies both constraints.** One resolver, one output contract,
+three sources, best-available wins. Output per doorway, identical shape regardless of tier:
+`{ doorGuid, hostWallGuid|null, apertureRect, tier }`.
+| tier | source | availability | quality |
+|---|---|---|---|
+| **A** | `bom_tree` VOIDS+FILLS | any user import; 0/9 fixtures today | exact host wall + exact filling door, no guess |
+| **B** | `IfcOpeningElement` geometry | 1/9 fixtures (LTU); user imports whose exporter wrote them | 99.2% door match, real 0.93×2.11 apertures |
+| **C** | door-bbox carve (§21.27, shipped) | 9/9 — needs only `IfcDoor` | coarse, universal, the FLOOR |
+Rules: **C is never removed** — it is the guarantee that nothing regresses on the 8 fixtures with no
+void data. A and B only *raise* precision where the data exists. The resolver logs
+`§APERTURE_TIER <building> A=<n> B=<n> C=<n> total=<doors>` so every downstream number states which
+substrate produced it — the absence of that line is what let §21.26 generalise Clinic's data gap into
+a claim about all geometry.
+
+**Falsification tests, written BEFORE the code (§21.14 discipline, which caught all three §21.27 bugs):**
+1. **Tier fidelity.** `§APERTURE_TIER LTU` must report B≥601 and C≤5; `§APERTURE_TIER Clinic` must
+   report C=254, A=0, B=0. If Clinic reports any A or B, the resolver is inventing.
+2. **Non-regression on tier C.** Clinic's §VOID blocked-centre rate must stay at 0% and its
+   §SPINE2_Q4 unroutable must not rise above §21.27's measured value. C is byte-equivalent to §21.27.
+3. **B must BEAT C on LTU or the tier is pointless.** Re-run the stranded-room count on LTU under
+   tier B: **107 must fall.** If it does not move, the aperture was never the stranded cause and
+   §21.28's cause (2) ("carve did not pierce the host wall") is refuted — which is a real result, not
+   a failure, but it must be recorded as one and the effort moved to causes (1) and (3).
+4. **No new leak.** Enclosed-area and leak signature under tier B must not differ from tier C by more
+   than the door apertures account for. The 20–55 m unhosted voids must NOT be carved — tier B admits
+   an opening only if it is door-hosted (§LTUDOOR_4) or window-hosted; the 1,250 unhosted stay out.
+
+**ORDER — supersedes §21.28's "one thing to do next", does not replace it:**
+1. Build the §APERTURE_TIER resolver behind an opt-in flag, tests 1+2 first (fidelity + non-regression).
+2. Re-run the 140/107 stranded-room classification on BOTH regimes — Clinic on C, LTU on B. Only then
+   does §21.28's three-cause split mean anything, because it was taken on a bbox-carved substrate.
+3. Then §21.28's cause classification proceeds unchanged with the tier recorded against each count.
+4. Re-extraction of the 8 fixtures through `import_worker.js` to gain tier A is a SEPARATE, expensive
+   question. Flagged, not authorised, not needed for any of the above.
+
+**Still open from §21.28, unchanged:** the LTU enclosed-area drop (now with 122 real candidates to
+test against instead of a guess), and the fact that nothing in §21.20–§21.29 is deployed —
+`common/room_graph.js` and `viewer/navigate_find.js` remain byte-unchanged.
