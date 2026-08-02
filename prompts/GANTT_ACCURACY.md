@@ -14,7 +14,13 @@ confirmation. The item below is a DIFFERENT invariant (support), not a regressio
 against the witness's working-day span, or the live generate differs from the witness's inputs. Read
 `§CPE_DAY_COUNTER` + `§GANTT_CACHE_SAVE` in the next bake log HEAD before treating either as wrong.
 
-## ▶ RESUME 2026-08-02 (session close) — START HERE
+## ▶ RESUME 2026-08-03+ — START HERE: build §Z_STACK_XRAY_STAGING (END of this file)
+**The recurring "Z stack / roof-before-support" issue got its full 5-method study 2026-08-02 —
+search `§Z_STACK_XRAY_STAGING`.** User chose X-RAY STAGING (unsupported elements render x-ray until
+carriers land; schedule/gantt/band ordering untouched). Spec + witness claims written, NOT built.
+The scheduler-engine question below stays parked behind its ruling — do not reopen it to build this.
+
+## ▶ (superseded 2026-08-02) earlier resume — the §ELEMENT_CPM ruling item
 **ONE open item, specced and de-risked, needing ONE user ruling before code.**
 
 **USER-CONFIRMED LIVE, 2026-08-02, on a FRESH generate from a CLEARED IndexedDB** (so this is the
