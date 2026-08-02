@@ -3320,3 +3320,56 @@ three substrates (§21.30, §21.32, §21.33). It is settled.
 stranded" instead of forcing every region into cause (1) or (3). Had it not, Clinic would have read
 as 55 failures with 49 of them unexplained, and the next session would have hunted a defect that does
 not exist in 89% of the cases it was handed.
+
+### §21.35 CLUSTER BOUNDARIES — SEAL is EXONERATED. The break is 9 (Clinic) / 23 (LTU) sealed suites
+### that no real building has, and "solid modelled wall" turns out to be a claim about the RASTER.
+bim-ootb `review/roompath-redundancy` @ `f60b4e9`, pushed. `witness_room_path_cluster_boundary.js`,
+log `roompath_diagnostics/w_cluster_boundary.log`. W:3.0 substrate. Nothing deployed.
+
+```
+§CB1 stranded clusters      Clinic 11:  S SEAL-INVENTED=1   W SOLID WALL=10  G EXTRACTION GAP=0
+                            LTU    34:  S=0                 W=34             G=0
+§CB2 rootless (§21.34)      Clinic  5:  S=1  W=4            LTU 8:  S=0  W=8
+§CB4 VERTICAL ACCESS        Clinic  2/11 touch a stair      LTU 11/34
+§CB5 sealed AND no stair    Clinic  9/11                    LTU 23/34
+```
+
+**FINDING 1 — SEAL is not the culprit, and that was the leading hypothesis.** Exactly **one** cluster
+across both fixtures is separated by SEAL-invented wall. §OPEN-THRESHOLD is real (§21.24) but it is
+not what strands these rooms. That hypothesis is now closed; do not re-open it on this evidence.
+
+**FINDING 2 — vertical access is real and was never accounted for.** 2/11 (Clinic) and 11/34 (LTU)
+stranded clusters touch a stair footprint. **These are not defects at all** — a wing reached by its
+own stair is normal, and every per-storey number this lane has ever produced counted them as
+failures. Any future "unroutable" figure must exclude them or it is inflated by ~18%/32%.
+
+**FINDING 3 — and this is the one that matters. The remaining 9 and 23 clusters are architecturally
+impossible.** They are separated by *solid modelled wall*, they contain no stair, and §21.34 already
+established every room in the rootless ones has a working door. Clinic's largest is **31 rooms**.
+No real building contains a sealed 31-room suite with no way in. Therefore **"solid modelled wall" is
+a statement about the RASTER, not about the building** — a door route exists and the raster does not
+carry it. The witness reports §CB3's raw W-majority explicitly SUBORDINATED to §CB5 for this reason:
+taken alone, "the separations are real walls" reads as *correctly unreachable* and would have closed
+this lane on a false negative.
+
+**Why this is NOT cause (2) resurrected.** Cause (2) was tested at ROOM level — does a given door's
+carve pierce its host wall — and refuted three times (295→295). This is a different question at
+CLUSTER-BOUNDARY level: a door route exists *somewhere* on the boundary and no opening was detected
+along it. The distinction is real: the boundary march only ever sees the wall band between two
+pockets, and a door that pierces correctly can still fail to produce a boundary opening if the two
+sides land in the same pocket, or if the march's 12-cell reach is shorter than the wall is thick.
+
+**NEXT — one bounded question, and the lane's core answer hangs on it:**
+1. **Take Clinic's 31-room cluster, alone, and dump its boundary cell by cell**: for every boundary
+   cell, the nearest door, its distance, whether that door's carve intersects the boundary, and what
+   the march returned. One cluster, one storey, fully enumerated — no aggregate. The three candidate
+   mechanisms above are distinguishable by inspection at that scale, and picking between them by
+   further aggregate measurement is what cost §21.23 and §21.26 a session each.
+2. Then apply the fix to all 32 and re-run §T1–§T5 + §SC3 + §CB5 as the gate.
+3. Remaining, unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
+
+**Method note — the confound nearly closed the lane wrongly.** The first run reported W=10/11 and
+W=34/34 with a verdict of "correctly unreachable, the engine is not at fault". That verdict was
+false, and only the vertical-access check exposed it as incomplete rather than wrong-in-direction.
+A per-storey analysis of a multi-storey building must test for vertical connectivity before it is
+allowed to call anything unreachable.
