@@ -5484,3 +5484,32 @@ lead ALL GREEN, hold ALL GREEN.
 ⚠ NOT touched, by ruling: `skipped=11(<3s)` implements the user's own "tries to show up to 3 secs..
 if misses, then skips" — a fast walk through small rooms legitimately drops captions. If the user
 wants those named too, that is a NEW ruling (queue vs. skip), not a defect.
+
+# ✅ §CPE_ROOM_TITLE_GROUP — constant, composed, tempered labelling (PR #1136, sw v918, 2026-08-02)
+**User ruling, three parts given live:** *"anything that comes within range of path or sight are
+pointed out so inaccurate labelling is diminished"* → composed format *"Storey 2, Corridor Hall,
+Rooms 2,3"* → *"in single lines.. tempered that manner... not fast flashing each."*
+
+**The rule as built:** room captions keep EVERY precision rule (dwell floor, 3s-or-skip, lead, hold)
+untouched; the gaps are filled by WINDOWED COMPOSITION. A window closes at the first natural change
+point after the 3s floor; its single line shows only what is true of the WHOLE window: storey (only
+if every sample resolves the same ladder rung), containment room (only if the camera stayed inside
+it), the UNION of rooms the gaze rays resolved (first 5 named + "+N more"), else the building name.
+Storey ladder = elements_meta's own storey column averaged over element z. Key separator TAB
+(corridor guids contain '|').
+
+**Measured, Hospital 147.9s:** coverage 69% → 94%, 4 fill segments, shortest 5.1s, 0 overlaps,
+honesty recomputed at every fill segment — 0 wrong. One 3-ray pass answers caption + sight set
+(pre-pass 425ms → 129ms, back inside G-GZ-7's 340ms budget).
+
+**Two designs measured and rejected on the way:**
+1. Single coarse gap label (containment-else-storey-else-building) — user corrected mid-build to
+   the composed format.
+2. Absorb-short-runs-into-predecessor tempering — let a stale "Level 2" survive a dive to z=295
+   (nearest rung Level 7). Tempering must never extend a claim beyond what stays true; unanimity-
+   over-the-window is the fix, and G-RTG-3 recomputes it at start/mid/end of every fill segment.
+
+**Instrument updates that are NOT bar-lowering:** lead witness excludes `group:1` segments (a fill
+has no doorway to lead); height witness excludes them too (an honest building-label over-flight is
+not #1108's room-named-from-above). Both properties still gated on room captions; the fill has its
+own witness (witness_cpe_room_title_group.js G-RTG-1..5).
