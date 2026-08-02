@@ -366,5 +366,33 @@ anywhere in this lane.
 - Git: witness+injector `review/roompath-redundancy` @ `8c3d12c` + disc-default fix @ `1995de4`,
   pushed, 0 local-only; extractor fix + this file on `fable/meshdb-livewire` @ `42bcc3745`, pushed,
   0 local-only (this hash-recording line lands in the immediate follow-up commit on the same branch)
-- NOT done / out of scope by §3+§5: LTU untouched (S184 shape live, §5.4); no walker changes; no
-  voidMode/pierce/constant changes; live + common OCI buckets untouched; no `.db` in any git repo
+- NOT done / out of scope by §3+§5 at §6-time: LTU untouched (S184 shape live, §5.4) — since
+  CLOSED by §7 below; no walker changes; no voidMode/pierce/constant changes; live + common OCI
+  buckets untouched; no `.db` in any git repo
+
+---
+
+## §7 2026-08-03 — LTU GHOST-STRIP (user-approved follow-up; closes the §5.4 finding) ✅
+
+Scope: `LTU_AHouse_extracted.db` ONLY, local install only, no OCI, no git `.db`.
+1. **Backup:** copied to `/tmp/db_bak_2026-08-02/LTU_AHouse_extracted.db` before any write.
+2. **Strip:** the §5.2-proven single statement — DELETE openings' `element_instances` rows. The
+   blob-refcount question is MOOT by schema: this DB is meta-split and has NO
+   `component_geometries` table (blobs live in `LTU_AHouse_geo.db`, untouched, which already held
+   **0** opening blobs — the 3,368 hashes were dangling, §5.4). Orphaned blobs afterwards: none
+   possible in this file; geo.db unchanged by not being opened for write at all.
+3. **Gates (all green, staged copy before install):**
+   - Table counts: `element_instances` 125,698 → **122,330** (= −3,368 exactly); elements_meta
+     125,698 · element_transforms 125,698 · surface_styles 0 · spatial_structure 375 ·
+     rel_contained_in_space 1,608 all UNCHANGED. Class census diff: EMPTY (G-EX2 style).
+   - **G-GHOST = 0**; openings-with-transforms preserved: **3,368/3,368**.
+   - **G-VR:** opening rows matching the render join 3,368 → **0**; the NON-opening render set
+     (what the viewer actually draws, after its `!=` guard) **122,330 → 122,330** — identical.
+   - **Walker §O2 before/after (same engine, `git show review/roompath-redundancy` materialized
+     read-only):** backup 18.4% W:3.0 (rooms 277, stranded 18, fusions 314) / 16.4% cur (263, 15,
+     331) — stripped DB **IDENTICAL on every number**. No drift; no restore needed.
+4. **Installed** over `~/bim-ootb/buildings/LTU_AHouse_extracted.db`; post-install verify
+   ghost=0, inst=122,330, openings-tf=3,368.
+Fleet end-state: **all 9 local DBs are ghost-shaped** (G-GHOST=0 fleet-wide); the S184/S185
+instance-row shape no longer exists anywhere locally. Note: `LTU_AHouse_meta.db` (separate split
+artifact, not named in scope) was not examined — flag for whoever next touches the split set.
