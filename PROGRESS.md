@@ -65,7 +65,7 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   ❌ RETRACTED: §21.26's `rotation_z` claim (it is RADIANS; non-issue). Do not re-open either.
   Corridor-by-shape, by `hallway_backbone.js`, and by betweenness all tried — betweenness is best
   (1 component, 92%/100% leaf attachment) but all three were measured on the UNCARVED substrate.
-  ⚠ **§21.33 SUPERSEDES everything above — resume from `§21.33 NEXT`, and SKIP §21.24–§21.30's
+  ⚠ **§21.33 SUPERSEDES everything above — resume from `§21.37 RESUME HERE`, and SKIP §21.24–§21.30's
   numbers, they were taken on a broken raster.** Two defects found and FIXED 2026-08-02: (a) the carve
   admitted 1,595 non-door-hosted voids on LTU, and (b) `§SEAL-DOORS-FIRST` re-closed every door as a
   +1.2 m plug across a ~0.2 m wall. **§PRECARVE** derives enclosure from the pre-carve mask, exactly:

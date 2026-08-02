@@ -3425,3 +3425,32 @@ unnecessary risk. That is a one-number check and it must precede either change.
 carried a false refutation forward because each inherited it rather than re-deriving it. Dumping 195
 crossings of ONE cluster exposed it in a single run. When a conclusion is about a MECHANISM, an
 aggregate that does not vary that mechanism cannot test it — and will look like confirmation.
+
+### §21.37 THE ONE NUMBER §21.36 ASKED FOR — `_openings` march reach = **2.00 m**, worst case **2.60 m**.
+Read directly from `viewer/lib/room_walker.js` `_openings()` (~line 1092), no run needed:
+```
+var reach = 6 + SEAL + 2;      // SEAL = 2, RES = 0.20  ->  10 cells  =  2.00 m
+§C31 measured enclosed-to-enclosed gap at door crossings:  median 1.40 m   MAX 2.60 m
+```
+**The march is 0.60 m short of the worst case, and comfortably clears the median.** So §21.36's fix
+(b) is confirmed as a REAL shortfall — but only at the tail. It cannot by itself explain a cluster
+whose typical crossing is 1.40 m, well inside reach. **Both mechanisms are live and neither is yet
+sufficient**, which is exactly why §21.36 said to measure before changing anything.
+
+**RESUME HERE — the next step is one cheap count, then the fix:**
+1. **Count how many of §C31's 51 door-adjacent crossings exceed 2.00 m.** `cluster31_dump.js` already
+   computes `thick` per crossing — add the histogram, do not re-derive. If most exceed 2.00 m, (b)
+   alone closes it. If most are ~1.40 m and inside reach, the march is NOT why they fail and the
+   remaining suspect is the carve interacting with `raw` vs the dilated mask — instrument that
+   crossing directly (dump the `raw` cells along one 1.40 m crossing that has a door 0.04 m away).
+2. Apply the winner, then re-run the FULL gate: §T1–§T5, §O2 sweep, §SC3, §CB5. A change to reach or
+   pierce touches every one of them, and a deeper carve is the direction that manufactured phantom
+   fusions in §21.33.
+3. Cause (2) is BACK on the candidate list (§21.36 correction). Cause classification re-runs after
+   the fix, not before.
+4. Unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
+
+**State at handoff:** nothing deployed, `common/room_graph.js` and `viewer/navigate_find.js`
+byte-unchanged across §21.20–§21.37. Default `voidMode` is `W:3.0`. Worktree `/tmp/wt-roompath` @
+`5f01fb5` — REUSE it (`git worktree list` first); it has vanished three times in this lane, and
+everything is pushed, so recreate rather than re-derive if it is gone again.
