@@ -43,16 +43,16 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
 `lane/hr-overlay`, `lane/teams-overlay`.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- ▶▶ **4D SUPPORT INVARIANT — `prompts/GANTT_ACCURACY.md` §▶ RESUME 2026-08-02, START THERE.**
-  USER-CONFIRMED LIVE on a FRESH generate from cleared IndexedDB (08-02): *"Time Machine has beams
-  without support"* = the 1,294 `IfcBeam on wall` pairs `audit_support_roleblind.js` measures (6,778
-  total / 2,379 structural). **5 pass-level repairs built, measured, ALL REJECTED — do not retry; the
-  table is in §ROOT CAUSE.** Cause: the support gate needs a z-major sort and the band gate needs a
-  rank-major sort — conflicting orders of the same elements, so no gate-only fix exists. Fix specced
-  as **§ELEMENT_CPM** (precedence EXTRACTED from geometry, not authored: 63.4k nodes / 74.9k edges /
-  709ms — small, and cheaper than the two passes it replaces). ⛔ **Needs ONE user ruling before code:
-  21,502 trade-vs-support conflicts — does support win?** (my read: yes, Ruling A already settles it).
-  Scheduler is byte-for-byte shipped, all witnesses green; audits on `fix/helipad-roof-separation`.
+- ▶▶ **4D SUPPORT INVARIANT — `prompts/GANTT_ACCURACY.md` §ELEMENT_CPM (last section).**
+  ⚖ **RULING GIVEN 2026-08-02: support wins.** Built on `feat/element-cpm`: support **6,778 → 0**,
+  floating 0 — but band inversions regress 29,824 → 34,595, so it is **NOT merged** (the band ordering
+  is user-confirmed live). **4 engine shapes measured and rejected — do not retry; tables in §ROOT
+  CAUSE + §ELEMENT_CPM.** ⭐ Root cause is NEW and decisive (`audit_rank_vs_support.js`): the storey-
+  LABEL ladder contradicts gravity in **1,735 of 81,722** support edges (2.1%); by element ELEVATION,
+  **ZERO**. Band-by-label and nothing-before-its-carrier cannot both be zero for ANY engine.
+  **NEXT = move BOTH the trade gate and the band gate onto the elevation key** (band alone is not
+  enough: the trade gate still keys on the label, so 23,121 elements sit in two groupings and the
+  barrier deadlocks). Engine, support extraction and crew pool are built and reusable.
 - ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`; start at
   §21.28 START HERE** (then §21.14 for setup/fixtures, then §21.24→§21.27 in order).
   **ROOT CAUSE FOUND AND REMOVED (§21.26/§21.27): the raster had NO DOOR VOIDS** — `_rasterizeWalls`
