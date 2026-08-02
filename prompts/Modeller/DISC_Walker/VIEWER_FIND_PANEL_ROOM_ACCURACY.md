@@ -3536,3 +3536,43 @@ have found it, and neither did.
 2. Re-run the full four-witness gate after any change. It caught nothing this time, which is the
    point of running it.
 3. Unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
+
+### §21.40 CLINIC'S RESIDUE IS NEITHER THE CARVE NOR THE DETECTION — the openings are all there.
+bim-ootb `review/roompath-redundancy` @ `da4cef1`, pushed. `roompath_diagnostics/clinic17_dump.js`,
+logs `w_c40.log` / `w_c40b.log`. Second Floor, the 31-group cluster, 96 doors / 96 door-voids.
+```
+§C40  crossings inside BOTH limits with a door <=1.5 m  = 48
+      Q1 raster CLEAR across the crossing               = 35/48   still blocked = 13
+      Q2 covered by a door-void carve rect              = 30/48   not covered   = 18
+         both sides in the SAME pocket                  =  0/48
+§C40b opening record EXISTS at the crossing             = 42/48   none = 6
+         of those: door-matched (LINK) = 42   doorless (FUSION) = 0
+         with BOTH ends inside the cluster              =  2
+      door width median 1.07 m · gap median 1.40 m · nearest door 0.81 m
+```
+**Both prior suspects are eliminated by measurement.** The carve reached (35/48 clear channel). The
+detection fired (42/48 emitted an opening). **40 of 48 boundary crossings carry a door-matched link
+that LEAVES the cluster — and the cluster is still depth −1.** So the failure is not in producing
+links. It is in **what those links connect to.**
+
+**PRIME SUSPECT, and it is in this lane's own code, not the data.** `strandedIds` is built with
+`area >= 2.0`, so sub-2 m² sliver pockets are stranded but never counted, never clustered, and never
+reported. A link that lands on a sliver which itself reaches nothing leaves the cluster *looking*
+connected while remaining unreachable. Every stranded count in §21.34–§21.39 inherits that filter.
+Note the shape of this: three sections of measurement pointed at geometry and detection, and the
+suspect is a threshold in the analysis code — the same class of error as §MULTI-RECT (§21.28's method
+note) and the false "cause (2) refuted" (§21.36).
+
+**NEXT — one query answers it, do this before anything else:**
+1. **Dump the far-end group of those 40 links: id, area, depth.** If they land on sub-2 m² groups
+   with depth −1, the filter is the defect and the fix is to route through slivers (or merge them)
+   rather than to touch geometry again. If they land on real groups with real depth, the BFS itself
+   is wrong and that is a different, larger problem.
+2. Re-run the full four-witness gate after any change (§T1–§T5, §O2, §SC3, §CB5).
+3. Unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
+
+**Fixture note (user, 2026-08-02):** Terminal's storeys are Malay — `Aras Tanah`, `Aras 01`–`Aras 04`
+— AND it carries a second English convention (`GROUND FLOOR LEVEL`, `03 SECOND FLOOR LEVEL`) in the
+same file. It is a federated model with two naming schemes, not a badly-labelled one. Its 33,848
+`Unknown`-storey elements (70%) are genuinely unassigned, separately from the language issue. Any
+storey matching that assumes one convention will silently mis-file half of it.
