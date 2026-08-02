@@ -5696,3 +5696,23 @@ User: *"grouped together in single label… it is caption optics"*, format confi
    sampled plan matches the composed grammar; (b) a dwell caption's room appears in its own
    composed line; (c) with a synthetic phase in force the draw routine appends exactly one
    `[phase]`; (d) timing series (open/close times) byte-identical to pre-change — optics only.
+
+## ✅ §CPE_GAZE_ACQUIRE_SOFTEN — DONE (PR #1137, merged 2026-08-02, sw v919)
+GAZE_ACQUIRE_MAX 3→2 (135→90 °/s peak). witness_cpe_gaze_acquire.js 8/8 green at 2x: T5 90°
+acquired in 1.18s (flat was 2.00s), T6 onset 90dps → arrival 40.9dps, T7 real-run peak 90dps.
+
+## ✅ §CPE_ROOM_TITLE_COLLECTIVE — DONE (PR #1138, merged 2026-08-02, sw v920)
+User's refinement, recorded verbatim: *"the right term to use is 'composition' comprising of
+various types of labels together in a single line to difuse pinpointing too much any particular
+item resulting in inaccuracy."* Shipped exactly as specced: one _lineFrom grammar, two callers
+(gap fill + dwell rename pass, label-only, captioned room seeded first past the 5-name cap);
+[phase] resolved at draw from A.tmFrontierPhase (time_machine.js refreshes per tick, null at
+completion). witness_cpe_room_title_collective.js G-RTC-1..5 all green (20/20 dwell captions
+composed, double-build byte-identical on guid/times/name, bracket exactly when a phase is in
+force); regressions witness_cpe_room_title_group.js 5/5 + witness_cpe_room_title_multi.js 4/4.
+⚠ Separate finding from the user's 2026-08-02 second bake log: it ran a STALE viewer —
+`placed=62699/63420 at frame 1740 (t=0.989)` is byte-for-byte the pre-#1135 signature (topout
+NOT in force; the -1 element is the absent NamePlate). The bake was served from OCI
+(`viewer.html?db=https://objectstorage…`), so #1133–#1138 are live on GH Pages main but NOT on
+the OCI-served viewer copy until that deployment is refreshed — worth knowing before judging
+any pre-refresh bake against post-#1135 behavior.
