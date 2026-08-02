@@ -2,6 +2,25 @@
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
 
+## Session 2026-08-02 — 4D ordering CONFIRMED live, movie-maker batch shipped
+**User confirmed on a real Hospital bake:** no roof before walls, no upper deck before lower, to Day 282.
+Ordering half of the 4D lane is CLOSED (§4D_BAND_MONOTONIC #1129 + §4D_ROOF_LOAD_PATH #1120 + cache bump #1123).
+
+**Shipped to `origin/main`:** §CPE_DAY_COUNTER_POS (#1130, sw v914) — Day # counter corner is a panel
+option, top right default, now visible in Preview (its live hooks had never been wired). §CPE_GAZE_ACQUIRE
+(#1131, sw v915) — gaze acquires fast and settles: 90° in 0.90s vs the flat cap's 2.00s, 135→41 dps,
+settled gaze bit-identical. G-SH-4 witness bound now read from the shipped curve, not a literal 45 (#1132).
+
+**NOT merged, deliberately:** `feat/element-cpm` — support invariant 6,778→0 and floating 0, but band
+inversions regress 29,824→34,595, and the band ordering was just user-confirmed. Root cause MEASURED and
+new (`audit_support_roleblind.js` + `audit_rank_vs_support.js`): the storey-LABEL ladder contradicts
+gravity in 1,735 of 81,722 support edges (2.1%); by element ELEVATION, **zero**. Band-monotonic-by-label
+and nothing-before-its-carrier cannot both be zero for any engine. Next: move BOTH trade and band gates
+onto the elevation key. Full write-up `prompts/GANTT_ACCURACY.md` §ELEMENT_CPM.
+
+**Open, specced, not built:** §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`) — caption several
+rooms in view with a level prefix instead of one ray-picked room. User's own framing: less room for error.
+
 ## Current State
 **Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
 | PFX | EL | GATES | Notes |
