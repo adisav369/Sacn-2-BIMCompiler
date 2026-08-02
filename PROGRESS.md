@@ -65,12 +65,18 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   ❌ RETRACTED: §21.26's `rotation_z` claim (it is RADIANS; non-issue). Do not re-open either.
   Corridor-by-shape, by `hallway_backbone.js`, and by betweenness all tried — betweenness is best
   (1 component, 92%/100% leaf attachment) but all three were measured on the UNCARVED substrate.
-  **NEXT = classify the 140 (Clinic) / 107 (LTU) STRANDED rooms** into its three possible causes (no
-  door element · carve did not pierce · pocket never formed) and let the count choose the fix. Layer 1
-  builds correctly now but still loses: unroutable 91.3%/87.7% vs room-graph baseline 43.3%/32.4%.
-  Open too: LTU enclosed area 22,311 → 9,696 m² under carving with no leak signature — unexplained,
-  57% of the floor. Funnel residuals (§21.18) LAST.
-  13 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `2d2d069`.
+  ⚠ **§21.30 SUPERSEDES the above — resume from `§21.31 START HERE`, and SKIP §21.24–§21.28's LTU
+  numbers, they are artefacts.** The shipped carve admits 1,595 non-door-hosted voids on LTU (atrium/
+  facade voids up to 55 m), removing exterior wall so the flood escapes: enclosure retention 43%.
+  That IS the "unexplained" 22,311 → 9,696 m² — a bug, not balcony thresholds. Corrected LTU baseline
+  = **320 stranded / 31% spine / 76.3% unroutable** (was 107/66%/87.7%). Clinic 140/234 @ 91.3% stands
+  (tier C only). **Aperture provenance is REFUTED as the cause** — real `IfcOpeningElement` apertures
+  vs door bboxes = 320→319, so §21.28's cause (2) is struck. NEXT = (1) make tier B the default where
+  opening geometry exists + keep `§T5 retention ≥90%` as a standing gate, (2) root-cause Clinic's 84%
+  retention (`pierce = 6*RES` over-cuts, bounds 6 of 7 buildings), (3) re-classify the 320 on causes
+  (1)/(3) only. Funnel residuals (§21.18) LAST.
+  14 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `5387447`
+  (worktree `/tmp/wt-roompath` is live, clean and pushed — REUSE it, don't add a second).
   **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
   ⛔ Still keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP.
 - ▶ **MODELLER — dispatch from `prompts/MODELLER_MASTER.md` (new 2026-07-30), NOT from the 15 scattered
