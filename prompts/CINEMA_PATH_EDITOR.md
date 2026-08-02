@@ -5716,3 +5716,13 @@ NOT in force; the -1 element is the absent NamePlate). The bake was served from 
 (`viewer.html?db=https://objectstorage…`), so #1133–#1138 are live on GH Pages main but NOT on
 the OCI-served viewer copy until that deployment is refreshed — worth knowing before judging
 any pre-refresh bake against post-#1135 behavior.
+
+# ▶ RESUME — CPE lane state at 2026-08-02 close (for any executor session)
+**No open CPE build item.** Everything through §CPE_ROOM_TITLE_COLLECTIVE is ✅ merged (#1133,
+#1135, #1136, #1137, #1138 — sw v920). §CPE_GAZE_BULK is ⏸ PARKED by user ruling — do NOT build
+it unless the user reopens it; branch `fix/cpe-gaze-bulk` holds the module, the diagnosis section
+stands as the record. §CPE_AIM_DEPTH D4 (reveal-aware aiming) remains a named open lead, not
+scheduled. The next EXECUTABLE spec is in `prompts/GANTT_ACCURACY.md` ▶RESUME
+(§Z_STACK_XRAY_STAGING — assigned to an executor session, spec complete).
+Operational note: the OCI-served viewer copy predates #1135 (stale-bake signature on record
+above) — a deploy refresh is needed before any live-URL bake reflects v918+ behavior.

@@ -15,10 +15,17 @@ against the witness's working-day span, or the live generate differs from the wi
 `§CPE_DAY_COUNTER` + `§GANTT_CACHE_SAVE` in the next bake log HEAD before treating either as wrong.
 
 ## ▶ RESUME 2026-08-03+ — START HERE: build §Z_STACK_XRAY_STAGING (END of this file)
+**ASSIGNED TO AN EXECUTOR SESSION (user directive 2026-08-02): the spec is COMPLETE — execute it,
+do not re-study, do not re-litigate the method choice.** Work the §Z_STACK_XRAY_STAGING section
+top-to-bottom: implement exactly as specced, run its named witness claims, record results in a
+dated `✅ DONE` section of THIS file (never MEMORY.md), sw CACHE_VERSION bump in the same PR as
+any precached viewer/ change, PR to bim-ootb main with auto-merge, verify it lands.
 **The recurring "Z stack / roof-before-support" issue got its full 5-method study 2026-08-02 —
 search `§Z_STACK_XRAY_STAGING`.** User chose X-RAY STAGING (unsupported elements render x-ray until
 carriers land; schedule/gantt/band ordering untouched). Spec + witness claims written, NOT built.
 The scheduler-engine question below stays parked behind its ruling — do not reopen it to build this.
+Related, already shipped (do not redo): #1133 §STAGGER_SUPPORT_ORDER — captured stagger order sorts
+by bearing surface, 6,240→0 support-order violations. X-ray staging is the RENDER half on top of it.
 
 ## ▶ (superseded 2026-08-02) earlier resume — the §ELEMENT_CPM ruling item
 **ONE open item, specced and de-risked, needing ONE user ruling before code.**
