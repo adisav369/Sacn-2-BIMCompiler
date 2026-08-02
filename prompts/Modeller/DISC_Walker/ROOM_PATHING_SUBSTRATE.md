@@ -14,6 +14,61 @@ BYTE-UNCHANGED by this lane so far) · `viewer/navigate_find.js` (the Find panel
 `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` (the running log).
 ```
 
+## §0 READING MAP — every document in this lane, and what is in it
+
+Paths are relative to `prompts/` in the `bim-compiler` repo. Sizes are a rough guide to depth, not
+importance. **Titles and sizes are read off the files; the one-line summaries are from their own
+headings — this map is an index, not a re-reading of all 1.5 MB.** Where a doc is superseded it says so.
+
+### Start here (this lane, in order)
+| Doc | Size | What it is |
+|---|---|---|
+| **ROOM_PATHING_SUBSTRATE.md** (this file) | 20K | The concept: architecture, invariants, failed trials, method rules, prior art |
+| `Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` | 276K | **The running log.** §21.x dated sections, all witness output. Start at its last §START HERE |
+| `Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` | 64K | The Modeller-side settled conclusions this lane ports — real rooms drive placement, guessed rooms display-only |
+| `ROOM_INJECTION_CONSOLIDATED_REVIEW.md` | 12K | Whole-lane review prepared 2026-07-17 for a refactor session — the best short overview before this file existed |
+| `ROOM_INTELLIGENCE_SCOREBOARD.md` | 24K | The standard reporting baseline. One WORKS / one GAP per row — keep it that shape |
+
+### Pathing and routing
+| Doc | Size | What it is |
+|---|---|---|
+| `Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md` | 140K | Room graph 2.0 — walk like a human, not door-to-door. The design this substrate feeds |
+| `Modeller/DISC_Walker/PATH_LEGAL_SEGMENTS.md` | 20K | No chord through the void — legality of a drawn segment |
+| `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md` | 220K | Corridor + stair occupant path, the camera-facing consumer of all of this |
+| `Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md` | 20K | The structural walker, mirror of the MEP RouteWalker |
+| `Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md` | 8K | Coherence checker: collision + navigability + quantity bounds |
+
+### Room identity — what a room IS, before you can path between them
+| Doc | Size | What it is |
+|---|---|---|
+| `Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` | 32K | Retire the offline `compile_rooms.py`, port to JS, compute-once. The compiler this substrate reads |
+| `Modeller/DISC_Walker/ROOM_TAXONOMY_STRATEGY_2026-07-12.md` | 52K | Room taxonomy — strategy and formula only |
+| `Modeller/DISC_Walker/COMPILE_ROOMS_TYPE_INFERENCE.md` | 20K | Guessing room FUNCTION where no `IfcSpace` ever named it |
+| `ROOM_WALKER_PHASE_INVARIANCE.md` | 16K | Same walls in, same rooms out, in any coordinate frame |
+| `SPARSE_WALL_ROOM_INFERENCE.md` | 24K | The real-world IFC case: too few walls to close a room |
+| `ROOM_TYPE_TEMPLATE_CLASSIFIER.md` · `ROOM_TYPE_DOOR_ACCESS_SIGNAL.md` | 24K · 16K | Two classifier approaches — template match, and door-access as a signal |
+| `DISCWALK_PLANT_ROOM_INDUSTRIAL_TAXONOMY.md` · `DISC_WALK_ROOM_TYPE_AWARE.md` | 16K · 12K | Industrial/institutional taxonomy, and routing discipline placement by room type |
+| `FIND_PANEL_PLANT_ROOM_GATE_FIX.md` | 12K | PLANT_ROOM false positives + the missing class gate |
+| `Modeller/DISC_Walker/SAMPLECASTLE_REAL_ROOMS_RECONCILE.md` | 20K | ✅ CLOSED — recorded as the wrong branch of the problem, not a gap |
+
+### Substrate, geometry and the walker underneath
+| Doc | Size | What it is |
+|---|---|---|
+| `Modeller/DISC_Walker/RESUME_MODELLER_WALK_SUBSTRATE.md` | 68K | The walk substrate itself — the Modeller's "2nd principle" doc |
+| `Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` | 268K | The disc-walker's own long history: area-scaled measurement, envelope-bound placement |
+| `Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md` | 48K | Walker guards, RosettaStone walk-back, calibrated confidence |
+| `Modeller/DISC_Walker/ARC_GEO_FETCH_SPEC.md` | 36K | ARC-only geo fetch — the Modeller's "1st principle" doc |
+| `Modeller/DISC_Walker/SPACE_SCOPED_DISC_INSTALL_VISION.md` | 28K | Space-scoped heavy-discipline install |
+| `Modeller/DISC_Walker/SPEC_MESH_FIT_GRAFT_HEAL_ENGINE.md` · `SPEC_SEAM_HEALING_ENGINE.md` | 52K · 16K | Mesh fit / graft-and-heal, and seam healing — SPEC ONLY, not built |
+| `Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` | 16K | Fixture vs structure misclassification |
+| `HANDOFF_ghost_xray_rooms.md` | 8K | Ghost X-Ray + Rooms handoff |
+
+### Doctrine — read before overriding anything above
+`docs/internal/WalkerDoctrine.md` is the LOCKED core doc: the walk axis is BUILDING-CLASS, discipline
+is a `WHERE` column, small/residential buildings walk `duplex_rules.db` and NOT Terminal rules.
+⚠ `disc_walker.dwInit` defaults to `terminal_rules.db` for back-compat — a residential caller must
+pass `duplex_rules.db` explicitly.
+
 ## §1 The problem, in one paragraph
 
 An IFC file says where the walls and doors are. It does **not** say how to walk from one room to
