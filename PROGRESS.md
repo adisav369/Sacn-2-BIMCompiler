@@ -65,17 +65,17 @@ echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-veri
   ❌ RETRACTED: §21.26's `rotation_z` claim (it is RADIANS; non-issue). Do not re-open either.
   Corridor-by-shape, by `hallway_backbone.js`, and by betweenness all tried — betweenness is best
   (1 component, 92%/100% leaf attachment) but all three were measured on the UNCARVED substrate.
-  ⚠ **§21.30 SUPERSEDES the above — resume from `§21.31 START HERE`, and SKIP §21.24–§21.28's LTU
-  numbers, they are artefacts.** The shipped carve admits 1,595 non-door-hosted voids on LTU (atrium/
-  facade voids up to 55 m), removing exterior wall so the flood escapes: enclosure retention 43%.
-  That IS the "unexplained" 22,311 → 9,696 m² — a bug, not balcony thresholds. Corrected LTU baseline
-  = **320 stranded / 31% spine / 76.3% unroutable** (was 107/66%/87.7%). Clinic 140/234 @ 91.3% stands
-  (tier C only). **Aperture provenance is REFUTED as the cause** — real `IfcOpeningElement` apertures
-  vs door bboxes = 320→319, so §21.28's cause (2) is struck. NEXT = (1) make tier B the default where
-  opening geometry exists + keep `§T5 retention ≥90%` as a standing gate, (2) root-cause Clinic's 84%
-  retention (`pierce = 6*RES` over-cuts, bounds 6 of 7 buildings), (3) re-classify the 320 on causes
-  (1)/(3) only. Funnel residuals (§21.18) LAST.
-  14 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `5387447`
+  ⚠ **§21.32 SUPERSEDES everything above — resume from `§21.32 NEXT`, and SKIP §21.24–§21.30's
+  numbers, they were taken on a broken raster.** Two defects found and FIXED 2026-08-02: (a) the carve
+  admitted 1,595 non-door-hosted voids on LTU, and (b) `§SEAL-DOORS-FIRST` re-closed every door as a
+  +1.2 m plug across a ~0.2 m wall. **§PRECARVE** derives enclosure from the pre-carve mask, exactly:
+  retention 84%/43% → **100%/100%**. **Clinic 140/234 @ 91.3% → 55/208 @ 49.5%. LTU → 295/536 @ 46.2%.**
+  Aperture provenance is REFUTED as the cause (tier B vs C = 295→295); §21.28's cause (2) is struck.
+  **LEAD, not yet a result:** with §PRECARVE the reason to exclude unhosted voids is gone, and `cur`
+  posts LTU **32/294 @ 26.1%** — beating the §21.24 room-graph baseline of 32.4% for the first time.
+  NEXT = (1) over-linking test on `cur` before making it default (§21.21's phantom-edge lesson),
+  (2) re-classify Clinic's 55 / LTU's 295 on causes (1)/(3). Funnel residuals (§21.18) LAST.
+  14 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `9e31374`
   (worktree `/tmp/wt-roompath` is live, clean and pushed — REUSE it, don't add a second).
   **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
   ⛔ Still keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP.
