@@ -3672,3 +3672,163 @@ is the gate that matters most for this particular change.
 
 **Still open, unchanged:** §21.33's 101/30 `noVoid` fusions (gaps in the wall EXTRACTION, never
 examined; on Clinic they are 100% of all fusion) · funnel residuals (§21.18) LAST.
+
+### §21.43 THE CARVE IS TRANSPOSED FOR EVERY Y-RUNNING DOOR — and §21.41's fix is withdrawn.
+Written 2026-08-02. bim-ootb `review/roompath-redundancy`, probes
+`roompath_diagnostics/doorprov{,2,3,4,5,6}.js`, logs `w_dp1.log` `w_dp4.log` `w_dp6.log` `w_dp7.log`
+`w_dp8.log` `w_dp8_slack8.log` `w_dp9.log`. **Spec written before the code, per the standing rule.**
+
+**§21.41's fix was falsified before it was written, which is what the falsification test was for.**
+The rule ("a pocket whose cells lie ENTIRELY within carved void footprints is a DOORWAY") does
+separate cleanly — `§DP1`, 0.0% of >10 m² pockets classify as doorway on BOTH fixtures, against
+14.7% (Clinic) / 44.7% (LTU) of sub-2 m² ones — so it would not have swallowed a room. But it does
+not REACH the failure it was designed for:
+```
+§DP4  Clinic Second Floor, the 31-group cluster
+      far-end link records = 41   ->   UNIQUE far-end groups = 8
+      of those 8: ALL pockets pure-carve = 1    SOME = 0    NONE = 7
+```
+**§C40c's "41 far ends" were 41 crossing records over 8 groups, not 41 groups.** One of the 8 is
+pure-carve. The merge would have moved one group.
+
+**§21.41's ROOT CAUSE is also wrong and is retracted.** It said the graph terminates inside the
+doorway because the doorway pocket emits room→doorway but not doorway→far-room. `§DP5` dumps all 8:
+every one carries 2–5 openings and every one of those is DOOR-MATCHED. The doorway passes traffic.
+What is true is that all their neighbours are depth −1 as well — the whole component is cut off,
+which is a different statement.
+
+**Where it is actually cut off (`§DP6`).** Taking the layer-2 graph over ALL groups with no area
+filter, Clinic Second Floor is 80 groups in 8 components: spine 35 groups / 440 m², and one
+unreachable component of 38 groups / 310 m². It touches the spine component at 54 places — and
+`raster CLEAR = 0/54`, gap median 1.40 m, `doors within 1.5 m = 0`. Solid wall the whole way.
+
+**Then the instrument failed, and that is worth recording.** `§DP7`/`§DP8` asked "does a door's own
+footprint touch both components", with the engine's own window (half-span + 2 cells). Answer: zero of
+96 doors, and 100% of stranded area with no door to the spine — verdict SCOPE LIMIT, "reachable only
+vertically". **Re-run at a wider window (`SLACK=8`) the same probe said 23.2%, verdict DETECTION.**
+A conclusion that inverts with the width of its own window is not a measurement. An isotropic window
+around a door centre is simply the wrong instrument: widen it and it reaches past the neighbour into
+a third space. Recorded, not hidden — `w_dp8.log` and `w_dp8_slack8.log` are both committed.
+
+**The instrument that holds (`§DP9`), and the control that licenses it (`§DP10`).** A door does not
+connect its surroundings; it connects the space in front to the space behind. So march the panel
+NORMAL only, and sweep the reach rather than picking one:
+```
+                       stranded comps joined to the spine by a door normal
+reach   0.60  0.80  1.00  1.20  1.60  2.00  2.40 m
+Clinic   0/9   0/9   0/9   0/9   0/9   0/9   0/9      flat zero, 595 m² stranded
+LTU     0/14  0/14  0/14  0/14  0/14  2/14  2/14      881 m² of 3231 m² appears at 2.00 m
+```
+The control is what makes the zero readable: the same march over ALL doors finds two sides enclosed
+for only 32–39% (Clinic) / 27–37% (LTU) of them. **The instrument is half blind, so the zero above is
+not yet proof of absence** — and chasing that blindness is what found the real defect.
+
+**ROOT CAUSE — `_rasterizeSpine` transposes the carve, and the fixtures store WORLD AABBs.**
+```
+voids=3167 (LTU) with nonzero rotation IN THE RASTER ARRAY = 0
+walls=4979 (LTU) with nonzero rotation IN THE RASTER ARRAY = 0
+sql.js column names for "COALESCE(t.rotation_z,0)" = ["storey","center_x","COALESCE(t.rotation_z,0)"]
+```
+`storeyVoids` and `storeyWallsRot` both select `COALESCE(t.rotation_z,0)` **with no alias**, then read
+`r.rotation_z` — which is `undefined`, so `|| 0`. Every wall and every void has entered the raster
+axis-aligned since the rotation knob was written. LTU has 2,369 walls and 2,780 openings with real
+non-zero `rotation_z` in the DB; none of it ever arrived.
+
+That alone would be the bug, except the bboxes are **world AABBs, which already carry the
+orientation**, so dropping rotation is harmless:
+```
+LTU doors  rot 0/180 -> x-long 261 / y-long   4        walls  1274 / 15
+           rot ±90   -> x-long   0 / y-long 341               32 / 1709
+```
+So the wall stamp — `_stampRect(..., w[3], w[4], w[6]||0, 1)`, bbox_x on x, bbox_y on y — is CORRECT
+by accident: two bugs that cancel. The void carve is not:
+```js
+var lng = Math.max(v[2], v[3]), thin = Math.min(v[2], v[3]);
+_stampRect(blocked, ext, v[0], v[1], lng + 2*RES, thin + pierce, v[4] || 0, 0);
+```
+`max`/`min` throws the axes away and re-stamps the void **long-along-world-x, always**. For every
+door whose bbox is longer in Y the carve is rotated 90°: it cuts a 2 m slot ALONG the wall face and
+pierces the wall by one door-width instead of cutting THROUGH it. That is **118/254 doors on Clinic
+(46%) and 345/606 on LTU (57%)** — and it is exactly `§DP6`'s "54 contacts, raster CLEAR = 0".
+
+**THE FIX — one line, no constant, each void's own measured bbox decides its own axes:**
+```js
+var pierce = v[5] ? 10 * RES : RES;
+var xLong = v[2] >= v[3];
+_stampRect(blocked, ext, v[0], v[1],
+  xLong ? v[2] + 2 * RES : v[2] + pierce,
+  xLong ? v[3] + pierce : v[3] + 2 * RES, v[4] || 0, 0);
+```
+Identical output wherever `bbox_x >= bbox_y`, so half the fleet is unchanged by construction.
+
+**LANDMINE, do not "fix" the alias.** Aliasing `rotation_z` would start applying rotation to a WORLD
+AABB — double-counting the orientation and rotating every wall in the building. If the alias is ever
+repaired, the bbox must be re-read as a local extent in the same commit. Left explicit in the code.
+
+**PREDICTION, written before the run** (this is what the gates test):
+1. `§DP10` control — doors with both sides enclosed must RISE well above 32%/27%; a transposed carve
+   is precisely what stops the far side being enclosed.
+2. Stranded area must FALL on both fixtures.
+3. `§O3` phantom share must NOT rise. A correctly-oriented carve cuts a NARROWER hole than a 2 m
+   slot along the wall face, so if anything it should fall — if it rises, the fix is wrong.
+4. `§T1–§T5` retention stays 100%/100%.
+
+### §21.43b RESULT — the fix is CORRECT and it makes every metric WORSE. Withdrawn, patch kept.
+Same session. Baseline and fix measured back-to-back on the same machine and fixtures; logs
+`roompath_diagnostics/w_*_base.log` vs `w_*_after.log` (`*.log` is gitignored — every probe is
+deterministic, re-run it to regenerate), patch preserved as
+`roompath_diagnostics/patch_21_43_transpose.diff` (37 lines). **Working tree is back at baseline —
+`common/room_graph.js` and `viewer/*.js` are byte-unchanged across §21.20–§21.43, still.**
+
+```
+gate                          baseline          with the transpose fix     direction
+Clinic unroutable             49.3% (50/186)    50.4% (53/184)             worse  +1.1pt
+LTU  unroutable (cur)         16.4% (15/263)    18.8% (17/261)             worse  +2.4pt
+LTU  unroutable (W:3.0, live) 18.4% (18/277)    23.0% (26/276)             worse  +4.6pt
+§O3  LTU phantom share        20%  PASS         94%  FAIL                  DECISIVE
+§SC3 breaks Clinic / LTU      9 / 14            10 / 19                    worse
+§CB5 sealed suites Clinic     7/9               8/10                       worse
+§T5  retention                100% / 100%       100% / 100%                unchanged PASS
+§DP10 control, both sides     32-39% / 27-37%   32-39% / 27-37%            UNMOVED
+```
+Predictions 1–3 from §21.43 all FAILED; prediction 4 (retention) held. Under the standing rule a
+change that fails its own stated prediction does not ship, so it did not.
+
+**What the failure MEANS, and it is not comfortable.** The transpose is a real geometric error — 46%
+of Clinic's doors and 57% of LTU's are carved 90° wrong, that part is not in doubt. Fixing it makes
+routing worse because the wrong carve was doing useful work by accident: stamping the void
+long-along-x cuts a ~2 m slot ALONG the wall face, removing far more wall than a correct carve, and
+the extra removal is what was merging pockets. The correct carve removes less wall (Clinic wall
+779 m² -> 793 m² left standing), fewer pockets merge, more rooms strand.
+
+**Therefore the tuned stack sits on top of the geometric error.** `W:3.0` (§21.33) and `pierce =
+10*RES` (§21.38/§21.39) were both swept and fitted against the TRANSPOSED carve. §O3's "20%, the gain
+is genuine archways, not giant voids" is measured on it too — and on the corrected geometry that same
+gate reads 94% FAIL. The honest reading: **the current 18.4% LTU number is not a clean win over the
+32.4% room-graph baseline; part of it is bought by a carve that removes wall it should not remove.**
+
+**NEXT — re-sweep, do not re-tune by hand.** Apply `patch_21_43_transpose.diff`, then re-run §21.33's
+width sweep and §21.38's pierce sweep TOGETHER on the corrected geometry; both constants are
+entangled with the axis error and neither is meaningful until the axes are right. Only then is the
+§O3 phantom number interpretable. If the corrected geometry cannot reach 18.4% at any (W, pierce),
+that is the real answer about this substrate and the lane should say so plainly.
+
+### §21.44 START HERE — handoff (written 2026-08-02, session close)
+**Read `ROOM_PATHING_SUBSTRATE.md` first, then §21.29→§21.43b here.** Everything before §21.29 is
+superseded. Setup unchanged: `cd ~/bim-ootb && git worktree list` FIRST, reuse `/tmp/wt-roompath`.
+
+**State.** Nothing deployed, nothing shipped, engine byte-unchanged. Defaults still `voidMode='W:3.0'`,
+`pierce = 10*RES`. Baseline numbers reproduce exactly (Clinic 49.3%, LTU 18.4% at W:3.0).
+
+**Three things this session settled, so none of them get re-derived:**
+1. §21.41's doorway-merge fix — falsified before coding. Separates cleanly (0.0% of >10 m² pockets
+   misclassify) but reaches 1 of 8 far-end groups. **Do not implement it.**
+2. §21.41's root cause — retracted. Doorway pockets carry 2–5 door-matched openings each; the graph
+   does not terminate in them.
+3. §21.42's "free win" oracle — **retracted, it is circular.** `rel_contained_in_space` is written by
+   our own `scripts/compile_rooms.py:1295` (`DELETE ... WHERE space_guid LIKE 'RM_%'` then re-insert
+   by point-in-rect). 100% of the IfcSpace rows in both fixtures are `RM_*`-guid, `≈`-prefixed
+   compiled rooms, and every door names exactly ONE space (98/98 Clinic, 208/208 LTU) so it cannot
+   express an adjacency even in principle. **This lane still has NO independent oracle.**
+
+**THE ONE THING TO DO NEXT:** the joint (W, pierce) re-sweep on the corrected axes, per §21.43b.

@@ -147,11 +147,17 @@ This is the expensive part of the document. Each of these looked right at the ti
 | Lengthen the `_openings` march | **Rejected on measurement** | Would have fixed 1 crossing of 51 |
 | Deepen the pierce to `10*RES` | **LANDED** | LTU unroutable 45.3% → 18.4%, all gates green |
 | "`area >= 2.0` filter is hiding the break" | **Wrong.** The filter hid it from reports only | The ENGINE's own depth is −1 for all 41 far ends |
+| "The carved doorway pocket terminates the graph" | **RETRACTED (§21.43).** They pass traffic | §DP5: all 8 far-end groups carry 2–5 DOOR-MATCHED openings each |
+| Merge pockets whose cells are all carve-provenance | **Falsified before coding.** Separates, but reaches nothing | §DP1: 0.0% of >10 m² pockets misclassify — but §DP4: 1 of 8 far ends |
+| "41 far ends leave the cluster" | **Wrong count.** 41 crossing RECORDS over 8 groups | §DP4 deduplicated them |
+| `rel_contained_in_space` as a verification oracle | **RETRACTED (§21.44).** It is our own output | Written by `compile_rooms.py:1295`; 100% `RM_*`/`≈` rows; 1 space per door |
+| Door-footprint window test for component contact | **Dead — the instrument, not the building** | Verdict inverted with window width: SLACK=2 → 100% "no door", SLACK=8 → 23% |
+| Fix the transposed void carve (the axes ARE wrong) | **CORRECT AND WITHDRAWN.** Every metric worsened | §O3 phantom 20% PASS → 94% FAIL; LTU 18.4% → 23.0%. Patch kept, see §21.43b |
 
-## §6 What it cost, and the four method rules that came out of it
+## §6 What it cost, and the five method rules that came out of it
 
-Three sessions, roughly forty measured findings, and **five claims that had to be retracted** —
-including two of the assistant's own, repeated across four sections before being caught. The rules
+Four sessions, roughly fifty measured findings, and **eight claims that had to be retracted** —
+including four of the assistant's own, repeated across four sections before being caught. The rules
 below are not aspirations; each one is named after the failure that produced it.
 
 1. **Write the gate before the fix.** All three of §21.27's carving bugs were caught by gates, not by
@@ -165,6 +171,15 @@ below are not aspirations; each one is named after the failure that produced it.
    test it — and will look like confirmation.** This produced the single most expensive error in the
    lane: "cause (2) is refuted", inherited unchallenged through four sections. Dumping 195 boundary
    crossings of ONE cluster exposed it in a single run. **Enumerate before you aggregate.**
+
+5. **A verdict that flips with the width of its own window is not a measurement — report the sweep,
+   not the number.** §DP7/§DP8 asked "does a door's footprint touch both components" with the engine's
+   own window and answered "100% of stranded area has no door to the spine — a scope limit". The same
+   probe at a wider window answered 23%, verdict "detection". Neither number was reportable. The
+   instrument that held instead used the door's OWN geometry (march the panel normal) and was still
+   published with a reach sweep and a blindness control (§DP9/§DP10, control: the march sees both
+   sides for only 32%/27% of doors — so its zero is not yet proof of absence, and saying so is part
+   of the result).
 
 Corollary, learned the same way: **verify the checker before the code under test.** Two self-inflicted
 bugs — grouping by the wrong key, and treating radians as degrees — were caught only because the
@@ -223,11 +238,25 @@ Measured on the current substrate (`W:3.0` default, `pierce = 10*RES`):
 LTU     stranded  18/277   unroutable 18.4%   (room-graph baseline 32.4%)  — beaten, and phantom-tested
 Clinic  stranded  50/186   unroutable 49.3%   (baseline 43.3%)             — still short
 ```
-**Open root cause (§21.41): the carved doorway becomes its own ~1 m² pocket and terminates the
-graph.** `SEAL`'s band separates it from the rooms on both sides, so room→doorway is emitted and
-doorway→far-room is not. 39 of 41 links leaving Clinic's largest stranded cluster end in one.
-The named fix is a provenance rule (§7): **a pocket whose cells lie entirely within carved void
-footprints is a doorway, not a room** — merge it, or emit it as a pass-through edge. No constant.
+**§21.41's root cause is RETRACTED (§21.43, 2026-08-02) and so is its fix.** The doorway pockets do
+not terminate the graph — each of the 8 far-end groups carries 2–5 door-matched openings. The "41 far
+ends" were 41 crossing records over those 8 groups. The provenance merge separates cleanly (0.0% of
+>10 m² pockets misclassify) but would have moved 1 group, so it was never written.
+
+**Open root cause (§21.43): the void carve is TRANSPOSED, and the tuned constants sit on top of it.**
+`_rasterizeSpine` normalises every void to `max`/`min` and re-stamps it long-along-world-x, so any
+door whose bbox is longer in Y is carved 90° wrong — 46% of Clinic's doors, 57% of LTU's. (Rotation
+cannot correct it: `storeyVoids`/`storeyWallsRot` select `COALESCE(t.rotation_z,0)` with no alias, so
+rotation reaches the raster for 0 of 3,167 LTU voids and 0 of 4,979 walls. That is harmless only
+because the fixtures store world AABBs — repairing the alias without re-reading bbox as a local
+extent would shear every wall in the building.)
+
+**The correct fix makes every routing metric worse, and that is the finding.** §O3 phantom share
+20% PASS → 94% FAIL, LTU 18.4% → 23.0%, Clinic 49.3% → 50.4%. The wrong carve removes ~2 m of wall
+ALONG the face and that over-removal is what was merging pockets; `W:3.0` and `pierce=10*RES` were
+both swept against it. **So the 18.4% is not a clean win — part of it is bought by a geometric
+error.** Next is the joint (W, pierce) re-sweep on corrected axes; the patch is kept as
+`roompath_diagnostics/patch_21_43_transpose.diff`, not applied.
 
 Nothing from this lane is deployed. `common/room_graph.js` and `viewer/navigate_find.js` are
 byte-unchanged. Current work sits on bim-ootb `review/roompath-redundancy`.
@@ -265,22 +294,20 @@ to stop us re-inventing solved parts and to name the places our approach is genu
    level and treat doors as explicit portals. **Take from it: doors as first-class portals** — which
    is precisely what our layer-1/layer-2 split does, and confirms the design choice.
 
-**⭐ FINDING WHILE WRITING THIS, and it is actionable — an authored relation we have never used.**
-`rel_contained_in_space` (IFC's element→space containment) is present in every fixture and **already
-names some door↔space relations directly**:
+**~~⭐ FINDING WHILE WRITING THIS~~ — RETRACTED 2026-08-02 (§21.44). It was not authored data.**
+The claim was that `rel_contained_in_space` carries authored door↔space relations (208/606 LTU,
+98/254 Clinic) and could serve as this lane's first independent oracle. **It is our own output.**
 ```
-LTU_AHouse   208 of 606 doors carry an authored space containment   (34%)
-Clinic        98 of 254 doors                                        (39%)
+scripts/compile_rooms.py:1295   DELETE FROM rel_contained_in_space WHERE space_guid LIKE 'RM_%'
+                       :1314    then re-inserts every element whose XY centre falls in a compiled room
+IfcSpace rows in spatial_structure:  Clinic 118/118 and LTU 369/369 are RM_*-guid, "≈"-prefixed
+spaces-per-door histogram:           Clinic 98 doors -> 1 space each;  LTU 208 -> 1 space each
 ```
-Partial, so it cannot be the method — but **Clinic has it, and Clinic has no opening geometry at
-all**, which makes it the first IFC-native connectivity signal available on the constrained fixture.
-Two uses, in priority order:
-- **As a VERIFICATION ORACLE (do this first, it is free and it is measure-only):** check our derived
-  door→room links against the ~300 authored ones. If they disagree, one of them is wrong and we have
-  been flying without any independent check on link correctness for this entire lane. This is exactly
-  the "verify the checker" rule of §6 applied to the one thing we never verified.
-- **As another provenance tier**, below authored VOIDS/FILLS and above geometry — same tier discipline
-  as §7, never as a replacement for the derived path.
+Checking derived links against it would be checking the pipeline against itself, and it could not
+express an adjacency in any case — every door names exactly ONE space, never the pair it joins.
+**This lane still has no independent oracle.** The genuinely authored relations named earlier in this
+section (`IfcRelSpaceBoundary`, `IfcRelFillsElement`) remain the thing to look for; neither fixture
+carries them, which is why the raster exists at all.
 
 **Where our approach is genuinely better, stated without hype:** it derives connectivity from a raw
 IFC that has no space boundaries, no authored navigation data, and often no opening geometry — in the
@@ -288,6 +315,6 @@ browser, with no preprocessing server — and every rule is gated by a falsifica
 tiering discipline (§7) and the provenance-over-threshold preference are, as far as we know, not
 standard practice in any of the five families above.
 
-**Where we are behind:** we have no independent oracle for link correctness (the point above fixes
-that), no published benchmark to compare against, and our funnel/string-pull stage (§21.15–§21.18)
+**Where we are behind:** we have no independent oracle for link correctness — the candidate above
+turned out to be our own output — no published benchmark to compare against, and our funnel/string-pull stage (§21.15–§21.18)
 is still unresolved where the game-engine lineage has had a settled answer for years.

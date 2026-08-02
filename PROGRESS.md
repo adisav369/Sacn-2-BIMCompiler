@@ -45,18 +45,27 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   label, 23,121 elements sit in two groupings, barrier deadlocks). Engine/support-extraction/crew-pool
   built and reusable.
 - ▶ **ROOM PATHING** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, read `ROOM_PATHING_SUBSTRATE.md` FIRST (new: concept,
-  invariants, every failed trial, prior art, §0 index of all 30 lane docs), then resume at §21.42. ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
+  invariants, every failed trial, prior art, §0 index of all 30 lane docs), then resume at §21.44. ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
   re-derive. Three defects found and fixed 2026-08-02: §PRECARVE (retention 84%/43%→100%/100%), the
   unhosted-void admission (default `W:3.0`), and the door pierce (6*RES→10*RES). **LTU stranded
   107→18/277, unroutable 87.7%→18.4% — beats the room-graph baseline 32.4% AND survives the
   phantom-adjacency cap test (share 104%→20%).** Standing 4-witness gate all green: §T1–T5 (retention
   100%/100%), §O3, §SC3 breaks 11/34→9/14, §CB5 sealed suites 9/23→7/8.
-  ⛔ **Clinic still short: 50/186 @ 49.3%.** ROOT CAUSE FOUND (§21.41): the carved doorway becomes its
-  own ~1 m² pocket and TERMINATES the graph — 39 of 41 links leaving its largest cluster end in one.
-  Fix is provenance-based, no constant: a pocket made entirely of carved-void cells is a doorway, not
-  a room — merge it. NEXT: (1) that merge + the 5-witness gate (§O3 matters most, merging is fusion),
-  (2) ⭐ FREE WIN: `rel_contained_in_space` already names 208/606 LTU and 98/254 Clinic authored
-  door↔space links — use as the lane's first independent ORACLE, (3) the 101/30 `noVoid` fusions.
+  ⛔ **Clinic still short: 50/186 @ 49.3%.** §21.43/§21.44 (2026-08-02) — resume at **§21.44**, three
+  things now SETTLED, do not re-derive: (a) §21.41's doorway-merge **falsified before coding** (it
+  separates — 0.0% of >10 m² pockets misclassify — but reaches 1 of 8 far-end groups; §C40c's "41 far
+  ends" were 41 records over 8 groups); (b) §21.41's root cause **retracted** — doorway pockets carry
+  2–5 door-matched openings each, the graph does not die in them; (c) the `rel_contained_in_space`
+  "free win" **retracted, it is circular** — written by our own `compile_rooms.py:1295`, 100% `RM_*`/`≈`
+  rows, 1 space per door. This lane still has NO independent oracle. **NEW ROOT CAUSE (§21.43): the
+  void carve is TRANSPOSED** — `_rasterizeSpine` max/min-normalises every void long-along-world-x, so
+  46% of Clinic's doors and 57% of LTU's are carved 90° wrong (rotation can't correct it: the
+  `COALESCE(t.rotation_z,0)` column is selected with no alias, so 0 of 3,167 voids and 0 of 4,979 walls
+  ever carry it — harmless only because the fixtures store world AABBs). **The correct fix makes every
+  metric worse** (§O3 phantom 20% PASS→94% FAIL, LTU 18.4%→23.0%, Clinic 49.3%→50.4%): the wrong carve
+  over-removes wall and that is what was merging pockets, so `W:3.0` and `pierce=10*RES` were both
+  swept against a geometric error and 18.4% is not a clean win. NEXT: joint (W, pierce) re-sweep on
+  corrected axes — patch kept unapplied at `roompath_diagnostics/patch_21_43_transpose.diff`.
   19 witnesses on bim-ootb `review/roompath-redundancy`, worktree `/tmp/wt-roompath` live/clean/pushed
   — REUSE it. Nothing deployed; engine byte-unchanged. Blocks `datacentre_cabling.md` cable-pathing.
 - ▶ **MODELLER** — dispatch from `prompts/MODELLER_MASTER.md` (⚠ landmine found compacting this file
