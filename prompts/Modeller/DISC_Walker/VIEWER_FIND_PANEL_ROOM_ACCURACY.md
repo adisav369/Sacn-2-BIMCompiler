@@ -3091,3 +3091,57 @@ recorded in the witness header rather than made silently after seeing the number
    cause (2) removed from the candidate list.
 4. Tier A stays unbuildable until a fixture carries `bom_tree` VOIDS/FILLS. Not blocking anything.
 Nothing deployed; `common/room_graph.js` and `viewer/navigate_find.js` remain byte-unchanged.
+
+### §21.31 START HERE — handoff for the next session (written 2026-08-02, second session of the day)
+Read §21.14 for setup/fixtures/landmines (still current), then §21.29→§21.30. **Skip §21.24–§21.28's
+LTU numbers entirely — they are artefacts** (§21.30 FINDING 2). Below is only what is not obvious there.
+
+**Setup.** `/tmp/wt-roompath` EXISTS and is current at `5387447`, clean and fully pushed — **reuse it,
+do not `git worktree add` a second one** (`git worktree list` first, always). If it has vanished again
+(it has twice in this lane): `cd ~/bim-ootb && GIT_LFS_SKIP_SMUDGE=1 git worktree add /tmp/wt-roompath
+review/roompath-redundancy`. Everything is pushed; recreate and continue, never re-derive.
+
+**State: nothing is deployed. The viewer engine is byte-unchanged.** `common/room_graph.js` and
+`viewer/navigate_find.js` untouched by §21.20–§21.31. The room compile is byte-identical — the
+`§APERTURE_TIER` resolver is opt-in (`spineMap(db,{voidMode:'B'|'C'})`, default `'cur'` reproduces
+§21.27 exactly, verified). Run `node witness_room_path_aperture_tier.js` to reproduce every number below.
+
+**What is SETTLED — do not re-litigate, do not re-measure:**
+- **Aperture PROVENANCE is not the problem.** T3: real IfcOpeningElement apertures vs door bboxes on
+  LTU = 320 → 319 stranded, unroutable unmoved. §21.28's cause (2) is REFUTED. Do not revisit it and
+  do not build tier A hoping it helps — it is the same relation, stated exactly instead of measured.
+- **Tier C cannot be removed.** 6 of 7 fixtures have zero `IfcOpeningElement`, 7 of 7 have zero
+  `bom_tree` VOIDS/FILLS. Any aperture design that assumes opening geometry is wrong on the fleet.
+- **LTU's corrected baseline is 320 stranded / 31% spine / 76.3% unroutable**, not 107 / 66% / 87.7%.
+- **`rotation_z` is in RADIANS and is a NON-ISSUE** (§21.27 retraction). Still true. Do not re-open.
+- Clinic 140/234 stranded and 91.3% unroutable are UNAFFECTED by all of the above — Clinic has only
+  tier C, so its §21.24–§21.28 numbers stand.
+
+**THE ONE THING TO DO NEXT — fix the unhosted-void admission.** `cur` admits 2,211 floor-level ARC
+openings on LTU, of which **1,595 are not door-hosted** (atrium/stair/facade voids, up to 25 m and
+55 m across). Carving them removes exterior wall and the interior flood escapes → 43% enclosure
+retention. This is a live defect in shipped `storeyVoids`, not a tuning preference. The fix is already
+built and measured — tier B's door-hosted test — so the work is to make it the default where opening
+geometry exists and to keep `§T5 ENCLOSURE RETENTION ≥90%` as a standing gate on every future spine
+number. **Do not skip the gate**: `§T4`'s leak signature passed at 8.5% on the 43% run, so the
+existing leak test cannot see this failure class at all.
+
+**Second item, and it bounds 6 of 7 buildings:** Clinic retains only **84%** of enclosed floor in
+EVERY mode — 254 door bboxes cost 312 m² of 1,980 m². Tier B cannot help (no openings). Suspect the
+`pierce = 6 * RES` slack in `_rasterizeSpine`. Falsification test before the fix: retention must rise
+toward 95%+ WITHOUT `doorCentresOnWall` leaving 0% — those two trade against each other directly.
+
+**Third, only after the two above:** re-run §21.28's stranded classification on the corrected LTU
+substrate (320 rooms), with cause (2) struck from the candidate list — so every stranded room is
+either (1) no door element exists, or (3) the sealed flood never formed the pocket.
+
+**Method notes that earned their place, on top of §21.28's:**
+- **A gate that cannot see a failure class is not coverage.** T4 (largest-pocket leak signature)
+  passed on a raster missing 57% of its floor, because carving an exterior wall lets the flood ESCAPE
+  rather than merging pockets. §21.27's G3 printed both numbers side by side and accepted them.
+  When adding a gate, ask what failure it structurally cannot detect, and add that one too.
+- **Set the pass threshold to a MATERIAL effect before running.** T3's first version passed on
+  320 → 319. A test that any noise satisfies proves nothing.
+- **Check whether the code already does the thing you are about to add.** §21.29 specced admitting
+  `IfcOpeningElement` when `storeyVoids` already admitted it — the real defect was that it admitted
+  too much, the opposite direction. One `grep` before the spec would have caught it.
