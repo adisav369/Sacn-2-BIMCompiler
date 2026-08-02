@@ -5651,3 +5651,48 @@ rule tests the GAZE RAY: per probe of the composed raw gaze (the same 512-sample
 §CPE_BUILDUP_TOPOUT (#1135) means the late film — where this stare lives — is already topped
 out, so full-building bulk is the correct target for the reported window; D4 remains the fix
 for EARLY-film aiming and the buildup guard on the depth aimer stays exactly as is.
+
+## §CPE_GAZE_BULK — ⏸ PARKED (user ruling 2026-08-02, same day as the diagnosis above)
+User, on the finished second bake: *"rather OK, it is a matter of path creativity"* — the skyline
+stare is chiefly the AUTHORED path's own end-leg bearing, to be solved by authoring, not by a new
+auto-turn rule. And on the current turn feel: *"The cam face turns rather obvious been more
+pronounced, still OK, was more graceful before"* — a corrector that ADDS auto-turning goes the
+wrong way. So: the diagnosis above STANDS (measured, correct, do not re-derive), the corrector is
+PARKED. Branch `fix/cpe-gaze-bulk` (bim-ootb, pushed, no PR) holds the working module:
+`viewer/cinema_gaze.js` (§CPE_GAZE_SOC shape: builder + §GAZE_SRC provenance + verbatim
+acquire/rate-limit move) + `effects.js` delegation with inline fallback — compiles, UNWIRED
+(no viewer.html tag, no sw precache), zero behavior change on main. Witness never written.
+**User's own hypothesis, recorded:** *"perhaps it reacted bit late, thus explaining why the sky
+gaze"* — consistent with the measured mechanism: the constant-rate limiter is FORWARD-ONLY (it
+lags by design, documented in its own comment), so from a bad Beat-3 end bearing the recovery
+turn arrives late by construction. If this lane is ever resumed, an ANTICIPATORY limiter (look
+ahead in the raw series, start the turn early) may fit "graceful" better than the bulk corrector.
+
+# §CPE_GAZE_ACQUIRE_SOFTEN — peak 3x → 2x (user, 2026-08-02: "was more graceful before")
+The 3x cap (135°/s peak when >60° off-axis, #1131) reads as "rather obvious… more pronounced".
+Soften to GAZE_ACQUIRE_MAX = 2 (90°/s peak): still strictly faster than the flat 45°/s that read
+as "a bit slow" (the request that created the rule), still decaying to exactly 1.0x on-subject.
+One knob only — GAZE_ACQUIRE_FULL/DEAD untouched. Witness: witness_cpe_gaze_acquire.js T1–T6 are
+curve-property claims, not constant checks — all six must stay green at 2x, and T5's measured
+time-to-acquire will sit between the 3x value and the flat 2.00s.
+
+# §CPE_ROOM_TITLE_COLLECTIVE — ONE composed caption everywhere + live [phase] (user, 2026-08-02)
+User: *"grouped together in single label… it is caption optics"*, format confirmed verbatim:
+**"Storey - 1 Corridor Hall Rooms 2,3 [MEP Rough in]"**.
+1. **One format, all captions.** §CPE_ROOM_TITLE_GROUP's composed line (storey · containment ·
+   rooms-in-sight) currently renders only in the GAPS between precision room captions; the
+   room-dwell captions still show a bare room name — two optics. Now EVERY caption window
+   composes the same single line. The room-dwell timeline (dwell floor, 3s-or-skip, lead, hold,
+   hysteresis — all settled rules) is UNTOUCHED: only the `name` a dwell segment carries becomes
+   the composed line for its window (storey if unanimous, containment if unanimous, union of
+   sighted rooms — same rules the gap composer already applies, one composer function, two
+   callers).
+2. **[Phase] at DRAW time, never plan time.** During a buildup film the caption gains a trailing
+   `[<phase>]` naming the collective being built — the SAME live TM state the bake already drives
+   (the sfx line `§SFX_PLAY src=tm phase=…` proves the per-frame phase is in force at draw). Plan
+   time cannot know it: day↔t is nonlinear twice over (work pacing + topout). No buildup, or no
+   phase in force → no bracket, never a guessed one.
+3. Witness (extend witness_cpe_room_title_group.js or sibling): (a) every rendered caption in a
+   sampled plan matches the composed grammar; (b) a dwell caption's room appears in its own
+   composed line; (c) with a synthetic phase in force the draw routine appends exactly one
+   `[phase]`; (d) timing series (open/close times) byte-identical to pre-change — optics only.
