@@ -5389,3 +5389,47 @@ be gated on `perpMag`. This item is the acquisition RATE anywhere in beats 3+4. 
 degenerate probe (aim direction over a 1 cm baseline is meaningless), Terminal's is 25.4 against a 25
 threshold. **The instrument is at fault, not the gaze** — G10 needs a minimum-baseline guard before it
 can be trusted either way. It is NOT evidence for or against §CPE_GAZE_ACQUIRE.
+
+## ✅ §CPE_GAZE_ACQUIRE — BUILT, WITNESSED, MERGED 2026-08-02 (PR #1131, `1fa1906`, sw v915)
+The §CPE_GAZE_ACQUIRE section above specced this and asked the user for a peak multiple. **The user
+declined the question** — *"A cam head turn is well described, u need nothing further but your common
+sense"* — so 3× was chosen and justified in the code comment rather than asked about. Recorded because
+the asking was the error: the request was already unambiguous.
+
+**The change:** the per-probe allowance now scales with the RESIDUAL angle — full 3× (135 °/s) far
+off-axis, smoothstepping to **exactly 1.0×** as it converges. `CINEMA_TURN_DPS` is UNCHANGED and must
+stay that way (it also prices the spin, the orbit lap and the walk turn budget); this multiplies over it.
+
+| | flat cap (shipped) | §CPE_GAZE_ACQUIRE |
+|---|---|---|
+| 90° acquisition | **2.00 s** | **0.90 s** |
+| rate at onset | 45 dps | **135 dps** |
+| rate at arrival | 45 dps | **40.9 dps** |
+| settled gaze (≤2° residual) | 45 dps | **45 dps — bit-identical** |
+
+`witness_cpe_gaze_acquire.js` **8/8**, RED on `origin/main` (0/6, curve absent). **T6 is the load-bearing
+claim** — rate at arrival strictly below rate at onset. A "just turn faster everywhere" implementation
+passes T5 (faster) and FAILS T6, which is the difference between *gracefully* and a whip.
+
+⚠ `_rotToward` and the curve were HOISTED to module scope. They are pure, and they had been trapped
+inside the per-plan `_cinemaPathPlan(durationSec)` closure — so `A.gazeAcquireCap` assigned in there
+did not exist until a plan was built, and the witness's T0 failed against working code. **Anything a
+witness must drive cannot live inside that closure.**
+
+### ⚠ HARNESS FACT THAT COST A WRONG ANSWER — read before running any cinema witness
+**Most `witness_cpe_*` / `witness_cinema_*` files do NOT start their own server.** They expect one
+already listening on a fixed port (`const PORT = process.env.PORT || 8402`, `|| 8403`, …), and on a
+miss puppeteer dies with `ERR_CONNECTION_REFUSED` — which reads as **exit 1, i.e. a FAILING WITNESS**.
+First regression pass reported **13 of 15 red**; with one server per worktree and `PORT=` set, four of
+those (`gaze_spin`, `spin_whip`, `walk_budget`, `orbit_v2`) were **green all along**. Run them as:
+`(nohup python3 -m http.server 8500 &) ; PORT=8500 node witness_x.js` from the worktree under test.
+`witness_cpe_day_counter.js` and `witness_cpe_gaze_acquire.js` DO self-serve (they `listen(0)` on a
+free port) — copy that pattern for new witnesses so this trap stops being re-paid.
+
+**Known RED on clean `origin/main`, NOT caused by any of this session's work** (verified by running the
+identical set on a clean worktree): `witness_cinema_path_editor` **G10** (degenerate 0.01 m baseline —
+instrument fault, needs a minimum-baseline guard), `witness_cpe_even_turn` **T6** (walk pace floor),
+and `tests/audit_specs.js` (5 SKIP paths in `38-sh-dx-2d-runtime.spec.js`).
+**The gate this change most risked — `witness_cinema_path_editor` G7 "no sharp corners: peak ≤12
+deg/frame on a 90-deg dog-leg" — PASSES**, as does `witness_cpe_even_turn` T2 ("peak gaze sweep under
+12 deg/frame on a hostile layout"). Those two are the ones that would catch a reintroduced whip.
