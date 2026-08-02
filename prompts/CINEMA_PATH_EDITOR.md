@@ -5589,3 +5589,65 @@ the thing to dump), then #1131 (acquire re-timing), then the aim-depth pair. ⚠
 the path is AUTHORED and has been re-edited since 2026-07-29 — the leg pointing at the skyline may
 itself be newer than the accepted film. Dump `§CPE_CAM_BASIS` + the band directions from the saved
 path record BEFORE blaming any law.
+
+# §CPE_GAZE_BULK — the stare DIAGNOSED (measured 2026-08-02, this session) + the fix spec
+
+## The measured cause — no bisect needed, the composition has a HOLE, not a culprit merge
+All numbers from the saved path record (`buildings/HospitalAjaibPath.db` `cinema_path` table,
+saved 2026-08-01, the day before the bake) + `element_transforms` (63,182 rows — matches the
+user's own `§CPE_AIM_GRID elems=63182`, so it IS the baked building):
+1. **The authored path is fully INTERIOR.** Bands: c=(10,92.3,167.5)→(36.3,95.9)→(57.3,94.6),
+   all inside perimeter x∈[−11.7,89.5] y∈[1.2,152.1]. `_aimWeight`'s first term is
+   `outM<=0 → return 0` (outside-the-perimeter trigger) — so the empty-view aimer is
+   STRUCTURALLY inert on any interior path. That is the exact kill term behind
+   `§CPE_AIM_SERIES active=0/65` (lead 1 answered).
+2. **The depth aimer is hard-disabled for EVERY buildup film** — §CPE_AIM_DEPTH_BUILDUP_GUARD
+   (`effects.js` `_aimDepthWeight`: `if (_cinemaPathEdit.buildup) return null`, landed #1103
+   2026-07-31, inside the regression window). That is `§CPE_AIM_DEPTH_SERIES active=0/65`.
+3. **Therefore on this film NOTHING can turn the camera onto mass** — the composed gaze
+   degenerates to pure look-ahead (path tangent at walk end). The end-leg bearing (0.94,−0.35,0)
+   points 157° off the bulk centroid ((46.2,93.0) vs end point (57.3,94.6)); the eye-level
+   corridor ahead of it (±8m lateral, ±6m z) holds 1764 elements in 0–10m, 291/230/3 in
+   10–40m, ZERO beyond — the bearing runs off the east edge (x≈89.5) into open sky. The
+   constant-rate law then delivers that bearing faithfully. The stare is the base path's own
+   tangent, not any one law's regression — the six merges REMOVED the two rules that used to be
+   able to intervene on some films, and no rule was left whose TRIGGER looks at what the gaze
+   actually sees.
+
+## The fix — §CPE_GAZE_BULK, an empty-GAZE corrector (trigger = what the camera SEES)
+Both existing triggers test where the camera STANDS (outside-perimeter / boxed-in). The missing
+rule tests the GAZE RAY: per probe of the composed raw gaze (the same 512-sample series
+§CPE_GAZE_CONSTANT_RATE already builds), compute
+- `seen` = soft density (same (1−u²)² kernel as `_aimSoftDensity`) accumulated in a ~20° cone
+  along the gaze, 1–45m ahead — "is anything in view";
+- `bulkDir` = density-weighted centroid of elements within 60m of the camera — "where the mass
+  is";
+- `w = (1 − smoothstep(seen/FLOOR)) × smoothstep(near-mass/FLOOR)` — correct ONLY when the view
+  is empty AND real mass is actually nearby to face (a genuine all-sky moment stays authored);
+- smooth w with the house 2×5-tap pass, NO latch (a corridor that turns back to healthy
+  look-ahead must release), slerp raw→bulkDir by w, THEN the existing acquire+rate limiter
+  bounds the result — the law order is corrector-before-limiter so no new rate can leak in.
+
+## §CPE_GAZE_SOC delivered with it (per the standing directive above)
+- New file `viewer/cinema_gaze.js` (IIFE/setup-function pattern, same as `cpe_room_title.js`):
+  owns raw-series sampling, the §CPE_GAZE_BULK corrector, the acquire cap + constant-rate
+  limiter (moved verbatim), and per-probe provenance. `poseAt` beats 3+4 read ONLY its output.
+- `§GAZE_SRC` log: per-probe owner series (los | aim | depth | bulk | beat4-pivot, + rate-clamp
+  marker), so the next console paste NAMES the rule in force.
+- Witness `witness_cpe_gaze_skyline.js` (root, puppeteer pattern of `witness_cpe_stick_hold.js`),
+  ground truth computed from `element_transforms` directly (never from the module under test):
+  - G-GZ-1 REPRO: on the real authored path record + buildup regime, the PRE-FIX composed gaze
+    has a ≥3s window where gaze-cone mass ≈0 while ≥5k elements sit within 60m (the stare,
+    stated as numbers). RED before the fix, and the fix must close it (post-fix window <0.5s).
+  - G-GZ-2 PROVENANCE: `§GAZE_SRC` covers all probes; in the (pre-fix) stare window the post-fix
+    owner is `bulk`.
+  - G-GZ-3 NO-REGRESSION: on a path whose gaze-cone mass is everywhere healthy, corrector w≡0
+    and the output series is identical to the pre-module composition (the extraction changed
+    nothing when the new rule is silent).
+  - G-GZ-4 RATE LAW: limited peak dps ≤ CINEMA_TURN_DPS × GAZE_ACQUIRE_MAX, unchanged.
+- Boundary rule: pacing PRs may not touch `cinema_gaze.js`; gaze PRs may not touch pacing —
+  enforceable from the diff file list.
+⚠ NOT in scope here (stays open as §CPE_AIM_DEPTH D4): reveal-aware subjects during buildup.
+§CPE_BUILDUP_TOPOUT (#1135) means the late film — where this stare lives — is already topped
+out, so full-building bulk is the correct target for the reported window; D4 remains the fix
+for EARLY-film aiming and the buildup guard on the depth aimer stays exactly as is.
