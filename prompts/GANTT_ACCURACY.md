@@ -827,3 +827,59 @@ it reproduces the shipped `§GANTT_OVERRIDE` counts exactly, which is what makes
    top out AT my underside: `|S.top_z - T.base_z| <= GAP`. **This trap is already recorded in
    `auditFloating`'s own header as evidence that "walls do not carry beams in this DB" — that
    conclusion is WRONG and is corrected in `§SUPPORT_ALL` above.** Walls carry structure in 1,243 places.
+
+## ⛔ §ELEMENT_CPM BUILT AND MEASURED 2026-08-02 — the support invariant is FIXED, and it costs the band. NOT MERGED.
+Branch `feat/element-cpm` (bim-ootb, off `origin/main` @ `a245f33`). **The user's ruling was applied:
+support wins, every yield counted.** The engine works and the invariant the user named is closed:
+
+| gate | shipped (`fc58210`) | §ELEMENT_CPM |
+|---|---|---|
+| `audit_support_roleblind.js` (**the user's invariant**) | **6,778 FAIL** | **0 PASS** ✅ |
+| `tests/test_schedule_gate.js` floating | 0 | **0** ✅ |
+| band inversions, non-structure (T2a) | **29,824** | 34,595–38,816 ❌ |
+| span | 176d | 183–238d (T4 still ✅) |
+| graph build / solve | — | **1.0s / 0.2s** on 63,415 nodes, 81,722 edges |
+
+**DO NOT MERGE AS-IS.** The user CONFIRMED the shipped band ordering is right on a live Hospital bake
+("no more roof coming on before the walls or upper deck forming before lower", Day 282). Shipping this
+would regress exactly that, visibly, to fix a defect they can only infer. Support is worth having —
+but not by trading away the half that is already confirmed good.
+
+**THREE ENGINE SHAPES WERE BUILT AND MEASURED. Do not re-attempt any of them:**
+1. **Sync nodes** — one milestone per (phase, seq), trade/band as soft edges, residual cycle-breaker.
+   Broke **155,170 of 160,726** soft edges; span collapsed to 82d, walls at day 25 vs beams at day 42.
+   Aggregating a milestone over elements at wildly different z is the error.
+2. **Priority only** — topological over support, (seq, rank, base_z) preferred among the ready set.
+   The heap only ever holds support-ready nodes, so when no low trade is ready a high one pops anyway:
+   45,241 out-of-trade pops, inversions **34,665 — worse than the engine it replaces**.
+3. **Group-barrier preconditions** — a node waits until its whole (rank r-1, seq k) group is placed,
+   yielding only on deadlock. Deadlocks are pervasive, not incidental: 35,397 band yields. Releasing
+   the whole waiting group amplifies (one stuck element waives thousands of neighbours); releasing ONE
+   node at a time barely moved it (35,492). Also found and fixed on the way: a SHARED waiver flag let
+   a *trade* deadlock silently waive the *band* precondition for 51,767 nodes — two constraints need
+   two waivers.
+
+**⭐ THE DECIDING MEASUREMENT, and it is new — `audit_rank_vs_support.js` (committed):**
+```
+§RANK_VS_SUPPORT edges=81722
+§RANK_VS_SUPPORT byStoreyLabel  carrier_ranks_ABOVE_carried=1735 (2.1%)  sameTrade=17
+§RANK_VS_SUPPORT byElementZ     carrier_band_ABOVE_carried=0 (0.0%)
+   619  Level 3 carries Level 2      422  Level 4 carries Level 3      402  Level 5 carries Level 4
+```
+**The contradiction is in the KEY, not in the schedule.** "Band-monotonic by STOREY LABEL" and
+"nothing before its carrier" are UNSATISFIABLE together — no engine can pass both — because 1,735
+support edges have the carrier's storey ranking above the storey it carries. Keyed on element
+ELEVATION the same graph has **ZERO** contradictions. Every previous session (including this one's
+first three attempts) treated this as a scheduling problem. It is not.
+
+**WHY RE-KEYING THE BAND TO ELEVATION DID NOT IMMEDIATELY WIN** (tried, measured, 4th shape): the
+TRADE gate is still keyed on the storey label while the band is keyed on z, so 23,121 elements now sit
+in two different groupings and the group barrier deadlocks across the two keys (33,960 yields,
+inversions 38,816). **The next attempt must move BOTH gates onto the same elevation key** — or drop
+the group barrier and gate on time alone. That is the one open design question; the engine, the
+support extraction, and the crew pool are all built and measured and can be reused verbatim.
+
+⚠ The witness measures inversions via `rank[collapse(e.storey)]` — the LABEL. If both gates move to
+elevation, the witness must be given an elevation-keyed metric ALONGSIDE the label one, and BOTH
+reported. Changing it to elevation only would be lowering the bar, which this lane has a standing
+warning about.
