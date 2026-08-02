@@ -5726,3 +5726,145 @@ scheduled. The next EXECUTABLE spec is in `prompts/GANTT_ACCURACY.md` ▶RESUME
 (§Z_STACK_XRAY_STAGING — assigned to an executor session, spec complete).
 Operational note: the OCI-served viewer copy predates #1135 (stale-bake signature on record
 above) — a deploy refresh is needed before any live-URL bake reflects v918+ behavior.
+
+## ✅ DONE 2026-08-02 — §CPE_PANEL_STATE: saved paths carry the panel context they were recorded under (PR #1140)
+
+**Feature:** `_pathsSave` (viewer/cinema_path_editor.js, IndexedDB `bim_ootb_cinema_paths`) now writes a
+`panelState` sub-object beside the override; `_pathsApply` restores it through the app's own setters.
+Old records without `panelState` skip loudly (`§CPE_PANEL_STATE none on record`) — no throw, same as before.
+
+**What was found and persisted (real names, from the code):**
+1. **Checkboxes — the full census.** The CPE panel holds the only checkboxes active in a cinema session
+   (`viewer/panels.js` has zero `type="checkbox"` inputs; time_machine.js none either):
+   - `#cpe-buildup` → `_state.buildup` ("build the model as the film plays")
+   - `#cpe-room-title` → `_state.roomTitle` (room-title cards, §CPE_ROOM_TITLE)
+   Persisted as `panelState.checkboxes = {buildup, roomTitle}` (name→boolean). The sibling control
+   `#cpe-day-counter` (a `<select>`, §CPE_DAY_COUNTER_POS corners tr/tl/br/bl/off → `_state.dayCounter`)
+   is persisted as `panelState.dayCounter`.
+2. **Total time** = the Time Machine project span. Real variables: `_projectStart` / `_projectEnd`
+   (viewer/time_machine.js:31-32), read via the public `window.tmGetState()` (time_machine.js ~5357).
+   Persisted as `tmProjectStart`, `tmProjectEnd`, `tmSpanMs` (= projectEnd − projectStart). No setter
+   exists (the span is derived from the op-log), so restore is a DRIFT CHECK: mismatch → loud
+   `§CPE_PANEL_STATE span drift` warn, never a write. There is no `spanDays`/`totalDays` state variable —
+   `totalDays` at time_machine.js:2442 is a local computed for the big counter's text, not state.
+3. **Day counter position** = `_cursor` (time_machine.js:30, "current time (ms) in the project timeline"),
+   read via `tmGetState().cursor`, RESTORED via `window.tmSetCursor(ms)` — time_machine.js's own "ONE
+   public cursor setter". Restore only writes when TM is active (tmSetCursor renders); otherwise logged
+   (`tm-inactive-now`). Checkbox/select restore goes through each control's existing `change` handler via
+   `dispatchEvent(new Event('change'))` (precedent: panels.js:552) — never a bare DOM/state poke.
+
+**Portability decision:** scene.js `_writeCinemaPathTable` (the portable `cinema_path` table) was
+inspected and deliberately NOT extended. Its schema is per-band rows (seq, ifc_x..hold_sec) — it does not
+carry hose/clip/buildup/roomTitle/dayCounter today either; adding panelState there is a schema evolution
+(append-only columns or a settings row + named-column reader fallback per the §CPE_STICK_HOLD version-skew
+rule) and is out of scope for this pass. The IndexedDB working store is where named plans round-trip.
+
+**Witness:** `witness_cpe_path_portable.js` extended with G-PS-1..4 (Duplex, real Alt+C → save → reload →
+open route). RED on pre-fix code — 16/20, the drop proven:
+```
+FAIL  G-PS-1 ... rec keys=key,building,name,savedAt,meta,override — panelState MISSING
+FAIL  G-PS-2 ... #cpe-buildup=false #cpe-room-title=false #cpe-day-counter=tr  LOG: no §CPE_PANEL_STATE line
+FAIL  G-PS-3 ... cursor now=1785682818945 saved=1784160971939 diff=1521847006ms tmActive=true
+```
+GREEN after fix — 20/20 (`WITNESS PASS (20/20)`):
+```
+§CPE_PANEL_STATE restored buildup=1 roomTitle=1 dayCounter=bl tmCursor=restored ms=1784161039596 tmSpanMs=2415782694
+PASS  G-PS-1 ... panelState={"checkboxes":{"buildup":true,"roomTitle":true},"dayCounter":"bl","tmActive":true,"tmCursor":1784161039596,"tmProjectStart":1783267199999,"tmProjectEnd":1785682982693,"tmSpanMs":2415782694}
+PASS  G-PS-3 ... cursor now=1784161039596 saved=1784161039596 diff=0ms tmActive=true
+PASS  G-PS-4 ... saved={buildup:true,roomTitle:true,day:bl,cursor:1784161039596,span:2415782694} restored={...cursor:1784161039596,...}  DRIFT: §CPE_PANEL_STATE span drift saved=2415782694ms now=2415801505ms
+```
+G-PS-4 note: byte-for-byte holds for every RESTORABLE value; the span is re-derived by TM on each load and
+differs by ~20s across reloads (derived-synthesis nondeterminism, not restorable state) — the contract is
+that the drift is REPORTED, and the warn line above is exactly that report firing.
+
+**Regressions (concurrent-PR neighbors), all green:** `witness_stagger_support_order.js`
+(§STAGGER_SUPPORT_VERDICT G-SSO-1..4 PASS), `witness_zstack_xray_staging.js` (§XRAY_STAGING_VERDICT
+G-XRAY-1..4 PASS), `witness_cpe_room_title_collective.js` (§W-RTC all green, labelled=20/20).
+
+**Deploy:** sw.js CACHE_VERSION v921 → v922 (cinema_path_editor.js is precached).
+
+## ✅ DONE 2026-08-02 — §CPE_ROOM_TITLE_LEVEL_CONSOLIDATE: shared level prefix named ONCE, not per room (PR #1142)
+
+**Bug report (user, this session):** multi-room captions on the same storey were not consolidating
+the shared level prefix — illustrated as "Level 2 R1, Level 2 R3" instead of one shared prefix with
+a comma-joined room list. Per this project's hard rule, the user's exact numbers were treated as
+illustrative, not literal — ground truth was extracted from a real bake before any code was touched.
+
+**Real evidence found (not re-derived, not guessed):** the #1136/#1138 build session's own scratchpad
+witness logs (`/tmp/claude-*/.../7398ebd5-.../scratchpad/{w_group2,wf_group,wf_gaze,wr_gaze}.log`),
+driving the REAL production functions (`A.roomTitleBuildTimeline`/`A.roomTitleOpacityAt`) on the real
+147.9s Hospital film, already contained the exact defect, unnoticed because no existing gate checked
+for it:
+```
+≈ Level 4 Hall/Corridor 2, ≈ Level 4 Hall/Corridor 1, ⚠ Level 4 R1, ≈ Level 4 R4
+```
+— the "Level 4" prefix repeated once per sighted room instead of heading the list once.
+
+**Root cause, diagnosed from the real composer (`viewer/cpe_room_title.js` `_lineFrom`, shared by
+the gap-fill composer AND §CPE_ROOM_TITLE_COLLECTIVE's dwell-caption composer — one function, two
+callers, per #1138):** the sight-list per-room dedupe only stripped a room's own embedded storey
+prefix (room names are literally "Level 4 R1" etc.) when the WINDOW's camera-position storey test
+(`stSame`/`stU`, computed from where the CAMERA stood across the window) was unanimous — a stricter,
+independent test from "do the sighted ROOMS themselves share a level." Whenever `stSame` was false
+(a window straddling a storey-band edge, or a genuinely mixed-storey sight), the fallback passed
+`null` to the dedupe helper, nothing stripped, and the prefix repeated per room. This was a
+**consolidation defect only** — no separate room-numbering/indexing bug was found; the room
+identities themselves (R1, R4, Hall/Corridor 1/2) were correct in every sample, just not grouped.
+
+**Fix:** group the sight list by each room's OWN storey prefix (extracted against the same ladder
+`_storeyLadderForGroups` already builds — never invented), independent of `stSame`. A room whose own
+prefix matches the already-announced top storey (or has no ladder-matching prefix) lands in a shared
+"loose" bucket (bare name only, no header repeated); rooms sharing a prefix not already announced are
+merged under ONE header. `RED_STORY_PREFIX_OF` uses `indexOf(...) >= 0` (not `startsWith`) because
+room names carry a leading confidence marker glyph (`"≈ Level 4 R1"`, `"⚠ Level 4 R1"`) — matching the
+same permissive semantics the pre-existing `dedupe` helper already used.
+
+**Bake path verified, not inferred (coordinator-requested scope addition):** read `cinema_maxq.js`
+directly — `_captureFrame` (:478-491) calls `A.roomTitleOpacityAt(_titleSegs, i/fps)` (:1082) and
+passes `.name` UNMODIFIED into `A.roomTitleCompositeOntoCanvas` (:486). No separate/duplicated
+composition logic exists on the bake side; it is the exact same shared function this fix touches.
+New gate **G-RTC-7** reproduces that exact two-call chain (not a re-implementation) across every
+segment of the real film and asserts the painted canvas text carries no repeated prefix.
+
+**Witnesses — RED before, GREEN after, all on the real Hospital film, all real production functions:**
+- `witness_cpe_room_title_group.js` **G-RTG-6** (new): RED `3 repeats` (counts 4×/2×/2× across the
+  film's fill segments) → GREEN `0 repeats`. G-RTG-1/2/4/5 stay green. G-RTG-3/coverage numbers
+  showed run-to-run variance across repeated GREEN runs (e.g. 94% vs 96-97% coverage, one G-RTG-3
+  midpoint mismatch) — **confirmed pre-existing, not caused by this fix**: re-running the UNMODIFIED
+  `origin/main` code twice back-to-back showed the same class of variance in the original
+  #1136-build-session logs (`w_group.log` vs `w_group2.log` vs `w_group3.log` disagreed run to run on
+  identical code), and this session's own machine was under load average 6-8 with 16 concurrent
+  Puppeteer/Chrome instances from other agents at the time — a real, load-sensitive characteristic of
+  this headless-GPU bake witness, tracked here rather than silently ignored. The property this fix
+  actually targets, G-RTG-6, was green in 6/6 repeated runs.
+- `witness_cpe_room_title_collective.js` **G-RTC-6** (new, dwell-caption `.label`): RED `15 repeats`
+  → GREEN `0 repeats`.
+- `witness_cpe_room_title_collective.js` **G-RTC-7** (new, the exact bake-path chain): RED
+  `18 repeats` (24 segments driven through `roomTitleOpacityAt`→`roomTitleCompositeOntoCanvas`) →
+  GREEN `0 repeats`.
+- Regressions green: G-RTC-1..5, `witness_cpe_room_title_multi.js` (G-RTM-1..4),
+  `witness_cpe_room_title_height.js` (Duplex 5/5), `witness_cpe_room_title_lead.js` (Duplex 10/10),
+  `witness_cpe_room_title_hold.js` (Duplex 8/8).
+
+**Day-counter default-visibility (coordinator-requested scope addition) — NOT a bug, no code change
+made:** traced `cinema_path_editor.js:1722-1726` (fresh editor state: `buildup:false, roomTitle:false,
+dayCounter:'tr'`) and `cinema_maxq.js:1042/1056-1066` (the day counter fires whenever
+`_buildup && _bkState` is true AND `_dayPos !== 'off'`, logging `§CPE_DAY_COUNTER frame=... day=...`;
+`_dayPos` defaults to `'tr'`, i.e. VISIBLE, the instant buildup is on). The day counter already
+defaults to shown (top-right) whenever the `#cpe-buildup` checkbox is on — it is gated on `buildup`
+alone (logically necessary: no schedule, no day to count), exactly the same "off unless the checkbox
+is set" design the room-title feature itself documents in its own header comment. Re-ran the existing
+`witness_cpe_day_counter.js` (unit-level, already in the repo) fresh: **17/17 green**, including
+T3a-c proving `dayCounterAt`→`dayCounterCompositeOntoCanvas` reaches the exported canvas bytes in the
+top-right corner only — the same class of end-to-end proof as G-RTC-7. A live full-MaxQ-bake
+reproduction (checking both checkboxes through the real editor DOM) was attempted three times and
+blocked each time by real machine resource contention (`§HBA_GATE timeout — still streaming`,
+consistent with the same load-avg-6-8/16-concurrent-agent condition noted above) — not a code issue,
+documented rather than silently dropped. **If the user actually wants BOTH `buildup` and `roomTitle`
+checked BY DEFAULT (not just correctly wired once checked), that is a UX-default decision for the
+user to make, not something to invent unilaterally — named here as an open question, not built.**
+
+**PR:** #1142, merged `8f31606` (verified via `gh pr view --json state,mergedAt,mergeCommit` +
+`git show origin/main:viewer/cpe_room_title.js` content check — not fire-and-assume). **Deploy:**
+sw.js CACHE_VERSION v922 → v923 (cpe_room_title.js is precached; no new precached files added).
+PR: https://github.com/red1oon/bim-ootb/pull/1140 (auto-squash-merge enabled; verified merged — see below).
