@@ -237,3 +237,30 @@ the combined diff, the TSV matrix. Logs regenerable (`*.log` gitignored, determi
 | §T5 ≥90% in 72/72 cells | `§SW ... §T5retention=100.0% PASS` in every cell (§6.3) |
 | No cell ≤ baseline on both fixtures | §6.3 matrices vs 49.3%/18.4% (§6.4) |
 | Engine byte-unchanged at close | `git status` clean on `viewer/`, `git apply --check` of combined diff passes (§6.4) |
+
+---
+
+### 2026-08-02 §7 POST-DONE FLEET SNAPSHOT (measurement only, user-requested; engine untouched)
+
+First fleet-wide run of the §O2 pair-connectivity metric (identical formula + engine as
+`witness_room_path_overlink.js`; runner: scratchpad `fleet_room_path_stats.js`, log
+`fleet_room_path.log`). Anchors verified against §21.43b before trusting the rest: Clinic 49.3%
+50/186 ✓, LTU W:3.0 18.4% 18/277 ✓, LTU cur 16.4% 15/263 ✓. Live default W:3.0 shown; `cur`
+differs ONLY on LTU (every other DB has no unhosted-void geometry the mode gates — same reason the
+Clinic sweep collapsed to one row in §6.3).
+
+| building | storeys | rooms | stranded | unroutable (pair) | fusions |
+|---|---|---|---|---|---|
+| LTU_AHouse | 4 | 277 | 18 | **18.4%** | 314 |
+| Terminal / TermRooms | 6 | 74 | 11 | **19.2%** | 20 |
+| Clinic | 2 | 186 | 50 | **49.3%** | 52 |
+| Duplex | 4 | 7 | 3 | 69.2% | 0 |
+| JKR | 5 | 36 | 17 | 92.7% | 12 |
+| HHS_Office_Federated | 3 | 37 | 14 | 94.8% | 4 |
+| Hospital_3 | 5 | 175 | 88 | 96.1% | 42 |
+| Hospital | 7 | 282 | 163 | 96.9% | 56 |
+
+Reading: the two tuned fixtures (LTU, Terminal) are the only healthy ones. The pair metric is
+quadratic in fragmentation, so the hospitals' ~50–58% stranded-room share compounds to ~96–97%
+of room-pairs unroutable. Duplex is 3/7 rooms stranded on a tiny denominator. No conclusions
+drawn beyond the numbers — no fixes attempted, per this file's stop condition and DONE state.
