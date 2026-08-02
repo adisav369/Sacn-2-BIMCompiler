@@ -3145,3 +3145,63 @@ either (1) no door element exists, or (3) the sealed flood never formed the pock
 - **Check whether the code already does the thing you are about to add.** §21.29 specced admitting
   `IfcOpeningElement` when `storeyVoids` already admitted it — the real defect was that it admitted
   too much, the opposite direction. One `grep` before the spec would have caught it.
+
+### §21.32 §PRECARVE — §21.31 items 1+2 BUILT. Retention 84%/43% → 100%/100%, and Clinic's
+### unroutable falls 91.3% → 49.5%. The two fixes INTERACT and that flips item 1's own conclusion.
+bim-ootb `review/roompath-redundancy` @ `9e31374`, pushed. Log `roompath_diagnostics/w_aperture_tier2.log`.
+Re-run: `node witness_room_path_aperture_tier.js`. **Supersedes §21.30's tables.** Nothing deployed.
+
+**ITEM 2 ROOT CAUSE — found analytically, then confirmed, not searched for.** `§SEAL-DOORS-FIRST`
+derived the enclosure from a mask where every door had been carved and then **re-stamped** as a
+`thin + 6*RES` rect. That is **+1.2 m of solid across a ~0.2 m wall** — a ~0.5 m spur into the room on
+each side, ×254 doors, then dilated by `SEAL`. It could never be tuned out: the plug is thicker than
+the wall *by construction*. **§PRECARVE** returns the mask as it stood BEFORE any void was cut, so
+"all doors closed" is exact — no plug, no slack constant, no threshold. Enclosure is now identical to
+uncarved by construction, which is why T5 reads exactly 100% rather than "within tolerance".
+
+```
+                     enclosed        stranded      unroutable   spine
+Clinic  before        1668m² (84%)   140/234        91.3%        17%
+        after         1980m² (100%)   55/208        49.5%        15%
+LTU B/C before        9696m² (43%)   107/239        87.7%        66%   ← the artefact
+        after        22311m² (100%)  295/536        46.2%        30%
+§T1 PASS both · §T2 PASS both · §T4 PASS both · §T5 PASS both (100%/100%)
+§T3 FAIL — LTU B vs C = 295 -> 295 (0.0%). Cause (2) stays REFUTED, now on a correct substrate.
+```
+Clinic's stranded rooms fell **61%** and its unroutable **nearly halved** — against a §21.24
+room-graph baseline of 43.3%, layer 1 is now 49.5% instead of 91.3%. None of that came from aperture
+provenance; it came from not plugging the doorways shut with 1.2 m of invented masonry.
+
+**THE INTERACTION — and it reverses §21.31 item 1, so read this before acting on it.** Item 1 made
+the door-hosted filter ('B') the default because admitting unhosted voids destroyed 57% of LTU's
+floor. **§PRECARVE removes that consequence entirely** — enclosure no longer depends on the carve at
+all, so carving an atrium void can no longer open the envelope. With the danger gone, admitting MORE
+voids is now strongly better:
+```
+LTU 'cur' (all floor-level ARC openings, 2,211)  stranded 32/294 (11%)  unroutable 26.1%  spine 45%
+LTU 'B'   (door-hosted only, 616)                stranded 295/536 (55%) unroutable 46.2%  spine 30%
+```
+**`cur` now beats the §21.24 room-graph baseline of 32.4%** — the first construction in this lane
+that does. Those 1,595 unhosted voids are largely the genuine doorless archways §OPEN-THRESHOLD named
+back in §21.22, which is exactly the connectivity Clinic was shown to need.
+
+**Why it is NOT the default yet — the one test that must run first.** A 55 m facade void is still
+admitted by `cur`, and the carved mask is what gap-marching reads to decide two pockets are open to
+each other. That is the same shape of failure as §21.21's proximity edges: **a link that exists
+because the geometry was cut too generously, not because you can walk there.** §21.24 already showed
+once that a flattering unroutable number came from phantom edges, and that a correct map is a sparser
+map. So `cur`'s 26.1% is a LEAD, not a result, until an over-linking test says otherwise.
+
+**NEXT — in this order:**
+1. **Over-linking test on `cur`, written before any default change.** For each gap-derived link, does
+   a walkable path exist through the UNCARVED raster within a sane detour of the straight line? Links
+   that only exist post-carve through a >2 m void are the suspects. Falsification: if `cur`'s edge set
+   survives, make it the default and the lane's core question is answered; if a material share are
+   phantom, tier B stands and the archways need admitting by width, not by presence.
+2. Re-classify LTU's 295 (not 107, not 320) and Clinic's 55 (not 140) on causes (1)/(3) only.
+3. Tier A remains unbuildable — no fixture carries `bom_tree` VOIDS/FILLS. Not blocking.
+
+**Method note:** item 2 was root-caused by reading `§SEAL-DOORS-FIRST` and doing the arithmetic
+(254 × ~1.3 m² of plug ≈ 300 m² ≈ the observed 312 m² loss) BEFORE running anything. The measurement
+then confirmed a specific prediction rather than being searched for a cause — which is how §21.26's
+rotation claim should have been handled and was not.
