@@ -3500,3 +3500,39 @@ signal that pierce depth is the wrong lever, and the 17 unexplained crossings ar
 gate is four full witness runs, and a constant that lands unverified is worse than one not landed —
 §21.30 and §21.33 both caught a plausible-looking change doing structural damage that only the full
 gate revealed. Everything needed is committed, measured, and named.
+
+### §21.39 PIERCE DEEPENED TO 10*RES — LANDED, all four gates green. LTU unroutable 45.3% → 18.4%,
+### beating the room-graph baseline for the first time in this lane AND surviving the phantom test.
+bim-ootb `review/roompath-redundancy`, pushed. Logs `roompath_diagnostics/g1..g4.log`. Not deployed.
+```
+GATE                        before        after
+T5 enclosure retention      100%/100%     100%/100%   PASS (unchanged — the deeper carve does not reach the envelope)
+T1/T2/T4                    PASS          PASS
+O3 phantom share            104%          20%         PASS — the gain now SURVIVES capping
+SC3 independent breaks      11 / 34       9 / 14
+CB5 sealed suites            9 / 23       7 /  8
+RESULT (W:3.0 default)
+LTU    stranded             60/308        18/277      unroutable 45.3% -> 18.4%   [baseline 32.4%]
+Clinic stranded             55/208        50/186      unroutable 49.5% -> 49.3%
+```
+**The O3 result is the important one, not the headline number.** §21.33 measured a 104% phantom
+share — the whole connectivity gain rested on 25 m/55 m voids. At 10*RES it is **20%**, and the gain
+survives the width cap. Same sweep, same test, opposite verdict: **the missing connectivity was never
+about admitting more voids, it was about cutting the real ones deep enough.** §21.33's conclusion
+("tier B stands, cap the width") was correct given a 1.20 m pierce and is now superseded by depth.
+
+**Clinic barely moved and that is the open item.** 55 → 50 stranded, 49.5% → 49.3%. Its 31-room
+cluster is intact. §21.38 predicted this: 17 of its 51 door-adjacent crossings sit INSIDE both the
+1.20 m pierce and the 2.00 m march, so no depth change can reach them. **Those 17 are the next
+target and they are a different defect** — the carve should have broken through and the march should
+have found it, and neither did.
+
+**NEXT:**
+1. **Instrument ONE of Clinic's 17 sub-1.20 m crossings cell by cell** — dump the `raw` mask along it
+   with the door's carve rect overlaid. Enumeration, not aggregate (§21.35's rule, which has now paid
+   twice). Candidate causes: the door's own bbox is too narrow to span the wall's rasterised width;
+   the carve rect is rotated off the crossing line; the two sides land in the SAME pocket so no
+   opening is emitted.
+2. Re-run the full four-witness gate after any change. It caught nothing this time, which is the
+   point of running it.
+3. Unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
