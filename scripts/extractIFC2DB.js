@@ -313,6 +313,14 @@ async function main() {
                         // buildings this script builds (SampleHouse/Duplex/HHS/Clinic/Garage/Hospital), a
                         // synthetic no-representation IfcSpace skips cleanly (meta row, no transform row, no
                         // crash) — see RESUME_DISC_WALKER_ENVELOPE_BOUND.md's 2026-07-10 entry for the full proof.
+    WebIFC.IFCOPENINGELEMENT,  // §OPENINGS-BACKFILL (2026-08-02): CLASS_NAME_MAP['IFCOPENINGELEMENT'] (line 74)
+                        // already existed but the type was never queried — dead intent, the EXACT §SPACE-SCOPED
+                        // pattern above. Missing openings are why voidMode/pierce were inert outside LTU
+                        // (fleet DBs had 0 IfcOpeningElement rows vs LTU's 3,368). Reuses the SAME per-element
+                        // try/catch, the SAME allVerts.length no-representation skip, and the SAME bbox fallback
+                        // as every other class — no new code path. Viewer render queries already EXCLUDE
+                        // IfcOpeningElement (city.js:739, streaming.js:80) so backfilled rows never render as
+                        // solids. See RESUME_FLEET_OPENINGS_BACKFILL.md §0 for the full evidence chain.
   ].filter(t => t !== undefined);
 
   const elements = [];
@@ -440,7 +448,16 @@ async function main() {
         const hashSrc = Buffer.concat([Buffer.from(positions.buffer), idxBuf]);
         const geomHash = fnvHash(hashSrc);
 
-        geometries.push({ guid: el.guid, geomHash, vertices: Buffer.from(positions.buffer), indices: idxBuf });
+        // §OPENINGS-GHOST (2026-08-03 user directive, RESUME_FLEET_OPENINGS_BACKFILL.md §5): openings
+        // are GHOSTS — elements_meta + element_transforms ONLY. No element_instances row, no geometry
+        // hash, no blob: opening GUIDs in element_instances corrupted the mesh-library pipeline in the
+        // S185 Duplex investigation (prompts/done/S185_duplex_investigation.md). The tessellation above
+        // still runs so centroid/bbox (the transform row) stay measured, not invented; skipping the
+        // push keeps instances AND component_geometries opening-free (both are written from this list
+        // alone), while a non-opening element sharing the same hash still writes its own blob.
+        if (el.ifcClass !== 'IfcOpeningElement') {
+          geometries.push({ guid: el.guid, geomHash, vertices: Buffer.from(positions.buffer), indices: idxBuf });
+        }
 
         // Bbox fallback: compute from vertices if no IFC bbox
         if (!el._bboxX) {
