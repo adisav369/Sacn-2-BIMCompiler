@@ -884,7 +884,7 @@ elevation, the witness must be given an elevation-keyed metric ALONGSIDE the lab
 reported. Changing it to elevation only would be lowering the bar, which this lane has a standing
 warning about.
 
-## ▶ RESUME 2026-08-02 (late) — START HERE. The Z fix is ONE swap, in a place nobody looked.
+## ▶ RESUME 2026-08-02 (late) — ✅ THE NEXT ACTION BELOW IS BUILT — PR #1133 (see §STAGGER_SUPPORT_ORDER at end of file)
 **⭐ THE NEXT ACTION, and it is small:** `viewer/time_machine.js` §PLAYBACK-STAGGER (see the comment
 above `window.tmOrderBySchedule`, ~L5223) distributes each captured task's guids **bottom-up by
 `center_z`** inside that task's window. **`center_z` is a CENTROID, not a bearing surface** — a 6.87m
@@ -934,3 +934,40 @@ preconditions · both-gates-on-elevation) — tables in §ROOT CAUSE and §ELEME
 
 **Shipped and live this session (main, sw v915):** §CPE_DAY_COUNTER_POS (#1130), §CPE_GAZE_ACQUIRE
 (#1131, 90° in 0.90s vs 2.00s), G-SH-4 bound read from the shipped curve (#1132).
+
+---
+
+# ✅ §STAGGER_SUPPORT_ORDER — BUILT 2026-08-02, PR #1133 (sw v916, `_GANTT_CACHE_VERSION` 7→8)
+**The ▶RESUME (late) item above, executed as specced.** Branch `fix/stagger-support-order`,
+witness `witness_stagger_support_order.js`, worktree `/tmp/wt-stagger-topo`.
+
+**What shipped** (`viewer/time_machine.js` §PLAYBACK-STAGGER):
+1. **Comparator `(seq, cz)` → `(base_z, seq, cz)`.** No graph build needed in the browser: the
+   RESUME's own settled maths ("base_z is a valid topological potential — a carrier ALWAYS has
+   `S.base_z < T.base_z - EPS`") means a base_z-major walk IS a support-DAG topological order.
+   Witness on real Hospital geometry + real `sequence_rules.json` + real LP promotion:
+   **within-task support violations 6,240 → 0** (RED had 988 IfcBeam-on-wall, worst IfcColumn
+   134.3d before its wall — the captured-order twin of §SUPPORT_ALL's 6,778).
+2. **§4D_HOST_BEFORE_HOSTED post-pass, and it was NOT optional.** The raw swap alone REGRESSES
+   §4D_FACADE_ORDER: 101/5,924 host pairs are sub-EPS float-noise ties — wall base 0–0.043m
+   ABOVE its hosted glazing's base, so the panel sorts first and the seq tiebreak never fires.
+   (EPS-bin quantization was measured and rejected: 54/101 straddle bins.) Fix is the constraint
+   shape this file already specced: AFTER the sort, each hosted element (window/door/
+   glazing-override plate+member) moves to just after its last z-containing XY-touching wall.
+   Cheap by construction — in a bz-sorted bucket the candidate walls lie in `[H.bz, H.bz+EPS]`,
+   a bounded forward scan. **hostedBeforeHostWall 101 → 0/6,771**, and support stays 0 because
+   hosted classes are never carriers: the two gates hold together, not in trade.
+3. **Both cache bumps in the same PR** (the #1123 lesson): `_GANTT_CACHE_VERSION` 8 re-staggers
+   cached gantts, sw v916 re-serves the precached `time_machine.js`.
+
+**Gates:** G-SSO-1 RED 6,240 · G-SSO-2 GREEN 0 · G-SSO-3 facade 0 · G-SSO-4 six-task-shape
+within-task 0 (cross-task 0 on the fixture; live cross-task is the planner's data, reported not
+gated). Generated path untouched and proven so: `test_schedule_gate` PASS 0 floating,
+`witness_4d_band_monotonic` 6/6 (T2a 0, T2b 551 unchanged, span 176d).
+
+**What this does NOT close:** the GENERATED-path §SUPPORT_ALL invariant (6,778) still stands
+parked behind the ⛔ ruling in the top RESUME — this PR fixed the CAPTURED path the user's film
+actually plays. `§STAGGER_HOST movedAfterHost=N` is the new live §-line; expect ~105 on Hospital.
+**Verify on the user's next fresh generate:** `§CPE_BUILDUP_SOURCE source=captured` +
+`§STAGGER_HOST` present + beams no longer preceding their walls from a cleared-IndexedDB Time
+Machine.
