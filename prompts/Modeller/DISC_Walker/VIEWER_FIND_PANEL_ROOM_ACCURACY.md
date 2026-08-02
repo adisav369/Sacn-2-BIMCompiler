@@ -3373,3 +3373,55 @@ W=34/34 with a verdict of "correctly unreachable, the engine is not at fault". T
 false, and only the vertical-access check exposed it as incomplete rather than wrong-in-direction.
 A per-storey analysis of a multi-storey building must test for vertical connectivity before it is
 allowed to call anything unreachable.
+
+### §21.36 CLINIC'S 31-ROOM CLUSTER, FULLY ENUMERATED — the mechanism is PIERCE DEPTH.
+### ⚠ AND IT OVERTURNS "cause (2) is refuted", which §21.30, §21.32 and §21.33 all repeated.
+bim-ootb `review/roompath-redundancy` @ `5f01fb5`, pushed. `roompath_diagnostics/cluster31_dump.js`,
+log `roompath_diagnostics/w_c31.log`. One cluster, one storey, every boundary crossing listed —
+per §21.35's own rule that picking between mechanisms by further aggregate measurement is what cost
+§21.23 and §21.26 a session each.
+```
+§C31 storey=Second Floor  cluster groups=31  area=302m²  doors on this storey=96
+     boundary crossings (cluster -> outside)              = 195
+     nearest-door distance at crossing: min=0.04m  p10=0.62m  median=2.16m
+     crossings with a door within 1.5 m                   = 51/195   without = 144
+     enclosed-to-enclosed gap AT those crossings: median=1.40m  max=2.60m
+     door pierce depth (6 * RES)                          = 1.20m
+     MECHANISM = M3
+```
+**M1 is out: doors are right there** — the closest sits **0.04 m** from a crossing, 51 crossings have
+one within 1.5 m. The IFC is not missing them. **The gap the carve has to cross is wider than the
+carve.** Median 1.40 m against a 1.20 m pierce, up to 2.60 m.
+
+**⚠ CORRECTION, and it is mine to own: "cause (2) is REFUTED" is WRONG.** §21.30 concluded it from
+tier B vs tier C moving 295 → 295, and §21.32/§21.33 repeated it as settled. That test changed which
+SOURCE supplies the aperture rect — `IfcOpeningElement` vs `IfcDoor` bbox — and **both tiers use the
+same `pierce = 6 * RES` depth**. Clinic, where this cluster lives, has no openings at all, so B == C
+there by construction. **The test could not have detected a pierce-depth failure. Cause (2) was never
+tested, let alone refuted.** Strike the refutation from §21.30, §21.32, §21.33 and §21.34; what those
+sections actually established is narrower and still true: *aperture PROVENANCE does not matter*.
+
+**Read the 1.40 m carefully before fixing it — it is not wall thickness.** The measurement is the gap
+between two ENCLOSED cells, and enclosure is derived from the dilated pre-carve mask, so it includes
+`SEAL=2`'s 0.4 m band on BOTH sides. 1.40 m ≈ ~0.2–0.6 m of real wall + 0.8 m of seal. So there are
+two candidate fixes and they are not the same:
+- **(a) deepen the pierce** so the carve clears wall + 2×SEAL. Cheap, but it cuts more masonry and
+  §T5 retention + §21.33's over-linking sweep both have to be re-run as the gate — a deeper carve is
+  exactly the direction that manufactured phantom fusions before.
+- **(b) lengthen the opening-detection march** so it spans the seal band at thick walls, changing
+  nothing about the geometry. Safer, and it cannot over-cut by construction.
+**Determine which by measuring `_openings`' march reach against the 2.60 m worst case FIRST** — if the
+march already spans it, (a) is the only candidate; if it does not, (b) is the fix and (a) is
+unnecessary risk. That is a one-number check and it must precede either change.
+
+**NEXT:**
+1. Measure `_openings`' march reach vs the 2.60 m worst case. One number, decides (a) vs (b).
+2. Apply the winner, then re-run the FULL gate — §T1–§T5, §O2 sweep, §SC3, §CB5 — not just the
+   stranded count. A change to carve depth or march reach touches every one of them.
+3. Re-classify with cause (2) BACK on the candidate list, correctly this time.
+4. Remaining, unchanged: §21.33's 101/30 `noVoid` fusions; funnel residuals (§21.18) LAST.
+
+**Method note — the enumeration paid for itself immediately.** Four aggregate sections (§21.30–§21.34)
+carried a false refutation forward because each inherited it rather than re-deriving it. Dumping 195
+crossings of ONE cluster exposed it in a single run. When a conclusion is about a MECHANISM, an
+aggregate that does not vary that mechanism cannot test it — and will look like confirmation.
