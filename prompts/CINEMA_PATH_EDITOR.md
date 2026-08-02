@@ -5513,3 +5513,40 @@ honesty recomputed at every fill segment — 0 wrong. One 3-ray pass answers cap
 has no doorway to lead); height witness excludes them too (an honest building-label over-flight is
 not #1108's room-named-from-above). Both properties still gated on room captions; the fill has its
 own witness (witness_cpe_room_title_group.js G-RTG-1..5).
+
+# ⛔ OPEN — §CPE_GAZE_SKYLINE_STARE: the cam face-turn fails, staring into empty skyline (user, live bake 2026-08-02)
+**User, during the Hospital bake around Day 90+:** *"a bad staring into outside skyline with no
+building facade, ie cam face turn is failing."* Reported for a NEW SESSION to tackle — do not fold
+into unrelated work.
+
+## NOT caused by the 2026-08-02 PRs — verified, not assumed
+- #1133 (stagger), #1135 (hold/topout/fan), #1136 (group labels) touch `time_machine.js`,
+  `cinema_maxq.js`, `cinema_path_editor.js`, `cpe_room_title.js`, `sw.js` + witnesses ONLY.
+  **`viewer/effects.js` — owner of every pose/gaze/aim rule — is untouched**; its last change is
+  #1131 (§CPE_GAZE_ACQUIRE), already live in the user's accepted earlier bake.
+- **The defect was already armed BEFORE those merges:** the user's own preview log (pre-#1135 code,
+  same authored path) shows BOTH gaze correctors inert across the whole film:
+  `§CPE_AIM_SERIES probes=65 active=0/65 maxBlend=0.00` (empty-view aimer) and
+  `§CPE_AIM_DEPTH_SERIES probes=65 active=0/65 maxBlend=0.00` (boxed-in aimer). 0 of 65 probes ever
+  engaged — nothing in the film can turn the camera onto the facade when the base path looks out.
+- Buildup topout (#1135) only makes construction COMPLETE EARLIER — at any film moment MORE facade
+  exists than before it, so it cannot have removed a facade from view.
+
+## Leads for the next session, all already on record in this file — MEASURE before building
+1. **Why is `active=0/65`?** The aim weight is a field along the walk; its trigger predicate never
+   fired once on this authored path. Extract the trigger INPUTS (not the weight) along the reported
+   window and find which term kills it. This is the first number to get.
+2. **§CPE_GAZE_CONSTANT_RATE slews toward the leg's END bearing computed at leg start** — faithful
+   by construction to a BAD target: if an authored stick's end bearing points out the glazing, the
+   constant-rate law delivers the stare on time. Check what the end bearing was on the day-90+ leg.
+3. **§CPE_AIM_DEPTH D4 (open item, never built): the aim grid weighs the FINISHED building**
+   (`§CPE_AIM_GRID elems=63182`). With buildup ON, density can exist where nothing is yet revealed —
+   an aimer that DID engage could still face not-yet-built facade, which reads as empty skyline.
+4. Locating the moment: Day 90+ maps to film t via the bake's own `§CPE_DAY_COUNTER frame=N day=D`
+   lines — read the frame band from the bake log, do not re-derive from pacing formulas (work
+   pacing + topout make day↔t nonlinear twice over).
+
+## The verification bar (FUNDAMENTAL LAW — this lane has violated it before)
+The proof is a NUMERIC time series: gaze-direction-vs-building-bulk angle (the same measurement
+that localised the spin whip: "t=0.150 → 35.8°, t=0.200 → 76.9°") across the reported window,
+before and after any fix — never a screenshot, never "it looks better".
