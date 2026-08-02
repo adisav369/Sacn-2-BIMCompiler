@@ -3014,3 +3014,80 @@ a claim about all geometry.
 **Still open from §21.28, unchanged:** the LTU enclosed-area drop (now with 122 real candidates to
 test against instead of a guess), and the fact that nothing in §21.20–§21.29 is deployed —
 `common/room_graph.js` and `viewer/navigate_find.js` remain byte-unchanged.
+
+### §21.30 §APERTURE_TIER RESULTS — T3 REFUTES the aperture hypothesis, and T5 finds the shipped
+### carve dissolving 57% of LTU's floor. Every LTU number in §21.26–§21.28 is an artefact.
+bim-ootb `review/roompath-redundancy` @ `5387447`, pushed. `witness_room_path_aperture_tier.js`,
+log `roompath_diagnostics/w_aperture_tier.log`. Resolver is `storeyVoids(db, anchors, voidMode)` with
+`opts.voidMode` on `spineMap` — default `'cur'` is byte-identical to §21.27, so every prior number
+reproduces exactly (verified: LTU cur = 107 stranded / 9,696 m² / 87.7%, the §21.28 figures).
+
+**§APERTURE_CENSUS — the fleet fact that settles the design question.**
+```
+Clinic 254/0 · Duplex 14/0 · HHS 133/0 · Hospital 440/0 · JKR 65/0 · Terminal 135/0 · LTU 606/3368
+TOTAL buildings=7  tier B possible=1  tier A possible=0   (bom_tree VOIDS/FILLS: none, anywhere)
+```
+Tier C is the ONLY source on 6/7. It cannot be removed. Tier A exists solely on the user-import path
+(`import_worker.js`), and no fixture can measure it. **This closes the user's generality condition:**
+the resolver is general because C is universal, not because opening geometry is.
+
+**RESULTS — 3 of 5 tests pass, and the two failures are the findings.**
+```
+             doorCentresOnWall  wall    enclosed  spine  stranded   unroutable
+Clinic  cur          0%         829m²   1668m²    17%    140/234    91.3%
+        B/C          0%         829m²   1668m²    17%    140/234    91.3%     (identical — no openings)
+LTU     cur          0%        2614m²   9696m²    66%    107/239    87.7%     ← §21.28's numbers
+        B            0%        3553m²  21387m²    31%    319/544    76.3%
+        C            0%        3558m²  21395m²    31%    320/544    76.3%
+§T1 TIER FIDELITY  PASS both — Clinic admits 0 openings in every tier (would be invention);
+                   LTU tier B admits 616 of cur's 2,211, tier C admits 0.
+§T2 TIER-C NON-REGRESSION  PASS both.
+§T3 TIER-B vs TIER-C  FAIL — LTU stranded 320 -> 319 (0.3%), unroutable 76.3% -> 76.3%.
+§T4 NO-LEAK  PASS both — and the pass is worthless, see T5.
+§T5 ENCLOSURE RETENTION  FAIL both — LTU cur retains 43% of 22,311m²; B/C retain 96%.
+                                     Clinic retains 84% in ALL THREE modes.
+```
+
+**FINDING 1 — §21.28's cause (2) is REFUTED, and so is §21.29's own premise.** §21.29 argued §21.27
+carved door bounding boxes as a proxy for voids LTU already had. True, but **the proxy is as good as
+the real thing**: real apertures on 616 door-hosted openings recover ONE room out of 320 and move
+unroutable by 0.0 points. "A door exists but its carve did not pierce the host wall" is not what
+strands rooms. The remaining stranded rooms are cause (1) *no door element exists* or cause (3) *the
+sealed flood never formed the pocket*, and §21.28's classification should now skip cause (2) entirely.
+⚠ Also note `storeyVoids` **already** admitted `IfcOpening%` before this session — §21.29's framing
+that §21.27 ignored the openings was wrong, and the correction is recorded here rather than quietly.
+
+**FINDING 2 — the shipped carve destroys 57% of LTU's enclosed floor, and that is the whole of
+§21.28's "unexplained second open item."** It is not balcony thresholds and it is not legitimate.
+`cur` admits every floor-level ARC opening — 2,211 on LTU, of which **1,595 are not door-hosted**:
+the atrium/stair/facade voids measured in §21.29 (125 at ≥2.0 m, up to 25 m and 55 m across). Carving
+one along a facade removes a long run of exterior wall and the interior flood escapes. Restricting to
+door-hosted openings restores 22,311 → 21,387 m² (96%). **Consequence: LTU's 107 stranded, 66% spine
+and 87.7% unroutable in §21.26–§21.28 were all measured on a building missing over half its floor.
+The corrected figures are 320 stranded, 31% spine, 76.3% unroutable.** The spine looked good because
+the floor it was a share OF had been dissolved.
+
+**FINDING 3 — the door-bbox carve over-cuts on Clinic, on the only tier Clinic has.** Enclosure
+retention is 84% in every mode: 254 doors cost 312 m² of the 1,980 m² enclosed. Tier B cannot help —
+Clinic has no opening geometry — so this is a defect in the `pierce = 6 * RES` door-bbox rule itself,
+not something a better provenance tier can fix. **New, and it was invisible until T5 existed.**
+
+**METHOD — T4 passed while the building dissolved, and that is the lesson.** The leak signature
+(largest pocket as a share of plan) was 8.5% in all three LTU modes, including the one retaining 43%.
+It cannot see this failure by construction: carving an exterior wall does not merge pockets into one
+giant region, it lets the flood ESCAPE, so the floor silently stops being enclosed and the pockets
+that remain look normal. §21.27's G3 printed `enclosed=9696m²` next to `22311m²` and accepted it.
+**Retention had to be its own gate with its own threshold.** Related: T3's first pass-condition was
+"any fall at all" and it PASSED on 320 → 319; it was tightened to a material ≥10% and the change
+recorded in the witness header rather than made silently after seeing the number.
+
+**ORDER — supersedes §21.29's:**
+1. **Make tier B the default on any fixture that has opening geometry, and fix the unhosted-void
+   admission in `cur`** — this is a live defect, not a tuning choice. Retention ≥90% becomes a
+   standing gate on every future spine number.
+2. **Root-cause Clinic's 16% retention loss** in the `pierce = 6 * RES` rule. It bounds every
+   door-only building, which is 6 of 7.
+3. **Re-run §21.28's stranded classification on the corrected LTU substrate (320, not 107)** with
+   cause (2) removed from the candidate list.
+4. Tier A stays unbuildable until a fixture carries `bom_tree` VOIDS/FILLS. Not blocking anything.
+Nothing deployed; `common/room_graph.js` and `viewer/navigate_find.js` remain byte-unchanged.
