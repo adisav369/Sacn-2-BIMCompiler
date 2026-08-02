@@ -5433,3 +5433,54 @@ and `tests/audit_specs.js` (5 SKIP paths in `38-sh-dx-2d-runtime.spec.js`).
 **The gate this change most risked — `witness_cinema_path_editor` G7 "no sharp corners: peak ≤12
 deg/frame on a 90-deg dog-leg" — PASSES**, as does `witness_cpe_even_turn` T2 ("peak gaze sweep under
 12 deg/frame on a hostile layout"). Those two are the ones that would catch a reintroduced whip.
+
+---
+
+# ✅ SESSION 2026-08-02 (post-bake) — three user reports off the 1761-frame Hospital bake, ONE PR (#1135, sw v917)
+All three RED-first, witnessed, merged together. Files: `cinema_path_editor.js`, `cinema_maxq.js`,
+`cpe_room_title.js`, `sw.js`, four witness files.
+
+## §CPE_STICK_HOLD — the DEFAULT is 0. An unset hold is no hold. (user correction)
+User, after the bake showed a 1s pause at a settle stick they never set: *"of course not as default
+is zero. When i specify an issue, it shows what my intent is."* The 2026-08-01 quote "putting hold at
+1 sec (put that as default...)" was a ONE-PATH instruction that got over-generalised into
+`CPE_HOLD_DEFAULT_SEC = 1.0` seeding the last band of every fresh path. Now 0. The seeding SHAPE is
+kept (a future non-zero default would still land on the EXIT band per the 2026-08-01 correction) but
+seeds 0 everywhere. `witness_cpe_stick_hold` G-SH-7 rewritten to assert `[0,0,0]`; G-SH-1..4 still
+prove a TYPED hold works exactly as shipped (1.0s costed as authored time, camera really stops).
+
+## §CPE_BUILDUP_TOPOUT — construction completes at the closing-orbit boundary, not the final frame
+User: *"the top roof solar panels never gets to be shown - it stops shy of the last task."* Log
+agreed: `placed=62700/63421` at frame 1740 (t=0.989), `63421/63421` only on frame 1760/1761 — the
+buildup rode the film fraction 1:1, so 100% completion coincided with the last frame BY CONSTRUCTION
+and the final 721 elements (567 Sunpower panels among them) were on screen ~1.4s. No pacing weight
+can fix a completion point pinned to the final frame (the §HELIPAD_ROOF_SEPARATION tables already
+proved that class of fix impossible). The completion point itself moved: buildup fraction =
+`min(1, tFilm / plan.beats.rise)` — complete when the closing orbit begins; the pull-back shows the
+topping-out, the orbit circles the FINISHED building. Fallback topout 0.92 for beat-less plans
+(older cache / re-opened authored path) — degrade, don't disable. ONE implementation
+(`APP.buildupTAt`) drives preview (cinema_path_editor.js) and bake (cinema_maxq.js) so they cannot
+disagree. New log: `§CPE_BUILDUP_TOPOUT topoutU=… src=plan.beats.rise|fallback`.
+`witness_cpe_buildup_topout` G-BT-1..4 (complete at rise + monotone; linear on [0,rise] so
+§CPE_BUILDUP_WORK_PACED is compressed not distorted; fallback; real plan resolves from own beats).
+⚠ Related, diagnosed NOT a film defect: the user's TM showed the panels at **Day 118** while the
+film's timeline had them in the last 721 ops — the bake ran on a CACHED gantt (`§GANTT_CACHE_HIT
+ops=63416`), the TM scrub was a FRESH generate. Two schedule vintages, converges at sw v916+/cache
+v8. Nothing missing from either timeline. Separately noted: the 567 panels are
+`IfcBuildingElementProxy`, no SEQUENCE_RULES entry of their own (seq 6 default, `_DEFAULT` crew) —
+a rules entry is a candidate improvement, NOT built.
+
+## §CPE_ROOM_TITLE_MULTI — the caption fan fills centre-ray misses, never overrides a hit
+User: *"Room labelling poor."* Bake: `gazeMissedAll=59/783`; LTU evidence 257/740 (35%). One ray
+grazing a doorway jamb hits no room even when one dominates the view. Rule: centre ray first; on a
+MISS ONLY, two rays ±10° HORIZONTALLY (FAN_DEG=10, inside a quarter of the planner's own 60° cone),
+nearest fan hit wins. ⚠ HORIZONTAL ONLY, deliberately — a vertical fan ray re-opens
+§CPE_ROOM_TITLE_HEIGHT_BLIND (#1108); horizontal offsets preserve the ray's vertical geometry so
+#1108 stays closed BY CONSTRUCTION and G-RTM-3 measures it (100 over-flights, 0 leaks). Measured on
+the real Hospital film: **34 of 61 misses recovered** (`gazeFanRecovered=34`, missed 61→27). The
+probe now returns the WINNING ray (`dir`, fan=1) and G-GZ-2 verifies truthfulness along it — same
+property, correct ray. `witness_cpe_room_title_multi` G-RTM-1..4; regressions gaze 8/8, height 5/5,
+lead ALL GREEN, hold ALL GREEN.
+⚠ NOT touched, by ruling: `skipped=11(<3s)` implements the user's own "tries to show up to 3 secs..
+if misses, then skips" — a fast walk through small rooms legitimately drops captions. If the user
+wants those named too, that is a NEW ruling (queue vs. skip), not a defect.

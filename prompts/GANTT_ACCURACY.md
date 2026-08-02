@@ -929,8 +929,10 @@ preconditions · both-gates-on-elevation) — tables in §ROOT CAUSE and §ELEME
   A `§MAXQ_GL_LOST` salvage path exists (L993) but did not save this one.
 - `§GANTT injected=... 1335 days, start=12/6/2022` while the project window is 2026-01-01..2026-06-30
   — a stray 2022-dated op stretches the gantt span. Day counter itself is correct (spanDays=214).
-- §CPE_ROOM_TITLE_MULTI — specced in `prompts/CINEMA_PATH_EDITOR.md`, not built. Evidence:
-  `gazeMissedAll=257/740` (35% of single-ray samples hit no room).
+- §CPE_ROOM_TITLE_MULTI — ✅ BUILT 2026-08-02, PR #1135 (sw v917): ±10° horizontal fan on
+  centre-ray miss only; Hospital film misses 61→27. Spec + limits now actually written in
+  `prompts/CINEMA_PATH_EDITOR.md` (the earlier "specced" claim was a stale pointer — only the
+  evidence line existed).
 
 **Shipped and live this session (main, sw v915):** §CPE_DAY_COUNTER_POS (#1130), §CPE_GAZE_ACQUIRE
 (#1131, 90° in 0.90s vs 2.00s), G-SH-4 bound read from the shipped curve (#1132).
