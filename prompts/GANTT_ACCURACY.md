@@ -1,5 +1,19 @@
 # ⚠ DO NOT REMOVE — Read the log after every run
 
+## ✅ USER-CONFIRMED GREEN, 2026-08-02 — the ORDERING defect is CLOSED on a live bake
+User, on the Hospital generated 4D: *"the Time Machine 4D schedule generated works well now.. no more
+roof coming on before the walls or upper deck forming before lower. I can confirm at Day 282."*
+That is §4D_BAND_MONOTONIC (PR #1129, `fc58210`, sw v913, `_GANTT_CACHE_VERSION` 6→7) + §4D_ROOF_LOAD_PATH
+(#1120) + the cache bump (#1123) that let #1120 reach a browser at all. The headless witness said
+non-structure cross-storey inversions **29,824 → 0** and the user's eyes now agree on a real film.
+**Do NOT reopen roof-before-walls or upper-before-lower.** They are settled by measurement AND by live
+confirmation. The item below is a DIFFERENT invariant (support), not a regression of this one.
+
+⚠ **One number to reconcile, not a defect claim:** `witness_4d_band_monotonic.js` measured project span
+**176d** on Hospital, but the live badge reached **Day 282**. Either the badge counts calendar days
+against the witness's working-day span, or the live generate differs from the witness's inputs. Read
+`§CPE_DAY_COUNTER` + `§GANTT_CACHE_SAVE` in the next bake log HEAD before treating either as wrong.
+
 ## ▶ RESUME 2026-08-02 (session close) — START HERE
 **ONE open item, specced and de-risked, needing ONE user ruling before code.**
 
