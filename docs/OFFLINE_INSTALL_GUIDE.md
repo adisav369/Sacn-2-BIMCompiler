@@ -33,7 +33,7 @@ own. Full walkthrough: **[Self-Host (DIY installer)](SYSTEMS_INSTALLER_GUIDE.md)
 
 ## BIM Viewer — proven offline behaviour
 
-- Each app ships its own service worker (`viewer/sw.js`, `modeller/sw.js`, `erp/sw.js`) with its own
+- The Viewer and the ERP each ship their own service worker (`viewer/sw.js`, `erp/sw.js`) with their own
   version and precache list — 109 assets for the Viewer (all JS modules, entry HTML, the web manifest),
   split into an auto-cached "shell" (THREE.js, sql.js/wasm, ~1.5 MB) and larger libraries fetched on
   first use (web-ifc, xlsx — a few MB each, cached after that).
@@ -56,10 +56,6 @@ own. Full walkthrough: **[Self-Host (DIY installer)](SYSTEMS_INSTALLER_GUIDE.md)
   online, the oldest ones get evicted and will need re-fetching next time you have network.
 - Small SQL "patch" fixes for a building fetch separately and are skipped silently if you're offline —
   you still get a working building, just without that patch applied yet.
-- The Modeller's 8 bundled sample buildings currently ship with **broken geometry regardless of network**
-  — a packaging bug (their mesh file is Git-LFS-tracked, and both the download ZIP and the hosted site
-  serve a tiny placeholder instead of the real 120 MB file), unrelated to offline mode and not yet fixed.
-  Nothing else about Modeller offline is affected.
 
 ## Kernel-ERP — proven offline behaviour
 
@@ -102,7 +98,7 @@ Two honest exceptions worth knowing, neither of which touches *your* data:
 - The landing page loads a Google Fonts stylesheet for decorative type — a real third-party network call,
   though it carries no user data and simply falls back to a system font if blocked.
 - Two secondary, non-core pages (the clash report and schedule editor) pull a couple of small charting
-  libraries from a CDN. The main Viewer, Modeller, and ERP surfaces do not.
+  libraries from a CDN. The main Viewer and ERP surfaces do not.
 
 For a true air-gapped install where even the font request is unwanted, block or remove the
 `fonts.googleapis.com` reference in the landing page — it's decorative only and nothing else depends on it.
@@ -125,7 +121,6 @@ For a true air-gapped install where even the font request is unwanted, block or 
 | Gap | Effect | Owner doc |
 |---|---|---|
 | No service worker at the site root | Cold offline start at the front door fails; direct app bookmarks work | `prompts/OFFLINE_HUB_SW_SCOPE_GAP.md` |
-| Modeller's 8 sample buildings ship with placeholder geometry | Broken regardless of network — a packaging bug, not an offline issue | `project_lfs_codeload_zip_landmine.md` |
 | 80-entry building cache is LRU | Heavy multi-building offline use can evict older ones | `scene.js` cache layer |
 | SQL patches skip silently when offline | You get correct base data, not yet the latest patch | `scene.js _applyPendingPatch` |
 | 3 automated offline-mode tests are currently excluded from CI | Behaviour is manually witnessed, not yet CI-gated | `GH_DEPLOY_ISSUES.md` Issue 4 |
