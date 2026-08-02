@@ -65,7 +65,8 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   metric worse** (§O3 phantom 20% PASS→94% FAIL, LTU 18.4%→23.0%, Clinic 49.3%→50.4%): the wrong carve
   over-removes wall and that is what was merging pockets, so `W:3.0` and `pierce=10*RES` were both
   swept against a geometric error and 18.4% is not a clean win. NEXT: joint (W, pierce) re-sweep on
-  corrected axes — patch kept unapplied at `roompath_diagnostics/patch_21_43_transpose.diff`.
+  corrected axes — patch kept unapplied at `roompath_diagnostics/patch_21_43_transpose.diff`;
+  worker prompt ready at `prompts/Modeller/DISC_Walker/RESUME_ROOMPATH_AXIS_RESWEEP.md` (Fable-class).
   19 witnesses on bim-ootb `review/roompath-redundancy`, worktree `/tmp/wt-roompath` live/clean/pushed
   — REUSE it. Nothing deployed; engine byte-unchanged. Blocks `datacentre_cabling.md` cable-pathing.
 - ▶ **MODELLER** — dispatch from `prompts/MODELLER_MASTER.md` (⚠ landmine found compacting this file

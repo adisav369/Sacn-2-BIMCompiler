@@ -3832,3 +3832,7 @@ superseded. Setup unchanged: `cd ~/bim-ootb && git worktree list` FIRST, reuse `
    express an adjacency even in principle. **This lane still has NO independent oracle.**
 
 **THE ONE THING TO DO NEXT:** the joint (W, pierce) re-sweep on the corrected axes, per §21.43b.
+**It has its own worker prompt — `RESUME_ROOMPATH_AXIS_RESWEEP.md` (same folder)**, written for a
+Fable-class execution session: setup, the 36-cell matrix, the five-gate acceptance, and an explicit
+stop condition (if no cell reaches 18.4% with §O3 PASS, that is the answer — do not invent a third
+constant). That file is the one the worker updates; this log stays the lane's spec of record.
