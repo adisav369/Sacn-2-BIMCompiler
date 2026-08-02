@@ -3,23 +3,18 @@
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
 
 ## Session 2026-08-02 — 4D ordering CONFIRMED live, movie-maker batch shipped
-**User confirmed on a real Hospital bake:** no roof before walls, no upper deck before lower, to Day 282.
-Ordering half of the 4D lane is CLOSED (§4D_BAND_MONOTONIC #1129 + §4D_ROOF_LOAD_PATH #1120 + cache bump #1123).
+User confirmed on a real Hospital bake: no roof before walls, no upper deck before lower, to Day 282.
+Ordering half of the 4D lane is CLOSED (§4D_BAND_MONOTONIC #1129 + §4D_ROOF_LOAD_PATH #1120 + cache #1123).
 
-**Shipped to `origin/main`:** §CPE_DAY_COUNTER_POS (#1130, sw v914) — Day # counter corner is a panel
-option, top right default, now visible in Preview (its live hooks had never been wired). §CPE_GAZE_ACQUIRE
-(#1131, sw v915) — gaze acquires fast and settles: 90° in 0.90s vs the flat cap's 2.00s, 135→41 dps,
-settled gaze bit-identical. G-SH-4 witness bound now read from the shipped curve, not a literal 45 (#1132).
+**Shipped to `origin/main`:** §CPE_DAY_COUNTER_POS (#1130, sw v914) — Day # counter now visible in Preview
+(hooks were never wired). §CPE_GAZE_ACQUIRE (#1131, sw v915) — gaze settles in 0.90s vs the flat cap's
+2.00s, bit-identical; G-SH-4 witness now reads the shipped curve, not a literal 45 (#1132).
 
-**NOT merged, deliberately:** `feat/element-cpm` — support invariant 6,778→0 and floating 0, but band
-inversions regress 29,824→34,595, and the band ordering was just user-confirmed. Root cause MEASURED and
-new (`audit_support_roleblind.js` + `audit_rank_vs_support.js`): the storey-LABEL ladder contradicts
-gravity in 1,735 of 81,722 support edges (2.1%); by element ELEVATION, **zero**. Band-monotonic-by-label
-and nothing-before-its-carrier cannot both be zero for any engine. Next: move BOTH trade and band gates
-onto the elevation key. Full write-up `prompts/GANTT_ACCURACY.md` §ELEMENT_CPM.
+**NOT merged** (`feat/element-cpm`) — see OPEN §4D SUPPORT INVARIANT below: ruling given, root cause
+measured, next step named.
 
 **Open, specced, not built:** §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`) — caption several
-rooms in view with a level prefix instead of one ray-picked room. User's own framing: less room for error.
+rooms in view with a level prefix instead of one ray-picked room.
 
 ## Current State
 **Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
@@ -36,116 +31,68 @@ rooms in view with a level prefix instead of one ray-picked room. User's own fra
 ⚠ `~/bim-ootb` main checkout is stale + conflicts on `merge origin/main` (tried+aborted 07-26); its local
 commits are NOT unique so nothing is at risk — **never measure from it**, use a fresh `origin/main` worktree.
 
-▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong ("10
-commits" when it was 336).** `gh pr list --state open` · unmerged-no-PR: `for b in $(git for-each-ref
---format='%(refname:short)' refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] &&
-echo "$n $b"; done | sort -rn`. 0 commits only-on-this-disk (both repos, re-verified 07-30). Undelivered:
-`lane/hr-overlay`, `lane/teams-overlay`.
+▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong.**
+`gh pr list --state open` · unmerged-no-PR: `for b in $(git for-each-ref --format='%(refname:short)'
+refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`.
+0 commits only-on-this-disk (both repos, re-verified 07-30). Undelivered: `lane/hr-overlay`, `lane/teams-overlay`.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
-- ▶▶ **4D SUPPORT INVARIANT — `prompts/GANTT_ACCURACY.md` §ELEMENT_CPM (last section).**
-  ⚖ **RULING GIVEN 2026-08-02: support wins.** Built on `feat/element-cpm`: support **6,778 → 0**,
-  floating 0 — but band inversions regress 29,824 → 34,595, so it is **NOT merged** (the band ordering
-  is user-confirmed live). **4 engine shapes measured and rejected — do not retry; tables in §ROOT
-  CAUSE + §ELEMENT_CPM.** ⭐ Root cause is NEW and decisive (`audit_rank_vs_support.js`): the storey-
-  LABEL ladder contradicts gravity in **1,735 of 81,722** support edges (2.1%); by element ELEVATION,
-  **ZERO**. Band-by-label and nothing-before-its-carrier cannot both be zero for ANY engine.
-  **NEXT = move BOTH the trade gate and the band gate onto the elevation key** (band alone is not
-  enough: the trade gate still keys on the label, so 23,121 elements sit in two groupings and the
-  barrier deadlocks). Engine, support extraction and crew pool are built and reusable.
-- ▶ **ROOM PATHING — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`; start at
-  §21.37 RESUME HERE** (then §21.14 for setup/fixtures only).
-  **ROOT CAUSE FOUND AND REMOVED (§21.26/§21.27): the raster had NO DOOR VOIDS** — `_rasterizeWalls`
-  stamps wall bounding boxes and never subtracts the opening, so 99% (Clinic) / 100% (LTU) of door
-  centres sat on solid masonry. Doorways did not exist in the geometry. §SPINE-RASTER carves them;
-  gate passes 99%/100% → 0%/0%, no leak signature. One fact that retro-explains §21.21–§21.25.
-  ✅ §DOOR-APERTURE replaces the proximity door↔pocket guess: over-claims 36%/12% → **0**, interior
-  doors 2/254 → 192/252 and 11/606 → 404/606. §21.21's *prescribed* fix did not exist (verified).
-  ❌ DISPROVEN: §21.23's "one defect, three symptoms" — fixing adjacency did NOT connect the spine.
-  ❌ RETRACTED: §21.26's `rotation_z` claim (it is RADIANS; non-issue). Do not re-open either.
-  Corridor-by-shape, by `hallway_backbone.js`, and by betweenness all tried — betweenness is best
-  (1 component, 92%/100% leaf attachment) but all three were measured on the UNCARVED substrate.
-  ⚠ **§21.33 SUPERSEDES everything above — resume from `§21.37 RESUME HERE`, and SKIP §21.24–§21.30's
-  numbers, they were taken on a broken raster.** Two defects found and FIXED 2026-08-02: (a) the carve
-  admitted 1,595 non-door-hosted voids on LTU, and (b) `§SEAL-DOORS-FIRST` re-closed every door as a
-  +1.2 m plug across a ~0.2 m wall. **§PRECARVE** derives enclosure from the pre-carve mask, exactly:
-  retention 84%/43% → **100%/100%**. Aperture PROVENANCE does not matter (tier B vs C = 295→295).
-  ⚠ **CORRECTION (§21.36): "cause (2) is refuted" was WRONG** and §21.30/§21.32/§21.33/§21.34 all
-  repeated it. The tier test varied the aperture SOURCE, never the `pierce = 6*RES` DEPTH, and Clinic
-  has no openings so B==C there by construction — it could not have tested cause (2). **Cause (2) is
-  BACK on the candidate list.**
-  ❌ **§21.32's `cur` 26.1% was PHANTOM** — the over-linking sweep (§21.33 §O2) shows the 20.1-pt gain
-  appears only when the width cap is lifted entirely, i.e. it rests on 25 m/55 m atrium+facade voids.
-  Third phantom-adjacency result in this lane. Do not resurrect `cur`.
-  ✅ **Default is now `W:3.0`** (admit unhosted voids ≤3 m; p90 of attributed widths is 3.60 m, cliff
-  is >6 m): **Clinic 55/208 @ 49.5%, LTU 60/308 @ 45.3%** — 235 LTU stranded rooms recovered
-  legitimately. `W:6.0` (53/297 @ 42.7%) is the aggressive alternative, a ⛔ USER RULING not a
-  measurement. Standing gates all green: §T1 fidelity · §T2 tier-C · §T4 no-leak · §T5 retention 100%.
-  ✅ **§21.34–§21.37 narrowed the work by 10×:** 55/60 stranded rooms are only **11/34 independent
-  BREAKS** (the rest are chains hanging off them). SEAL is EXONERATED (1 cluster of 45). Vertical
-  access via stairs explains 2/11 and 11/34 — never previously accounted for, so every past
-  "unroutable" was inflated ~18%/32%. The residue is **9 (Clinic) / 23 (LTU) sealed suites** with
-  solid wall and no stair, which no real building has. **Mechanism identified §21.36:** doors ARE on
-  the boundary (nearest 0.04 m, 51/195 crossings within 1.5 m) but the enclosed-to-enclosed gap is
-  median 1.40 m / max 2.60 m against a **1.20 m pierce** and a **2.00 m** `_openings` march reach.
-  NEXT = (1) histogram §C31's 51 door-crossings vs 2.00 m → decides deepen-pierce vs lengthen-march,
-  (2) apply + re-run the FULL gate (§T1–§T5, §O2, §SC3, §CB5), (3) the 101/30 `noVoid` fusions.
-  Funnel residuals (§21.18) LAST.
-  18 witnesses + `roompath_diagnostics/` on bim-ootb `review/roompath-redundancy` @ `5f01fb5`
-  (worktree `/tmp/wt-roompath` is live, clean and pushed — REUSE it, don't add a second).
-  **Nothing deployed; engine byte-unchanged; room compile byte-identical (every addition opt-in).**
-  ⛔ Still keeps `prompts/datacentre_cabling.md` §NEXT_SESSION's cable-pathing precondition UP.
-- ▶ **MODELLER — dispatch from `prompts/MODELLER_MASTER.md` (new 2026-07-30), NOT from the 15 scattered
-  files.** It triages all of them (3,742 lines), maps 14 objectives (O1–O14) to their owning file, and
-  carries an empty §OPEN LIST for a Fable5 harvest pass to fill; the 3 architecture calls it names need
-  Sonnet. ✅ **LIVE-DEFECT CLOSED, deployed and verified:** the Modeller drew bounding boxes on the live
-  site for months — `modeller/mesh.db` is Git-LFS-tracked and GitHub Pages doesn't resolve LFS, so the
-  browser got HTTP 200 + a 134-byte stub; with no mesh store the hard-fail guard was skipped and every
-  element fell back to `boxArrays(rawBox)`, logged only via the DevTools-hidden `console.warn`. Fixed
-  by per-resident geo files on object storage (Duplex 1.3MB vs a shared 120MB; all 8 residents resolve
-  100% of their hashes) + `_assertRealGeoDb()` refusing non-SQLite bytes and naming an LFS stub
-  (guard witnessed 4/4 on real live bytes) + service-worker cache v37→v38, confirmed `v38` serving live.
-  bim-ootb #1090 + #1091 both merged. ⚠ `modeller/mesh.db` is now dead weight in git — nothing fetches it.
-  **Standing lesson (now in `feedback_terse`): for any "the live page looks wrong" report, curl the
-  served bytes FIRST — a 200 is not evidence, and a silent substitution is its own bug.**
-- **`prompts/RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-ENVELOPE`** (BIMCompiler PR #56) — LOD400
-  means fabrication level; an authored 7-layer wall shipping as one 12-triangle box is a fallback.
-  Duplex source carries 91 `IfcMaterialLayerSetUsage`, SampleCastle 412. DONE: `rel_material_layer_set`
-  (the element→layer-set edge that never existed) + P10 `LOD400_ENVELOPE` gate, red §PROOF ⇒ exit 1,
-  witness 8/8. OPEN: §LOD400-LAYERS-REAL (slice the envelope at the authored thicknesses) — needs the
-  one-mesh-per-element vs N-sub-instances call first. ⚠ The old "GIGO / source is plain" verdict in
-  §LODHELL FINDING 1 is SUPERSEDED — do not re-cite it.
+- ▶▶ **4D SUPPORT INVARIANT** — `prompts/GANTT_ACCURACY.md` §ELEMENT_CPM. Ruling 2026-08-02: support
+  wins but NOT merged (support 6,778→0, floating 0, but band regresses 29,824→34,595 — band is
+  user-confirmed live). Root cause: storey-LABEL ladder wrong in 1,735/81,722 support edges (2.1%), by
+  elevation **zero**. 4 engine shapes already measured and rejected — don't retry. NEXT: move BOTH the
+  trade gate and the band gate onto the elevation key (band alone isn't enough — trade still keys on
+  label, 23,121 elements sit in two groupings, barrier deadlocks). Engine/support-extraction/crew-pool
+  built and reusable.
+- ▶ **ROOM PATHING** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, resume at
+  §21.39 (then §21.14 for setup only). ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
+  re-derive. Three defects found and fixed 2026-08-02: §PRECARVE (retention 84%/43%→100%/100%), the
+  unhosted-void admission (default `W:3.0`), and the door pierce (6*RES→10*RES). **LTU stranded
+  107→18/277, unroutable 87.7%→18.4% — beats the room-graph baseline 32.4% AND survives the
+  phantom-adjacency cap test (share 104%→20%).** Standing 4-witness gate all green: §T1–T5 (retention
+  100%/100%), §O3, §SC3 breaks 11/34→9/14, §CB5 sealed suites 9/23→7/8.
+  ⛔ **Clinic barely moved: 50/186 @ 49.3%, its 31-room sealed cluster stands.** §21.38 predicted it —
+  17 of its 51 door-crossings sit INSIDE both the pierce and the march, so no depth change reaches
+  them. NEXT: (1) instrument ONE of those 17 cell-by-cell (enumeration, not aggregate — that rule has
+  paid twice now), (2) re-run the full gate, (3) the 101/30 `noVoid` fusions. Funnel §21.18 LAST.
+  19 witnesses on bim-ootb `review/roompath-redundancy`, worktree `/tmp/wt-roompath` live/clean/pushed
+  — REUSE it. Nothing deployed; engine byte-unchanged. Blocks `datacentre_cabling.md` cable-pathing.
+- ▶ **MODELLER** — dispatch from `prompts/MODELLER_MASTER.md` (⚠ landmine found compacting this file
+  2026-08-02: that file is NOT on this branch, only on unmerged `fix/lod400-envelope-hardfail` — merge or
+  recreate it before dispatching from it). ✅ LIVE-DEFECT CLOSED: Modeller drew bounding-box fallbacks on
+  the live site for months (Git-LFS `mesh.db` unresolved on GH Pages, failure hidden behind
+  DevTools-filtered `console.warn`) — fixed via per-resident geo files + `_assertRealGeoDb()` guard + sw
+  v37→v38, bim-ootb #1090/#1091 merged. Curl-the-served-bytes lesson now standing in `feedback_terse`.
+- `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-ENVELOPE` (PR #56) — done: `rel_material_layer_set`
+  edge + P10 gate, witness 8/8. OPEN: §LOD400-LAYERS-REAL (slice the envelope at authored thickness) —
+  needs the one-mesh-per-element vs N-sub-instances call first. Old §LODHELL FINDING 1 verdict is
+  SUPERSEDED, don't re-cite.
 - `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
-- `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25/§14 · `PHOTOREAL_STILL_RENDER.md` §CINEMA_ORBIT_V2 #931/#933 · §MAXQ_SURFACELESS_FRAMEBUFFER **DOWNGRADED** · **§MAXQ_OFFLINE_RUNNER 5/5, PR #1015 — viewer UNTOUCHED; left: agent + Shift+Alt+C POST. Read its 🧭 PICK-UP BRIEF.**
-  ✅ **§CINEMA_TURN_SLERP LANDED (#1018, 7/7)** — look-back was a one-frame 180° snap; fixed by rotating the
-  gaze direction. Open in `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`: **D2** walk-out corner whip
-  (19.8°/frame, ungated) · §CINEMA_HALL_CANDIDATE UNPARKED — ⚠ re-read vs Clinic v3 **207 rooms**, not 118.
-- **Fly-Tour — ALL detail in `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT re-derive**
-  (scrubber 11/11). Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, ROOT-CAUSED) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP`
-  (**gate invalid, needs a ratio**).
+- `PHOTOREAL_STILL_RENDER.md` — §MAXQ_OFFLINE_RUNNER 5/5, PR #1015 (viewer untouched; left: agent +
+  Shift+Alt+C POST, read its 🧭 PICK-UP BRIEF) · §CINEMA_TURN_SLERP landed #1018 7/7, open: D2 walk-out
+  corner whip (19.8°/frame, ungated) · §CINEMA_HALL_CANDIDATE unparked, recheck vs Clinic v3 **207 rooms**
+  (not 118) · §MAXQ_SURFACELESS_FRAMEBUFFER **downgraded**. Also `ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md §25/§14`.
+- **Fly-Tour** — `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`, read its last §-sections, do NOT re-derive (scrubber
+  11/11). Next: ⛔ `§SCRUB_PREPARE_STALL` (1.67s, root-caused) · D2/D5/D6/D7 · `§OPENING_BEAT_SEEK_GAP`
+  (gate invalid, needs a ratio).
 - **`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §14`** log-precision-first MUST land BEFORE live-diagnosing Terminal's "disciplines disappeared".
 - ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S4** — glazing metric (windows
-  TE 236/HO 131/CL 58/LTU 976; curtain wall HO 178/CL 31) → S5 jerk softener (95th-pct −50%, profile FIRST).
-  ⚠ **S2 FORKED `deploy/dev/room_graph.js`** from bim-ootb `common/room_graph.js` — shared engine, needs
-  porting back (unlike S3's tour-local change).
-- ✅ **R5-A SETTLED (user 07-26): the sandbox is LOCAL** — OCI `sandbox/` frozen; `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
+  TE 236/HO 131/CL 58/LTU 976; curtain wall HO 178/CL 31) → S5 jerk softener (95th-pct −50%, profile
+  FIRST). ⚠ S2 forked `deploy/dev/room_graph.js` from bim-ootb `common/room_graph.js` — needs porting back.
 - Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
-
-- ▶ **KUL070 datacentre — 2GB IFC lane CLOSED, cabling lane OPEN. `prompts/datacentre_cabling.md` owns
-  cabling; `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md` owns ingestion (§KUL009-§KUL013).** Ingestion done:
-  the 62,500 "missing" elements were the **wasm32 4GB ceiling** (not the call stack) — 8-way split →
-  **87,333-element DB, 0 orphans**, and `extractIFCtoDB.py` now writes `elements_meta.building` +
-  `project_metadata` at source (§KUL001 retired). ⚠ §KUL013: `center_*` is the placement ORIGIN, median
-  11.31 m off the AABB centre — **`disc_walker.routeChains` misuses it, 0.00% vs 90.07% precision; needs
-  its own session.** Cabling: engineer confirmed all 3 pain points, wants **auto-routing first**.
-  **⛔ NEXT SESSION PRECONDITION (user): review ROOMS pathing first** — cable pathing inherits the same
-  A*/polyline/highlight engine and its unmeasured redundant-path defects. Then the gate: rebuild as
-  authored-ports ∪ corrected-geometric and re-run §RUN_READY (**today only 8 of 119 runs traversable =
-  6.7%**, NOT the 41% name-resolution figure). Ship F1/F2/F6 first — none need a pathing engine.
-  (⚠ this file is 100+ lines, over its 80 budget — compaction left to the owners of the 07-2x entries
-  below rather than risk clobbering concurrent edits.)
+- ▶ **KUL070 datacentre** — `prompts/datacentre_cabling.md` (cabling) / `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md`
+  (ingestion, §KUL009-13). Ingestion CLOSED: the 62,500 "missing" elements were the wasm32 4GB ceiling
+  (not the call stack) — 8-way split → 87,333-element DB, 0 orphans. ⚠ §KUL013: `center_*` is the
+  placement ORIGIN not the AABB centre (median 11.31 m off) — `disc_walker.routeChains` misuses it, 0.00%
+  vs 90.07% precision, needs its own session. Cabling: engineer confirmed all 3 pain points, wants
+  auto-routing first. **⛔ NEXT SESSION PRECONDITION: review ROOMS pathing first** — cable pathing
+  inherits the same A*/polyline/highlight engine and its unmeasured redundant-path defects (today 8/119
+  runs traversable = 6.7%, not the 41% name-resolution figure). Ship F1/F2/F6 first — none need a
+  pathing engine.
 
 ## Archive — DONE/shipped (one-line pointers only; detail lives in the named prompts file)
+- ✅ §CINEMA_TURN_SLERP LANDED (#1018, 7/7) — look-back 180° snap fixed by rotating gaze direction — `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`.
+- ✅ R5-A SETTLED (07-26): the sandbox is LOCAL — OCI `sandbox/` frozen; `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
 - ✅ §LODHELL + Modeller guide + stranded-branch sweep (07-27/28) #1051/#1062/#1065 — `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md` §START HERE (⛔ 1 user design call left).
 - ✅ Alt+C flicker + MaxQ salvage (07-25/26) #1004/#1005/#1011 — `PHOTOREAL_STILL_RENDER.md`.
 - ✅ §TOUR_HIGHLIGHT_LANE → ZERO (07-26) #1012-#1014, Terminal 8/92→0/84 — T4/exits is its own track `§G1-EXTERIOR-DOOR-LANE`.
