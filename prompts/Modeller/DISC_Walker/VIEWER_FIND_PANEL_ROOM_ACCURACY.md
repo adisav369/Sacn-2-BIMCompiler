@@ -3576,3 +3576,48 @@ note) and the false "cause (2) refuted" (§21.36).
 same file. It is a federated model with two naming schemes, not a badly-labelled one. Its 33,848
 `Unknown`-storey elements (70%) are genuinely unassigned, separately from the language issue. Any
 storey matching that assumes one convention will silently mis-file half of it.
+
+### §21.41 ROOT CAUSE — the carved doorway becomes its own pocket and TERMINATES the graph.
+bim-ootb `review/roompath-redundancy` @ `2bf79d2`, pushed. `roompath_diagnostics/clinic17_dump.js`
+§C40c, log `w_c40c.log`.
+```
+§C40c far-end groups of links leaving the cluster   = 41
+      far-end area < 2.0 m² (SLIVER)                = 39/41   area median = 1.08 m²
+      far-end depth −1 (also unreachable)           = 41      depth >= 0 = 0
+```
+**Every door on the cluster boundary opens into a ~1 m² pocket that is itself unreachable.** The
+carved doorway is enclosed floor, and `SEAL`'s band separates it from the rooms on BOTH sides, so it
+becomes its own pocket with its own id. The room→doorway opening is emitted; the doorway→far-room one
+is not. **The graph terminates inside the doorway.** That is why the cluster has 40 outward links and
+is still depth −1, and why deepening the pierce (§21.39) could not help Clinic — a deeper carve makes
+a *bigger* doorway pocket, not a connected one.
+
+**§21.40's suspect was wrong and this corrects it.** I blamed `strandedIds`' `area >= 2.0` filter in
+the analysis. The ENGINE's own `depth` is −1 for all 41 far ends, so the BFS never reaches them
+either. The filter hid them from the *reports*; it did not cause the disconnection.
+
+**THE FIX, and it is provenance-based so it carries no per-building constant** (the standing
+requirement — a rule has to hold for any IFC a user imports):
+> **A pocket whose cells lie ENTIRELY within carved void footprints is a DOORWAY, not a room.** It
+> exists only because the carve created it. Merge it into its neighbours, or emit it as a
+> pass-through edge, before grouping.
+
+No area threshold, no width cap, no fixture tuning — the test is *where the cells came from*, which
+is known exactly (the carve rects are already computed in `_rasterizeSpine`). It applies to any
+building with doors, and on a building whose doorways happen not to form separate pockets it is a
+no-op by construction. Contrast §21.33's `W:3.0`, which IS a tuned constant and had to be swept to
+justify; this needs no sweep because it asks a provenance question, not a size question.
+
+**Falsification test, before the code:** doorway-provenance pockets must be a large share of Clinic's
+sub-2 m² pockets and near-zero of its >10 m² ones. If big rooms are being classified as doorways, the
+provenance test is wrong and must not be applied.
+
+**GATE after the change — all five, unchanged:** §T1–§T5 (retention must stay 100%/100%), §O2 sweep
++ §O3 (phantom share must not rise — merging pockets is a fusion, exactly the direction that
+manufactures phantom adjacency), §SC3 (breaks must fall from 9/14), §CB5 (sealed suites from 7/8),
+and §C40c (far-end slivers must fall from 39/41).
+
+**Chain of causes for this lane, now complete and each one measured, not argued:**
+raster had no door voids (§21.26) → carve added, but plugged the enclosure shut (§21.30) → §PRECARVE
+→ unhosted voids over-admitted (§21.33) → `W:3.0` → pierce too shallow for 33/51 crossings (§21.38)
+→ `10*RES` → **doorway pockets terminate the graph (§21.41)** → provenance merge, next.
