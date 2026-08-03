@@ -128,6 +128,50 @@ separate generative path already has, per this file's own §A "True parallel tra
 `materializeDefault` never inherited it). Bigger than tonight's scope; `§CPE_PHASE_STAGGER` above
 only fixes the FILM's visual overlap, not the underlying calendar dates.
 
+## ▶ RESUME — GENERIC RULE: "tight, movie-sense pacing" has TWO consumers, only one is fixed
+**Session close-out 2026-08-04, live confusion caught in the act — record it so it isn't re-walked.**
+User watched Day 422/1264 on the Time Machine scrubber, still inside Superstructure, and read that
+as "still not tight" — but the scrubber and the Cinema MaxQ movie are DIFFERENT consumers of the
+SAME schedule, and only one of tonight's fixes touches either of them:
+
+| consumer | reads | fixed tonight? |
+|---|---|---|
+| Time Machine day/hour scrubber, Gantt mini-chart, day-counter badge | REAL CALENDAR DATES (`schedule_start`/`finish`) | ❌ no — `§PHASE_DURATION` makes the dates workload-real, it does not make them EVEN |
+| Cinema MaxQ baked film (Alt+C) | ELEMENT RANK via `_workCursorAt` (never reads dates) | ✅ yes — `§CPE_EVEN_PHASE_PACING`/`§CPE_PHASE_STAGGER` |
+
+Dragging the scrubber to Day 422 and finding Superstructure still building is CORRECT behaviour,
+not a regression — Superstructure legitimately owns 968 of 1,264 calendar days (76.6%) because that
+is its real workload. **To see tonight's actual fix, bake with Alt+C and watch the exported film,
+not the scrubber.** The scrubber will only feel "tight" once the CALENDAR itself is tight, which is
+the still-open item below.
+
+**The GENERIC rule, stated for any building (not Terminal specifics):** tight/movie-sense pacing
+requires closing THREE gaps, in this order of leverage — each is independent, each already has a
+witness-proven design or an explicit reason it's deferred:
+1. **Calendar durations must be workload-real.** ✅ DONE, generic — `§PHASE_DURATION`
+   (labor-seconds ÷ max_crews, bottleneck trade) has no Terminal-specific constant in it; it reads
+   whatever `LABOR_RATES`/`SEQUENCE_RULES`/`elements_meta` the building provides.
+2. **The FILM must not give screen-time proportional to element count.** ✅ DONE, generic —
+   `§CPE_EVEN_PHASE_PACING` (equal segment per phase) + `§CPE_PHASE_STAGGER` (20% lead-in overlap
+   for a homogeneous phase) key off `kernel_ops.parameters.phase`, which every building's generated
+   OR captured schedule already carries. No population-size assumption, no hardcoded phase name.
+3. **The CALENDAR must not be strictly phase-contiguous.** ⛔ NOT DONE, generic problem — ANY
+   building where one phase's real workload dominates (not just Terminal's steel deck — brick
+   coursing, curtain-wall glazing, duct runs on other buildings) will push every LATER phase's start
+   date out to nearly the project's end, because `materializeDefault` places phase i+1 only after
+   phase i is 100% complete, everywhere. This is what still makes the SCRUBBER feel wrong. Fix is
+   overlapping-phase scheduling (the resource-cursor-per-band shape `injectGantt`'s older generative
+   path already has, per this file's §A "True parallel trades ✓" — never ported to
+   `materializeDefault`). This is the highest-leverage remaining item: it's the one that makes the
+   INTERACTIVE experience (scrubber, day-counter, Gantt bars) match what Alt+C's film already shows.
+
+**Also still open, named 2026-08-04, unchanged:** within-phase day-batching (item 2's addendum —
+batch a homogeneous phase's reveal into visible daily "pulses" instead of one smooth ramp; must be
+presentation-only, `§CPE_BUILDUP_WORK_PACED` already fixed away literal re-clustering as a defect).
+
+**Do NOT re-diagnose "still not tight" as a cache/deploy problem again** without first checking
+which of the two consumers (table above) was actually being watched — that cost real turns tonight.
+
 ## ▶ (superseded) RESUME 2026-08-04+ — the phase-duration fix, BUILT above
 **User's "Architecture all done on day one" report is diagnosed — search `## 2026-08-03 —
 INVESTIGATION ONLY` below for the full evidence trail.** Verdict: user's own hypothesis ("no
