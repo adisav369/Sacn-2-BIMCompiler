@@ -464,3 +464,25 @@ rooms in healthy layers; Hospital "96.9%" is **173 links**, half its rooms in 45
 suites. §HM4 (isolated singletons) is where phantom flood-fill pockets hide — Hospital 45.4% vs
 LTU 6.1% says pocket hygiene, not connectivity, dominates Hospital's raw count. The pair-% stays in
 the record as a stress metric only; §HM is the honest fleet headline going forward.
+
+## 2026-08-03 §10 PHANTOM FILTER (user: "wall cavities are not rooms if there are no doors")
+
+**Spec.** A pocket group with NO door footprint on its padded boundary AND NO opening incident
+cannot be entered → PHANTOM (cavity/shaft), excluded from the room census and from §HM1 link
+demand. Extends the deterministic dictionary: enterable = has a recorded aperture. Witness v2
+(same engine, reporting only); log `w_hierarchy_fleet_v2.log`:
+
+| building | rooms | §HM1 links (suites) | spine | suite | isolated | §HM5 phantoms |
+|---|---|---|---|---|---|---|
+| LTU | 265 | **11** (6) | 92.5% | 5.7% | 1.9% | 12 |
+| Terminal/TermRooms | 70 | **5** (2) | 81.4% | 14.3% | 4.3% | 4 |
+| Clinic | 160 | **5** (4) | 61.3% | 38.1% | 0.6% | 5 |
+| Duplex | 6 | **2** (2) | 33.3% | 66.7% | 0.0% | 1 |
+| JKR | 24 | **13** (4) | 20.8% | 41.7% | 37.5% | 2 |
+| HHS | 34 | **21** (10) | 5.9% | 61.8% | 32.4% | 3 |
+| Hospital | 209 | **100** (45) | 8.6% | 65.1% | 26.3% | 73 |
+
+vs v1: Hospital 173→**100** real missing links once 73 cavities stop demanding connections;
+Clinic 10→**5**, isolated 0.6%. The substrate's true fleet gap = 157 links across 7 buildings,
+three-quarters of stranded mass sits in internally-healthy suites. Pair-% retired as headline
+(stress metric only, per §9).
