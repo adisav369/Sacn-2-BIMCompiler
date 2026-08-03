@@ -4,6 +4,24 @@
 #   opt-in still). Read the log after every run. This file is the spec — no implementation without
 #   reading §HONEST VERDICT first; don't build past what that verdict promises.
 
+## ▶ RESUME 2026-08-04+ — START HERE: search `§LTU_FLOOR_FLICKER` (end of file)
+**Open, not fixed.** MaxQ bake floor flicker on `LTU_AHouse`. Z-fighting and DLOD-swap hypotheses were
+BOTH REFUTED with real evidence (LTU serves in split-DB mode, the divergent meta/extracted Z value is
+dead data; DLOD is fully disabled for the whole bake). The live suspect — transparent-sort instability
+between §GHOST_GROUND and §Z_STACK_XRAY_STAGING (both default-ON as of 2026-08-03, and on LTU the
+ground plane's Z equals the ground-floor slab's Z exactly) — is mechanism-confirmed but NOT pixel-proven:
+the first amplified-consecutive-frame-diff attempt landed in the film's fast opening dive beat, which
+swamped the signal. A follow-up (static camera at ground level, held through the trigger window, to
+isolate the overlap from camera motion) was dispatched same-session; check for its findings appended
+past the §LTU_FLOOR_FLICKER section before re-diagnosing from scratch — if none are appended yet, the
+follow-up may still be in flight or was lost, re-dispatch with the same static-camera method rather than
+guessing. **Do not ship a `renderOrder` fix without pixel proof — that discipline held twice already.**
+
+Also worth checking on arrival: PR #1141/#1146 (§PHOTO_SKYLINE_SHADOW_FRUSTUM) left an open aesthetic
+question for the user — dusk sun angle is deliberately low (6°), which throws skyline-silhouette
+shadows far enough that they rarely land in frame. User's ruling, 2026-08-03: keep it as-is, no change
+wanted. Settled — do not reopen without a new ask.
+
 ## HONEST VERDICT (read this before anything else)
 **No — this will not be "truly photorealistic" in the indistinguishable-from-a-photograph sense.**
 It CAN get meaningfully closer than today's flat-CG look — plausibly "good archviz render" quality

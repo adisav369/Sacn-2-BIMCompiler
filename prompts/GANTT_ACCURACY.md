@@ -14,18 +14,40 @@ confirmation. The item below is a DIFFERENT invariant (support), not a regressio
 against the witness's working-day span, or the live generate differs from the witness's inputs. Read
 `§CPE_DAY_COUNTER` + `§GANTT_CACHE_SAVE` in the next bake log HEAD before treating either as wrong.
 
-## ▶ RESUME 2026-08-03+ — START HERE: build §Z_STACK_XRAY_STAGING (END of this file)
-**ASSIGNED TO AN EXECUTOR SESSION (user directive 2026-08-02): the spec is COMPLETE — execute it,
-do not re-study, do not re-litigate the method choice.** Work the §Z_STACK_XRAY_STAGING section
-top-to-bottom: implement exactly as specced, run its named witness claims, record results in a
-dated `✅ DONE` section of THIS file (never MEMORY.md), sw CACHE_VERSION bump in the same PR as
-any precached viewer/ change, PR to bim-ootb main with auto-merge, verify it lands.
-**The recurring "Z stack / roof-before-support" issue got its full 5-method study 2026-08-02 —
-search `§Z_STACK_XRAY_STAGING`.** User chose X-RAY STAGING (unsupported elements render x-ray until
-carriers land; schedule/gantt/band ordering untouched). Spec + witness claims written, NOT built.
-The scheduler-engine question below stays parked behind its ruling — do not reopen it to build this.
-Related, already shipped (do not redo): #1133 §STAGGER_SUPPORT_ORDER — captured stagger order sorts
-by bearing surface, 6,240→0 support-order violations. X-ray staging is the RENDER half on top of it.
+## ✅ §Z_STACK_XRAY_STAGING — DONE, shipped PR #1139 (2026-08-03). Search `§Z_STACK_XRAY_STAGING`
+below for the full spec/build record. The 2026-08-02 RESUME item that used to sit here is closed —
+do not re-read it as an open task. See §CPM_DUAL_ELEVATION and §SUPPORT_ORPHAN (end of file) for the
+11-shape-measured-floor follow-on research from 2026-08-03, also closed (parked, no PR, by design).
+
+## ▶ RESUME 2026-08-04+ — START HERE: "4D happens too fast" — no staggering WITHIN a phase/day
+**User, 2026-08-03, watching a real Terminal bake: the Architecture phase reads as essentially DONE
+on the very first visible day — no perceptible staggering.** User's own diagnosis, stated as a
+hypothesis to verify, not an instruction to build blind: *"I think it is the logic within a single
+phase is not delved into."* This is a GENERAL "most 4D is such been too fast" complaint, not a
+Terminal-only one — treat it as the standing next priority for this file's lane.
+
+**Real evidence already in hand, from the SAME Terminal bake, ground any fix in this — don't re-derive:**
+```
+§AUTHOR_MATERIALIZE schedule=SCH_AUTHORED mode=dated phases=5 leafTasks=5 assignments=48428 elements=48428
+§GANTT_SOURCE captured tasks=5 covered=48428 generated=0 total=48428 pct=100
+§CPE_WORK_SCHEDULE ops=48432 span=1767225599999..1785734079545 workInFirst10%OfCalendar=51.7%
+  (10.0% would be evenly spread — anything above it is the burst calendar pacing shows)
+```
+The entire 48,428-element Terminal schedule comes from just **5 leaf tasks** (the "AUTHOR" system,
+`§AUTHOR_*` tags — a DIFFERENT code path from `schedule_gate.js`'s `computeSchedule` used elsewhere
+in this file) and **51.7% of all work is dated within the first 10% of the calendar span** — a far
+more extreme burst than Hospital's 0.6% seen earlier in this file. Consistent with, but not yet PROOF
+of, "no staggering within a phase."
+
+**An investigate-only agent was dispatched same-session (2026-08-03) to trace the actual per-element
+date-assignment code inside the AUTHOR system and distinguish two different possible bugs — phase-level
+date-range too narrow, vs element-level clustering within a correctly-wide phase range — these need
+DIFFERENT fixes.** Check for its findings appended below this block (search `§AUTHOR` further down, or
+check for a newer dated section past this RESUME block) before re-investigating from scratch. If no
+findings are appended yet, the investigation may still be in flight or was lost — re-dispatch rather
+than guessing, using the same real-evidence discipline (file:line citations, actual date-range/variance
+numbers pulled from a real building, not inference from the log alone).
+**Do not fix blind. Spec first, per this project's standing rule.**
 
 ## ▶ (superseded 2026-08-02) earlier resume — the §ELEMENT_CPM ruling item
 **ONE open item, specced and de-risked, needing ONE user ruling before code.**
@@ -989,7 +1011,7 @@ Machine.
 
 ---
 
-# ▶ §Z_STACK_XRAY_STAGING — the support fix that touches NO ordering: unsupported = X-RAY until carriers land (specced 2026-08-02, NOT built)
+# ✅ §Z_STACK_XRAY_STAGING — BUILT AND SHIPPED, PR #1139 (2026-08-03) — the support fix that touches NO ordering: unsupported = X-RAY until carriers land
 **User, during the v918 bake, three escalating proposals:** *"introduce some sort of peek forward to
 pull over elements... Or better, simply store away those until their supporting elements arrive —
 study which method is viable"* → *"or make them x-ray to indicate the item is there but to be

@@ -7,7 +7,35 @@ do not touch `_cinemaPathPlan`'s §CINEMA_SPACE block (~L3486-3610)**; see §Out
 **Read the log after every run.** Verification on this project is `§`-tagged console output, not
 screenshots — and for anything continuous (camera path, angles, Z) it is the NUMBERS, per CLAUDE.md's
 FUNDAMENTAL LAW. Honour this block until this file is DONE.
-**▶ RESUME 2026-08-02 — read `§ SESSION CLOSE 2026-08-01 (final)` at the END of this file first (search
+**▶ RESUME 2026-08-04+ — the 2026-08-02 five-item list below this block is STALE, unverified this
+session — a huge amount shipped 2026-08-03 that may have already touched some of it (buildup pacing
+was directly re-investigated, see below); check current state fresh rather than assuming either
+resolved or still-open.**
+
+**Shipped 2026-08-03 (live sw v929, this session, all merged to `bim-ootb` main):** §CPE_PANEL_STATE
+saved-path checkboxes/day-counter/cursor (#1140) · §CPE_ROOM_TITLE_LEVEL_CONSOLIDATE + bake-compositing
+fix (#1142) · §CPE_STICK_APPROACH bake-HUD feedback (#1143) · §CPE_BUILDUP_DEFAULT_ON (#1144) ·
+§CPE_MAXQ_STATUS_DAY_LABEL (#1145) · §CPE_PACE_SWING_SOFTEN 1.6→1.45 + buildup-pacing re-investigated,
+**no defect found** — real per-frame replay showed a flat 36.15-36.30 elements/frame rate; "fast/slow"
+was the camera's own beat-speed variation, not the buildup (#1147) · §CPE_GHOST_GROUND_TRIGGER fixed
+TWICE — first to first-above-ground-element not 5%-share (#1148), then a real clock-domain bug in that
+same fix (elements-placed vs calendar-fraction comparison) found and fixed (#1149), then independently
+RE-VERIFIED with real pixel readback on a second building (Terminal) — confirmed working, not a defect.
+
+**Still genuinely open, next priority for a fresh session (see `prompts/GANTT_ACCURACY.md`'s own
+2026-08-04+ RESUME block for the full spec):** "4D happens too fast" / no staggering within a phase —
+this lives primarily in the GANTT/schedule-generation lane (the "AUTHOR" system), not this file, but
+the SYMPTOM was observed through a Cinema Path Editor bake, so a session working this file should read
+that RESUME block too before assuming it's out of scope here.
+
+**Unrelated, same-session, cross-file:** an LTU_AHouse floor-flicker report is being investigated in
+`prompts/PHOTOREAL_STILL_RENDER.md` §LTU_FLOOR_FLICKER — mechanism suspected (transparent-sort
+instability between §GHOST_GROUND and §Z_STACK_XRAY_STAGING, both default-ON as of today) but not yet
+pixel-proven as of this file's last edit; check that file for the current state before re-diagnosing.
+
+---
+**▶ SUPERSEDED 2026-08-02 — status unverified, read the note above before acting on this:**
+read `§ SESSION CLOSE 2026-08-01 (final)` at the END of this file first (search
 `SESSION CLOSE 2026-08-01 (final)`). Live sw v911. Take them in this order: (1) the 20-slice element
 histogram — cached vs forced-regenerate ops — because the reported buildup pacing may be a STALE GANTT
 CACHE and not a defect at all; (2) jerks at every stick join (`unmeasuredJoins=2/2` is the tell);
@@ -6291,3 +6319,67 @@ precached, no new files). `MAXQ_V` bumped v21→v22.
 
 **Worktree:** `/tmp/wt-ghost-ground-live-fix` — to be pruned after this record is written (branch
 fully pushed, tree clean, nobody else found inside it).
+
+## 2026-08-03 — #1149 re-verified on Terminal (a different building than #1149's own Duplex/Hospital
+gates) after user report "still does not work" — NO DEFECT FOUND, confirmed with real material +
+pixel evidence, not just re-reading the trigger logic
+
+**The report:** user re-tested #1149 on Terminal and said "still does not work" — but their OWN pasted
+console log already showed the trigger firing early and correctly (`§GHOST_GROUND_TRIGGER_FIRED
+tFilm=0.0099` — under 1% into an 828-frame film). Two candidate explanations were named up front:
+(1) the user simply hadn't looked past frame ~6-50 (the ~3s fade window is a sliver of an ~828-frame
+film), or (2) a real "logged vs rendered" clobber — the SAME bug class already found once that same
+day in a different feature (room-title captions computed correctly but not reaching exported bake
+frames) — where per-frame photoreal staging (`§GROUND_MAP`/`§GROUND_ALBEDO`/`§GROUND_COLOR_ORDER_FIX`,
+all firing every single frame per the log) could be resetting `A.ground.material.opacity/transparent`
+back to something else AFTER `_ghostGroundAt` sets it but BEFORE `_captureFrame()` reads the canvas.
+
+**Static read first:** traced the actual per-frame call order in `cinema_maxq.js`'s bake loop —
+`A.stopStillRefine(true)` (teardown of the PREVIOUS frame, line 1026) → `_ghostGroundAt(...)` (sets
+opacity/transparent/depthWrite, line 1062) → `A.startStillRefine()` (re-stages photoreal — this IS
+where `_applyPhotoStaging()` runs `_applyGroundTexture('paved')`/`_setGroundColor(...)`, line 1073) →
+cook (TAA/AO fold + `_reassertPhotoShadowCoverage`/`_reassertPhotoMatBoost`/`_reassertPhotoEnvMap`
+ticks) → `_captureFrame()` → `A._composer.render()` (line 1083). Staging genuinely runs AFTER the
+ghost-set and genuinely restages every frame (confirmed: `A.stopStillRefine(true)` never passes
+`keepStaging`, so `_teardownPhotoStaging()` — full revert — fires every frame, then `startStillRefine`
+fully re-stages) — so the clobber SHAPE the user's hypothesis describes is structurally possible. But
+reading every writer of `A.ground.material` in `effects.js`/`tools.js`: `_setGroundColor` and
+`_applyGroundTexture` (the functions behind `§GROUND_MAP`/`§GROUND_ALBEDO`/`§GROUND_COLOR_ORDER_FIX`)
+only ever touch `.color`/`.map`/`.visible` — never `.opacity`/`.transparent`/`.depthWrite`. The three
+per-tick reassert functions touch `envMapIntensity`/`roughness`/`envMap`/`castShadow` on OTHER
+materials, never ground opacity. `_ghostGroundAt`/`_ghostGroundRestore` are the ONLY two writers of
+ground opacity/transparent/depthWrite in the whole codebase.
+
+**Real-browser confirmation (not just code-reading, per this project's whitebox law):** built a
+harness (`/tmp/wt-ghost-ground-clobber-check`, fresh `origin/main` @ `d4da218`, includes #1149) that
+loads Terminal with real Time Machine data, arms `§CPE_GHOST_GROUND` for real (`aboveOps=47577
+belowOps=851 firstAboveMs=1674888960000 triggerT=0.0081`), then replays the EXACT real bake-loop
+sequence — teardown → `_ghostGroundAt` → `startStillRefine` (real staging) → ~400ms of real cook
+ticks → `A._composer.render()` — sampling `A.ground.material.{opacity,transparent,depthWrite}` at
+all four checkpoints, across 10 frames spanning `t=0.0005` (well before trigger) through `t=0.3` (well
+after). **Result: identical at all four checkpoints, every sampled frame, every trigger phase** — e.g.
+`t=0.02`: `{opacity:0.3147, transparent:true, depthWrite:false}` unchanged from ghost-set through
+staging through cook through the actual composer render; `t=0.1`: `{opacity:1, transparent:false,
+depthWrite:true}` likewise unchanged. Zero clobbers across the full sweep.
+
+**Pixel evidence** (camera pinned 80m directly above the ground-plane center, looking straight down,
+same technique as the skyline-shadow `gl.readPixels` check earlier the same day): ghost frame
+(`t=0.001`, opacity=0.22, transparent=true) → avg sampled pixel `[47,51,57]` (cool blue-grey, the
+translucent ground blending with what's behind/below it); opaque frame (`t=0.9`, opacity=1,
+transparent=false) → avg pixel `[22,15,11]` (warm dark brown, the ground's own paved-texture color
+alone). The COLOR CHARACTER changes exactly as translucency-vs-opaque predicts — the opacity value
+that's SET is the value that's RENDERED, confirmed in actual captured pixels, not just material state.
+
+**§-log trace from the same run** matches the doc's own description of the per-frame cycle exactly:
+every frame logs `§GROUND_MAP key=paved → §GROUND_ALBEDO → §GROUND_COLOR_ORDER_FIX → §PHOTO_STAGING
+on`, then next frame's teardown logs `§GROUND_MAP key=none map=cleared → §GROUND_ALBEDO restored →
+§PHOTO_STAGING off` — real, every frame, exactly as the user's pasted log showed — but this cycle is
+entirely on the color/map/visibility channel; the ghost's `§GHOST_GROUND_TICK`/
+`§GHOST_GROUND_TRIGGER_FIRED` opacity values ride through it untouched.
+
+**Verdict: NO DEFECT. #1149's fix works correctly on Terminal, same as it does on Duplex/Hospital.**
+The user's "still does not work" report is not explained by a rendering/clobber bug — evidence points
+to explanation (1) named up front: the fade is real but occupies only ~45 frames (`GHOST_FADE_SEC=3.0`
+× 15fps) out of an 828-frame film, starting under 1% in. No code change made — witness gates
+untouched (still 30/30 per #1149's own record above). Worktree `/tmp/wt-ghost-ground-clobber-check`
+pruned after this record was written (test-only branch, never pushed).
