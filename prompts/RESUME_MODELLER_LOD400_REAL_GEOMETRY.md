@@ -324,6 +324,16 @@ witness = SC `stretchRide` reach 9/74 → ≥70/74, counts identical before/afte
 ## ⚠ 2026-07-30 WATCHDOG CORRECTIONS (post-ship, live-queried) — item 1 ✅ RESOLVED 2026-07-30 (§ROW33 below); item 2 (row 34) still open, next session starts THERE
 1. ~~**Party wall renders 5 slabs, not 7.**~~ ✅ RESOLVED — see §ROW33-EMPTY-SLAB-REFUSAL below. (Original directive kept for history: layers 5-6 of `2O2Fr$t4X7Zf8NOew3FNbT` had `face_count=0`; the witness's two reconciliation sums were blind by construction. Directive: `face_count>0` per-layer assertion; an empty slab is a REFUSAL, not a row; root-cause first. ⚠ One factual premise in the directive was WRONG and is corrected in §ROW33: the walls are NOT opening-cut — they carry ZERO openings.)
 2. **Anchor export/save leak unchecked.** The §ANCHOR guardrail proved render/Outliner/pick/audit invisibility but no witness covers `bonsai_ifc.js` export or `sdg_save.js` snapshot — both fold from an op-log that now carries 65 anchor ops. → MODELLER_MASTER row 34.
+3. **Anchor `elements_meta` rows write `building=NULL`** (found 2026-08-03, merging this branch with
+   `origin/master`). Two independent same-day commits never saw each other: §ANCHOR's insert
+   (`4abc9dbfa`, `extractIFCtoDB.py:2417`, on `fix/lod400-envelope-hardfail`) doesn't set `building`;
+   §KUL001 (`dcd5260e9`, on this branch) added that column to the OTHER insert only. Verified via
+   `git blame` — not tampering, a genuine integration gap, first met at merge commit `127a695e5`.
+   Consequence: `§BUILDING_COL` ratio print undercounts by the anchor count on any building with
+   anchors, and re-introduces (for anchors only) the exact class of bug §KUL001 fixed — see
+   `MODELLER_MASTER.md`'s O6 row, "viewer can't stream a raw modeller extraction (`elements_meta.building`
+   missing)". No render/pick impact (anchors carry no `element_instances`/rtree row). **Not fixed yet** —
+   add `building` to the anchor INSERT at `extractIFCtoDB.py:2417-2422` when someone's next in this file.
 
 ### ✅ §ROW33-EMPTY-SLAB-REFUSAL — 2026-07-30 (row 33 executed: measured first, then refusal armed;
 ### bim-compiler branch `fix/layer-empty-slab-refusal`)

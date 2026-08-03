@@ -91,7 +91,11 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
 - `RESUME_MODELLER_LOD400_REAL_GEOMETRY.md §LOD400-ENVELOPE` (PR #56) — done: `rel_material_layer_set`
   edge + P10 gate, witness 8/8. OPEN: §LOD400-LAYERS-REAL (slice the envelope at authored thickness) —
   needs the one-mesh-per-element vs N-sub-instances call first. Old §LODHELL FINDING 1 verdict is
-  SUPERSEDED, don't re-cite.
+  SUPERSEDED, don't re-cite. ⚠ 2026-08-03 merge with `origin/master` brought in a large parallel batch
+  of already-shipped LOD400-layers work (rows 3/4/16-34, PRs #56-#65, `MODELLER_MASTER.md` restored) —
+  this bullet is stale against it, needs a re-read+rewrite next session. One genuine gap found merging:
+  anchor `elements_meta` rows write `building=NULL` — see WATCHDOG CORRECTIONS item 3 in that file, not
+  yet fixed.
 - `RESUME_HR_BIM_ASSET.md` §07-06c · `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §07-06 · `PILL_DRAWER_REORGANIZATION.md` · `OPEN_BUTTON_IFC_BCF_MERGE.md` · `SPARSE_WALL_ROOM_INFERENCE.md` Ph1 · `XRAY_FIXTURE_CLASSIFICATION_FIX.md` · `FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`.
 - `PHOTOREAL_STILL_RENDER.md` — §MAXQ_OFFLINE_RUNNER 5/5, PR #1015 (viewer untouched; left: agent +
   Shift+Alt+C POST, read its 🧭 PICK-UP BRIEF) · §CINEMA_TURN_SLERP landed #1018 7/7, open: D2 walk-out
