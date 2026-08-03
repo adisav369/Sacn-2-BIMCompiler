@@ -7037,7 +7037,7 @@ anyone acts on it; did not touch `cinema_maxq.js`.
 
 Worktree `/tmp/wt-photo-skyline-shadow-hospital` pruned after merge.
 
-## §LTU_FLOOR_FLICKER — MaxQ bake floor flicker on LTU_AHouse (2026-08-03) — CAUSE MECHANISM CONFIRMED, pixel-level proof NOT obtained, NOT fixed
+## §LTU_FLOOR_FLICKER — MaxQ bake floor flicker on LTU_AHouse (2026-08-03) — CAUSE MECHANISM CONFIRMED, static-camera pixel proof shows NO flicker under isolated conditions (motion-coupled case still open), NOT fixed
 User report: floor flicker in a successful MaxQ bake (MP4) on `LTU_AHouse`. Leading hypothesis
 going in (this doc, ~line 4912, 2026-07-26 log): meta/extracted DB Z divergence on the ground-floor
 slab (`2.39999999` vs `2.39999961`) → classic Z-fighting trigger. Investigated with real evidence,
@@ -7152,3 +7152,77 @@ own scope guidance is `renderOrder` hints separating the ground plane from xray-
 (narrow, LTU/generic — not a data-pipeline change), re-verified against
 `witness_cpe_ghost_ground.js` + `witness_zstack_xray_staging.js` staying green.
 No PR opened this session — nothing landed to land.
+
+### Follow-up (2026-08-03) — camera-motion isolated with a static-camera bake: two real diffs obtained, NEITHER shows an oscillation/flicker signature, hypothesis narrowed (still not fixed)
+Same building, same real GPU headless bake (`--use-gl=angle --use-angle=gl --ignore-gpu-blocklist
+--enable-gpu`, RTX 4060), same amplified-consecutive-frame-diff technique — this time with the
+camera **pinned static** instead of following the authored dive path, per the prior session's own
+"getting a clean isolation" note above. Harness: `scratchpad/ltu_flicker_probe_static.js` /
+`_static2.js` (this session's scratchpad), overriding `A.camera.position.set` /
+`A.controls.target.set` in-page (the exact two calls `cinema_maxq.js:1157-1158` uses to apply
+`poseAt()` each frame) so they always snap to a fixed pose, while `poseAt()`/`_tFilm()` themselves
+run untouched — buildup cursor, ghost-ground ramp, and x-ray staging all still advance exactly as an
+ordinary bake would. Static vantage was **extracted from the building's own authored path**, not
+invented: `probe_pose_sample.js` sampled `cinemaPathPlan.poseAt(t)` across t=0..1 and found a real
+near-ground "walk" beat at t=0.50 — camera `(40.79, 0.69, 0)` looking at `(60.79, 1.08, 0)`.
+
+**Pass 1 (camera static, content NOT frozen):** `diff_frames_static.py` still showed two large diff
+bursts (frames 0-5, 18-22; band PSNR down to 13-22dB). `diff_localize.py` (new — bounding-box +
+row-density per changed pixel mask) showed both bursts spanning **0-100% of frame height and the
+full frame width** — inconsistent with a ground-plane-height band; consistent with this building's
+own logged pacing (`§CPE_BUILDUP_PACING ... "29.7% of its work in the first 10% of its calendar"`) —
+i.e. genuine large content-reveal batches, the SAME confound class as the dive beat, just content-
+driven instead of motion-driven. Camera motion was successfully isolated; content-population was not.
+
+**Pass 2 (camera static AND content frozen):** `ltu_flicker_probe_static2.js` additionally overrides
+`window.tmSetCursor` to always force one fixed timestamp (`1550594880000` = the real bake's own
+`firstAboveMs`, i.e. exactly the §GHOST_GROUND trigger threshold — read from Pass-1's own log, not
+invented) — confirmed live-read of `cinema_maxq.js` (`_ghostGroundAt`'s `fired`/`v` ramp math uses
+only `tFilm`/`_ggSpan.firstT`, never `cursorMs`) that this leaves the ghost-ground opacity ramp still
+live while making which elements are placed/staged fully constant frame-to-frame — the one remaining
+dynamic thing in view is exactly the ground-plane opacity itself rising. Result: `diff_frames_static2.py`'s
+band meanAbsDiff traces a **single smooth hump** (0.367 → peak 1.388 at frame 16 → 0.729 by frame 29)
+with only 5 PSNR-direction reversals across 28 steps (down from 14 in Pass 1) — and this shape is not
+just "smoother", it **quantitatively matches** the code's own documented formula, read directly from
+`cinema_maxq.js:296`: `o = GHOST_OPACITY + (1-GHOST_OPACITY) * smoothstep(v)`, whose per-frame delta
+(a smoothstep derivative) is analytically a single hump — zero at both ends, peak at the midpoint.
+`diff_localize.py` confirms the dominant changed region is broad (spread across most of the bottom-
+third band, consistent with the ground plane occupying a wide swath of frame, not a small blob) except
+one unrelated ~0.02%-of-pixels patch in the top-right corner (rows 4-6% of height, cols 823-905 —
+exactly where `_dayPos='tr'` places the Day-counter HUD text, which this probe's freeze did not catch
+since only the geometry cursor was pinned, not the day-counter's own `_bkMs` read — a probe artifact,
+not scene content). **No alternating/oscillating signature found** in either the aggregate curve or the
+localized region — under these fully-isolated conditions, the ghost-ground fade renders cleanly.
+
+**Important caveat, not glossed over:** a fully static camera cannot, by construction, exercise the
+SPECIFIC mechanism the original investigation flagged — "small camera-position deltas frame-to-frame
+[flipping] which [transparent object] sorts first". THREE.js's transparent-pass sort is a function of
+camera-to-object distance; zero camera motion + zero content motion ⇒ the computed distance for every
+transparent object is bit-identical every frame ⇒ the sort order is provably stable, by math, not just
+by this measurement. So Pass 2's clean result **rules out** flicker from the opacity ramp alone and
+from any static-scene numerical instability, but does **not** by itself disprove the original
+camera-motion-coupled hypothesis — it narrows it rather than closing it.
+**Verified while here (bears on the eventual fix, whichever way this resolves):** grepped
+`renderOrder` across the entire `viewer/` tree — every existing usage (`grid_*.js`, `measure.js`,
+`effects.js`, `ghostglass.js`, `cinema_path_editor.js`, `picking.js`, `scene.js`, `wh_walk.js`, …) is
+for UI/annotation overlays; **none target the ground plane or x-ray-staged elements** — `A.ground`'s
+material and `time_machine.js`'s `_wbMat('XRAY_STAGED', obj)` tagging set no `renderOrder` at all.
+The sort-order collision precondition (no explicit ordering between these two classes, distance-sort
+only) is real and unaddressed either way — a `renderOrder` fix, if the motion-coupled hypothesis is
+later confirmed, would be genuinely new ground, not colliding with any existing convention.
+**Attempted and blocked, named as the concrete next step:** tried to read the ACTUAL ground-floor
+slab mesh's live `renderOrder`/`_tm_xrayStaged`/material state at the trigger moment directly
+(`scratchpad/probe_slab_state.js`) rather than only inferring from pixels, per this doc's own
+"next lever" suggestion above. Blocked by the rendering architecture, not by absence of a lever:
+elements are rendered via `THREE.BatchedMesh`/`InstancedMesh` (confirmed live via `_wbMat`'s own
+`mesh=' + (obj.isBatchedMesh?'BM':obj.isInstancedMesh?'IM':'M')` diagnostic), so there is no single
+per-slab scene node carrying `userData.ifcClass`/material/renderOrder to query directly — doing this
+right needs the batch's per-instance index lookup, not a plain `scene.traverse()`. Not done this
+session (time-boxed); next session should query the batch's index for the ground-floor slab's guid
+specifically, not re-attempt the flat traversal above.
+**Status unchanged: NOT FIXED.** No `renderOrder` change shipped — the evidence for it is now
+narrower (opacity-ramp-only and static-scene flicker are both ruled out) but the original
+motion-coupled mechanism is still unproven either way, and this project's own rule (`feedback_no_invent_rules.md`
+/ log-not-visual-proof) says don't ship a fix onto unproven ground. No branch/worktree/PR — investigation-only,
+matching the prior session's own discipline. `/tmp` python http.server (port 8481, serving `~/bim-ootb`
+read-only for these probes) stopped at session end; no worktree was created (nothing to prune).
