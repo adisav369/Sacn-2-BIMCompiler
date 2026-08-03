@@ -209,5 +209,11 @@ function setupScene(A) {
   window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'z') { e.preventDefault(); A.toggleXray(); }
     if (e.key === 'F11') { e.preventDefault(); A.toggleFullscreen(); }
+    // §R5A — room-pathing scoped deploy: 'f' opens Find Room panel
+    if (e.key === 'f' && !e.ctrlKey && !e.altKey && !e.metaKey &&
+        e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      if (typeof A.openFindPanel === 'function') { A.openFindPanel(''); }
+      else if (A.loadNavigate) { A.loadNavigate().then(function() { if (A.openFindPanel) A.openFindPanel(''); }); }
+    }
   });
 }

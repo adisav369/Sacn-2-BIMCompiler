@@ -486,12 +486,21 @@
 <script src="loader.js?v=4"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=4" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=5" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=18" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
 <script src="tools.js?v=7" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
 <script src="picking.js?v=16" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<!-- §R5A — room-pathing scoped deploy: room_graph.js reads window.StoreyRaster at buildGraph()
+     time and window.RoomHabitability for its utility-room routing penalty, and hallway_backbone.js
+     reads window.RoomGraph at its own top-level IIFE — order matters: raster+habitability first,
+     room_graph next, hallway_backbone after it, bridge last. -->
+<script src="room_habitability.js?v=1" onerror="console.warn('§LOAD_FAIL room_habitability.js')"></script>
+<script src="storey_raster.js?v=1" onerror="console.warn('§LOAD_FAIL storey_raster.js')"></script>
+<script src="room_graph.js?v=1" onerror="console.warn('§LOAD_FAIL room_graph.js')"></script>
+<script src="hallway_backbone.js?v=1" onerror="console.warn('§LOAD_FAIL hallway_backbone.js')"></script>
+<script src="room_graph_bridge.js?v=2" onerror="console.warn('§LOAD_FAIL room_graph_bridge.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="measure.js?v=38" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
 <script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
@@ -523,7 +532,7 @@
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="print_sheet.js?v=2" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
 <script src="ghostglass.js?v=2" onerror="console.warn('§LOAD_FAIL ghostglass.js')"></script>
-<script src="main.js?v=16"></script>
+<script src="main.js?v=17"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>

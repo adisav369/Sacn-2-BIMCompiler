@@ -366,6 +366,50 @@ another — the exact class of divergence PR #1162 just closed on the CPM side.
   successors only, never re-run the whole 63,415-element pipeline. A drag touches ~10³ elements, not 10⁴.
   This is what makes interactive editing viable on Hospital at all.
 
+## MOB — Mobile / ERP readiness: a Gantt task round-trips to the field and folds back done
+**User ruling 2026-08-04. Not started — scoped here, deliberately AFTER the foundation band.**
+A Gantt zone bar should be pushable to ERP exactly the way a Find selection already is, worked on a
+phone, and folded back as a completed task with evidence attached.
+
+**The anchor already exists — do NOT build a second push path.** `navigate_find.js _pushToErp()`
+(~`:1921`) takes the current selection set, prices it (`_selectionPriced`), and calls
+`window.ProjFold.foldProjectOrder(db, building, priced.rows, opts)`, which creates the real iDempiere
+tree: `C_Project` → `C_ProjectPhase` → **`C_ProjectTask`** (per resource) → `C_ProjectLine` (per IFC
+type). It already logs `§PROJ_PUSH … tasks=+N`, already routes through BlueFuture when a speculative
+branch is engaged, and already reads back EVM via `ProjControl.projectControl`. The Gantt push is the
+SAME verb with a different scope selector — a zone task's `task_elements` guid set instead of a Find
+selection set.
+
+**The round trip, in order:**
+1. **PUSH** — a Gantt bar (K0 gave it a real `task_id`; `task_elements` gives it a real guid set) is
+   pushed via the existing `foldProjectOrder`, yielding a real `C_ProjectTask_ID`. That ID is the
+   join key for everything below — persist it against the zone task, do not re-derive it by name.
+2. **MOBILE VIEW** — opening that Project Task ID on a phone highlights **the item set** (its
+   `task_elements` guids) in the 3D scene and shows the **task checklist** (its `C_ProjectLine` rows —
+   per IFC type, with real quantities, already created by the fold).
+3. **SHARE BACK** — a photo finish or progress report attaches to the task, shared via the existing
+   `viewer/share.js` path, carrying a link back to the item set **keyed by `C_ProjectTask_ID`**, not by
+   a re-derived name or a screenshot caption.
+4. **FOLD BACK DONE** — the returned evidence marks the `C_ProjectTask` complete in the ERP twin.
+   **User point 2026-08-04: Time Machine ALREADY has the shape for budget-vs-actual — this step needs
+   no new UI.** `§TM-VARIANCE` (`time_machine.js`) already loads the folded twin (`_loadTwin()`), reads
+   the `C_Project` `PlannedAmt` ↔ `CommittedAmt` pair straight off the ledger, renders the per-phase
+   variance canvas + list (`tm-var-canvas`, `tm-var-list`, `_VAR_ORDER`), and computes EVM
+   (`§EVM_FOLD`: EV/AC/CPI/CV/BAC/EAC/VAC) plus a projected slip (`§SCHED_PROJECT`). Its own doctrine
+   is already "variance = the PlannedAmt↔CommittedAmt pair, READ the twin, don't recompute" — exactly
+   the contract a folded-back done task satisfies. So the round trip lands in an existing, witnessed
+   surface: the field marks a task done → `CommittedAmt` moves → the variance drawer and EVM show real
+   ACTUAL progress instead of estimate-only. The work is the write path and the task↔bar join, not a
+   new dashboard.
+
+**Boundary (carried, non-negotiable):** the completion signal must come from the returned real record —
+never inferred from "the bar's end date has passed". A task whose date elapsed is NOT a task that got
+done, and rendering it as done would be exactly the invented value this file's Boundary section forbids.
+
+**Open questions, do not guess:** where the photo/report BLOB lives (ERP twin vs OCI vs IDB), and
+whether mobile is the existing viewer at a small breakpoint or a distinct entry point. Both need a
+user ruling before implementation.
+
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
 dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
