@@ -102,3 +102,273 @@ captured (P6/MSP/native-IFC) programmes replay their own float, they don't get o
 them uninvited. `computeCpm`'s `fixedDates` opt is now the established pattern for "trust real
 persisted dates, use CPM only for float/criticality" — reuse it, don't reinvent a third date-handling
 mode without a real reason.
+
+## Session close-out, 2026-08-04 — this file's original 3 gaps are DONE, DON'T RE-DERIVE THEM
+This supersedes the "Suggested order" section above — all three items are closed, not open.
+- **#1 Working-calendar** — CLOSED, no code. User ruling: 24/7 continuous is the deliberate generator
+  default ("spec'ed early on"), not a gap. P6/MSP real-calendar parsing explicitly deferred.
+- **#2 Multi-building validation** — DONE. `witness_zone_cpm_duplex.js` (small/DX-class, 9/9) +
+  `witness_support_invariant_all_buildings.js` (all 6 large fixtures, 18/18, 0 floating/272k+ elements).
+- **#3 UI wiring** — DONE, but NOT a second button as originally scoped: zone-level detail is now the
+  DEFAULT "Generate first draft" output (`schedule_author_ui.js`), replacing the coarse 5-phase draft.
+
+**Five real, evidence-backed bugs found and fixed in the same session** (bim-ootb `main`, PRs #1163/
+#1165/#1166/#1167 — #1163's branch was orphaned mid-session by an early auto-merge, #1165/#1166/#1167
+are the recovery + follow-ons, all verified landed on `main` by content, not just PR status):
+1. `IfcOpeningElement` scheduled as physical work (voids, not walls) — excluded, matches time_machine.js.
+2. Every beam/column in a class got the SAME flat install time regardless of real size (a 60m beam and
+   a 1m beam both "1 hour") — fixed via real-length redistribution, class total preserved.
+3. `SEQUENCE_RULES` sequenced MEP rough-in BEFORE the building envelope (walls/doors/windows) — backwards
+   from real construction discipline. Fixed across all 18 rate-template sources (`rates.js` + 15 regional
+   templates + `sequence_rules.json`).
+4/5. **Two of (at least) four independent copies of "what counts as physical support"** had an
+   unrestricted "any wall carries anything" predicate (`time_machine.js` `_buildXraySupportCache` +
+   `_ogIsCarrier`/`PHASE_OVERLAP_SUPPORT_GUARD`) — a wall is only ever a real carrier for a slab
+   promoted to the roof role. MEASURED on Hospital: 5,687→1,217→0 false "hanging without support"
+   defects (fix #4), 1,049→0 false pushes with only 2 of the 1,049 ever legitimate (fix #5).
+
+**New witness**: `witness_wall_carrier_scope_all_copies.js` — the single place tracking all 4 known
+copies of this predicate (not 2 separate witnesses each covering one copy). Status:
+copy 1 (`schedule_gate.js auditFloating`) and copy 3 (`_ogIsCarrier`) proven here, 6/6 buildings;
+copy 2 (`_buildXraySupportCache`) has its own dedicated witness (`witness_zstack_xray_staging.js`);
+copy 4 (`boq_charts.html generateSchedule()`) asserted RED-by-design as a KNOWN OPEN GAP — it has no
+geometric support-check at all, a different and larger problem than 1-3's over-broad predicate.
+
+## Session addendum, 2026-08-04 (same day, later) — a real gap NOT previously documented
+User asked "why can't ARCH go first" — after clarification, the real question is NOT about
+construction sequence (Substructure-first stays correct, real construction physics, not up for
+debate) — it's that **this schedule has no pre-construction design/planning phase at all.** A real
+P6 schedule starts with Design Development → Permitting → Procurement, THEN Substructure onward.
+This generator starts cold at Substructure with zero modeled lead time for design/permits/procurement
+— there is no `SEQUENCE_RULES` phase, no task, nothing representing pre-construction work. Genuinely
+new finding, not previously scoped anywhere in this file. STUDY, don't implement yet — no real
+duration/lead-time data source has been identified for this (an invented "design takes N weeks"
+number would violate the Boundary section above). NOT started.
+
+**Write-loop hang, reported live during "Apply to 4D" on Hospital (63,415 elements)**: the browser
+console log cut off immediately after `§PHASE_OVERLAP_SUPPORT_GUARD pushed=...`, right before a loop
+that does 63,415 individual synchronous DB writes on the main thread (`time_machine.js` ~line 4058,
+written in PR #1154, 2026-08-03 — predates this session, not caused by any fix here). Confirmed
+`kernel_ops.output_guid` IS indexed (`idx_kernel_ops_guid`) — ruled out an O(n²) table-scan as the
+cause. PR #1168 (merged) adds `§WRITE_LOOP_TIMING` — pure measurement, no logic change — so the next
+report gives a real millisecond number. **The actual performance fix (batching/yielding so the tab
+doesn't freeze) is NOT done** — deliberately deferred, needs a real timing number first and ideally
+browser verification before changing a hot synchronous code path blind.
+
+## OPEN for the next session — do not assume any of this is done
+- **Pre-construction design/planning phase is entirely unmodeled** (see addendum above) — real gap,
+  needs a real lead-time data source before any implementation, currently just named.
+- **Write-loop performance fix NOT DONE, confirmed still hanging** (2026-08-04, live user report
+  TWICE on Hospital/63,415 elements): PR #1168's `§WRITE_LOOP_TIMING` instrumentation never even
+  printed either time — the freeze happens AT OR BEFORE the write loop starts, right after
+  `§PHASE_OVERLAP_SUPPORT_GUARD pushed=.../63415` (`time_machine.js` ~line 4058-4065, PR #1154,
+  predates this session). Next session: don't re-diagnose from zero — the timing line never firing
+  is itself new information (rules out "just slow writes", points at something before/at loop start
+  — check the `_ogStructGrid`/`_ogWallGrid` build + the `_allScheduled.sort` immediately before it
+  too, not just the write loop itself). Needs real profiling, ideally live browser (user-approved for
+  THIS specific investigation, unlike elsewhere this session).
+- **Constraint-aware Gantt drag, SAME session as the hang fix** (user ruling 2026-08-04): dragging
+  the Gantt chart directly is the priority UI, not a redesigned Author-4D panel — "it is the same
+  underlying model". See the detailed scoping note above (self-contained bars, real DAG via
+  `task_sequences`, don't let a drag hide a defect instead of fixing it).
+
+## Session starter for the next session (paste this)
+"Read prompts/4D_SCHEDULE_PERFECTION.md in full, then: (1) find and fix the Apply-to-4D hang on
+large buildings (Hospital, 63,415 elements) — PR #1168's timing instrumentation never fires, so
+start there, not at the write loop; (2) build constraint-aware drag directly on the Gantt chart
+(same underlying model as the Author-4D wizard, don't build a second panel) — a dragged bar must
+cascade its real successors or get blocked, never silently hide a real defect."
+- **Constraint-aware Gantt drag** (user request, 2026-08-04): let a user drag a zone bar directly in
+  the editor as a manual escape hatch when they spot a problem, instead of always needing a code fix.
+  SCOPING FACT established this session, don't re-derive: a Gantt bar (zone = one phase × one real
+  floor) is internally self-contained — its own elements are already correctly ordered by the fixed
+  engine (`computeSchedule`, this session's fixes) — but bars are NOT independent of each other; they
+  form a real DAG via `task_sequences` edges (`deriveZones`: within-phase adjacent-floor + same-floor
+  cross-phase). A PURELY COSMETIC drag (no constraint checking) would let a user hide a real defect
+  instead of fixing it — directly against this project's Prime Rule. The correct version (standard in
+  P6/MS Project): dragging a bar either cascades its real successors with it, or gets blocked/clamped
+  when it would violate a real dependency. `moveTask()` (schedule_author.js) is the existing single-
+  task move verb — check whether it already has any cascade/constraint logic before designing new.
+  STUDY/SCOPE ONLY — not implemented, not started.
+- **`boq_charts.html` (the "4" button / HTML charts tab) is a FOURTH, fully disconnected scheduler.**
+  Doesn't read `schedule_gate.js`'s real engine or `schedule_author.js`'s `tasks`/`task_elements` tables
+  at all — recomputes its own coarse phase×storey schedule from raw element counts, with its own fixed
+  lag constants and a `MAX_TASK_DAYS=20` cap, and TWO of its own stale hardcoded `PHASE_ORDER` arrays
+  (`boq_charts.html` lines ~423 and ~560, still MEP-before-Architecture — never touched). User-approved
+  direction (not yet implemented): redirect it to consume `schedule_author.js`'s real `tasks` data via
+  `AnalysisSidecar.compute4D()`'s existing-but-unused `capturedFn` hook (currently passed `null` at the
+  `get4D()` call site, line ~1218) instead of patching its `generateSchedule()` separately.
+- **`docs/4D5DAnalysis.md` (bim-compiler) is stale.** Describes the Python `nD_engine.py` engine +
+  `ghostglass.js`/`boq_charts.html` — never mentions `schedule_author.js`/`schedule_gate.js`, the engine
+  this whole session perfected. Not rewritten.
+- **Architectural finding, not yet acted on**: this codebase has a documented convention ("copy the
+  support predicate rather than importing it") that is WHY the same bug had to be found and fixed 3
+  separate times this session. The real fix is consolidation — one shared support-detection function,
+  every caller uses it — not continuing to patch copies as they surface. Scoped but not started.
+- Two cosmetic-only stale `PHASE_ORDER` arrays in `time_machine.js` (~line 4099 ERP-twin variance
+  lookup, ~line 4670 dashboard phase-progress display order) — confirmed display-only, not wired to
+  actual scheduling, left unfixed as genuinely low priority. Fix if ever touching those areas anyway.
+
+---
+
+# §GANTT_EDIT — the editable-drawer overhaul (SPEC, 2026-08-04)
+
+Spec-first, no code written yet. All line refs are against `origin/main` @ `7e1ed17` (PR #1169).
+⚠ `~/bim-ootb`'s working tree was 13 commits STALE when this spec was researched (`8592b33`, missing
+#1157–#1169 incl. all the zone work). Read `git show origin/main:<file>`, not the checkout.
+
+## Product mission (user ruling, 2026-08-04)
+Be the best on-the-fly combined 4D/5D generator — remove MPP/P6 dependence for ~95% of the long tail
+of users, using common-sense construction sequencing + real CPM. The Gantt drawer in Time Machine
+becomes **the one editable 4D surface**; the two existing 4D editors are deprecated into it.
+
+## K0 — KEYSTONE FINDING: the drawer's bars are not tasks (fix this first, everything depends on it)
+The TM drawer does **not** read the schedule model. `drawGanttMini` (`time_machine.js:4393`) builds
+`_ganttTasks` by grouping raw `_ops` (kernel_ops rows) into `groups[storey + '|' + phase]`
+(`:4400-4413`) — a rollup of **element timestamps**. The resulting bar object is
+`{storey, phase, startTs, endTs, count, cap}`. **There is no `task_id` on it.** So today a bar cannot
+be moved, because `moveTask(db, taskId, newStart)` has nothing to be handed.
+
+Meanwhile `materializeZones` (`schedule_author.js`) already writes exactly this decomposition into the
+real model: one row per zone, `task_id = 'TASK_' + _slug(phase) + '_' + _slug(storey)`, `name =
+phase + ' — ' + storey`, plus `task_elements` (tid→guids) and `task_sequences` (the real DAG edges).
+
+**The drawer's `storey|phase` grouping and the zone-task decomposition are the SAME decomposition,
+arrived at independently by two code paths.** They were never connected.
+
+→ **The overhaul is therefore mostly a re-sourcing job, not new engine work.** Stop deriving bars from
+`_ops`; read them from `tasks` + `task_sequences` for the active schedule. Once a bar carries its real
+`task_id`, every edit verb below already exists and is already witnessed.
+
+### Verbs that already exist — do NOT rebuild any of these (`schedule_author.js`, all exported)
+| Verb | Does | Gap |
+|---|---|---|
+| `moveTask(db, taskId, newStart)` | moves a leaf task, preserves duration | **no cascade, no constraint check** — its own header says "CPM invalidation is the caller's concern" |
+| `addDependency` | creates a `task_sequences` edge | — |
+| `wouldCycle` | cycle guard | already there, drag-to-link gets it free |
+| `removeDependency` / `updateDependency` | unlink / retype+lag | — |
+| `computeCpm(db, schedId, opts)` | full FS/SS/FF/SF + lag, float, criticality, `fixedDates` opt | — |
+| `listDependencies` | edges for a task | — |
+
+The single real engine gap is **cascade/clamp on move** (C1–C3 below). Everything else is UI.
+
+## E — Interactions to build (MS Project convention; do not invent a new idiom)
+- **E1 drag bar body horizontally** → move, duration preserved → `moveTask`.
+- **E2 drag a bar's left/right edge** → resize; the opposite end stays pinned; duration changes.
+  Needs a new leaf verb `resizeTask(db, taskId, newStart, newFinish)` — `moveTask` deliberately
+  preserves duration, so it is the wrong verb to overload.
+- **E3 drag from bar A onto bar B** → create an FS edge A→B → `addDependency` (guarded by `wouldCycle`).
+- **E4 click an existing dependency arrow** → remove / change type (FS/SS/FF/SF) + lag.
+- Hit-testing already exists: `findBarAtClick` (`time_machine.js:4590`). Extend it to return an edge
+  zone (within ~4px of a bar end) so E1 and E2 can be told apart from one gesture.
+
+## C — Constraint semantics (THE rule this feature lives or dies on)
+Prime Rule consequence: **a drag must never silently hide a real defect.** A purely cosmetic drag lets
+a user "fix" a schedule violation by dragging it out of sight instead of fixing the cause. So:
+- **C1 cascade** — moving a bar later drags its real `task_sequences` successors with it (FS:
+  `succ.start >= pred.finish + lag`). This is MSP auto-schedule behaviour, not an invention.
+- **C2 clamp** — moving a bar earlier than a predecessor allows is **refused**, clamped to the earliest
+  legal date. The bar visibly snaps back. No silent acceptance.
+- **C3 log every one** — `§GANTT_EDIT_MOVE`, `§GANTT_EDIT_CLAMP reason=pred:<id>`,
+  `§GANTT_EDIT_LINK`, `§GANTT_EDIT_CYCLE_BLOCKED`. Whitebox-first: these `§` lines are the proof
+  surface, not screenshots (FUNDAMENTAL LAW, CLAUDE.md).
+
+## W — Write-path coherence (the seam that will bite)
+A zone bar's window was **rolled up from real per-element times**. Move the bar and its member
+elements must be redistributed inside the new window, or the drawer says one thing and the movie plays
+another — the exact class of divergence PR #1162 just closed on the CPM side.
+- **W1** — on an accepted edit, re-time only that task's `task_elements` guids across the new window,
+  reusing the existing linear bottom-up-by-`cz` distribution (§PLAYBACK-STAGGER, `time_machine.js:3909`).
+- **W2 (also the perf answer)** — an edit must be **incremental**: touch the edited task + its cascaded
+  successors only, never re-run the whole 63,415-element pipeline. A drag touches ~10³ elements, not 10⁴.
+  This is what makes interactive editing viable on Hospital at all.
+
+## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
+Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
+dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
+user-controlled business assumption, not an invented value.
+- `_addDays` (`schedule_author.js:185`) is `days * 86400000` — fully calendar-blind, but a **single
+  choke point** with 9 call sites (`:360, 370, 528, 538, 539, 681, 689, 963, 1065, 1066`).
+- Durations are ALREADY working-day counts (`28800s = 8h` workday), so enabling a 5/6-day week
+  re-derives **no rate** — it only maps the same real day-count onto the correct calendar dates.
+- **Two separate deliverables, do not conflate**: (a) shading non-working columns in the drawer is
+  cosmetic and cheap; (b) durations actually skipping them moves every date. Shipping (a) without (b)
+  makes bars visibly run through shaded weekends — honest, but reads as a bug.
+- **Holidays ≠ working week.** A weekday toggle is a safe default; a holiday list is locale data we do
+  not have. Degrade to "no holidays" and say so — never invent one.
+- Payoff: `erp/tests/real_xer_witness.js` already measured this gap against a real P6 file — 49/52
+  start dates up to 59 days early, all one-directional. This is the biggest single gap between our
+  dates and a P6 user's dates.
+
+## VIS — Drawer facelift (colour + legend) — AWAITING USER OK, see Open Decisions
+Real defects found, not taste:
+- `PHASE_COLORS` (`time_machine.js:4102-4109`): `Substructure #7a8a8e` and `Superstructure #5b7fa5`
+  are both desaturated blue-greys — the least distinguishable pair sits on the two adjacent structural
+  phases.
+- The text fallback collides on the SAME pair: label is `phase.substring(0,3)` (`:4543`) → `"Sub"` vs
+  `"Sup"`, at 9px, and only drawn when `w > 40`.
+- `Architecture #c07a4a` (orange-brown) competes with two reserved STATUS colours: `#ff8c00` = active
+  bar outline + cursor hairline (`:4531`, `:4550`), `#ffeb3b` = captured-IFC-4D frame (`:4524`).
+- Fills are drawn at `globalAlpha 0.8` (`:4516`), flattening what contrast remains.
+- Palette encodes no trade family: the two MEP phases (`#8bc34a` / `#ab47bc`) look unrelated; MEP
+  Rough-in and Finishes (`#26a69a`) look related.
+
+Proposed: 3 trade families by hue, dark→light within each family following build order, orange/yellow
+reserved for status only — Substructure `#37516b`, Superstructure `#5b9bd5`, MEP Rough-in `#2e7d52`,
+MEP Final `#66bb6a`, Architecture `#6a4c93`, Finishes `#b07fd4`; fills at alpha 1.0; and an explicit
+short-code map replacing `substring(0,3)` (`SUB / SUPER / MEP-R / MEP-F / ARCH / FIN`).
+
+**Legend removal — confirmed safe.** The hover tooltip (`time_machine.js:2923-2942`) already reports
+`storey — phase (N el, Day X–Y, generated | IFC 4D)`. The legend (`:2618` markup, `:4457-4472` fill)
+is strictly redundant; deleting it returns a row of vertical space to the bars.
+
+## DEP — Deprecation targets
+- `viewer/schedule_author_ui.js` (507 lines, the ✎ side panel, `tm-author` button `:2585`)
+- `viewer/schedule_editor_ui.js` (696) + `viewer/schedule_editor.html` (the ↗ Editor new tab, `:2587`)
+- `boq_charts.html` — a FOURTH disconnected scheduler with its own stale MEP-before-Architecture
+  `PHASE_ORDER` arrays. Redirect to real `tasks` via `AnalysisSidecar.compute4D()`'s existing-but-unused
+  `capturedFn` hook (passed `null` at the `get4D()` call site, ~`:1218`) rather than patching it again.
+
+## Witnesses (name the issue each proves — no test that cannot fail)
+- `witness_gantt_bar_identity.js` — proves K0: every drawn bar resolves to a real `tasks.task_id`, and
+  the set of bars equals the set of zone tasks. Fails today by construction.
+- `witness_gantt_edit_constraints.js` — proves C1/C2: a forced illegal move is clamped, never accepted;
+  a legal move cascades exactly the real `task_sequences` successors and no others.
+- `witness_gantt_edit_coherence.js` — proves W1: after an edit, every `task_elements` guid's op
+  timestamp lies inside its task's new window. This is the drawer-vs-movie divergence detector.
+- `witness_working_calendar.js` — proves CAL(b): with a 5-day week, zero task start/finish dates land
+  on a non-working day, and total working-day count is unchanged from the 24/7 run.
+- Existing, re-run as regression: `witness_zone_cpm.js`, `witness_zone_cpm_duplex.js`,
+  `witness_support_invariant_all_buildings.js`, `witness_tm_duration_sync.js`.
+
+## Order of work
+**User ruling 2026-08-04: "P6/MPP extras later — now is getting the core foundation upgraded to
+correct 4D iron clad."** So CAL and the `boq_charts.html` redirect are explicitly OUT of the current
+band; they are P6-alignment work, not foundation. The foundation band is K0→E→C→W: a bar that IS a
+real task, edits that obey the real DAG, and a movie that always agrees with the chart.
+
+**FOUNDATION BAND (now):**
+1. **K0 re-source bars from `tasks`** + `witness_gantt_bar_identity.js`. Nothing else can start first.
+2. **VIS facelift** — independent of K0, smallest, unblocks the daily-use complaint.
+3. **E1 + C1/C2 + W1** — move with cascade/clamp, the core of the feature.
+4. **E2 edge-pull resize** (`resizeTask`).
+5. **E3/E4 CPM linking + unlinking.**
+
+**LATER BAND (P6/MPP alignment — do not start unprompted):**
+6. **CAL toggles** (a then b) — the working-calendar model.
+7. **DEP** — delete the two editors only once the drawer covers their real use; `boq_charts.html`
+   `capturedFn` redirect.
+
+## Open decisions (blocking nothing yet, but answer before the matching step)
+- ⛔ **VIS palette** — proposed above, awaiting user OK (aesthetic, so not shipped unilaterally).
+- ⛔ **"Remove the trivial panel"** — ambiguous, and removal is hard to reverse. The Apply-to-4D hang
+  fires inside `time_machine.js`'s captured-overlay path (`:3943-4084`), which runs whenever a captured
+  schedule exists — so deleting a *panel* does not by itself remove the hanging code. Meaning either
+  (a) drop the ✎ Author 4D side panel, or (b) revert PR #1154's two-phase collect-and-guard block?
+- **Hang root cause, corrected**: the prior session concluded "`§WRITE_LOOP_TIMING` never fired, so the
+  freeze is before the write loop." **That inference is wrong** — `_wlT0` is captured at `:4075` and
+  logged at `:4083`, i.e. only AFTER the loop completes, so a freeze *inside* the loop produces exactly
+  the same silence. It rules out nothing. Confirmed regression origin: `git log -S_allScheduled` returns
+  exactly one commit, `d35366a` (**PR #1154**) — matching the user's report that the hang is new. Prime
+  suspect on measurement grounds is the `_ogStructGrid`/`_ogWallGrid` cell-bucket pass (`:4038-4068`),
+  which is superlinear in footprint area, not the 63k prepared-statement writes. NOT yet measured.
