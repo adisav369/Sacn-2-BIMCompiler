@@ -96,7 +96,83 @@ Loop refinement asks the user directly: restart from the highlight-first opening
 that once and loop only the remainder. Everything else in the addendum (EDL shape, versioned "Save As
 Tour", video export staying out of scope) stands as written above, unchanged.
 
-## ▶ NEXT STEP
-§1-4 are decided; write the implementation spec (file layout, migration script, save/restore call
-sites in `A.saveModelDb()`/`A.openModelDb()`) and build. Loop's remaining question stays open until
-asked live. Witness plan before code, per this project's Spec-First rule.
+## ▶ ADDENDUM — fold in Movie Maker (Alt+C) + staffage (Alt+P) as ONE combined save (2026-08-03)
+User request: Alt+C Movie Maker panel settings + camera position + Alt+P inserted staffage (pax,
+trees, cars) — "and this also goes for scene and opened panels in general" — should all be saved
+together into the `.db` and restored exact-as-was on reopen. This is not a new feature: §1-4 above
+already scoped "which panel was open" and camera/display/nav state generically (line 75-77); this
+addendum is about UNIFYING that with two sibling mechanisms that already exist independently:
+
+1. **Staffage (Alt+P) → DB: already shipped, already on the right choke point.** A `staffage_instances`
+   table is written by `_writeStaffageTable()` inside `A._exportBuildingDb()` (`scene.js`), the same
+   function `Ctrl+S`/`A.saveModelDb()` calls — see `prompts/STAFFAGE_WALKABLE_PLACEMENT.md:265,297-301`.
+   Restore is `A._restoreStaffageInstances()` (same file, `:897-913`). **Nothing to build here** — this
+   already round-trips exact-as-saved.
+2. **Movie Maker / cinema path (Alt+C) → DB: intended on the same choke point, currently BROKEN.**
+   `prompts/CINEMA_PATH_EDITOR.md:4492-4497` documents `_writeCinemaPathTable(db)` at `scene.js:663`,
+   meant to write a `cinema_path` table "exactly the way `staffage_instances` already round-trips" — same
+   `Ctrl+S` → `_exportBuildingDb()` path. But `:4470-4519` documents an open bug: a plan reopened from
+   IndexedDB and then re-saved silently DROPS the `cinema_path` table. **This must be fixed before "exact
+   as is" can be claimed** — right now a save→reopen→save cycle loses the Movie Maker state, which is the
+   exact failure mode this whole feature request is asking to eliminate.
+3. **Scene/camera/panel state → DB: not built yet.** This is §1-4 above, still idea-only per this file's
+   own `SCOPE` tag — a new small metadata table (§2, line 84-86), one row per building, written in the
+   same `_exportBuildingDb()` call as the other two.
+
+**Combined implementation spec (file layout, no code yet — still Spec-First / not authorized to build):**
+- One `Ctrl+S` save writes THREE tables in the same `_exportBuildingDb()` pass: `staffage_instances`
+  (existing, untouched), `cinema_path` (existing, once the drop-on-resave bug is fixed), and a new
+  scene-state table per §2 above (camera/display/nav/panel/Find-selection/Time-Machine fields).
+- One `Ctrl+O`/`A.openModelDb()` restores all three in sequence: staffage instances, cinema path, then
+  scene/camera/panel state last (so the final camera pose shown on reopen is the saved view, not wherever
+  staffage/cinema-path restoration left the camera mid-process).
+- Order matters for a clean "exact as was" reopen — restoring scene/camera state LAST avoids any of the
+  other two restore steps clobbering the final camera position.
+- Blocking dependency: fix `cinema_path`'s drop-on-resave bug (`CINEMA_PATH_EDITOR.md:4470-4519`) before
+  or alongside building the new scene-state table — shipping the new table without that fix still leaves
+  the combined save incomplete for Alt+C specifically.
+- Code lives in the sibling repo `~/bim-ootb` (`scene.js`, `cinema_path_editor.js`), not in this repo —
+  this file documents the spec only.
+
+## ▶ ✅ BUILT 2026-08-03 — scene_state table shipped, witnessed 8/8 + 1 targeted check
+**Correction first:** the "fix `cinema_path` drop-on-resave bug first" instruction below was based on
+a stale read of `CINEMA_PATH_EDITOR.md`'s dated bug section — that bug (`§CPE_PATH_NOT_PORTABLE`) was
+already fixed and merged as PR #1122 (`viewer sw v906`) before this build started. Verified in code
+(`cinema_path_editor.js:1210` re-stages on named-plan open, `scene.js:667` guard logs loudly, `effects.js:
+6997-7040 _cpeLoadFromDb()` lazily restores from the DB table itself). Nothing to fix — confirmed live,
+not re-derived from the doc.
+
+**What shipped** (bim-ootb branch `feat/save-db-scene-state-combined`, worktree `/tmp/wt-scene-save-combined`):
+1. `viewer/scene.js` — new `_writeSceneStateTable(db)`, called from `_exportBuildingDb()` in both the
+   monolith and split→monolith branches, alongside the existing `_writeStaffageTable`/`_writeCinemaPathTable`
+   calls. One-row `scene_state` table: camera pos/target (IFC space, via `A.three2ifc` — same convention
+   as `cinema_path`, since `A.modelOffset` is only meaningful to the session that wrote it), `xray_on`
+   (`A.xrayOn`), `dlod_on` (`A._dlodEnabled`), `walk_mode` (`A.walkModeActive`), `focused_panel` (id string
+   from `window._getFocusedPanel()`), `find_guids` (comma-joined `A.activeGuidFilter`), `tm_on` (`A._tmOn`).
+   Every field reads a real, pre-existing public flag — none invented.
+2. `viewer/panels.js` — added `A.runPanelAction(id)`, the ONE new public hook this needed: fires an
+   `_actions[]` entry's own `fn()` by id (the same call its pill/drawer row makes on tap). No new open
+   logic, just exposing what `_actionById` already resolves internally.
+3. `viewer/main.js` — new `§SCENE_STATE_RESTORE` block, structurally mirroring the existing `§SHARE_PARSE`
+   (S265) hash-restore block but keyed off the DB's own `scene_state` table and running on EVERY load
+   (not gated on a URL hash). A hash field wins over the DB's saved default per-field, since an explicit
+   share link is a more deliberate ask than the reopener's own last-saved view.
+4. Time Machine exact playhead position was scoped OUT — only `tm_on` (on/off) is captured, matching the
+   precedent already set by the existing `§SHARE_PARSE` hash mechanism (`hashParams.tm` also only
+   toggles on/off, no position). No exposed "current playhead ms" accessor was found in `time_machine.js`
+   to restore an exact position without inventing one — named here as an open gap, not silently dropped.
+
+**Witness — `witness_scene_state_combined.js`, run against a local server on the worktree under test
+(not the standing sandbox, since this worktree has the code changes):** 8/8 PASS —
+`/tmp/wt-scene-save-combined/witness_scene_state_combined.log`. Camera IFC round-trip `maxErr=8.88e-16`.
+Confirms: export creates the table with the exact authored camera/xray/find-selection; a FRESH
+navigation (in-memory state wiped, not just re-reading the same page) restores camera position/target,
+xray, and Find selection; staffage placed before save still restores after reload (no regression from
+adding scene_state alongside it). A separate targeted check (not folded into the witness file) confirmed
+`focused_panel` specifically: opening Find via `A.runPanelAction('find')` → saved as `focused_panel=find`
+→ fresh reload logs `§SCENE_STATE_RESTORE camera panel=find` → `window._getFocusedPanel().id === 'find'`.
+
+**Shipped:** committed `bb7ae97` on `feat/save-db-scene-state-combined`, pushed, PR
+[bim-ootb#1152](https://github.com/red1oon/bim-ootb/pull/1152) — not yet merged. No opt-out toggle
+(per §3, v1 intentionally has none). Loop's remaining question (addendum, line ~94) stays open until
+asked live.
