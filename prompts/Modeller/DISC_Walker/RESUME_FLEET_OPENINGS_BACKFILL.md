@@ -500,3 +500,34 @@ each level atomic. Consequences, binding on any future metric/walker work in thi
   (no door + no opening = not a room) is the floor, the compiled set is the ceiling.
 - The substrate's remaining job, restated in these terms: reproduce the recorded parent links
   geometrically (draw the path), never re-decide their existence.
+
+### §11.1 v3 RESULTS — the metric on sound footing (log `w_hierarchy_fleet_v3.log`, witness v3 pushed)
+
+NON-FATALISTIC, per §11: Layer-2 rooms ARE connected to the Layer-1 spine grid in the RECORD —
+every kept room has a recorded aperture (§10 filter guarantees it). The only open number is the
+substrate's DRAW BACKLOG: parent links not yet reproduced geometrically. `§SUBSTRATE drawn` grades
+the TOOL, never the building.
+
+| building | rooms | L1 circulation drawn | L2 suites (rooms) | record-connected | draw backlog | substrate drawn |
+|---|---|---|---|---|---|---|
+| LTU | 265 | 92.5% | 6 (5.7%) | 100% | 11 | 95.8% |
+| Terminal/TermRooms | 70 | 81.4% | 2 (14.3%) | 100% | 5 | 92.9% |
+| Clinic | 160 | 61.3% | 4 (38.1%) | 100% | 5 | 96.9% |
+| Duplex | 6 | 33.3% | 2 (66.7%) | 100% | 2 | 66.7% |
+| JKR | 24 | 20.8% | 4 (41.7%) | 100% | 13 | 45.8% |
+| HHS | 34 | 5.9% | 10 (61.8%) | 100% | 21 | 38.2% |
+| Hospital | 209 | 8.6% | 45 (65.1%) | 100% | 100 | 52.2% |
+
+# LANE STATE 2026-08-03 — CLOSED ON SOUND FOOTING; NEXT SESSION RESUMES FROM HERE
+
+DONE this lane: extractor openings fix (ghost-shaped, permanent) · 9/9 DBs ghost-shaped ·
+sealed-suite overclaim retracted (§8) · pair-% retired (§9) · phantom rule (§10) · two-layer
+doctrine (§11) · non-fatalistic §HM v3 metric (this section). Buildings are healthy in the record;
+the experimental substrate has a 157-link fleet draw backlog (100 on Hospital) as its work queue.
+
+**NEXT SESSION (user: "examine the next weakness in our new paradigm"):** open candidates, in the
+§11 frame — (a) the draw backlog itself: make the substrate reproduce RECORDED parent links
+(extract-don't-rederive: feed stored door-room adjacency as ground truth, geometry only draws the
+path); (b) walker-pocket ↔ compiled-room identity (the walker's census still isn't the compiled
+room set — Find-panel truth); (c) HHS/JKR low L1-drawn share (their §SC1 cause split never run).
+Do NOT reopen: W/pierce constants (§21.44 stop condition), the §0 retractions, Hospital_3 (rm'd).
