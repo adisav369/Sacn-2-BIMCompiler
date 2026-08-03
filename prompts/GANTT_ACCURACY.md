@@ -1,5 +1,65 @@
 # ⚠ DO NOT REMOVE — Read the log after every run
 
+## ✅ §LABOR_QUANTITY_WEIGHT + §PHASE_OVERLAP_BAND — BUILT, PR bim-ootb#1154 (auto-merge armed, 2026-08-03/04)
+**Closes the "RESUME 2026-08-04 root cause found" section below — this is that fix, shipped.** User
+ruling on the same session: *"film layer MUST be removed as it is bad separation of concern"* (the
+§CPE_EVEN_PHASE_PACING/§CPE_PHASE_STAGGER film hack from PR #1153, reverted) — then *"make the 4D
+schedule maker simply follow simple rules!!!!"* / *"if rates gives the intelligence, engineers will
+agree"* (led to the RATES.unit-driven fix below) — then *"Do what is conventional to construction
+industry. Test on Hospital and Terminal only as serious projects"* (§PHASE_OVERLAP_BAND).
+
+**1. Film-layer stagger removed** (`cinema_maxq.js`/`time_machine.js`, byte-for-byte revert of PR
+#1153's `_workCursorAt`/`_phaseWindow`/`_phaseCursorAt`/`tmWorkSchedule` phase-segmentation). Film
+is back to plain global element-rank pacing — it plays the schedule, does not re-author pacing the
+data doesn't say. `§CPE_SETTLE_HOLD` (same PR, unrelated fix) left untouched.
+
+**2. §LABOR_QUANTITY_WEIGHT** (`schedule_author.js`, `_classFragmentation`): `RATES[cls].unit`
+(rates.js's QS/BOQ table, already shipped) names each class's real physical measure. A class is
+"fragmented" — real geometry diverges from real installable units — ONLY when its OWN measured
+average bbox area (exact `analysis_sidecar.js` dominant-face formula) is below 1 m² ("smaller than
+a floor tile", this file's own earlier phrase, now the actual test). Measured on Terminal: `IfcPlate`
+avg 0.074 m² → fragmented, area-weighted. Every OTHER `M2` class present — `IfcSlab` 22.7 m²,
+`IfcWall` 40.6 m², `IfcCovering` 65.6 m², `IfcRoof` 91.4 m² — has a normal per-element size and stays
+count-based; blanket-applying area-weighting to all `M2` classes was tried and REJECTED (measured:
+`IfcWall` would jump from ~14 days to ~563 days with zero evidence it needed it). Terminal
+Superstructure: **968 → 111 days**. Duplex: byte-identical output, zero regression (confirms this
+only fires where real fragmentation exists).
+
+**3. §PHASE_OVERLAP_BAND** (`schedule_author.js` `materializeDefault`/`scheduleContiguous` +
+`time_machine.js` `_cap` overlay): conventional construction "Line of Balance" flowline scheduling —
+a phase now starts once the leading trade clears ONE real band (`elements_meta.storey`, not an
+invented fraction), not the whole building project-wide. Terminal Architecture: day 1189/1264 (94%)
+→ day 27/229 (12%). Hospital Architecture: day 902/1064 (85%) → day 152/799 (19%). Terminal total:
+**1264 → 229 days**. Hospital total: 1064 → 799 days (no fragmentation found on Hospital — matches
+the user's own live read, "Hospital is fine").
+
+**⚠ Real risk found and fixed pre-ship, not theoretical:** overlapping task windows can place an
+element before its real structural support if the per-task bz-sort doesn't line up across tasks —
+measured BEFORE the guard: 447 cross-task support violations on Terminal, 1,929 on Hospital
+(mostly beams/slabs/MEP scheduled ahead of the wall carrying them, e.g. `IfcBeam on
+IfcWallStandardCase`). Fixed with a global cross-task correction pass — same "push after, never
+before" mechanism `§4D_HOST_BEFORE_HOSTED` already uses, just extended across tasks instead of
+within one: process every element in ascending `base_z` (a valid topological order for the support
+DAG, already established), push any element whose start precedes its real carrier's end to right
+after it. **0 violations after, on both buildings, with no growth in total project span** (the
+pushed elements — 2,769/48,428 Terminal, 2,843/63,415 Hospital — had slack within their own already-
+allocated window).
+
+**Verification:** headless against real `Terminal_extracted.db`/`Hospital_extracted.db`/
+`Duplex_extracted.db` (sql.js, no browser needed for the scheduling math) — no invented numbers,
+`RATES`/`LABOR_RATES`/`elements_meta`/`element_transforms` only. `witness_cpe_work_pacing.js` 9/9
+green both buildings (film-revert correctness). `witness_stagger_support_order.js` unaffected
+(different, untouched code path — the non-`_cap` generative ScheduleGate fallback). Browser smoke
+test (Terminal, headless Chrome) — zero console/page errors from the change. `sw.js` `CACHE_VERSION`
+v932→v933 + `cinema_maxq.js`/`time_machine.js`/`schedule_author.js` precache versions bumped.
+
+⛔ **Not re-measured yet, named for a future session:** the doc's own item 3 from "Once 1+2 land,
+re-measure whether §CPE_EVEN_PHASE_PACING/§CPE_PHASE_STAGGER are still needed" is now moot — they
+were REMOVED outright per direct user ruling, not conditionally kept pending a re-measure. If a
+future session ever sees "the film reads flat/monotonous again," that is a DIFFERENT complaint from
+tonight's (this fix corrected the DATA the film reads) — check the calendar/scrubber first, per the
+GENERIC RULE table below, before reintroducing any film-layer pacing hack.
+
 ## ✅ USER-CONFIRMED GREEN, 2026-08-02 — the ORDERING defect is CLOSED on a live bake
 User, on the Hospital generated 4D: *"the Time Machine 4D schedule generated works well now.. no more
 roof coming on before the walls or upper deck forming before lower. I can confirm at Day 282."*
