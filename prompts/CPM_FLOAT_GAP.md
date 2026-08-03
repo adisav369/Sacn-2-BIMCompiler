@@ -119,6 +119,72 @@ tidy generator's naming.
 3. Gap 1 phase-level (small, mechanical — expose the already-computed lag as a real edge).
 4. Gap 1 element-level (bigger, genuinely new algorithm) — only if Gap 1 phase-level proves insufficient for what a real critical-path view needs.
 
+## Session update — 2026-08-03, Gap 1 (phase-level) DONE
+Landed as bim-ootb PR #1159 (merged on top of #1158, unrelated — see below), auto-merge.
+- `materializeDefault`/`scheduleContiguous`/`schedule_author_ui.js applyDates()` (all three "lay
+  phases out from a start date" sites — the same three §PHASE_OVERLAP_BAND already had to fix
+  independently) now emit real `task_sequences` SS edges from the already-computed band-lag —
+  exactly the phase-level fix this file specced, not a new relationship.
+- Found and fixed a real, separate `computeCpm` backward-pass bug this exposed: late-finish was
+  unclamped, so a task whose only successor edge is SS/SF (constrains the successor's START, not
+  this task's FINISH) could compute an LF past the project's own finish PF — impossible, and
+  silently zeroed the critical path. Clamped `t.lf` to PF. Verified non-regressive against a real
+  P6 file (`real_xer_witness.js` still matches P6's own `driving_path_flag` 52/52) and all other
+  CPM/foreign-schedule witnesses (28/28, 16/16, 10/10).
+- Added the Gantt UI's missing visual counterpart — `schedule_editor_ui.js renderGantt` now draws
+  real SVG dependency-arrow connectors (FS/SS/FF/SF-aware, red for critical links); the dependency
+  panel was previously text-only, so a generated building's CPM run had no visual to show even
+  after edges existed.
+- **Unrelated same-session fix, PR #1158** (dispatched in parallel, not part of this spec): the
+  Time Machine playback clock (`time_machine.js getInstallSecs`) was a hand-duplicated, never-
+  updated copy of the WBS-path's duration formula — never got the §LABOR_QUANTITY_WEIGHT
+  fragmentation fix, so the live scrub/playback clock still raced through Terminal's Superstructure
+  13.4x too fast even after the Gantt dates were correct. Now proxies to
+  `ScheduleAuthor._installSecs()` (newly exported), single source of truth.
+- Gap 1 element-level, Gap 2 (P6 real-file binding), Gap 3 (real fixture) — still open, unchanged
+  from the original scope below.
+
+## Session update — 2026-08-03 (later), priority reframed + Gap 1 element-level DONE
+User ruling: the core product is "drop an IFC, get a probable 4D/5D movie right away" — most users
+return to their own tools (P6/MSP) after. That makes Gap 1 (a fully auto-generated schedule, as
+accurate as possible) the utmost priority; Gap 2/3 (P6 import) are now explicitly POC/later, not
+dropped — see the NEW diff-tool idea below, which reuses P6 import for a different, higher-value
+purpose than originally scoped.
+- **Gap 1 element-level DONE** — bim-ootb PR #1160 (auto-merge), `materializeZones()`. Key finding:
+  a full element-level scheduler (`schedule_gate.js computeSchedule`) already existed and already
+  drives the live movie (support-order + crew-capped placement, proven 0/3240 floating on real
+  Hospital data) — this was NOT a new algorithm to build. The work was rolling its already-proven
+  real per-element times up into readable (phase × real floor) zones (71 on Terminal — P6-realistic,
+  not 5 and not 48,428) with real, structurally-DAG-safe edges, feeding the same `computeCpm`. Movie
+  stays untouched/instant; this is the on-demand detail view.
+  **Known limitation CLOSED same session** — PR #1162, `computeCpm(db, id, {fixedDates:true})`.
+  Trusts a zone's real persisted dates directly instead of re-deriving through the graph (which is
+  what compounded the error); backward pass/float/criticality unchanged. Verified EXACT match
+  (93d==93d, was an asserted 48% divergence) — `witness_zone_cpm.js` now also keeps a live regression
+  proof of the pre-fix (derived-mode) divergence so it can't silently return. Non-default, opt-in —
+  phase-level/captured-P6 callers get byte-identical behavior. **Both options from the paragraph
+  above are now moot — the fixedDates path was taken, not resource-leveling — future session should
+  NOT re-open that choice**, it's settled.
+- **New scope, not in the original gap list**: a "4D schedule diff" — grade an imported P6/MSP
+  schedule's per-phase/trade durations against OUR labor-rate/quantity-derived estimate, surfacing
+  where a human plan is unrealistic ("correcting theirs"). Reuses `foreign_schedule.js` readers +
+  `materializeDefault`'s existing per-phase labor math; needs only coarse activity→phase/trade name
+  matching (reusing `matchRule`/`matchNameOverride`), NOT full per-element binding — cheaper than
+  the original Gap 2 scope. **DONE** — PR #1161 (merged), `viewer/schedule_diff.js`, witnessed 11/11
+  on real Hospital data; found a real 13.7x-optimistic MEP Rough-in estimate in the test P6 plan.
+- Real P6/MSP fixture search: no directly-downloadable sample found in the obvious open-source XER
+  parser repos (`HassanEmam/PyP6Xer`, `fdigeron/xertools` — both reference a `sample.xer` in test
+  code but don't commit it), nor via the leads chased (pmproguide.com, project.pm — both 521/500'd).
+  Still `⛔ BLOCKED` — genuinely open, not urgent (P6 lane is POC/later per the priority ruling above).
+
+## Session closed — 2026-08-03, end of day. Everything above is DONE and merged/auto-merging
+(PRs #1158–#1162, all verified via witness, all non-regressive). **This file's mission is complete**
+for the scope it was opened to spec. The NEXT session's mission (auto-4D "as perfect as can be") is
+handed off to a fresh, focused file — see `prompts/4D_SCHEDULE_PERFECTION.md`. Do not keep extending
+this file for that work; it would just re-fragment the same "one topic, one file" mistake this
+project's own housekeeping rule exists to prevent. This file stays as the historical record of the
+CPM/float gap investigation + phase/element-level fixes; link back to it, don't duplicate its content.
+
 ## Boundary, restated (do not drift from this)
 `4D_CAPTURE_AND_FALLBACK.md:359`'s existing rule stands: **capture and replay CPM, never recompute
 float** for a CAPTURED programme (P6/MSP/native-IFC) — `computeCpm` on a captured schedule should
