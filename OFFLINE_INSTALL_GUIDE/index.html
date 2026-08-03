@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+        <meta name="description" content="How to install BIM OOTB and Kernel-ERP so they keep working with the network fully disconnected — what's proven, what to caveat, step by step.">
       
       
         <meta name="author" content="Redhuan D. Oon">
       
       
       
-        <link rel="prev" href="../ModellerKernelFold/">
+        <link rel="prev" href="../USER_GUIDE/">
       
       
-        <link rel="next" href="../EnterpriseAuthentication/">
+        <link rel="next" href="../WhatsNew/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Construction Economy / ERP Wave - BIM Intent Compiler</title>
+        <title>🔒 Fully Offline / Air-Gapped Install - BIM Intent Compiler</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#the-construction-economy-is-about-to-get-hit-by-an-erp-expert" class="md-skip">
+        <a href="#fully-offline-air-gapped-install" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Construction Economy / ERP Wave
+              🔒 Fully Offline / Air-Gapped Install
             
           </span>
         </div>
@@ -242,10 +242,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href=".." class="md-tabs__link">
           
   
@@ -308,13 +310,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../BIMERPPaper/" class="md-tabs__link">
           
   
   
@@ -377,6 +377,8 @@
       
   
   
+    
+  
   
   
     
@@ -410,16 +412,19 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -441,13 +446,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -492,10 +497,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../OFFLINE_INSTALL_GUIDE/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔒 Fully Offline / Air-Gapped Install
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -511,6 +543,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-offline-actually-means-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What "offline" actually means here
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bim-viewer-proven-offline-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BIM Viewer — proven offline behaviour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kernel-erp-proven-offline-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kernel-ERP — proven offline behaviour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-privacy-whats-actually-verified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security &amp; privacy — what's actually verified
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-checklist-do-this-while-still-online" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup checklist — do this while still online
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gaps-tracked-not-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps (tracked, not hidden)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1473,10 +1602,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1500,22 +1627,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -1533,7 +1657,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1548,37 +1672,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Construction Economy / ERP Wave
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
         
   
   
@@ -1594,147 +1691,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-the-problem-nobody-has-solved" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. The Problem Nobody Has Solved
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-the-insight-a-building-is-a-manufactured-product" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. The Insight: A Building Is a Manufactured Product
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-what-the-compiler-does" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. What the Compiler Does
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-how-we-know-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. How We Know It Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-bim-cobol-a-domain-language-for-construction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. BIM COBOL: A Domain Language for Construction
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-the-bim-designer-compilation-as-user-interface" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. The BIM Designer: Compilation as User Interface
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-multi-user-back-office-and-erp-reporting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Multi-User Back Office and ERP Reporting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-standards-compliance-and-inter-discipline-coordination" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Standards, Compliance, and Inter-Discipline Coordination
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-one-year-of-development-honest-accounting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. One Year of Development: Honest Accounting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#10-roadmap-from-proof-to-platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Roadmap: From Proof to Platform
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#appendix-reference-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Appendix: Reference Documentation
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1970,10 +1926,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-problem-nobody-has-solved" class="md-nav__link">
+  <a href="#what-offline-actually-means-here" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The Problem Nobody Has Solved
+        What "offline" actually means here
       
     </span>
   </a>
@@ -1981,10 +1937,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-the-insight-a-building-is-a-manufactured-product" class="md-nav__link">
+  <a href="#bim-viewer-proven-offline-behaviour" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. The Insight: A Building Is a Manufactured Product
+        BIM Viewer — proven offline behaviour
       
     </span>
   </a>
@@ -1992,10 +1948,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-what-the-compiler-does" class="md-nav__link">
+  <a href="#kernel-erp-proven-offline-behaviour" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. What the Compiler Does
+        Kernel-ERP — proven offline behaviour
       
     </span>
   </a>
@@ -2003,10 +1959,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-how-we-know-it-works" class="md-nav__link">
+  <a href="#security-privacy-whats-actually-verified" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. How We Know It Works
+        Security &amp; privacy — what's actually verified
       
     </span>
   </a>
@@ -2014,10 +1970,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-bim-cobol-a-domain-language-for-construction" class="md-nav__link">
+  <a href="#setup-checklist-do-this-while-still-online" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. BIM COBOL: A Domain Language for Construction
+        Setup checklist — do this while still online
       
     </span>
   </a>
@@ -2025,10 +1981,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-the-bim-designer-compilation-as-user-interface" class="md-nav__link">
+  <a href="#known-gaps-tracked-not-hidden" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. The BIM Designer: Compilation as User Interface
+        Known gaps (tracked, not hidden)
       
     </span>
   </a>
@@ -2036,54 +1992,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-multi-user-back-office-and-erp-reporting" class="md-nav__link">
+  <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Multi-User Back Office and ERP Reporting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-standards-compliance-and-inter-discipline-coordination" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Standards, Compliance, and Inter-Discipline Coordination
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-one-year-of-development-honest-accounting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. One Year of Development: Honest Accounting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#10-roadmap-from-proof-to-platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Roadmap: From Proof to Platform
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#appendix-reference-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Appendix: Reference Documentation
+        See also
       
     </span>
   </a>
@@ -2110,446 +2022,185 @@
   
 
 
-<h1 id="the-construction-economy-is-about-to-get-hit-by-an-erp-expert">The Construction Economy Is About To Get Hit By an ERP Expert<a class="headerlink" href="#the-construction-economy-is-about-to-get-hit-by-an-erp-expert" title="Permanent link">&para;</a></h1>
+<h1 id="fully-offline-air-gapped-install">Fully Offline / Air-Gapped Install<a class="headerlink" href="#fully-offline-air-gapped-install" title="Permanent link">&para;</a></h1>
 <p><em><a href="../USER_GUIDE/">← Back to the <strong>User Guide</strong></a> · <a href="../">Home</a></em></p>
-<blockquote>
-<p><strong>ERP architecture companion:</strong> <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> — the one-page legacy-vs-WASM-event-source comparison.</p>
-</blockquote>
-<div class="bim-banner">
-<p><b>Academic paper — applying 30 years of ERP to construction.</b> What Autodesk and Primavera should have done together, from the architect of ADempiere and iDempiere.</p>
+<p>You can install both the <strong>BIM Viewer</strong> and <strong>Kernel-ERP</strong> once, then cut the network entirely — no
+GitHub, no OCI, no CDN — and keep working. This page states exactly what that guarantees, what it does
+not, and the steps to set it up correctly. Every claim below cites the code or a witness log; nothing
+here is aspirational.</p>
+<div class="admonition warning">
+<p class="admonition-title">The one thing that trips people up</p>
+<p><strong>A fresh, cold, zero-network visit to the site root will fail.</strong> The landing page ("the Hub") has no
+service worker of its own yet. Offline only works once you have opened a specific app — the Viewer or
+the ERP — at least once while online. <strong>Bookmark the app URL directly</strong> (see §Setup below), not the
+front door, and you're covered.</p>
 </div>
-<p><em>What Autodesk and Primavera should have done together, but i can't wait.</em></p>
-<p><strong>Redhuan D. Oon</strong>
-ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | BIM5D (2025)</p>
-<p>red1org@gmail.com | <a href="https://www.linkedin.com/in/red1oon/">LinkedIn</a></p>
-<p><strong>Open Source Repositories:</strong></p>
+<h2 id="what-offline-actually-means-here">What "offline" actually means here<a class="headerlink" href="#what-offline-actually-means-here" title="Permanent link">&para;</a></h2>
+<p>Three separate layers, each independently offline-capable:</p>
 <table>
 <thead>
 <tr>
-<th>Repository</th>
-<th>What's There</th>
+<th>Layer</th>
+<th>What it is</th>
+<th>Network needed</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="https://github.com/red1oon/BIMCompiler">BIMCompiler</a></td>
-<td>The compiler, BIM COBOL verbs, BIM Designer, Back Office — this paper's subject</td>
+<td><strong>Browser PWA install</strong></td>
+<td>"Add to Home Screen" on <code>red1oon.github.io/bim-ootb</code></td>
+<td>Once, to install + first-open each building/tenant</td>
 </tr>
 <tr>
-<td><a href="https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation">Federation</a></td>
-<td>FederatedModel powering IFC as a spatial model inside Bonsai/Blender</td>
+<td><strong>Self-host (DIY)</strong></td>
+<td>Your own machine serves the same app from a local folder</td>
+<td>Once, to download the ZIP — then never again</td>
 </tr>
 <tr>
-<td><a href="https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation/pdf_terrain">Terrain Topology</a></td>
-<td>Terrain mesh mapper for survey data, contour generation, cut-and-fill</td>
-</tr>
-<tr>
-<td><a href="https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation/river">River IoT</a></td>
-<td>IoT sensor framework for environmental and infrastructure monitoring</td>
+<td><strong>Air-gapped</strong></td>
+<td>Either of the above, with the network physically cut afterward</td>
+<td>Same as above — this page is about doing that safely</td>
 </tr>
 </tbody>
 </table>
-<p>March 2026</p>
-<hr />
-<h2 id="1-the-problem-nobody-has-solved">1. The Problem Nobody Has Solved<a class="headerlink" href="#1-the-problem-nobody-has-solved" title="Permanent link">&para;</a></h2>
-<p>Construction is the world's largest industry that still cannot answer a simple question deterministically: <em>given this building design, what exactly do I need to buy, where does each piece go, and can I prove it?</em></p>
-<p>Design tools (Revit, ArchiCAD, Bonsai) produce geometry. ERP systems (SAP, Oracle, iDempiere) manage procurement. Between them sits a manual, error-prone gap where quantity surveyors extract Bills of Materials from drawings by hand. This gap is estimated to cost the industry billions annually in rework, over-ordering, and undetected non-compliance.</p>
-<p>The gap persists because design software treats buildings as geometry problems, while ERP treats products as data problems. No widely-adopted open-source tool has built the bridge — a deterministic compiler that reads one and writes the other.</p>
-<p>This paper describes a working system that does exactly that.</p>
-<h2 id="2-the-insight-a-building-is-a-manufactured-product">2. The Insight: A Building Is a Manufactured Product<a class="headerlink" href="#2-the-insight-a-building-is-a-manufactured-product" title="Permanent link">&para;</a></h2>
-<p>In 2006, we built ADempiere's manufacturing BOM module. In 2010, we rebuilt it for iDempiere. After two decades of watching M_Product, M_BOM, and C_Order handle everything from circuit boards to furniture assemblies, the realisation was unavoidable:</p>
-<p><strong>A building is just a very large manufactured product with spatial coordinates.</strong></p>
-<p>Every wall panel is an M_Product. Every floor plan is an M_BOM (assembly recipe). Every construction project is a C_Order. The only thing manufacturing MRP lacks is the <em>where</em> — the (x, y, z) coordinates that turn a flat bill of materials into a three-dimensional building.</p>
-<p>We call this <strong>Spatial MRP</strong>: Material Requirements Planning extended with tack offsets — parent-relative coordinates (dx, dy, dz) on each BOM line that tell the compiler exactly where each child element sits relative to its parent.</p>
-<p>This is not a metaphor. The data model is structurally identical to iDempiere's manufacturing module, extended with three integer columns per BOM line (see <code>docs/DATA_MODEL.md</code>).</p>
-<h2 id="3-what-the-compiler-does">3. What the Compiler Does<a class="headerlink" href="#3-what-the-compiler-does" title="Permanent link">&para;</a></h2>
-<p>The BIM Intent Compiler reads an IFC building model (the international standard for building data) and produces a factorised Bill of Materials mapped to ERP procurement tables — deterministically, reproducibly, and with mathematical proof at every step.</p>
-<p><strong>Input:</strong> An IFC file. The largest tested model contains 48,428 elements across 8 engineering disciplines — architecture, structural, fire protection, HVAC, electrical, curtain wall, sprinklers, and LPG (see <code>docs/TerminalAnalysis.md</code>).</p>
-<p><strong>Output:</strong> A 700-line BOM that expands back to those 48,428 placements. A 73:1 compression ratio. Each line is a recipe (product x quantity x position formula), not a placed instance. The compiler <em>expands</em> recipes into placements at compile time — the same operation an ERP system performs when it explodes a manufacturing BOM into work orders.</p>
-<p><strong>Pipeline:</strong> Nine stages — validate metadata, parse DSL, compile geometry, apply templates, write output, execute domain verbs, compute digest, verify geometry, prove placement (see <code>docs/SourceCodeGuide.md</code> §Pipeline).</p>
-<p><strong>The Prime Rule:</strong> <em>Extract or compile only.</em> Every coordinate in the output traces to either an extracted IFC position (via IfcOpenShell) or a computed tack offset from BOM formulas. Nothing is invented. This is the compiler's most important property, and it is enforced by six verification gates (see §4).</p>
-<h2 id="4-how-we-know-it-works">4. How We Know It Works<a class="headerlink" href="#4-how-we-know-it-works" title="Permanent link">&para;</a></h2>
-<p>Claims without proof are marketing. This system is built on proof.</p>
-<p><strong>Six verification gates</strong> run on every compilation:</p>
-<table>
-<thead>
-<tr>
-<th>Gate</th>
-<th>What It Checks</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>G1-COUNT</td>
-<td>Element count in output matches BOM expansion</td>
-</tr>
-<tr>
-<td>G2-VOLUME</td>
-<td>Aggregate volume within tolerance</td>
-</tr>
-<tr>
-<td>G3-DIGEST</td>
-<td>SHA256 spatial fingerprint is reproducible</td>
-</tr>
-<tr>
-<td>G4-TAMPER</td>
-<td>No hardcoded coordinates, no weakened tests</td>
-</tr>
-<tr>
-<td>G5-PROVENANCE</td>
-<td>Every output element traces to a source</td>
-</tr>
-<tr>
-<td>G6-ISOLATION</td>
-<td>No cross-contamination between buildings</td>
-</tr>
-</tbody>
-</table>
-<p><strong>196 witness assertions</strong> — machine-checkable claims, each running as a JUnit test. Example: <em>"W-ROUTE-SP-1: sprinkler spacing &gt;= 3000mm in TE storey 2."</em> A failing witness blocks the compilation gate. These are not unit tests in the conventional sense — they are executable specifications that prove construction compliance (see <code>docs/TestArchitecture.md</code>).</p>
-<p><strong>A tamper seal</strong> — SHA256 fingerprints of 68 critical files. If a developer weakens a test to make it pass, the seal breaks, requiring a re-seal ceremony with full git diff review. This prevents the most insidious form of regression: tests that evolve to match broken code.</p>
-<p><strong>Rosetta Stone buildings</strong> — real IFC models compiled as reproducible benchmarks:</p>
-<table>
-<thead>
-<tr>
-<th>Building</th>
-<th>Checks Passing</th>
-<th>Domain</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Sample House (SH)</td>
-<td>9/10</td>
-<td>Residential</td>
-</tr>
-<tr>
-<td>Duplex (DX)</td>
-<td>7/10</td>
-<td>Multi-unit residential</td>
-</tr>
-<tr>
-<td>Terminal (TE)</td>
-<td>8/10</td>
-<td>Commercial (airport)</td>
-</tr>
-<tr>
-<td>Bridge (BR)</td>
-<td>10/10</td>
-<td>Infrastructure</td>
-</tr>
-<tr>
-<td>Road (RD)</td>
-<td>4/4</td>
-<td>Infrastructure</td>
-</tr>
-<tr>
-<td>Rail (RL)</td>
-<td>4/4</td>
-<td>Infrastructure</td>
-</tr>
-</tbody>
-</table>
-<p>Element counts: see <a href="https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md">PROGRESS.md</a>.</p>
-<p><em>Checks = 6 gates (G1-G6) plus gate-specific sub-checks (e.g. G5-PROVENANCE has 7 internal checks). A building with 6/6 gates passing may still have sub-check debt. See <code>docs/TestArchitecture.md</code> for per-gate breakdown.</em></p>
-<p>These numbers are not cherry-picked. DX scores 7/10 because the MIRROR verb (for mirrored duplex halves) is incomplete. TE's G2-VOLUME tolerance is 13.7%, not zero, because CLUSTER verb offset tables use +/-10% tolerance for semi-regular grids. We publish the failures alongside the successes (see <code>docs/PROGRESS.md</code>).</p>
-<h2 id="5-bim-cobol-a-domain-language-for-construction">5. BIM COBOL: A Domain Language for Construction<a class="headerlink" href="#5-bim-cobol-a-domain-language-for-construction" title="Permanent link">&para;</a></h2>
-<p>Every building mutation passes through a named, auditable verb. We call this <strong>BIM COBOL</strong> — not because it resembles COBOL syntax, but because it serves the same purpose: a domain-expert-readable language where a fire engineer can read <code>ROUTE SPRINKLERS SPACING 3000mm</code> and verify compliance without reading Java.</p>
-<p>77 verbs are implemented. The five that matter most:</p>
-<table>
-<thead>
-<tr>
-<th>Verb</th>
-<th>What It Does</th>
-<th>Coverage</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>TILE</td>
-<td>Lays a 2D grid (floor tiles, ceiling panels, roof sheets)</td>
-<td>74.4% of Terminal's 48K elements</td>
-</tr>
-<tr>
-<td>ROUTE</td>
-<td>Runs MEP piping/ducting along a path</td>
-<td>Sprinklers, drainage, HVAC</td>
-</tr>
-<tr>
-<td>CLUSTER</td>
-<td>Groups semi-regular elements (tolerance-based)</td>
-<td>Dominant in infrastructure</td>
-</tr>
-<tr>
-<td>FRAME</td>
-<td>Places structural members with LBD alignment</td>
-<td>Columns, beams, bracing</td>
-</tr>
-<tr>
-<td>ARRAY</td>
-<td>Lays a 1D linear sequence</td>
-<td>Fence posts, bollards, sleepers</td>
-</tr>
-</tbody>
-</table>
-<p>Each verb produces a typed <code>VerbResult</code> — success/failure, witness proof, and payload. No anonymous SQL. No silent geometry mutations. Full audit trail via W_Verb_Node, iDempiere's production order pattern (see <code>docs/BIM_COBOL.md</code>).</p>
-<h2 id="6-the-bim-designer-compilation-as-user-interface">6. The BIM Designer: Compilation as User Interface<a class="headerlink" href="#6-the-bim-designer-compilation-as-user-interface" title="Permanent link">&para;</a></h2>
-<p>Most BIM tools let users draw geometry directly. This system does the opposite: the user chooses parameters, and the compiler builds.</p>
-<p><strong>Architecture:</strong> A TCP server (Java, port 9876) serves a Blender addon (Python) via ndjson protocol. The Blender side is deliberately thin — it renders what the compiler produces. All logic lives in Java. All data lives in SQLite. This is the "Java-smart, Python-dumb" principle (see <code>docs/BlenderBridge.md</code>).</p>
-<p><strong>What works today (408/414 tests passing, 42 test classes):</strong></p>
+<p>The self-host path is <code>common/about_diy.js</code> → downloads
+<code>github.com/red1oon/bim-ootb/archive/refs/heads/main.zip</code>, unzips to <code>~/bim-ootb</code>, and runs
+<code>python3 -m http.server 8080</code>. After that it is a plain static file server — no external calls of its
+own. Full walkthrough: <strong><a href="../SYSTEMS_INSTALLER_GUIDE/">Self-Host (DIY installer)</a></strong>.</p>
+<h2 id="bim-viewer-proven-offline-behaviour">BIM Viewer — proven offline behaviour<a class="headerlink" href="#bim-viewer-proven-offline-behaviour" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Snap-to-room placement</strong> — user selects a product from the catalog, compiler validates it fits (dimensions, clearance, discipline rules) and places it at the correct tack offset</li>
-<li><strong>Assembly builder</strong> — layer-by-layer wall/roof/floor composition with thermal U-value calculation per BS EN ISO 6946. Swap a layer, and the parent AABB and U-value recalculate automatically (see <code>docs/ASSEMBLY_BUILDER_SRS.md</code>)</li>
-<li><strong>Variant save/recall</strong> — every design state is a C_Order snapshot in output.db (compile DB). Compare variants side-by-side. Undo via changelog replay. Save persists to .blend file</li>
-<li><strong>Infrastructure terrain snap</strong> — four modes (ON_SURFACE, ABOVE, BELOW, PIER) on real survey data (689 points, 294m x 229m, 20m elevation band). Cut-and-fill volumetrics with grading strategy. Alignment model for road/rail curvature (see <code>docs/INFRA_DESIGNER_SRS.md</code>)</li>
-<li><strong>Product catalog</strong> with deterministic similarity ranking — no AI, no embeddings, just feature vectors over known attributes</li>
-<li><strong>Jurisdiction-scoped validation</strong> — rules per building code (currently MY/UBBL, 30 rules), enforced at placement time via AD_Val_Rule, iDempiere's validation rule pattern</li>
+<li>The Viewer and the ERP each ship their own service worker (<code>viewer/sw.js</code>, <code>erp/sw.js</code>) with their own
+  version and precache list — 109 assets for the Viewer (all JS modules, entry HTML, the web manifest),
+  split into an auto-cached "shell" (THREE.js, sql.js/wasm, ~1.5 MB) and larger libraries fetched on
+  first use (web-ifc, xlsx — a few MB each, cached after that).</li>
+<li>Fetch strategy: pages/local scripts are network-first (fall back to cache when offline); libraries,
+  wasm, images, and fonts are cache-first. <code>.db</code> files are handled separately, below.</li>
+<li>An explicit <strong>"make available offline"</strong> control force-downloads the full asset shell (~10 MB) in one
+  shot, and the browser's own "Install app" prompt adds it to your home screen / app list.</li>
+<li>Offline IFC <strong>import</strong> works too — the WASM IFC parser used to require a CDN fetch; it is now vendored
+  locally and covered by its own offline test.</li>
 </ul>
-<p><strong>What's still batch-mode:</strong> The Blender integration currently requires a full recompile after each edit. Real-time incremental update (G-8 on the roadmap) is architecturally prepared — file watchers and scope detectors exist — but the pipeline does not yet support partial-stage entry. This is a significant gap between the current prototype and a production-grade interactive editor.</p>
-<h2 id="7-multi-user-back-office-and-erp-reporting">7. Multi-User Back Office and ERP Reporting<a class="headerlink" href="#7-multi-user-back-office-and-erp-reporting" title="Permanent link">&para;</a></h2>
-<p>Construction projects have many stakeholders reading the same data differently. A project manager wants a Gantt chart. A cost consultant wants a 5D breakdown. A sustainability officer wants embodied carbon. A facilities manager wants a maintenance schedule. An auditor wants a change log.</p>
-<p>The Back Office module (BIMBackOffice, ~3,000 LOC Java, separate HTTP server on port 9877) serves all of them from the same compiled data:</p>
-<p><strong>Session management:</strong> Token-based (UUID), 30-minute timeout, per-database write locks (ReentrantLock), SQLite WAL mode for concurrent reads. <code>whoIsEditing()</code> detects when two users target the same building — conflict detection, not resolution. This is single-JVM, single-server. No distributed locking. No clustering. Honest about the scale it handles today.</p>
-<p><strong>Report engine (4D-7D), each a DAO reading the same BOM data:</strong></p>
+<p><strong>Building data (<code>.db</code> files) — read this carefully:</strong></p>
+<ul>
+<li>Building databases are <strong>not</strong> in the installed app — only 2 sample buildings ship in the repo; the
+  full library lives on object storage. The first time you open a given building, the app fetches it and
+  caches the raw bytes in IndexedDB, keyed by URL. Every open after that — including fully offline — is
+  served from that cache (proven: a witnessed offline re-open of a 14.3 MB building rendered its full real
+  geometry, zero network).
+  <strong>Practical consequence: to use a building air-gapped, you must open it once while still online.</strong></li>
+<li>That cache holds at most 80 buildings on a least-recently-used basis. If you cache more than that while
+  online, the oldest ones get evicted and will need re-fetching next time you have network.</li>
+<li>Small SQL "patch" fixes for a building fetch separately and are skipped silently if you're offline —
+  you still get a working building, just without that patch applied yet.</li>
+</ul>
+<h2 id="kernel-erp-proven-offline-behaviour">Kernel-ERP — proven offline behaviour<a class="headerlink" href="#kernel-erp-proven-offline-behaviour" title="Permanent link">&para;</a></h2>
+<p>The ERP is architected offline-first, not offline-patched on afterward: state is a fold over a local,
+signed, append-only log of operations, and <strong>"offline availability… [is a] structural consequence of the
+log model, not an optimisation."</strong> Concretely: a sale, purchase, or any other transaction is committed
+locally in one step (0 ms), postings and BOM effects apply immediately, and nothing needs to reach a
+server to be real on your machine.</p>
+<ul>
+<li><strong>What "durable" means here:</strong> the app tracks which of your operations have been relayed to a peer vs.
+  are still only local ("in-flight"), and the honesty rule is that an in-flight op is <strong>never shown as
+  safe</strong> — the UI amber/reds out instead of lying. This is a promise about not misreporting risk, not a
+  promise that local-only data can never be lost (see the persistence note below).</li>
+<li><strong>Reference/seed data</strong> (the Application Dictionary + demo datasets) ships as an ordinary ~27 MB file
+  fetched once at first load and cached into IndexedDB — an ordinary git blob, not LFS, so it survives the
+  self-host ZIP path intact. A separate zero-seed path (<code>genesis.html</code>) can also birth a fresh tenant
+  entirely locally, from a built-in default chart of accounts, with no seed file at all.</li>
+<li><strong>Persistence mechanism:</strong> the ERP runs SQLite in-memory (via sql.js/WASM, bundled locally — the one CDN
+  fallback for this library only fires if the local copy fails to load, which it won't in an air-gapped
+  install) and snapshots that database into IndexedDB. Your live business data (<code>glassbowl_kernel_ops</code>) is
+  appended to, never overwritten. The app also asks the browser for persistent storage so this survives
+  routine cache clears.</li>
+<li><strong>No telemetry of any kind</strong> — no analytics, no crash beacon (the code comments explicitly say
+  send-on-error was left out on purpose), no external calls in the transaction path. A dedicated offline
+  witness confirms zero external network activity and zero page errors running the ERP fully offline.</li>
+<li><strong>Sync is opt-in and inert by default</strong> — the relay-to-a-peer feature only activates behind an explicit
+  URL flag, and even when it does, a failed relay never blocks or breaks a local commit.</li>
+</ul>
+<p><strong>Honest limits:</strong> live rule editing, cross-tenant schema migration for offline clients, and the full
+document-action suite are specified but not yet fully shipped — see
+<strong><a href="../DistributedERP/">Distributed ERP</a></strong> for the complete, un-sugarcoated scope. Peer-sync itself is a
+separate, opt-in feature and unrelated to whether the app works offline (it does).</p>
+<h2 id="security-privacy-whats-actually-verified">Security &amp; privacy — what's actually verified<a class="headerlink" href="#security-privacy-whats-actually-verified" title="Permanent link">&para;</a></h2>
+<p>There is no AI or LLM anywhere in either app, no analytics, and no telemetry — confirmed by grep across
+the shipped code, not just asserted. See the full guarantee: <strong><a href="../EnterpriseAuthentication/">Enterprise Authentication (security)</a></strong>.
+Two honest exceptions worth knowing, neither of which touches <em>your</em> data:</p>
+<ul>
+<li>The landing page loads a Google Fonts stylesheet for decorative type — a real third-party network call,
+  though it carries no user data and simply falls back to a system font if blocked.</li>
+<li>Two secondary, non-core pages (the clash report and schedule editor) pull a couple of small charting
+  libraries from a CDN. The main Viewer and ERP surfaces do not.</li>
+</ul>
+<p>For a true air-gapped install where even the font request is unwanted, block or remove the
+<code>fonts.googleapis.com</code> reference in the landing page — it's decorative only and nothing else depends on it.</p>
+<h2 id="setup-checklist-do-this-while-still-online">Setup checklist — do this while still online<a class="headerlink" href="#setup-checklist-do-this-while-still-online" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Install:</strong> either open <code>red1oon.github.io/bim-ootb</code> and use "Install app," or run the DIY
+   self-host installer (<strong><a href="../SYSTEMS_INSTALLER_GUIDE/">guide</a></strong>) to get your own local copy.</li>
+<li><strong>Open every building you'll need</strong>, once each, so its <code>.db</code> lands in the permanent offline cache.
+   For the Viewer, also trigger <strong>"make available offline"</strong> to force-cache the full app shell.</li>
+<li><strong>Open the ERP</strong> (<code>erp/erp.html</code> or <code>idempiere.html</code>) once, so the Application Dictionary / seed data
+   downloads and caches.</li>
+<li><strong>Bookmark the app pages directly</strong> — the Viewer and ERP URLs, not the front-door landing page (see
+   the warning at the top). These pages carry their own offline logic and resume where you left off.</li>
+<li><strong>Disconnect and verify</strong> before you rely on it — turn on airplane mode (or use DevTools' offline
+   throttle) and confirm each bookmarked page still opens and your buildings/ledger are there.</li>
+</ol>
+<h2 id="known-gaps-tracked-not-hidden">Known gaps (tracked, not hidden)<a class="headerlink" href="#known-gaps-tracked-not-hidden" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Dimension</th>
-<th>What It Reports</th>
-<th>Source Pattern</th>
+<th>Gap</th>
+<th>Effect</th>
+<th>Owner doc</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>4D Schedule</td>
-<td>Construction sequence, Gantt tasks, labour-days by trade</td>
-<td>ScheduleDAO — phase-sequence grouping (not CPM/PERT)</td>
+<td>No service worker at the site root</td>
+<td>Cold offline start at the front door fails; direct app bookmarks work</td>
+<td><code>prompts/OFFLINE_HUB_SW_SCOPE_GAP.md</code></td>
 </tr>
 <tr>
-<td>5D Cost</td>
-<td>3-component breakdown: material + labour + equipment</td>
-<td>CostDAO — CIDB Malaysia 2024 rates</td>
+<td>80-entry building cache is LRU</td>
+<td>Heavy multi-building offline use can evict older ones</td>
+<td><code>scene.js</code> cache layer</td>
 </tr>
 <tr>
-<td>6D Sustainability</td>
-<td>Embodied carbon (kgCO2e/m2), material passport</td>
-<td>SustainabilityDAO — carbon map from component library</td>
+<td>SQL patches skip silently when offline</td>
+<td>You get correct base data, not yet the latest patch</td>
+<td><code>scene.js _applyPendingPatch</code></td>
 </tr>
 <tr>
-<td>7D Facility Mgmt</td>
-<td>Maintenance schedule, lifecycle cost, asset register</td>
-<td>FacilityMgmtDAO — COBie-compatible structure</td>
+<td>3 automated offline-mode tests are currently excluded from CI</td>
+<td>Behaviour is manually witnessed, not yet CI-gated</td>
+<td><code>GH_DEPLOY_ISSUES.md</code> Issue 4</td>
+</tr>
+<tr>
+<td>No offline-specific witness for the full <code>idempiere.html</code> surface</td>
+<td>The lighter ERP surface is witnessed offline; the full app isn't yet</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Portfolio and governance:</strong></p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Cross-project portfolio</strong> — scans all <code>*_BOM.db</code> files, aggregates cost, carbon, schedule, maintenance across buildings and infrastructure</li>
-<li><strong>Kanban board</strong> — workflow cards grouped by DocStatus (DR/IP/CO/AP), following iDempiere's document lifecycle (see <code>docs/DocAction_SRS.md</code>)</li>
-<li><strong>Balanced scorecard</strong> — 4 perspectives (Financial, Client, Process, Learning) x 3+ KPIs</li>
-<li><strong>Audit trail</strong> — ChangelogDAO logs every PLACE/DELETE/MOVE/RESIZE with old/new values, supports undo. Mirrors iDempiere's AD_ChangeLog</li>
+<li><strong><a href="../BIMUserGuide/">BIM Viewer Guide</a></strong> · <strong><a href="../ERPUserGuide/">Kernel-ERP User Guide</a></strong></li>
+<li><strong><a href="../SYSTEMS_INSTALLER_GUIDE/">Self-Host (DIY installer)</a></strong></li>
+<li><strong><a href="../EnterpriseAuthentication/">Enterprise Authentication (security)</a></strong></li>
+<li><strong><a href="../DistributedERP/">Distributed ERP</a></strong> — the full offline/sync architecture and its honest scope</li>
 </ul>
-<p><strong>ERP pattern fidelity:</strong> This is not a BIM tool pretending to be ERP. The data model <em>is</em> ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. W_Verb_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see <code>docs/DATA_MODEL.md</code> §1).</p>
-<p><strong>What's not here yet:</strong> Role-based access control (AD_Role). PDF/CSV export. Report execution queue (AD_Process). Multi-currency cost rates. COBie MVD schema validation. These are roadmap items — the ERP patterns they follow are well-understood from two decades of iDempiere, but the construction-specific implementation is not yet written.</p>
-<h2 id="8-standards-compliance-and-inter-discipline-coordination">8. Standards, Compliance, and Inter-Discipline Coordination<a class="headerlink" href="#8-standards-compliance-and-inter-discipline-coordination" title="Permanent link">&para;</a></h2>
-<p>Construction compliance is not optional. Buildings must meet fire codes, structural standards, accessibility requirements, and energy regulations — and these differ by jurisdiction.</p>
-<p><strong>How this system handles it:</strong></p>
-<ul>
-<li>
-<p><strong>Disciplines are metadata, not code branches.</strong> The same BOM walker processes all 8 disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG). What differs is the AD_Val_Rule set activated per discipline and jurisdiction. Adding a discipline means inserting rows, not writing code (see <code>docs/BOMBasedCompilation.md</code> §Disciplines).</p>
-</li>
-<li>
-<p><strong>Validation is three-tiered:</strong></p>
-</li>
-<li><strong>BomValidator</strong> — structural integrity (9 pre-commit checks: orphan lines, AABB envelope, tack non-negative, extraction reconciliation)</li>
-<li><strong>PlacementValidator</strong> — compliance thresholds (room minimum size, ceiling height, door width — scoped by jurisdiction)</li>
-<li>
-<p><strong>InferenceEngine</strong> — rule chaining with dependency cascades (if a parent rule fails, child rules are skipped, not falsely passed)</p>
-</li>
-<li>
-<p><strong>Jurisdiction scoping via AD_Val_Rule:</strong> Currently Malaysian UBBL (30 rules). The target is 200+ rules across 6 jurisdictions (SG, UK, AU, US, EU, HK). Each jurisdiction is a set of AD_Val_Rule rows with threshold parameters — not a code branch. The architecture is proven; the rule population is the work ahead.</p>
-</li>
-<li>
-<p><strong>IFC version bridging:</strong> A 4-tier alias cascade in ERP.db resolves IFC2x3's generic classes (IfcFlowTerminal) to IFC4's specific classes (IfcOutlet) — 84 alias rows covering 85% of MEP element names. New IFC types are added via INSERT into <code>ad_ifc_class_map</code> (46 rows), not code changes (see <code>docs/DISC_VALIDATION_DB_SRS.md</code>).</p>
-</li>
-<li>
-<p><strong>Calibration against real buildings:</strong> CalibrationDAO compares rule predictions (what the validator <em>thinks</em> should be placed) against actual engineer decisions extracted from the Terminal model (what <em>was</em> placed). This grounds the rules in professional practice, not just regulatory text (see <code>docs/CALIBRATION_SRS.md</code>).</p>
-</li>
-</ul>
-<h2 id="9-one-year-of-development-honest-accounting">9. One Year of Development: Honest Accounting<a class="headerlink" href="#9-one-year-of-development-honest-accounting" title="Permanent link">&para;</a></h2>
-<p>This system was built over approximately 40 working sessions spanning 12 months (2025-2026), producing roughly 20,000 lines of Java across 4 Maven modules, backed by 196 passing witness assertions and 280+ JUnit tests.</p>
-<p><strong>What made this pace possible:</strong></p>
-<p>The architecture — the recognition that IFC elements map structurally to ERP product lines — comes from 20 years of building and maintaining iDempiere's manufacturing BOM module. This is not a fresh insight arrived at by studying BIM; it is a pattern recognised by someone who has written M_BOM code for two decades and then looked at a building.</p>
-<p>Claude Code (Anthropic's AI coding assistant) served as pair-programming partner throughout, handling implementation mechanics — DAO boilerplate, test scaffolding, SQL migration scripts, documentation — while the author directed architecture, domain mapping, and verification strategy. The AI accelerated implementation roughly 3-5x but did not originate the domain architecture. An AI coding assistant without the ERP domain background would produce a geometry tool, not a Spatial MRP compiler.</p>
-<p><strong>What exists today:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>LOC</th>
-<th>Tests</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>DAGCompiler (11-stage pipeline)</td>
-<td>~5,000</td>
-<td>58 tests (G1-G6 gates)</td>
-<td>Production-grade for tested buildings</td>
-</tr>
-<tr>
-<td>BIM COBOL (verb engine)</td>
-<td>~3,000</td>
-<td>27 tests</td>
-<td>77 verbs, 202 witnesses</td>
-</tr>
-<tr>
-<td>IFCtoBOM (extraction pipeline)</td>
-<td>~3,000</td>
-<td>10 tests</td>
-<td>SH, DX migrated; TE transitioning</td>
-</tr>
-<tr>
-<td>BonsaiBIMDesigner (GUI server)</td>
-<td>~8,500</td>
-<td>408 tests (42 classes)</td>
-<td>Design mode functional</td>
-</tr>
-<tr>
-<td>BIMBackOffice (ERP reporting)</td>
-<td>~3,000</td>
-<td>14 tests</td>
-<td>Portfolio, 4D-7D, sessions</td>
-</tr>
-</tbody>
-</table>
-<p><strong>What does not exist yet:</strong></p>
-<ul>
-<li>No building above 50K elements has been tested (target: 500K)</li>
-<li>No production ERP write-back (iDempiere REST integration is Phase H)</li>
-<li>No role-based access control or multi-tenant deployment</li>
-<li>No real-time interactive editing (batch recompile only)</li>
-<li>No round-trip proof (compile → re-extract → compare)</li>
-<li>No certified COBie or regulatory submission output</li>
-<li>No multi-currency or internationalised cost model</li>
-<li>Incremental compilation is stubbed, not wired</li>
-<li>DX mirror verb is incomplete (7/10 gates)</li>
-</ul>
-<h2 id="10-roadmap-from-proof-to-platform">10. Roadmap: From Proof to Platform<a class="headerlink" href="#10-roadmap-from-proof-to-platform" title="Permanent link">&para;</a></h2>
-<p><strong>Near-term (in progress):</strong>
-- CP-1: TE per-element traceability (closes the 48K-element verification gap)
-- CP-2: DX MIRROR verb completion
-- G-8: BlenderBridge real-time snap (batch → interactive transition)</p>
-<p><strong>Medium-term (ERP maturity):</strong>
-- Phase BO-3..5: Report queue, PDF/CSV export, role-based access
-- Phase J: 6 jurisdiction codes, 200+ compliance rules, regulatory templates
-- Phase H: iDempiere REST integration — live ERP write-back of C_Order + C_OrderLine</p>
-<p><strong>Longer-term (platform):</strong>
-- Phase R: 500K-element stress testing, batch extraction of 50+ IFC models
-- Phase RE: Multi-format report engine (JSON/CSV/XLSX/IFC/iDempiere)
-- Phase D: Synthetic Rosetta Stone — round-trip compilation proof
-- Multi-user WebSocket, distributed sessions, clustered deployment</p>
-<p><strong>The competitive moat is data-driven extensibility.</strong> New IFC types, new validation rules, new jurisdictions, new disciplines, new verb patterns — all added via INSERT, not code. The authority tables (ad_ifc_class_map, AD_Val_Rule, verb formulas) replace hard-coded enumerations with database records. This is the iDempiere philosophy applied to construction: the application dictionary <em>is</em> the application.</p>
-<hr />
-<h2 id="appendix-reference-documentation">Appendix: Reference Documentation<a class="headerlink" href="#appendix-reference-documentation" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Document</th>
-<th>Contents</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>docs/BOMBasedCompilation.md</code></td>
-<td>Master specification: tack convention, BOM hierarchy, discipline routing</td>
-</tr>
-<tr>
-<td><code>docs/TestArchitecture.md</code></td>
-<td>G1-G6 gates, tamper seal, traceability matrix, anti-drift policy</td>
-</tr>
-<tr>
-<td><code>docs/BIM_COBOL.md</code></td>
-<td>Verb grammar, VerbResult contract, compilation targets</td>
-</tr>
-<tr>
-<td><code>docs/DATA_MODEL.md</code></td>
-<td>Per-building schema, tack columns, world reconstruction formula</td>
-</tr>
-<tr>
-<td><code>docs/SourceCodeGuide.md</code></td>
-<td>Code navigation, entry points, module structure</td>
-</tr>
-<tr>
-<td><code>docs/BIM_Designer.md</code></td>
-<td>GUI architecture, compile-driven editing, generative path</td>
-</tr>
-<tr>
-<td><code>docs/ASSEMBLY_BUILDER_SRS.md</code></td>
-<td>Layer-by-layer TACK, U-value calculation, 17 witnesses</td>
-</tr>
-<tr>
-<td><code>docs/INFRA_DESIGNER_SRS.md</code></td>
-<td>Terrain snap, alignment model, cut-and-fill, 38 witnesses</td>
-</tr>
-<tr>
-<td><code>docs/MANIFESTO.md</code></td>
-<td>iDempiere mapping, C_Order model, ERP pattern fidelity</td>
-</tr>
-<tr>
-<td><code>docs/DocAction_SRS.md</code></td>
-<td>Document lifecycle (DR-&gt;IP-&gt;CO-&gt;AP), discipline routing</td>
-</tr>
-<tr>
-<td><code>docs/DISC_VALIDATION_DB_SRS.md</code></td>
-<td>Three-database split, alias cascade, IFC version bridging</td>
-</tr>
-<tr>
-<td><code>docs/CALIBRATION_SRS.md</code></td>
-<td>Rule prediction vs actual placement, ground truth metrics</td>
-</tr>
-<tr>
-<td><code>docs/TerminalAnalysis.md</code></td>
-<td>48K-element analysis, verb factorisation, discipline coverage</td>
-</tr>
-<tr>
-<td><code>docs/InfrastructureAnalysis.md</code></td>
-<td>Bridge/road/rail compilation, domain-agnostic proof</td>
-</tr>
-<tr>
-<td><code>docs/archive/CORE_SRS.md</code></td>
-<td>(Archived) Scale targets, report engine — superseded by ACTION_ROADMAP + StrategicIndustryPositioning</td>
-</tr>
-<tr>
-<td><code>docs/StrategicIndustryPositioning.md</code></td>
-<td>IFC scorecard (31/36), competitive analysis, 4 moats</td>
-</tr>
-<tr>
-<td><code>docs/ACTION_ROADMAP.md</code></td>
-<td>Phase gates G-1 through G-13, critical path items</td>
-</tr>
-<tr>
-<td><code>docs/TIER1_SRS.md</code></td>
-<td>4D-7D reporting, audit trail, 3D native</td>
-</tr>
-<tr>
-<td><code>PROGRESS.md</code></td>
-<td>Current session state, witness counts, pass rates</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<p><em>This paper describes working software, not a proposal. The source code, test results, and compilation databases are available for inspection. Claims are bounded by the evidence presented — where something is planned but not built, it is labelled as such.</em></p>
-<p><em>Development assisted by Claude Code (Anthropic). Domain architecture by the author.</em></p>
-<hr />
-<p>Copyright 2025-2026 Redhuan D. Oon. All rights reserved. This paper may be freely distributed for academic, research, and conference purposes with attribution. The software described herein is open source under GPL v2.</p>
-<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 
 
 
 
 
+
+  
+  
 
 
 
