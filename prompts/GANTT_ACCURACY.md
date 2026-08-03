@@ -19,35 +19,25 @@ below for the full spec/build record. The 2026-08-02 RESUME item that used to si
 do not re-read it as an open task. See §CPM_DUAL_ELEVATION and §SUPPORT_ORPHAN (end of file) for the
 11-shape-measured-floor follow-on research from 2026-08-03, also closed (parked, no PR, by design).
 
-## ▶ RESUME 2026-08-04+ — START HERE: "4D happens too fast" — no staggering WITHIN a phase/day
-**User, 2026-08-03, watching a real Terminal bake: the Architecture phase reads as essentially DONE
-on the very first visible day — no perceptible staggering.** User's own diagnosis, stated as a
-hypothesis to verify, not an instruction to build blind: *"I think it is the logic within a single
-phase is not delved into."* This is a GENERAL "most 4D is such been too fast" complaint, not a
-Terminal-only one — treat it as the standing next priority for this file's lane.
-
-**Real evidence already in hand, from the SAME Terminal bake, ground any fix in this — don't re-derive:**
-```
-§AUTHOR_MATERIALIZE schedule=SCH_AUTHORED mode=dated phases=5 leafTasks=5 assignments=48428 elements=48428
-§GANTT_SOURCE captured tasks=5 covered=48428 generated=0 total=48428 pct=100
-§CPE_WORK_SCHEDULE ops=48432 span=1767225599999..1785734079545 workInFirst10%OfCalendar=51.7%
-  (10.0% would be evenly spread — anything above it is the burst calendar pacing shows)
-```
-The entire 48,428-element Terminal schedule comes from just **5 leaf tasks** (the "AUTHOR" system,
-`§AUTHOR_*` tags — a DIFFERENT code path from `schedule_gate.js`'s `computeSchedule` used elsewhere
-in this file) and **51.7% of all work is dated within the first 10% of the calendar span** — a far
-more extreme burst than Hospital's 0.6% seen earlier in this file. Consistent with, but not yet PROOF
-of, "no staggering within a phase."
-
-**An investigate-only agent was dispatched same-session (2026-08-03) to trace the actual per-element
-date-assignment code inside the AUTHOR system and distinguish two different possible bugs — phase-level
-date-range too narrow, vs element-level clustering within a correctly-wide phase range — these need
-DIFFERENT fixes.** Check for its findings appended below this block (search `§AUTHOR` further down, or
-check for a newer dated section past this RESUME block) before re-investigating from scratch. If no
-findings are appended yet, the investigation may still be in flight or was lost — re-dispatch rather
-than guessing, using the same real-evidence discipline (file:line citations, actual date-range/variance
-numbers pulled from a real building, not inference from the log alone).
-**Do not fix blind. Spec first, per this project's standing rule.**
+## ▶ RESUME 2026-08-04+ — START HERE: build the phase-duration fix (root cause CONFIRMED 2026-08-03, NOT built)
+**User's "Architecture all done on day one" report is diagnosed — search `## 2026-08-03 —
+INVESTIGATION ONLY` below for the full evidence trail.** Verdict: user's own hypothesis ("no
+staggering within a phase") is WRONG — that logic exists, works, and is witnessed
+(`time_machine.js:3860-3951`, §STAGGER_SUPPORT_ORDER, PR #1133). **The real bug is phase-level, in a
+different file:** `viewer/schedule_author.js` `materializeDefault()` (lines 164-183, called from
+`schedule_editor_ui.js:503`/`:654` with a hardcoded `phaseDays:30`) gives every phase the SAME
+fixed-width calendar slot regardless of population. On Terminal, Superstructure is 72.4% of all
+48,428 elements (33,324 `IfcPlate` "Metal Deck" alone) AND scheduled first — same slot width as
+Finishes' 258 elements — so a huge share of the whole building lands in the first 10% of the
+calendar (`workInFirst10%OfCalendar=51.7%`, measured) even though within-phase staggering is
+working correctly. "Architecture" was misattributed — it's 3rd of 5 slots and the 2nd-smallest
+bucket; Superstructure's mass is what reads as "done."
+**Fix target: phase-window duration must be workload-proportional** (element count, or better,
+labor-days via the already-extracted `LABOR_RATES`/`getInstallSecs` productivity table) instead of
+the flat `phaseDays` constant. Do NOT touch `time_machine.js`'s within-phase distribution — it's
+correct and witnessed, not the defect. Spec the exact proportionality rule before building — this
+project's standing rule, and this file's own history (§ROOT CAUSE, §ELEMENT_CPM) is full of
+sessions that built before specifying and had to redo the measurement.
 
 ## ▶ (superseded 2026-08-02) earlier resume — the §ELEMENT_CPM ruling item
 **ONE open item, specced and de-risked, needing ONE user ruling before code.**
@@ -1178,3 +1168,112 @@ Branch `feat/element-cpm-elevation-dual-gate` (off `feat/z-stacking-oneshot`), p
 `audit_orphan_support.js` is the durable deliverable — it answers "what has no support at all" for any
 building, independently of any scheduler. The four env knobs are left in `computeSchedule` so shape 12,
 if it is ever justified, is a flag flip and not a re-derivation.
+
+## 2026-08-03 — INVESTIGATION ONLY: "Architecture phase all done on day one" (Terminal MaxQ bake) — user hypothesis WRONG on locus, RIGHT on effect. Real bug found, different file, different logic.
+
+**Task:** diagnose only (no code/PR changes) — user watched a Terminal MaxQ bake and saw the whole
+Architecture phase appear essentially done on the first visible day. User's own hypothesis to verify,
+not assume: *"the logic within a single phase is not delved into"* (i.e. per-element dates degenerate
+to the phase start). Grounded in the user's own real log:
+```
+§AUTHOR_MATERIALIZE schedule=SCH_AUTHORED mode=dated phases=5 leafTasks=5 assignments=48428 elements=48428
+§CPE_BUILDUP_SOURCE source=captured leafTasks=5 ... window=2025-12-31..2026-08-03
+§CPE_WORK_SCHEDULE ops=48432 span=1767225599999..1785734079545 workInFirst10%OfCalendar=51.7%
+```
+
+### §AUTHOR — where the 5 phases and 48,428 assignments come from
+`viewer/schedule_author.js` `materializeDefault()` (called with `{start:'2026-01-01', phaseDays:30}` from
+both call sites — `viewer/schedule_editor_ui.js:503` `doGenerate()` and `:654` the blank-model bootstrap):
+buckets every element into ONE of the (≤11) named phases via `matchRule`/`matchNameOverride`
+(`viewer/rates/sequence_rules.json` `SEQUENCE_RULES`/`NAME_OVERRIDES`, longest-substring `ifc_class`
+match, name-regex override checked first for curtain-wall glazing). It then lays the **phases** out as
+contiguous, **EQUAL-width, fixed `phaseDays`-wide** calendar slots ordered by ascending `sequence`
+(`schedule_author.js:172-183`):
+```js
+ordered.forEach(function (p) {
+  var s = blank ? null : _addDays(start, cursor * phaseDays);
+  var f = blank ? null : _addDays(start, (cursor + 1) * phaseDays);
+  cursor++;
+  ...
+  p.guids.forEach(function (g) { stmtTe.run([tid, g]); assignN++; });   // ALL of a phase's elements → ONE task
+```
+Every element in a phase maps to that ONE task row (`task_elements`), and that task carries exactly ONE
+`[schedule_start, schedule_finish]` window — the same width as every other phase's window, **with zero
+awareness of how many elements (or how much labor) are inside it.** This is the entire duration model;
+there is no other code path (`doGenerate` and the blank-model bootstrap are the only two callers, both
+hardcode `phaseDays:30`) and no proportional/workload-based alternative exists anywhere in the repo.
+
+### §PLAYBACK-STAGGER — within a phase, elements are NOT all given the same date (hypothesis WRONG here)
+`viewer/time_machine.js` `injectGantt`'s `_cap` overlay (lines 3860-3951) is the code that actually turns
+a task's `[w.s, w.e]` window into individual element reveal timestamps, and it explicitly does NOT
+collapse them onto the task's date — it sorts each phase's element bucket by `(base_z, seq, cz)` (a
+2026-08-02 fix, `§STAGGER_SUPPORT_ORDER`, PR #1133, replacing an earlier `(seq, cz)`-only sort from PR
+#882/#1078) and linearly distributes them across the window:
+```js
+// time_machine.js:3939-3942
+var _n = _bucket.length, _span = Math.max(1, w.e - w.s);
+_bucket.forEach(function(item, i) {
+  var s_i = w.s + Math.floor((i / _n) * _span);
+  var e_i = (i + 1 < _n) ? (w.s + Math.floor(((i + 1) / _n) * _span)) : w.e;
+```
+This is real, working, per-element distribution-within-phase logic — not a stub, not degenerate to the
+phase start. It has its own witness (`witness_stagger_support_order.js`, G-SSO-1..4) whose commit message
+records "6,240 → 0 within-task [carrier-before-carried] violations on real Hospital geometry." **The
+user's stated hypothesis — that within-phase per-element staggering is missing/degenerate — is factually
+wrong for the current `main` (verified `d4da218`, fetched+merged fresh before this investigation).**
+
+### Real Terminal numbers (queried directly off `buildings/Terminal_extracted.db`, not invented)
+`SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class` sums to exactly **48,428** — matching
+the log's `elements=48428` bit-for-bit, confirming this is the same population. Running the actual
+`matchRule`/`SEQUENCE_RULES` bucketing logic (replicated verbatim, not approximated) against those counts
+(all 33,324 `IfcPlate` are literally named `"Metal Deck:..."` — checked, none match the glazing name
+override):
+```
+Superstructure   35,061   72.4%   (33,324 IfcPlate "Metal Deck" + 705 IfcSlab + 442 IfcMember + 432 IfcBeam + 158 IfcColumn)
+MEP Rough-in      9,477   19.6%
+MEP Final         2,373    4.9%
+Architecture      1,259    2.6%   (486 IfcBuildingElementProxy + 333 IfcWall + 236 IfcWindow + 135 IfcDoor + ...)
+Finishes            258    0.5%
+Substructure          0    0%     (no IfcFooting/IfcReinforcingBar in this building at all)
+```
+Sequence numbers place these in calendar order **Superstructure(seq2) → MEP Rough-in(seq5) →
+Architecture(seq6-8) → MEP Final(seq9) → Finishes(seq10-11)** — i.e. 5 leaf tasks (matches the log's
+`phases=5`), with **Superstructure scheduled FIRST** (Substructure is empty, so Superstructure inherits
+the earliest slot) while **Architecture is 3rd of 5, and is the smallest bucket bar Finishes.**
+
+### The actual mechanism, and why it fully explains `workInFirst10%OfCalendar=51.7%`
+This is a **phase-level date-RANGE-sizing bug, not a within-phase element-clustering bug**: because
+`materializeDefault` gives every phase the same fixed `phaseDays` width regardless of population,
+Superstructure — 72.4% of the ENTIRE building — is compressed into the same-width slot as Finishes'
+258 elements, AND that slot is the earliest one on the calendar (lowest present `sequence`). Since
+`_cap`'s within-task stagger genuinely spreads Superstructure's 35,061 elements evenly (by real Z/seq
+order) across its own window, roughly the first HALF of that single window already contains close to
+half of Superstructure alone (~17.5k elements, ~36% of the whole building) — and because MEP Rough-in
+(19.6%, the 2nd earliest slot) contributes its own early tail on top, the cumulative population dated
+within the first 10% of the OVERALL calendar plausibly reaches the observed 51.7% without needing any
+element-level defect. (Exact live `phaseDays`/dates for this specific bake weren't recoverable — the
+authored schedule lives only in that session's IndexedDB cache, never persisted to the git-tracked
+`Terminal_extracted.db` — but the class-count skew and the phase-ordering are real, DB-verified, and
+independent of the exact width used.)
+
+### Why the user specifically named "Architecture," and the correction
+Architecture (2.6%, 3rd of 5 slots) is neither the largest bucket nor the earliest slot — the opposite
+of what "done on day one" would suggest if the defect were IN Architecture's own logic. The far more
+likely reading: **Superstructure's 33,324-element "Metal Deck" roof/deck IS the building's visual mass**
+(72% of all elements) and — being both largest AND scheduled first — appears essentially complete within
+the first sliver of the film. By the time Architecture's own (small, 1,259-element) window opens partway
+through, ~92% of the building (Superstructure + MEP Rough-in) is already visually placed, so the building
+*looks* finished long before "Architecture" starts, and Architecture's own small population then finishes
+fast in its own equally-narrow slot on top — reinforcing, not causing, the "all at once" impression the
+user attributed to Architecture specifically.
+
+### Verdict for a future fix
+**Partially correct, wrong locus.** The user's diagnosis of "no staggering" is wrong — that logic exists
+and is proven correct (`time_machine.js:3860-3951`, §STAGGER_SUPPORT_ORDER, witnessed). The REAL defect
+is in `schedule_author.js`'s `materializeDefault()` (`schedule_author.js:104,164-183`, called from
+`schedule_editor_ui.js:503` and `:654` with a hardcoded `phaseDays:30`): **phase calendar-window WIDTH is
+a flat constant, not proportional to the phase's element count (or labor-days, via the already-extracted
+`LABOR_RATES` productivity table).** A future fix should target phase-level duration allocation —
+e.g. width ∝ Σ(`getInstallSecs(cls)` or `LABOR_RATES` productivity) per phase, or at minimum ∝ element
+count — NOT the within-phase distribution algorithm in `time_machine.js`, which does not need touching.
+No code was changed for this investigation.
