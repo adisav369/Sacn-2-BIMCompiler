@@ -6849,3 +6849,288 @@ buys more seconds and therefore more frames. Hospital's extra staging load (818 
 mode, which Terminal's bake did not carry) is real but is the §3 item, not a model-size effect.
 **Say it plainly to a user: bake time tracks FILM LENGTH first and staging second — element count is
 nearly irrelevant.** Worth surfacing in the ETA line so nobody infers "big model = slow bake".
+
+## ✅ DONE (2026-08-02) — §PHOTO_SKYLINE_SHADOW_FRUSTUM: skyline silhouette buildings couldn't cast shadows
+**Bug report:** "the silhouette buildings in distance cannot cast shadows well now."
+
+**Root cause, confirmed with real measured numbers (not assumption) via a headless witness run
+against HHS_Office_Federated:** the shadow-camera orthographic frustum in `_enablePhotoShadows()`
+(`viewer/effects.js`) was sized to the main building's envelope ONLY (1x) — `envelope=68.17m` →
+`_env` (frustum half-width) `=69m` — while the distant skyline ring built in `_buildPhotoProps()`
+sits at `radius = envelope * 2.2 ≈ 150m` (the §PHOTO_SKYLINE_DENSER multiplier). All 36/36 skyline
+boxes measured at 139.5–160.4m from center, **entirely outside** `[-69, 69]` on X and/or Z — clipped
+from the shadow depth pass before any render, regardless of `castShadow` being set correctly
+elsewhere (confirmed the `castShadow`-ordering theory was NOT the cause — the reassert pass
+(`_reassertPhotoShadowCoverage`, keyed on `A.scene.children.length`) does correctly catch the
+skyline group's late `A.scene.add()` and sets `castShadow=true`; the frustum clip was the sole
+cause).
+
+**Regression check — NOT a later drift, broken since introduction:** `git log -S` on
+`_enablePhotoShadows` shows it was introduced in the SAME commit as the §PHOTO_SKYLINE_DENSER
+radius change (`57c0720`, PR #806, 2026-07-16) — the frustum was never sized to include the
+skyline ring at any point, not even at birth. The user's "now" describes current behavior, not a
+regression from a previously-working state.
+
+**Fix:** new shared `PHOTO_SKYLINE_RADIUS_MULT = 2.2` constant used by BOTH the skyline placement
+formula and the frustum sizing (previously two independent computations of the same intent — the
+exact "one moved without the other" failure mode this file's own git-log check was written to
+catch). The frustum-side computation is recomputed from the SAME real bbox query
+`_buildPhotoProps()` uses (`_buildingBBoxIfc()`), not read off the already-built skyline group —
+`_enablePhotoShadows()` runs BEFORE `_buildPhotoProps()`/`_showPhotoProps(true)` in
+`_applyPhotoStaging()`'s call order, so a group-based read would miss the very first Alt+S press
+for a building.
+
+**Measured before/after (HHS_Office_Federated):**
+| | before | after |
+|---|---|---|
+| `_env` (frustum half-width) | 69m | 180m |
+| skyline boxes outside frustum | 36/36 | 0/36 |
+| shadow texel density on main building | 14.8 texels/m | 5.7 texels/m (2.6x coarser) |
+
+**Resolution tradeoff — measured, option (a) accepted, no `mapSize` change made:** widening the
+frustum from 69m to 180m drops main-building shadow resolution from 14.8 to 5.7 texels/m — still
+~17.5cm/texel, fine enough for architectural contact shadows in a still render. `mapSize` (2048²)
+left untouched — a prior perf-motivated reduction from 4096²→2048² exists for the INTERACTIVE
+Shadow toggle + Time Machine sun-cycle path (`tools.js` §S288, autoUpdate-per-frame cost), which is
+a different code path from this still-render-only one; not touched here since option (a) alone
+already resolves the bug with an acceptable tradeoff. If future visual QA finds the main-building
+shadow now reads meaningfully softer, `mapSize` bump (still-render path only) is the named
+follow-up, not done blind.
+
+**Witness:** `witness_photo_skyline_shadow_frustum.js` (new) — reads the REAL `A.sun.shadow.camera`
+frustum bounds and the REAL skyline box world positions live from the running app. RED (pre-fix,
+verified via `git stash` A/B) 36/36 boxes outside → FAIL; GREEN (post-fix) 0/36 outside → PASS,
+`§PHOTO_SHADOW enabled casters=350 sunDist=5000 env=180 texelPerM=5.7`, zero page errors.
+
+**Regression-checked against existing photo-shadow witnesses:** `witness_photo_shadow_skip.js` —
+PASS (reassert skip-gate mechanics unaffected, `disabledCycles=1 totalReassertRuns=2
+totalReassertSkips=13`). `witness_photo_shadow_finalcapture.js` — times out (180s) under this
+headless-SwiftShader environment; confirmed via `git stash` A/B that the UNMODIFIED baseline
+times out identically — pre-existing environment slowness, not a regression from this change.
+
+**PR:** [#1141](https://github.com/red1oon/bim-ootb/pull/1141), squash-merged to `main`
+(`mergedAt=2026-08-02T15:25:50Z`), both CI checks green (`fast-checks` pass 24s, `e2e-tests` pass
+1m3s). `sw.js` `CACHE_VERSION` v922→v923 (effects.js is precached). Worktree
+`/tmp/wt-photo-skyline-shadow` pruned after merge.
+
+## ✅ DONE (2026-08-03) — §PHOTO_SKYLINE_SHADOW_FRUSTUM §PART_B: follow-up, real cause found + reported (not silently changed)
+**Bug report:** user re-confirmed, AFTER PR #1141 merged, that Hospital's distant skyline silhouette
+buildings still didn't visibly cast shadows during a bake. Dispatched to investigate on Hospital
+specifically (much bigger than #1141's witness building, HHS_Office_Federated) since the original
+fix was never measured at that scale.
+
+**First, confirmed #1141's fix IS live and doing its job — frustum coverage is not the bug anymore:**
+Hospital's real live log showed `§PHOTO_SHADOW enabled casters=4148 sunDist=5000 env=362
+texelPerM=2.8` — `env=362` (vs HHS's `env=180`) confirms the widened-frustum formula is scaling
+correctly with Hospital's real envelope (150.85m → radius=331.9m → env=362 after the +30 margin),
+not the old 1x-envelope default. Re-ran `witness_photo_skyline_shadow_frustum.js` unmodified on
+Hospital: 0/36 skyline boxes outside the frustum — the original bug (boxes clipped from the shadow
+depth pass) is genuinely gone.
+
+**Ruled out with real measured numbers, not assumption, in order:**
+1. **`§SHADOW_GROUND_SWATCH key=off`** in the user's log — read `tools.js`/`panels.js`: this is the
+   INTERACTIVE Sunglass-panel "Shadow + Ground" pill state (`A._shadowGroundKey`, cycled by the `h`
+   key), a completely separate code path from the photoreal-bake path
+   (`_applyPhotoStaging`/`_enablePhotoShadows`, triggered by Alt+S). The bake path sets the ground's
+   texture/visibility directly (`_applyGroundTexture('paved')`) regardless of that pill's state — the
+   pill staying `off` during a bake is normal, not a symptom. Ruled out by reading the code paths,
+   no live test needed.
+2. **Ground plane physical extent** — `scene.js`: `new THREE.PlaneGeometry(50000, 50000)`, i.e. a
+   50km×50km plane. Vastly bigger than any shadow frustum (`env` maxes out in the hundreds of
+   metres) or skyline radius on any real building. Ruled out.
+3. **Shadow map resolution** — `mapSize` is a fixed 2048² regardless of building scale;
+   `texelPerM=2.8` on Hospital (`env=362`) is ~36cm/texel. A skyline box is 18-50m wide (`bw = 18 +
+   Math.random()*32` in `effects.js`), so even the narrowest box still spans ~50 texels — plenty to
+   register a visible shadow blob. Ruled out.
+4. **Bias/peter-panning at larger scale** — `A.sun.position = _sunVec.multiplyScalar(5000)` in
+   `scene.js`'s `updateSky()`: `sunDist` is a FIXED 5000 constant for the photoreal-bake sun,
+   independent of building envelope. So `near`/`far` (`sunDist*0.05`/`sunDist*4` = 250/20000) are
+   IDENTICAL between HHS and Hospital — only `env` (left/right/top/bottom) scales with envelope, not
+   the depth range bias operates over. Ruled out — no scale-dependent bias regression is possible
+   given how the code is structured.
+
+**Real cause found (a 5th candidate, not in the original four, confirmed via live pixel readback,
+not assumption):** extended `witness_photo_skyline_shadow_frustum.js` (§PART_B) with two checks
+#1141's own witness never did: (a) real LIGHT-SPACE containment via the shadow camera's actual
+`matrixWorldInverse` (not the old witness's naive world-space X/Z box) of both each box's position
+AND a ray-traced point where that box's shadow actually LANDS on the ground (along the real
+sun→target direction), and (b) whether that landing point is ever inside the CURRENT camera's frame,
+and if so, the ACTUAL rendered pixel luminance there vs a same-distance control point
+(`gl.readPixels`, `preserveDrawingBuffer:true` already set in `scene.js`).
+
+Result on Hospital: **all 36/36 boxes AND their landing points clear the true light-space frustum**
+(#1141's fix holds under the stricter check — geometrically guaranteed anyway, since a light ray is
+a line of constant light-space X/Y, only depth varies along it). The shadow-casting MECHANISM is
+proven correct: where a landing point does fall on-screen, the rendered pixel is measurably darker
+than a same-distance lit control point (deltas up to **+124/255**, strongly positive). But
+`PHOTO_SUN_ELEVATION = 6°` (`effects.js`, deliberately low — "longer/more dramatic dusk shadows" per
+its own comment) throws a 20-80m-tall skyline box's shadow **190–900m** across the ground
+(`shadowLength = boxHeight / tan(6°) = boxHeight * 9.51`) — far past where a still-camera framed on
+a ~70-150m building envelope is actually looking. Measured on-screen landing rate: **2/36 (5.6%) on
+Hospital, 0/36 (0%) on HHS** — confirmed NOT exclusive to Hospital's scale (box height and sun angle
+are both building-size-independent constants; HHS is if anything worse in this specific measurement).
+
+**This is not a frustum-coverage bug — it's a shadow-length-vs-camera-framing mismatch inherent to
+the deliberately dramatic dusk sun angle.** No code fix applied: the only real levers are (a) raise
+`PHOTO_SUN_ELEVATION` to shorten shadows enough to land in-frame more often, which directly undoes a
+previous deliberate user-requested "more dramatic/longer" dusk-shadow decision — a stylistic
+tradeoff only the user should rule on, not something to silently pick either way — or (b) accept
+that skyline-box ground shadows are a background atmospheric effect, correctly computed and
+rendered, that will rarely be caught in any single still frame at this sun angle by design. Per
+"don't force a merge on a real unresolved tradeoff" — reported, not changed. **Open question for the
+user:** keep `PHOTO_SUN_ELEVATION=6°` and accept skyline ground-shadows are rarely visible in any one
+frame, or raise it (how much?) and trade away some of the "dramatic long dusk shadow" look for more
+skyline shadows actually landing in shot.
+
+**Witness:** `witness_photo_skyline_shadow_frustum.js` extended with §PART_B (light-space
+containment + on-screen pixel-mechanism check), run against both buildings:
+- Hospital: `envelope=150.85 env=362 texelPerM=2.8` — §PART_A 0/36 outside (unchanged pass bar);
+  §PART_B `boxOutside=0/36 landingOutside=0/36 onScreenLandings=2/36`, mechanism samples
+  `delta=+124.0` and `delta=-35.0` (1/2 strong-positive — the gate requires at least one strong
+  sample when any exist, not every sample, since the synthetic "control point" is an unverified
+  heuristic that can itself land somewhere invalid; see file header). **PASS.**
+- HHS_Office_Federated (original #1141 witness building, regression check): `envelope=68.17 env=180
+  texelPerM=5.7` — §PART_A 0/36 outside; §PART_B `boxOutside=0/36 landingOutside=0/36
+  onScreenLandings=0/36` — mechanism check correctly SKIPS (not fails) when no sample lands
+  on-screen. **PASS.**
+- Zero page errors either run.
+
+**PR:** [#1146](https://github.com/red1oon/bim-ootb/pull/1146), squash-merged to `main`
+(`mergedAt=2026-08-02T16:37:25Z`), both CI checks green (`fast-checks` pass 30s, `e2e-tests` pass
+1m12s). Test-only change (`witness_photo_skyline_shadow_frustum.js`), no `viewer/*.js` runtime file
+touched, so no `sw.js` `CACHE_VERSION` bump needed (sw.js stayed at `v925` from the last
+runtime-touching PR that day, #1144).
+
+**Cross-lane note (recorded, not actioned in this PR):** three mid-task messages arrived proposing
+an unrelated fix — reverting `cinema_maxq.js`'s `§CPE_GHOST_GROUND_RATIO` (PR #1112,
+`GHOST_REVEAL_FRAC=0.05`) back to PR #1110's original "opaque on first above-ground element"
+trigger, on the theory that a ghosted/translucent ground during a MaxQ BUILDUP bake would also
+suppress shadow visibility. Checked: real, verified feature (`cinema_maxq.js`), but (a) it lives
+entirely in the MaxQ CONSTRUCTION-BUILDUP film system (`Alt+M`, ghost-reveals substructure over the
+film's timeline), a different code path from the Alt+S/still-photo skyline-shadow bug actually
+assigned here, and (b) #1112's own commit message explains it REPLACED #1110's exact trigger
+specifically BECAUSE on Hospital it fired at `t=0.0162` — "2.4s of a 147.9s film, over before the
+camera lands" — i.e. #1110's behavior left the ground ghosted for LESS time than #1112's 5% ratio
+(`t=0.050`, ~7.4s), not more; reverting to #1110 as asked would not lengthen the "shadows suppressed"
+window, it would shorten it further, and does so by undoing a deliberate, reasoned, already-shipped
+fix on the basis of a rationale that contradicts that fix's own measured history. Not implemented in
+this branch — flagged for the coordinator to confirm which lane it actually belongs to before
+anyone acts on it; did not touch `cinema_maxq.js`.
+
+Worktree `/tmp/wt-photo-skyline-shadow-hospital` pruned after merge.
+
+## §LTU_FLOOR_FLICKER — MaxQ bake floor flicker on LTU_AHouse (2026-08-03) — CAUSE MECHANISM CONFIRMED, pixel-level proof NOT obtained, NOT fixed
+User report: floor flicker in a successful MaxQ bake (MP4) on `LTU_AHouse`. Leading hypothesis
+going in (this doc, ~line 4912, 2026-07-26 log): meta/extracted DB Z divergence on the ground-floor
+slab (`2.39999999` vs `2.39999961`) → classic Z-fighting trigger. Investigated with real evidence,
+per this project's whitebox/no-screenshot discipline. **Verdict: that hypothesis is REFUTED. The
+real, still-unconfirmed-at-pixel-level suspect is transparent-sort instability from two features
+that went default-ON only TODAY** (§CPE_BUILDUP_DEFAULT_ON #1144, §Z_STACK_XRAY_STAGING #1139,
+§CPE_GHOST_GROUND #1148/#1149) — consistent with this being a *new* report on a previously-clean
+building.
+
+### Process note (own finding, not the bug): stale local checkout cost most of a session
+`~/bim-ootb` was **11 commits behind `origin/main`** at investigation start (`bd59228` vs
+`d4da218`) — missing #1144/#1148/#1149 entirely. Every early read of `cinema_path_editor.js`
+(buildup checkbox unchecked, `_state.buildup: false`) was reading dead code; a live headless probe
+against it correctly reproduced the STALE behavior (buildup never armed) and cost real time before
+the mismatch was caught (`git log -1` on the file showed commits the working tree didn't have).
+Fixed via `git merge --ff-only origin/main` (clean fast-forward, no local changes lost). Session
+Startup §0 exists exactly for this — re-affirmed, not re-litigated.
+
+### 1. Z-fighting / meta-extracted mismatch — REFUTED, with fresh numbers + a live log line
+Fresh query (2026-08-03, not the 2026-07-26 doc value) against the CURRENT files:
+```
+LTU_AHouse_meta.db:      bottom=2.39999999403956  (VÅNING 1, area=548.1)
+LTU_AHouse_extracted.db: bottom=2.39999961853027  (VÅNING 1, area=548.1)
+```
+The ~3.8e-7 divergence is real and reproducible — **but it is dead data for the path that actually
+serves this building.** `viewer/streaming.js` §6.9 probes for a `_meta.db`+`_geo.db` pair alongside
+any `_extracted.db` URL and, if both exist, commits to **split mode**: `A.db = meta.db` (positions,
+including the ground plane's own `_calcGroundY()` query), `A.libDb = geo.db` (mesh geometry only,
+positioned via `A.db`'s transforms). `extracted.db` is not opened at all in that mode. LTU_AHouse
+ships all three files, and a live headless load confirmed it:
+```
+[S192] §DB_SPLIT_DETECT meta=buildings/LTU_AHouse_meta.db geo=buildings/LTU_AHouse_geo.db found=true
+§GROUND_Y src=gf-storey-slab(VÅNING 1) z=2.40 y=-5.69
+```
+`z=2.40` matches meta.db's value bit-for-bit at that precision — the ground plane and the rendered
+slab are both sourced from the SAME row of the SAME file. The extracted.db number that started this
+investigation is simply never read.
+**Systemic check (per fix-scope guidance — spot-checked before ruling this LTU-specific):**
+- `Hospital`: meta vs extracted ground-floor slab bottom = **165.36120000596 in BOTH files, byte-
+  identical.** No divergence at all.
+- `Duplex`: no `_meta.db` exists (small building, never split) — the split/divergence question
+  doesn't apply.
+Only LTU_AHouse showed the divergence, and even there it's provably inert. **Not systemic, and not
+the render-time cause even locally.** No data-pipeline ruling needed — nothing to fix here.
+
+### 2. DLOD swapping — REFUTED, from the code's own comment
+`viewer/dlod_nav.js:307`: `if (app._cinemaOrbitActive || app._maxqActive) return 'cinema'` — DLOD
+fully disengages for the entire duration `A._maxqActive` is true, i.e. the whole bake, every frame.
+`cinema_maxq.js`'s own §MAXQ_STREAM_FIRST comment documents this was verified once already (LTU
+122k, "dlod_nav.js already fully disengages the instant A._maxqActive is set... cinema_maxq.js has
+zero references to A.streaming"). No swap-threshold oscillation is possible during a bake; this
+candidate does not apply here.
+
+### 3. Transparent-sort instability (ghost-ground × x-ray-staging) — mechanism CONFIRMED ACTIVE, pixel proof INCONCLUSIVE
+Mechanistic case, each point verified against the CURRENT (post-merge) source + a real bake's log,
+not assumed:
+- **Ground plane Z == ground-floor slab bottom Z, by construction.** `tools.js` `_calcGroundY()`
+  computes `A.groundIfcZ` from the identical `element_transforms` row the slab mesh itself is
+  placed from — confirmed live (`§GROUND_Y z=2.40`, matching the meta.db query above exactly).
+- **The ground plane is deliberately transparent + `depthWrite:false` while "ghosted".**
+  `cinema_maxq.js` `_ghostGroundAt()`: `m.transparent = !solid; m.depthWrite = solid;` where
+  `solid = opacity > 0.999`. It starts ghosted (opacity 0.22) and ramps to opaque via smoothstep
+  once the FIRST above-ground element places — confirmed FIRING in today's real bake:
+  `§GHOST_GROUND_TRIGGER_FIRED tFilm=0.0166 firstT=0.0000 ... cursorConfirms=1` (frame 1 of 72),
+  with the ramp still in progress through at least frame 18 of the 30 captured (`§GHOST_GROUND_TICK`
+  cadence + `GHOST_FADE_SEC` floor of `min(0.5, 3/totalSec)` of film time — a substantial fraction
+  of a short film).
+- **x-ray staging (§Z_STACK_XRAY_STAGING) has no slab exclusion.** `time_machine.js`
+  `_buildXrayElements()`'s source query is `WHERE m.ifc_class != 'IfcOpeningElement'` — everything
+  else, including every `IfcSlab`, is eligible to render translucent (grey, 0.3 opacity, `_wbMat
+  XRAY_STAGED`) if its support carriers aren't all placed yet at its scheduled reveal time.
+- **Both mechanisms are new-TODAY defaults.** Before PR #1144 (`buildup: false` by default), an
+  ordinary MaxQ bake never armed either feature; a user had to deliberately opt in. Today's default
+  flip means an ordinary "press Alt+M / Alt+C, click OK" bake now exercises both by default — this
+  timing matches "a NEW report" on a building that presumably baked clean before.
+- **The setup is textbook transparent-sort instability, not Z-fighting:** two near-coincident
+  semi-transparent surfaces (ghosted ground plane + a possibly xray-staged slab at the same Z) rely
+  on THREE.js's per-OBJECT camera-distance transparent sort; for two objects at near-equal distance,
+  small camera-position deltas frame-to-frame can flip which one sorts first — a different failure
+  mode than depth-buffer Z-fighting, and one that would NOT show up as a static DB-value mismatch
+  (exactly what the task brief predicted for this candidate).
+
+**What is NOT yet proven:** a clean pixel-level capture of the alternating-surface signature itself.
+A real 30-frame GPU bake (RTX 4060, `--use-angle=gl`, not swiftshader — see below) was captured and
+run through the amplified-consecutive-frame-diff technique (this doc's own §v2 methodology), but the
+captured window is the film's OPENING "dive" beat — camera far from the building (radius=254.6,
+height=240) and moving fast — so the diff signal (whole-frame PSNR 6.98–29dB, highly non-monotonic)
+is dominated by ordinary large-scale camera motion, not isolated to the ground/slab overlap region.
+10 PSNR-direction reversals across 28 consecutive-frame steps is consistent with either genuine
+flicker OR normal multi-beat camera-path velocity changes (dive→hold→walk→spin) — **this data does
+not distinguish the two.** Getting a clean isolation would need a second bake with the camera framed
+close to the ground floor specifically during the trigger window (first ~1-3 film-seconds), not the
+default wide establishing dive. Not done this session — flagging rather than overclaiming.
+
+### GPU flag finding (reusable): swiftshader is ~45x too slow for a building this size
+First attempt used this repo's earlier witness default (`--use-gl=angle --use-angle=swiftshader
+--enable-unsafe-swiftshader`, software rendering) — frame 0 alone took **80–95 seconds** on
+LTU_AHouse's 122,330 elements (vs the sub-second/small-building witnesses this flag combo was
+proven on). Switched to the real-GPU combo this doc already measured and recommended
+(§MAXQ_OFFLINE_RUNNER, ~line 4943): `--use-gl=angle --use-angle=gl --ignore-gpu-blocklist
+--enable-gpu` → **RTX 4060 Laptop GPU used, ~1.8-2.3s/frame**, ~45x faster. Worth defaulting future
+LTU/Terminal/Hospital-scale headless witnesses to the GL flags, not swiftshader, from the start.
+
+### Status — NOT FIXED, flagged for next step rather than shipped blind
+Per this project's own no-screenshot/log-not-visual-proof rule, a `renderOrder` fix should not ship
+without the pixel-level confirmation described above (verifying it doesn't just move the bug or hide
+a legitimately-visible surface). Recommended next session: re-run the same harness
+(`scratchpad/ltu_flicker_probe.js`-style — real GPU flags, real Cinema Path Editor OK-click, IDB
+frame extraction) with the camera pre-positioned at ground level near the slab, spanning exactly the
+`§GHOST_GROUND_TRIGGER_FIRED` → fully-opaque window, then diff. If confirmed, the fix per the task's
+own scope guidance is `renderOrder` hints separating the ground plane from xray-staged/placed slabs
+(narrow, LTU/generic — not a data-pipeline change), re-verified against
+`witness_cpe_ghost_ground.js` + `witness_zstack_xray_staging.js` staying green.
+No PR opened this session — nothing landed to land.
