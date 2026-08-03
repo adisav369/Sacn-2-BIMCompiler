@@ -16,6 +16,14 @@ measured, next step named.
 **Open, specced, not built:** §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`) — caption several
 rooms in view with a level prefix instead of one ray-picked room.
 
+## Session 2026-08-03 — Offline install doc shipped, docs-publish blocked
+`docs/OFFLINE_INSTALL_GUIDE.md` added (Viewer + iDempiere/ERP only, Modeller deliberately excluded —
+its mesh.db LFS bug is unrelated), linked from `USER_GUIDE.md`, committed+pushed to
+`fable/meshdb-livewire` (`3b0afe3d2`). ⛔ **Live docs-site publish still BLOCKED**: `scripts/safe_gh_deploy.sh`
+aborted on a 13-file merge conflict vs `origin/master` (`PROGRESS.md`, `extractIFCtoDB.py`,
+several `prompts/*.md`, a witness file) — unrelated to this doc, guard correctly refused to auto-pick a
+side. Needs a human merge call before the new page (or any docs change) goes live.
+
 ## Current State
 **Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
 | PFX | EL | GATES | Notes |
