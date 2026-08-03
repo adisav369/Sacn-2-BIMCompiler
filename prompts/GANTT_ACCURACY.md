@@ -128,6 +128,61 @@ separate generative path already has, per this file's own §A "True parallel tra
 `materializeDefault` never inherited it). Bigger than tonight's scope; `§CPE_PHASE_STAGGER` above
 only fixes the FILM's visual overlap, not the underlying calendar dates.
 
+## ▶ RESUME 2026-08-04 (deeper) — ROOT CAUSE FOUND: over-fragmented data, and the film fix was the WRONG LAYER
+**Supersedes the "generic rule" section below on WHERE to fix this — that section's 3-gap table is
+still accurate description, but item 3 undersells how big a problem this is, and items 2's own fix
+(`§CPE_EVEN_PHASE_PACING`/`§CPE_PHASE_STAGGER`) is now suspect and should probably be REMOVED, not
+kept, once the real fix below lands. Two user questions, both answered with real numbers, both
+"yes":**
+
+**Q1 — "is it logical to have so much time on similar metal tiles?" NO. Measured on
+`Terminal_extracted.db`:**
+```
+33,324 "Metal Deck" IfcPlate elements
+avg bbox 0.496m x 0.150m = 0.074 m² each (tight range 0.021-0.075 m² — uniform, not a few outliers)
+total roof deck area = 2,470 m²
+```
+0.074 m² is smaller than a floor tile — far below a real corrugated-deck sheet (several m², handled
+as one unit by a crew). The IFC export fragmented the deck geometrically (one piece per corrugation
+rib or tessellated face, almost certainly), not into installable units. `LABOR_RATES.STEEL_ERECTOR
+.productivity.IfcPlate=12/day` was calibrated for a real PLATE-sized unit; charging 40 minutes of
+crew time to EACH of 33,324 slivers is the direct, honestly-computed-but-wrongly-premised cause of
+Superstructure's 968-day duration. **`§PHASE_DURATION`'s formula is not wrong — its INPUT (treating
+element COUNT as a proxy for real installable quantity) is wrong for over-fragmented classes.**
+
+**Q2 — "movie hastens/staggers, that is cross lining, not separation of concern." AGREED.**
+`§CPE_BUILDUP_FOLLOW_TM`'s own rule, already on record in this file: *"the buildup PLAYS the Time
+Machine timeline, it does not author one."* `§CPE_EVEN_PHASE_PACING`/`§CPE_PHASE_STAGGER` (tonight,
+PR #1153) make the FILM re-author pacing that the schedule DATA does not say — concretely, the
+on-screen day-counter badge (reads real dates off the same staggered cursor) would now race through
+968 days in one-fifth of the film and crawl through 14 days in another fifth: the renderer telling a
+story the Gantt/scrubber/day-counter simultaneously contradict. That is the layering violation
+named. It shipped because the FILM was fixable same-session and the DATA fix (below) is bigger —
+expedient, not correct.
+
+**THE RIGHT FIX, in the correct layer (schedule data, not the renderer), two parts:**
+1. **Weight labor by real installed QUANTITY, not raw element count**, for any class where geometry
+   fragmentation and installable units diverge — reuse the SAME 5D quantity-takeoff machinery
+   already extracted in `analysis_sidecar.js` (`compute5D`'s dominant-face-area expression:
+   `MAX(bbox_x,bbox_y,bbox_z) * second-longest edge`), not element count, as the productivity
+   denominator. Needs its own measurement first: does area-weighting bring Superstructure down to a
+   plausible span, and does it hold up on a building where IfcPlate genuinely IS one-plate-per-unit
+   (don't silently break the case §PHASE_DURATION already got right there)?
+2. **Overlapping-phase scheduling in `materializeDefault`** (already named in the generic-rule
+   section below) — walls starting at 94% of the calendar is the SAME strict-contiguity root cause,
+   independent of part 1.
+3. **Once 1+2 land, re-measure whether `§CPE_EVEN_PHASE_PACING`/`§CPE_PHASE_STAGGER` are still
+   needed at all.** If the calendar itself becomes honest (real quantity, real overlap), plain
+   element-rank playback (`§CPE_BUILDUP_WORK_PACED`, unmodified) may already look reasonable — in
+   which case the film-layer stagger hack should be REMOVED, not kept alongside a now-correct
+   schedule (two sources of pacing truth is itself the anti-pattern being corrected here). Do not
+   assume removal is safe without measuring; state it as the question a future session must answer.
+
+⚠ **Do not re-attempt an area-weighting fix by guessing a conversion factor.** Extract the real
+`analysis_sidecar.js` quantity expression verbatim (same non-invent discipline `§PHASE_DURATION`
+already followed for `LABOR_RATES`/`getInstallSecs`) — do not invent a m²/day rate not already in
+`LABOR_RATES` or derivable from it.
+
 ## ▶ RESUME — GENERIC RULE: "tight, movie-sense pacing" has TWO consumers, only one is fixed
 **Session close-out 2026-08-04, live confusion caught in the act — record it so it isn't re-walked.**
 User watched Day 422/1264 on the Time Machine scrubber, still inside Superstructure, and read that
