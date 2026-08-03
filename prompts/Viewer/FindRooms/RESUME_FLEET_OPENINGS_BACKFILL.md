@@ -518,6 +518,94 @@ the TOOL, never the building.
 | HHS | 34 | 5.9% | 10 (61.8%) | 100% | 21 | 38.2% |
 | Hospital | 209 | 8.6% | 45 (65.1%) | 100% | 100 | 52.2% |
 
+## 2026-08-03 §12 SCOPE GAP: VERTICAL CIRCULATION NOT MODELED (found via user probe: "Hospital
+internal room access another one diff floors")
+
+**Finding.** §HM/§11 connectivity is computed **per storey only** (§9 spec: "Σ per storey
+(connected components − 1)") — there is no edge type for floor N → floor N+1. Verified on
+Hospital (`Hospital_meta.db`, `spatial_structure` + `element_transforms`): two independent stair
+cores run continuously through multiple levels — core @ (13.1, 122.4) spans L2→L3→L4→L5 (4
+stacked flights, each `bbox_z≈5m` = one storey height); core @ (44.6, 129.4) spans L2→L3→L4→L5
+plus a jump to L6/7. Neither stair shaft is enclosed as its own room polygon at the levels it
+passes through (checked both: room coverage found at only 1 of 4 levels each — a stray sliver,
+or a big hall below it) — the SAME pierce/carve pocket-fragmentation already named in §8, now
+showing up on vertical circulation, not just horizontal.
+
+**Scope decision (user, this session):** NOT a walker/pathing revamp. Two-layer/BOM recursion
+already generalizes one level up (building→floor connected by exactly one vertical link, same
+"one parent link" pattern §11 uses for suite→spine) — the fix is a report-only scope note now;
+adding the vertical edge later is a metric extension, not new architecture. Substrate/pathing
+changes stay OUT per this file's original `# ⚠ DO NOT REMOVE` scope line ("No walker/engine
+changes").
+
+### §12 VERIFY — does the two-layer paradigm actually resolve the pathing issues we had before?
+
+Assembled from numbers already in this file (§0 item 1 / §10 / §11.1) — no new values invented:
+
+| building | OLD pair-% "unroutable" (§0) | NEW §HM1 missing links (§10, phantom-filtered) | NEW record-connected (§11.1) |
+|---|---|---|---|
+| LTU | 18.4% | 11 | 100% |
+| Terminal/TermRooms | 19.2% | 5 | 100% |
+| Clinic | 49.3% | 5 | 100% |
+| Duplex | 69.2% | 2 | 100% |
+| JKR | 92.7% | 13 | 100% |
+| HHS | 94.8% | 21 | 100% |
+| Hospital | 96.9% | 100 | 100% |
+
+**Reading.** The old pair-% metric made every building but LTU look catastrophically broken
+(JKR/HHS/Hospital 92–97% "unroutable") — it squares fragmentation across a flattened per-storey
+graph and conflates "isolated single room" with "healthy 10-room suite one door short of the
+spine." The new metric resolves the SAME underlying data into a small, actionable link count
+(2–100 doors fleet-wide) plus a 100% record-connected floor — proving the old high-% numbers were
+a SCORING artifact of flattening, not a fleet-wide pathing failure. That is the concrete "better
+paradigm" answer: it fixed no geometry, it corrected a metric that was misdiagnosing healthy
+buildings as broken. The real remaining defect (draw backlog) is 20–100x smaller than the old
+metric implied, and per §12 above, it still excludes vertical circulation on top of that.
+
+**Not yet answered by this verify:** whether the draw-backlog counts (11–100 per building) hide
+vertical-circulation cases the same way a "stranded" room can — i.e. is a counted "missing link"
+ever actually a stair to a different floor the per-storey graph can't see at all, vs a same-floor
+door the substrate hasn't drawn yet. Flagging, not answering — would need a per-link
+classification pass (same mechanism as §8's §SC1 cause-split, extended to check whether a
+stranded room's nearest exit is a stair) before trusting draw-backlog as pathing-only.
+
+### §12.1 DOCTRINE ANSWER (user): Layer 1 should be unbroken building-wide, not per-storey
+
+**Yes — this is the correct fix, not a new taxonomy.** Layer 1 (spine) should be ONE connected
+component for the whole building: each floor's corridor is a SEGMENT, stairs/lifts are the
+connectors joining segments into one backbone. A "missing link" whose real connector is a stair
+is then just a Layer-1 break — same severity class as a same-floor door gap, no separate vertical
+category needed. Layer 2 (suites) is unaffected. This directly reframes the open question above:
+it becomes in-scope of §HM1 by definition once Layer 1 is scored building-wide, not excluded.
+
+### §12.2 VERIFY (per-link classification, run this session) — PARTIAL, blocked by a stair
+storey-attribution gap on 7/8 buildings (log `w_vertical_classify.log`, script
+`witness_room_path_vertical_classify.js` on `review/roompath-redundancy`, pushed)
+
+Classified every current §HM1 missing link by whether its component's bbox overlaps (>10%) a
+same-storey `IfcStair` footprint via the engine's own `storeyStairs()`/`stairOverlapFrac()`
+(already in `room_walker.js`, unused until now):
+
+| building | missing links | stair-adjacent | test coverage |
+|---|---|---|---|
+| LTU | 11 | **1 (9%)** | full — 48 stairs, 0 `storey=Unknown` |
+| Hospital | 100 | 0 (inconclusive) | **0%** — all 30 positioned ARC stairs are `storey=Unknown` |
+| Clinic, Duplex, HHS, JKR, Terminal, TermRooms | 46 combined | 0 (inconclusive) | **0%** — same `Unknown`-storey pattern |
+
+**Root cause of the 0% coverage (verified by query, not assumed):** in Hospital, the 30 stair rows
+carrying a REAL storey (`elements_meta.storey`) have NO transform row at all; the 30 rows that DO
+have a transform (position data) are all stamped `storey='Unknown'`. `storeyStairs()` buckets by
+`elements_meta.storey` (no z-based reassignment, unlike `storeyDoors()`'s `_assignByZ`), so every
+positioned stair is invisible to the per-real-floor check. Same class of gap as this lane's
+original door/opening backfill — a storey-attribution defect, not a pathing-logic question.
+
+**Reading.** The one clean case (LTU) shows vertical circulation explains a small minority of
+missing links (1 of 11, 9%) — consistent with §12.1 being the right kind of fix, but small where
+it's actually measurable. For the other 7 buildings the question stays OPEN, blocked by data, not
+answered as zero. **Do not report "0 stair-adjacent" for those 7 as a finding — it's an untested
+gap.** Fixing `storeyStairs()`'s storey attribution (mirror `storeyDoors()`'s z-based
+`_assignByZ`) is a new, separate backfill lane if picked up — out of scope for this verify.
+
 # LANE STATE 2026-08-03 — CLOSED ON SOUND FOOTING; NEXT SESSION RESUMES FROM HERE
 
 DONE this lane: extractor openings fix (ghost-shaped, permanent) · 9/9 DBs ghost-shaped ·
