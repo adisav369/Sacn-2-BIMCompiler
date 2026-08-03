@@ -519,3 +519,148 @@ otherwise. The control now tests the real defect W1 prevents — task dates movi
   exactly one commit, `d35366a` (**PR #1154**) — matching the user's report that the hang is new. Prime
   suspect on measurement grounds is the `_ogStructGrid`/`_ogWallGrid` cell-bucket pass (`:4038-4068`),
   which is superlinear in footprint area, not the 63k prepared-statement writes. NOT yet measured.
+
+---
+
+## §GANTT_EDIT / BOQ4D — `boq_charts.html` redirected onto the real schedule (SPEC, 2026-08-04)
+
+Spec written BEFORE any code (Spec-First, CLAUDE.md). Scope is exactly the DEP bullet above
+("`boq_charts.html` is a FOURTH, fully disconnected scheduler"), brought forward on a direct user
+ruling; the rest of the LATER BAND (CAL, deleting the two editors) stays untouched.
+
+### B0 — What is actually wrong (verified in the file, not assumed)
+`viewer/boq_charts.html` (the "4" button / HTML charts tab) never reads the schedule model. Three
+independent hardcoded `PHASE_ORDER` arrays, all identical and all stale:
+- `:423` inside `generateSchedule()` — the coarse phase×storey forward pass,
+- `:560` inside `audit4DSchedule()` — the 8-check audit's own phase-inversion test,
+- `:818` inside `buildScheduleFromOps()` — the kernel_ops rollup (NOT previously named in this file;
+  found while specing this item, so the count is THREE stale copies in this file, not two).
+
+All three read `['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes']`
+— MEP rough-in BEFORE the building envelope, the exact ordering PR #1165 corrected across 18 rate
+sources. The real order, read from `SEQUENCE_RULES`' own sequence numbers (min sequence per phase,
+the same derivation `proj_fold.js:140` and `time_machine.js` `_ROW_PHASE_ORDER` already use):
+`Substructure(1) → Superstructure(2) → Architecture(5) → MEP Rough-in(7) → MEP Final(9) → Finishes(10)`.
+Consequence of `:560` being stale: `§4D_AUDIT_PHASE_ORDER` was grading the schedule against the WRONG
+order, so a correct schedule would be reported as inverted (and vice versa) — the audit was actively
+misleading, not merely cosmetic.
+
+### B1 — Direction (user-approved, not invented here)
+Redirect the page onto `schedule_author.js`'s real `tasks` / `task_elements` / `task_sequences`
+records via `AnalysisSidecar.compute4D()`'s existing-but-unused `capturedFn` hook (`analysis_sidecar.js
+:132`, passed `null` at the `get4D()` call site `boq_charts.html:1218`). Do NOT patch `generateSchedule()`
+into a second engine — it stays exactly as-is, as the no-authored-schedule FALLBACK only.
+
+### B2 — Where the reader lives, and why it is a new file
+The reader goes in a new DOM-free, node-requireable module `viewer/schedule_read_4d.js`
+(`window.ScheduleRead4D`), NOT inline in the HTML. Two reasons, both load-bearing:
+1. A witness cannot `require()` an HTML file. Putting the logic inline would force the witness to
+   re-implement it — which is precisely the "copy the predicate instead of importing it" convention
+   this file already named as the root cause of the same bug being fixed three times in one session.
+2. Schedule detection must call `ScheduleAuthor.activeSchedule(db)` — the ONE existing verb — rather
+   than growing a fourth copy of "which schedule is active". `boq_charts.html` therefore also gains a
+   `<script src="schedule_author.js">` tag.
+
+### B3 — The reader's contract (`ScheduleRead4D`)
+- `phaseOrder(rules)` → phase names ordered by MIN `sequence` over all classes of that phase in
+  `SEQUENCE_RULES`. Derived on every call, never cached at load — `initRateTemplate()` mutates
+  `SEQUENCE_RULES` in place at runtime (`rates.js:446`), so a load-time snapshot would go stale.
+  Returns `[]` when rules are unavailable; every call site falls back to its own behaviour rather than
+  substituting an invented order.
+- `readTasks(db, opts)` → `null` when there is no active schedule / no dated leaf tasks (the page then
+  keeps its existing behaviour untouched), else an array of task rows in the page's existing shape.
+  Every field traces to a real record:
+
+| field | source | invented? |
+|---|---|---|
+| `taskId`, `name` | `tasks.task_id`, `tasks.name` | no |
+| `startDate`/`finishDate` | `tasks.schedule_start`/`schedule_finish` | no |
+| `startDay`/`finishDay`/`duration` | those dates minus the schedule's own earliest start | no (derived) |
+| `guids` | `task_elements.guid` | no |
+| `qty` | count of those guids, `uom='EA'` | no |
+| `ifcClasses`, `storey` fallback | `elements_meta` joined by guid | no |
+| `phase`, `storey` | `tasks.name` split on `' — '` (the separator `materializeZones:376` writes), validated against `phaseOrder()`; element-majority fallback | no |
+| `discipline` | `SEQUENCE_RULES[cls].resource` → MEP/STR/ARC, the SAME mapping `buildScheduleFromOps` uses | no |
+| `crew` | Σ `LABOR_RATES[res].crew_size` | no |
+| `equipment` | `EQUIPMENT_ALLOCATION` → `EQUIPMENT_RATES[..].desc` | no |
+| `predecessors` | `task_sequences` (id, type, lag_days) | no |
+| `wbs` | `1.<phaseRank+1>.<row>` — the page's existing display convention | display only |
+| `crews` | `1` — the real model records no crew split (same as `buildScheduleFromOps:890`) | no |
+
+**There is no duration cap on this path.** `MAX_TASK_DAYS = 20` (`:426`) is an invented constant; it is
+NOT carried over and NOT replaced by another invented number. Durations are the real persisted dates.
+It survives untouched in `generateSchedule()`, which remains the honest "no schedule authored yet"
+fallback — naming it here so it is a known, stated remainder rather than a silent one.
+
+### B4 — Precedence, and why kernel_ops must NOT override the real tasks
+Current order is `resolve4D(default4D, ops, buildScheduleFromOps)`: kernel_ops overrides the default.
+That override re-groups ops on `storey|||phase` — the exact key K0 measured as wrong (Hospital drew
+60 bars for 35 real tasks, because `collapsePhase()` merges storey aliases the raw `p.storey` does not).
+So when a real authored schedule exists it WINS outright and the kernel_ops override is skipped, with a
+`§` line saying so. With no authored schedule, nothing changes: baked default → kernel_ops override,
+exactly as today.
+
+The page's own "source" badges (`:1584`, `:1756`) treat only `kernel_ops` as a real source; `authored`
+joins it. `compute4D` gains a 3-line, backwards-compatible tweak so `capturedFn` may return either a
+bare array (existing contract, labelled `captured`) or `{source, tasks}` — without it the log would
+call an authored zone schedule "captured", which is a different, real thing (native IfcWorkSchedule).
+
+### B5 — Witness: `witness_boq_charts_real_schedule.js` (must be able to FAIL)
+Fixtures carry `tasks`/`task_elements`/`task_sequences` tables but ZERO rows, so the witness first
+materializes a real schedule with `ScheduleAuthor.materializeZones()` (the same verb the app uses) and
+then reads it back through the SHIPPED `ScheduleRead4D` — not a re-implementation.
+- **B-4D-1/2 (phase order)** — `phaseOrder()` equals the order independently derived in the witness
+  from `SEQUENCE_RULES`' sequence numbers, and Architecture precedes MEP Rough-in.
+- **B-4D-3 (source guard)** — `boq_charts.html` contains ZERO occurrences of the stale literal
+  `'MEP Rough-in','Architecture'` and does reference `ScheduleRead4D`. Fails if the fix is reverted.
+- **B-4D-4..8 (real records)** — every returned row carries a `task_id` present in `tasks`; every guid
+  is a real `task_elements` row; guid totals reconcile; dates equal the persisted strings; every
+  `predecessors` edge is a real `task_sequences` row.
+- **B-4D-9/10 RED CONTROL** — the OLD path, replicated: group the same elements on `storey|||phase`
+  under the stale hardcoded array. Assert (a) it yields ZERO real task_ids — the old page could never
+  address the model — and (b) its phase ordering differs from the derived one. Both go GREEN only
+  because the fix exists; reverting turns them RED.
+
+Verification is `§`-tagged log output from headless node runs over real fixture DBs. No screenshots
+(FUNDAMENTAL LAW).
+
+### BOQ4D SHIPPED 2026-08-04 — `witness_boq_charts_real_schedule.js`, 6 buildings, 91/91, 145,763 elements
+Branch `feat/gantt-edit-foundation` (bim-ootb). The "4" button's charts/audit/4D-export now read the
+real `tasks` / `task_elements` / `task_sequences` rows through `compute4D`'s `capturedFn` hook.
+- **New** `viewer/schedule_read_4d.js` (`window.ScheduleRead4D`) — the DOM-free reader; the witness
+  `require()`s the SHIPPED module, it does not re-implement it.
+- **All THREE** hardcoded `PHASE_ORDER` arrays deleted (`generateSchedule`, `audit4DSchedule`,
+  `buildScheduleFromOps`; the third was not previously named in this file). `phaseOrder()` derives from
+  `SEQUENCE_RULES`, giving `Substructure → Superstructure → Architecture → MEP Rough-in → MEP Final →
+  Finishes` — verified against the sequence numbers by B-4D-1.
+- **MEASURED, real fixtures** (`materializeZones` → read back): Duplex 18 tasks/1,143 el ·
+  Clinic 32/16,912 · JKR 63/8,985 · HHS 17/6,880 · Hospital 35/63,415 · Terminal 71/48,428. Every row
+  carries a real `task_id`, dates are the persisted strings verbatim, guid totals reconcile exactly
+  (145,763 = the `task_elements` count), all 349 `predecessors` are real `task_sequences` edges with
+  matching lags.
+- **The `MAX_TASK_DAYS=20` cap is gone from this path** — not replaced by another number. Measured
+  real durations it was distorting: Hospital max **253d** with **18** tasks over the old cap, Clinic
+  96d/3, Terminal 58d/8, HHS 27d/1.
+- **`storey|||phase` is no longer the identity.** Measured again on the same elements: Hospital's old
+  key yields **60 groups for 35 real tasks** (19 tasks split) — the K0 defect, previously reachable
+  through this page too. All 6 fixtures: 0 of the old keys is a real `task_id`.
+- **RED control verified by actually reverting** (pre-fix `boq_charts.html` + a stale `phaseOrder`):
+  **7 checks went RED**, including the data-driven B-4D-10a (`inversions=1 Architecture(d0)<MEP
+  Rough-in(d15)` on Clinic). Restored, 91/91 green.
+- `analysis_sidecar.js compute4D` now accepts `{source, tasks}` from `capturedFn` so an authored
+  schedule is not logged as `captured`; `tests/test_4d_sidecar.js` extended (13/13, bare-array
+  contract unchanged). `sw.js` v938→v939 + precache of the new file.
+- **kernel_ops override deliberately skipped when a real schedule exists** (B4) — `buildScheduleFromOps`
+  re-groups on `storey|||phase` and would re-introduce the 60-vs-35 split.
+
+**Known remainders, not fixed (stated, not silent):**
+- `generateSchedule()` (the no-authored-schedule fallback) still carries `MAX_TASK_DAYS=20`,
+  `INTER_PHASE_LAG=5`, `INTER_STOREY_LAG=2` — all invented constants. Left alone deliberately: the
+  brief forbids swapping an invented constant for another invented constant, and there is no real
+  value to take when no schedule exists. It is now ONLY reached when nothing is authored.
+- `audit4DSchedule` check 4 fails any task >120 days; Hospital's real longest zone task is 253d, so
+  `§4D_AUDIT_DURATION` will report FAIL on real data. That threshold is itself an invented constant —
+  NOT adjusted (adjusting it would be inventing a new one). It needs a user ruling on what a real
+  duration ceiling is, or the check should be re-expressed against something real.
+- Only verified headlessly at the model level. The fixtures have no `kernel_ops`-vs-`tasks` conflict to
+  exercise, and the page's own DOM render was not exercised in a browser.
