@@ -486,3 +486,17 @@ vs v1: Hospital 173→**100** real missing links once 73 cavities stop demanding
 Clinic 10→**5**, isolated 0.6%. The substrate's true fleet gap = 157 links across 7 buildings,
 three-quarters of stranded mass sits in internally-healthy suites. Pair-% retired as headline
 (stress metric only, per §9).
+
+## 2026-08-03 §11 DOCTRINE (user, verbatim intent): INTERNAL ROOMS ARE A SECOND LAYER
+
+Separate concern, cohesive with the first-layer concept. Layer 1 = spine/circulation rooms; Layer 2
+= internal rooms reached through a parent room — healthy by their OWN internal connectivity,
+attached to Layer 1 by exactly one parent link. BOM recursion applied to space: parent, children,
+each level atomic. Consequences, binding on any future metric/walker work in this lane:
+- Never score Layer-2 rooms against the spine directly (that is the §9 flattening error).
+- A suite's status = internal connectivity (its concern) + one parent-link status (Layer 1's concern).
+- "What is a room" stays the COMPILED definition (compile_rooms/stored rooms; Find-panel truth).
+  The walker's flood-fill pockets are candidate geometry, not room authority — §10's aperture rule
+  (no door + no opening = not a room) is the floor, the compiled set is the ceiling.
+- The substrate's remaining job, restated in these terms: reproduce the recorded parent links
+  geometrically (draw the path), never re-decide their existence.
