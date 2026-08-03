@@ -427,3 +427,40 @@ shipped Find-panel routing (door-adjacency graph + self-heal patch) green per it
 recorded state. The resweep stop-condition conclusion is unchanged and sharpened: the substrate
 cannot reproduce, with W/pierce alone, door connections that demonstrably exist on this geometry
 class. Hospital's per-cause numbers now bound the real work: ≤136 breaks, 38 with a named mechanism.
+
+---
+
+## 2026-08-03 §9 HIERARCHY METRIC (user directive: pair-% is myopic — hidden rooms are a LAYER)
+
+**Spec (before code).** The §O2 pair metric flattens each storey to one spine-anchored graph and
+squares fragmentation; it contradicts the BOM principle (building→floor→room→sub-room). Corrected
+headline metric, per building (witness `witness_room_path_hierarchy.js`, same engine, same links):
+
+- **§HM1 missing links** = Σ per storey (connected components − 1) over room groups incl. spine —
+  the number of single door-links that would fully connect the building. THE work count.
+- **§HM2 spine rooms%** = rooms in the spine component (room-count, not pairs).
+- **§HM3 suite rooms%** = rooms in multi-room non-spine components — internally routable layers
+  (the "hidden rooms"), each one missing-link away from healthy.
+- **§HM4 isolated rooms%** = singleton components — true seals + phantom flood-fill pockets.
+
+Decision rule: none. This is a REPORTING correction; engine untouched; Hospital_3 removed from the
+fleet by user directive 2026-08-03 (not on landing page; DB rm'd, backup in /tmp/db_bak_2026-08-02/).
+
+### §9 RESULTS (2026-08-03, log `w_hierarchy_fleet.log`; one type-bug fixed before trusting: comp
+keys are Object.keys strings vs numeric spine root — first run showed §HM2=0.0% fleet-wide, false)
+
+| building | rooms | §HM1 missing links (suites) | §HM2 spine | §HM3 suite layer | §HM4 isolated |
+|---|---|---|---|---|---|
+| LTU | 277 | **23** (6) | 88.4% | 5.4% | 6.1% |
+| Terminal/TermRooms | 74 | **9** (2) | 77.0% | 13.5% | 9.5% |
+| Clinic | 165 | **10** (4) | 59.4% | 37.0% | 3.6% |
+| Duplex | 7 | **3** (2) | 28.6% | 57.1% | 14.3% |
+| JKR | 26 | **15** (4) | 19.2% | 38.5% | 42.3% |
+| HHS | 37 | **24** (10) | 5.4% | 56.8% | 37.8% |
+| Hospital | 282 | **173** (45) | 6.4% | 48.2% | 45.4% |
+
+Reading vs the pair metric: Clinic "48.7% unroutable" is actually **10 missing links** with 96%+ of
+rooms in healthy layers; Hospital "96.9%" is **173 links**, half its rooms in 45 internally-routable
+suites. §HM4 (isolated singletons) is where phantom flood-fill pockets hide — Hospital 45.4% vs
+LTU 6.1% says pocket hygiene, not connectivity, dominates Hospital's raw count. The pair-% stays in
+the record as a stress metric only; §HM is the honest fleet headline going forward.
