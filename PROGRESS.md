@@ -39,6 +39,11 @@ side. Needs a human merge call before the new page (or any docs change) goes liv
 ⚠ `~/bim-ootb` main checkout is stale + conflicts on `merge origin/main` (tried+aborted 07-26); its local
 commits are NOT unique so nothing is at risk — **never measure from it**, use a fresh `origin/main` worktree.
 
+▶ **Roompath lane CLOSED 2026-08-03** — `prompts/Modeller/DISC_Walker/RESUME_FLEET_OPENINGS_BACKFILL.md`
+§LANE STATE: extractor openings fix permanent, 9/9 DBs ghost-shaped, §HM v3 two-layer metric is the
+headline (fleet draw backlog 157 links; buildings healthy in record). Next session resumes at its
+NEXT SESSION block. Hospital_3 DB rm'd (user; backup /tmp/db_bak_2026-08-02/).
+
 ▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong.**
 `gh pr list --state open` · unmerged-no-PR: `for b in $(git for-each-ref --format='%(refname:short)'
 refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && echo "$n $b"; done | sort -rn`.
