@@ -1,6 +1,23 @@
 # ⚠ DO NOT REMOVE — Read the log after every run
 
-## ✅ §PHASE_OVERLAP_BAND had a THIRD un-fixed call site — bim-ootb PR#1155, caught live minutes after #1154 shipped
+## ✅✅✅ SESSION CLOSED 2026-08-03 — Terminal's schedule skew is FIXED, live-verified, all 3 PRs merged
+**User's final read, live on the deployed build: "seems not as rushed."** Confirmed working, not a
+claim taken on faith — see the three PRs below for what each one fixed and how it was verified.
+`bim-ootb` PRs #1154, #1155, #1156 — **all MERGED**, all live on `https://red1oon.github.io/bim-ootb/`
+(`sw.js` `CACHE_VERSION` v935+). If a future session opens this file: the "RESUME 2026-08-04 root
+cause found" / "GENERIC RULE" sections further down are the DIAGNOSIS that led here — the fix they
+were asking for is already shipped, don't re-diagnose or re-build it. What's still open (not started
+this session, no PR): `⛔ within-phase day-batching` and the `LIMIT 2` parapet gap noted near the
+bottom of this file — check those sections' own headers before picking either up.
+
+**One live gotcha worth remembering for next time:** right after #1154 merged, the user tested and
+still saw the old numbers — not because the fix was wrong, but because the browser's service worker
+was serving a stale cache (`§BUILD_VERSION v933` in their console vs `v934` already live). A reload
+fixed it. If a "still broken" report arrives right after a merge, check `§BUILD_VERSION` in the
+user's own console log against the current live `sw.js` CACHE_VERSION before re-diagnosing the fix
+itself — it may just be an unreloaded tab.
+
+## ✅ §PHASE_OVERLAP_BAND had a THIRD un-fixed call site — bim-ootb PR#1155 (MERGED), caught live minutes after #1154 shipped
 User tested the deployed #1154 fix live and reported *"tons of piling and beams in single day"* still.
 Console log showed the smoking gun: `§AUTHOR_MATERIALIZE ... totalDays=229` (correct) immediately
 followed by `§AUTHOR_UI_DATES start=2026-01-01 span=407d` (wrong — the plain Σ of the 5 phase
@@ -17,7 +34,7 @@ cursor-advancement call sites — `materializeDefault`, `scheduleContiguous`,
 `schedule_author_ui.js#applyDates`. Any future date-layout fix must touch all three or grep for
 `cursor +=` across `viewer/schedule_author*.js` first.**
 
-## ✅ §CPE_SETTLE_HOLD still had a residual hardcoded floor — bim-ootb PR#1156
+## ✅ §CPE_SETTLE_HOLD still had a residual hardcoded floor — bim-ootb PR#1156 (MERGED, after a sw.js/viewer.html merge conflict against #1154+#1155 — resolved per this file's own CACHE_VERSION-conflict rule, kept the higher version)
 Separate, older standing request ("since last session"). PR #1153's fix replaced the ~0.8-1s imposed
 settle pause with a smaller `CINEMA_MIN_TURN_SEC=0.05s` technical floor, reasoned as needed to avoid
 a zero-length beat. User: *"i never asked for that as it is a user setting in hold field.. so no hard
@@ -25,7 +42,7 @@ coded."* Checked `_natTotal`'s other terms (dive ≥2.5s, rise ≥0.5s, orbit fi
 zero, so a zero-length spin beat cannot zero the film or divide-by-zero downstream. Floor removed
 entirely; the beat is now purely real turn time + the user's typed Hold value.
 
-## ✅ §LABOR_QUANTITY_WEIGHT + §PHASE_OVERLAP_BAND — BUILT, PR bim-ootb#1154 (auto-merge armed, 2026-08-03/04)
+## ✅ §LABOR_QUANTITY_WEIGHT + §PHASE_OVERLAP_BAND — BUILT, PR bim-ootb#1154 (MERGED, 2026-08-03/04)
 **Closes the "RESUME 2026-08-04 root cause found" section below — this is that fix, shipped.** User
 ruling on the same session: *"film layer MUST be removed as it is bad separation of concern"* (the
 §CPE_EVEN_PHASE_PACING/§CPE_PHASE_STAGGER film hack from PR #1153, reverted) — then *"make the 4D
