@@ -396,3 +396,34 @@ Scope: `LTU_AHouse_extracted.db` ONLY, local install only, no OCI, no git `.db`.
 Fleet end-state: **all 9 local DBs are ghost-shaped** (G-GHOST=0 fleet-wide); the S184/S185
 instance-row shape no longer exists anywhere locally. Note: `LTU_AHouse_meta.db` (separate split
 artifact, not named in scope) was not examined — flag for whoever next touches the split set.
+
+---
+
+## 2026-08-03 §8 CORRECTION — "sealed-suite bound PROVEN" was an overclaim; Hospital cause-split measured
+
+User challenge ("doors are all over, Find panel locates well, path works") prompted the first §SC1/§SC3
+run on Hospital (this lane's zero-delta poster child). Runner: scratchpad `w_stranded_cause.js`
+(= branch `witness_room_path_stranded_cause.js` retargeted to `Hospital_extracted.db`, branch engine
+`spineMap`); log `w_stranded_cause_hospital.log`, read in full:
+
+```
+§SC1 stranded regions classified = 163
+§SC1   (1) NO DOOR ELEMENT AT ALL      = 47 (29%)  531m²
+§SC1   (3) DOOR EXISTS, NO OPENING     = 38 (23%)  575m²
+§SC1   (-) links only to other stranded= 78 (48%)  891m²
+§SC3 INDEPENDENT BREAKS = 136 clusters (largest 5, mean 1.2); §SC1 roots = 85; 51 clusters rootless
+```
+
+**What this corrects:** §4/§7's inference "zero delta ⇒ high unroutable is the §21.38 sealed-suite
+scope limit, PROVEN with data present" (lines ~197, ~334-337) went past its evidence. Zero delta
+proved only that OPENINGS-data wasn't the gap. The cause split shows 38 regions (23%, 575 m²) where
+a door element EXISTS and the raster carve fails to pierce — a substrate-on-this-geometry failure,
+not a model defect — each break stranding a chain (48% of regions are chained, not broken). The
+"no door" 47 are the walker's own flood-fill pockets, not verified user-facing rooms.
+
+**What stands:** every witnessed number (G-FL, §O2 anchors, engine byte-unchanged); Hospital's
+shipped Find-panel routing (door-adjacency graph + self-heal patch) green per its own lane records
+— the strict substrate's 96.9% is a FIRST measurement (2026-08-02 §7), not a regression from any
+recorded state. The resweep stop-condition conclusion is unchanged and sharpened: the substrate
+cannot reproduce, with W/pierce alone, door connections that demonstrably exist on this geometry
+class. Hospital's per-cause numbers now bound the real work: ≤136 breaks, 38 with a named mechanism.
