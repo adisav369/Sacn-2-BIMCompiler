@@ -115,6 +115,10 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   runs traversable = 6.7%, not the 41% name-resolution figure). Ship F1/F2/F6 first — none need a
   pathing engine.
 
+- ▶ **Parked lane carried over from the master branch (2026-07-29 list):** `prompts/CINEMA_FIND_TO_FILM.md`
+  — specced, not started, no code owed. (The other three of that list — §HOVER_NAME, §CPE_ROOM_TITLE,
+  §4D_TRUTH TASK 1 — have since shipped; see Archive.)
+
 ## Archive — DONE/shipped (one-line pointers only; detail lives in the named prompts file)
 - ✅ §CINEMA_TURN_SLERP LANDED (#1018, 7/7) — look-back 180° snap fixed by rotating gaze direction — `PHOTOREAL_STILL_RENDER.md §CINEMA_TURN_SLERP`.
 - ✅ R5-A SETTLED (07-26): the sandbox is LOCAL — OCI `sandbox/` frozen; `deploy/dev` on localhost IS the sandbox, DBs from `~/bim-ootb/buildings`. Don't re-open.
@@ -124,6 +128,8 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
 - ✅ §STAKEHOLDER_STROLL S1+S2+S3 (07-26) 28/28, 37/37, 55/55, gate G6 — `FLY_TOUR_CORRIDOR_GRAPH.md` §S1/§S2/§S3 (⚠ landmines there, do not re-derive).
 - ✅ Room→Path LIVE (07-25/26) #1006-#1010, Hospital 69.4%→91.2% — `VIEWER_FIND_PANEL_ROOM_ACCURACY.md §17` · ✅ Occupant-pathfinder #997/#998.
 - ✅ Blank Viewer landing card + local `.db` Open (07-27/28) #1068/#1070 — `Viewer/BLANK_VIEWER_LANDING_CARD.md`.
+  🟢 unresolved, non-blocking (from master): an idempiere-seed-db status message seen at the Viewer,
+  source not located; user says pick up only if it resurfaces.
 - ✅ §HOVER_NAME (12/12, #1085) · §CPE_ROOM_TITLE (#1089, gap closed #1092, user-confirmed on a real bake 07-30).
 - ✅ §4D_FACADE_ORDER (07-31) #1098/#1100, sw v885→v887, user-confirmed — `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md` §TASK 1 CLOSED.
 - ✅ §CACHE_KEY re-download (07-30, #1088) Hospital 251MB refetch per click → 0 network on load B, W-DB-CACHE-KEY 16/16 — `HISTORY_PERSIST_RECALL.md` §VERIFY-FIRST ITEM 1.
