@@ -176,3 +176,35 @@ adding scene_state alongside it). A separate targeted check (not folded into the
 [bim-ootb#1152](https://github.com/red1oon/bim-ootb/pull/1152) — not yet merged. No opt-out toggle
 (per §3, v1 intentionally has none). Loop's remaining question (addendum, line ~94) stays open until
 asked live.
+
+## ▶ FOLLOW-UP 2026-08-03 (LATER) — scene_state also carries the Time Machine cursor position
+User asked whether 4D-generated data persists too, in Alt+C and the DB. Answer, precisely: the 4D
+schedule DATA itself (`schedules`/`tasks` tables, `schedule_author.js`) already persisted independent
+of this feature — unrelated, pre-existing. What did NOT travel was the Movie Maker's own 4D *context*
+(which day the camera path was recorded against) — that lives in `cinema_path_editor.js`'s
+`panelState` (`tmCursor`/`tmSpanMs`/`dayCounter`), written only to **IndexedDB**
+(`bim_ootb_cinema_paths`), never into the portable `cinema_path` SQL table. Still true — NOT closed
+by this follow-up (that would mean moving the whole `panelState` object into `cinema_path`, a
+separate, larger change, not requested).
+
+What WAS built: `scene_state` (the generic one, §1-4) now also carries the CURRENT Time Machine
+cursor position at save time, not just `tm_on`. Commit `0f7dac4`, same PR/branch as above.
+- `scene.js` `_writeSceneStateTable`: added `tm_cursor`/`tm_span` columns, read via
+  `window.tmGetState()` when TM is active. `tm_span` is drift-detection only — TM re-derives its
+  project span from `kernel_ops` on every load (cannot be force-set), same convention as
+  `cinema_path_editor.js`'s own `§CPE_PANEL_STATE` span-drift warn.
+- `main.js` restore block: after enabling TM, `window.tmSetCursor()` fires ~600ms later (TM's
+  `activate()` can inject the derived timeline asynchronously — same reason `tmActivateForBake`
+  polls). A span mismatch logs `§SCENE_STATE_RESTORE_TM span drift` but the cursor is still applied,
+  clamped to the current project range — never a hard failure.
+- Witness extended in place (not a new file): `witness_scene_state_combined.js` now 11/11 PASS —
+  added G-SS-2b (write-side: saved `tm_cursor`/`tm_span` match the parked ground truth) and G-SS-6
+  (fresh-reload restore: cursor matches within 2ms after a real navigation, TM active). Log:
+  `/tmp/wt-scene-save-combined/witness_scene_state_combined.log`.
+- Effort/impact assessed before building: additive-only (2 new columns, no back-compat guard needed
+  since this table hasn't shipped/merged yet), no impact to any existing saved `.db` or other users.
+
+**Named gap, not built, not asked for:** moving Movie Maker's per-plan `panelState` (checkboxes,
+`dayCounter`, its own `tmCursor`/`tmSpanMs`) out of IndexedDB and into the portable `cinema_path`
+table — same additive pattern (`cinema_path`'s own `hold_sec` precedent already proves it's safe),
+just more fields. Pick up if/when asked.
