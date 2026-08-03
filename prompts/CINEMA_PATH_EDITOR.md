@@ -6383,3 +6383,452 @@ to explanation (1) named up front: the fade is real but occupies only ~45 frames
 × 15fps) out of an 828-frame film, starting under 1% in. No code change made — witness gates
 untouched (still 30/30 per #1149's own record above). Worktree `/tmp/wt-ghost-ground-clobber-check`
 pruned after this record was written (test-only branch, never pushed).
+
+# §CPE_REHEARSAL_STUDIO — synced scrubber + viewfinder + aim-pin (spec, 2026-08-04)
+**Not started. Spec only, per Spec-First — no implementation until this is reviewed.**
+
+## The problem this solves
+User's own framing: only feedback today is a 10s `_previewFly()` rehearsal (cinema_path_editor.js:1228),
+then a real bake that can run 30+ minutes — too coarse a loop to perfect a path/POV. Confirmed why the
+bake is that slow: `cinema_maxq.js`'s export "pipes the canvas through MediaRecorder/captureStream() to
+a real .webm" (tour.js:1206 comment) — it is a real-time capture at full photoreal cook cost per frame,
+not a batch renderer. So the fix has to be a richer REHEARSAL, not a faster bake.
+
+## Origin — user, this session (2026-08-03/04)
+> "A. A timeline scrubber with markers where the sticks are. User can even add sticks there, and they
+> appear same in canvas actual pipe... B. new sub screen that shows exact cam point of view (that is
+> exact with the density*depth*noise*speed ratio). Also bearing the TimeMachine exact 4D schedule
+> scene. Thus u can press preview, all three runs together as their defined types. That B view finder
+> POV is the most useful because the user can pinpoint a spot where he adjust on canvas the pipe, and
+> reflected on that B screen. All draggable and that B screen is even sizable for user comfort of
+> control."
+>
+> On click-to-pin: "so click to pin is to ensure that cam when going past turns to look at it? Yes
+> good idea." — confirmed: sets ROTATION only, never position.
+>
+> "IT is still simple default to just bake or further but practical tooling." — the plain bake stays
+> the default path; this is additive rehearsal tooling, not a replacement.
+
+## Grounded in what already exists — do NOT rebuild any of this
+| what | where | why it matters here |
+|---|---|---|
+| One pure pose function | `_state.plan.poseAt(t)`, built by `effects.js _cinemaPathPlan()` | Both `_previewFly()` and the MaxQ bake read this ONE function (§CPE_PREVIEW_DIVERGENCE doctrine: "cannot become a second notion of the path"). Every new view (scrubber, viewfinder) MUST sample the same `poseAt`, never a second interpolation. |
+| Sticks = authored bands | `_spawnStick`/`_removeStick` (cinema_path_editor.js:207/236), `ov.bands` with `._stick` flag, drawn on the pipe via §CPE_STICK_ANCHOR | The scrubber's markers are these same bands, not a new data model. |
+| Clip window | `s.clipIn`/`s.clipOut`, already honoured by `_previewFly()` | The scrub bar's shaded range IS this, not a new range control. |
+| Persistence | §CPE_IDB_PATH_STORE — named plans save/open/delete | Any new per-stick field (e.g. a pin target) rides the same band row, no second table. |
+| Panel drag | `A._makeDraggable` (measure.js), used by §CPE_PANEL_DRAG | Reuse for the B panel's drag. Resize does NOT exist on any panel yet — net-new, small (a corner handle resizing a viewport rect, no layout engine needed). |
+| Time Machine sync | `tmSetCursor`/`buildupCursorAt`/`ghostGroundAt`/`dayCounterLiveTick`, already driven once per rehearsal frame inside `_previewFly()`'s `step()` | B's schedule readout must read the SAME cursor `step()` already computed that frame — not a second clock (this is exactly the bug class §GHOST_GROUND_LIVE_TRIGGER (2026-08-03) found and fixed: two clocks compared directly). |
+| Aim sources today | LOS toward next waypoint (default); §CPE_AIM_DENSITY (effects.js ~5350-5650) auto-aims at nearby mass when outside the building with nothing to look at | Click-to-pin is a THIRD aim source. Precedence must be decided (open question below), not guessed. |
+| Bake mechanism | `cinema_maxq.js` MediaRecorder/captureStream, real-time, per tour.js:1206 | Confirms B viewfinder must be scoped to REHEARSAL only — adding a second render pass inside the bake loop would slow the very bake this feature exists to avoid re-running. |
+
+## Part A — §CPE_SCRUB: timeline scrubber with stick markers
+1. A horizontal bar, ADDED alongside the existing band row-list (not replacing it — the rows still
+   carry per-band numeric fields the bar can't show).
+2. Playhead = `tNorm` 0..1 over `_state.plan`. Dragging it calls `plan.poseAt(tn)` and drives the exact
+   camera-move code `_previewFly()`'s `step()` already runs per frame — scrubbing is a manual single
+   step of that existing function, never a second pose path. Same doctrine tour.js's own
+   §TOUR_TIMELINE_SCRUB already proved for a sibling feature ("borrow the doctrine, not the code").
+3. Tick marks at each stick's `tNorm`, derived the same arc-length way the pipe already places bands.
+4. Click empty bar → same `_spawnStick`, placed via the inverse of that arc-length lookup (tNorm → pipe
+   world point) rather than a raycast hit — the existing placement math should already expose this both
+   ways since the pipe currently draws bands FROM arc-length.
+5. The clip-in/out shading reuses `s.clipIn`/`s.clipOut` directly.
+
+## Part B — §CPE_VIEWFINDER: synced POV sub-panel
+1. **Not a second WebGLRenderer/GL context.** Recommend the standard three.js multi-viewport technique:
+   one renderer, `setScissorTest`/`setViewport`/`setScissor` per pane, same scene graph, a second
+   `THREE.PerspectiveCamera`. Avoids doubling VRAM/context overhead — consistent with this codebase's
+   existing ms/frame discipline (§CPE_BUILDUP_WORK_PACED etc.).
+2. B's camera pose is set from the SAME `plan.poseAt(tn)` the main rehearsal camera uses at that instant
+   — "exact POV" per the user's ask means literally the same sample, not a re-derived approximation.
+3. B's aim must run through whichever aim source is active for that `tn` (LOS / §CPE_AIM_DENSITY / new
+   §CPE_AIM_PIN below) — same "preview and bake cannot disagree" rule already enforced for buildup via
+   §CPE_BUILDUP_FOLLOW_TM.
+4. B's Time Machine readout reads the SAME cursor value `step()` already computed that frame — never a
+   second `tmSetCursor` call.
+5. Drag via `A._makeDraggable` (reuse). Resize is new: a corner handle adjusting the scissor rect's
+   pixel size — cheap, no relayout of scene geometry involved.
+6. **Scoped to `_previewFly()` only.** Never wired into the MaxQ bake loop — see "Bake mechanism" above.
+7. **Launcher: an eye icon (👁, corrected from an earlier binoculars suggestion — user, 2026-08-04),
+   OFF by default (user, 2026-08-04: "so it is not cluttered").** Not a
+   checkbox row like `cpe-buildup`/`cpe-room-title` (Part B is a whole extra rendered panel, heavier
+   than a flag) — a small icon-only toggle button in the existing `#cpe-title` header row (`cinema_path_
+   editor.js` ~L616-619, the same row that already carries the drag-handle title), styled to match the
+   existing button convention already used in the panel (`padding:6px 12px;font-size:12px;background:
+   #2a2e34;color:#ddd;border:1px solid #4a4f57;border-radius:4px`, see the action-row buttons ~L662-665).
+   B only exists in the DOM / only runs its scissor render pass while toggled on — zero cost when off.
+
+## ✅ DONE 2026-08-04 — §CPE_SCRUB + §CPE_VIEWFINDER (Parts A and B, PR bim-ootb#1164)
+
+Both built together (worked in `bim-ootb`'s `/tmp/wt-cpe-rehearsal-studio` worktree, branch
+`feat/cpe-scrub-viewfinder`, off `origin/main` @ `5d489c7`), Parts C-G untouched, `cinema_maxq.js`'s
+bake loop untouched.
+
+**§CPE_SCRUB**: a horizontal bar (`#cpe-scrub-wrap`) inserted right after `#cpe-hint`, ahead of the
+row list — `tNorm` 0..1 over `_state.plan`, exactly as specced. Tick marks are the sticks
+(`_bands[i]._stick`), placed by nearest-point match against `_state.filmPts` (the SAME sampled curve
+`plan.poseAt(i/FILM_SAMPLES)` the pipe tube is drawn from) — not a linear guess through the walk
+beat's own easing/hold/turn remap, which is NOT linear in `tNorm` (effects.js Beat 3). The
+clip-in/out shading reuses `s.clipIn`/`s.clipOut` directly; a walk-window highlight (from
+`plan.beats.spin/out`) marks the only authorable stretch. Click-vs-drag on the bar reuses the
+existing `CLICK_SLOP_PX` doctrine (§CPE_CLICK_SLOP): a drag calls the new `_applyCameraPose(tn)`;
+a click inside the walk window converts `tn` → a world point via `plan.poseAt(tn)` → nearest point
+on `_state.flowHosed` (index-aligned with `flowRaw`) → the same `_spawnStick(hit)` a pipe click uses.
+Outside the walk window a click just scrubs (no spawn — nothing there to seed from).
+
+**Core refactor**: `_previewFly()`'s per-frame `step()` used to inline
+`plan.poseAt(tn) → camera.position/controls.target → controls.update() → markDirty` directly.
+Extracted verbatim into `_applyCameraPose(tn)`, now the ONE place a pose is ever applied to the live
+camera — called from `step()`, from `_scrubTo(tn)` (the scrub drag handler), and by witnesses via a
+new read-only probe. Satisfies the doc's own §CPE_PREVIEW_DIVERGENCE doctrine literally, not just in
+spirit: scrubbing IS a manual single invocation of the rehearsal's own per-frame function.
+
+**§CPE_VIEWFINDER**: eye icon (👁️, per the 2026-08-04 correction above — NOT binoculars) in
+`#cpe-title`'s header row, OFF by default. Toggling on lazily creates a `THREE.PerspectiveCamera`
+(`_state.vfCam`, matching the main camera's fov/near/far) and a draggable/resizable HTML frame
+(`#cpe-vf-panel`) — the frame is a visual/interaction proxy only, not a second `<canvas>`. The actual
+pixels come from ONE renderer (`A().renderer`): a hook (`APP._cpeViewfinderRender`, set only while B
+is on) called by `main.js`'s own `animate()` loop right after the main scene render, using
+`setScissorTest(true)` + per-pane `setViewport`/`setScissor` (standard three.js multi-viewport
+technique), converting the frame's on-screen CSS rect to canvas pixels via
+`renderer.getPixelRatio()`. B's camera pose is set from the exact same `p = plan.poseAt(tn)` sample
+`_applyCameraPose` just used for the main camera — literally the same object, not a second call.
+Drag reuses `A._makeDraggable`; resize is a new corner handle (`#cpe-vf-resize`) adjusting the
+frame's CSS width/height, read back into the scissor rect next frame — no scene relayout. Torn down
+(`_vfTeardown()`) on editor close so the hook can never outlive the session.
+
+**Bug found and fixed by the new witness, not by inspection**: B's Time Machine readout
+(`_vfUpdateReadout()`) used to be called INSIDE `_applyCameraPose`, which runs BEFORE that rehearsal
+frame's own `window.tmSetCursor` call in `step()` — so the readout always showed the PREVIOUS
+frame's cursor, one frame stale, every frame. Fixed by moving the readout refresh to right after
+step()'s own `tmSetCursor` block (and keeping it right after `_applyCameraPose` in `_scrubTo`, where
+there is no Time Machine cursor involved at all). This is exactly the §GHOST_GROUND_LIVE_TRIGGER bug
+class the spec warned about, caught the same way — a witness comparing the readout against a fresh
+`tmGetState()` read, not eyeballing it.
+
+**Witnesses**: new `witness_cpe_scrub_viewfinder.js` — **8/8 gates green on both Duplex and
+Terminal** (16/16 total): G-SCRUB-1 (scrub pose == `plan.poseAt(tn)`, delta ~1e-15m), G-SCRUB-2
+(spawned stick within 0.11–0.54m of the clicked `tn`'s pipe placement — bounded by flow-polyline
+sample density, not asserted blind), G-VF-1 (B pose == main pose, delta ~1e-15m), G-VF-2a (static:
+the viewfinder code block contains `tmGetState`, never `tmSetCursor`), G-VF-2b (live: readout day ==
+`tmGetState().cursor` day at the same instant, on both a fast-arming building and Terminal's
+3.2s-to-arm/1.6s-per-frame case), G-PERF-1a (measured B render-pass cost, not guessed — see below),
+G-PERF-1b (static: `cinema_maxq.js` has ZERO references to `_cpeViewfinderRender`), G-VF-off
+(toggling off removes the DOM panel and clears the hook). Full existing `witness_cpe_*.js` /
+`witness_cinema_path_editor.js` suite re-run clean, including a real end-to-end buildup+bake cycle
+(`witness_cpe_hose.js`) — two PRE-EXISTING failures (G10/G7 in `witness_cinema_path_editor.js`;
+G-PA-4 in `preview_after`, G-RN-2 in `reopen_node`) confirmed BYTE-IDENTICAL on unmodified
+`origin/main` @ `8592b33`, not introduced by this work.
+
+**Measured B perf cost** (G-PERF-1a, ms/frame of B's OWN scissor render pass only, measured around
+the extra `a.renderer.render()` call in `_vfRender`, NOT the whole frame): Duplex avgMs=1.39–1.75,
+maxMs=3.2–4.0 over 16-17 frames; Terminal avgMs=0.61–2.19, maxMs=1.9–11.7 over 7-8 frames (48k-op
+building, 1.6s/frame overall rehearsal cost — B's own added cost stayed under 2ms/frame average even
+there). Zero cost when off (hook absent, single property check in `main.js`'s `animate()`).
+
+**Live interactive browser verification** (not just headless witnesses — real `PointerEvent`
+sequences dispatched through the actual DOM listeners in a live `claude-in-chrome` session against
+`localhost:8460`, Duplex building): scrub-drag to `tn=0.55` landed the camera within `8.89e-15`m of
+`plan.poseAt(0.55)`; eye-icon click opened B with the hook installed and the default rect
+(300×190px); a real drag on `#cpe-vf-title` moved B by exactly the dragged delta (-60,-40px); a real
+drag on `#cpe-vf-resize` resized B by exactly the dragged delta (+80,+60px → 380×250px); B's camera
+stayed synced with the main camera (delta `4.04e-15`m) after the resize; toggling off via a real
+click removed the panel and cleared the hook. Zero console errors throughout. (Screenshot capture
+itself was flaky in that browser session — CDP `Page.captureScreenshot` timeouts unrelated to this
+feature — so the proof here is the numeric/log evidence above, which is this project's own stated
+primary method anyway.)
+
+**Constants picked without an explicit spec answer — flagged as unconfirmed defaults, not settled**
+(the spec's own open question 2, "B's frame rate: full or throttled", is answered here as FULL —
+no throttling — since "exact POV" was specced as literally the same sample, and Parts A/B name no
+other numeric defaults):
+- Scrub bar height 26px, tick-mark width 3px (`SCRUB_H`, `SCRUB_TICK_W`).
+- B panel default size 300×190px, minimum 160×100px on resize, corner-handle hit box 16px, default
+  position bottom-right with a 16px margin (`VF_DEFAULT_W/H`, `VF_MIN_W/H`, `VF_RESIZE_HANDLE_PX`,
+  `VF_MARGIN`).
+
+**Not built (deliberately, per scope)**: Parts C-G (click-to-pin, Find-panel drag, clash-pin,
+stick-timing-sync, walk-record-share) — separate, later sessions per the task brief.
+
+## Part C — §CPE_AIM_PIN: click-to-pin explicit look-target
+1. Confirmed with user: sets ROTATION only. Position (arc-length placement, height) stays a separate,
+   already-existing control.
+2. New authored field per band: `lookAt: {x,y,z} | null`, persisted on the same band row (§CPE_IDB_PATH_STORE)
+   — no second table, matching guardrail 4 (authored data is stored, never re-guessed).
+3. UI: with a stick selected, clicking an object/room in the canvas sets that stick's `lookAt`; B updates
+   live — this is the exact loop the user described ("pinpoint a spot where he adjust on canvas the pipe,
+   and reflected on that B screen").
+
+## Scope guardrail amendment (record, per this doc's own convention)
+§Scope guardrails rule 1 above ("no new panel") is superseded here, same as the 2026-07-26 3D-gizmo
+amendment superseded guardrail 3 — B is unambiguously a new panel. Recorded deliberately so it is not
+flagged as drift later.
+
+## ⛔ Open questions — ask the user, do not guess
+1. **Aim precedence**: when a pin coexists with LOS/§CPE_AIM_DENSITY, recommend the pin always wins
+   locally at its own band, with LOS/density resuming immediately after (no bleed into neighbours) —
+   confirm before building, since §CPE_AIM_DENSITY's own precedence was tuned carefully.
+2. **B's frame rate**: full rehearsal fps (a true second render pass every frame) or throttled (e.g.
+   every other rAF) given it doubles per-frame render cost during rehearsal only?
+3. **Does "Save this path" persist `lookAt`** even when B was only used for rehearsal? Recommend yes —
+   same explicit-save gate as everything else (§CINEMA_PATH_EDITOR_MODEL rule 5), no special case.
+
+## Witness claims (spec-first — write these before any implementation)
+- **G-SCRUB-1**: dragging the playhead to `tNorm=X` reproduces the exact pose `_previewFly()` would
+  show at that instant of a normal rehearsal — no second pose pipeline.
+- **G-SCRUB-2**: clicking empty bar at `tNorm=X` spawns a band at the same world point the pipe's own
+  arc-length placement gives for `X`.
+- **G-VF-1**: B's camera pose+aim at `tn` matches the main camera's exact pose+aim if the rehearsal were
+  playing normally at `tn` — proves no second notion of the path (mirrors §CPE_PREVIEW_DIVERGENCE).
+- **G-VF-2**: B's Time Machine cursor equals the main preview's cursor at the same `tn`, sampled
+  simultaneously — no drift, no second clock (the exact bug class §GHOST_GROUND_LIVE_TRIGGER fixed).
+- **G-PIN-1**: a pinned band's sampled look direction points at the pinned target within tolerance; the
+  bands immediately before/after are unaffected (no bleed).
+- **G-PERF-1**: measured (not guessed) ms/frame added by B during rehearsal; and a static proof the
+  MaxQ bake loop never calls B's render path at all.
+
+## Part D — §CPE_FIND_TO_PIN: drag a Find-panel room result onto the pipe (user, 2026-08-04, added while this spec was being written)
+> "the Find room path export to alt-c idea. If the find panel can give a marker to be dragged to the
+> canvas where alt-c is active and it become a stick nearest along the pipe and reform it to go near
+> the spot with pin drop to the selection. Or if the pipe is near enough no need stick just reform to
+> sight that pin drop and even special blue band label mentioning it for all pin drops to be pointed
+> out."
+
+1. **The marker is not new data.** The Find panel already computes a verified room anchor/centroid for
+   every result it draws (`navigate_find.js:1264 _drawPathHighlight`, `:3319 _renderPathResult` — "a
+   room whose centroid sits on a real, door+wall-verified hallway backbone"). This feature exposes that
+   SAME point as a drag source, it does not compute a second one.
+2. **Drag-out-of-panel-into-canvas is new UI** — the Find panel today is itself draggable (`S265 Phase
+   5`, navigate_find.js:231) but no result ROW currently drags OUT of the panel onto the 3D view. This
+   is the one genuinely new interaction surface in this whole spec; everything downstream of "we now
+   have a world point" is reuse.
+3. **Nearest-point-on-pipe already exists.** §CPE_HOSE_REANCHOR ("pulls re-project by world anchor")
+   is exactly the arc-length nearest-point projection this needs — given the dropped world point, find
+   its nearest point on the current pipe. Reuse that projection, do not write a second one.
+4. **Two outcomes from that projection, both explicit, no new judgment call to invent silently:**
+   - **Pipe already passes within a threshold distance** → no new band. Reform the nearest EXISTING
+     band's aim to a `lookAt` at the dropped point (§CPE_AIM_PIN's field, same mechanism, different
+     input method).
+   - **Too far** → spawn a new band at the pipe's nearest point via §CPE_SCRUB's tNorm→world placement
+     (Part A.4, same inverse arc-length lookup), THEN set its `lookAt` to the dropped point. The path
+     re-forms toward that point exactly as §CPE_BANDS rule 7 already guarantees for any dragged band
+     ("bands are highly movable, path must re-form... no placement limits").
+   - **⛔ Open question**: the threshold distance is a new constant — measure it from `A.cinemaFan`
+     clearance the same way §CPE_BANDS' corner-rounding already derives a bound from measured space
+     (line ~256-259 above), do not invent a fixed metre value.
+5. **Blue pin-drop label — corrected scope (user, 2026-08-04): BAKE-ONLY, burned into the exported video,
+   not an editor-panel decoration.** "the blue background label box is happening only during baking, the
+   final movie render will carry it just above the present label line, to indicate that is the pin drop
+   in sight."
+   - **"The present label line" = the room-title caption**, confirmed at `cinema_maxq.js:598-599`:
+     `A.roomTitleCompositeOntoCanvas(ctx, w, h, titleInfo.name, titleInfo.opacity)` — composited onto the
+     SAME 2D canvas MediaRecorder/`captureStream()` records, which is why the room title survives into
+     the exported `.webm` (a DOM overlay would NOT — canvas capture only sees what's drawn onto the
+     canvas itself). The pin-drop label must hook this identical composite mechanism, drawn just above
+     that line, not a separate DOM element.
+   - **Active only while "in sight"** — i.e. only on frames where the currently-flown pose is at (or
+     approaching) a band whose `lookAt` is set, using the same per-frame cursor §CPE_STICK_APPROACH
+     already derives (`stickApproachAt(_tn)`, cinema_maxq.js:1156) to know which stick is current. Reuse
+     that, do not add a second "which stick is this" computation.
+   - **Caution, do not invent a clashing scheme**: §CPE_STICK_RED_BAR already assigns meaning to red/blue
+     in the EDITOR ("an unselected stick is a RED bar with BLUE dots") — that convention lives in
+     `cinema_path_editor.js` and never appears in baked output, so it does not actually collide with a
+     bake-only blue label, but settle the exact swatch/label text with the user before building rather
+     than assume.
+   - **Cost, measure don't guess**: this adds one more per-frame canvas composite call during the bake,
+     same class of cost as the existing room-title composite — small, but real, folds into G-PERF-1.
+
+### Witness claims — Part D
+- **G-FIND-PIN-1**: dropping a Find-result point that lies within the (measured, not guessed) threshold
+  of the pipe changes ONLY that nearest band's `lookAt` — no new band is created, sampled positions of
+  every other band are unchanged.
+- **G-FIND-PIN-2**: dropping a point beyond threshold spawns exactly one new band at the pipe's true
+  nearest-point projection, with `lookAt` set to the dropped point — provable by comparing the new
+  band's world position against the same arc-length projection §CPE_HOSE_REANCHOR already computes
+  independently.
+- **G-FIND-PIN-3**: in a BAKED frame sequence, the pin-drop label composites (via the same
+  `roomTitleCompositeOntoCanvas`-class call, positioned above the room-title line) on exactly the frames
+  where `stickApproachAt` reports the current stick has a non-null `lookAt`, and on no other frame — and
+  never appears in the editor's own rehearsal/UI, only in the exported `.webm`.
+
+## Part E — §CPE_CLASH_PIN: clash panel → pin drop, with a moving leader-line label (user, 2026-08-04)
+> "It be even cooler if the label moves along to indicate the pinned spot with a line from the label to
+> the pin drop, specifically pointing it out. For clash pair be swell, and even retain the blue/red
+> clash pair, shine thru when passing by. That means the Clash panel also can be called on board and a
+> click to zoom on it will be a pin drop if canvas has alt-c active."
+
+Grounded in **existing, already-shipped** clash code — nothing here is a new visual system:
+
+1. **The clash overlap point already exists.** `A._flyToClash(idx)` (`measure.js:619`) computes
+   `mid`/`oCenter` — the overlap-zone midpoint between the two clashing elements — every time a clash
+   row is clicked. This IS the pin-drop world point. No new geometry math.
+2. **The blue/red shine-through already exists — retain it exactly, do not reinvent.**
+   `measure.js:682`: `meshColors = [0xff2222, 0x2266ff]` (red A / blue B), the clipped overlap mesh at
+   `measure.js:715-719` is built with `depthTest:false, depthWrite:false` and `renderOrder 998/999` —
+   already the precise "shine through walls when passing by" behaviour asked for. "Retain" means: when
+   a clash becomes a pin-drop, its highlight meshes are added to the scene the SAME way `_flyToClash`
+   already adds them — the movie camera passing by renders them for free, being ordinary scene objects.
+3. **Clash-row click gets ONE new branch, not a rewrite.** `measure.js`'s row `pointerup` handler
+   (~line 975) calls `A._flyToClash(idx)` unconditionally today. New rule: **if the cinema path editor
+   is open, route the SAME computed `mid`/`oCenter` into §CPE_FIND_TO_PIN's drop logic (Part D) instead
+   of flying the live camera immediately** — reuse Part D's threshold/reform-vs-spawn decision verbatim,
+   the clash overlap point is just another world point being dropped. When the editor is NOT open,
+   behaviour is unchanged (still flies immediately) — this must not regress the existing clash workflow.
+4. **The pin-drop label text, for a clash pin, is the pair label already shown in the clash list header**
+   (`measure.js:843`, e.g. "MEP vs Structural") — reuse that string, don't invent new label text for the
+   clash case.
+5. **The moving leader-line label.** "Moves along... a line from the label to the pin drop" means the
+   label is NOT a fixed screen position — its anchor is the pin's live projected screen point, which
+   changes every frame as the camera flies past it. The projection technique already exists and is used
+   for exactly this class of HUD work: `.project(A.camera)` appears at `effects.js:1258`, `effects.js:1863`,
+   `city.js:1023`, and — closest precedent — `measure.js:1598` (`const projected = m.mid.clone().project(A.camera)`,
+   already projecting a clash midpoint to screen space). Per baked frame: project the pin's world point,
+   convert to canvas pixels, draw the label box near it (clamped on-screen if near an edge) plus a
+   straight connector line from the label box to the exact projected point — on the SAME composite
+   canvas the room-title line already draws onto (`cinema_maxq.js:598-599`), so it is captured into the
+   exported video exactly like the label itself (Part D point 5).
+
+### Witness claims — Part E
+- **G-CLASH-PIN-1**: dropping a pin from a clash row (editor open) produces a band `lookAt` numerically
+  identical to the `mid`/`oCenter` `A._flyToClash` computes independently for the same clash index.
+- **G-CLASH-PIN-2**: the clash highlight meshes present during bake are byte-identical in construction
+  (color, `depthTest`, `renderOrder`) to `A._flyToClash`'s own — proves no second highlight system exists.
+- **G-CLASH-PIN-3**: across a sampled frame range while the camera is near a clash pin, the label's
+  on-canvas anchor equals `pinPoint.clone().project(A.camera)` converted to that frame's pixel space —
+  proves the label tracks the live camera rather than a cached position.
+- **G-CLASH-PIN-4** (regression): with the cinema path editor CLOSED, clicking a clash row still calls
+  `A._flyToClash` and flies immediately, unchanged from today.
+
+## Part F — §CPE_STICK_TIME_SYNC: film-time readout on sticks + sync a pin to its construction moment (user, 2026-08-04)
+> "to set pipe flow timing to when that selection gets constructed, the timings also appearing on the
+> stick markers on canvas saying exactly what time in the movie that part of the path is."
+
+Two halves — one is straightforward reuse, the other opens a genuinely new question.
+
+### F1 — the readout (no open question, cheap, build as spec'd)
+1. Every stick already has a `tNorm` (its arc-length position along the pipe, same value Part A's scrub
+   ticks use). The film's real total duration in seconds is already computed every rehearsal —
+   `_buildOverride()._total`, the same value §CPE_ROOM_TITLE already reads (`s.roomTitle ?
+   _buildOverride()._total : 0`) to time its live caption.
+2. Stick film-time = `tNorm × _buildOverride()._total`, formatted mm:ss. Pure arithmetic on numbers
+   already in memory — no new per-frame cost, no new pipeline.
+3. Display it in two places, both already-existing surfaces: the row list (add a column) and Part A's
+   scrub-bar tick marks (label under each tick).
+
+### F2 — sync a pin's timing to when the selected element is actually built (open question, do NOT guess)
+1. **The exact primitive this needs already exists, already witnessed.** `_ghostGroundArm`
+   (`cinema_maxq.js` ~L211-217) binary-searches a target construction `end_ts` for its RANK within
+   `_wpSched.ends` (the full sorted completion order every op is placed in — built by `_workPacingArm()`,
+   `cinema_maxq.js:70-83`), giving `elementsFirstT = rank/total` — a real timestamp → film-fraction
+   conversion, gated by G-GG-12 (2026-08-03 session). Reuse this UNCHANGED for a selected element's own
+   `end_ts` (fetched by guid, from a Find-panel pick or a Part E clash pair) instead of `firstAboveMs` —
+   it is the same lookup, different input row.
+2. **That gives a target fraction F — "this element finishes construction at F% into the schedule."**
+   The open question is what F does to the stick:
+   - **(a) Retime the path** — force the camera's ARRIVAL at that stick to occur at film-time
+     `F × totalSec`, by adjusting the speed of the leg(s) around it. This is a NEW kind of authored
+     timing constraint — nothing today lets one stick pin an exact arrival time. Closest existing
+     precedent: `tour.js`'s per-action `speedMul` (already used for §INTERIOR_PACING) — a per-leg
+     multiplier, not a global retime.
+   - **(b) Read-only comparison** — just show "this stick lands at 0:42, the element completes at 0:57,
+     15s late" and leave the user to nudge pacing by hand. No new retiming engine at all.
+3. **Why this isn't safe to just pick:** the film's global clock, when buildup/work-pacing is on
+   (§CPE_BUILDUP_WORK_PACED), is ALREADY the cumulative elements-placed fraction — but that paces the
+   WHOLE film by overall schedule progress, not by any ONE element's own build moment. A stick's spatial
+   arc-length position and one specific element's construction rank are two independent curves; nothing
+   today guarantees they coincide. Forcing them to coincide (option a) means retiming legs around a
+   pinned point — the same shape of problem as `tour.js`'s `_paceBuildRemap` (§CPE_PACE_FLOAT_GAP
+   amendment at the top of this file already deals with an adjacent tension: a user-keyed total fighting
+   an automatic pacing remap). **Recommend (a), scoped LOCAL to the adjacent leg(s) only** — same
+   locality doctrine §CPE_BANDS already established (edits stay local, no whole-film ripple) — but this
+   is a design call for the user, not something to build on a guess.
+
+### Witness claims — Part F
+- **G-TIME-LABEL-1**: every displayed stick time equals `tNorm × totalSec` within one frame, cross-checked
+  against the actual bake frame §CPE_STICK_APPROACH independently reports reaching that stick at.
+- **G-TIME-SYNC-1** (once F2's question is settled): a stick with sync-to-construction enabled arrives,
+  in the baked film, within one frame of `elementsFirstT × totalSec`, where `elementsFirstT` comes from
+  the SAME rank-lookup G-GG-12 already proved correct — reusing that gate's own regression numbers as
+  the cross-check, not re-deriving them.
+
+## Addendum — discipline highlighting is free, not a new feature (user, 2026-08-04)
+Earlier brainstorm floated a "per-segment discipline toggle in the B viewfinder" as new tooling.
+**Correction, verified in code**: the Find panel's existing X-Ray/ghost mechanism (`A.toggleXray`,
+`filterByGuids`, `navigate_find.js`) already highlights a selected discipline/room and dims (ghosts)
+everything else. If left ON while Alt+C rehearses or bakes, this effect applies with zero new engineering
+— nothing to build here, just confirm it isn't turned off when Alt+C opens.
+
+## Part G — §CPE_WALK_RECORD_SHARE: record a Walk Site session, share as URL, apply on open ⏸ PARKED (user, 2026-08-04)
+**Parked, not dropped** — user: "just park that idea, return to the enhanced movie maker." Spec below
+is complete and grounded (corrected twice, see the two correction notes inline); resume directly from
+here when picked back up, no re-derivation needed. Session moved on to building Parts A+B.
+**Correction (user, 2026-08-04, same session): Walk Site mode is virtual, not GPS-tracked.** "The walk
+site needs no GPS. It is only the other share/snags that does. Our particular walk site is virtual, to
+simulate using phone giving some AR experience. To be at site is just incidental." Verified in code —
+`walk.js`'s `walkModeGpsTick` comment says outright: **"GPS blue dot position update only — orientation
+is event-driven."** `A.startWalkGpsTracking` moves a separate `A.walkBlueDot` marker (a you-are-here
+overlay, useful only if actually on the real site) and never touches `A.camera.position`. The walk
+camera itself is driven entirely by `A.advanceWalkStep()` (`walk.js` ~L458), fed by exactly ONE input —
+**tapping/holding the blue Drive-Thru forward-arrow button** (`startDriveThru`, the "⬆" button). Point
+the phone (compass/tilt via `deviceorientation` sets facing), tap or hold the arrow, and
+`A.camera.getWorldDirection(dir)` + a fixed `WALK_STEP_DISTANCE` moves the camera that way, including
+vertically ("tilt phone up to climb"). **Correction confirmed twice by the user, who wrote this code:
+there is no step-pedometer.** `startStepDetection`/`devicemotion` accelerometer step-sensing exists in
+`walk.js` as dead code — grep confirms `startStepDetection()` is never called anywhere except its own
+definition; the only other reference is a comment, `"Drive-Thru replaces shake-to-walk — no
+startStepDetection()"`. No GPS, no anchor calibration, no real-world coordinate, no pedometer — compass
+for direction, one button for advance. GPS (`setWalkAnchor` + `startWalkGpsTracking`) is a genuinely
+separate concern used elsewhere (on-site snag/issue geotagging), correctly out of scope for this part.
+**Consequence for this spec, all in the walk-recording's favour:** `A.camera.position` during a walk is
+ALREADY in the exact same Three.js scene coordinates `poseAt`/bands use — recording it needs no
+coordinate transform and carries no GPS/dead-reckoning uncertainty at all. The only real fidelity
+questions are ordinary compass-sensor jitter (already something `walkCompassReadings`/`sitecam.js`
+smooths) and the fact that each step is a fixed-length quantized hop, not a continuous trace — worth
+factoring into the downsampling below rather than assuming dense continuous samples need thinning.
+> "or better still not realtime, just record then share as a URL+ notation to whatsapp etc. The desktop
+> clicks on the link, shall apply the notation to the URL building.db set... during walk mode, press
+> record this walk.. end of it share."
+
+**Drops the whole real-time transport question from earlier in this session** — no WebSocket, no
+WebRTC, no live link at all. Record locally, share a normal link through normal channels, done. This is
+simpler than Part F's discussion and reuses more existing code than any other part of this spec.
+
+### Grounded in what already exists — three separate systems, already built, being connected
+| what | where | why it matters here |
+|---|---|---|
+| Live walk pose, already computed on every arrow-tap | `walk.js`: `advanceWalkStep` (fixed-step advance along `camera.getWorldDirection`), driven by the Drive-Thru arrow button; facing comes from `deviceorientation` via `sitecam.js`/`A._walkOrientListener` | "Record" only needs to APPEND the camera pose to an array on each `advanceWalkStep()` call — nothing new to sense or compute. |
+| Share URL builder, already encodes state as hash params | `A.buildShareUrl()` (`share.js:211-290`) — builds `base?db=<building>#cam=..&tgt=..&pick=..&storey=..&xray=1&tm=..&tour=play`, already logs `walk=!!A.walkModeActive` in its own diagnostic (line 287) — walk-mode awareness already exists in this function, just not yet a shared param | Add ONE new part, `walkpath=<encoded waypoints>`, to the SAME parts array — not a new URL scheme. |
+| Native share, already working | `A.quickShare()`/`navigator.share()` (`share.js:489+`), `§SHARE_METHOD` logged on success — this is already how WhatsApp/etc. sharing happens today for other links | Zero new sharing UI. The "share to WhatsApp" ask is already fully solved by existing code. |
+| Hash-param apply-on-open, already working | `main.js:992`: `location.hash.slice(1).split('&')` → `hashParams`, dispatched per key (cam/tgt/pick/storey/xray/tm/tour each already have a handler) | Add ONE new dispatch case, `walkpath`, to the SAME existing per-key handling — not a new parser. |
+| Building match on open, already working | `?db=` param in the base URL + `validateDB()` (`share.js:47-71`, checks required tables incl. `building`) | "Applies to the URL building.db set" is already solved — nothing new needed for this half of the ask. |
+
+### The new pieces — small, all additive
+1. **Record button in Walk Site mode.** Mirror the existing `startDriveThru`/`stopDriveThru` touch-button
+   pattern (`walk.js:396-457`, `touchstart` bound) — a "Record this walk" toggle that starts appending
+   `{x, y, z, heading, t}` to an array on every tick already firing, stops on tap, nothing new sensed.
+2. **Downsample before sharing — do NOT ship the raw tick log.** §CPE_BANDS already established the
+   doctrine that authored paths are a HANDFUL of waypoints/bands, never dense raw samples ("6 waypoints,
+   folded into 3 rows... STORE 3 BANDS, NOT 6 POINTS"). A multi-minute walk at several ticks/second is
+   hundreds-to-thousands of samples — both too large for a URL and inconsistent with how every other
+   path in this system is stored. **⛔ Open, do not guess**: the simplification tolerance (how much a
+   downsampled path may deviate from the recorded one) needs measuring against real recorded walks, the
+   same "don't invent a fixed constant" discipline §CPE_BANDS already applied to corner rounding via
+   `A.cinemaFan`. A standard path-simplification technique (e.g. Douglas-Peucker on the position samples)
+   is the right SHAPE of fix; the tolerance number is not.
+3. **Apply-on-open stages into the editor, does not auto-commit.** Per §CINEMA_PATH_EDITOR_MODEL rule 5
+   (persistence is an explicit "Save this path" action; adjusting is ephemeral) — opening a walk-share
+   link must open Alt+C with the walked path pre-loaded as the CURRENT edit, exactly as if the desktop
+   user had just placed those bands by hand. It must NOT silently overwrite the building's stored
+   `cinema_path` — same gate `G4b` already protects for manual edits.
+
+### Witness claims — Part G
+- **G-WALKSHARE-1**: record → `buildShareUrl()` → parse the resulting `walkpath=` param → the
+  reconstructed path's sampled `poseAt(t)` stays within the (measured, not guessed) simplification
+  tolerance of the ORIGINAL raw tick log — proves the encode/decode round-trip preserves the walked
+  shape, not just "produces a path."
+- **G-WALKSHARE-2**: opening a walk-share link stages the path into the editor and leaves the building's
+  stored `cinema_path` untouched until "Save this path" is explicitly clicked (reuses `G4b`'s existing
+  ephemerality proof against this new entry point).
+- **G-WALKSHARE-3**: opening a walk-share link for building X while a DIFFERENT building is currently
+  loaded correctly loads X first (via the existing `?db=`/`validateDB` path) before the notation is
+  applied — order-of-operations regression guard.
