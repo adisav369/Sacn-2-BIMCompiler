@@ -606,6 +606,31 @@ answered as zero. **Do not report "0 stair-adjacent" for those 7 as a finding �
 gap.** Fixing `storeyStairs()`'s storey attribution (mirror `storeyDoors()`'s z-based
 `_assignByZ`) is a new, separate backfill lane if picked up — out of scope for this verify.
 
+### §12.3 CAUSE-SPLIT WITH STAIR CASES — coverage gap CLOSED, full fleet (log
+`w_stair_cause.log`, script `witness_room_path_stair_cause.js` on `review/roompath-redundancy`,
+pushed). Repairs §12.2's gap LOCALLY in the witness — same nearest-anchor-by-z rule
+`storeyDoors()` already uses, applied read-only to `IfcStair`/`IfcRamp` rows; `room_walker.js`
+itself untouched.
+
+| building | missing links | stair-adjacent | no door at all | door, no opening | stair coverage |
+|---|---|---|---|---|---|
+| LTU | 11 | 1 (9%) | 2 | 8 | 100% (0 reassigned — already clean) |
+| Clinic | 5 | 1 (20%) | 0 | 4 | 100% (6/6 reassigned by z) |
+| HHS | 21 | 1 (5%) | 0 | 20 | 100% (12/12 reassigned by z) |
+| Terminal/TermRooms | 5 | 1 (20%) | 0 | 4 | 100% (33/33 reassigned by z) |
+| Duplex | 2 | 0 | 0 | 2 | 100% (2/2 reassigned by z) |
+| JKR | 13 | 0 | 6 | 7 | 100% (8/8 reassigned by z) |
+| **Hospital** | **100** | **0** | 2 | **98** | 100% (30/30 reassigned by z) |
+
+**Answer to the open question:** across the fleet, only **4 of 157** missing links (2.5%,
+counting Terminal/TermRooms once — TermRooms is a byte-copy per §4.3) are stair-adjacent. Hospital
+— 64% of the fleet's whole backlog — has **zero** stair-adjacent links even at full coverage: its
+100 links are 98 "door exists, no opening detected" + 2 "no door at all." That is the SAME
+mechanism §8 already named as squarely in this lane's domain (opening detection), not a vertical-
+circulation question. **Conclusion: the draw backlog is a horizontal same-floor gap, overwhelmingly**
+— §12.1's Layer-1-building-wide fix is doctrinally correct but would close only ~4 links fleet-wide;
+the other ~153 need the opening-detection work §8 already pointed at, unrelated to stairs.
+
 # LANE STATE 2026-08-03 — CLOSED ON SOUND FOOTING; NEXT SESSION RESUMES FROM HERE
 
 DONE this lane: extractor openings fix (ghost-shaped, permanent) · 9/9 DBs ghost-shaped ·
