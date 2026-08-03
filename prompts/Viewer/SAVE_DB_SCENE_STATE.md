@@ -208,3 +208,23 @@ cursor position at save time, not just `tm_on`. Commit `0f7dac4`, same PR/branch
 `dayCounter`, its own `tmCursor`/`tmSpanMs`) out of IndexedDB and into the portable `cinema_path`
 table — same additive pattern (`cinema_path`'s own `hold_sec` precedent already proves it's safe),
 just more fields. Pick up if/when asked.
+
+## ▶ FOLLOW-UP 2026-08-03 (LATE) — Alt+C Movie Maker panel itself now restorable too
+User asked why the Alt+C panel couldn't persist. Real reason: `cinemaBtn` in `panels.js` is a
+bespoke `onClick` handler, never registered in the `_actions[]` array `A.runPanelAction`/`focused_panel`
+capture relies on — invisible to the mechanism, not excluded on purpose.
+
+**Correction to my own earlier claim, made before reading `cinema_maxq.js` closely:** I told the user
+"`A.startMaxQualityOrbit()` with no args starts an ~8-minute render bake" — overstated. Reading
+`cinema_maxq.js:951` (`if (A.cinemaPathEditor && plan && plan.waypoints && opts.editor !== false)`):
+the DEFAULT behaviour (no `opts.editor` at all) already opens the editor UI first, same as a real
+Alt+C press — the bake only proceeds after the user clicks OK inside that editor. The real risk case
+is the separate `opts.editor === false` shape (scripted/witness bakes only), not the plain no-arg call.
+Passing `{editor:true}` explicitly is still the right defensive choice (unambiguous intent, immune to
+a future default flip), just not fixing the exact danger I originally described — noted here rather
+than left silently wrong.
+
+**What shipped** (commit `74a3fd0`, same branch/PR #1152):
+- `panels.js` — new `_actions[]` entry `{ id: 'cinema', ..., fn: function() { A.startMaxQualityOrbit({ editor: true }); } }`. Restore path (`A.runPanelAction('cinema')`) now resolves to this, always explicit.
+- `scene.js` — capture side special-cased: the CPE editor is a bare modal (`#cpe-panel`, torn down via `removeChild` in `cinema_path_editor.js`'s `finish()`), never wired into `_registerPanel`/`_focusedPanel`, so `_writeSceneStateTable` checks `document.getElementById('cpe-panel')` directly and treats it as authoritative over the background panel-focus model (a modal on top wins).
+- Witness extended in place: **14/14 PASS** — G-SS-7a (write side: `focused_panel='cinema'` while editor open) + G-SS-7 (fresh reload reopens the editor, confirmed via `#cpe-panel` presence, and **no** `§MAXQ_FRAME` bake-progress line ever fires — proof the restore only reopens the UI, never the render).
