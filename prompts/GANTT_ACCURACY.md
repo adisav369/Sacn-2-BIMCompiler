@@ -44,11 +44,89 @@ witness suite (9 files) re-run green, no regressions.
 `sw.js` `CACHE_VERSION` v929→v930 + the 3 changed files' precache-busting `?v=` bumped in the same
 PR (all 3 are precached — the standing landmine this project has hit before).
 
-⛔ **Not yet done — needs a live bake to close the loop:** the user's stated goal was a movie that
-"flows nicely over some seconds" instead of bunching structure into single frames early on. The
-fix should produce that (Superstructure's window is now 6.7x wider, so `_cap`'s per-element
-even-distribution spreads 6.7x thinner per frame) but this is REASONED from the numbers, not yet
-observed in an actual MaxQ bake — merged to `main` specifically so the user can bake one now.
+⚠ **CORRECTION, same session:** the "6.7x thinner per frame" reasoning above was WRONG for the
+Cinema MaxQ film specifically. `§CPE_BUILDUP_WORK_PACED` (`cinema_maxq.js`/`time_machine.js`
+`tmWorkSchedule`) makes the film advance by ELEMENTS PLACED, not calendar days — "10% of the film
+is 10% of the building" on any model, BY DESIGN, precisely so bursty derived-4D timestamp
+clustering can't wreck the film. That means §PHASE_DURATION's calendar-date fix is invisible to
+the MaxQ film's own frame-by-frame pacing: Superstructure (72.4% of elements) ate ~72% of the
+FILM's runtime before AND after this fix — calendar duration was never what the film reads. What
+§PHASE_DURATION DOES fix for real: the interactive Time Machine calendar scrubber, the on-screen
+day-counter badge, the Gantt chart, and any 4D/5D variance report — everything that reads dates
+directly. See §CPE_EVEN_PHASE_PACING below for the fix that actually touches the MaxQ film.
+
+## ✅ §CPE_EVEN_PHASE_PACING + §CPE_PHASE_STAGGER + §CPE_SETTLE_HOLD — BUILT AND MERGED (bim-ootb PR #1153, sw v932, 2026-08-04)
+**The real fix for "2 min movie needs to be even or sensible."** §PHASE_DURATION only changes
+calendar dates, which `_workCursorAt` (the MaxQ film's cursor) never reads — it paces by element
+RANK. Terminal's Superstructure (72.4% of 48,428 elements) always ate ~72% of the film's runtime,
+unaffected by any calendar-duration fix. Confirmed live in this session (`§CPE_EVEN_PHASE_PACING`
+witness numbers below) before any code was written.
+
+**§CPE_EVEN_PHASE_PACING:** `tmWorkSchedule()` groups ops by phase (`kernel_ops.parameters.phase`,
+already carried, set by `§PLAYBACK-STAGGER`) and `_workCursorAt` gives every phase an EQUAL film
+segment, work-paced (element-rank) within it — same discipline that made global work-pacing
+correct in the first place, just scoped per-phase instead of globally. Terminal: Superstructure
+968d → still 20% of the film's runtime like every other phase, not 72%.
+
+**§CPE_PHASE_STAGGER:** a fully isolated equal segment still reads as monotonous tiling for a
+visually homogeneous phase (Terminal's 33,324 near-identical Metal Deck `IfcPlate`) — user's own
+diagnosis, unprompted: *"i noticed that superstructure metal deck mostly slow roof tiling.. thus it
+is best to stagger such phases together."* Confirmed as a GENERAL rule, not Terminal-specific (any
+building where one class dominates — curtain-wall, brick coursing, duct runs — has the same
+failure mode). Each phase's window now starts 20% of a segment-width EARLY, borrowed from the
+PREVIOUS phase's tail: `cursor(t) = max` over every phase's own individually-monotonic
+contribution — max of monotonic functions is itself monotonic, so this needed no boundary
+special-casing (the exact class of bug below). `_phaseWindow`/`_phaseCursorAt` are the single
+source of truth both `_workCursorAt` and `_ghostGroundArm`'s inverse lookup read, specifically so
+they cannot drift into two different clocks again.
+
+**Real regression found and fixed in the same session:** `_ghostGroundArm`'s precomputed
+`elementsFirstT` inverted the OLD flat-global-rank cursor mapping (a rank ÷ total). The moment
+phase-segmented pacing landed, that inversion silently went stale — same bug class as
+`§GHOST_GROUND_LIVE_TRIGGER` (PR #1149, fixed 2026-08-03 for a DIFFERENT pacing-domain change).
+Caught by `witness_cpe_ghost_ground.js` G-GG-12a (1/15 red), root-caused, fixed by inverting
+through the same shared `_phaseWindow` the forward cursor uses — 15/15 green after.
+
+**§CPE_SETTLE_HOLD (separate, user-reported mid-session):** the Cinema Path Editor's "Settle" band
+(where the dive lands) imposed a fixed, unconfigurable ~0.8s pause (`CINEMA_SPIN_MIN_SEC`) even
+with nothing authored — user: *"it still paused for a second when nothing is set for it.. remove
+imposed pause. Let user set in Hold."* Root cause: band 0's own `hold` field was being swept into
+the WALK beat's duration (`out`), a beat the settle point isn't even part of, so a typed Hold value
+did nothing visible AT Settle. Fixed: band 0 excluded from the walk-hold collection, floor reduced
+to a technical minimum (0.05s, avoids a literal zero-length beat), and the settle band's Hold now
+correctly buys the SPIN beat's real dwell. Verified directly: default (nothing authored) spin
+duration 0.57s (was pinned at 0.8s); Hold=2s adds exactly 2.000s to the beat.
+
+**Witnesses:** `witness_cpe_work_pacing.js` rewritten for the new invariants — 11/11 green,
+Terminal + Duplex (real Terminal counts: Superstructure=35,061 → exactly 20.0% film share at every
+sampled fraction, `overlap=0.2` boundary values match the analytic `OVERLAP/(1+OVERLAP)=16.7%`
+exactly). `witness_cpe_ghost_ground.js` 15/15 both buildings. `witness_cpe_buildup_topout.js`,
+`witness_cpe_stick_hold.js`, `witness_cpe_stick_approach.js`, `witness_cpe_walk_budget.js` all
+re-run clean — 2 pre-existing unrelated failures confirmed via `git stash` diff (a Duplex
+heading-sweep coverage gap, and a stale `swing===1.6` assertion against the shipped `1.45`
+constant), neither caused by this change.
+
+⛔ **Named, not built tonight — user asked, deliberately deferred, don't fold in silently:**
+**within-phase day-batching** — user: *"as long the first day is slower... equal large similar sets
+be hurried though staggered a day apart etc."* A DIFFERENT mechanism from phase-to-phase overlap
+above (this is WITHIN one phase's own homogeneous population) — batch same-day completions into
+visible "pulses" instead of one smooth per-element ramp, mimicking real construction rhythm.
+⚠ Must be a PRESENTATION technique, not literal re-clustering — `§CPE_BUILDUP_WORK_PACED` already
+fixed AWAY bursty/clustered reveal as a defect; re-clustering the schedule itself would walk that
+back. Needs its own measurement before building (start with: does the current `_cap` linear i/n
+distribution even produce real day-buckets to batch, or does it need synthetic grouping — and if
+synthetic, is that "presentation" or "invention"? Answer that FIRST.)
+
+⛔ **Also named, not built — separate, bigger scope, user-identified 2026-08-04:** Terminal's walls
+(Architecture phase) start at calendar day 1,189 of 1,264 (94% into the project) because
+`materializeDefault` sequences phases STRICTLY contiguously — phase i+1 never starts until phase i
+is 100% done, project-wide. This predates §PHASE_DURATION but was invisible until Superstructure's
+duration became realistic (968d). Not a classification bug (`IfcWall→Architecture,seq:6` is
+correct, standard sequence) — it's the scheduling MODEL. Real fix needs overlapping-phase
+scheduling in `materializeDefault` (the resource-cursor-per-band model `injectGantt`'s OLDER,
+separate generative path already has, per this file's own §A "True parallel trades ✓" — but
+`materializeDefault` never inherited it). Bigger than tonight's scope; `§CPE_PHASE_STAGGER` above
+only fixes the FILM's visual overlap, not the underlying calendar dates.
 
 ## ▶ (superseded) RESUME 2026-08-04+ — the phase-duration fix, BUILT above
 **User's "Architecture all done on day one" report is diagnosed — search `## 2026-08-03 —
