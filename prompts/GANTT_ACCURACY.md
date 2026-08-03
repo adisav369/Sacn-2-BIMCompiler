@@ -19,7 +19,38 @@ below for the full spec/build record. The 2026-08-02 RESUME item that used to si
 do not re-read it as an open task. See §CPM_DUAL_ELEVATION and §SUPPORT_ORPHAN (end of file) for the
 11-shape-measured-floor follow-on research from 2026-08-03, also closed (parked, no PR, by design).
 
-## ▶ RESUME 2026-08-04+ — START HERE: build the phase-duration fix (root cause CONFIRMED 2026-08-03, NOT built)
+## ✅ §PHASE_DURATION — BUILT AND MERGED (bim-ootb PR #1150, `5514d94`, sw v930, 2026-08-03)
+**Fix:** `schedule_author.js` `materializeDefault()`'s flat `phaseDays:30`-per-phase width replaced
+with workload-proportional width: Σ per-trade labor-seconds (already-extracted `LABOR_RATES`
+productivity, via a parameterized `_installSecs` — same formula as `time_machine.js`
+`getInstallSecs`) ÷ that trade's `max_crews` (also already-extracted, previously unused anywhere),
+taking the SLOWEST trade in the phase as its duration (trades within a phase already run in
+parallel — this file's own §A.3 principle). Same bug found and fixed in `scheduleContiguous()`
+(the blank-model "originate the dates" flow) — the original investigation missed this second call
+site; it re-derives workload from `task_elements`/`elements_meta` since `materializeDefault`'s
+phase objects aren't persisted. All 3 live callers (`schedule_editor_ui.js` ×2,
+`schedule_author_ui.js` ×2) updated to pass `laborRates`.
+
+**Two design points the user ruled on 2026-08-03/04, with real numbers, before building:**
+- Pure Σ-seconds/1-crew (the resume note's literal wording) gives Terminal a **10.2-year total**,
+  Superstructure alone **2,922 days** — measured, rejected as unrealistic before any code shipped.
+- `max_crews` applied, **bottleneck trade (max, not sum)** across a phase's trades → **~3.5 years
+  total, Superstructure ~968 days** (still ~75% of the project — correctly dominant, not absurd).
+
+**Witness:** `witness_phase_duration.js` (bim-ootb root), real `Terminal_extracted.db`, 5/5 green.
+G4 hand-computes the STEEL_ERECTOR-bottleneck day count independently from the shipped `rates.js`
+numbers alone and it matches the code's output exactly (968d). Full existing author/schedule
+witness suite (9 files) re-run green, no regressions.
+`sw.js` `CACHE_VERSION` v929→v930 + the 3 changed files' precache-busting `?v=` bumped in the same
+PR (all 3 are precached — the standing landmine this project has hit before).
+
+⛔ **Not yet done — needs a live bake to close the loop:** the user's stated goal was a movie that
+"flows nicely over some seconds" instead of bunching structure into single frames early on. The
+fix should produce that (Superstructure's window is now 6.7x wider, so `_cap`'s per-element
+even-distribution spreads 6.7x thinner per frame) but this is REASONED from the numbers, not yet
+observed in an actual MaxQ bake — merged to `main` specifically so the user can bake one now.
+
+## ▶ (superseded) RESUME 2026-08-04+ — the phase-duration fix, BUILT above
 **User's "Architecture all done on day one" report is diagnosed — search `## 2026-08-03 —
 INVESTIGATION ONLY` below for the full evidence trail.** Verdict: user's own hypothesis ("no
 staggering within a phase") is WRONG — that logic exists, works, and is witnessed
