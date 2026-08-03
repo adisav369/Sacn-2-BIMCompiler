@@ -252,6 +252,73 @@ arrived at independently by two code paths.** They were never connected.
 
 The single real engine gap is **cascade/clamp on move** (C1–C3 below). Everything else is UI.
 
+### K0 SHIPPED 2026-08-04 — `witness_gantt_bar_identity.js`, 7 buildings, 42/42, 268,093 elements
+Bars are now keyed on the real `task_id`, joined **by GUID through `task_elements`** — not by matching
+storey/phase strings, because `deriveZones` keys a zone on `collapsePhase(e.storey)` while the drawer
+reads the raw `p.storey` off the op params, so the two names legitimately differ.
+- **100% of elements resolve to a real task on every fixture** (Terminal 48,428 · Hospital 63,415 ·
+  Duplex 1,143 · Clinic 16,912 · JKR 8,985 · LTU_AHouse 122,330 · HHS 6,880).
+- **Do NOT repeat the earlier claim that name-matching is universally unsafe** — measured, on 6 of 7
+  fixtures the old `storey|phase` key was exactly 1:1 with real tasks, so a name match would have
+  survived there.
+- **But HOSPITAL was drawing 60 bars for 35 real tasks** — 19 zone tasks each split across several
+  rows, because `collapsePhase()` merges storey aliases the raw `p.storey` key does not. A real,
+  measured defect on the exact building the user reported as "a mess"; fixed by the GUID join.
+- Also fixed in passing: the rollup was recomputed from scratch on EVERY `drawGanttMini()` call — once
+  per playback frame, walking all 63,415 ops on Hospital. Now cached behind `_ganttDirty`, invalidated
+  on `_ops` reload and building change; the draw path is pure drawing.
+- Bars whose ops carry no task (no authored schedule) keep the old storey|phase identity and stay
+  non-editable, reported as a coverage ratio by `§GANTT_BAR_IDENTITY` rather than hidden.
+
+## K1 — ROW ORDERING: we follow no P6 convention at all (user report 2026-08-04, verified)
+User: *"are you using any 4D convention used by P6 on gantt phase/task ordering? Last session was a
+mess putting substructure which has above ground appearing first."* Answer: **no convention is being
+followed.** Three verified facts:
+- **Rows sort by start time only** — `_ganttTasks.sort(function(a,b){return a.startTs - b.startTs;})`
+  (`time_machine.js`). Not a P6 convention: whichever zone happens to compute earliest floats to the
+  top, so a phase's floors appear interleaved and arbitrary.
+- **There is no WBS to order by.** `materializeZones` parents EVERY zone flat to `TASK_ROOT`
+  (`stmtTk.run([tid, schedId, rootId, …])`). P6 orders rows by WBS path, then early start. We have a
+  single-level list, not a path.
+- **The correct ordering keys are already computed and then discarded.** `deriveZones` builds each
+  zone with `rank` (real bottom-up floor rank — `deriveBandRanks`, median `base_z` per collapsed
+  storey) and `seq` (the zone's earliest trade sequence). Neither is persisted: the `tasks` schema
+  (`_ensureWideTasks`) has NO ordering column.
+
+**Fix (no invented data):** persist `seq` + `rank`; emit real phase summary rows as WBS parents
+(Project → Phase → Zone); order rows by (phase sequence from `SEQUENCE_RULES`, then floor rank).
+Phase sequence is already correct as of PR #1165; floor rank is real Z geometry.
+
+⚠ **Separate, NOT yet verified:** whether Substructure is also mis-CLASSIFIED onto above-ground
+elements. That is `matchRule` phase assignment, a different defect from row order — check before
+assuming one fix addresses both. Note a concurrent session landed #1170 ("substructure-first tiebreak
+in the GANTT_OPS_FIRST20 debug display") — that is the DEBUG log line only, not the Gantt row order.
+
+## §ZONE_EDGE_LEAD — the zone graph contradicted its own dates (FOUND + FIXED 2026-08-04)
+**Not looked for — surfaced by `witness_gantt_edit_constraints.js` G-CON-1 on its first run.** The
+generated zone schedule violated **53 of its own 105 `task_sequences` edges on Terminal**, before any
+user edit. Root cause, `schedule_gate.js deriveZones`:
+```js
+lagMs: Math.max(0, succ.start - pred.end)     // ← the max(0,…) clamped away every real overlap
+```
+Zones genuinely run in parallel (crews work floor N+1 while floor N finishes), so when
+`succ.start < pred.end` the true relationship is a **negative lag** — a lead, P6/MSP's `FS-5d`.
+Clamping it to 0 persisted an `FS+0` edge asserting "successor starts at or after predecessor
+finishes", which the zone's OWN dates then contradicted.
+
+**Why it stayed invisible:** `computeCpm(fixedDates:true)` trusts the real dates and only derives
+float, so it never checked FS feasibility. It becomes load-bearing the moment those edges are used as
+drag CONSTRAINTS — a clamp built on `FS+0` refuses legal moves, a cascade pushes bars that never
+needed to move. **This is the single most important finding of the session: the "iron clad" core was
+not iron clad, and no existing witness could have caught it because none tested the edges AS
+constraints.**
+
+Two parts to the fix: allow negative lag in `deriveZones`, AND derive the persisted lag from the same
+ROUNDED day numbers `materializeZones` writes the dates from (rounding dates and lags independently
+let them disagree by a day). Result: **53 → 0 self-violated edges, and 0 on all 7 fixtures.**
+No regression — `witness_zone_cpm` (11), `_duplex` (9), `witness_tm_duration_sync` (8),
+`witness_support_invariant_all_buildings` (18) all still green, 46/46.
+
 ## E — Interactions to build (MS Project convention; do not invent a new idiom)
 - **E1 drag bar body horizontally** → move, duration preserved → `moveTask`.
 - **E2 drag a bar's left/right edge** → resize; the opposite end stays pinned; duration changes.
@@ -261,6 +328,22 @@ The single real engine gap is **cascade/clamp on move** (C1–C3 below). Everyth
 - **E4 click an existing dependency arrow** → remove / change type (FS/SS/FF/SF) + lag.
 - Hit-testing already exists: `findBarAtClick` (`time_machine.js:4590`). Extend it to return an edge
   zone (within ~4px of a bar end) so E1 and E2 can be told apart from one gesture.
+- **E5 sliding day ruler** (user addition 2026-08-04) — a time-axis header along the drawer's top
+  border showing real dates/day numbers, sliding/scrolling with the bars. Today the drawer has NO time
+  axis at all: the only temporal reference is the orange cursor hairline (`:4550`), so a bar's absolute
+  dates are only discoverable by hovering it. A ruler is also the precondition for E1/E2 being usable —
+  you cannot drag to a date you cannot see.
+- **E6 resizable drawer** (user addition 2026-08-04) — draggable drawer borders to show more rows.
+  Height is currently implicit: `cH = numTasks * rowH + 4` inside a fixed-height scroll box
+  (`:4479`), so a 22-storey building renders ~130 bars into a viewport showing a handful.
+  Reuse the existing `makeDraggable` pattern (`:2953`), don't invent a second drag idiom.
+- **E7 double-click → property panel** (user addition 2026-08-04, think-ahead) — double-clicking a bar
+  opens a small property panel to TYPE exact start/finish/duration and edit its dependency list.
+  Rationale: drag is for speed, keyin is for accuracy — a 1px drag on a 400-day project is ~2 days, so
+  drag alone can never be the precise path. Same verbs underneath (`moveTask`/`resizeTask`/
+  `addDependency`), same C1–C3 constraint checks — the panel is a second input surface onto the
+  identical model, NOT a third editor. This is what makes deprecating the two existing editors honest:
+  their real remaining value is precise keyed entry, and E7 absorbs it.
 
 ## C — Constraint semantics (THE rule this feature lives or dies on)
 Prime Rule consequence: **a drag must never silently hide a real defect.** A purely cosmetic drag lets
@@ -347,12 +430,19 @@ correct 4D iron clad."** So CAL and the `boq_charts.html` redirect are explicitl
 band; they are P6-alignment work, not foundation. The foundation band is K0→E→C→W: a bar that IS a
 real task, edits that obey the real DAG, and a movie that always agrees with the chart.
 
-**FOUNDATION BAND (now):**
-1. **K0 re-source bars from `tasks`** + `witness_gantt_bar_identity.js`. Nothing else can start first.
-2. **VIS facelift** — independent of K0, smallest, unblocks the daily-use complaint.
-3. **E1 + C1/C2 + W1** — move with cascade/clamp, the core of the feature.
-4. **E2 edge-pull resize** (`resizeTask`).
-5. **E3/E4 CPM linking + unlinking.**
+**FOUNDATION BAND — progress as of 2026-08-04, branch `feat/gantt-edit-foundation` (all pushed):**
+1. ✅ **K0 bar identity** — `789ff51`. `witness_gantt_bar_identity.js`, 7 buildings, 42/42.
+2. ✅ **VIS facelift** — `610b361`. `witness_gantt_palette.js` 7/7, RED-proved against the old palette.
+3. ✅ **E5 day ruler + E6 resizable drawer** — `76538e9`. Tick spacing verified over 18 span×width combos.
+4. ⏳ **E1 + C1/C2 + W1** — `3c9349e` ships the **ENGINE half**: `moveTaskCascade` (C1 cascade /
+   C2 clamp), witnessed 7 buildings 14/14 with a RED control. **REMAINING: the UI half** — pointer
+   drag handlers on `tm-gantt-canvas` calling it, and **W1** (re-time the moved task's
+   `task_elements` guids inside the new window). `witness_gantt_edit_coherence.js` NOT yet written.
+5. ✅ **E2 edge-pull resize** — `resizeTask` verb shipped in `3c9349e`, witnessed (G-CON-12/13).
+   UI edge-grab hit-testing still to wire (shares the drag handler with E1).
+6. ⬜ **E3/E4 CPM linking + unlinking.**
+7. ⬜ **E7 double-click property panel** — the precise-keyin path; also what makes DEP honest.
+8. ⬜ **K1 P6 WBS ordering** (see above) — rows still sort by `startTs`.
 
 **LATER BAND (P6/MPP alignment — do not start unprompted):**
 6. **CAL toggles** (a then b) — the working-calendar model.
