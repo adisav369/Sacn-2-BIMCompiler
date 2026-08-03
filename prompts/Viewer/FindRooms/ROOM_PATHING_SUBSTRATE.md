@@ -11,7 +11,7 @@ Read the log after every run (§Log Mandate). Honour this preamble until the lan
 ANCHORS: bim-ootb `viewer/lib/room_walker.js` (the substrate — `spineMap`, `storeySpine`,
 `_rasterizeSpine`, `_openings`, `storeyVoids`) · `common/room_graph.js` (the shipped router,
 BYTE-UNCHANGED by this lane so far) · `viewer/navigate_find.js` (the Find panel UI) ·
-`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` (the running log).
+`prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` (the running log).
 ```
 
 ## §0 READING MAP — every document in this lane, and what is in it
@@ -24,7 +24,7 @@ headings — this map is an index, not a re-reading of all 1.5 MB.** Where a doc
 | Doc | Size | What it is |
 |---|---|---|
 | **ROOM_PATHING_SUBSTRATE.md** (this file) | 20K | The concept: architecture, invariants, failed trials, method rules, prior art |
-| `Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` | 276K | **The running log.** §21.x dated sections, all witness output. Start at its last §START HERE |
+| `Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` | 276K | **The running log.** §21.x dated sections, all witness output. Start at its last §START HERE |
 | `Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` | 64K | The Modeller-side settled conclusions this lane ports — real rooms drive placement, guessed rooms display-only |
 | `ROOM_INJECTION_CONSOLIDATED_REVIEW.md` | 12K | Whole-lane review prepared 2026-07-17 for a refactor session — the best short overview before this file existed |
 | `ROOM_INTELLIGENCE_SCOREBOARD.md` | 24K | The standard reporting baseline. One WORKS / one GAP per row — keep it that shape |

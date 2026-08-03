@@ -39,7 +39,7 @@ side. Needs a human merge call before the new page (or any docs change) goes liv
 ⚠ `~/bim-ootb` main checkout is stale + conflicts on `merge origin/main` (tried+aborted 07-26); its local
 commits are NOT unique so nothing is at risk — **never measure from it**, use a fresh `origin/main` worktree.
 
-▶ **Roompath lane CLOSED 2026-08-03** — `prompts/Modeller/DISC_Walker/RESUME_FLEET_OPENINGS_BACKFILL.md`
+▶ **Roompath lane CLOSED 2026-08-03** — `prompts/Viewer/FindRooms/RESUME_FLEET_OPENINGS_BACKFILL.md`
 §LANE STATE: extractor openings fix permanent, 9/9 DBs ghost-shaped, §HM v3 two-layer metric is the
 headline (fleet draw backlog 157 links; buildings healthy in record). Next session resumes at its
 NEXT SESSION block. Hospital_3 DB rm'd (user; backup /tmp/db_bak_2026-08-02/).
@@ -57,7 +57,7 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   trade gate and the band gate onto the elevation key (band alone isn't enough — trade still keys on
   label, 23,121 elements sit in two groupings, barrier deadlocks). Engine/support-extraction/crew-pool
   built and reusable.
-- ▶ **ROOM PATHING** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, read `ROOM_PATHING_SUBSTRATE.md` FIRST (new: concept,
+- ▶ **ROOM PATHING** — `prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`, read `ROOM_PATHING_SUBSTRATE.md` FIRST (new: concept,
   invariants, every failed trial, prior art, §0 index of all 30 lane docs), then resume at §21.44. ⚠ Everything before §21.33 is SUPERSEDED/disproven — don't
   re-derive. Three defects found and fixed 2026-08-02: §PRECARVE (retention 84%/43%→100%/100%), the
   unhosted-void admission (default `W:3.0`), and the door pierce (6*RES→10*RES). **LTU stranded
@@ -79,7 +79,7 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
   over-removes wall and that is what was merging pockets, so `W:3.0` and `pierce=10*RES` were both
   swept against a geometric error and 18.4% is not a clean win. NEXT: joint (W, pierce) re-sweep on
   corrected axes — patch kept unapplied at `roompath_diagnostics/patch_21_43_transpose.diff`;
-  worker prompt ready at `prompts/Modeller/DISC_Walker/RESUME_ROOMPATH_AXIS_RESWEEP.md` (Fable-class).
+  worker prompt ready at `prompts/Viewer/FindRooms/RESUME_ROOMPATH_AXIS_RESWEEP.md` (Fable-class).
   19 witnesses on bim-ootb `review/roompath-redundancy`, worktree `/tmp/wt-roompath` live/clean/pushed
   — REUSE it. Nothing deployed; engine byte-unchanged. Blocks `datacentre_cabling.md` cable-pathing.
 - ▶ **MODELLER** — dispatch from `prompts/MODELLER_MASTER.md` (⚠ landmine found compacting this file

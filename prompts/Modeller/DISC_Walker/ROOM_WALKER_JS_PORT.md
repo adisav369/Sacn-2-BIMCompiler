@@ -15,7 +15,7 @@ ANCHORS: scripts/compile_rooms.py (the Python source of truth to port, byte-for-
 re-derived from scratch) · prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md (§DOOR-RESCUE/
 §DOOR-PARTITION, the algorithm; Task 3 "New Modeller Outliner 'Rooms' category," still NOT
 STARTED — this doc gives that task its concrete trigger mechanism) ·
-prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md (§2 Task 5, the live-import gap
+prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md (§2 Task 5, the live-import gap
 this closes) · bim-ootb modeller/disc_walker.js `dwWalk()` (the EXISTING walk-trigger convention to
 match — verify HOW it's actually invoked today, automatic-on-load vs explicit UI action, before
 assuming a button pattern; not confirmed either way this session, grep found no obvious caller

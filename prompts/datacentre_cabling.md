@@ -1095,7 +1095,7 @@ The user reports **redundant pathing errors** in the existing room path (`_roomG
 - Fix or document each defect, then hand the *clean* engine to the cable lane.
 
 ### Step 0 STATUS 2026-07-30 — ⛔ MEASURED, PRECONDITION NOT LIFTED
-Done and written up in `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §20-§20.7
+Done and written up in `prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §20-§20.7
 (witnesses `witness_room_path_redundancy.js` / `_attrib.js` / `probe_redundancy_route.js`, bim-ootb
 branch `review/roompath-redundancy`). The redundancy is real and measured on Clinic, Duplex and
 **LTU_AHouse** (the building the user named as where the criss-crossing was seen):

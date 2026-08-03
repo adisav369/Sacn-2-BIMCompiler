@@ -778,7 +778,7 @@ from the room graph) — not from re-ranking by storey. Re-read that comment blo
 - **Scene jumping on reopen** — NOT reproduced through `_openDbBytes()` (camera 0.00 m, target
   0.00 m). Needs the user's actual repro route first.
 - **D2 walk-out corner whip** — 19.8°/frame on current main, printed by the witness, not gated.
-- **JKR path-crossing** — `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §18.
+- **JKR path-crossing** — `prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §18.
 
 ## Two small already-diagnosed items to land alongside (both root-caused, neither started)
 - **Restore staffage on LOAD**, not on the first Alt+P press. The round-trip works; the trigger is

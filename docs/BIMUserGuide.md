@@ -310,7 +310,7 @@ floor slabs in a fixed height window that missed Hospital's real floor plates by
 wider-than-local detour search (`§PATH_LEGAL_DETOUR_NONLOCAL`), and the line passes one door twice — a
 real ~3m back-step out of room R9 — so the drawn route is on real floor but not always the tidiest
 line. Full technical trail, for anyone who wants it:
-`prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §17 (supersedes §9–§16), shipped in
+`prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §17 (supersedes §9–§16), shipped in
 bim-ootb PRs #1006–#1009.
 
 *Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the

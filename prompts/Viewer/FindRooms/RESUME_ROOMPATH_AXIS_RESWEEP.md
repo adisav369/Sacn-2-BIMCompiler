@@ -20,9 +20,9 @@ findings, status and proof go into THIS file as dated sections (project rule —
 
 ## §0 READ FIRST, then do not re-derive any of it
 
-1. `prompts/Modeller/DISC_Walker/ROOM_PATHING_SUBSTRATE.md` — the concept doc. §5 trials, §6 method
+1. `prompts/Viewer/FindRooms/ROOM_PATHING_SUBSTRATE.md` — the concept doc. §5 trials, §6 method
    rules, §9 the gate suite.
-2. `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` **§21.43 → §21.44** only.
+2. `prompts/Viewer/FindRooms/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` **§21.43 → §21.44** only.
    Everything before §21.29 is superseded.
 
 **SETTLED 2026-08-02 — these are closed. Re-deriving any of them is the failure this section exists
