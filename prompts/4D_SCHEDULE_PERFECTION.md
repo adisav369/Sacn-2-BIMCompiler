@@ -474,19 +474,32 @@ correct 4D iron clad."** So CAL and the `boq_charts.html` redirect are explicitl
 band; they are P6-alignment work, not foundation. The foundation band is K0→E→C→W: a bar that IS a
 real task, edits that obey the real DAG, and a movie that always agrees with the chart.
 
-**FOUNDATION BAND — progress as of 2026-08-04, branch `feat/gantt-edit-foundation` (all pushed):**
-1. ✅ **K0 bar identity** — `789ff51`. `witness_gantt_bar_identity.js`, 7 buildings, 42/42.
-2. ✅ **VIS facelift** — `610b361`. `witness_gantt_palette.js` 7/7, RED-proved against the old palette.
-3. ✅ **E5 day ruler + E6 resizable drawer** — `76538e9`. Tick spacing verified over 18 span×width combos.
-4. ⏳ **E1 + C1/C2 + W1** — `3c9349e` ships the **ENGINE half**: `moveTaskCascade` (C1 cascade /
-   C2 clamp), witnessed 7 buildings 14/14 with a RED control. **REMAINING: the UI half** — pointer
-   drag handlers on `tm-gantt-canvas` calling it, and **W1** (re-time the moved task's
-   `task_elements` guids inside the new window). `witness_gantt_edit_coherence.js` NOT yet written.
-5. ✅ **E2 edge-pull resize** — `resizeTask` verb shipped in `3c9349e`, witnessed (G-CON-12/13).
-   UI edge-grab hit-testing still to wire (shares the drag handler with E1).
-6. ⬜ **E3/E4 CPM linking + unlinking.**
-7. ⬜ **E7 double-click property panel** — the precise-keyin path; also what makes DEP honest.
-8. ⬜ **K1 P6 WBS ordering** (see above) — rows still sort by `startTs`.
+**FOUNDATION BAND — COMPLETE 2026-08-04, branch `feat/gantt-edit-foundation`, all pushed.**
+The TM Gantt drawer is now the editable 4D surface. Every item below has a witness that can fail.
+1. ✅ **K0 bar identity** — `789ff51`. 7 buildings, 42/42, 268,093 elements, 100% resolve.
+2. ✅ **VIS facelift** — `610b361`. 7/7, RED-proved against the old palette.
+3. ✅ **E5 ruler + E6 resizable drawer** — `76538e9`. Tick spacing verified over 18 span×width combos.
+4. ✅ **§ZONE_EDGE_LEAD + C1/C2 engine** — `3c9349e`. 53→0 self-violated edges; 7 buildings, 14/14.
+5. ✅ **K1 P6 row ordering** — `73f2f1b`. 9/9, order DERIVED from `SEQUENCE_RULES`, never hardcoded.
+6. ✅ **E1/E2 drag UI + W1 re-time** — `2d9a47d`. `witness_gantt_edit_coherence.js` 7/7.
+7. ✅ **E3/E4 link + unlink, E7 property panel** — `ca7c44e`. Constraints witness now 18/18.
+
+**Full suite at close: 93/93** — bar_identity 6 · palette 7 · row_order 9 · coherence 7 ·
+constraints 18 · zone_cpm 11 · zone_cpm_duplex 9 · tm_duration_sync 8 · support_invariant_all 18.
+
+**DEP progress (user ruling 2026-08-04):** the ✎ Author-4D side-panel button is REMOVED (`2d9a47d`) —
+entry point only, `schedule_author_ui.js` still loads so nothing referencing it breaks. The ↗ Editor
+tab STAYS for now, to be consolidated into the drawer in a later pass. `boq_charts.html` redirect
+dispatched to an agent on the same branch.
+
+**Honesty note carried forward — a witness claim that was WRONG and got corrected:**
+`witness_gantt_edit_coherence.js`'s first RED control asserted that a naive (unclamped) affine remap
+escapes the task window. **It does not and cannot for realistic input** — the affine map sends the old
+window onto the new exactly, and the 60s minimum-duration bump only fires when a task's new span ÷ its
+element count drops below 1ms, which needs more elements than a day has milliseconds. So the window
+clamp inside `_retimeSpan` is belt-and-braces, NOT load-bearing, and no future session should claim
+otherwise. The control now tests the real defect W1 prevents — task dates moving while elements do not
+— and measures it: **skipping the re-time strands 4,993 of 5,160 elements outside their task window.**
 
 **LATER BAND (P6/MPP alignment — do not start unprompted):**
 6. **CAL toggles** (a then b) — the working-calendar model.
