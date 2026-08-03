@@ -2416,10 +2416,10 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 conn.execute(
                     "INSERT OR IGNORE INTO elements_meta "
                     "(id, guid, discipline, ifc_class, element_name, element_type, "
-                    "storey, material_name, material_rgba, is_anchor) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,1)",
+                    "storey, material_name, material_rgba, building, is_anchor) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,1)",
                     (_a_eid, _a_guid, _a_disc, _a_cls, _a_name, _a_type, _a_storey,
-                     _a_mat, _a_rgba))
+                     _a_mat, _a_rgba, _building_label))
                 conn.execute(
                     "INSERT OR IGNORE INTO element_transforms "
                     "(guid, center_x, center_y, center_z, "
