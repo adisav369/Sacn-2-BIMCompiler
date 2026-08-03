@@ -1,5 +1,30 @@
 # ⚠ DO NOT REMOVE — Read the log after every run
 
+## ✅ §PHASE_OVERLAP_BAND had a THIRD un-fixed call site — bim-ootb PR#1155, caught live minutes after #1154 shipped
+User tested the deployed #1154 fix live and reported *"tons of piling and beams in single day"* still.
+Console log showed the smoking gun: `§AUTHOR_MATERIALIZE ... totalDays=229` (correct) immediately
+followed by `§AUTHOR_UI_DATES start=2026-01-01 span=407d` (wrong — the plain Σ of the 5 phase
+durations, 111+221+38+23+14=407, with zero overlap) and finally `§TIME_MACHINE ON — 408 days` — the
+WRONG number is what actually reached the user. **`schedule_author_ui.js`'s `applyDates()`
+(fires on the wizard's "Apply" step) is a THIRD, independent "lay phases out from a start date"
+implementation** — `materializeDefault` and `scheduleContiguous` (both in `schedule_author.js`) got
+the band-overlap fix in #1154; this UI-only re-apply path did not, and silently reverted an
+overlapping schedule back to strictly-contiguous every time the user hit Apply. Same fix: real band
+count per phase (`task_elements`→`elements_meta.storey`), `lag = duration/bands`. Verified headless
+against real `Terminal_extracted.db` — reproduced the exact 407d bug, confirmed the fix restores
+229d. **Lesson for future sessions: this scheduling logic now has (at least) 3 independent
+cursor-advancement call sites — `materializeDefault`, `scheduleContiguous`,
+`schedule_author_ui.js#applyDates`. Any future date-layout fix must touch all three or grep for
+`cursor +=` across `viewer/schedule_author*.js` first.**
+
+## ✅ §CPE_SETTLE_HOLD still had a residual hardcoded floor — bim-ootb PR#1156
+Separate, older standing request ("since last session"). PR #1153's fix replaced the ~0.8-1s imposed
+settle pause with a smaller `CINEMA_MIN_TURN_SEC=0.05s` technical floor, reasoned as needed to avoid
+a zero-length beat. User: *"i never asked for that as it is a user setting in hold field.. so no hard
+coded."* Checked `_natTotal`'s other terms (dive ≥2.5s, rise ≥0.5s, orbit fixed 8s) — none can be
+zero, so a zero-length spin beat cannot zero the film or divide-by-zero downstream. Floor removed
+entirely; the beat is now purely real turn time + the user's typed Hold value.
+
 ## ✅ §LABOR_QUANTITY_WEIGHT + §PHASE_OVERLAP_BAND — BUILT, PR bim-ootb#1154 (auto-merge armed, 2026-08-03/04)
 **Closes the "RESUME 2026-08-04 root cause found" section below — this is that fix, shipped.** User
 ruling on the same session: *"film layer MUST be removed as it is bad separation of concern"* (the
