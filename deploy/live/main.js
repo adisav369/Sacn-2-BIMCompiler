@@ -12,9 +12,6 @@ function initViewer() {
   var _mods = [setupConfig, setupScene, setupHelpers, setupStreaming, setupPanels, setupTools,
     setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
   _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
-  // §R5A — room-pathing scoped deploy: installs A.getRoomGraph/A.ensureRooms.
-  if (typeof setupRoomGraphBridge === 'function') setupRoomGraphBridge(APP);
-  else console.log('[R5A] §R5A_BRIDGE_ABSENT — room_graph_bridge.js did not load');
   if (typeof setupNlp === 'function') setupNlp(APP);
   if (typeof setupGhostGlass === 'function') setupGhostGlass(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
@@ -28,30 +25,16 @@ function initViewer() {
         resolve();
         return;
       }
-      // §R5A: navigate.js split into sub-modules — load in dependency order, then the bootstrap
-      var modules = [
-        'navigate_find.js?v=13',
-        'navigate_grid.js?v=1',
-        'navigate_path.js?v=1',
-        'navigate_engine.js?v=1',
-        'navigate_controls.js?v=2',
-        'navigate.js?v=10'
-      ];
-      function loadNext(i) {
-        if (i >= modules.length) {
-          if (typeof setupNavigate === 'function') setupNavigate(APP);
-          APP._navigateLoaded = true;
-          console.log('[S239] §NAVIGATE_LAZY_LOADED');
-          resolve();
-          return;
-        }
-        var s = document.createElement('script');
-        s.src = modules[i];
-        s.onload = function() { loadNext(i + 1); };
-        s.onerror = function() { reject(new Error('Failed to load ' + modules[i])); };
-        document.head.appendChild(s);
-      }
-      loadNext(0);
+      var s = document.createElement('script');
+      s.src = 'navigate.js?v=9';
+      s.onload = function() {
+        if (typeof setupNavigate === 'function') setupNavigate(APP);
+        APP._navigateLoaded = true;
+        console.log('[S239] §NAVIGATE_LAZY_LOADED');
+        resolve();
+      };
+      s.onerror = function() { reject(new Error('Failed to load navigate.js')); };
+      document.head.appendChild(s);
     });
     return APP._navigatePromise;
   };
