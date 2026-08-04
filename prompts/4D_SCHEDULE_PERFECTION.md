@@ -576,6 +576,57 @@ support = nearest real slab whose `base_z` sits within GAP above the element's `
 item — Hospital's 0 score means the video's actual defect is still unidentified, chase it after (or
 alongside) `__tmGanttBars` once Chrome is free.
 
+### §GANTT_AXIS_OUTLIER — CONFIRMED LIVE on Hospital (2026-08-04, Chrome free'd up, `__tmGanttBars` used exactly as directed)
+
+Sandbox pointed at the `feat/gantt-edit-foundation` branch tip (`41a4bd9`, has the hook — `main` does
+not, see PR #1173), Hospital fixture symlinked in, `?tm=1` deep link, Gantt drawer opened, real
+`window.__tmGanttBars` read back — this is the "aim at measured geometry, not a guess" step the branch's
+own last commit named as next. Ground truth, not inferred:
+
+- **Live project span is 1049 days.** My earlier headless witness (`witness_gantt_axis_trim.js`)
+  computed only 416 days for Hospital via a direct `computeSchedule()` call — a real, now-explained
+  discrepancy: the live path processes the FULL real element set through the shipped
+  `§4D_BAND_MONOTONIC` gate, which console-logged **`gatedB=51712`** — 81% of Hospital's 63,416 elements
+  were held by the same-trade-one-floor-down band gate, live, in this exact run.
+- **Every legitimate bar (Substructure through MEP Final, all 7 levels) finishes by ~31% of the axis**
+  (`__tmGanttBars` x/w read back and expressed as % of the 270px bar width — Superstructure levels sit at
+  0.8–4%, the latest normal bar, `MEP Final|Level 2`, ends at 29.9%). That 31% is why the drawer LOOKS
+  near-empty at the canvas's default width — it is not degenerate math, the real work is genuinely
+  compressed into less than a third of what's drawn.
+- **THE OTHER 69% OF THE AXIS IS ONE ELEMENT.** `__tmGanttBars` shows exactly one outlier bar —
+  `phase=Architecture, storey=_UNKNOWN` — sitting alone at **x=100.0%**, i.e. it alone defines
+  `_projectEnd` and stretches the whole axis from a real ~325-day build to 1049 days. This is the
+  `_UNKNOWN`-storey bucket this file's own §4D_BAND_MONOTONIC header comment already named as a landmine
+  ("~9457 no-storey elements reassigned to nearest storey by median Z... a band rule laid on a wrong
+  grouping enforces a wrong order confidently") — one element evidently escaped or survived that
+  reassignment with a schedule position nothing else in the building shares.
+- **This is the real, now-identified mechanism behind "near-empty drawer" on Hospital specifically** —
+  not a rendering bug, not a probe-misread, not the percentile-trim theory (refuted earlier). One
+  `_UNKNOWN`-storey Architecture element, alone, 3x past the real project end.
+- **Next step, concrete:** find that element's guid (`_UNKNOWN` storey ⇒ likely one of the ~9457 the
+  band-gate header already flagged), check what real geometry/data drove its schedule position, and
+  decide whether the fix is (a) better storey reassignment for that one element, or (b) an axis-display
+  guard that doesn't let a single `_UNKNOWN`-storey straggler define `_projectEnd` for the whole chart
+  (two different fixes — (a) fixes the schedule, (b) only fixes the chart; do (a) first, don't paper
+  over real bad data with a display clamp).
+
+### User-reported, live, unresolved: "2 trucks and some walls before the piling" at hour 0 (2026-08-04)
+
+User watching Day-0/Hour-0 state reports walls (and site-equipment "trucks") appearing before piling —
+a real sequencing complaint, wants "P6, heavier logic." **Checked one candidate mechanism, ruled it
+out:** structural bbox degeneracy (the same class of defect `IfcStair` showed in `__tmScheduleDebug` —
+`x0=x1=y0=y1=0` — which would make `geoGate`'s spatial grid blind to a support). Measured directly
+against Hospital's real DB: **`IfcFooting`/`IfcColumn`/`IfcBeam`/`IfcMember`/`IfcPlate`/`IfcSlab` are
+0% degenerate** — every structural class has a real, non-zero bounding box. Piling is not geometrically
+invisible to the gate. **Root cause still open** — not yet checked: whether wall bboxes actually
+XY-overlap their true supporting footing (grid-cell edge cases), or whether "trucks"/site-equipment is
+even a class the scheduler assigns a support requirement to at all (same shape as §MEP_HUNG_FROM_ABOVE —
+an unmodeled-support class, not a broken check). **Do not claim P6-grade CPM logic is a quick add** —
+this file's own history already tried and rejected 5 designs in that direction
+(`§4D_WALL_BORNE_STRUCTURE`, `§ELEMENT_CPM`, `§CPM_DUAL_ELEVATION`, all 2026-08-02, all "NOT FOR MERGE" —
+each traded away the band-monotonic fix to get support-invariant to 0, or vice versa). Any new attempt
+must be measured against BOTH invariants at once, not just the one it's chasing.
+
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
 dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
