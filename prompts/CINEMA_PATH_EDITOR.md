@@ -6458,6 +6458,28 @@ not a batch renderer. So the fix has to be a richer REHEARSAL, not a faster bake
    #2a2e34;color:#ddd;border:1px solid #4a4f57;border-radius:4px`, see the action-row buttons ~L662-665).
    B only exists in the DOM / only runs its scissor render pass while toggled on — zero cost when off.
 
+## ▶ ROADMAP — build order across Parts A-G (user, 2026-08-04, "agree, proceed as long not impacting anything we done")
+Not all 7 parts are independent. The real dependency:
+- **A/B** (rehearsal environment) — ✅ built, no dependents besides everything below needing it to see results in.
+- **C — §CPE_AIM_PIN is the actual foundation**, not D or E individually: one mechanism (an authored
+  `lookAt` on a band) with three trigger sources — canvas click (C itself), Find-panel drag (D), clash-
+  panel click (E). Build C once; D and E are thin adapters feeding the SAME mechanism, not separate
+  features. **NEXT UP.**
+- **D, E** — either order once C exists, or together (they share C's reform/spawn logic).
+- **Generalize E's leader-line label, don't scope it clash-only** — the "project pin → screen, draw
+  label + connector line" mechanism is generic; if built as "label any pinned point" rather than
+  clash-specific, D's Find-panel pins get the same moving label for free (room name instead of a clash
+  pair name). Build it that way the first time, not clash-only then generalized later.
+- **F1** (time readout) needs only A — buildable any time, independent of C. **F2** (sync a stick's
+  timing to construction) needs C, same shape of problem as pinning a look-target.
+- **G** — parked, independent of all of the above, different input method entirely (recorded walk →
+  raw bands, no pin concept).
+
+**Constraint carried into every part from here**: must not regress A/B's witnesses, and must not touch
+any file the concurrent 4D-Gantt-revamp session owns (`time_machine.js`, `schedule_author.js`,
+`rates.js`/rate JSONs — confirmed zero overlap with A/B's files as of 2026-08-04; re-check before each
+new part lands, that session is still active).
+
 ## ✅ DONE 2026-08-04 — §CPE_SCRUB + §CPE_VIEWFINDER (Parts A and B, PR bim-ootb#1164)
 
 Both built together (worked in `bim-ootb`'s `/tmp/wt-cpe-rehearsal-studio` worktree, branch
