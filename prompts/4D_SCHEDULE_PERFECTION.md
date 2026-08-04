@@ -1494,3 +1494,50 @@ button — took `origin/main`'s already-native #1194 version over this branch's 
 the recovered axis-outlier fix and this session's own lock-toggle work onto `main` in one go, since they
 were sitting on the same stale branch together.
 
+### Follow-on landmine hit shipping the next two fixes, recovered correctly (2026-08-05, same session)
+
+After #1198 landed, this session kept working on the SAME `feat/gantt-edit-foundation` branch — pushed
+`materializeDefault`'s exclusion filter (task #1 above) and §DLOD_VF_CAMGUARD (below) as two more
+commits to it, on the assumption the branch's PR would keep tracking new pushes. **It did not**:
+`gh pr merge 1198 --auto --squash` had already fired on an earlier green head (fast-checks passed at
+19:59:38, e2e at 20:00:46, `mergedAt`=20:00:49) — both follow-up commits landed on the branch AFTER
+that timestamp, so they were never part of the squash. Caught BEFORE reporting done, not after: this
+session's own `feedback_verify_pr_merge_before_followup_push` memory says verify before assuming a
+push into an already-armed PR reached `main` — `git merge-base --is-ancestor <sha> origin/main` on both
+orphaned commits confirmed `NO`. Recovered exactly per this file's own documented procedure (CLAUDE.md
+Concurrent Branches note): fresh branch off current `origin/main` (`fix/gantt-post-1198-followup`, same
+worktree, clean cherry-pick, zero conflicts), full witness re-run against the REAL post-#1198 `main`,
+new PR #1199 (auto-merge armed) — not a re-push to the stale branch, not a redo of the work itself.
+**Lesson for next session:** once a PR's auto-merge is armed, treat that branch as closing — start the
+NEXT fix on a fresh branch off `origin/main` from the start, don't keep stacking commits onto a branch
+whose PR may merge out from under you at any moment.
+
+### §GANTT_MATDEFAULT_EXCLUSION — closed (bim-ootb PR #1199)
+
+The `materializeDefault` gap named above (`schedule_author.js:404`, no class exclusion at all) is
+fixed: same `ifc_class != 'IfcOpeningElement' AND ifc_class != 'IfcSpace'` filter as the already-fixed
+`_buildScheduleElements`/`materializeZones` path. `witness_materialize_default_exclusion.js` (new):
+real `Duplex_extracted.db` fixture (50 real `IfcOpeningElement` + 21 real `IfcSpace` rows — RED CONTROL
+confirms the fixture actually exercises the fix), zero excluded-class guids assigned a task, assignment
+count matches `elements_meta` minus both classes exactly. 4/4.
+
+### §DLOD_VF_CAMGUARD — closed (bim-ootb PR #1199)
+
+The concurrent-session finding handed off above (and independently root-caused the same way in
+`CINEMA_PATH_EDITOR.md`'s own SESSION HANDOFF) is fixed. `renderAtTime()`'s buildup-visibility gate
+(`_dlodInView`, via `bHideForProxy`/`hideForProxy`/`iHideForProxy`) read `_dlodCamPos`, hardcoded to
+`app.camera.position` — the MAIN camera — even while CPE's POV panel scrubs its own `vfCam`
+independently once main stays parked. Extracted the camera choice into its own pure function,
+`_dlodResolveCamera(app)`, and added one minimal read-only accessor on CPE's own exposed API —
+`window.APP.cinemaPathEditor.activePOVCamera()` — returning the live `vfCam` only while the viewfinder
+is genuinely on, else `null`. `time_machine.js` never reaches into CPE's internal `_state` directly;
+it only reads this one accessor, so CPE's own module boundary stays intact. Falls back to the main
+camera in every other case (viewfinder off, CPE not loaded, no `cinemaPathEditor` exposed) — zero
+behavioural change off this one new opt-in branch.
+
+`witness_dlod_vf_camguard.js` (new): slices the real `_dlodResolveCamera` by balanced braces, proves
+all 3 fallback cases return the main camera, the viewfinder-on case returns the POV camera, plus a RED
+CONTROL proving the branch is actually live (not vacuously always the main camera regardless of
+input). 5/5. This closes BOTH of the two open items this file named at its previous session close-out
+— nothing left unrecovered from that handoff.
+
