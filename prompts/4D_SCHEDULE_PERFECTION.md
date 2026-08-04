@@ -922,3 +922,6 @@ real `tasks` / `task_elements` / `task_sequences` rows through `compute4D`'s `ca
   duration ceiling is, or the check should be re-expressed against something real.
 - Only verified headlessly at the model level. The fixtures have no `kernel_ops`-vs-`tasks` conflict to
   exercise, and the page's own DOM render was not exercised in a browser.
+
+## Session close-out, 2026-08-04 (evening) — §GANTT_AXIS_OUTLIER FIXED (PR bim-ootb#1175, unverified live), §MEP_HUNG_FROM_ABOVE + piling/wall report OPEN, viewer toolbar/panel re-theme DEFERRED (not started — next session, verify #1175 live FIRST before any visual work)
+
