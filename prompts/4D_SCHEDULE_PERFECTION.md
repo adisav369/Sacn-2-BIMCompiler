@@ -1163,3 +1163,46 @@ Corrected before shipping: the witness now uses the IDENTICAL directional test a
 `witness_geo_support_leak.js` committed to bim-ootb root. `sw.js` v945→v946. Not yet exercised live
 in a browser — same open item as every fix this session.
 
+## ▶ PRELIM NOTE 2026-08-04 — §CLASS_UNMATCHED_FALLBACK, a SEPARATE gap from the trucks above, NOT yet handed to a dev session
+
+**Not the same bug as §GEO_SUPPORT_LEAK above — flagging the distinction explicitly, because the
+first report of this ("2 IFC trucks leaked thru and claimed wrongly their type") got conflated with
+the trucks-at-hour-0 finding above during triage.** The trucks are correctly classified
+(`IfcBuildingElementProxy` → Architecture, its own explicit `SEQUENCE_RULES` entry, `resource:null`
+by deliberate design) — their bug was a geometric support-detection heuristic (`geoGate()`), now
+fixed. This section is about a genuinely different mechanism: `matchRule`'s silent fallback for
+classes that match **no** `SEQUENCE_RULES` key at all, in bim-ootb.
+
+**What was built, general-purpose per the original ask** ("a black box output log ... so u can
+read it when testing", hardened to "fail no fall back any nuance") — not a synthetic-fixture
+regression test like `witness_gantt_ops_blackbox.js`, but a real-data audit:
+`viewer/tests/witness_class_fallback_blackbox.js`, bim-ootb PR **#1185** (pushed, branch
+`chore/blackbox-harden`, **not merged, not yet run by the session doing 4D polish**). Runs the REAL
+`matchRule` (required from `schedule_author.js`, sliced by balanced braces from both independent
+`time_machine.js` closures — never reimplemented) against REAL `elements_meta` across Hospital,
+Terminal, LTU_AHouse, Duplex (239,469 elements total).
+
+**Result:**
+```
+FAIL G-A hits=3
+  Hospital: IfcDistributionControlElement (861 elements) -> silently Architecture/seq6/no-resource
+  Hospital: IfcSwitchingDevice (113 elements)             -> same
+  Duplex:   IfcSpace (21 elements)                        -> same, residential too, not Hospital-only
+```
+G-B/C/D pass — the three `matchRule` copies agree with each other everywhere they DO match, and
+every element in all four buildings is accounted for by the audit (no silent exclusion). Correctly
+does NOT flag `IfcBuildingElementProxy` (the trucks' own class) — verified via an independent
+`hasExplicitRule()` check that a class with a real, deliberate rule (even one with
+`resource:null` by design) is never confused with a class matching nothing.
+
+**Not fixed — diagnostic only, same discipline as §GEO_SUPPORT_LEAK above.** Two follow-ups for
+whoever picks this up: (1) route unmatched classes to a loud `§CLASS_UNMATCHED` log or the existing
+`§Z_STACK_XRAY_STAGING` reveal path instead of the silent default, in all three `matchRule` copies;
+(2) re-run PR #1185's witness after — G-A should flip to 0.
+
+**Hand-off note, stated once so it doesn't need re-litigating:** nothing in this repo auto-runs a
+witness — the discipline has always been "the session working on X runs X's witness," never a
+background process. This witness lives on an unmerged branch a different session wrote; the session
+doing 4D/Gantt polish has no way to know it exists unless told directly. Same for any future
+diagnostic built this way — a prelim note here is the hand-off mechanism, not a substitute for it.
+
