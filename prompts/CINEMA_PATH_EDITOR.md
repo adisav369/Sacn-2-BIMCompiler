@@ -7027,3 +7027,82 @@ simpler than Part F's discussion and reuses more existing code than any other pa
 - **G-WALKSHARE-3**: opening a walk-share link for building X while a DIFFERENT building is currently
   loaded correctly loads X first (via the existing `?db=`/`validateDB` path) before the notation is
   applied — order-of-operations regression guard.
+
+## ✅ DONE 2026-08-05 — §CPE_SCRUB_STANDALONE + §CPE_SCRUB_VF_LIVE + §CPE_SCRUB_PLAY (settles the #1177 OPEN QUESTION)
+
+Resolves the open question the #1177 regression-fix session deliberately left unanswered: **"the scrub
+bar's own home is NOT settled... standalone widget vs docked under B."** User, this session: *"that
+timeline was supposed to be standalone widget panel... independent"* — confirmed, and B is *"purely
+display for user bearing"* (no drop/raycast interaction on it at all). One connected batch, built
+together in `bim-ootb`'s `/tmp/wt-cpe-scrub-pov` worktree, branch `fix/cpe-scrub-pov-live`, off
+`origin/main` @ `e1315e8`. `#cpe-panel`'s own existing controls (rows, hose, clip, buildup, the
+`#cpe-preview` button) are untouched throughout — user directive this session: protect the main canvas
+and the Alt+C box from drift, the only standing exception being the earlier eye-icon sprite swap.
+
+**§CPE_SCRUB_STANDALONE**: the scrub bar is now its own draggable panel (`#cpe-scrub-panel`), built
+alongside `#cpe-panel` at editor-open time and torn down alongside it in `finish()` — no longer coupled
+to B's toggle at all. Default position sits directly below B's own default rect (`VF_DEFAULT_H +
+SCRUB_PANEL_GAP`) so the two read as one cluster while remaining separate panels; draggable via the
+same `A._makeDraggable` convention as B, position remembered for the session (`_scrubRect`, same
+scope as `_vfRect`/`_panelPos`). Toggling B on/off no longer builds/removes the bar — only closing the
+editor does (`_scrubPanelTeardown()`, mirroring `_vfTeardown()`'s shape).
+
+**§CPE_SCRUB_VF_LIVE**: a scrub drag now drives B's inset camera (`vfCam`) again — the mid-fix cut
+written, witnessed, and reverted before #1177 landed, restored now that the standalone panel makes B a
+stable, separate concern from the actual regression invariant. The main canvas camera/controls are
+**still never touched by any scrub**, drag or click — that invariant is unchanged from #1177, just no
+longer conflated with "does B update." `_scrubTo(tn)` now writes `_state.vfCam.position`/`.lookAt`
+directly from the same `plan.poseAt(tn)` sample it already computed, gated on `_state.vfOn`.
+
+**§CPE_SCRUB_READONLY**: the bar no longer spawns or selects sticks on click — retires the old
+click-to-spawn path entirely (user: *"clicking on them has no reaction, user has to do edits the
+original way on canvas... or the alt-c panel row rows"*). A click (no drag) now just scrubs to that
+point, identical to a drag — the click-vs-drag distinction that used to gate "scrub vs spawn" is gone,
+since there is no longer a second behaviour to gate. Stick tick marks render as **blue** lines
+(`CPE_STICK_BLUE`), not the old red — read-only, purely informational; selection highlighting (orange)
+still reflects `_state.held` set elsewhere, the bar just can't set it anymore. `_tnormToStickHit` and
+its witness hook (`_scrubHitAt`) were dead code once nothing called them — removed.
+
+**§CPE_STICK_TIME_SYNC F1**: the readout is `mm:ss / mm:ss` (elapsed / total film length), not a bare
+percentage — `_fmtMMSS(tNorm * _buildOverride()._total)`, hoisted once per `_renderScrub()` call rather
+than recomputed per tick (that call deep-copies bands/hose, not free to call in a per-drag-frame loop).
+
+**§CPE_SCRUB_PLAY**: a play/pause transport button (`#cpe-scrub-play`, left of the track) in the new
+panel — additive only, the existing `#cpe-preview` button in `#cpe-panel` is untouched. Starting reuses
+`_previewFly()` verbatim (same pose source, same buildup/room-title/ghost-ground/day-counter wiring).
+Pause/resume are new: `_previewFly()` exposes `_state._flyPauseAt`/`_flyResume` closures while a flight
+is in progress — pausing freezes the flight fraction `u` (nothing writes the camera meanwhile, same
+contract tour.js's own `§TOUR_TIMELINE_SCRUB` pause already established: "pause HOLDS the pose"),
+resuming re-anchors the wall-clock start time so `u` continues exactly where it left off. Button
+icon/title are driven by `_renderWhole()` (already the single place `_state.flying` drives UI from),
+not a separate state-sync mechanism.
+
+**§CPE_SCRUB_BEARING** (user, same session: *"the scrubber and pov correlates which stick the user
+selects, they indicate so user gets perfect bearing"*): selecting a stick — from EITHER the canvas
+click or the row-list click, both of which already funnel through the one `_hold(bi, zone, frame)`
+entry point — moves the playhead (and, if B is on, its camera) to that stick's own film position.
+Reuses `_scrubTo` verbatim, so it inherits §CPE_SCRUB_VF_LIVE's B-update and the main-camera-untouched
+invariant for free — no second pose path.
+
+**§CPE_VF_EYE_SPRITES** (PR bim-ootb#1179, undocumented in this file until now): the `#cpe-vf-toggle`
+icon uses real open/shut eyelid PNG sprites (`viewer/icons/eye_open.png`, `eye_closed.png`, supplied by
+the user) rather than Lucide's slashed-eye pair, which read as "eye with a line through it" and not an
+actual shut eyelid on a second look. `ICONS.eyeOpen`/`eyeOff` removed from `panels.js` as dead code.
+
+**Witnesses**: `witness_cpe_scrub_viewfinder.js` REWRITTEN — the v23-era gates that asserted the exact
+OPPOSITE of this session's changes (bar gated to B; B's camera never moves on scrub; a bar click spawns
+a stick) are gone. New/changed gates: G-SCRUB-STANDALONE (panel exists before B is ever toggled on),
+G-SCRUB-NOCAM (main camera invariant, unchanged in spirit), G-SCRUB-VISUAL (mm:ss readout, not %),
+G-SCRUB-VF-LIVE (scrub drives B's camera to `plan.poseAt(tn)` while main stays untouched, same drag),
+G-SCRUB-NOSPAWN (replaces G-SCRUB-SPAWN — a bar click never spawns), G-SCRUB-TICK-BLUE (tick colour),
+G-SCRUB-PERSISTS (replaces G-SCRUB-TEARDOWN — toggling B off no longer removes the bar), G-SCRUB-PLAY
+(pause freezes `u` over a real wait, resume continues it), G-SCRUB-BEARING (selecting a stick moves
+playhead + B), G-SCRUB-CLOSE-TEARDOWN (closing the editor removes the bar). G-VF-1/2, G-PERF-1a/b kept
+unchanged — same mechanism, unaffected by any of this session's changes.
+
+**Not built (deliberately, per scope — user: "just get the scrubber widget working with pov right
+first")**: Parts D/E/F2/G (Find/Clash pin-drop, sync-to-construction, walk-record-share) — the
+canvas-native drag-a-dot pin redesign discussed this session (long-press a Find result → reform/spawn
+via nearest-point-on-pipe, threshold from `A.cinemaFan` clearance, generalizes to Clash later) is
+scoped but **not started** — settled decisions recorded, one open threshold question remains
+(derive it from `A.cinemaFan` clearance, not yet measured).
