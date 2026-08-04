@@ -470,7 +470,34 @@ lays out 327×214 with real drawn pixels; legend gone; ✎ gone; and `window.SEQ
 when `_ROW_PHASE_ORDER` is built — so the DERIVED phase order is the branch that actually runs, never
 the hardcoded fallback. That last one was a real correctness question no headless witness can answer.
 
-**STILL OPEN — the one link not closed:** no `§GANTT_DRAG_COMMIT` has ever been observed. Events
+**CORRECTION 2026-08-04 (user reported it; my own data already said it and I misread it):
+THE DRAWER RENDERS NEAR-EMPTY IN A LIVE VIEWER.** The CDP probe returned `nonBlankPixels=534`
+over a 327x40 sampled strip — ~4% coverage — and I recorded that as "content drawn". It is not.
+So the drag test's silence has a far simpler cause than handler wiring: **there was nothing under
+the pointer to hit.** This SUPERSEDES the "guessed x-coordinate" explanation below, which was real
+but secondary. Bars resolve real task_ids headlessly on 7 fixtures, yet are not drawn at a visible
+size in the browser.
+
+`window.__tmGanttBars` (commit `41a4bd9`) now dumps every bar's ACTUAL drawn rect. **NEXT SESSION:
+query it FIRST, before touching any drag code.** It separates the three candidates a pixel count
+cannot: (a) `bars:0` = `_ganttTasks` empty; (b) widths ~0 = degenerate `_projectStart/_projectEnd`
+range; (c) xs outside the canvas box = drawn off-screen. Fix what it names, THEN re-run the drag.
+
+⚠ Environment caveat: the user's desktop Chrome hit a WebGL init error — a KNOWN machine-level GPU
+launcher issue on this box (`project_machine_chrome_firefox_gpu_launchers.md`), not caused by this
+branch — while headless Chrome falls back to SwiftShader. The two are not comparable on GPU-dependent
+behaviour; do not treat a headless pass as proof for the desktop.
+
+**ALSO OPEN — the transport row's two buttons.** `Copy Touched` / `Copy New` (`tm-touched`/`tm-new`,
+handlers ~`:2754`) just call `copyGuids(false|true)` to put GUID lists on the clipboard — a developer
+debug affordance, nothing else references them, and the user has "lost touch" with them. RECOMMENDED
+replacement, same slot, same two-equal-buttons form, same "acts on current schedule state" idiom:
+**↺ Undo edit** (this session made bars draggable and one drag can cascade 27 successors with NO way
+back except regenerating — the need is new and real) and **⚑ Set Baseline** (the standard P6 concept
+we lack; `§TM-VARIANCE` currently reads only cost Planned↔Committed, and MOB's fold-back-done needs a
+baseline for slip to mean anything). Not implemented — awaiting the user's pick.
+
+**STILL OPEN — the drag link not closed:** no `§GANTT_DRAG_COMMIT` has ever been observed. Events
 reach the canvas (a probe listener fires), the handler is wired (`cv._dragWired === true`), and bars
 are now editable (banner gone) — but the last attempt aimed a synthetic pointer at row 0,
 `x = marginL + 40px`, which is a GUESS at the bar's extent, not measured geometry. A short first bar
