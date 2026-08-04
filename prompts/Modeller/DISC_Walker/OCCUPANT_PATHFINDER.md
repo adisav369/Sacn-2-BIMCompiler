@@ -1817,3 +1817,90 @@ Step 1 shipped; this is what remains, sized honestly as multi-session work rathe
 - **Fences:** no name-based exit rule ever again (that is what step 1 removed); no synthesised envelope exit
   as a primary source (watchdog, §The decision above); a candidate set that is a large fraction of a
   building's doors is a FAILED test, not a result — a real building has a handful of exterior doors.
+
+## ▶ §SPINE-BRIDGE-CLUSTER — resume from `bim-compiler/prompts/Viewer/FindRooms/RESUME_ROOMPATH_DETOUR_BACKTRACK.md`
+§3.2 (2026-08-05), NOT STARTED — spec only, per this file's standing law (POC gate first)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: fix §ROOM-SPINE-BRIDGE's eligibility test (line ~830, `if (g.kind !== 'room' ||
+_degSoFar[lg]) return;`) — it is scoped to a single NODE's degree, not the connected COMPONENT it
+sits in, so a room that has a door to exactly one sibling and nothing else is treated as "already
+connected" and never gets a bridge attempt, even though its whole 2-room island is unreachable from
+the rest of the building. This is a general graph-topology gap, not an LTU quirk — fix it once,
+abstractly, for any IFC building the fleet ever loads. Read the log after every run.
+```
+
+### §GIVEN — measured on real production code + real DB, not simulated (2026-08-05)
+`LTU_AHouse_meta.db`, `~/bim-ootb/common/room_graph.js` (unmodified). `RG.shortestPath` from
+`RM_VÅNING_1_1` to `RM_VÅNING_4_1` returns `null`. Direct reachability probe (`RG.shortestPath`
+against all 335 rooms) found **316/335 reachable**; all 19 unreachable rooms are on `Ref.` (3, a
+reference/unused storey — expected) and `VÅNING 4` (8 of its 12 rooms). `VÅNING 4`'s edge list:
+```
+RM_VÅNING_4_2  <-> RM_VÅNING_4_1   (E1, door)   — pair, NEITHER reaches spine
+RM_VÅNING_4_8  <-> RM_VÅNING_4_7   (E1, door)   — pair, NEITHER reaches spine
+RM_VÅNING_4_11 <-> RM_VÅNING_4_10  (E1, door)   — pair, NEITHER reaches spine
+RM_VÅNING_4_3                       — zero-degree; §ROOM_SPINE_BRIDGE_REJECT (nearest 40.13m, no route)
+RM_VÅNING_4_12                      — zero-degree; §ROOM_SPINE_BRIDGE_REJECT (nearest 67.35m, no route)
+RM_VÅNING_4_{4,5,6,9,+2 via E7 doorwp} — DO reach SPINE::VÅNING 4|x|32.58 directly (E2/E7)
+```
+**Root cause, in the code, not inferred:** the bridge loop (`§ROOM-SPINE-BRIDGE`, line ~828) only
+considers a room a bridge candidate when `_degSoFar[lg]` is falsy — i.e. **zero edges at all**. R1
+has degree 1 (its door to R2), so it is skipped even though {R1,R2} together have zero edges to
+anything outside the pair. The zero-degree singles (R3, R12) DO get an attempt and are correctly
+rejected on distance — the mechanism works, it's just never invoked for clusters of size ≥2.
+**Ruled out first (per this project's doors-not-openings doctrine,
+[[project_openings_ghost_doors_standin]]):** this is NOT a missing-`IfcOpeningElement` artifact —
+openings are ghost/position-only fleet-wide by design and were never the pathing signal; doors are,
+and the doors that exist here (R1↔R2) are read correctly. The gap is purely which rooms the bridge
+loop considers eligible.
+
+### SPEC — bridge by connected component, not by node degree
+Same mechanism (`_astarHop` legality test, nearest-candidate-first, first LEGAL one wins, reject
+logged if none), widened to fire once per disconnected **component**, not once per zero-degree
+**node**:
+1. Before the bridge loop runs, union-find over the room-graph's own E1 (door) edges, per storey —
+   this reuses the union-find approach already proven in this file's §Lane C1 POC (2026-07-17), no
+   new data structure invented.
+2. A component is "already connected" (skip it) if ANY of its members already has an edge of kind
+   E2/E6/E7 (i.e. already touches spine/circ/doorwp-to-spine) — not "has any edge at all".
+3. For every component that is NOT already connected: rank ALL of the component's members (not just
+   one arbitrary representative) by distance to the storey's spine points, try nearest-first across
+   the whole component, first legal `_astarHop` wins — same acceptance test as today, just a larger
+   candidate pool. Log which member of the component won (`§ROOM_SPINE_BRIDGE_CLUSTER`), so a witness
+   can tell a single-room bridge apart from a cluster bridge.
+4. If no member of the component has a legal route, the whole component stays disconnected ON
+   PURPOSE (same honesty rule as today — `§ROOM_SPINE_BRIDGE_REJECT`, extended to name the component
+   size and every member's guid, not just one room's).
+**API-compatible**: `buildGraph()`/`shortestPath()` signatures unchanged, this is internal to the
+bridge block only. **Additive only**: existing bridges/edges are never removed or reweighted — the
+only possible effect is MORE rooms becoming reachable, never fewer, never a different route for a
+pair that already had one (falsifiable, see Acceptance test).
+
+### POC GATE (do this FIRST, calculation-only — this file's standing law)
+A standalone Node script (no engine edit yet): load each of the 9 fleet building DBs, run
+`RG.buildGraph`, union-find the E1 edges per storey by hand outside the engine, count how many
+components per storey have zero E2/E6/E7 edges among their members — this is the blast-radius
+number BEFORE writing a single line into `room_graph.js`. Expect LTU `VÅNING 4` to show 3
+components of size 2 (R1-R2, R7-R8, R10-R11); if any OTHER fleet building shows a nonzero count,
+that's evidence this is a real general gap, not an LTU-only curiosity — record the number, don't
+assume.
+
+### Acceptance test (falsifiable, offline, one line)
+On `LTU_AHouse_meta.db`: `RM_VÅNING_1_1 -> RM_VÅNING_4_1` (previously `null`) returns either a real
+`path`/`doors`/`polyline`, or — if `_astarHop` genuinely finds no legal route from any of R1/R2 —
+an honest `null` with a `§ROOM_SPINE_BRIDGE_CLUSTER_REJECT` log naming the component. Either
+outcome is acceptable; a silent unchanged `null` with no new log line is not. Fleet-wide: rerun the
+full room-pair reachability sweep on all 9 buildings before/after — reachability count may only
+**increase or stay equal**, never decrease, and every previously-reachable pair's `path`/`doors`
+must stay byte-identical (this change must never alter an existing route, only add new ones).
+
+### WITNESS PLAN
+Reuse `RESUME_ROOMPATH_DETOUR_BACKTRACK.md §1`'s 3-check witness (node-revisit, same-floor
+self-intersection via same-Z polyline runs only, `chordIllegalCount` on every same-storey segment)
+on the newly-reachable LTU pair, plus the fleet-wide `witness_full_connectivity.js` before/after on
+all 9 buildings to prove the byte-identical-elsewhere half of the acceptance test.
+
+### DONE WHEN
+POC gate numbers recorded for all 9 buildings → engine change → LTU `V1R1->V4R1` witness green →
+fleet connectivity witness shows only-equal-or-more reachable pairs, zero regressions → PR shipped.

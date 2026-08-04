@@ -488,14 +488,63 @@ launcher issue on this box (`project_machine_chrome_firefox_gpu_launchers.md`), 
 branch — while headless Chrome falls back to SwiftShader. The two are not comparable on GPU-dependent
 behaviour; do not treat a headless pass as proof for the desktop.
 
-**ALSO OPEN — the transport row's two buttons.** `Copy Touched` / `Copy New` (`tm-touched`/`tm-new`,
-handlers ~`:2754`) just call `copyGuids(false|true)` to put GUID lists on the clipboard — a developer
-debug affordance, nothing else references them, and the user has "lost touch" with them. RECOMMENDED
-replacement, same slot, same two-equal-buttons form, same "acts on current schedule state" idiom:
-**↺ Undo edit** (this session made bars draggable and one drag can cascade 27 successors with NO way
-back except regenerating — the need is new and real) and **⚑ Set Baseline** (the standard P6 concept
-we lack; `§TM-VARIANCE` currently reads only cost Planned↔Committed, and MOB's fold-back-done needs a
-baseline for slip to mean anything). Not implemented — awaiting the user's pick.
+**The transport row's two buttons — ↺ Undo edit ✅ SHIPPED, ⚑ Set Baseline DECIDED-BUT-DEFERRED
+(2026-08-05).** `Copy Touched` / `Copy New` (`tm-touched`/`tm-new`) just called `copyGuids(false|true)`
+to put GUID lists on the clipboard — a developer debug affordance, nothing else referenced them, user
+had "lost touch" with them.
+
+- **↺ Undo edit** — bim-ootb PR #1188 (auto-merge armed), replaces the `tm-touched`/Copy-Touched slot.
+  Single-level (not a stack), scoped to `commitGanttDrag` (E1/E2 drag/resize) only — not link/unlink,
+  not the property panel, matching exactly the named need ("one drag can cascade N successors with no
+  way back"). Snapshots both tables an edit touches (`tasks` + the affected `kernel_ops` rows) before
+  the engine verb runs, restores both exactly on click; cleared on every fresh `activate()` so a stale
+  cross-building snapshot can never apply. `witness_gantt_edit_undo.js` (new, slices the real shipped
+  functions by balanced braces, never reimplements the restore logic): Duplex 10-task cascade/898 ops
+  9/9, Terminal 20-task cascade/3,519 ops 9/9 — RED control, exact restore, second-click no-op, and
+  out-of-cascade rows proven untouched, all verified against real authored schedules.
+  **Perf bug caught pre-ship, not shipped broken:** first draft's snapshot capture was
+  O(cascadeGuids×totalOps) — measured 92s wall-clock on Terminal. Hashed to O(1) (same shape as the
+  existing `retimeTaskElements`'s own lookup) — 92s→39s, remainder is that function's own pre-existing
+  write-loop cost, untouched here.
+- **⚑ Set Baseline — ✅ SHIPPED 2026-08-05, bim-ootb PR #1190 (auto-merge armed).** Definition
+  user-confirmed: P6 baseline = a frozen snapshot of `tasks.schedule_start/finish` taken at a
+  deliberate moment, compared against the live (possibly since-edited) schedule — **schedule**
+  variance, correctly NOT the same axis as `§TM-VARIANCE`'s existing **cost** variance (`C_Project`
+  `PlannedAmt`↔`CommittedAmt`, already exists, stays untouched, sits "higher up" per the user —
+  reconcile the two variance views later, not now).
+  `ScheduleAuthor.setBaseline(db, scheduleId)` snapshots every task row (incl. summaries, for
+  project-level rollup) into a new `task_baseline` table — single baseline, re-running OVERWRITES
+  (MVP scope, not P6's multi-baseline numbering). `getBaselineVariance(db, scheduleId)` returns real
+  `varianceDays` per task (direct date subtraction, nothing invented) plus `TASK_ROOT`'s own row as
+  `projectVarianceDays`; honest `{ok:false,reason:'no_baseline'}` refusal when nothing's been set yet.
+  Shipped as a **manual button today** — MOB's auto-trigger-at-ERP-push (M2, still not started) is
+  the "kickoff confirmation" analog and the right trigger long-term, but since M2 doesn't exist yet a
+  free-floating button is the only way to make this usable now. **Not made obsolete once M2 lands** —
+  the same `setBaseline` verb gets called there too, and this button becomes "re-baseline for an
+  approved change order," the secondary case already named in the spec. Next session picking up MOB:
+  wire `setBaseline` into M2's push path instead of re-deciding the definition.
+  `witness_gantt_baseline.js` (new): real authored schedule + real drag on Terminal (20-task cascade)
+  11/11, Duplex (10-task cascade) 11/11 — RED control (no-baseline refusal), exact scope match (only
+  dragged/cascaded tasks show variance), re-baseline proven as a true overwrite (no row accumulation).
+  **Display is a deliberate follow-on, not built here** — this PR ships capture+read only, no new
+  variance-visualization UI; per KISS, that's a separate task when actually needed, matching MOB M5's
+  own "no new UI, reuse `§TM-VARIANCE`" pattern.
+  Also bumped `sw.js` CACHE_VERSION v947→v948 in the SAME PR (touches precached files again) —
+  applying the #1189 lesson proactively this time, not as a trailing fix.
+  `tm-touched`/`tm-new`'s old handler `copyGuids()` is now UI-unreachable from either transport
+  button but was deliberately left in the file, not deleted — still a working, self-contained
+  console-callable debug utility, and deleting it was out of scope for a UI slot swap.
+
+### ⚠ CACHE-VERSION DISCIPLINE — landmine hit and fixed live this session (2026-08-05)
+Three PRs in a row this session (#1186/#1187/#1188) modified `PRECACHE_ASSETS` files
+(`time_machine.js`, `schedule_author.js`, `rates.js`, `rates/sequence_rules.json`) **without**
+bumping `sw.js`'s `CACHE_VERSION` — a direct violation of this project's own standing rule
+(`feedback_bimootb_sw_cache_bump_on_viewer_change.md`). Caught only because the user pasted a live
+browser console log from a post-#1188 Hospital session and it was checked against `sw.js` before
+trusting it as evidence — the log itself gave no way to tell which code was actually running. Fixed
+same-session via bim-ootb PR #1189 (v946→v947), and #1190 (v947→v948) applied the lesson proactively
+in the same PR rather than as a trailing fix. **Standing reminder for every future PR touching any
+`PRECACHE_ASSETS` file in this repo: bump `CACHE_VERSION` in the SAME commit, not after.**
 
 **STILL OPEN — the drag link not closed:** no `§GANTT_DRAG_COMMIT` has ever been observed. Events
 reach the canvas (a probe listener fires), the handler is wired (`cv._dragWired === true`), and bars
@@ -1205,4 +1254,172 @@ witness — the discipline has always been "the session working on X runs X's wi
 background process. This witness lives on an unmerged branch a different session wrote; the session
 doing 4D/Gantt polish has no way to know it exists unless told directly. Same for any future
 diagnostic built this way — a prelim note here is the hand-off mechanism, not a substitute for it.
+
+### §CLASS_UNMATCHED_FALLBACK — ✅ FIXED same-day, bim-ootb PR #1186 (2026-08-04/05, auto-merge armed)
+
+Both follow-ups closed, headless only (live browser explicitly left to the user this session):
+- `IfcDistributionControlElement` (861, Hospital) → explicit rule, mirrors its already-classified
+  IFC4 siblings `IfcController`/`IfcAlarm` (MEP Final/ELECTRICIAN) — real schema fact, not guessed.
+- `IfcSwitchingDevice` (113, Hospital) → explicit rule, mirrors its IFC4 parent `IfcFlowController`
+  (MEP Rough-in/ELECTRICIAN).
+- `IfcSpace` (21, Duplex) → spatial zone, not physical work — same treatment as `IfcOpeningElement`:
+  an explicit rule entry (so `hasExplicitRule` sees it as deliberate, not silent) **plus** exclusion
+  from the same 4 schedule-building queries that already excluded `IfcOpeningElement`
+  (`schedule_author.js` `_buildScheduleElements`, `time_machine.js` ×3 — the xray build, the live
+  `injectGantt` element query, and the coverage-ratio denominator).
+- Added a loud `§CLASS_UNMATCHED` `console.warn` at the fallback point in all 3 `matchRule` copies —
+  defense in depth for a genuinely-unknown class on a future IFC set, so it logs instead of vanishing.
+
+`witness_class_fallback_blackbox.js`: G-A hits 3→0, G-B/C/D unchanged. Regression, all headless:
+bar_identity 6/6, palette 7/7, row_order 9/9, coherence 7/7, constraints 18/18, zone_cpm 11/11,
+zone_cpm_duplex 9/9, tm_duration_sync 8/8, support_invariant_all 18/18, gap1 7/7,
+boq_charts_real_schedule 91/91 — 190/190 total, zero regressions.
+
+**NOT touched, a separate real gap found while reading the code, not fixed under this ticket's
+scope (stay-on-topic discipline):** `materializeDefault` (`schedule_author.js:404`, the "blank mode"
+coarse authoring path, still live-called from `schedule_author_ui.js` + `schedule_diff.js`) reads
+`elements_meta` with **zero** class exclusion at all (`:450`) — not even `IfcOpeningElement`, despite
+the `_buildScheduleElements`/`materializeZones` path (the one this fix touched) already excluding
+both `IfcOpeningElement` and now `IfcSpace`. Whoever picks up `materializeDefault` next should add
+the identical `AND ifc_class != 'IfcOpeningElement' AND ifc_class != 'IfcSpace'` filter there — named
+here so it isn't lost, not fixed here so this PR stays scoped to the one finding it was asked to close.
+
+## §GENERATE_4D_HANG — root-caused and removed, not just hidden (2026-08-05)
+
+User correction, stated directly: *"Hiding the Generate 4D schedule which hangs is not following my
+request to get it removed — we be doing it natively in the gantt chart panel."* A prior session had
+removed the ✎ toolbar icon that opened `ScheduleAuthorUI`'s side panel, but then had to add a NEW
+drawer button (`tm-gantt-authorbtn`, "Generate 4D schedule") because removing the icon left no way to
+author a schedule at all — and that new button just called `window.ScheduleAuthorUI.toggle()`,
+**reopening the exact same old panel**. Not a removal, a relabeled redirect — the user was right to
+reject it. Two real, separate problems were tangled together here and both are now closed.
+
+### Problem 1 — the hang itself, measured not guessed, bim-ootb PR #1193
+
+`4D_SCHEDULE_PERFECTION.md`'s own §Open Decisions (above) had already named the suspect
+(`§PHASE_OVERLAP_SUPPORT_GUARD`'s `_ogStructGrid`/`_ogWallGrid` cell-bucket pass) but explicitly
+flagged it "NOT yet measured." Measured first, before touching anything — a Node script sliced the
+real block out of `time_machine.js` by raw text span (brace-balance checked) and ran it against real
+extracted geometry from every real fixture:
+
+```
+Hospital (63,415 elements):  1695ms
+LTU_AHouse (122,330 elements): 2175ms
+Terminal (48,428 elements):  4636ms   <- fewer elements than the other two, slowest by far
+```
+
+Element count doesn't predict the cost — Terminal is 22 stacked storeys over a small footprint.
+**Root cause: the spatial grid bucketed candidates by XY only, with zero Z-filtering.** Every floor's
+structural elements piled into the SAME xy cell (Terminal's worst cell: 379 members), so a query for
+one element had to linear-scan almost every OTHER floor's structure before the existing
+`S.bz<T.bz-EPS && |S.tz-T.bz|<=GAP` check inside the loop finally rejected them. Hospital's bigger,
+less-stacked footprint spreads elements across far more cells (831 vs Terminal's 234), so it never
+hit this.
+
+**Fix:** bucket by (x,y,z), not (x,y). Candidates register under their own real vertical extent at
+build time; a query only scans cells in the TARGET's own real z-neighborhood `[bz-GAP, bz+GAP]` — the
+only range the existing predicate can ever match. The inner predicate is byte-identical; only which
+cells get scanned changed. Measured after: Terminal 4636ms → ~2900ms (1.6x). **Stated honestly, not
+oversold: this is not a full elimination.** 2.9s is still a real synchronous block on a large
+building; a numeric packed cell key (instead of string concatenation) or yielding the whole `_cap`
+overlay pass to the browser between phases would very likely close more of the remaining gap, and is
+named here as a real follow-up, not claimed as done.
+
+`witness_gantt_og_grid_perf.js` (new): an independently-written O(n²) brute-force reference (same
+predicate, same in-place-mutate-as-you-go cascade the real algorithm depends on, zero grid) on Duplex
+— 0/1122 mismatches against the real grid-based code, proving the Z-band pruning drops nothing real.
+Plus a performance ceiling on Terminal (<3500ms) so a future change can't silently reintroduce the
+XY-only blowup. Full regression clean (12 existing witness files, unchanged pass counts).
+
+### Problem 2 — the entry point, now genuinely native, bim-ootb PR #1194
+
+`generateGanttSchedule()` (new, `time_machine.js`) replaces the `ScheduleAuthorUI.toggle()` delegation
+entirely. It calls `ScheduleAuthor.materializeZones()` directly — the SAME real engine verb
+`schedule_author_ui.js`'s own `generateDraft()` zone-detail path already uses, not a reimplementation,
+not a second scheduler — falling back to `materializeDefault()` only if zones are genuinely
+unavailable, matching the panel's own fallback exactly.
+
+**One case deliberately still opens the old panel — not a loophole, a correctness requirement:** a
+real imported (Bonsai/Revit/IFC-native) schedule already active. `generateDraft()` already guards this
+(`if (act.captured) {...}` — never regenerate over a real import) and a native path skipping that
+guard would silently create a competing `SCH_AUTHORED` schedule alongside the real one (`_cap` reads
+ALL schedule_ids, so two would double-count — the exact bug the panel's own guard comment already
+named). The native path replicates the identical guard via `ScheduleAuthor.activeSchedule(db)` before
+ever calling `materializeZones`. This is now the ONE legitimate remaining reason the old panel is
+reachable at all — not a general re-opening of it, and worth remembering if a future session is
+tempted to delete `schedule_author_ui.js` outright: the captured-schedule editing case still needs a
+home, and this button is currently it.
+
+`witness_gantt_native_generate.js` (new, sliced from the real function by balanced braces): Scenario A
+(no schedule yet) proves native generate creates real tasks and the old panel is NEVER opened.
+Scenario B (a real captured schedule, seeded via the SAME real `materializeZones` call under a
+different `scheduleId` — not hand-crafted rows) proves no synthetic schedule gets created, the old
+panel opens exactly once, and the real imported schedule is provably untouched (exact task-count
+match). 5/5 on Duplex and Terminal. Full regression clean.
+
+**Also caught and fixed, both PRs:** `sw.js` `CACHE_VERSION` was NOT bumped for either change at
+first pass — despite this exact mistake already happening 3 times earlier in the same session (see
+`feedback_bimootb_sw_cache_bump_on_viewer_change.md`, updated with this recurrence). Both PRs now
+carry the bump in the same diff (v948→v949 for #1193, v949→v950 for #1194). **A real, separate
+landmine hit shipping #1194: `main` had already advanced past #1193 by the time #1194 was pushed
+(squash-merge changes the commit hash — CLAUDE.md's own documented landmine), so `gh pr merge --auto`
+reported `CONFLICTING`.** Fixed correctly per that doc's own guidance — `git fetch && git merge
+origin/main` (not a rebase, not a fresh redo), one trivial conflict in `sw.js`'s version line,
+resolved to the higher number, full regression re-run clean post-merge before pushing.
+
+### §GANTT_EDITABLE_E2E — verified by code inspection, not claimed via a live run (2026-08-05)
+
+User's third ask: confirm the drawer is genuinely end-to-end editable, and decide whether an explicit
+"edit mode" toggle is needed. Traced, not run live (this session's standing directive: live browser
+testing is the user's job, not this session's):
+
+- `generateGanttSchedule()` → `window.tmRefoldSchedule()` → `deactivate()`/`activate()` →
+  `_activateAsync()` → `injectGantt()`. `_cap` (`time_machine.js:3523`, the overlay that binds real
+  `task_id`s onto elements) is a fresh IIFE re-evaluated on EVERY `injectGantt()` call, reading
+  `tasks`/`task_elements` live off the DB — so it correctly picks up a schedule materialized moments
+  earlier. This is the EXACT SAME reactivation path `applyTo4D()` already used, and that path was
+  already browser-proven earlier this session (§BROWSER_PROOF above, PR #1173, commits
+  9799f24/6a5073f/9902f6d fixed "authoring after opening the drawer never took effect"). The native
+  generate button reuses already-proven machinery rather than inventing new glue that could carry the
+  same class of bug.
+- `buildTaskIndex()`/`invalidateGanttModel()` (drawer's own bar→task_id cache, separate from `_cap`)
+  is correctly invalidated on every path that can change the schedule — confirmed by inspection, not
+  re-derived from scratch (this exact caching bug was ALSO already found and fixed this session,
+  same PR #1173).
+- **Conclusion: yes, genuinely editable end-to-end, by construction** — K0's bar-identity binding
+  (100% resolve, all 7 fixtures, `witness_gantt_bar_identity.js`) + this session's native generate
+  entry point + the already-proven reactivation path together give a real, unbroken chain from
+  "open Time Machine on a fresh building" to "drag a bar." The one remaining unverified link named
+  earlier (§BROWSER_PROOF "STILL OPEN — the drag link not closed") — a synthetic pointer test that
+  never confirmed a `§GANTT_DRAG_COMMIT` fired with a MEASURED bar position — is real and still open,
+  but is a live-browser-only verification, correctly left to the user per this session's directive,
+  not chased further here.
+- **"Special edit mode ON" toggle — recommend AGAINST building one.** This file's own §E section
+  commits explicitly to "MS Project convention; do not invent a new idiom." Neither MSP nor P6 gate
+  editing behind a modal lock — bars are always directly draggable, and the safety net is
+  clamp/cascade (C1/C2, already shipped) plus now single-level Undo (§GANTT_EDIT_UNDO, PR #1188,
+  shipped this session). Adding a toggle would invent a UI idiom this codebase has already deliberately
+  avoided, to solve a risk (accidental drag) the existing mechanisms already cover. Not built.
+
+### Handoff, not chased further this session (concurrent-session finding)
+
+A concurrent CPE/cinema session found a real, separate bug in this file while working on their own
+POV-scrub feature, and asked for it to be recorded here since `time_machine.js` is owned by whichever
+session is doing 4D work — **not yet independently verified by this session, recorded as reported:**
+Time Machine's buildup visibility gate (`time_machine.js:1443`, `_dlodInView`) hides "placed" elements
+outside the MAIN camera's frustum only — `_dlodCamPos = app.camera.position`, hardcoded. When a user
+scrubs with the CPE POV panel open (that session's own new §CPE_SCRUB_VF_LIVE feature), the main
+camera stays parked while `vfCam` (the POV inset camera) moves independently — so the POV can show
+construction state gated by the WRONG camera's frustum. Whoever picks this up next: confirm the exact
+mechanism first (read the line, don't assume), then decide whether `_dlodCamPos` should switch to the
+active POV camera when one is open, or whether the DLOD gate needs to consider both cameras' frustums.
+
+## Session close-out, 2026-08-05
+
+Five bim-ootb PRs this session on top of the four from earlier the same day (#1186–#1190): #1193
+(hang root-caused + fixed, measured), #1194 (native generate, old panel de-fanged to one legitimate
+fallback case). All auto-merge armed/merged, all witnessed, all regression-clean. `materializeDefault`'s
+missing exclusion filter (named above) and the concurrent session's `_dlodInView` finding (above) are
+the two open items for the next session — both are named with enough detail to start from directly,
+neither needs rediscovery.
 

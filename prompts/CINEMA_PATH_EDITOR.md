@@ -7113,17 +7113,13 @@ Context is closing mid-fix on user instruction ("stop, let new session handle") 
 complete state, so the next session does not have to re-derive anything above. Three items open, one
 of them urgent (a real behavioural regression the user caught live), plus a landmine to fix FIRST.
 
-### ⚠ FIX THIS FIRST — an orphaned commit is not yet in `origin/main`
-Same squash-merge race this project's docs already warn about (`CLAUDE.md` Concurrent Branches note),
-hit TWICE this session. PR #1184 and PR #1192 both auto-merged (squash) within seconds of their last
-CI check passing — a routine follow-up push landed on the branch AFTER the squash, so it never reached
-`main`. The second occurrence: commit `a4c24da` ("scrub/POV panels default clear of #cpe-panel,
-scrub-panel z-index above all") on branch `fix/cpe-vf-followup` is **verified NOT an ancestor of
-`origin/main`** (checked via `git merge-base --is-ancestor a4c24da origin/main`, 2026-08-05). It is
-small, tested (16/16 green, `witness_cpe_scrub_viewfinder.js` on HHS_Office_Federated), and safe —
-just never shipped. **First action**: fresh worktree off current `origin/main`, `git diff
-45ab280..a4c24da -- viewer/cinema_path_editor.js` (or cherry-pick) to pull that diff forward, re-run
-the witness, open a new PR. Do not re-push to `fix/cpe-vf-followup` itself — same landmine.
+### ✅ DONE (2026-08-05) — orphaned commit recovered, PR #1195 open
+Cherry-picked `a4c24da` onto a fresh branch (`fix/cpe-panel-clear`) off current `origin/main` (reused
+existing `/tmp/wt-cpe-vf-followup` worktree). Clean cherry-pick, no conflicts. Re-ran
+`witness_cpe_scrub_viewfinder.js` against HHS_Office_Federated on a local server (port 8460) —
+16/16 green, same result as the original commit claimed. Pushed and opened
+https://github.com/red1oon/bim-ootb/pull/1195 — not yet merged, watch for the same squash-race before
+any follow-up push to this new branch.
 
 ### 🔴 OPEN, URGENT — separate the scrub-play button from the legacy Preview button's main-camera flight
 User, live-testing, caught this directly: **"That preview play in scrubber only affects pov window now
