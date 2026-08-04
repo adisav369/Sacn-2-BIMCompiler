@@ -6581,6 +6581,90 @@ stick-timing-sync, walk-record-share) — separate, later sessions per the task 
    live — this is the exact loop the user described ("pinpoint a spot where he adjust on canvas the pipe,
    and reflected on that B screen").
 
+## ✅ DONE 2026-08-04 — §CPE_AIM_PIN (Part C, PR bim-ootb#1172)
+
+Built off a FRESH `origin/main` worktree (`/tmp/wt-cpe-aim-pin`, branch `feat/cpe-aim-pin`, base
+`490b7a7`) — the old `feat/cpe-scrub-viewfinder` branch was already squash-merged (PR #1164) and was
+deliberately NOT reused, per this repo's own documented landmine. `origin/main` confirmed unchanged
+throughout; `time_machine.js`/`schedule_author.js`/`rates.js` (owned by a concurrent 4D-Gantt
+session) never touched. `cinema_maxq.js` untouched — confirmed by grep and a witness gate.
+
+**Mechanism**: a band gets a new `lookAt: {x,y,z}|null` field, threaded through `_buildOverride`,
+`_cloneBands` (undo/redo), `_pathsApply` (load), `open()`'s adopt-on-reopen clone, and the plan's own
+`bands:` echo in effects.js — the same seam `_stick`/`_s`/`hold` already ride, no second table
+(guardrail 4 held). In `effects.js`'s `_beat3Pose`, a NEW per-plan lookup (`_buildPinZones`/
+`_pinLookAtAt`) partitions the walk's own arc-length domain into one zone per band — boundaries at
+the midpoint between consecutive bands' own centre-arc-fractions (found by nearest-point match
+against `flowWp`, the SAME hosed curve the walk is actually sampled from, not a second unhosed
+notion of "where band i is" — no effects.js-side band-identity mapping existed before this, since
+`_cinemaBandFlow` fully flattens bands before the gaze code ever sees them). A pinned zone's `e3`
+skips `§CPE_AIM_DENSITY`/`§CPE_AIM_DEPTH` entirely and aims straight at `lookAt`; an unpinned zone
+runs the existing LOS+density+depth chain completely unmodified — "no bleed" holds STRUCTURALLY
+(every `e3` belongs to exactly one zone) rather than by tuning a blend weight.
+
+**UI**: clicking a band's ROW selects it (existing mechanism, unchanged). With a band selected, a
+click on the canvas that hits neither a handle nor the pipe (tracked via a lightweight
+`_state._pinCandidate`, set on `pointerdown` WITHOUT `preventDefault`/`stopPropagation` — orbiting
+with a band selected is completely unaffected) raycasts against real scene meshes (reusing
+`measure.js`'s own already-shipped click-to-pick pattern: `A.raycaster`/`A.mouse`, canvas-rect NDC,
+excluding `A.ground` and the editor's own overlay meshes) on release, if the pointer stayed under
+`CLICK_SLOP_PX`. A small "📌×" badge appears in the row when pinned (spec names no removal gesture;
+a pin with no way off would be a trap, same "an affordance you cannot see is not an affordance"
+doctrine `§CPE_STICK`'s own history already established) — clicking it unpins.
+
+**A pre-existing coupling, measured and documented rather than hidden**: pinning a band changes the
+walk's GAZE at that stretch, and `_evenTurnBuild()` (effects.js:6655) — which predates this feature
+entirely — samples the FULL walk's gaze (via `_beat3Pose`) once per plan to build a distance+turn
+blended cost table that `_evenTurnRemap` uses to convert time-fraction into arc-fraction. So ANY aim
+change anywhere on the walk (a pin, a density trigger flipping, anything) re-shapes that ONE global
+table, which shifts where every OTHER `tNorm` lands in arc-space by a small bounded amount —
+MEASURED on Duplex: 0.10-0.11m position, 0.15-2.06m aim-target-point deltas at neighbouring bands
+(target points sit ~20m out, so this is a few degrees of angular shift); Terminal measured smaller
+(0.002-0.067m / 0.03-0.21m). This is `§CPE_EVEN_TURN` working as designed (retiming BY turn cost),
+not a leak of the pin mechanism — it would fire identically for a density-triggered aim change with
+no pin involved. The witness proves "no bleed" the way the spec actually means it (LOS/density still
+GOVERN a neighbour's own zone — checked against the real zone table) rather than asserting an
+impossible bit-identical neighbour pose.
+
+**Witness — `witness_cpe_aim_pin.js` (new), 7/7 GREEN on both Duplex and Terminal (14/14 total)**:
+G-PIN-0 (the mutation function fires and logs), G-PIN-1a (pinned band's sampled look direction hits
+the target within 2°, measured 0.000°), G-PIN-1b (neighbouring bands' own zones stay `lookAt:null` —
+the real "no bleed" claim), G-PIN-2 (persistence rides `_buildOverride().bands[i].lookAt`, delta=0),
+G-PIN-3 (band centre bit-identical before/after — rotation only, proven not merely asserted),
+G-PIN-1c (unpin reverts the aim to within 2° of its pre-pin direction, measured 0.000°), G-PIN-static
+(grep proof `cinema_maxq.js` has zero references to the pin machinery). Regression: the Part A/B
+witness (`witness_cpe_scrub_viewfinder.js`) re-run clean, 8/8 both buildings; the broader
+`witness_cpe_*`/`witness_cinema_path_editor.js` suite re-run — the SAME pre-existing baseline
+failures already recorded in the Part A/B DONE block above (G10/G7, G-PA-4, G-RN-2) reproduced
+identically, no new regressions.
+
+**Live browser verification** (real DOM `pointerdown`/`pointerup` events through the actual `_wire()`
+handlers, not the witness's `_setPin` bypass — the claude-in-chrome extension hit environment-level
+GPU-context/tab-crash instability mid-session, unrelated to this code, so this ran as a genuine
+Puppeteer session instead, same rigor): real click on a row selected band 1; the camera was orbited
+close to the building; a real screen-pixel sweep found a pixel that (a) missed every handle/pipe hit
+test and (b) raycast onto a real mesh; a real mouse-down+up there (not a synthetic call) produced
+`§CPE_AIM_PIN band=1 lookAt=(-0.61,4.27,1.66) class=Mesh — rotation only...`, `bands[1].lookAt` set
+to that exact point, and the row text updated to `"exit door📌×pinned → (-0.61,4.27,1.66) ..."`; a
+real click on the 📌× badge unpinned it back to `null`. Zero console/page errors throughout.
+
+**Assumptions flagged (not separately user-confirmed before building, same treatment as Part B's fps
+question)**:
+- Aim precedence: pin wins locally, LOS/density resume immediately outside its zone — the spec's own
+  open-question-1 recommendation, built as the default.
+- "With a stick selected" was read as "whichever band is currently selected" (settle/exit-door/stop
+  included, not only a user-dropped `_stick`) — the rotation-only mechanism is identical for any
+  band and nothing in the spec text restricts it further. An interpretation, not a re-litigation.
+- The 📌× unpin badge is a net-new UI affordance the spec doesn't name.
+- Does "Save this path" persist `lookAt`? Yes, by construction — it rides `_buildOverride()`, the
+  same object Save/the bake already consume; open question 3's own "recommend yes" default, and no
+  special-casing was needed to get it (it just falls out of guardrail 4).
+
+**Not built (deliberately, per scope)**: Parts D-G, and the click-to-pin's own live-B-update path
+was only exercised via `_probePoseAt`/the real pose pipeline, not by re-verifying `§CPE_VIEWFINDER`'s
+own render loop end-to-end again — Part B already proved B samples `plan.poseAt(tn)` faithfully
+(PR #1164), and a pin only changes what `poseAt` returns, not how B consumes it.
+
 ## Scope guardrail amendment (record, per this doc's own convention)
 §Scope guardrails rule 1 above ("no new panel") is superseded here, same as the 2026-07-26 3D-gizmo
 amendment superseded guardrail 3 — B is unambiguously a new panel. Recorded deliberately so it is not
