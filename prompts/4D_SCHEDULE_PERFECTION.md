@@ -627,6 +627,47 @@ this file's own history already tried and rejected 5 designs in that direction
 each traded away the band-monotonic fix to get support-invariant to 0, or vice versa). Any new attempt
 must be measured against BOTH invariants at once, not just the one it's chasing.
 
+### §GANTT_AXIS_OUTLIER — FIXED, PR bim-ootb#1175 (2026-08-04)
+
+**Worktree collision, resolved:** `/tmp/wt-sandbox` is a SHARED standing worktree (per its own memory
+doc) — while building this fix there, HEAD silently moved out from under the edit session (another
+process re-checked it out). Investigated before assuming repo damage: `origin/feat/gantt-edit-foundation`
+was confirmed fully intact throughout (`41a4bd9`, all 5 browser-proof fixes present) — this was a LOCAL
+worktree-reuse collision, not a lost-commit or bad-merge event. Recovered by saving the in-progress diff
+as a patch, then rebuilding it fresh in a dedicated private worktree (`/tmp/wt-gantt-axis-fix`, since
+pruned) rather than reusing the shared one for active edits — matches the Worktree Hygiene rule this
+project already carries ("prefer a private worktree when a task might overlap with concurrent work").
+
+**The fix (user-directed design, not invented ad hoc):**
+- User: don't special-case the `'_UNKNOWN'` storey label — refer back to the pattern already proven
+  correct in this file for exactly this problem. `buildGanttTasks()` already 2nd–98th percentile-trims
+  each BAR's own span (`§GANTT_MINI_TRIM`); this applies the SAME trim, same threshold, to the GLOBAL
+  population of `end_ts` that defines the chart's axis — root-cause-agnostic, catches any wild outlier,
+  not just the one already found.
+- New, SEPARATE vars `_ganttAxisStart`/`_ganttAxisEnd` — `_projectStart`/`_projectEnd` themselves stay
+  untouched, since real playback (scrubbing, `renderAtTime`, "every element must eventually build") must
+  never disagree with what actually gets built. This is a DISPLAY-scale decision, not a data change —
+  the JSON/task data a user could also edit via P6/MPP round-trip remains the single source of truth;
+  only how the chart SCALES itself against that same data changes.
+- Every pixel↔time conversion the drawer does was audited and patched to use the qualified axis
+  consistently: bar draw, ruler ticks/gridlines, click-to-seek, `findBarAtClick` hit-testing, `ganttHit`
+  drag-hit-testing, and the `__tmGanttBars` hook itself (so a future live probe reads the same numbers
+  the chart actually draws). Verified via grep — zero stray unqualified-axis references left in any
+  Gantt-drawer-specific function.
+
+**Verification status, stated honestly:** syntax-checked (`node --check`), and the DEFECT this fixes was
+already conclusively proven live pre-edit (this file's own §GANTT_AXIS_OUTLIER CONFIRMED LIVE section
+above). NOT re-verified live post-edit — hit the pre-documented WebGL/GPU init failure
+(`project_machine_chrome_firefox_gpu_launchers.md`) on this box after ~100min of heavy tab reuse, a known
+environment issue, unrelated to this change. **Next session, first thing:** fresh tab, fresh Hospital
+load, re-query `__tmGanttBars`, confirm bars now span most of the axis and the ruler reads ~325d not
+1049d — the PR (bim-ootb#1175, base `feat/gantt-edit-foundation`) says this explicitly in its own test
+plan as an open checkbox, not a silent gap.
+
+**Still separately open, not touched by this fix:** the "walls/trucks before piling at hour 0" report
+and the Hospital-video defect (§MEP_HUNG_FROM_ABOVE scored 0 on Hospital) remain unidentified — this fix
+closes the axis-scaling defect only, not those two.
+
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
 dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
