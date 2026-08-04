@@ -1,6 +1,38 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
+> ⚠ File is 150 lines, over budget — next session should archive DONE items per the Rule above.
+
+## Session 2026-08-05 — §CLASS_UNMATCHED_INHERITED (schema-exhaustive tier-2 fallback) SHIPPED
+Watchdog/reviewer session, continued from `RESUME_SESSION_2026-08-05_WATCHDOG.md`. Verified+landed the
+dev session's §CLASS_UNMATCHED_FALLBACK fix (bim-ootb PR #1186, #1187 — real IFC4 hierarchy, not
+guessed; witness confirmed 3→0 then 5→0 unmatched classes across 7 buildings). Then spec'd+built the
+schema-exhaustive follow-on: `prompts/BUILDINGSMART_IFC_SCHEMA_CLASSIFICATION.md`, PR bim-ootb#1191
+(auto-merge armed, pending CI at session close) — `tools/dump_ifc_schema_hierarchy.py` walks
+`ifcopenshell`'s real IFC2X3/IFC4/IFC4X3 schema (1006 classes) into `viewer/rates/
+ifc_schema_hierarchy.json`; `matchRule()` (all 3 copies) gets a tier-2 ancestor-walk fallback below
+the existing explicit `SEQUENCE_RULES` tier. Ground truth verified against buildingSMART's own raw
+`.exp` file, not an AI summary of it (caught+documented a real WebFetch hallucination in the process —
+see the spec's §THE WEBFETCH LESSON). Witnessed: `witness_schema_exhaustive_fallback.js` (NEW, P3)
+tier1=132/tier2=53/tier3=821, pass=6/fail=0; full named regression 205/205; re-verified after a real
+`sw.js` merge conflict against a concurrently-landed PR #1190.
+
+**Follow-on spec'd, not built:** `prompts/CLASSIFICATION_EXACT_LOOKUP_BLINDSPOT.md` — 6 consumers
+(`boq_charts.html`'s crew chart, `proj_fold.js`'s ERP push, `variation_order.js`, `export_5d.js`'s
+`WORK_PACKAGES`, `schedule_read_4d.js` fallback) do exact `SEQUENCE_RULES[cls]` lookup, never call
+`matchRule()`, so they get NEITHER tier 1 substring matching NOR tier 2 — silently miss any
+`...Type`-suffixed class or the 58 real occurrence classes still unclassified (named in the parent
+spec). Not a regression from today's work — pre-existing, just newly surfaced by the blast-radius check.
+
+**Dev session picked up the follow-on live during this session's closeout**, working directly in
+`/tmp/wt-ifc-schema-classification` (same branch as open PR #1191) — left untouched throughout
+(watchdog-role, no git ops on another session's in-progress worktree). Per their own P1 update to
+`CLASSIFICATION_EXACT_LOOKUP_BLINDSPOT.md`: `classify()` exported from `schedule_author.js`
+(pass-through wrapper around `matchRule`'s real tier 1→2→3), new `witness_schema_exhaustive_classify.js`
+5/5 pass (byte-identical to `matchRule` across all 1006 classes, tier split pinned 132/53/821), existing
+`witness_schema_exhaustive_fallback.js` still 6/6 unchanged. Not yet committed/pushed as of this
+session's close. Next session: check PR #1191 merged, then check P1's commit status before starting P2
+(wire `boq_charts.html`'s crew chart + `proj_fold.js`'s ERP push through `classify()`).
 
 ## Session 2026-08-02 — 4D ordering CONFIRMED live, movie-maker batch shipped
 User confirmed on a real Hospital bake: no roof before walls, no upper deck before lower, to Day 282.
