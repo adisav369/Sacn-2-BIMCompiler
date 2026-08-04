@@ -537,6 +537,45 @@ script, was an ad-hoc CDP session). This is exactly why `__tmGanttBars` (exact r
 ambiguity) is still the right next step, now for a sharper reason: pixel-fill heuristics can't
 distinguish "correctly sparse" from "actually broken" on a chart shaped like this one.
 
+## §MEP_HUNG_FROM_ABOVE — a real, measured support-invariant gap (2026-08-04, user reference: `~/Downloads/Hospital_verynice.mp4`)
+
+User: that video is the visual quality bar to surpass, and it shows "slight elusive creeping elements
+appearing without support" — the original trigger for this whole session's scheduler refactoring.
+`witness_support_invariant_all_buildings.js` already reports 0/0 floating on all 6 buildings, so the
+existing invariant is not lying — it is testing the wrong thing for one class of element.
+
+**Code review finding:** `schedule_gate.js`'s `geoGate`/`auditFloating` only ever check for a support
+BELOW an element (`S.base_z < el.base_z - EPS`) — correct for structure resting on structure, but MEP
+ductwork/pipe (`IfcDuctSegment`/`IfcPipeSegment`/`IfcFlowSegment`, all `seq:7`) is physically hung FROM
+the slab ABOVE it. Nothing in the scheduler or the audit has ever tested that relationship — every prior
+fix in this file's history (§4D_ROOF_LOAD_PATH, §4D_WALLS_BEFORE_ROOF, §4D_WALL_BORNE_STRUCTURE and its
+5 rejected redesigns) dealt exclusively with support-from-below. This is a genuinely new class of gap,
+not a re-litigation of settled work.
+
+**Measured (`scratchpad/witness_mep_hung_from_above.js`, bim-compiler — diagnostic only, no production
+code touched): 25 real violations across 6 buildings**, all `IfcPipeSegment`, all small relative to their
+building's hung-MEP population (0.1–0.9%):
+- Duplex 0/704 · Clinic 0/6925 · HHS 0/2467 · **Hospital 0/30411** · JKR **4/1819** (worst lag 6.2d) ·
+  Terminal **21/4462** (worst lag 7.8d)
+
+**Honesty check, not yet resolved:** Hospital — the building in the reference video — scores 0 on this
+specific check. This gap is real and worth fixing (JKR/Terminal), but it does NOT by itself explain
+what the video shows. Two live possibilities, neither confirmed: (a) the video predates one of the
+Aug 1 fixes (§4D_ROOF_LOAD_PATH/§4D_WALLS_BEFORE_ROOF, both shipped ~04:00–16:00 on 2026-08-01; file
+mtime is 2026-08-03 04:19, so it postdates those — this is likely NOT it, but not yet cross-checked
+against which commit was actually live when the bake ran) or (b) a different, still-unidentified
+relationship this session hasn't checked yet (candidates: `IfcRailing`/`IfcStair` between levels,
+curtain-wall/cladding on incomplete structure, or the zero-lag "start == support finish exactly"
+simultaneity case — an element CAN legitimately start the same instant its support finishes, which a
+strict `<` audit correctly allows but a human eye sweeping past in the same frame might read as
+simultaneous "popping in").
+
+**Next session:** (1) fix the 25 measured MEP-above violations — likely a `wallGate`-shaped addition,
+support = nearest real slab whose `base_z` sits within GAP above the element's `top_z`, same
+`overlap()`/EPS/GAP already in use, no new invented constants; (2) do NOT treat that as closing this
+item — Hospital's 0 score means the video's actual defect is still unidentified, chase it after (or
+alongside) `__tmGanttBars` once Chrome is free.
+
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
 dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
