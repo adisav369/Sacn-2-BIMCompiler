@@ -406,9 +406,80 @@ selection set.
 never inferred from "the bar's end date has passed". A task whose date elapsed is NOT a task that got
 done, and rendering it as done would be exactly the invented value this file's Boundary section forbids.
 
-**Open questions, do not guess:** where the photo/report BLOB lives (ERP twin vs OCI vs IDB), and
-whether mobile is the existing viewer at a small breakpoint or a distinct entry point. Both need a
-user ruling before implementation.
+### MOB — FULL SPEC FOR THE NEXT SESSION (user ruling 2026-08-04: "let MOB be well spec'd")
+Read this whole subsection before writing any code. Nothing here is started.
+
+**M0 — PREREQUISITE, do this first.** The drag path is not yet proven end-to-end (see §BROWSER_PROOF
+below). MOB rides on the same bar→task identity. Close M0 before building on it.
+
+**M1 — Persist the ERP link (no ruling needed, fully derivable — start here).**
+- `foldProjectOrder` already returns `{projectId, orderId, created:{phases,tasks,lines,products}}`
+  and creates real `C_ProjectTask` rows. What does NOT exist is a stored link from OUR zone task to
+  the ERP one. Add it: a small `task_erp_link(task_id TEXT PRIMARY KEY, c_projecttask_id INTEGER,
+  c_project_id INTEGER, pushed_at TEXT)` table alongside `tasks`.
+- **Join by stored ID forever after — never re-derive by name.** Zone task names are
+  `phase + ' — ' + storey`; ERP `C_ProjectTask.Name` is the RESOURCE. They are different strings by
+  construction, and matching them would be the same class of defect K0 fixed.
+- Witness `witness_mob_erp_link.js`: after a push, every pushed zone task has exactly one link row,
+  the `c_projecttask_id` exists in `C_ProjectTask`, and re-pushing is idempotent (no duplicate rows,
+  no second `C_Project`). RED control: assert a name-based match would mis-associate — measure it.
+
+**M2 — Push a bar from the drawer.** Reuse `navigate_find.js _pushToErp()`'s pipeline verbatim; the
+only difference is the scope selector — the bar's `task_elements` guid set instead of `_lastSelSet`.
+⚠ `_pushToErp` needs PRICED rows (`_selectionPriced`), and it already fails honestly when a selection
+has nothing costable. Keep that behaviour; do not paper over it. Entry point: the E7 property panel
+(it already lists the task's real identity), NOT a new toolbar button.
+
+**M3 — Mobile view.** Opening a `C_ProjectTask_ID` highlights that task's `task_elements` guids in 3D
+and lists its `C_ProjectLine` rows as the checklist (per IFC type, real quantities — the fold already
+created them; do not recompute).
+
+**M4 — Share back.** `viewer/share.js`, payload keyed by `c_projecttask_id`.
+
+**M5 — Fold back done.** Write the completion to the twin so `CommittedAmt` moves. **No new UI** —
+`§TM-VARIANCE` (`_loadTwin`, `tm-var-canvas`, `tm-var-list`, `_VAR_ORDER`) and `§EVM_FOLD` already
+render exactly this. ⚠ While you are there: `_VAR_ORDER` is a KNOWN-STALE phase order (MEP Rough-in
+before Architecture) — fix it to derive from `SEQUENCE_RULES` like `_ROW_PHASE_ORDER` now does.
+
+**BOUNDARY (non-negotiable):** completion comes from the returned real record. NEVER infer "done"
+from an elapsed end date — an elapsed task is not a completed task, and rendering it as done is
+precisely the invented value this file's Boundary section forbids.
+
+**Open questions — ASK, do not guess:** (a) where the photo/report BLOB lives (ERP twin vs OCI vs
+IDB); (b) whether mobile is the existing viewer at a small breakpoint or a distinct entry point.
+Neither blocks M1/M2 — do those first, then ask.
+
+## §BROWSER_PROOF — what a real browser proved that 184 headless checks could not (2026-08-04)
+Driven two ways: a dependency-free CDP client (`scratchpad/cdp.js` + `drag_test.js` — this box has NO
+npm registry access, `npm ping` times out, and Node 18 has no global `WebSocket`, so the client
+implements the handshake over `net`), then the Claude Chrome extension once the user signed in.
+
+**Three real bugs found, all invisible to every witness** (each witness authors its own fixture in
+node and never touches a DOM or the toolbar):
+1. Removing the ✎ icon orphaned the ONLY caller of `ScheduleAuthorUI.toggle()` — no user could author
+   at all, leaving every bar without a `task_id` and the whole editable drawer inert (`9902f6d`).
+2. `buildTaskIndex()` cached the NEGATIVE result, so authoring after opening the drawer never took
+   effect (`9799f24`) — and that fix alone was still insufficient, because `buildGanttTasks()` is
+   gated on `_ganttDirty` which authoring never set (`6a5073f`). MEASURED: banner `display:block`
+   → `display:none` for the same sequence.
+3. The drag refusal was a bare `return` — no log, no user feedback, and the test could not tell
+   "handler never fired" from "handler correctly refused". Silence is not a refusal (`9799f24`).
+
+**Also proven live, not merely in source:** ruler renders 18px and computes `position:sticky`; canvas
+lays out 327×214 with real drawn pixels; legend gone; ✎ gone; and `window.SEQUENCE_RULES` IS loaded
+when `_ROW_PHASE_ORDER` is built — so the DERIVED phase order is the branch that actually runs, never
+the hardcoded fallback. That last one was a real correctness question no headless witness can answer.
+
+**STILL OPEN — the one link not closed:** no `§GANTT_DRAG_COMMIT` has ever been observed. Events
+reach the canvas (a probe listener fires), the handler is wired (`cv._dragWired === true`), and bars
+are now editable (banner gone) — but the last attempt aimed a synthetic pointer at row 0,
+`x = marginL + 40px`, which is a GUESS at the bar's extent, not measured geometry. A short first bar
+simply would not be under that point, producing exactly the observed silence.
+**NEXT SESSION, do this first:** expose the drawn bar rects (a `window.__tm*` debug hook, the
+convention this file already uses for `__tmScheduleDebug`), aim at a MEASURED midpoint, and only then
+assert `§GANTT_DRAG_COMMIT` / `§GANTT_EDIT_CLAMP` / `§GANTT_RETIME` numbers. Until that passes, treat
+the drag gesture as UNVERIFIED end-to-end — the engine beneath it is witnessed 184/184, the gesture
+reaching it is not.
 
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
