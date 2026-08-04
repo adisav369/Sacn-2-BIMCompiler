@@ -7106,3 +7106,107 @@ canvas-native drag-a-dot pin redesign discussed this session (long-press a Find 
 via nearest-point-on-pipe, threshold from `A.cinemaFan` clearance, generalizes to Clash later) is
 scoped but **not started** — settled decisions recorded, one open threshold question remains
 (derive it from `A.cinemaFan` clearance, not yet measured).
+
+## ▶ SESSION HANDOFF 2026-08-05 (LATE) — read this first if picking this up cold
+
+Context is closing mid-fix on user instruction ("stop, let new session handle") — this section is the
+complete state, so the next session does not have to re-derive anything above. Three items open, one
+of them urgent (a real behavioural regression the user caught live), plus a landmine to fix FIRST.
+
+### ⚠ FIX THIS FIRST — an orphaned commit is not yet in `origin/main`
+Same squash-merge race this project's docs already warn about (`CLAUDE.md` Concurrent Branches note),
+hit TWICE this session. PR #1184 and PR #1192 both auto-merged (squash) within seconds of their last
+CI check passing — a routine follow-up push landed on the branch AFTER the squash, so it never reached
+`main`. The second occurrence: commit `a4c24da` ("scrub/POV panels default clear of #cpe-panel,
+scrub-panel z-index above all") on branch `fix/cpe-vf-followup` is **verified NOT an ancestor of
+`origin/main`** (checked via `git merge-base --is-ancestor a4c24da origin/main`, 2026-08-05). It is
+small, tested (16/16 green, `witness_cpe_scrub_viewfinder.js` on HHS_Office_Federated), and safe —
+just never shipped. **First action**: fresh worktree off current `origin/main`, `git diff
+45ab280..a4c24da -- viewer/cinema_path_editor.js` (or cherry-pick) to pull that diff forward, re-run
+the witness, open a new PR. Do not re-push to `fix/cpe-vf-followup` itself — same landmine.
+
+### 🔴 OPEN, URGENT — separate the scrub-play button from the legacy Preview button's main-camera flight
+User, live-testing, caught this directly: **"That preview play in scrubber only affects pov window now
+and not the main canvas"** — i.e. it currently does NOT (it still flies the main camera), and it must.
+Root cause: `#cpe-scrub-play`'s click handler (`_wireScrubPlay`, search `§CPE_SCRUB_PLAY` in
+`cinema_path_editor.js`) calls `_previewFly()` — the SAME function the (now-hidden, still-wired)
+legacy `#cpe-preview` button uses, which applies every frame's pose to the MAIN camera via
+`_applyCameraPose(tn)` (`a.camera.position.set(...)`/`a.controls.target.set(...)`). This violates the
+session's own core invariant (§CPE_SCRUB_VF_LIVE: main canvas is never touched by anything
+scrub-panel-driven) — it was correct for `_scrubTo` (drag) but never carried over to the new play
+button.
+
+**Cannot simply change `_previewFly()` itself** — the hidden `#cpe-preview` button still needs it to
+fly the main camera, because two pre-existing witnesses depend on that exact behaviour
+(`witness_cpe_room_title_live.js`, `witness_cpe_room_title_timing.js`, both call
+`document.getElementById('cpe-preview').click()` and check the room-title overlay against the flown
+main camera). Breaking that regresses tests outside this session's scope.
+
+**The fix already scoped, not yet written** (investigation done, code not started):
+1. Extract a new `_applyVFPose(tn)` helper — literally the vfCam-write block already inline inside
+   `_scrubTo` (`cinema_path_editor.js`, search `function _scrubTo`): sample `_state.plan.poseAt(tn)`,
+   write `_state.vfCam.position`/`.lookAt`, `markDirty()`. Have `_scrubTo` call it instead of inlining
+   (no behaviour change, just a shared name — same pattern the spec doc's own history already used
+   once for `_applyCameraPose`).
+2. Add a `povOnly` parameter to `_previewFly(povOnly)` (search `function _previewFly`,
+   `cinema_path_editor.js`). Inside `step()`, branch on it: `povOnly ? _applyVFPose(tn) :
+   _applyCameraPose(tn)`. On natural completion, the existing main-camera save/restore block
+   (`a.camera.position.set(save.px,...)` etc.) should be skipped when `povOnly` — nothing was moved,
+   nothing needs restoring.
+3. `_wireScrubPlay`'s click handler: change `_previewFly();` to `_previewFly(true);`.
+4. Leave `#cpe-preview`'s existing wiring (`document.getElementById('cpe-preview').addEventListener
+   ('click', _previewFly)`, no argument) completely untouched — defaults `povOnly` to falsy, preserves
+   the legacy main-camera-flying path the two witnesses above need.
+5. Buildup/room-title/ghost-ground/day-counter wiring inside `_previewFly` is untouched either way —
+   it drives off `tn`/Time Machine cursor, not camera position, so it's orthogonal to which camera
+   gets the pose. (Room-title overlay showing over a STATIC main canvas during a POV-only play is a
+   possible visual oddity worth a second look once this lands, but it's opt-in/off-by-default and the
+   user has not flagged it — do not scope-creep into fixing it unprompted.)
+6. New witness gate needed: a POV-only play must leave the main camera byte-identical throughout
+   (same invariant class as `G-SCRUB-NOCAM`/`G-SCRUB-VF-LIVE` in `witness_cpe_scrub_viewfinder.js`) —
+   sample main camera position/target before starting `_previewFly(true)`, poll a few frames in, assert
+   zero delta, then let it finish naturally.
+
+### 🔴 OPEN — POV content/border alignment, diagnostic log now in place, one distinguishing check left
+User-reported (screenshot, `~/Pictures/Screenshots/Screenshot from 2026-08-05 01-41-11.png`): POV box
+content "not aligned fit... out to the right of the box." `§CPE_VF_ALIGN_DIAG` (search that tag in
+`_vfRender()`, `cinema_path_editor.js`) is a one-shot-per-toggle-on diagnostic log added this session —
+already got ONE real repro on the deployed site:
+```
+panelR={"left":919,"top":523,"width":300,"height":190} canvasR={"left":0,"top":0,"width":1235,"height":769}
+pr=1.25 computed_x=1149 computed_y=69 computed_w=375 computed_h=238 canvasBackingBuffer=1543x961
+boxSizing=border-box borderWidth=1.6px/1.6px xPlusW=1524 backingBufferW=1543 overflowRight=-19
+```
+**Every number checks out** — `x=(919-0)×1.25=1149` ✓, `w=300×1.25=375` ✓, `x+w=1524 < 1543`
+backing-buffer width (19px headroom, no clipping/overflow). `renderer.getSize()` matches `canvasR`
+exactly (no CSS-transform/zoom discrepancy). CSS `box-sizing:border-box` confirmed (global reset in
+`viewer.html:16`), ruling out the width-inflation theory. **`_vfRender()`'s scissor/viewport math is
+proven correct by these numbers — this is NOT a coordinate bug.** Two remaining hypotheses, in order
+of likelihood: (a) it's a COMPOSITION issue — `vfCam`'s pose/aim frames the subject off-center within
+a correctly-positioned box, not a positioning bug at all; (b) something downstream of the scissor call
+this log doesn't cover. **Next repro, ask the user which it looks like**: does the 3D content itself
+look off-center inside an otherwise correctly-bordered box (→ (a), chase `_applyVFPose`/aim source
+next), or does the box border sit somewhere the pixels don't (→ (b), the log missed something — add
+more instrumentation, do not guess).
+
+### 🔴 OPEN, cross-session hand-off — Time Machine buildup visibility is gated to the WRONG camera
+Root-caused by code alone, not fixed (file is out of scope this session — see below). `time_machine.js`
+`renderAtTime()`'s BatchedMesh branch (search `bHideForProxy`, around line 1443) additionally hides an
+element that IS "placed" (should be visible per construction progress) if `_dlodOn && !_dlodInView(bg)`
+— and `_dlodInView` (line 565) reads `_dlodCamPos`, which is **hardcoded to `app.camera.position`**
+(line 1275) — the MAIN camera, never `vfCam`. This was invisible before this session because B always
+moved in lockstep with the main camera (only during `_previewFly()`, both pose-identical). This
+session's own §CPE_SCRUB_VF_LIVE change (scrub drives `vfCam` independently, main camera stays parked)
+is what newly exposes it: scrub the timeline with B open on a large building (`_isLargeBuilding`,
+confirmed `large=true` on Hospital) and B can show buildup-hidden geometry that's only hidden because
+it's outside the STATIONARY main camera's frustum, not because of anything wrong with B's own view or
+the construction timeline itself.
+
+**Why not fixed here:** `time_machine.js` is explicitly named, earlier in this same file's own
+roadmap section (§ROADMAP, "Constraint carried into every part from here"), as owned by the concurrent
+4D-schedule-accuracy session — the user's own stated priority this session (`feedback_schedule_
+accuracy_over_movie_polish` in the assistant's memory: schedule accuracy outranks movie-maker polish
+when both have open work). **Confirm with the user whether to write this up as a dated finding in
+`4D_SCHEDULE_PERFECTION.md` for that session, or whether this session gets an explicit one-time
+exception to fix it directly** — do not assume either way; it was offered once this session and never
+confirmed.
