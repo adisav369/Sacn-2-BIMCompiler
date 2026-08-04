@@ -1479,6 +1479,73 @@ Branch `feat/element-cpm-elevation-dual-gate` (off `feat/z-stacking-oneshot`), p
 building, independently of any scheduler. The four env knobs are left in `computeSchedule` so shape 12,
 if it is ever justified, is a flag flip and not a re-derivation.
 
+---
+
+# ▶ RULING 2026-08-04 — the NEW ruling this file's own gate (L1442, "do not re-open without a new
+ruling that explicitly accepts the band/span cost") asks for, before any 12th engine shape is built
+
+**Not a new investigation — a synthesis of what the eleven shapes already proved, plus the architecture
+context that makes the remaining ask smaller than "solve CPM" sounds.** Rates (crew/handling speed,
+regional cost, productivity — the "5D" dimension) already live entirely in `viewer/rates/*.json`
+(per-standard: `aramco2024_sa.json`, `cidb2024_my.json`, `rawlinsons2024_au.json`, etc.) and the engine
+that consumes them (`schedule_gate.js`/`schedule_author.js`) never branches on WHICH json is loaded —
+rates are pure data, the engine is invariant across region/building. That's the right shape, and it
+means 100% of remaining risk is concentrated in one place: the ordering engine this file has spent
+eleven shapes on. That concentration cuts both ways — a bug here has building-wide blast radius (see
+`witness_wall_carrier_scope_all_copies.js`'s finding of 4 independently-drifted copies of "is S a real
+support for T" before this file's work even started), which is exactly why it deserves a real ruling
+instead of a 12th patch attempt.
+
+**What eleven shapes already established, restated as two SEPARATE problems, not one:**
+1. **A data-correctness bug, already isolated** — `audit_rank_vs_support.js` (L1197-1205): 1,735 of
+   81,722 support edges have the carrier's STOREY LABEL ranked above what it physically carries, while
+   the SAME edges have zero contradictions when ranked by real elevation. "The contradiction is in the
+   KEY, not in the schedule." This is a storey-tagging defect, fixable independently of any ordering
+   engine, and untouched by all eleven shapes because every shape treated it as part of the ordering
+   problem rather than fixing the input data first.
+2. **A genuine structural fact, not a bug** — walls (and any element that is simultaneously load-bearing
+   AND load-bearing-upon) both carry structure and rest on it (L1330, L1440). Forcing one strict total
+   order onto a dual-role element is why support-correct engines cost 3,400-9,000 label-band inversions
+   and 50-90 days of span, measured, not tunable away (L1434-1442) — the element genuinely needs to be
+   "early" (as a support) and "late" (as a thing built on top of what's below it) at once, and a single
+   placement timestamp per element cannot represent both.
+
+**The ruling, in two parts — deliberately smaller than "reopen the engine":**
+1. **Fix problem 1 as a standalone data pass, before touching ordering at all.** Re-derive storey
+   labels from the SAME elevation ladder `§CPM_DUAL_ELEVATION` already extracts (midpoint band bounds,
+   L1419-1422 — already measured as a free, independent win: `relabelledByZ` 23,121→8,816). This is not
+   engine work and does not require re-opening `computeSchedule` — it's a correction to
+   `elements_meta.storey`-adjacent data, and it removes 1,735 edges' worth of manufactured contradiction
+   before any ordering engine ever sees them.
+2. **Stop asking one node to hold two roles.** This project already shipped exactly this pattern once —
+   `§Z_STACK_XRAY_STAGING` (#1139, L1314-1364) decoupled an element's REVEAL/material state from its
+   SCHEDULE order, and it worked precisely because it stopped trying to make one timestamp satisfy two
+   different truths. Apply the same decoupling one level deeper, to the SCHEDULING key itself, not just
+   presentation: split a dual-role element's single placement event into two logical events —
+   "functionally available as a support for what's above" (gates downstream elements) and "its own
+   erection/finish complete" (gates the film's reveal of the element itself, and can legitimately be
+   LATER than the support-ready moment). Downstream elements key off the first; the element's own visual
+   completion keys off the second. No engine shape has tried this — all eleven gave every element exactly
+   one date and then fought over which invariant that one date should obey.
+3. **Treat band/span as minimized, not eliminated, for whatever residual conflict remains after 1 and 2.**
+   The 33k-39k band-inversion floor (L1436-1439) is measured, not a tuning miss — accept that a small,
+   named residual may be irreducible even after the dual-role split, and optimize for MINIMUM violations
+   subject to support=0, rather than the all-eleven-shapes goal of BOTH at zero. That is the "explicitly
+   accepts the band/span cost" clause this file's own gate requires — now given a stated mechanism
+   (parts 1-2) instead of an open-ended acceptance of eleven shapes' worth of unexplained cost.
+
+**Why this is a smaller ask than "attempt #12":** parts 1 and 2 are each independently testable and
+independently shippable — problem 1 has its own witness shape already available (`audit_rank_vs_support.js`
+re-run post-relabel should show near-zero contradictions), and problem 2 only needs a second timestamp
+column plus a repoint of existing consumers (support-gate reads the new "support-ready" column; the film
+still reads the existing per-element placement column) rather than a new solver. Neither requires
+re-deriving the eleven shapes' machinery from scratch. **Out of scope for this ruling:** actually
+implementing parts 1-2 — this section is the spec, not the PR; the next session that picks this up should
+witness-first each part per this project's standing rule, starting with part 1 (pure data fix, lowest
+risk, unblocks measuring how much of problem 2 remains once problem 1 is gone).
+
+---
+
 ## 2026-08-03 — INVESTIGATION ONLY: "Architecture phase all done on day one" (Terminal MaxQ bake) — user hypothesis WRONG on locus, RIGHT on effect. Real bug found, different file, different logic.
 
 **Task:** diagnose only (no code/PR changes) — user watched a Terminal MaxQ bake and saw the whole

@@ -925,3 +925,241 @@ real `tasks` / `task_elements` / `task_sequences` rows through `compute4D`'s `ca
 
 ## Session close-out, 2026-08-04 (evening) — §GANTT_AXIS_OUTLIER FIXED (PR bim-ootb#1175, unverified live), §MEP_HUNG_FROM_ABOVE + piling/wall report OPEN, viewer toolbar/panel re-theme DEFERRED (not started — next session, verify #1175 live FIRST before any visual work)
 
+### §GANTT_AXIS_OUTLIER — code-reviewed (no Chrome), 2026-08-04
+Per user direction this session: study the code instead of a live Chrome re-verify. PR bim-ootb#1175
+is already **merged into `feat/gantt-edit-foundation`** (bim-ootb#1173's branch, still OPEN vs `main`),
+not into main directly.
+
+Reviewed the actual merged diff at `origin/feat/gantt-edit-foundation` (`4d333c2`), not a re-derivation:
+- `_ganttAxisStart`/`_ganttAxisEnd` correctly separated from `_projectStart`/`_projectEnd`; grep over the
+  whole file confirms zero stray unqualified-axis references left in any Gantt-drawer function (bar
+  draw, ruler ticks/gridlines, click-to-seek, `findBarAtClick`, `ganttHit`, the `__tmGanttBars` hook) —
+  the PR's own audit claim holds.
+- Trim will actually work at Hospital's scale: `_ops` = `kernel_ops` rows (one per installed element,
+  thousands for Hospital), so the `n>20` 98th-percentile trim has ample population to exclude one
+  `_UNKNOWN`-storey outlier. (Edge case: for `n` in ~21–50 the `ceil()` trim math is a no-op — inherited
+  unchanged from the existing per-bar `§GANTT_MINI_TRIM`, never hit at real building scale.)
+- `node --check` on the branch tip: clean.
+- `git merge-tree` vs current `origin/main`: **zero conflicts** — `sw.js` only differs by
+  `CACHE_VERSION` number, no precache-list collision. #1173 is 17 ahead / 4 behind main; safe to sync.
+- Noted, not a regression: the MaxQ-Time/X-ray derived-order feature (`tmRestoreDerivedOrder` + its
+  counterpart) mutates `_projectStart`/`_projectEnd` directly, bypassing `computeDays()`/`_ganttDirty` —
+  so Gantt bars AND axis both go stale together if the drawer is open in that mode. Pre-existing
+  (bars were already stale there before this fix too, same `_ganttDirty` gap), not introduced by #1175.
+
+**No bugs found in the fix.** This is a code-level pass only — still not exercised in a live browser.
+Live re-verify (`__tmGanttBars` on Hospital, confirm bars span most of the axis, ruler reads ~325d not
+1049d) remains the honest open item before calling this DONE, per the PR's own test-plan checkbox.
+
+## Session 2026-08-04 (later) — §TM_CLOSE_RESTORE FIXED (bim-ootb PR #1182, merged+live); §PILING_UNSUPPORTED diagnosed, root cause named, OPEN
+
+Two bugs dispatched this session, worked in priority order in a private worktree
+(`/tmp/wt-tm-restore-fix`, off fresh `origin/main` @ `dee5076` — #1181 already landed, so
+§GANTT_OPS_BOOKKEEPING_LEAK/§GANTT_AXIS_OUTLIER were both already live before this session started).
+
+### Bug 1 — Time Machine panel close doesn't restore the full building — FIXED, PR bim-ootb#1182 (merged, live)
+User report, live: "when the TM panel is killed, the scene does not restore to full building."
+
+**Root cause, found by reading `time_machine.js` (whitebox, no guess-and-check):**
+`renderAtTime()`'s per-tick `clearHighlight()` deliberately SKIPS `_tm_xrayStaged` meshes — the
+§Z_STACK_XRAY_STAGING grey/0.3-opacity ghost material an element gets while waiting on its own support
+carrier to finish. That skip is a real, commented perf optimization (avoids an O(staged-population)
+clone+dispose sweep every tick) — the header comment says renderAtTime's own showReal branch restores
+each one "explicitly, exactly once, on the tick they actually resolve." **But `deactivate()` ->
+`restoreVisibility()` calls that SAME `clearHighlight()`** — so any element still staged the instant TM
+is closed (cursor not parked at `_projectEnd`, or its support chain unresolved) keeps its cloned ghost
+material FOREVER — nothing else ever revisits it once TM is off, until a future TM re-activation
+happens to touch that exact guid again. `_highlightMeshes` (the array holding it) is also never reset
+on deactivate, so the leak persists across the whole "TM closed" window, not just one frame.
+
+**Fix:** `clearHighlight(force)` gained a param; `restoreVisibility(force)` forwards it;
+`deactivate()` now calls `restoreVisibility(true)` — same "nothing may survive TM being switched off"
+convention this file already applies to `_gspClear`/`_tmXraySolidifyTs`/`__tmOverlaySync` in the same
+function. The per-tick call site (`renderAtTime`) is untouched (`force` omitted → `false`), so the
+O(1)-per-tick property the optimization exists for is preserved.
+
+**Witness (`witness_tm_close_restore.js`, must be able to FAIL):** brace-match-extracts the REAL
+shipped `applyHighlight`/`restoreMaterial`/`clearAllOutlines`/`removeOutline`/`clearHighlight`/
+`restoreVisibility`/`deactivate` verbatim out of `time_machine.js` (a generalization of
+`tests/test_tm_broadcast.js`'s marker-slice idiom to non-contiguous functions), stubs every OTHER
+function `deactivate()` calls (stopPlayback, clearSparks, restoreSky, `_dlodDisposeBoxes`, etc. — all
+unrelated to this defect, same stubbing discipline the existing broadcast test already uses), builds
+one ordinary highlighted mesh + one xray-staged ghosted mesh via the real `applyHighlight()`, then
+calls the real `deactivate()`. **Measured RED pre-fix: 3/7 fail** (staged mesh kept its cloned ghost
+material, opacity stuck at 0.3, `_tm_highlighted`/`_tm_xrayStaged` both still `true`) — confirmed
+against the actual pre-fix code, not asserted. **7/7 green post-fix.**
+
+**Regression, all green, zero failures:** `witness_gantt_bar_identity` (6), `witness_tm_duration_sync`
+(8), `witness_gantt_ops_blackbox` (7), `witness_zstack_xray_staging` (4), `witness_gantt_edit_constraints`
+(18), `witness_gantt_edit_coherence` (7), `witness_gantt_row_order` (9), `witness_gantt_palette` (7),
+`witness_zone_cpm` (11), `witness_zone_cpm_duplex` (9), `witness_support_invariant_all_buildings` (18),
+`tests/test_tm_broadcast.js` (11).
+
+`sw.js` v944→v945 (viewer/ file changed, same-commit bump). PR bim-ootb#1182: fast-checks + e2e-tests
+both green, auto-merged into `main` (`e1315e8`), GH Pages build confirmed `built` (14:34:38Z same day).
+
+### Bug 2 — "2 trucks and some walls before the piling" at hour 0 — DIAGNOSED, root cause named, NOT fixed (per this file's own standing rule: no 12th CPM redesign in one session)
+Per the task brief, worked the two named-but-unchecked sub-hypotheses from the prior session's entry
+above. **Both produced real, measured answers** — diagnosis only, no production code touched, using a
+throwaway node script (not committed) against real fixture DBs via the same
+`ScheduleAuthor._buildScheduleElements` + `ScheduleGate.computeSchedule` path
+`witness_support_invariant_all_buildings.js` already uses.
+
+**(a) Grid-cell edge case — REFUTED, not the cause.** Replicated `geoGate()`'s exact cell math
+independently (same `CELL=4`/`EPS=0.05` constants) and compared brute-force (no bucketing) XY-overlap
+support-finding against the real cell-bucketed result, for every ground-level wall on all 6 large
+fixtures. **`realSupportButCellGridMissedIt = 0` on every building** — whenever a wall genuinely has a
+qualifying structural element beneath it, the cell grid finds it. The grid bucketing is not the bug.
+
+**(b) Staffage="trucks" — REFUTED.** `viewer/effects.js`'s only vehicle asset is `§STAFFAGE_CAR_MESH`
+(a VW Beetle, PHOTOREAL_STILL_RENDER.md), placed ONLY on a manual Alt+P keypress, entirely independent
+of the Time Machine cursor/schedule — not gated by `_active`/`renderAtTime` at all, and not named
+"truck" anywhere in the codebase. It cannot be what the user saw during TM playback.
+
+**The real, measured mechanism — a genuine absence of modeled structural support under specific
+elements, not an algorithm bug:**
+- Hospital: **27/515 (5.2%) ground-level walls** have `geoGate()` legitimately returning `baseMs` —
+  brute-force confirms **zero** structural element (any footing/column/slab, seq≤4) overlaps their XY
+  footprint at any elevation below them, anywhere in the whole 63,415-element building. Clinic: 59/633
+  (9.3%). LTU_AHouse: **0/1592** — this is building-specific, not universal.
+- **Drilled into WHY, for Hospital's 27:** for each, found the true nearest structural element by
+  centroid distance — in all 6 sampled, the "nearest" structural candidate sits **6–22m ABOVE** the
+  wall's own elevation (a different floor entirely), confirming these walls are genuinely isolated in Z,
+  not a near-miss. Widening the check to ANY element class (not just seq≤4 structure) within 5m below:
+  **20/27 have LITERALLY NOTHING beneath them at all** (any class) — a real geometric void in the
+  extracted data, not a classification gap. The other **9/27 have another WALL directly beneath them**
+  (e.g. an upper-level partition stacked on a lower wall) — `geoGate`'s structural candidate pool never
+  includes walls as a support for another wall (only `wallGate` does, and only for promoted roof slabs)
+  — a second, narrower, precisely-named gap.
+- **This directly explains "hour 0" placement, measured:** Hospital's earliest-starting ground wall has
+  `start === baseMs` exactly (literally hour 0). An element with zero structural gate is bounded only by
+  its trade-gate (`tg`, same-storey lower-seq trades) and crew-slot availability — for the first crew
+  claimed on an empty schedule, that's ≈0.
+- **Same mechanism reproduces on the "trucks" candidate class.** `IfcBuildingElementProxy` (5,729
+  elements in Hospital — the class the pre-existing `§XRAY_WALL_SCOPE` comment in `time_machine.js`
+  already named against this EXACT user quote, "2 trucks came on first! Then walls!", when fixing a
+  *different*, already-shipped wall-carrier-scope defect): **51/1,450 (3.5%) ground-level proxies have
+  zero structural support**, and **3 of those start at exactly hour 0**. `IfcBuildingElementProxy` is
+  the most likely real identity of "trucks" (generic/equipment-shaped modeled geometry, not staffage).
+- **Same blind-spot shape as the already-documented `§MEP_HUNG_FROM_ABOVE` gap** (this file, above):
+  `auditFloating()` reports these exact elements as 0 violations too, but only because its own check is
+  VACUOUS when no candidate support exists at all — not lying, just never designed to catch "nothing to
+  compare against." The existing 0/0-floating witnesses are correct and remain correct; they were never
+  testing this case.
+- **Explicitly distinct from `GANTT_ACCURACY.md`'s "1,735/81,722 elevation-vs-storey-label key
+  contradiction"** (that file's `▶ RULING 2026-08-04`, problem 1) — that is a MISLABELED-RANK defect
+  (storey label ranked above what it physically carries, while elevation itself agrees). This is a
+  GENUINE ABSENCE of any XY-overlapping element in the geometry, at any label. Different mechanism, not
+  a duplicate — naming the overlap per this session's brief, not merging the two investigations.
+
+**Deliberately NOT fixed this session** — per this file's own accumulated rule (5 prior CPM-redesign
+attempts rejected as over-engineered, `§4D_WALL_BORNE_STRUCTURE`/`§ELEMENT_CPM`/`§CPM_DUAL_ELEVATION`,
+all "NOT FOR MERGE"). Two narrow, nameable candidate fixes for a future session, NOT scoped/started:
+1. **The 9/27 wall-on-wall cases** — a real, narrow, additive gap: let a wall be a valid `geoGate`
+   candidate support for another wall directly above it (Hospital/Clinic only; LTU_AHouse needs none).
+   Same shape as the existing `wallGate`/`_ogWallGrid` pattern already used for promoted roof slabs —
+   NOT a new mechanism, an extension of one that already exists. Needs re-running
+   `witness_support_invariant_all_buildings.js`/`witness_wall_carrier_scope_all_copies.js` after, to
+   confirm no inversions reappear (both prior sessions' hard-won invariants).
+2. **The 20/27 true-void cases** — NOT an algorithm question, a DATA question: ⛔ BLOCKED — needs a
+   user/data decision on whether "no footing modeled under this wall segment → unconstrained placement"
+   is accepted as correct behavior for genuinely missing source data (real construction schedules DO
+   place a wall on a slab-on-grade or grade beam not separately modeled as `IfcFooting`/`IfcPile` — this
+   may be correct-for-the-data, not a defect), or whether it needs tracing back to the source IFC to
+   confirm piling truly isn't modeled there. Not answerable from the extracted DB alone.
+
+Diagnostic script used: throwaway node script against `~/bim-ootb/buildings/*_extracted.db`, NOT
+committed (diagnosis-only, no production code touched, per this session's scope).
+
+## §GEO_SUPPORT_LEAK — geoGate() misses real support that visibly exists, root-caused, NOT fixed (2026-08-04)
+
+**What triggered this:** user-reported live, "2 trucks parked at hour 0" on Hospital, with a real ramp
+visible beneath them in the viewer. First-pass diagnosis wrongly attributed this to Alt+P photoreal
+staffage (a decorative, TM-independent car mesh) — **corrected by the user**: these are real IFC
+elements, `IfcBuildingElementProxy` named "Semi Truck" (guids `2ddIK_HdvCoBT3_G2GF8Mn`/`...8Ms`),
+verified directly against `elements_meta`/`element_transforms` in `Hospital_extracted.db`, not staffage
+at all. **Lesson, stated plainly: check the IFC/DB directly before attributing a symptom to a feature
+that only looked plausible — that first pass drifted.**
+
+**Root cause, traced to real coordinates, not guessed:**
+`geoGate()` (`viewer/schedule_gate.js:152-158`) tests `S.base_z < el.base_z - EPS` — a real structural
+candidate `S` only counts as support if `S`'s own base sits below the element's own base. For the two
+truck elements, a real ramp assembly genuinely exists in their XY footprint (`IfcSlab` "Concrete-200mm
+slab on 300mm base", `IfcWallStandardCase` retaining walls, real footings below that — all confirmed via
+direct SQL query against `element_transforms`/`elements_meta`, not inferred). But every one of those real
+structural elements has `base_z` in the 164.0-164.5m range, while the trucks' own computed `base_z`
+(`center_z - bbox_z/2`) is 163.21m — **below every real structural base in the footprint** — so
+`geoGate()` finds nothing and the trucks schedule at `baseMs` (hour 0), same as if nothing were modeled
+there at all.
+
+**User's correction on how to read this, which reframed the finding:** do not trust the derived
+`base_z = center_z - bbox_z/2` proxy over the real, visually-confirmed spatial relationship (a ramp IS
+there, visibly, under the truck) — the LEAK is in `geoGate()`'s support-contact heuristic, not
+necessarily in the truck's placement data. **This is the correct basis going forward: the engine must
+reconcile against real spatial coordinates, not a symmetric-bbox approximation that can disagree with
+what's actually modeled.**
+
+**Also corrected: no name/class special-casing.** The engine is supposed to stay abstract to
+discipline/phase/resource/`ifc_class` (as `SEQUENCE_RULES` already is) — a hardcoded "if name contains
+Semi Truck" fix would violate that, so none was written.
+
+**`witness_geo_support_leak.js`** (`bim-compiler/scratchpad/`, NOT committed to bim-ootb — detection
+only, per instruction: "put a witness to fail without fall back," no auto-correction) — general,
+zero name/class references beyond the engine's own existing `seq<=4`/`seq>4` structural split (not
+invented here, already how `schedule_gate.js` classifies "structure"). For every element the shipped
+`computeSchedule()` left ungated (`start===baseMs`), checks by pure XY-coordinate overlap whether any
+real `seq<=4` structural element exists in its footprint at any Z. Exits non-zero if the signature is
+found anywhere — a passing run means genuinely absent, not silently tolerated.
+
+**Measured across all 6 fixtures — the signature is real but narrow, not systemic:**
+```
+Duplex   checked=1103  leaked=0
+Clinic   checked=15161 leaked=0
+JKR      checked=5     leaked=5
+HHS      checked=4461  leaked=0
+Hospital checked=5     leaked=5
+Terminal checked=13367 leaked=0
+```
+10 leaked elements total out of 34,102 currently-ungated elements checked across every real building
+fixture — genuine, reproducible, but rare. Hospital's 5 leaked elements span TWO different `ifc_class`
+values (`IfcWallStandardCase` AND `IfcBuildingElementProxy`, not just the trucks) — confirming this is a
+general geometric heuristic gap in `geoGate()`, not an item-specific defect, and not fixable by anything
+keyed on name or class.
+
+**NOT FIXED — deliberately.** The correct geometric contact-test (e.g. "does a real structure's TOP
+surface fall within the element's own vertical span" vs. today's "is a structure's base below mine") is
+a real design decision this session did not verify carefully enough to ship without risk of inventing an
+unproven heuristic. Left open on purpose, per this project's own no-invent discipline — next session
+should design and witness the replacement contact-test explicitly, checked against all 10 leaked
+elements (and re-run against all 6 fixtures to confirm zero regression on the 34,092 correctly-gated
+ones) before it ships.
+
+### §GEO_SUPPORT_LEAK — FIXED same session, PR bim-ootb#1183 merged + live (2026-08-04)
+
+Same-session follow-up, user directive: "SOLVE THEM TILL ZERO." `geoGate()` now also counts a
+structural candidate as support when its entire vertical span is CONTAINED within the element's own
+`[base_z,top_z]` (new clause, additive only — a match can only push a gate later, never earlier).
+Zero name/class special-casing, pure `base_z`/`top_z` geometry.
+
+**First witness attempt over-detected** — its "any XY-overlapping structure at any Z" criterion
+flagged 3 JKR "Slab Edge" elements as leaked when their only overlapping structure (a real `IfcSlab`)
+sits ABOVE them, flush, not below/contained (a formwork/edge-trim detail poured at-or-before its
+slab, genuinely nothing real below it — same category as a footing on bare ground, not a defect).
+Corrected before shipping: the witness now uses the IDENTICAL directional test as the fix itself.
+
+**Measured, both directions:**
+- Pre-fix (this same corrected witness against unmodified `main`): **7 real leaks** — 5 Hospital
+  (both trucks + 2 more), 2 JKR. Confirms the earlier "10 leaked" number included 3 false positives
+  from the looser v1 detector.
+- Post-fix: **0/0 leaks across all 6 real building fixtures.**
+- Authoritative `ScheduleGate.auditFloating` (the same invariant live `§SUPPORT_CHECK` reports) —
+  **0 floating, all 6 buildings, both before and after** — confirms no regression, and separately
+  confirms `auditFloating` shares the identical below-only blind spot as pre-fix `geoGate()` (it
+  did NOT catch the trucks either) — worth naming for whoever next touches that function, not
+  silently relied on as independent proof.
+- Full existing engine suite (bar identity, edit coherence/constraints, row order, palette, duration
+  sync, gap1, ops blackbox, TM close-restore, BOQ4D) — **167/167 unchanged.**
+
+`witness_geo_support_leak.js` committed to bim-ootb root. `sw.js` v945→v946. Not yet exercised live
+in a browser — same open item as every fix this session.
+
