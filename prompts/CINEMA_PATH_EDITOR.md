@@ -6665,6 +6665,17 @@ was only exercised via `_probePoseAt`/the real pose pipeline, not by re-verifyin
 own render loop end-to-end again — Part B already proved B samples `plan.poseAt(tn)` faithfully
 (PR #1164), and a pin only changes what `poseAt` returns, not how B consumes it.
 
+### ✅ 2026-08-04 follow-up — `#cpe-vf-toggle` eye icon now reflects on/off (PR bim-ootb#1174)
+User: "it be nice if we can find another eye icon that is closed eye to reflect it is OFF." The
+button showed a static 👁️ emoji regardless of `_state.vfOn`. Fixed by adding real Lucide
+`ICONS.eyeOpen`/`ICONS.eyeOff` to `panels.js` (verified against the actual Lucide source, NOT reused
+from `panels.js`'s existing `ICONS.eye`, which turns out to be Lucide's "scan-eye" — a different
+shape, repurposed there for an unrelated Role View toggle) and a `_eyeIconSvg(on)` helper in
+`cinema_path_editor.js` that swaps the button's SVG in place at its one flip site. Open eye = ON,
+slashed eye = OFF (default). Live-verified in a real browser session: toggling twice gives
+slashed→open→slashed, byte-identical to the initial render, title/color changing in lockstep.
+Regression: `witness_cpe_scrub_viewfinder.js` (8/8) and `witness_cpe_aim_pin.js` (7/7) re-run clean.
+
 ## Scope guardrail amendment (record, per this doc's own convention)
 §Scope guardrails rule 1 above ("no new panel") is superseded here, same as the 2026-07-26 3D-gizmo
 amendment superseded guardrail 3 — B is unambiguously a new panel. Recorded deliberately so it is not
