@@ -1423,3 +1423,74 @@ missing exclusion filter (named above) and the concurrent session's `_dlodInView
 the two open items for the next session — both are named with enough detail to start from directly,
 neither needs rediscovery.
 
+## §GANTT_EDIT_LOCK — Generate button's last old-panel path removed, edit lock toggle added (2026-08-05)
+
+User, live-testing #1194's native generate button, caught the remaining hole directly: *"remove 4D
+generate button as it calls old panel up. We prefer to edit right in the gantt chart itself."* #1194
+had already made the common case native (`materializeZones`/`materializeDefault` called directly), but
+kept ONE deliberate fallback — a captured/imported schedule still reopened `ScheduleAuthorUI`. That was
+the exact path the user hit. Two decisions taken together, not separately:
+
+1. **Drop the fallback, not just the button.** A captured schedule is now left exactly as imported
+   (never regenerated — the non-clobber guard stays) and edited through the SAME drawer surface as any
+   other schedule, once its bars carry real `task_id`s via the normal cap/`injectGantt` load path. No
+   button, no panel, reachable from `time_machine.js` any more at all.
+2. **Auto-materialize, not button-triggered.** `drawGanttMini()` now calls `generateGanttSchedule()`
+   itself the first time the drawer has zero editable bars (one attempt per `activate()`, tracked by
+   `_ganttAutoGenAttempted` so a genuine materialize failure doesn't retry every redraw) — no click
+   required, matching "edit right in the gantt chart itself."
+
+**New question this opened, resolved same session:** with the button gone, what stops an accidental
+drag? User: *"perhaps need an edit toggle? Where it is ON, u can edit, and when off, it is committed to
+the JSON."* This **reverses** this file's own earlier recommendation (§GANTT_EDITABLE_E2E above,
+2026-08-05 same day, pre-dating this section: "recommend AGAINST building [a toggle]... MSP/P6
+convention has none") — noted, not silently overwritten: the earlier reasoning no longer applies once
+the safety net it was weighing (Undo) has to cover a DEFAULT-ON always-armed drawer instead of an
+opt-in one behind a button. User's own follow-ups narrowed the design before any code was written:
+- **Scope**: "edit means whatifs dragging, CPM linking, bar length change, and drag to new date/time
+  spot" — i.e. gate exactly E1/E2 (move/resize) + E3 (drag-to-link) + E7 (typed props/unlink), nothing
+  else.
+- **Persistence model**: asked directly (draft-then-commit vs immediate-write-plus-lock) rather than
+  assumed — user picked **immediate write, toggle=lock only**. Every accepted edit still writes
+  straight to `tasks`/`kernel_ops` the instant it commits, exactly as it did before this toggle existed
+  (§GANTT_EDIT_UNDO's single-level undo already covers that immediate write). "Committed to the JSON"
+  in the user's phrasing describes that existing immediate-write behavior, not a new draft layer — no
+  second persistence path was built.
+- **Canvas liveness**: asked whether locking should freeze the timeline view too — user: "if canvas is
+  runtime responsive, it gives the user feedback which is desirable." Scrub/seek/render are untouched
+  regardless of lock state; only the edit-INITIATING handlers are gated.
+
+**Implementation** (`time_machine.js`, bim-ootb PR #1198 landing branch `feat/gantt-edit-foundation`
+onto `main` — this branch had drifted since #1173's squash-merge, see below): `_ganttEditable` (default
+`false`, i.e. locked) gates a single point of entry — `wireGanttDrag`'s `pointerdown` handler. Gating
+there alone covers move/resize AND drag-to-link, because `endDrag`'s link/commit logic can never run
+without a live `_drag` object that pointerdown is what sets. The E7 double-click → `openGanttProps` is
+gated separately (doesn't depend on `_drag`). `tm-gantt-noauthor`/`tm-gantt-authorbtn` UI removed
+outright, replaced by a `🔒 Locked` / `🔓 Editing` toggle button in the same header slot.
+
+`witness_gantt_edit_lock.js` (new, slices the real `wireGanttDrag` by balanced braces, never
+reimplements the gate): locked blocks drag-start and props-open, unlocked allows both, plus a RED
+CONTROL proving a bar with no `task_id` is rejected on a DIFFERENT, unrelated guard regardless of lock
+state (so the two guards can't be confused with each other) — 5/5. `witness_gantt_native_generate.js`
+Scenario B updated for the new no-old-panel behavior (was asserting the OLD spec: "the old panel WAS
+opened exactly once" — now asserts it never is) — 5/5. Full regression re-run clean: bar_identity 6/6,
+edit_coherence 7/7, edit_constraints 18/18, row_order 9/9, palette 7/7, edit_undo 9/9, baseline 11/11,
+og_grid_perf 3/3, class_fallback_blackbox 8/8. One pre-existing `witness_gantt_ops_blackbox.js` fail
+(a `BUILDING_OPEN` pseudo-op leaking into `materializeZones`' op stream, `_UNKNOWN` storey) confirmed
+present on `origin/main` BEFORE this change too via `git stash` — not a regression, not fixed here,
+named as a real small open item for whoever next touches `materializeZones`' op bookkeeping.
+
+**Separate landmine hit picking this branch up, not caused by this session's own edits:** `/tmp/wt-
+gantt-edit` (branch `feat/gantt-edit-foundation`) was 7 commits behind its own `origin` and, after
+syncing that, turned out to be 18 commits behind `origin/main` too — PRs #1171/#1173 (this branch's own
+"the editable 4D surface" work) had squash-merged into `main` back on 2026-08-04, but a LATER PR on
+this same branch (#1175, §GANTT_AXIS_OUTLIER — the near-empty-drawer fix) was based ON the pre-squash
+branch and never itself reached `main`. So `main` had the editing foundation but NOT the axis-outlier
+fix — a real, live gap, not hypothetical. `git merge origin/main` into the branch (per this project's
+own documented squash-merge doctrine — merge, don't redo) produced exactly 2 conflicts: `sw.js`
+(CACHE_VERSION — took the higher number, v951) and `time_machine.js` (the drawer's authoring-entry
+button — took `origin/main`'s already-native #1194 version over this branch's older
+`ScheduleAuthorUI.toggle()` call, which is what #1194 itself had already fixed). PR #1198 carries BOTH
+the recovered axis-outlier fix and this session's own lock-toggle work onto `main` in one go, since they
+were sitting on the same stale branch together.
+
