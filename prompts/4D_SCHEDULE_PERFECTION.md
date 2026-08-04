@@ -508,6 +508,35 @@ assert `§GANTT_DRAG_COMMIT` / `§GANTT_EDIT_CLAMP` / `§GANTT_RETIME` numbers. 
 the drag gesture as UNVERIFIED end-to-end — the engine beneath it is witnessed 184/184, the gesture
 reaching it is not.
 
+**PR #1173 opened (bim-ootb) for the 9 commits still stranded past #1171's squash-merge point** —
+`main`/the sandbox had none of the browser-proof fixes (`9902f6d`/`9799f24`/`6a5073f`), the
+`__tmGanttBars` debug hook (`41a4bd9`), or the BOQ4D work. Not merged yet.
+
+**Headless follow-up 2026-08-04 (Chrome busy in a concurrent session — did this instead, no browser
+needed): the "axis vs. per-bar percentile trim" theory is REFUTED by real numbers.** Read
+`buildGanttTasks()` and reasoned that since `_projectStart`/`_projectEnd` (the axis, `:110-111`) are
+raw min/max while each bar's own span is 2nd–98th percentile trimmed (`§GANTT_MINI_TRIM`, `:4589-4602`),
+a crew-starved long tail could stretch the axis and shrink every bar to a sliver. Tested it directly:
+`scratchpad/witness_gantt_axis_trim.js` (bim-compiler) authors a REAL schedule via the shipped
+`ScheduleAuthor.materializeZones()` (same verb `witness_boq_charts_real_schedule.js` uses) on all 6
+building fixtures, then computes each real task-group's trimmed span as a fraction of the real axis:
+**widest bar 21–71% of the axis, average bar 4.7–13.3%, across Duplex/Clinic/JKR/HHS/Hospital/Terminal.**
+Not degenerate — a bar averaging ~10% of a ~267px-wide canvas is ~27px, plainly visible. The theory
+does not hold.
+
+**A different, evidence-consistent account for the "534/13080 ≈ 4%" reading emerged from the same
+numbers, not yet proven:** that probe sampled a 327×40px STRIP — only the top 2–3 rows (`rowH=14px`),
+not the whole canvas. K1 row order puts Substructure first, and per-row bar width in a Gantt chart is
+inherently sparse (~10% avg fill × 12px bar height leaves most of a row's pixels as background by
+design). Back-of-envelope using the witness's real avgBarFrac: 2–3 rows × ~320px² of real paint ≈
+640–960px² over a 13,080px² strip = **4.9–7.3%** — close enough to the reported 4% that "near-empty" may
+be reading a correctly-sparse Gantt chart as broken, the same kind of probe-misread the commit already
+owned once (differently: last time 4% was over-read as "content drawn"; this time it may be under-read
+as "broken"). **Not proven either way** — exact probe row/threshold unrecoverable (never committed to a
+script, was an ad-hoc CDP session). This is exactly why `__tmGanttBars` (exact rects, no pixel-counting
+ambiguity) is still the right next step, now for a sharper reason: pixel-fill heuristics can't
+distinguish "correctly sparse" from "actually broken" on a chart shaped like this one.
+
 ## CAL — Working-day toggles (user ruling 2026-08-04: simple toggles in the drawer, later)
 Reopens the working-calendar item that was closed as "don't silently guess a default" — **the toggle
 dissolves that blocker**: we ship a stated default and the user sets their own. A real, nameable,
