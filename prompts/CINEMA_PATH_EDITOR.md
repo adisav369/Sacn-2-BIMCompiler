@@ -6424,10 +6424,19 @@ not a batch renderer. So the fix has to be a richer REHEARSAL, not a faster bake
 ## Part A — §CPE_SCRUB: timeline scrubber with stick markers
 1. A horizontal bar, ADDED alongside the existing band row-list (not replacing it — the rows still
    carry per-band numeric fields the bar can't show).
-2. Playhead = `tNorm` 0..1 over `_state.plan`. Dragging it calls `plan.poseAt(tn)` and drives the exact
-   camera-move code `_previewFly()`'s `step()` already runs per frame — scrubbing is a manual single
-   step of that existing function, never a second pose path. Same doctrine tour.js's own
+2. Playhead = `tNorm` 0..1 over `_state.plan`. Dragging it samples `plan.poseAt(tn)` — the same pure
+   function `_previewFly()`'s `step()` reads, never a second pose path, same doctrine tour.js's own
    §TOUR_TIMELINE_SCRUB already proved for a sibling feature ("borrow the doctrine, not the code").
+   **Correction (user, 2026-08-04, caught live in the browser): scrubbing must NEVER move `A.camera`/
+   `A.controls` — the main viewport.** "the main canvas... supposed to remain as was where user still
+   does traditional editing dragging the pipe etc. Cam POV is inset box to be an aid only." The sampled
+   pose from a scrub drag drives ONLY Part B's inset camera (`vfCam`) when B is open, plus the tick/
+   readout — main-canvas orbit/pipe-editing stays exactly where the user left it, untouched, at all
+   times. If B is closed while scrubbing, there is no live visual — only the numeric readout moves; that
+   is correct, not a gap (B is the aid, not the main view). This does NOT change the pre-existing
+   "Preview" button (`_previewFly()`'s full rehearsal flight) — that has always temporarily flown the
+   main camera for its duration and snapped back to the editing pose on completion; that gesture is
+   unrelated and untouched by this correction.
 3. Tick marks at each stick's `tNorm`, derived the same arc-length way the pipe already places bands.
 4. Click empty bar → same `_spawnStick`, placed via the inverse of that arc-length lookup (tNorm → pipe
    world point) rather than a raycast hit — the existing placement math should already expose this both
@@ -6675,6 +6684,75 @@ shape, repurposed there for an unrelated Role View toggle) and a `_eyeIconSvg(on
 slashed eye = OFF (default). Live-verified in a real browser session: toggling twice gives
 slashed→open→slashed, byte-identical to the initial render, title/color changing in lockstep.
 Regression: `witness_cpe_scrub_viewfinder.js` (8/8) and `witness_cpe_aim_pin.js` (7/7) re-run clean.
+
+### ✅ 2026-08-04 REGRESSION FIX — scrubbing no longer moves the main canvas camera (PR bim-ootb#1177)
+Real bug, caught live by the user in their own browser (not the claude-in-chrome extension
+instability seen elsewhere this lane): dragging the Part A scrub playhead was moving `A.camera`/
+`A.controls` — the MAIN viewport. Wrong, per the user directly: **"the main canvas... supposed to
+remain as was where user still does traditional editing dragging the pipe etc. Cam POV is inset box
+to be an aid only."** Part A point 2 above carries the corrected wording verbatim, marked
+`**Correction (user, 2026-08-04, caught live in the browser)**` — that correction is now BUILT, not
+just written down.
+
+**What changed, in the order it actually happened** (recorded honestly — the first attempt was not
+the final shape): `_applyCameraPose` (the function §CPE_SCRUB/§CPE_VIEWFINDER's PR #1164 extracted
+as "the ONE place a pose is applied to the live camera") was being called by BOTH `_previewFly()`'s
+rehearsal step() (correct — the Preview button legitimately flies the main camera) AND the scrub-
+drag handler (wrong — scrub was never supposed to move any live camera at all, per the correction
+above). A first fix split this into `_applyCameraPose` (main camera, rehearsal-only) and a new
+`_applyVFPose` (B's inset camera only, scrub-only). That was WRITTEN, witnessed, and then REVERTED
+before landing: the user asked for the simpler cut instead — **scrubbing is now VISUAL-ONLY**. It
+touches no camera at all, main or B's inset — only the playhead position and the "timeline NN.N%"
+readout move. `plan.poseAt(tn)` is still sampled (read-only, informational — useful to a witness or
+a future session) but nothing writes it to any camera. `_previewFly()`'s own step() — and the
+pre-existing "Preview" button it belongs to — is completely unaffected by any of this: it still
+legitimately flies the main camera for its duration and restores it to the editing pose on
+completion, an established, separate, unrelated gesture.
+
+**⛔ OPEN QUESTION for a future session — the scrub bar's own home is NOT settled.** Fixing the
+regression required an incidental decision that was NOT asked for and should not be read as final:
+the scrub bar's DOM existence is now gated to B being open (built/torn down inside
+`_toggleViewfinder`, alongside the vf panel) rather than always present from editor-open. This was
+the fastest way to stop implying "scrub drives a camera" in the UI (a bar with no live 3D effect
+when B is closed reads oddly if it is always visible) while landing the actual fix, NOT a considered
+answer to "where does this widget belong." The user's own words on this exact point, said WHILE the
+first (reverted) fix was being built, apply just as much to the final shape: **"that timeline was
+supposed to be standalone widget panel... independent because it is supposed to do more next ie pin
+point drop, Find / Clash drop... let's have the next prompts/# session figure that out — as now just
+get the canvas part to be its true self."** A future session should treat "standalone widget vs
+docked under B" as a real open design question, not rediscover it from scratch — Part D
+(§CPE_FIND_TO_PIN, below) and a future clash-pin feature are exactly the "carries more later" the
+user is referring to, and whichever answer is picked should be made with THAT future load in mind,
+not just today's fix.
+
+**Read this first if picking up this file cold**: `cinema_path_editor.js`'s own `CPE_V` version-
+banner string (top of the file, logged as `§CPE_LOADED` on every load) was reorganized 2026-08-04
+into one clause per line, NEWEST FIRST — the top few lines give a fast, accurate summary of current
+behaviour before diving into this doc's full history. `effects.js`'s `EFFECTS_V` and
+`cinema_maxq.js`'s `MAXQ_V` got the same readability pass (every `§TAG` preserved; `MAXQ_V`'s content
+verified byte-identical against the pre-reorg original — a pure format change, zero behaviour
+touched, matching this lane's standing "never touch the bake loop" rule). `EFFECTS_V` also picked up
+a real fix in passing: it had never been bumped for §CPE_AIM_PIN's actual behaviour change in
+`_beat3Pose` (added the same day as Part C shipped) — caught and corrected (v18→v19), not left for a
+future session to rediscover as a mystery gap between the changelog and the code.
+
+**Witnesses**: `witness_cpe_scrub_viewfinder.js` REWRITTEN — the old G-SCRUB-1 asserted exactly the
+buggy behaviour (scrub reproduces `poseAt` on the LIVE camera) and no longer exists. New gates:
+G-SCRUB-GATED (bar absent while B off, present once on), **G-SCRUB-NOCAM (the actual regression
+gate — main camera position AND orbit target, plus B's `vfCam` position, byte-identical before/after
+a scrub drag)**, G-SCRUB-VISUAL (the playhead/readout still updates — the feature has a real,
+visible effect), G-SCRUB-SPAWN (renamed from G-SCRUB-2, click-to-spawn-a-stick still works, now
+gated behind B being on), G-SCRUB-TEARDOWN (toggling B off removes the bar too). **12/12 green on
+both Duplex and Terminal** (was 8/8 before this rewrite — 4 new gates, one retired). G-VF-1 now
+drives a new `_applyCameraPoseForTest` witness hook (the real rehearsal-only pose function) since
+`_scrubTo` no longer touches any camera at all. Full `witness_cpe_*`/`witness_cinema_path_editor.js`
+regression suite re-run clean; the same pre-existing baseline failures already on record above
+(G10/G7) reproduced identically — not new regressions.
+
+**Live-verified** via real pointer-drag sequences (mouse down → several moves → up, not a synthetic
+call) in a genuine browser session: with B closed, the scrub bar does not exist and `_scrubTo`
+leaves the main camera byte-identical; with B open, a real drag on the track leaves BOTH the main
+camera and B's `vfCam` byte-identical while the readout genuinely updates (measured 0.0% → 70.0%).
 
 ## Scope guardrail amendment (record, per this doc's own convention)
 §Scope guardrails rule 1 above ("no new panel") is superseded here, same as the 2026-07-26 3D-gizmo
