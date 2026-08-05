@@ -1642,3 +1642,52 @@ Left it completely untouched per the shared-tree caution in `CLAUDE.md` — did 
 `git worktree add ... origin/main` instead (`/tmp/wt-gantt-bottom-resize`, safe to prune once #1208
 merges and CI settles).
 
+## 2026-08-06 — §GANTT_REFOLD_HANG — diagnosed + LIVE-confirmed, NOT fixed here (handoff, not this session's to implement)
+
+User reported "Time Machine causes hanging... during schedule refreshing." Diagnosed fully in this
+bim-compiler session; per `feedback_diagnose_in_session_fix_in_other_session.md` (cross-repo, and this
+exact file already has ~5000 uncommitted lines of another session's WIP sitting in the local `~/bim-ootb`
+checkout — see the entry directly above), **implementation was deliberately NOT done here.** This section
+is the complete handoff a bim-ootb-side session needs to pick it up with zero rediscovery.
+
+**Root cause — two synchronous, unyielding loops inside `injectGantt()` (`viewer/time_machine.js:3561-4278`),**
+called by `refoldSchedule()`/`window.tmRefoldSchedule` (schedule refresh after an edit — line ~6670) and
+`window.tmGenerateTimeline` (line ~7303):
+
+1. **§OG_GRID_Z_BAND** (line 4218-4249) — already partially fixed 2026-08-05 (bim-ootb PR #1193, Terminal
+   4636ms→~2900ms via XY→XYZ grid bucketing), but still fully synchronous. That PR's own commit message
+   named the remaining fix and never did it: *"yielding to the browser between phases."*
+2. **§WRITE_LOOP_TIMING** (line 4253-4264) — a per-element `_upd.run(...)` prepared-statement write over
+   `_allScheduled`, explicitly flagged in its own in-code comment as an unfixed freeze cause on a
+   63,415-element building (Hospital): *"a user report of the browser tab freezing traced to console
+   output stopping right at this point... No fix here — just precise measurement."*
+
+Both loops are strictly ORDER-DEPENDENT (each element's result can read an earlier element's just-mutated
+`.s`/`.e`/`.end_ts` via shared object references in `_ogStructGrid`/`_ogWallGrid`) — cannot be parallelized
+or reordered, but CAN be chunked with yields between batches (e.g. `setTimeout`/`requestAnimationFrame`
+between N-sized slices) without changing output, since chunking preserves order.
+
+**LIVE CONFIRMATION (2026-08-06, real console paste from the user, Hospital 63,415 elements, NOT
+guessed):** the console stream stops dead immediately after
+`§PHASE_OVERLAP_SUPPORT_GUARD pushed=1108/63415 elements later than their §PHASE_OVERLAP_BAND window...`
+(the last log line of block 1 above, line 4250) — the very next code is block 2's write loop, whose own
+completion log (`§WRITE_LOOP_TIMING rows=... ms=...`, line 4264) **never appears.** This pins the live hang
+to the WRITE LOOP specifically, not the grid-scan (which completed and logged its result). Matches the
+building (Hospital) and symptom named in the write-loop's own prior in-code comment exactly.
+
+**Caller chain that needs to go async-aware once `injectGantt()` is chunked/promise-returning:**
+- `_activateAsync()` line ~6450: `if (!injectGantt()) {...}` (inside a `.then()`, already promise-friendly)
+- `_activateAsync()` line ~6471: `if (!_ops.length) { injectGantt(); _ops = loadOps(); ... }` (catch-path fallback)
+- `window.tmGenerateTimeline = function() { return injectGantt(); };` (line ~7303, external API — check
+  what actually calls this before changing its return type)
+
+**Proposed fix (not yet built):** convert `injectGantt()`'s two hot loops to chunked execution yielding to
+the browser between batches (size TBD by measurement, start with ~2000-5000 elements/tick); make
+`injectGantt()` return a Promise; update the 3 call sites above accordingly; add a witness confirming (a)
+byte-identical output to the current synchronous version on a real fixture (reuse
+`witness_gantt_og_grid_perf.js`'s brace-balance-sliced-block technique) and (b) that yields actually happen
+(count ticks, or measure that no single synchronous span exceeds a threshold, e.g. 200ms) — a wall-clock
+ceiling alone (like `witness_gantt_og_grid_perf.js`'s existing 3500ms gate) does NOT prove non-blocking,
+only proves fast; a future regression could stay under the ceiling while still blocking the thread for the
+full duration in one synchronous span.
+
