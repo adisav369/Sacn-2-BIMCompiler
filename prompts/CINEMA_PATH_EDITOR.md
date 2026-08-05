@@ -7121,49 +7121,35 @@ existing `/tmp/wt-cpe-vf-followup` worktree). Clean cherry-pick, no conflicts. R
 https://github.com/red1oon/bim-ootb/pull/1195 — not yet merged, watch for the same squash-race before
 any follow-up push to this new branch.
 
-### 🔴 OPEN, URGENT — separate the scrub-play button from the legacy Preview button's main-camera flight
-User, live-testing, caught this directly: **"That preview play in scrubber only affects pov window now
-and not the main canvas"** — i.e. it currently does NOT (it still flies the main camera), and it must.
-Root cause: `#cpe-scrub-play`'s click handler (`_wireScrubPlay`, search `§CPE_SCRUB_PLAY` in
-`cinema_path_editor.js`) calls `_previewFly()` — the SAME function the (now-hidden, still-wired)
-legacy `#cpe-preview` button uses, which applies every frame's pose to the MAIN camera via
-`_applyCameraPose(tn)` (`a.camera.position.set(...)`/`a.controls.target.set(...)`). This violates the
-session's own core invariant (§CPE_SCRUB_VF_LIVE: main canvas is never touched by anything
-scrub-panel-driven) — it was correct for `_scrubTo` (drag) but never carried over to the new play
-button.
+### ✅ DONE (2026-08-05) — scrub-play button now POV-only, PR #1197 open
+Implemented exactly the 6-step plan this section previously scoped: extracted `_applyVFPose(tn)` out
+of `_scrubTo`'s inline block; `_previewFly(povOnly)` branches `step()` on it and skips the main-camera
+save/restore when `povOnly`; `_wireScrubPlay` now calls `_previewFly(true)`; `#cpe-preview`'s no-arg
+wiring untouched. New gate `G-SCRUB-PLAY-POVONLY` added to `witness_cpe_scrub_viewfinder.js` — main
+camera byte-identical across a full button-driven flight (start/pause/resume). 17/17 green
+(HHS_Office_Federated). Re-ran the two dependent legacy witnesses to confirm no regression:
+`witness_cpe_room_title_live.js` 4/4, `witness_cpe_room_title_timing.js` 3/3 — `#cpe-preview` still
+flies the main camera exactly as before. Pushed:
+https://github.com/red1oon/bim-ootb/pull/1197 — not yet merged.
 
-**Cannot simply change `_previewFly()` itself** — the hidden `#cpe-preview` button still needs it to
-fly the main camera, because two pre-existing witnesses depend on that exact behaviour
-(`witness_cpe_room_title_live.js`, `witness_cpe_room_title_timing.js`, both call
-`document.getElementById('cpe-preview').click()` and check the room-title overlay against the flown
-main camera). Breaking that regresses tests outside this session's scope.
-
-**The fix already scoped, not yet written** (investigation done, code not started):
-1. Extract a new `_applyVFPose(tn)` helper — literally the vfCam-write block already inline inside
-   `_scrubTo` (`cinema_path_editor.js`, search `function _scrubTo`): sample `_state.plan.poseAt(tn)`,
-   write `_state.vfCam.position`/`.lookAt`, `markDirty()`. Have `_scrubTo` call it instead of inlining
-   (no behaviour change, just a shared name — same pattern the spec doc's own history already used
-   once for `_applyCameraPose`).
-2. Add a `povOnly` parameter to `_previewFly(povOnly)` (search `function _previewFly`,
-   `cinema_path_editor.js`). Inside `step()`, branch on it: `povOnly ? _applyVFPose(tn) :
-   _applyCameraPose(tn)`. On natural completion, the existing main-camera save/restore block
-   (`a.camera.position.set(save.px,...)` etc.) should be skipped when `povOnly` — nothing was moved,
-   nothing needs restoring.
-3. `_wireScrubPlay`'s click handler: change `_previewFly();` to `_previewFly(true);`.
-4. Leave `#cpe-preview`'s existing wiring (`document.getElementById('cpe-preview').addEventListener
-   ('click', _previewFly)`, no argument) completely untouched — defaults `povOnly` to falsy, preserves
-   the legacy main-camera-flying path the two witnesses above need.
-5. Buildup/room-title/ghost-ground/day-counter wiring inside `_previewFly` is untouched either way —
-   it drives off `tn`/Time Machine cursor, not camera position, so it's orthogonal to which camera
-   gets the pose. (Room-title overlay showing over a STATIC main canvas during a POV-only play is a
-   possible visual oddity worth a second look once this lands, but it's opt-in/off-by-default and the
-   user has not flagged it — do not scope-creep into fixing it unprompted.)
-6. New witness gate needed: a POV-only play must leave the main camera byte-identical throughout
-   (same invariant class as `G-SCRUB-NOCAM`/`G-SCRUB-VF-LIVE` in `witness_cpe_scrub_viewfinder.js`) —
-   sample main camera position/target before starting `_previewFly(true)`, poll a few frames in, assert
-   zero delta, then let it finish naturally.
-
-### 🔴 OPEN — POV content/border alignment, diagnostic log now in place, one distinguishing check left
+### ⛔ BLOCKED (2026-08-05, updated) — POV alignment: static code correlation exhausted, needs a live repro with the new diagnostic
+User pushback, correctly: don't ask a human to eyeball a screenshot and guess — trace the code. Did.
+Confirmed via code (not assumption): `a.canvas === a.renderer.domElement` (no aliasing), no CSS
+transform/letterbox on the canvas, `EffectComposer.setSize()` uses the same `window.innerWidth/
+innerHeight` as `renderer.setSize()`, and the scissor rect's real backing-buffer ground truth
+(`renderer.domElement.width`, not derived) matches the computed math — **the box itself is provably
+placed correctly.** Added `§CPE_VF_ALIGN_DIAG_V2` (vfCam fov/up/aspect/position vs. a fresh
+`plan.poseAt()` sample and the main camera, re-armed on every drag/resize). Caught and fixed a real
+ordering bug in the new diagnostic itself while verifying it live (was logging `vfCam.aspect` BEFORE
+the line that corrects it — a live capture showed a false `1.0000` vs `1.5789` mismatch from that
+alone, not a per-frame rendering bug). Re-verified live via a standalone Puppeteer check (toggle+scrub
+and drag+scrub): `vfCam_aspect` now matches `box_aspect` every time, `vfCam_pos` matches
+`freshPose_pos` exactly, fov/up match the main camera exactly. `witness_cpe_scrub_viewfinder.js` 17/17
+green. Pushed: https://github.com/red1oon/bim-ootb/pull/1203 — not yet merged.
+**Every layer inspectable from code is now provably self-consistent — static analysis cannot go
+further.** The one thing left, genuinely: reproduce the reported misalignment live with this build and
+capture the `§CPE_VF_ALIGN_DIAG_V2` numbers AT that moment — that is the only remaining source of a
+fact this session cannot EXTRACT on its own.
 User-reported (screenshot, `~/Pictures/Screenshots/Screenshot from 2026-08-05 01-41-11.png`): POV box
 content "not aligned fit... out to the right of the box." `§CPE_VF_ALIGN_DIAG` (search that tag in
 `_vfRender()`, `cinema_path_editor.js`) is a one-shot-per-toggle-on diagnostic log added this session —
@@ -7185,24 +7171,223 @@ look off-center inside an otherwise correctly-bordered box (→ (a), chase `_app
 next), or does the box border sit somewhere the pixels don't (→ (b), the log missed something — add
 more instrumentation, do not guess).
 
-### 🔴 OPEN, cross-session hand-off — Time Machine buildup visibility is gated to the WRONG camera
-Root-caused by code alone, not fixed (file is out of scope this session — see below). `time_machine.js`
-`renderAtTime()`'s BatchedMesh branch (search `bHideForProxy`, around line 1443) additionally hides an
-element that IS "placed" (should be visible per construction progress) if `_dlodOn && !_dlodInView(bg)`
-— and `_dlodInView` (line 565) reads `_dlodCamPos`, which is **hardcoded to `app.camera.position`**
-(line 1275) — the MAIN camera, never `vfCam`. This was invisible before this session because B always
-moved in lockstep with the main camera (only during `_previewFly()`, both pose-identical). This
-session's own §CPE_SCRUB_VF_LIVE change (scrub drives `vfCam` independently, main camera stays parked)
-is what newly exposes it: scrub the timeline with B open on a large building (`_isLargeBuilding`,
-confirmed `large=true` on Hospital) and B can show buildup-hidden geometry that's only hidden because
-it's outside the STATIONARY main camera's frustum, not because of anything wrong with B's own view or
-the construction timeline itself.
+### ✅ DONE (2026-08-05) — user authorized "fix here"; found the base fix already merged, closed a real gap in it, PR #1206 open
+Went to implement the originally-scoped fix (`_dlodCamPos` hardcoded to main camera) and found the
+concurrent 4D session had already independently root-caused and merged it: `_dlodResolveCamera(app)`
+(bim-ootb PR #1199, `§DLOD_VF_CAMGUARD`) already picks `vfCam` via CPE's own `activePOVCamera()`
+accessor when the POV panel is on. Verified this live in code (not from memory) before reporting it
+as done — `_dlodResolveCamera` and `activePOVCamera` both present and wired in origin/main.
 
-**Why not fixed here:** `time_machine.js` is explicitly named, earlier in this same file's own
-roadmap section (§ROADMAP, "Constraint carried into every part from here"), as owned by the concurrent
-4D-schedule-accuracy session — the user's own stated priority this session (`feedback_schedule_
-accuracy_over_movie_polish` in the assistant's memory: schedule accuracy outranks movie-maker polish
-when both have open work). **Confirm with the user whether to write this up as a dated finding in
-`4D_SCHEDULE_PERFECTION.md` for that session, or whether this session gets an explicit one-time
-exception to fix it directly** — do not assume either way; it was offered once this session and never
-confirmed.
+Tracing it further (per the user's "fix here if buildup is not as canvas was previewing" condition)
+found a REAL follow-on gap: the "did the camera move, force a full DLOD pass" edge-detector
+(`_dlodCamMoved`, via `_giHoldCamSig`) still hardcoded `app.camera` even after the resolver fix — so
+during a POV-only scrub/play (main parked, §CPE_SCRUB_POV_ONLY) it never saw `vfCam` moving, and the
+incremental-delta path could skip re-evaluating visibility for geometry entering/leaving vfCam's own
+moving frustum. That IS "buildup not as canvas was previewing" — confirmed, not assumed.
+
+Fixed: `_giHoldCamSig(app, cam)` takes an optional camera override (default `app.camera`, so the two
+unrelated GI hold-converge call sites are untouched); the DLOD call site now passes `_dlodActiveCam`
+(the same camera the frustum was built from), not bare `app`. `witness_dlod_vf_camguard.js` extended
+9/9 green (pure VM slice, no browser needed). Re-ran `witness_incr_shadow_equiv.js` against Hospital —
+0 mismatch across 19 cursors — confirms zero behavioural change when CPE/POV isn't active. Pushed:
+https://github.com/red1oon/bim-ootb/pull/1206 — not yet merged.
+
+## ▶ SESSION CONTINUATION 2026-08-05 (LATER) — live repro on Hospital surfaces 3 more real bugs
+
+User tested live on the deployed site (Hospital, HHS_Office_Federated-scale building) after the four
+PRs above, pasted a full console log, and reported three things: (1) B's inset renders outside where
+it should be — dragging it repositions correctly, but releasing snaps it back off; (2) the scrub
+panel is missing entirely; (3) both popups should position away from `#cpe-panel`, not hidden behind
+it. **User pushback, repeated and explicit: do not use live-browser/visual verification to chase
+these — use code inference and stringent logging, paste back the result.** A first attempt at ad-hoc
+live Puppeteer DOM probing (not a committed witness) hit repeated timeouts/protocol errors on
+Hospital's size and was abandoned for pure code reading + the existing witness suite instead.
+
+### ✅ DONE — PR #1207 open, 3 real bugs found and fixed by code read + witness, not screenshots
+1. **B's default position/z-index were never actually fixed.** The a4c24da/PR#1195 commit message
+   claimed both B and the scrub panel got left-anchored, but the diff only touched
+   `_buildScrubPanel`. `_buildVFPanel`'s default was still `canvasWidth - VF_DEFAULT_W - MARGIN`
+   (right-anchored, same column as `#cpe-panel`) at `z-index:9998` — BELOW `#cpe-panel`'s 10000.
+   Confirmed by direct code read, not a screenshot. Fixed: left-anchored, z-index 10001.
+2. **Scrub panel's default vertical position overflowed the viewport bottom by 17px** — its top was
+   computed from a hand-estimated total height that never matched the real rendered height. Added
+   `_clampPanelToViewport()`: measures the real rect after append, corrects against the actual
+   viewport, only on the default-position path (an explicit user drag is left alone). Confirmed via a
+   new witness gate (`bottomOverflowPx` 17 → 0), not eyeballed.
+3. **Both panels had ZERO creation/drag-release logging** — unlike `#cpe-panel`'s own
+   `§CPE_PANEL_DRAGGABLE`/`§CPE_PANEL_MOVED` pair. This is *why* the user's pasted log had no
+   evidence for any of the three reports above — there was nothing logged to see. Added matching
+   `§CPE_VF_PANEL_CREATED`/`_MOVED` and `§CPE_SCRUB_PANEL_CREATED`/`_MOVED`, mirroring `#cpe-panel`'s
+   exact shape plus a computed overlap-with-`#cpe-panel` check.
+
+`witness_cpe_scrub_viewfinder.js` extended with `G-SCRUB-PANEL-LOG` + `G-VF-PANEL-CLEAR` (assert on
+real console log lines) — 19/19 green (HHS_Office_Federated). Pushed:
+https://github.com/red1oon/bim-ootb/pull/1207 — not yet merged.
+
+### 🔴 OPEN — mid-session AskUserQuestion on scrub-panel removal, answer changes the picture
+Asked whether to remove the CPE scrub panel entirely (user had floated "Time Machine already scrubs,
+remove the redundant one") given the removal would also cost the only UI trigger for a POV-only
+rehearsal and camera-path scrub-to-preview. **User's answer: do NOT remove it** — Time Machine's own
+scrubber only appears when buildup/construction-reveal is engaged; a user who doesn't want buildup
+never sees TM's scrubber at all, so CPE's own scrub panel is still needed independently. This is why
+the fix above KEEPS the scrub panel and fixes its positioning instead of deleting it.
+
+### 🔴 OPEN — new repro clue for the "B's content snaps back after drag release" symptom, not yet closed
+User live-tested again after the AskUserQuestion exchange: clicking (not dragging) INSIDE B's box
+makes the misaligned content "jump into correctly", then it reverts on release. Pasted log for that
+exact action:
+```
+§FPS_MODE mean=1661.5 max=2997.3 n=2 dlod=off disp=solid fly=0 orbit=1
+[RP-A1] §FILTER_GUIDS ALL
+[RP-TB] §FOCUS_ELEM_CLEAR
+```
+`§FOCUS_ELEM_CLEAR` firing proves the click passed THROUGH B's box (its background is
+`pointer-events:none` except the title bar/resize handle) to the main scene underneath, which
+cleared the current selection. Working theory, not yet confirmed: the render loop self-parks
+(`§IDLE_GATE`) and nothing in B's drag path calls `markDirty()` except the repositioning `save()` —
+if the focus-clear's own redraw is what's making content "jump into correctly" for one frame, then
+idle-parking again immediately after would explain the revert-on-release, since nothing keeps
+re-rendering B once the pointer interaction stops. **Added `§CPE_VF_RENDER_TRACE`** (PR #1207) to
+test this directly: change-triggered log of `_vfRender`'s computed scissor rect + ms-since-last-call
+— a large gap right before a "jump" would confirm the theory. Needs the user's next live repro
+(click-hold-release inside B's box) with this trace, pasted back — do not chase further via guessing
+or live browser probing.
+
+### 🔴 OPEN — user re-tested PR #1207 live on Hospital, real log evidence found for 4 symptoms, root frame = SEPARATION OF CONCERN, not yet fixed — next session starts here
+
+User's own summary after re-testing: "panels pop up away from the alt-c panel" (✅ confirmed fixed —
+see below), "the inset POV is much nearer not fully inside", "the preview does not play but becomes
+blank", "the main canvas does not move yet replays its construction — acceptable for now, should not
+react at all", "when clicking a stick, it does not show the POV inset that spot." Pasted the FULL
+console from that live session (Hospital, all this session's PRs #1195/#1197/#1199/#1203/#1206/#1207
+live). **User's own diagnosis, stated directly: "i suspect something else in the canvas is taunting at
+the inset entanglement — need separation of concern."** This matches what the evidence below actually
+shows — B (the POV inset) is not architecturally independent from the main canvas. It shares the
+renderer's pixel-ratio read, the DLOD/buildup visibility computation, and possibly more, with main.
+None of the four symptoms below were fixed this session — this section is the fresh-session starting
+point, with real numbers already extracted, not a re-investigation from scratch.
+
+**✅ Panel positioning fix (PR #1207) confirmed working, straight from the log:**
+```
+§CPE_SCRUB_PANEL_CREATED left=16 top=691 w=300 h=62 zIndex=10001 viewport=1483x769 bottomOverflowPx=0 cpePanel=clear (default)
+§CPE_VF_PANEL_CREATED left=16 top=523 w=300 h=190 zIndex=10001 cpePanel=clear (default)
+```
+Both left-anchored, z-index above `#cpe-panel`, zero overflow, zero overlap. This part is done.
+
+**🔴 SMOKING GUN for "much nearer not fully inside" — `renderer.getPixelRatio()` is NOT stable across
+`_vfRender()` calls, even with an UNCHANGED panel position.** Three consecutive `§CPE_VF_RENDER_TRACE`
+lines, same `panelR={16,523}` throughout (panel never moved):
+```
+§CPE_VF_RENDER_TRACE x=20 y=69 w=375 h=238 panelR={16,523} gapSinceLastCallMs=-1        (pr≈1.25)
+§CPE_VF_RENDER_TRACE x=16 y=56 w=300 h=190 panelR={16,523} gapSinceLastCallMs=4509       (pr≈1.0 — SAME panel pos, different scissor!)
+§CPE_VF_RENDER_TRACE x=20 y=69 w=375 h=238 panelR={16,523} gapSinceLastCallMs=107        (pr≈1.25 again)
+```
+`x`/`w`/`h` are `panelR * pr` — the middle line's numbers (16, 300, 190) are exactly the CSS values
+UNSCALED (pr=1), while the other two are scaled by ~1.25. The renderer's measured pixel ratio is
+flip-flopping between two different values frame to frame, with the panel geometrically unchanged.
+This would make B's rendered content jump between ~80%-scale-and-offset and correctly-scaled on
+different frames — a real, mechanical explanation for "much nearer not fully inside", not a
+composition/aim issue (§CPE_VF_ALIGN_DIAG_V2's own numbers, logged on the SAME two `pr≈1.25` frames,
+show vfCam tracking the intended pose exactly — `vfCam_pos` == `freshPose_pos` both times). **Next
+session: find what's calling `renderer.setPixelRatio()` elsewhere in the app** — this codebase has
+extensive `§FPS_MODE` performance tracking throughout every log; an adaptive-quality/DPR-scaling
+system reacting to FPS is the leading candidate, and if so `_vfRender()` needs to either read pr once
+per frame and cache it consistently, or account for whichever pr the CURRENT frame's main render
+actually used, not a fresh independent read.
+
+**🔴 "Preview does not play but becomes blank" during a POV-only + buildup rehearsal.** `_vfRender()`
+DID run every frame — `§CPE_VF_PERF G-PERF-1 frames=154` matches the rehearsal's own `frames=154` from
+`§CPE_PREVIEW done`, so this isn't a "never renders" bug, it's a CONTENT bug: vfCam ends up looking at
+nothing. **Directly connects to this session's own §DLOD_VF_CAMGUARD fix (PR #1206) and to the user's
+"separation of concern" instinct**: `_dlodResolveCamera(app)` now returns `vfCam` whenever B is on
+(`activePOVCamera()` non-null) — correct in principle, but it means EVERY buildup-visibility decision
+during this rehearsal (`_dlodInView`, `hideForProxy`/`bHideForProxy`) is now computed relative to
+vfCam's WALKED pose, not main's parked one. If vfCam's frustum test misbehaves at some point along the
+walk (very close to a wall, an edge-case aspect ratio, or the SAME pixel-ratio flip-flop above feeding
+a wrong aspect into `vfCam.updateProjectionMatrix()`), the whole POV view could go effectively empty.
+Since Time Machine's mesh-visibility flags are GLOBAL (one `renderAtTime()` pass, shared by both the
+main render and B's separate scissor render in the same frame — see the DLOD_VF_CAMGUARD section
+above), if vfCam culls something wrongly, in principle BOTH main and B should show it culled — but the
+user reports ONLY B going blank while main's construction-reveal looks normal. That mismatch itself is
+a clue: either the two renders aren't actually sharing state the way the code implies, or "blank"
+isn't a visibility-culling symptom at all (e.g. a scissor/viewport mis-set from the SAME pixel-ratio
+bug above putting the box entirely off the actual backing buffer at some frames). **Next session: add
+a log of visible-element-count from vfCam's perspective (or reuse `_dlodInView`'s own box index count)
+at the moment `_vfRender()`'s box goes visually blank, correlated against the pixel-ratio trace above.**
+
+**🔴 Main canvas construction-reveal still visually progresses during a POV-only rehearsal.** User: "the
+main canvas though does not move yet replay its construction which is acceptable for now — should not
+react at all." Not new — this is the architecturally-known limitation from this session's own
+DLOD_VF_CAMGUARD writeup: Time Machine's visibility state is a single shared set of mesh flags, so a
+buildup-driven rehearsal necessarily advances that shared state regardless of which camera (main or
+vfCam) is "supposed" to own the view at that moment. Fixing this for real means decoupling buildup
+visibility itself into a per-camera-independent pass (expensive — a second full `renderAtTime`-shaped
+traversal) or accepting the shared-state architecture and finding a cheaper partial fix. User marked
+it "acceptable for now" but it's the same root cause the "separation of concern" framing points at.
+
+**🔴 Clicking a stick does not move B's inset to that spot, live.** `_hold()` → `_scrubTo(bearTn)` →
+`_applyVFPose` is the code path (§CPE_AIM_PIN/G-SCRUB-BEARING territory) and the WITNESS version of
+this (`_holdForTest()`, a direct function call bypassing the real click/raycast) passes clean
+(`witness_cpe_scrub_viewfinder.js`'s G-SCRUB-BEARING gate, 19/19 suite green). The gap between
+"witness passes calling the function directly" and "doesn't work from a real click" means something
+in the ACTUAL row-list/canvas click→pick→`_hold()` wiring isn't reaching `_scrubTo` live, or reaches
+it with different arguments than the synthetic test does. Needs tracing the real click handler chain,
+not the already-proven-fine `_scrubTo`/`_applyVFPose` internals.
+
+**Session close, per explicit user instruction: do not continue fixing now — this write-up + the log
+evidence above is the deliverable, a fresh session picks this up.** All the new logging added this
+session (`§CPE_VF_RENDER_TRACE`, `§CPE_VF_PANEL_CREATED/_MOVED`, `§CPE_SCRUB_PANEL_CREATED/_MOVED`,
+`§CPE_VF_ALIGN_DIAG`/`_V2`) is live in PR #1207 and already proved useful — keep using it, don't
+re-derive from a screenshot. The unifying next question, per the user's own framing, is architectural:
+**where exactly does B share state with the main canvas that it shouldn't (pixel ratio read, DLOD
+camera resolution, possibly others), and what would true separation of concern look like for a
+scissor-based second camera sharing one WebGL context?**
+
+## ▶ SESSION 2026-08-05 (FOLLOW-ON) — all 3 open items fixed and witnessed, PR #1209 open
+
+Picked up the fresh-session starting point above and closed all three, each root-caused by code
+reading only (no live browser/screenshot chasing, per the standing rule) then confirmed via witness.
+
+1. **§CPE_VF_DPR_GUARD (fixes "much nearer not fully inside")** — the smoking gun was real: `main.js`'s
+   §S260b orbit-drag perf-DPR drop (`streamedCount>5000`) calls `renderer.setPixelRatio()` on every
+   OrbitControls drag start/end, and `_vfRender()` reads that SAME renderer's `getPixelRatio()` fresh
+   every frame — so B's scissor box literally rescales frame-to-frame whenever the user orbits the
+   main view while B is open, even with B's own panel position untouched (exactly what
+   `§CPE_VF_RENDER_TRACE` caught). This is a main-canvas-only perf heuristic that has nothing to do
+   with B (a tiny 300×190 sub-render, not worth degrading) — fixed by excluding B from it entirely
+   (`!APP._cpeViewfinderRender` added to the drag-start gate). Also fixed a smaller, real bug on the
+   same line: `vfCam.aspect` was computed from `w/h` — two INDEPENDENTLY `Math.round()`-ed
+   backing-buffer pixel counts — instead of the true unrounded CSS `panelR.width/height`, drifting the
+   frustum slightly at fractional pixel ratios (§CPE_VF_ASPECT_ROUND).
+2. **§DLOD_VF_MATRIX_STALE (fixes "preview does not play but becomes blank")** — Time Machine's
+   `renderAtTime()` runs off its own `setTimeout` ticker (`_playTimer`), never synchronized with the
+   rAF-driven `animate()` loop. `app.camera`'s `matrixWorld`/`matrixWorldInverse` get refreshed every
+   rAF frame for free (the renderer does it inside `render()`), but `vfCam`'s ONLY get refreshed by
+   `_vfRender()`, itself gated behind that same rAF loop — so a POV rehearsal's DLOD visibility
+   frustum (built from `_dlodResolveCamera(app)`'s result) could be built from a stale vfCam pose one
+   or more `_applyVFPose()` moves behind, hiding real geometry behind wireframe box proxies it
+   shouldn't. Fixed with an explicit `_dlodActiveCam.updateMatrixWorld()` before the frustum build —
+   cheap (single camera), makes the tick correct regardless of which async timer got there first.
+   Added `§DLOD_VF_VISCOUNT` (hideForProxy count + camPos, logged every DLOD-engaged tick while a POV
+   camera is active) for any future live repro that needs harder numbers.
+3. **§CPE_SCRUB_BEARING_FLY_PAUSE (fixes "clicking a stick does not move B's inset")** — confirmed the
+   real click→pick wiring was NEVER the problem (`h.down`'s canvas hit-test calls `_hold()` exactly
+   like the row-list and the witness's `_holdForTest()` do). The actual bug: `_hold()`'s
+   `_scrubTo(bearTn)` moves vfCam ONCE, but if a rehearsal is actively playing, `_previewFly`'s own
+   `step()` (rAF-driven, reads real elapsed time, ignores `_state.scrubTn` entirely) overwrites vfCam's
+   pose again on the VERY NEXT frame (~16ms later) — the click's effect is real but invisible, exactly
+   matching "witness passes calling the function directly, doesn't work from a real click" (the
+   witness's original G-SCRUB-BEARING gate ran with no flight active). Fixed: selecting a stick now
+   calls `_state._flyPauseAt()` first if a flight is running and unpaused — same hook the transport's
+   own pause button already uses — so the bearing survives instead of racing the flight's clock.
+
+**Witnessed, not screenshotted:** `witness_cpe_scrub_viewfinder.js` 22/22 green (HHS_Office_Federated,
+3 new gates: G-VF-DPR-GUARD, G-VF-ASPECT, G-SCRUB-BEARING-FLY-PAUSE) · `witness_dlod_vf_camguard.js`
+10/10 green (new static ordering gate for the `updateMatrixWorld()` fix) · `witness_incr_shadow_equiv.js`
+0 mismatch across 19 cursors (HHS_Office_Federated) — zero behavioural change off the DLOD path.
+Pushed: https://github.com/red1oon/bim-ootb/pull/1209 — not yet merged.
+
+**Still open, unchanged from before:** main canvas construction-reveal still visually progresses
+during a POV-only rehearsal (architecturally known — Time Machine's visibility state is one shared set
+of mesh flags, not per-camera; user marked "acceptable for now"). No new work needed unless the user
+revisits it.
