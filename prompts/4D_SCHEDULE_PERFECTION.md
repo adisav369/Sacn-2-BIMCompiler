@@ -1608,3 +1608,37 @@ imported" was agreed to be is not yet implemented. Next session picking this up 
 first (does it reuse the `captured`-schedule import shape already in `schedule_author.js`'s
 `activeSchedule()`, or is it new?) before writing any code — do not invent a shape.
 
+## 2026-08-05 — §TM_PANEL_RESIZE_H (bottom-edge drag) + §GANTT_PALETTE staleness finding
+
+User looked at a screenshot after the #1201/#1202/#1204 batch and asked for two things: (1) the drawer's
+lower border pullable too, not just the right one, (2) per-discipline bar colouring, dark fills with
+reversed-contrast labels.
+
+**(1) Built — PR #1208, `feat/gantt-panel-bottom-resize`, auto-merge armed.** New
+`#tm-panel-resize-grip-b` mirrors the existing right-edge width grip (`tm-panel-resize-grip`,
+§TM_PANEL_RESIZE #1201): same pointer-capture pattern, `wirePanelResizeHeight()`, clamped 160px–85vh,
+logs `§TM_PANEL_RESIZE_H height=...px`. Verified with `witness_tm_panel_resize_h.js` (12/12,
+static-source check same convention as `witness_gantt_palette.js`) — confirms the grip exists, is
+`ns-resize`, and critically that its grow-direction sign is the OPPOSITE of the internal top-strip
+`wireGanttResize()` grip (that one sits above its content, `startY - e.clientY`; this one sits below,
+so it must be `e.clientY - startY` or dragging down would shrink instead of grow — checked explicitly,
+not assumed).
+
+**(2) NOT built — because it's already done.** `PHASE_COLORS`/`PHASE_INK`/`PHASE_SHORT`
+(`viewer/time_machine.js`, §GANTT_PALETTE, PR #1171, merged 2026-08-04) already give each of the six
+phases a dark/light family colour with adaptive reversed-contrast ink — exactly this ask. The
+screenshot's "MEP"/"Sup" bar labels are the fingerprint of the OLD pre-#1171 `phase.substring(0,3)`
+fallback (confirmed: no phase string in `rates.js`/`schedule_author.js` is short enough to produce
+"Sup" any other way — `substring(0,3)` of "Superstructure" is exactly "Sup"). Since #1201/#1202/#1204
+(merged AFTER #1171, same day) tested fine per this same screenshot round, whatever build was open in
+that tab was serving a stale cached `time_machine.js` for that one asset specifically — known landmine
+class, see `sw.js`/cache-version feedback. **Action for next session if this comes up again: hard
+refresh / confirm SW cache version, don't rebuild the palette — it already exists and is correct.**
+
+Local `~/bim-ootb` checkout note: found main 5 commits stale (missing #1171/#1201/#1202/#1204) AND
+carrying ~5000 lines of unrelated staged-but-uncommitted WIP (`schedule_diff.js`, `schedule_read_4d.js`,
+a 766-line `time_machine.js` diff, several `witness_gantt_*.js` files, none of it this session's).
+Left it completely untouched per the shared-tree caution in `CLAUDE.md` — did all work in a fresh
+`git worktree add ... origin/main` instead (`/tmp/wt-gantt-bottom-resize`, safe to prune once #1208
+merges and CI settles).
+
