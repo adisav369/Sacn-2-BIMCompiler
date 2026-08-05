@@ -7385,9 +7385,157 @@ reading only (no live browser/screenshot chasing, per the standing rule) then co
 3 new gates: G-VF-DPR-GUARD, G-VF-ASPECT, G-SCRUB-BEARING-FLY-PAUSE) · `witness_dlod_vf_camguard.js`
 10/10 green (new static ordering gate for the `updateMatrixWorld()` fix) · `witness_incr_shadow_equiv.js`
 0 mismatch across 19 cursors (HHS_Office_Federated) — zero behavioural change off the DLOD path.
-Pushed: https://github.com/red1oon/bim-ootb/pull/1209 — not yet merged.
+Pushed and MERGED: https://github.com/red1oon/bim-ootb/pull/1209 (auto-merged 07:36:40Z, right after CI
+passed) — confirmed live via `pages-build-deployment` run success at the same timestamp.
 
 **Still open, unchanged from before:** main canvas construction-reveal still visually progresses
 during a POV-only rehearsal (architecturally known — Time Machine's visibility state is one shared set
 of mesh flags, not per-camera; user marked "acceptable for now"). No new work needed unless the user
 revisits it.
+
+## ▶ SESSION 2026-08-05 (SAME DAY, LIVE-TEST FOLLOW-ON) — user found PR #1209 stale in their browser,
+## then live-tested the real fix and found 4 NEW issues + 1 feature ask. User asked to hand this whole
+## batch to a fresh session (possibly Opus/Fable) rather than keep chasing — this section is that handoff.
+
+### ✅ Resolved during this short follow-on (no code change needed)
+**"Am I on the latest version? Still same issues" — user's browser was stuck on `sw.js?v=538` while the
+repo's `CACHE_VERSION` was `v939`** — hundreds of deploys behind, not a code bug. Confirmed PR #1209 WAS
+merged and deployed (`gh pr view 1209` → `mergedAt 07:36:40Z`; `gh run list` showed a `pages-build-
+deployment` run completing at the same timestamp). Told the user to hard-reload/clear the SW. They did,
+came back, and their NEXT pasted log showed `§CPE_VF_ALIGN_DIAG_V2 vfCam_aspect=1.5789` (exactly
+`300/190`, the true panel aspect) instead of the pre-fix `1.5756` — **confirms §CPE_VF_ASPECT_ROUND and
+§CPE_VF_DPR_GUARD from PR #1209 are genuinely live and working** in their browser now. Everything below
+is fresh evidence against the ACTUAL new build, not stale-cache noise.
+
+### 🔴 OPEN 1 — "the eye toggle doesn't remove the scrubber" reframed: user wants the timeline panel to
+### have its OWN independent show/hide, not ride the editor's open/close as its only "toggler"
+User's exact words: *"yes independent but not as handled by same toggler! ;)"* — confirming the
+`§CPE_SCRUB_STANDALONE` design intent (timeline stays open when B toggles off) is correct and should
+NOT change, but pointing out the timeline panel itself has **zero show/hide affordance of its own** —
+the ONLY way to make it disappear is closing the whole CPE editor (`_scrubPanelTeardown()`, called from
+Cancel/OK). That's not really "independent," it's just riding a DIFFERENT shared control (the editor's
+own lifecycle) instead of B's eye icon.
+**Built (uncommitted → since committed to a branch, NOT merged, NOT witnessed):** a `#cpe-scrub-toggle`
+button next to `#cpe-vf-toggle` in `#cpe-title`'s header row (`viewer/cinema_path_editor.js`, look for
+`§CPE_SCRUB_OWN_TOGGLE`), a distinct `▤` glyph (never the eye icon, so it can't read as "the same
+control"). `_toggleScrubPanel(btn)` / `_wireScrubToggle()` mirror `_toggleViewfinder`/
+`_wireViewfinderToggle`'s exact shape — build/teardown `#cpe-scrub-panel` on demand, tracked via
+`_state.scrubOn` (defaults to shown, since the panel is already built at editor-open). Wired alongside
+`_wireViewfinderToggle()` at editor open.
+**Branch pushed, NOT a PR (deliberately — this repo auto-merges PRs the instant CI goes green, per
+`bim-ootb/fix/cpe-vf-separation` PR #1209 merging itself 3s after CI finished; opening a PR for
+unverified code risks it going live untested):**
+`https://github.com/red1oon/bim-ootb/tree/fix/cpe-scrub-own-toggle` (single commit `16f1260`,
+worktree used was `/tmp/wt-cpe-scrub-toggle`, already removed — `git worktree add` fresh off this
+branch to continue). **Syntax-checked only (`node -c`) — NEVER run against `witness_cpe_scrub_
+viewfinder.js`, never live-tested.** Next session: add a witness gate (open editor, click
+`#cpe-scrub-toggle`, assert `#cpe-scrub-panel` is removed from DOM and `#cpe-vf-panel`/B is untouched;
+click again, assert it reappears at its remembered position), run the full suite, THEN open a PR.
+
+### 🔴 OPEN 2 — related feature ask, not yet touched: unchecking "build the model as the film plays"
+### (`#cpe-buildup`) should also hide the scrub/timeline panel
+User: *"also when buildUp in unchecked, the TM panel should also be removed."* Read literally this
+sounds like it wants `#cpe-scrub-panel` (the "TM panel"/timeline, the thing OPEN 1 is about) hidden
+automatically whenever `#cpe-buildup`'s checkbox is unchecked — i.e. a ONE-WAY coupling (buildup off →
+scrub panel auto-hides) layered on TOP of OPEN 1's manual toggle, not a replacement for it. **Not
+investigated at all yet** — find the `#cpe-buildup` checkbox's `change` handler (search `cpe-buildup` in
+`cinema_path_editor.js`) and, if this is confirmed as the ask (verify with the user first — it's a new
+requirement, not a bug report, and interacts with OPEN 1's not-yet-merged toggle), call the same
+`_toggleScrubPanel`-style hide when it's confirmed unchecked. Do NOT implement blind — this could easily
+conflict with OPEN 1's manual toggle state (what happens if the user manually hides it via `#cpe-scrub-
+toggle`, then re-checks buildup — should it come back? Ask, don't guess) once OPEN 1 lands.
+
+### 🔴 OPEN 3 — "the inset is not fitting into the pov box, bigger a bit and slightly off" — one
+### concrete residual bug found (not yet fixed), full alignment diagnostic still says everything matches
+Live numbers from the user's fresh (non-stale) log: `panelR={"left":41.59,"top":452.59,"width":300,
+"height":190}` `pr=1.25` `computed_x=52 computed_y=157 computed_w=375 computed_h=238` `vfCam_aspect=
+1.5789 box_aspect=1.5756` `vfCam_pos` == `freshPose_pos` exactly, `vfCam_fov`==`main_fov`==60,
+`vfCam_up`==`main_up`. **Every number the diagnostic already checks is correct** — position, fov, up,
+and (after PR #1209) the CAMERA's own aspect is now the true box aspect (1.5789, matches `300/190`
+exactly). But look at `box_aspect=1.5756` in that SAME log line — that's `computed_w/computed_h =
+375/238`, i.e. **the ACTUAL viewport/scissor RECTANGLE `_vfRender()` passes to `renderer.setViewport`/
+`setScissor` still has a DIFFERENT aspect (1.5756) than the camera's projection matrix now assumes
+(1.5789)** — `w`/`h` are still computed as two INDEPENDENTLY `Math.round()`-ed values
+(`Math.round(300*1.25)=375`, `Math.round(190*1.25)=238`, but `238×1.5789=375.7`, not 375) while
+`vfCam.aspect` was fixed in PR #1209 to read the TRUE unrounded `panelR.width/height`. **Before PR
+#1209 these were self-consistently wrong together (no stretch, just uniformly mis-scaled/rounded);
+after PR #1209 only the CAMERA'S aspect was corrected, so now there's a NEW small mismatch between what
+the camera thinks its aspect is and the actual pixel rectangle it's rendered into — a real, mechanical
+source of a very slight vertical squish/stretch.** This is small (~0.2%) and probably NOT the full
+explanation for "bigger a bit and slightly off" (that phrase reads more like a zoom/composition issue
+than a sub-1%-stretch one), but it IS a real, provable, easy fix — round the RECTANGLE the SAME way
+aspect is now computed (from the box, not compounding two separate roundings), e.g. compute `h` first
+from `panelR.height*pr`, then derive `w = Math.round(h * (panelR.width/panelR.height))` so the
+viewport's own aspect matches `vfCam.aspect` exactly by construction, not by coincidence. **Do this
+fix, but do NOT assume it resolves the user's full "bigger and off" complaint — re-verify with the user
+after, since the diagnostic numbers so far do NOT support a large-magnitude cause; if it persists after
+this fix, the next lead is the CONTENT itself (composition/zoom), not the box math** — e.g. whether
+`vfCam.fov`/near-plane or a devicePixelRatio-dependent CSS transform on the panel `<div>` itself
+(border/padding eating into the visible content area vs. the scissor rect, which is computed from the
+OUTER `getBoundingClientRect()` including border) is inflating the apparent content size relative to
+the visible border. Check `box-sizing`/border width interaction next if the rect-aspect fix alone
+doesn't close it out.
+
+### 🔴 OPEN 4 — "the buildUp is not reflected in POV" — bkPrev/tmSetCursor confirmed WORKING; leading
+### hypothesis is a DIFFERENT, more general DLOD system than the one PR #1209 already fixed
+Traced `_previewFly`'s buildup wiring end to end: `bkPrev = window.tmFollowTimeline()` IS successfully
+armed before `startFly()` runs (user's own log shows `§CPE_PREVIEW_BUILDUP armed mode=T ops=63416
+placed=63182`), and `step()` DOES call `window.tmSetCursor(bkMs)` every frame when `bkPrev` is truthy —
+this part of the buildup wiring is NOT broken, ruling out the most obvious "cursor never advances"
+theory. Also confirmed via the SAME log: Time Machine's own box-proxy DLOD system (the one
+`§DLOD_VF_MATRIX_STALE`/`_dlodResolveCamera` in `time_machine.js` — PR #1209's second fix — targets)
+was **NOT engaged at all in this test session** (`_dlodProxyOn` is a separate pill toggle the user never
+pressed; zero `§DLOD_VF_VISCOUNT` lines in the whole pasted log), so that fix is provably not
+responsible for or related to this complaint.
+**Leading hypothesis, NOT yet confirmed — needs code reading in `viewer/dlod.js` next:** the log shows a
+COMPLETELY DIFFERENT, general-purpose system engaging: `[DLOD] §DLOD_ENABLE count=63182
+mode=per_slot_frustum` / `[DLOD] §DLOD_REFS built instanced=... imInstances=...` — this is a per-
+instance FRUSTUM CULLING optimization for streamed geometry (unrelated to Time Machine/buildup, lives in
+`viewer/dlod.js`, confirmed via `grep -l DLOD_ENABLE viewer/*.js`). **This system almost certainly
+builds its frustum from `app.camera` (the MAIN camera) only** — it predates B/vfCam entirely and has no
+reason to know about it. During a POV-only rehearsal (`§CPE_SCRUB_POV_ONLY`), the MAIN camera is
+PARKED at the original overview pose for the whole flight while vfCam WALKS through the building — so
+anything the walk passes near that is OUTSIDE the parked main camera's frustum could have its instance
+matrix ZEROED by this culling system, making it invisible to B's render too (B shares the same scene/
+instance data) **regardless of what Time Machine's own buildup visibility flags say** — which would
+look exactly like "buildup not reflected," but is actually a totally different, more general
+"B renders whatever the MAIN camera's frustum currently allows, not its own" entanglement — the same
+family of bug as PR #1209's DLOD fix, just a different subsystem. **Next session: read `viewer/dlod.js`,
+confirm whether its frustum test is keyed to `app.camera` exclusively, and if so, either (a) exempt/
+widen it while B is on (same pattern as `§CPE_VF_DPR_GUARD`), or (b) make its frustum test the UNION of
+main+vfCam frustums while B is active — do not guess further, read the file first, this write-up is
+already the result of reading `time_machine.js` and `cinema_path_editor.js` closely and finding nothing
+wrong there.** If reading `dlod.js` doesn't confirm this cleanly, add a log there (element-count zeroed
+by this culling pass, per tick) the same way `§DLOD_VF_VISCOUNT` was added to `time_machine.js`.
+
+### 🔴 OPEN 5 — "the pov is correctly set to the stick's pos, but the preview scrubber cannot move or
+### play or click different spot in the timeline" — a possible regression in PR #1209's OWN fly-pause
+### fix, root cause NOT found via static reading, needs a live repro with new logging (not a guess-fix)
+This is reporting on the ALREADY-MERGED PR #1209 code (§CPE_SCRUB_BEARING_FLY_PAUSE), not on the
+uncommitted OPEN 1 change. Sequence per the user: click a stick mid-flight → B's pose correctly jumps to
+the stick's bearing (confirms `_hold()`'s new `_flyPauseAt()`-then-`_scrubTo()` call DID run and DID
+pause the flight, as designed) → but AFTER that, the scrub panel's play button and the timeline track
+both stop responding to input (can't resume, can't drag, can't click a different spot).
+**Read `_wireScrub` (track pointerdown/move/up → `_scrubTo`), `_wireScrubPlay` (play button → `_flyPauseAt`/
+`_flyResume` branch), and `_flyPauseAt`/`_flyResume` themselves (both inside `_previewFly`'s closure) —
+found NO code path that would structurally block either of these once `_state.flyPaused` is true.**
+Neither handler checks `_state.flying` before acting; `_scrubTo`/`_applyVFPose` set `vfCam` pose directly
+regardless of flight state; `_flyResume` re-arms `requestAnimationFrame(step)` directly. This is
+genuinely NOT resolved — either there's a subtlety this reading missed, or it's a DOM/event-listener
+issue not visible from reading the function bodies alone (e.g. some OTHER code path rebuilding/replacing
+the track or button element after the pause, orphaning the listeners bound at editor-open — not
+confirmed, `_renderScrub()` only replaces the track's CHILDREN via `innerHTML=''`, not the track element
+itself, so that specific theory is likely NOT it, but wasn't fully ruled out for `#cpe-scrub-play`).
+**Do not guess-fix this. Next session: add targeted logging** — e.g. a `§CPE_SCRUB_INPUT_TRACE` line at
+the TOP of `_wireScrub`'s pointerdown/pointerup handlers and `_wireScrubPlay`'s click handler, dumping
+`_state.flying`/`_state.flyPaused`/whether the handler actually ran — then ask the user to reproduce
+ONE more time (stick click → try to drag/click the track/press play) with this build, paste the log.
+If the NEW handlers show 0 log lines at all when the user clicks, that confirms an event-listener/DOM
+issue (something rebuilt the elements); if the handlers DO fire but nothing visibly changes, the bug is
+downstream (render loop / `markDirty` / `_flyResume`'s `requestAnimationFrame` chain), and the next trace
+point is there instead.
+
+### Session close, per explicit user instruction ("put all this into prompts/# for new session, perhaps
+### will assign an Opus or Fable session onto it") — do not continue chasing OPEN 3/4/5 further without
+### a fresh repro-with-logging as scoped above. OPEN 1's code is written but unverified — witness it
+### before merging. OPEN 2 needs a clarifying question to the user before implementing at all.
