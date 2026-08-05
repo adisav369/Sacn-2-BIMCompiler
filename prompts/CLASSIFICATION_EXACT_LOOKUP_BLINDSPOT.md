@@ -128,8 +128,22 @@ the same one substrate, rather than adding a 4th consumer of the shared helper.
     getphase.js` 4/4, `witness_exact_lookup_p3_workpackages.js` 7/7. Reran all 6 earlier witnesses
     (schema-exhaustive ×2, P2 ×2, GW hospital fold — PlannedAmt golden unchanged, confirming the JSON
     edits didn't touch SEQUENCE_RULES/LABOR_RATES, whatif sync) — zero regression.
-- **P4** — lower-priority fallback-only sites (`boq_charts.html:477/908`, `schedule_read_4d.js`
-  fallback) for full consistency, once P2/P3 are proven.
+- **P4 ✅ DONE (witness) — LANE CLOSED**. Same PR #1196. The final two fallback-only sites:
+  - `schedule_read_4d.js`'s `readTasks()` — 2 sites (resource/discipline tally, majority-phase
+    fallback). A local `classifyCls()` returns `null` on genuine tier-3 (not the generic default),
+    preserving today's "skip, don't count" behavior for truly unclassified classes.
+  - `boq_charts.html generateSchedule()` (:477) — straight substitution, no tier-3 distinction needed
+    (`DEFAULT_RULE` was already the same generic fallback).
+  - `boq_charts.html buildScheduleFromOps()` (:908) — same tier-3-preserving pattern as
+    `schedule_read_4d.js`, so kernel_ops's discipline Set isn't polluted by genuine unclassifieds.
+  - Witnesses: `witness_exact_lookup_p4_scheduleread.js` (real `readTasks()` on a real sql.js fixture —
+    3× genuine-tier-3 elements do NOT hijack the majority-phase vote despite outnumbering the real
+    classes 3-to-1) 3/3, `witness_exact_lookup_p4_boqchart.js` (both sliced blocks) 5/5. Reran the full
+    regression set including the ROOT-level `witness_boq_charts_real_schedule.js` (91/91, Hospital+
+    Terminal, 48000+ real elements) — zero regression across the whole lane.
+
+All 6 originally-identified exact-lookup consumers, plus `WORK_PACKAGES`' 4th separate classification
+system, now route through the real `matchRule` tier 1→2→3 via `classify()`. Nothing left in this lane.
 - Full existing regression suite must stay green at every step (this lane's own standing discipline).
 
 ## §RELATED
