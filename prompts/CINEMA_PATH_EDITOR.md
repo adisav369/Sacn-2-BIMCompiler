@@ -7118,8 +7118,7 @@ Cherry-picked `a4c24da` onto a fresh branch (`fix/cpe-panel-clear`) off current 
 existing `/tmp/wt-cpe-vf-followup` worktree). Clean cherry-pick, no conflicts. Re-ran
 `witness_cpe_scrub_viewfinder.js` against HHS_Office_Federated on a local server (port 8460) —
 16/16 green, same result as the original commit claimed. Pushed and opened
-https://github.com/red1oon/bim-ootb/pull/1195 — not yet merged, watch for the same squash-race before
-any follow-up push to this new branch.
+https://github.com/red1oon/bim-ootb/pull/1195 — MERGED 2026-08-04 19:23 UTC.
 
 ### ✅ DONE (2026-08-05) — scrub-play button now POV-only, PR #1197 open
 Implemented exactly the 6-step plan this section previously scoped: extracted `_applyVFPose(tn)` out
@@ -7130,7 +7129,7 @@ camera byte-identical across a full button-driven flight (start/pause/resume). 1
 (HHS_Office_Federated). Re-ran the two dependent legacy witnesses to confirm no regression:
 `witness_cpe_room_title_live.js` 4/4, `witness_cpe_room_title_timing.js` 3/3 — `#cpe-preview` still
 flies the main camera exactly as before. Pushed:
-https://github.com/red1oon/bim-ootb/pull/1197 — not yet merged.
+https://github.com/red1oon/bim-ootb/pull/1197 — MERGED 2026-08-04 19:59 UTC.
 
 ### ⛔ BLOCKED (2026-08-05, updated) — POV alignment: static code correlation exhausted, needs a live repro with the new diagnostic
 User pushback, correctly: don't ask a human to eyeball a screenshot and guess — trace the code. Did.
@@ -7145,7 +7144,7 @@ the line that corrects it — a live capture showed a false `1.0000` vs `1.5789`
 alone, not a per-frame rendering bug). Re-verified live via a standalone Puppeteer check (toggle+scrub
 and drag+scrub): `vfCam_aspect` now matches `box_aspect` every time, `vfCam_pos` matches
 `freshPose_pos` exactly, fov/up match the main camera exactly. `witness_cpe_scrub_viewfinder.js` 17/17
-green. Pushed: https://github.com/red1oon/bim-ootb/pull/1203 — not yet merged.
+green. Pushed: https://github.com/red1oon/bim-ootb/pull/1203 — MERGED 2026-08-05 04:17 UTC.
 **Every layer inspectable from code is now provably self-consistent — static analysis cannot go
 further.** The one thing left, genuinely: reproduce the reported misalignment live with this build and
 capture the `§CPE_VF_ALIGN_DIAG_V2` numbers AT that moment — that is the only remaining source of a
@@ -7190,7 +7189,7 @@ unrelated GI hold-converge call sites are untouched); the DLOD call site now pas
 (the same camera the frustum was built from), not bare `app`. `witness_dlod_vf_camguard.js` extended
 9/9 green (pure VM slice, no browser needed). Re-ran `witness_incr_shadow_equiv.js` against Hospital —
 0 mismatch across 19 cursors — confirms zero behavioural change when CPE/POV isn't active. Pushed:
-https://github.com/red1oon/bim-ootb/pull/1206 — not yet merged.
+https://github.com/red1oon/bim-ootb/pull/1206 — MERGED 2026-08-05 04:28 UTC.
 
 ## ▶ SESSION CONTINUATION 2026-08-05 (LATER) — live repro on Hospital surfaces 3 more real bugs
 
@@ -7222,7 +7221,7 @@ Hospital's size and was abandoned for pure code reading + the existing witness s
 
 `witness_cpe_scrub_viewfinder.js` extended with `G-SCRUB-PANEL-LOG` + `G-VF-PANEL-CLEAR` (assert on
 real console log lines) — 19/19 green (HHS_Office_Federated). Pushed:
-https://github.com/red1oon/bim-ootb/pull/1207 — not yet merged.
+https://github.com/red1oon/bim-ootb/pull/1207 — MERGED 2026-08-05 06:10 UTC.
 
 ### 🔴 OPEN — mid-session AskUserQuestion on scrub-panel removal, answer changes the picture
 Asked whether to remove the CPE scrub panel entirely (user had floated "Time Machine already scrubs,
@@ -7407,43 +7406,36 @@ came back, and their NEXT pasted log showed `§CPE_VF_ALIGN_DIAG_V2 vfCam_aspect
 §CPE_VF_DPR_GUARD from PR #1209 are genuinely live and working** in their browser now. Everything below
 is fresh evidence against the ACTUAL new build, not stale-cache noise.
 
-### 🔴 OPEN 1 — "the eye toggle doesn't remove the scrubber" reframed: user wants the timeline panel to
-### have its OWN independent show/hide, not ride the editor's open/close as its only "toggler"
-User's exact words: *"yes independent but not as handled by same toggler! ;)"* — confirming the
-`§CPE_SCRUB_STANDALONE` design intent (timeline stays open when B toggles off) is correct and should
-NOT change, but pointing out the timeline panel itself has **zero show/hide affordance of its own** —
-the ONLY way to make it disappear is closing the whole CPE editor (`_scrubPanelTeardown()`, called from
-Cancel/OK). That's not really "independent," it's just riding a DIFFERENT shared control (the editor's
-own lifecycle) instead of B's eye icon.
-**Built (uncommitted → since committed to a branch, NOT merged, NOT witnessed):** a `#cpe-scrub-toggle`
-button next to `#cpe-vf-toggle` in `#cpe-title`'s header row (`viewer/cinema_path_editor.js`, look for
-`§CPE_SCRUB_OWN_TOGGLE`), a distinct `▤` glyph (never the eye icon, so it can't read as "the same
-control"). `_toggleScrubPanel(btn)` / `_wireScrubToggle()` mirror `_toggleViewfinder`/
-`_wireViewfinderToggle`'s exact shape — build/teardown `#cpe-scrub-panel` on demand, tracked via
-`_state.scrubOn` (defaults to shown, since the panel is already built at editor-open). Wired alongside
-`_wireViewfinderToggle()` at editor open.
-**Branch pushed, NOT a PR (deliberately — this repo auto-merges PRs the instant CI goes green, per
-`bim-ootb/fix/cpe-vf-separation` PR #1209 merging itself 3s after CI finished; opening a PR for
-unverified code risks it going live untested):**
-`https://github.com/red1oon/bim-ootb/tree/fix/cpe-scrub-own-toggle` (single commit `16f1260`,
-worktree used was `/tmp/wt-cpe-scrub-toggle`, already removed — `git worktree add` fresh off this
-branch to continue). **Syntax-checked only (`node -c`) — NEVER run against `witness_cpe_scrub_
-viewfinder.js`, never live-tested.** Next session: add a witness gate (open editor, click
-`#cpe-scrub-toggle`, assert `#cpe-scrub-panel` is removed from DOM and `#cpe-vf-panel`/B is untouched;
-click again, assert it reappears at its remembered position), run the full suite, THEN open a PR.
+### ✅ OPEN 1 — CLOSED, but only after a real drift the user had to correct in caps
+First pass misread *"yes independent but not as handled by same toggler! ;)"* as "give the timeline
+panel its own separate show/hide button" and built exactly that (`#cpe-scrub-toggle`, a second widget).
+**User's correction, verbatim: "OH NO! U DRIFTED! I DID NOT ASKED FOR A SEPARATE SCRUBBER!!!! REMOVE
+THAT BUTTON!! I SIMPLY ASKED THAT CLOSING EYE TO ACT ON IT SIMILAR TO OPENING EYE!"** — the actual ask
+was always the EXISTING B eye-icon toggle should drive the timeline panel too (symmetric ON/OFF), not a
+second control. Deleted the wrong branch (`fix/cpe-scrub-own-toggle`) outright, reset the worktree to
+clean `origin/main`, and rebuilt correctly: `_toggleViewfinder`'s existing ON branch now also builds
+`#cpe-scrub-panel` if it isn't already present; the OFF branch now also tears it down via the existing
+`_scrubPanelTeardown()`. One button, both panels, symmetric — search `§CPE_VF_EYE_DRIVES_SCRUB` in
+`viewer/cinema_path_editor.js`. `witness_cpe_scrub_viewfinder.js`'s old `G-SCRUB-PERSISTS` gate (which
+asserted the OPPOSITE — independent of B) was replaced with `G-EYE-DRIVES-SCRUB`, asserting the new
+coupled behaviour AND that re-opening the eye restores the panel at its remembered position, not the
+default. 22/22 green (HHS_Office_Federated). Pushed and merged: bim-ootb PR #1211
+(`fix/cpe-eye-drives-scrub`, merged 08:50:24Z, auto-deployed).
 
 ### 🔴 OPEN 2 — related feature ask, not yet touched: unchecking "build the model as the film plays"
 ### (`#cpe-buildup`) should also hide the scrub/timeline panel
 User: *"also when buildUp in unchecked, the TM panel should also be removed."* Read literally this
-sounds like it wants `#cpe-scrub-panel` (the "TM panel"/timeline, the thing OPEN 1 is about) hidden
-automatically whenever `#cpe-buildup`'s checkbox is unchecked — i.e. a ONE-WAY coupling (buildup off →
-scrub panel auto-hides) layered on TOP of OPEN 1's manual toggle, not a replacement for it. **Not
-investigated at all yet** — find the `#cpe-buildup` checkbox's `change` handler (search `cpe-buildup` in
-`cinema_path_editor.js`) and, if this is confirmed as the ask (verify with the user first — it's a new
-requirement, not a bug report, and interacts with OPEN 1's not-yet-merged toggle), call the same
-`_toggleScrubPanel`-style hide when it's confirmed unchecked. Do NOT implement blind — this could easily
-conflict with OPEN 1's manual toggle state (what happens if the user manually hides it via `#cpe-scrub-
-toggle`, then re-checks buildup — should it come back? Ask, don't guess) once OPEN 1 lands.
+sounds like it wants `#cpe-scrub-panel` (the timeline panel) hidden automatically whenever `#cpe-
+buildup`'s checkbox is unchecked. **Re-check against OPEN 1's now-shipped, CORRECTED behaviour before
+touching this** — there is no separate scrub toggle anymore (that was the wrong first attempt, reverted
+— see OPEN 1 above); the scrub panel's visibility is now tied ONLY to B's eye icon
+(`§CPE_VF_EYE_DRIVES_SCRUB`). So this ask is really: should unchecking `#cpe-buildup` ALSO turn B's eye
+off (which would hide both panels via the mechanism that already exists), or does the user want a THIRD,
+independent coupling (buildup off → scrub panel hides, but B stays exactly as it was)? **Not
+investigated at all yet, and the right question changed after OPEN 1's correction** — find the `#cpe-
+buildup` checkbox's `change` handler (search `cpe-buildup` in `cinema_path_editor.js`), but ASK the user
+which of the two readings above is meant before writing any code — do not assume, this file already has
+one drift this session from guessing past a terse instruction instead of asking.
 
 ### 🔴 OPEN 3 — "the inset is not fitting into the pov box, bigger a bit and slightly off" — one
 ### concrete residual bug found (not yet fixed), full alignment diagnostic still says everything matches
@@ -7535,7 +7527,32 @@ issue (something rebuilt the elements); if the handlers DO fire but nothing visi
 downstream (render loop / `markDirty` / `_flyResume`'s `requestAnimationFrame` chain), and the next trace
 point is there instead.
 
-### Session close, per explicit user instruction ("put all this into prompts/# for new session, perhaps
-### will assign an Opus or Fable session onto it") — do not continue chasing OPEN 3/4/5 further without
-### a fresh repro-with-logging as scoped above. OPEN 1's code is written but unverified — witness it
-### before merging. OPEN 2 needs a clarifying question to the user before implementing at all.
+### Session close — OPEN 1 closed (see above, bim-ootb PR #1211 merged). OPEN 2/3/4/5 still open —
+### do not continue chasing 3/4/5 further without a fresh repro-with-logging as scoped in each section.
+### OPEN 2 needs a clarifying question to the user before implementing at all.
+
+### ⚠ HOUSEKEEPING CHECK — every session touching this file, before reporting "done" (user, 2026-08-05,
+### after correcting a real drift: "Update prompts/# to hunt such admin gaps till zero")
+OPEN 1 above is a live example of the exact failure this checklist exists to catch: a terse user
+instruction ("yes independent but not as handled by same toggler") got over-interpreted into a whole
+new feature (a second toggle button) instead of the narrow literal ask (make the EXISTING toggle do
+both). The code was even pushed to a branch before the misread was caught. **Before closing out any
+session on this file, walk this list — don't just trust that "witnessed" or "pushed" means "correct":**
+- **Re-read the user's OWN words one more time, literally, before writing up what you built.** If your
+  writeup needs to *explain* why what you built matches what they said, that's a warning sign — the
+  match should be obvious, not argued for. See `feedback_stop_on_invent_not_instruct.md`.
+- **Any branch pushed this session that was later found wrong, abandoned, or superseded — was it
+  actually deleted (`git push origin --delete <branch>`), not just left dangling?** A stale branch on
+  GitHub is exactly the kind of admin residue a future session (or the user) can trip over, assume is
+  still relevant, or accidentally build on top of. Confirmed this session: `fix/cpe-scrub-own-toggle`
+  deleted after the correction; the CORRECT fix went out under a fresh, accurately-named branch
+  (`fix/cpe-eye-drives-scrub`) rather than reusing the tainted name.
+- **Every worktree created this session — pruned once its branch is pushed/merged and the tree is
+  clean?** (Standing rule already in `~/.claude/CLAUDE.md` §Worktree Hygiene — this is a reminder to
+  actually run it at CPE session close, not a new rule.)
+- **Does every `prompts/CINEMA_PATH_EDITOR.md` section written this session still match the FINAL
+  shipped code, not an earlier draft that got corrected mid-session?** (This is why OPEN 1's writeup
+  above was rewritten in place rather than appended as a second, contradicting entry — a fresh session
+  reading this file top to bottom must never see two different stories about the same feature.)
+- **PR numbers cited — do they actually say MERGED, not just "pushed"?** Check with `gh pr view <n>
+  --json state,mergedAt` before writing "done," not from memory of having run `gh pr create`.
