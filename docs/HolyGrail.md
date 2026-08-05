@@ -131,6 +131,18 @@ the bloat this project removed.
 > IDEMPIERE_2.md. The grail is
 > that model's L1/L2/L5 made *live*.
 
+## External check — has the field caught up? (2026-08-05)
+
+A periodic gut-check, not a claim about this project's own coverage: local-first/event-log architecture is
+now recognized ground, not a lone bet. 2026 literature settled on "which sync-engine boundary — rows,
+doc-ops, or event logs" (not "CRDT or OT") — this project's signed op-log sits squarely in the event-log
+bucket, alongside maturing tooling elsewhere (Automerge 3.0, PowerSync, ElectricSQL). Separately,
+OPFS-backed SQLite-WASM moved from experimental to production-grade ("near-native speed" on multi-gigabyte
+client DBs) — the safe migration path for this project's own known ceiling (`sql.js` loads the whole DB
+into WASM linear memory, no paging; measured ≈440 MB resident on a 122k-element building). Neither closes
+a gap here — both confirm the underlying bet, no server and browser-resident truth, is now
+mainstream-recognized rather than still fringe.
+
 ## The honest status — half-claimed, one mile left
 
 I will not overclaim my own grail. It is **half-reached, and witnessed that far:**
