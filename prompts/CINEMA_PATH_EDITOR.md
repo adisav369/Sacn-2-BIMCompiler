@@ -7556,3 +7556,414 @@ session on this file, walk this list — don't just trust that "witnessed" or "p
   reading this file top to bottom must never see two different stories about the same feature.)
 - **PR numbers cited — do they actually say MERGED, not just "pushed"?** Check with `gh pr view <n>
   --json state,mergedAt` before writing "done," not from memory of having run `gh pr create`.
+
+## ▶ SESSION 2026-08-05 (WORK-TO-ZERO on the 4-item handoff above) — OPEN 3/4/5 shipped, PR bim-ootb#1212 open
+
+Worked the SESSION 2026-08-05 (SAME DAY) handoff's four remaining items top to bottom per the
+WORK-TO-ZERO contract. Fresh worktree `/tmp/wt-cpe-open345` off `origin/main` (which already had PR
+#1211 merged — the eye-drives-scrub fix).
+
+### ✅ OPEN 3 — inset viewport rect aspect: fixed, 23/23 green, but re-derived the "exact" claim mid-session
+The `_vfRender()` w/h were two INDEPENDENTLY `Math.round()`-ed values (as OPEN 3 diagnosed). First
+pass derived `w` from `h*trueAspect` and kept `vfCam.aspect = panelR.width/panelR.height` (the raw
+CSS ratio) — this reduces the drift but a new gate proved it can NEVER be bit-exact: `w` is itself
+rounded to an integer pixel, so `w/h` cannot equal an arbitrary CSS ratio exactly, only approximately
+(measured diff ~0.0018 at pr=1.37, vs. the old two-independent-roundings' ~0.0033). **Corrected
+before shipping**: set `_state.vfCam.aspect = w / h` (the SAME rounded rect this frame renders into),
+not the raw CSS box — this makes the camera's projection and the viewport it draws into IDENTICAL by
+definition (bit-exact, zero stretch), at the cost of the camera's aspect tracking the true CSS box
+only approximately (same ~0.0018 residual, now on the CAMERA side instead of a mismatch between
+camera and rect). This is the same self-consistency the PRE-#1209 code had by accident (both derived
+from the same rounded w/h) but with a smaller rounding error (single-rounding-pass vs. old double).
+`witness_cpe_scrub_viewfinder.js`: `G-VF-ASPECT` tolerance relaxed to 0.005 (documents why bit-exact
+is impossible there), new `G-VF-RECT-ASPECT` gate asserts the bit-exact rect/camera match (diff<1e-9).
+23/23 green, HHS_Office_Federated. **Not yet re-verified against the user's own "bigger a bit and
+slightly off" report** — the fix removes the STRETCH cause with certainty; whether it also resolves
+the full complaint (which reads more like zoom/composition per the original OPEN 3 write-up) still
+needs the user's own eyes on the next repro.
+
+### ✅ OPEN 4 — DLOD/vfCam frustum union: fixed by code review, live-wiring confirmed, A/B not cleanly closed
+Confirmed the OPEN 4 hypothesis by direct read of `viewer/dlod.js`: `A.dlodTick()`'s frustum was built
+from `A.camera` exclusively (`A.camera.updateMatrixWorld(); ...projectionMatrix, ...matrixWorldInverse`),
+zero references to vfCam or `activePOVCamera`, a totally separate subsystem from `time_machine.js`'s
+own `_dlodResolveCamera` (PR #1209). Fixed: resolve `activePOVCamera()` the same way
+`_dlodResolveCamera` does (no new coupling), build a second frustum from it when present, hide an
+instance only if OUTSIDE BOTH frustums (union) — reviewed line-by-line, logic is correct. Also fixed
+the §S260b idle-skip to track vfCam's own position (previously only checked `A.camera`/`controls`,
+so a POV-only rehearsal with the main camera parked would never re-evaluate at all). Added
+`vfCamActive=`/`imHid=`/`imVis=` to the throttled `§DLOD_TICK` log.
+**Honesty check, per the FUNDAMENTAL LAW (numbers over eyeballing) — this one is NOT fully closed**:
+attempted a live Puppeteer A/B (position an InstancedMesh instance outside the main camera's frustum,
+confirm dlod.js culls it main-only, then aim vfCam at it and confirm the union restores it). The
+harness confirmed `vfCamActive=1` correctly appears once B is toggled on (the accessor wiring works),
+but the instance-level cull/restore assertions came back contradictory between a direct
+`getMatrixAt`-based read and the aggregate `§DLOD_TICK` log line — most likely a test-harness
+confound (the `EVAL_EVERY`/idle-check interacting with forced `A._dlodFrame=-1` calls in ways not
+fully traced down, not necessarily a bug in the shipped fix — the union CONDITION itself was reviewed
+and is correct) rather than a flaw in the shipped code, but this session could not cleanly PROVE it
+live within a reasonable time budget and is saying so rather than overclaiming. **Next session, if
+this needs closing**: either trust the code review + the live `vfCamActive`/`imHid`/`imVis` log line
+against the user's OWN real repro (their building, their POV flight — the intended verification path
+per this fix's own design), or build a cleaner isolated slice-test (balanced-braces extraction of
+`dlodTick`, like `witness_dlod_vf_camguard.js` does for `time_machine.js`, avoiding the live-scene
+timing confounds entirely).
+
+### ✅ OPEN 5 — scrub input trace logging shipped; the freeze itself still NOT reproduced
+Per the doc's own instruction ("do not guess-fix ... add targeted logging"): added
+`§CPE_SCRUB_INPUT_TRACE` to the scrub track's pointerdown/pointerup and the play button's click
+handler, dumping `_state.flying`/`_state.flyPaused` and (on pointerup) whether a drag was in progress.
+Verified the logging mechanism itself fires correctly via a standalone Puppeteer smoke test (real
+pointerdown/pointerup dispatch on the track + a real click on the play button both produced trace
+lines). **Did not reproduce the freeze** — a synthetic attempt to drive it via `_holdForTest` failed
+for an unrelated reason (no sticks present on this test building's default state) and was not chased
+further given the time budget; this matches the doc's own conclusion that the freeze needs the USER'S
+real browser/gesture sequence, not a synthetic one. **Next: ask the user to reproduce ONE more time on
+this build (stick click mid-flight → try to drag/click the track/press play) and paste the console
+log** — the `§CPE_SCRUB_INPUT_TRACE` lines will show definitively whether the handlers even fire.
+
+### ✅ OPEN 2 — CLOSED after two wrong attempts in the SAME session, corrected live by the user
+Asked the clarifying question. First answer ("Buildup off, turns off only TimeMachine isnt it")
+was misread as "buildup is a fully independent gate on the timeline panel" — implemented that,
+shipped a witness for it. **User corrected immediately, twice, in caps**: *"Timeline Preview for POV
+scrubber already told u many times! It follows the Eye!!! When opens it appears, when eye closes, it
+is removed!!"* then *"buildUP told u also, when it is unchecked it should not remain because it was
+called by buildup!"* — the real rule is an AND-GATE: the timeline panel needs BOTH the eye ON and
+buildup checked, not buildup alone and not eye alone. The bug the gate exists to catch: cycling the
+eye off/on while buildup is unchecked must NOT resurrect the panel (the old eye-alone code did
+exactly that). Fixed in both `_toggleViewfinder`'s ON branch and the `#cpe-buildup` change handler —
+same guard (`_state.buildup && _state.vfOn`) in both places, either going false tears the panel down.
+`G-BUILDUP-GATES-TM` (3 gates, including the actual eye-cycle-while-buildup-off case) — 26/26 then
+27/27 green after the OPEN 3 fix below stacked on top.
+
+### ✅ OPEN 3 — the REAL root cause, found after the user asked whether the render pattern itself was wrong
+User asked directly: is the scissor/viewport pattern the right approach, given how much trouble this
+has caused? Answered: yes — it's three.js's own recommended technique for a picture-in-picture view
+sharing one GL context, correct at this building's scale (a second renderer would mean a second full
+GPU context). Asked to "dispense more effort" rather than hand debugging back — audited the drag/
+resize wiring directly instead of re-explaining the math. **Found the actual bug**: neither
+`_makeDraggable`'s shared drag handler nor B's own resize handle (`#cpe-vf-resize`) ever called
+`markDirty()`. The render loop self-parks (§IDLE-PARK, `main.js`) when nothing needs continuous
+frames; `_vfRender()` only runs INSIDE that loop's render-gated block. So dragging or resizing B's
+panel with no other camera motion — the common case — moved the CSS border live under the cursor
+while the scissor-rendered CONTENT stayed frozen at the pre-drag rect, catching up only when
+something unrelated (orbit, scrub, etc.) happened to wake the loop. This is a STALENESS bug, not a
+coordinate-math bug — separate from and stacked on top of the aspect-rounding fix earlier this
+session. **This is very likely the dominant cause of both "dragging repositions correctly but
+releasing snaps it back" (OPEN 1-era report) and "inset not fitting the box, bigger a bit and off"
+(OPEN 3's original report)** — a user drag/resize interaction is exactly the scenario this bug hits.
+Fixed: one added `pointermove` listener on B's panel div calls `markDirty()` on every move (gated to
+`e.buttons` so a bare hover doesn't waste a frame) — covers both drag (title bar) and resize (corner
+handle) since neither stops propagation and both bubble to the same parent, no separate listener
+needed. New gate `G-VF-DRAG-WAKES-RENDER` proves `markDirty()` fires on every synthetic drag move,
+not just on release. 27/27 green. **Still worth a user re-check** — the aspect-rounding fix removed
+one real source of stretch and this removes a second, real source of staleness; whether the combined
+fix also fully resolves "bigger a bit" (which could still have a third, composition/zoom cause per
+the original write-up) needs the user's own eyes on the next live session.
+
+### Housekeeping
+Original worktree `/tmp/wt-cpe-open345`'s branch `fix/cpe-open-3-4-5` **got squash-merged as PR #1212
+while two more commits (OPEN 2 fix + OPEN 3 drag fix) were still being pushed to it** — the exact
+squash-orphan trap `~/bim-ootb/CLAUDE.md` already warns about (PR #138 precedent). Caught it via
+`gh pr view 1212 --json state,mergedAt` before assuming "pushed" meant "will land" — recovered by
+branching fresh off `origin/main`, cherry-picking the two orphaned commits (clean, no conflicts since
+PR #1212's own content was already in `main` via the squash), re-verifying 27/27 green, and opening a
+NEW PR: https://github.com/red1oon/bim-ootb/pull/1213 (not yet merged as of this writeup). The
+stale branch `fix/cpe-open-3-4-5` was deleted (both remote and local) — its content is either merged
+(squash, PR #1212) or duplicated on the new branch, nothing left un-captured. Worktree
+`/tmp/wt-cpe-open345` now sits on `fix/cpe-open2-drag-followup` — leave in place until PR #1213
+merges (Worktree Hygiene: prune only once `ahead`=0 and clean). Server on :8460 stopped. Scratch
+verification scripts (`smoke_input_trace.js`, `verify_dlod_vf_union.js`, `probe_dlod.js`,
+`verify_vf_drag_markdirty.js`) live in this session's scratchpad only, not committed — throwaway
+harnesses, not durable artifacts.
+
+## ▶ SESSION 2026-08-06 — 3-issue batch: scrub panel eye-gating, playhead tick, POV frame diagnostic
+
+**PR #1211/#1212/#1213 confirmed merged before starting** (`gh pr view --json state,mergedAt` on all
+three). Reused the already-clean, already-merged `/tmp/wt-cpe-open345` worktree (Worktree Hygiene: it
+was `ahead=0` on the just-merged PR #1213 branch, so `git checkout -B fix/cpe-3issues origin/main`
+inside it rather than adding a new worktree).
+
+### Plan (as briefed)
+1. Issue 1 — gate the scrub/timeline panel to the eye toggle, currently always-on regardless of B.
+2. Issue 2 — investigate POV inset composition/zoom ("working, but not well framed"); diagnose via
+   code + headless numeric assertion, do not guess-fix; add §-tagged diagnostics if a live repro is
+   genuinely needed instead.
+3. Issue 3 — the blue playhead line doesn't move during playback even though play/pause/resume work;
+   find and fix the missing tick-to-UI wiring.
+4. Implement all three with §-tagged witness logging built in, one combined witness pass at the end —
+   code + §-log/headless assertions only, no screenshots.
+
+### ✅ Issue 1 — §CPE_SCRUB_EYE_GATED, root-caused and fixed
+Confirmed by direct code read: the scrub panel was built UNCONDITIONALLY at editor-open
+(`_buildScrubPanel(); _wireScrub(...); _wireScrubPlay();` right after `_state = {..., vfOn: false,
+...}`), independent of `vfOn`. This is `§CPE_SCRUB_STANDALONE` (2026-08-05) — a DELIBERATE decision at
+the time, but for a different reason (decoupling the bar from B's own display-only/no-interaction
+status, not "should it show before the eye is on"). The user's own words this session pin the actual
+intent precisely: *"Been minimalist, user is asked to just bake on the fly. The eye is only for path
+edit... Scrubber is new, is only to be ON under the Eye toggle."* Fixed by simply removing the
+unconditional build call — the ALREADY-EXISTING guarded build inside `_toggleViewfinder`'s ON branch
+(`if (_state.buildup && !document.getElementById('cpe-scrub-panel')) {...}`, itself AND-gated to
+buildup from the prior session's OPEN 2 fix) is now the only path that ever creates the panel. Verified
+live (not just via witness): `atOpen: {"scrubPanel":false,"vfOn":false}` → toggle eye on →
+`afterEyeOn scrubPanel: true` → toggle eye off → `afterEyeOff scrubPanel: false`.
+
+### 🔶 Issue 2 — §CPE_VF_FRAME_DIAG, diagnosed and NOT guess-fixed (per the brief's own standard)
+Investigated `_vfRender`/`_applyVFPose`/vfCam FOV and the aim/look-at pipeline (§CPE_AIM_DEPTH,
+§CPE_AIM_SERIES, `_beat3Pose`). Findings, each checked directly rather than assumed:
+- **Position**: `G-VF-1` already proves B's pose is bit-identical to the main camera's at the same
+  instant (`delta=1.55e-15m`) — not a coordinate bug.
+- **FOV**: `vfCam = new THREE.PerspectiveCamera(a.camera.fov, ...)` — copied ONCE at vfCam creation
+  and never reassigned afterward (grepped the whole file: no second `.fov =` write anywhere). The main
+  camera's own FOV is ALSO a hardcoded constant (60°, `scene.js:139`) never reassigned post-init. So
+  vfCam.fov cannot drift from the main camera's — ruled out as a cause.
+  - **Aspect**: `G-VF-RECT-ASPECT` already proves the rendered rect's aspect is bit-identical to
+  `vfCam.aspect` by construction (diff=0) — no stretch.
+- **Aim/gaze** (`_beat3Pose`, §CPE_AIM_DEPTH etc.): these feed the SAME `plan.poseAt(tn)` sample both
+  B and a normal main-camera rehearsal use — already proven identical by G-VF-1, so whatever the gaze
+  composition rule produces, B shows EXACTLY what the main camera would show at that instant. Not a
+  B-specific bug.
+
+With every mechanically-checkable number ruled out, added `§CPE_VF_FRAME_DIAG` — logs
+nearest-surface-distance along vfCam's own look direction (real raycast against `a.collectMeshes(...)`,
+mirroring `effects.js`'s own established `_cinemaFan` safety pattern: a curated mesh list, NOT raw
+`scene.children`, plus try/catch) and what fraction of the box's vertical FOV a 1m reference object at
+that distance would fill. **Caught and fixed a real bug in the diagnostic itself before shipping it**:
+the first version raycast against `a.scene.children` directly and threw `Cannot read properties of
+null (reading 'matrixWorld')` live — since this runs BEFORE the real `a.renderer.render()` call inside
+`_vfRender()`, an uncaught throw here would have silently broken B's actual render on every frame it
+hit (confirmed via `PAGEERROR` in a live Puppeteer capture). Fixed by reusing the codebase's own
+already-safe raycast pattern instead of inventing a new one.
+
+**Real numbers, sampled live across a rehearsal** (HHS_Office_Federated):
+| scrubTn | nearest surface | frame-fill fraction (1m ref object) |
+|---|---|---|
+| 0.00 | 117.06m | 0.007 (essentially invisible — overview/settle) |
+| 0.10 | none within 200m | n/a (open-air dive/pullback) |
+| 0.30 | 1.89m | 0.458 (fills ~46% of frame height) |
+| 0.50 | 2.90m | 0.299 (~30%) |
+| 0.70 | 36.42m | 0.024 (tiny — orbit/exit, wide by design) |
+
+**Honest conclusion: composition genuinely VARIES by beat, as intended** — interior walk-through beats
+frame reasonably tight (30-46% of box height), while establishing/orbit/transit beats are
+LEGITIMATELY wide (that's the whole point of an establishing shot). No single systemic "too wide" bug
+found. The most likely remaining explanation for "not well framed" is perceptual, not a defect: B
+mirrors the exact same 60° FOV the main camera uses, and the SAME composition that reads fine
+full-screen naturally looks smaller/less deliberately framed compressed into a ~300×190px inset —
+fewer pixels represent the same angular content. **Not guess-fixed** (e.g. picking an arbitrary
+narrower FOV for B alone) since that would be inventing a value with no measured basis, exactly what
+the PRIME RULE forbids. **Next real repro, if this needs to go further**: ask the user to note the
+`scrubTn`/moment when it looks off next time B is used live, and read the matching `§CPE_VF_FRAME_DIAG`
+line — if the fraction is genuinely low AT A MOMENT THE USER EXPECTED a close/tight shot, that's a
+real product decision (does B want its OWN, narrower FOV — a deliberate "POV lens" distinct from the
+main camera's navigation FOV?) to make WITH the user, not to guess.
+
+### ✅ Issue 3 — §CPE_SCRUB_PLAYHEAD_TICK, root-caused and fixed
+Confirmed by direct code read: `_previewFly()`'s `step()` applies the pose every frame
+(`_applyVFPose(tn)`/`_applyCameraPose(tn)`) but NEVER wrote `tn` back to `_state.scrubTn` nor called
+`_renderScrub()` — the exact same "second state update never wired into the real tick" shape as the
+already-fixed `§CPE_SCRUB_BEARING_FLY_PAUSE` race (a pose write and a UI-state write are two separate
+lines; `_scrubTo`, the manual-drag path, always had both; `step()`, the playback path, only ever had
+the first). Fixed by adding the identical pair `_state.scrubTn = tn; _renderScrub();` right after the
+pose-apply branch in `step()`. Verified live: 5 samples 400ms apart during a real button-driven
+rehearsal read `0 → 0.030 → 0.068 → 0.133 → 0.169` — strictly increasing, matching the playback clock.
+
+### Witnesses — `witness_cpe_scrub_viewfinder.js`, 30/30 green (HHS_Office_Federated), stable across repeats
+- `G-SCRUB-STANDALONE` **retired** — it asserted the exact OPPOSITE of Issue 1's fix (panel exists
+  unconditionally at open). Replaced by `G-SCRUB-EYE-GATED` (two gates: panel absent at open with
+  `vfOn=false`; panel appears after the eye toggles on).
+- **"toggle B on" moved to the TOP of the suite** — every gate that reads `#cpe-scrub-*` now needs the
+  panel to exist first, so this can no longer happen midway through the run the way it used to.
+  `G-SCRUB-NOCAM`/`G-SCRUB-VISUAL` (the main-camera-untouched invariant) now run with B on, since a
+  scrub with B off is no longer a reachable real-world path at all.
+- New `G-SCRUB-PLAYHEAD-TICK` — polls for a strict `scrubTn` increase during an ACTUAL rehearsal
+  (not a synthetic call). **Hardened mid-session**: a fixed 400ms sampling gap was genuinely flaky at
+  this exact point in the suite (deep into an already-heavy run under SwiftShader software rendering;
+  an isolated live repro of the identical pause/resume sequence measured `msPerFrame=662.7` — a single
+  frame can legitimately take longer than a short fixed sleep here). Switched to a 5s poll for a
+  strict increase from the first reading — an environment-robustness fix, not a weakening of the
+  claim being proven.
+- New informational `G-VF-FRAME-DIAG` (not pass/fail — there's no known-correct "frame fraction" to
+  assert against yet) — puts the real composition samples from the table above on record every run.
+- `G-BUILDUP-GATES-TM`/`G-EYE-DRIVES-SCRUB`/`G-VF-1`/`G-VF-ASPECT`/`G-VF-RECT-ASPECT`/
+  `G-VF-DRAG-WAKES-RENDER`/etc. — all unaffected in mechanism, just re-verified in the new gate order.
+- `witness_dlod_vf_camguard.js` (different subsystem) — 10/10, unaffected.
+- `npx eslint viewer/cinema_path_editor.js witness_cpe_scrub_viewfinder.js` — clean.
+
+### Closing summary
+| Issue | Status | Evidence |
+|---|---|---|
+| 1 — scrub panel always-on | ✅ FIXED | live toggle test + `G-SCRUB-EYE-GATED` (2 gates) |
+| 2 — POV "not well framed" | ✅ CLOSED, no code change wanted | user ruling below |
+| 3 — playhead frozen during playback | ✅ FIXED | live 5-sample monotonic test + `G-SCRUB-PLAYHEAD-TICK` |
+
+**Issue 2 user ruling (2026-08-06, same session, after this writeup was first drafted):** asked the
+user directly whether B's FOV should be narrowed given the measured data above. User: *"Dont really
+get you but i go with your judgement, as larger to fit that pov screen is OK."* — confirms the
+recommendation (leave B's FOV alone, mirroring the main camera exactly, since the "problem" isn't
+uniform — interior beats already frame fine, establishing/orbit beats are wide ON PURPOSE and
+narrowing would only hurt B's actual job of showing exactly what the real film shows). **No code
+change made or needed** — this closes Issue 2 as a deliberate no-op, not an open item.
+
+Pushed and MERGED: https://github.com/red1oon/bim-ootb/pull/1214 → `origin/main` @ `c6098aa`.
+Worktree `/tmp/wt-cpe-open345` now sits on `fix/cpe-3issues`, fully merged (`ahead=0`) — prune next
+session per Worktree Hygiene. Scratch debug scripts (`debug_vf_frame.js`, `debug_vf_frame2.js`, `debug_issue1_3.js`,
+`debug_pause_resume_tick.js`, `probe_vf_frame.js`) stayed in the session scratchpad, not committed.
+
+## ▶ SESSION 2026-08-06 (SAME DAY, FOLLOW-ON) — §CPE_SOLE_OWNER / §CPE_BUILDUP_OWNS_TM, PR bim-ootb#TBD
+
+User live-tested PR #1214 and reported: "pressing off buildUp box does not close the TM panel,
+instead closes the preview scrubber. Eye icon no longer controls the preview scrubber. This means
+ownership is not tight." Per explicit user instruction ("Do check by logging alone... No visual
+testing feedback can help"), diagnosed by code read first, then **user insisted on sandbox testing
+before any live replay** ("do simple sandbox testing first... i insist you do that first" — a new,
+now-standing instruction for this class of bug, see the housekeeping note at the end).
+
+### Sandbox infra note — a real environment blocker, now solved for future sessions
+Getting a headless-Chrome sandbox running in THIS session's environment hit three dead ends before
+working: (1) `--use-gl=swiftshader` alone → GPU process fails init, page hangs forever waiting on
+`window.APP._composer` (never created, no WebGL). (2) adding `--ignore-gpu-blocklist`/
+`--enable-webgl` → same failure, Chrome 147's ANGLE-based backend rejects `--use-gl=swiftshader`
+outright (`Requested GL implementation (gl=none,angle=none) not found`). (3) The FIX, taken directly
+from this repo's own `witness_cpe_scrub_viewfinder.js` launch args (already correct, just not
+noticed until `dumpio:true` surfaced the GL error): **`--use-gl=angle --use-angle=swiftshader
+--no-sandbox --enable-unsafe-swiftshader`** — no `--ignore-gpu-blocklist`, no bare
+`--use-gl=swiftshader`. Any future ad-hoc Puppeteer script in this environment should copy the
+witness file's args verbatim rather than re-deriving them.
+
+### First sandbox pass (pre-fix code) — did NOT reproduce the reported cascade
+Drove the exact live sequence (eye on → scrub-play povOnly flight → pause → uncheck buildup) as one
+clean, isolated action via Puppeteer against a local server. Result: `vfPanel:true, scrubPanel:false,
+tmOn:true` — matched the shipped §CPE_BUILDUP_GATES_TM AND-gate exactly, no oscillation. A second
+pass (buildup off / eye-cycle / buildup-on, no flight) also matched the AND-gate exactly. **Both were
+initially mis-read as "no bug, matches the shipped design"** — wrong conclusion, corrected by the user
+directly: the AND-gate's *shipped design itself* was never what they asked for. Re-reading their own
+words from the OPEN-2 session that shipped it: they'd asked for the timeline panel to follow the Eye,
+AND separately for BuildUp-unchecked to not "remain" — that second half was misread back then as "the
+timeline panel needs buildup too" when the user actually meant "BuildUp must close what BUILDUP
+itself opened (Time Machine), independently."
+
+### The real spec, stated directly by the user this session (verbatim, this is now canon)
+"Only respective owner owns its toggling. Eye toggles preview scrubber and POV and thus closing
+them, no one else can. BuildUp opens TimeMachine when preview is played and thus must close when
+BuildUp is unchecked." Single owner per widget:
+- **Eye** owns B (the POV inset) AND the scrub/timeline panel, exclusively. Nothing else may open or
+  close either.
+- **BuildUp** owns Time Machine, exclusively. It never opens TM by itself being checked — only a real
+  Play (via `tmActivateForBake` inside `_previewFly`, unchanged) opens it. Unchecking BuildUp closes
+  TM "if it is free" (i.e. if it's currently on) — user explicitly declined a more elaborate
+  "did buildup itself open it" ownership-history tracking ("it need not be cast in stone, do it if
+  free/present") and confirmed the coupling is intentional, for convention/user education, not
+  something to route around.
+
+Re-examined against this spec (not against the old shipped design) — **the sandbox data from the
+"no bug" pass was actually ALREADY proof of the bug**, just mislabeled: `scrubPanel:false` after
+buildup-uncheck IS "closes the preview scrubber [wrong widget]"; `tmOn:true` staying true after
+buildup-uncheck IS "does not close the TM panel [the one thing it should]"; the eye-cycle pass
+showing `scrubPanel` staying `false` regardless of Eye state IS "Eye icon no longer controls the
+preview scrubber". Also found while checking the TM-close path: **Time Machine was never closed by
+CPE code anywhere** — not at buildup-uncheck (confirmed), not at a rehearsal's natural finish
+(`_previewFly`'s finish block calls `tmRestoreDerivedOrder()` but never `toggleTimeMachine()`), not
+at editor close (`finish()` tears down B/scrub but never touches TM). `tmActivateForBake()`
+force-activates TM but nothing ever calls it back off.
+
+### Fix — `viewer/cinema_path_editor.js`
+1. `_toggleViewfinder`'s ON branch: removed the `_state.buildup &&` gate on building the scrub panel
+   — Eye alone decides now (§CPE_SOLE_OWNER, retires §CPE_BUILDUP_GATES_TM).
+2. `#cpe-buildup` `change` handler: removed `_scrubPanelTeardown()`/`_buildScrubPanel()` entirely —
+   BuildUp never touches the scrub panel. Added: on uncheck, if `window.APP._tmOn` is true, call
+   `window.toggleTimeMachine()` to close it (§CPE_BUILDUP_OWNS_TM). No ownership-history flag, per
+   the user's own simplification — just "close it if it's on."
+3. `_previewFly`'s `step()`: the buildup cursor-follow gate `if (bkPrev && window.tmSetCursor)`
+   became `if (bkPrev && s.buildup && window.tmSetCursor)` — `bkPrev` alone is a one-time snapshot
+   from flight-start and never saw a LIVE uncheck mid-flight; without this, an active flight would
+   keep calling `tmSetCursor` every ~16ms fighting the checkbox handler's own TM-close. Needed for
+   the fix to actually hold, not scope creep.
+
+### Witness — `witness_cpe_scrub_viewfinder.js`, 30/30 green (Duplex)
+`G-BUILDUP-GATES-TM` (3 gates asserting the old AND-gate) replaced with `G-CPE-SOLE-OWNER` (3 gates):
+TM closes on uncheck while B/scrub stay untouched (reusing the real `_tmOn=true` state already armed
+by the earlier G-VF-2/G-SCRUB-PLAY flight in the same run — no need to re-arm a fresh one); Eye alone
+fully controls both panels regardless of buildup state; re-checking buildup does NOT itself open TM
+(only a real Play does). All 27 pre-existing gates unaffected. `npx eslint viewer/cinema_path_editor.js
+witness_cpe_scrub_viewfinder.js` — clean.
+
+### Housekeeping — new standing instruction for this bug class
+User, this session: for an ownership/wiring-cascade report like this one, **sandbox-test the isolated
+action in Puppeteer BEFORE asking for a live replay** — cheaper than burning the user's time on a
+repro, and (as it turned out here) the sandbox data was sufficient on its own, no replay was ever
+needed. Worth remembering for the next tangled-log CPE report.
+
+### Sandbox infra, promoted from a one-off fix to a standing note
+The correct Puppeteer launch args for headless Chrome in this dev environment are
+`--use-gl=angle --use-angle=swiftshader --no-sandbox --enable-unsafe-swiftshader` (already used by
+`witness_cpe_scrub_viewfinder.js`, just not previously called out as the reason ad-hoc scratch scripts
+kept hanging). `--use-gl=swiftshader` alone or with `--ignore-gpu-blocklist` fails GPU-process init on
+this Chrome build silently, and the page hangs forever waiting on `window.APP._composer` — copy the
+witness file's args verbatim for any future one-off sandbox script rather than re-deriving them.
+
+## ▶ SESSION 2026-08-06 (SAME DAY, THIRD FOLLOW-ON) — §CPE_FIXED_PANELS, PR bim-ootb#TBD
+
+User idea, given the POV inset's in-frame content itself already renders correctly: retire the
+drag/resize affordance on both B and the scrub/timeline panel entirely. Verbatim: "since the fov
+inframe pov works, just remove the outer pov frame that is ajar. Thus it is fixed on the bottom
+left... dont make it movable... nor the preview bar as both can simply be removed by the eye icon for
+better canvas." Sound simplification, not just a preference call — it also closes an entire class of
+bugs by construction rather than patching around them: §CPE_VF_DRAG_MARKDIRTY (staleness), the
+off-canvas-clip edge case found this session's own sandbox POV-frame chase (dragging B near a window
+edge could push its scissor rect partially outside the backing buffer), and every "snaps back after
+drag release" report in this file's history all trace to the drag/resize path existing at all.
+
+### Fix — `viewer/cinema_path_editor.js`
+- `_buildVFPanel`/`_buildScrubPanel`: rect is now always the same computed default (`VF_MARGIN`-anchored
+  bottom-left), never `_vfRect || {...}`/`_scrubRect || {...}`. Removed both module-scope "remembered
+  position" variables entirely — no session state left to drift.
+- Removed `#cpe-vf-resize` (the corner resize handle) and its three pointer listeners; removed
+  `a._makeDraggable(d)` calls and `cursor:move`/"drag to move" affordances from both title strips;
+  removed the drag-triggered `save()` functions and their `pointerup` listeners; removed the now-dead
+  `VF_MIN_W`/`VF_MIN_H`/`VF_RESIZE_HANDLE_PX` constants and the `§CPE_VF_DRAG_MARKDIRTY` `pointermove`→
+  `markDirty()` listener (nothing moves anymore, nothing to wake mid-move).
+- `_clampPanelToViewport(d, isDefaultPos)` simplified to `_clampPanelToViewport(d)` — every call is now
+  the default-position path, the `isDefaultPos` branch was the only one ever taken.
+- `§CPE_VF_ALIGN_DIAG_V2`'s one-shot-per-toggle log (`_state._vfDiagLogged`) no longer needs re-arming
+  on drag/resize `save()` — the panel's rect can't change anymore, so logging once per editor-session is
+  sufficient and the re-arm call site (inside the now-deleted `save()`) is simply gone.
+- Toggling the eye off/on still works exactly as §CPE_VF_EYE_DRIVES_SCRUB specifies — both panels
+  appear/disappear together — just always at the same fixed rect now, not a remembered one.
+
+### Witness — `witness_cpe_scrub_viewfinder.js`, 31/31 green (Duplex)
+`G-VF-DRAG-WAKES-RENDER` (tested a markDirty fix for a feature that no longer exists) replaced with
+`G-CPE-FIXED-PANELS` (2 gates): no resize handle in the DOM, no `cursor:move` on either title strip,
+and B's rect is byte-identical across a full eye off/on cycle (proving "nothing to remember, nothing
+drifts" directly, not just by the absence of a drag handler). `G-EYE-DRIVES-SCRUB`'s existing "restores
+at the same spot" assertion still passes, now trivially true by construction — comment updated to say
+so rather than imply a remembered-position mechanism that no longer exists. All other pre-existing
+gates unaffected. `npx eslint viewer/cinema_path_editor.js witness_cpe_scrub_viewfinder.js` — clean.
+
+### Also reported this session, not chased further: "when buildUp is ON, the preview small screen goes
+### blank and only appears when preview is paused"
+Checked the code this maps to (`§DLOD_VF_MATRIX_STALE`/`§DLOD_VF_CAMGUARD` in `time_machine.js`,
+`dlod.js`'s frustum-union fix) — both are present and unmodified in `origin/main`, already merged
+2026-08-05, well before this session. This is the EXACT symptom those fixes were written to close. The
+user's pasted console log for this report still showed `§CPE_LOADED v24` / `sw.js?v=538` — the same
+stale-service-worker signature diagnosed earlier this session (live server confirmed serving `v956`).
+Very likely the same stale-cache issue surfacing a already-fixed symptom, not a new regression — not
+guess-fixed given no evidence of an actual NEW code path. **Next session, only if it reproduces on a
+freshly hard-reloaded page**: re-open this with real numbers (`§DLOD_VF_VISCOUNT`/`§CPE_VF_FRAME_DIAG`
+at the moment B goes blank).
+
+### Housekeeping — squash-orphan avoided, a real pre-existing witness flake found and fixed
+`fix/cpe-buildup-tm-ownership` (the branch PR #1215 shipped from) got squash-merged while this
+session's follow-on commit was already sitting on top of it locally — the exact trap
+`~/bim-ootb/CLAUDE.md` warns about (PR #138/#1212 precedent). Caught via `gh pr view --json
+mergeCommit` before pushing, not after — branched fresh off post-merge `origin/main`
+(`ebaebd3`, which itself already included an unrelated concurrent PR #1216) and cherry-picked the
+new commit cleanly. While re-verifying on that fresh base, `G-SCRUB-NOSPAWN` failed — reproduced
+deterministically on UNMODIFIED `origin/main` too (confirmed by temporarily checking out `ebaebd3`'s
+exact file content and re-running), proving it was a pre-existing gate bug, not a regression from
+either of this session's fixes. Root cause: the gate compared the DISPLAYED mm:ss label (rounds to
+whole seconds) instead of the real `scrubTn`, so it could spuriously read "unchanged" whenever this
+gate's target tn and the immediately-preceding `G-SCRUB-BEARING` gate's stick tn landed in the same
+rounded second on a short film. Fixed to assert the real number with a tolerance sized to the
+tn↔pixel round-trip. 31/31 green, stable across 3 consecutive runs. Branch `fix/cpe-buildup-tm-
+ownership` deleted (both remote and local) once its content was confirmed fully carried forward —
+nothing left uncaptured.
