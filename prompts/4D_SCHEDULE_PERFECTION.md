@@ -1691,3 +1691,30 @@ ceiling alone (like `witness_gantt_og_grid_perf.js`'s existing 3500ms gate) does
 only proves fast; a future regression could stay under the ceiling while still blocking the thread for the
 full duration in one synchronous span.
 
+## 2026-08-06 — two more notes (triage/diagnosis only, NOT implemented, per user request)
+
+**§TM_PANEL_RESIZE_H targets the wrong box — confirmed by user, not yet fixed.** `wirePanelResizeHeight()`
+(PR #1208) grows the OUTER `_panel` shell only (`style.maxHeight` + `overflow-y:auto`). The actual Gantt
+canvas lives in the INNER `#tm-gantt-box`, which has its own separate height cap (default 220px, only
+adjustable today via the internal top-strip grip `tm-gantt-grip` → `_ganttBoxH`, `time_machine.js` §GANTT_RESIZE
+E6). So dragging the bottom edge grows the outer container but the content inside stays clipped at its old
+size — empty space/scrollbar, not more visible rows. User confirmed this is the inner frame they meant.
+Right-edge (width) doesn't have this problem because width feeds directly into what `drawGanttMini` draws.
+**Fix (not yet done):** make the bottom grip drive `_ganttBoxH`/`#tm-gantt-box`'s own max-height (the same
+value `tm-gantt-grip` already writes) instead of, or in addition to, the outer panel's.
+
+**JSON schedule round-trip — two existing specs, stale, unreconciled with shipped reality or each other.**
+`GANTT_ACCURACY.md §B` (~2026-05, DIY export/import) and `TM_SCHEDULE_EDITOR.md` (2026-07-07, refines §B into
+the standard Settings JSON editor — `tm_schedule` DB row, `ProjectJson.load/save('schedule')`, a real
+template/instance/permission model) both design schedule editing as a **JSON form/file**. Neither has ever
+been referenced from this file, and everything actually shipped since (drag/resize/lock directly on the
+Gantt canvas — `commitGanttDrag`/`moveTaskCascade`/real `task_sequences`) is a different UX paradigm for the
+same goal. Building either spec as currently written would duplicate or orphan the live drag-edit UX.
+**Still-good part worth keeping:** TM_SCHEDULE_EDITOR.md's mandate to unify the 3 overlapping rate/rule
+sources (rates.js hardcoded / `rates/*.json` / bim-compiler's `4D_phases.json`) rather than adding a 4th —
+matches this session's independent finding that rates.json is disconnected from Settings and from What-if.
+**Before building either spec:** reconcile which mechanism "editable schedule JSON" is actually supposed to
+be — (a) persist the current drag-edit model durably (small: wire `persistDb()` into Lock, no new UX), or
+(b) build the JSON-form editor these specs describe as a parallel/alternate path. Nothing currently decides
+between them. Not implemented here per user instruction (triage only).
+
