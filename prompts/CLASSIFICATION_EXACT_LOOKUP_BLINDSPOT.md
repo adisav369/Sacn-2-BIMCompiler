@@ -113,8 +113,21 @@ the same one substrate, rather than adding a 4th consumer of the shared helper.
     shipped `boq_charts.html` block, sliced verbatim via `vm`, not reimplemented) 3/3 pass. Reran
     `witness_schema_exhaustive_fallback.js` (6/6), `bake_gw_hospital_seed.js` (7/7, PlannedAmt golden
     unchanged), `witness_whatif_authored_sync.js` (9/9) — zero regression on real fixtures.
-- **P3** — wire `variation_order.js`'s `getPhase()` path and decide+implement the `WORK_PACKAGES`
-  derivation question above.
+- **P3 ✅ DONE (witness)** — same PR #1196. Two items:
+  - `rates.js getPhase()` (the ONE shared helper behind `variation_order.js:133/154/176`) now routes
+    through `classify()` — fixes all 3 call sites without touching `variation_order.js` itself.
+  - `WORK_PACKAGES` resolved as **derive, not retire**: extracted first (not assumed) that all 15
+    non-empty rate templates' `work_packages` `classes:[...]` arrays are byte-identical to `rates.js`'s
+    own default, same PACKAGE 1–6 order. Added a positional `phase` field (SEQUENCE_RULES' own field)
+    to `rates.js`'s default + all 15 template JSONs (mechanical insertion, translated name/color/
+    classes untouched). `export_5d.js`'s Work Package sheets now group by the real `classify()` tier
+    1→2→3 result. Genuinely-unclassified rows still land in their own OTHER package — now `PACKAGE 7`
+    (found + fixed a pre-existing id collision: OTHER previously reused `PACKAGE 6`, already taken by
+    MEP FINAL FIX).
+  - Witnesses (both vm-sliced literal shipped code, not reimplemented): `witness_exact_lookup_p3_
+    getphase.js` 4/4, `witness_exact_lookup_p3_workpackages.js` 7/7. Reran all 6 earlier witnesses
+    (schema-exhaustive ×2, P2 ×2, GW hospital fold — PlannedAmt golden unchanged, confirming the JSON
+    edits didn't touch SEQUENCE_RULES/LABOR_RATES, whatif sync) — zero regression.
 - **P4** — lower-priority fallback-only sites (`boq_charts.html:477/908`, `schedule_read_4d.js`
   fallback) for full consistency, once P2/P3 are proven.
 - Full existing regression suite must stay green at every step (this lane's own standing discipline).
