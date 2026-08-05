@@ -4,6 +4,9 @@
 # only ever touched the 3 matchRule() copies. This is a SEPARATE, pre-existing population of
 # consumers that never went through matchRule at all, in any prior fix (#1186/#1187/#1191).
 # PRIME RULE: EXTRACT ONLY. Every line/consumer below is grepped and read directly, not inferred.
+#
+# ██ STATUS 2026-08-05: CODE-COMPLETE + WITNESSED (P1-P4, §BUILD PLAN below). NOT YET MERGED. ██
+# See §SESSION HANDOFF at the bottom for what a future session needs to know before touching this again.
 
 ## §WHAT'S ALREADY COVERED — don't re-litigate
 - Find Panel's Phase axis (`viewer/navigate_find.js`) — reads `kernel_ops`, populated by
@@ -151,3 +154,41 @@ system, now route through the real `matchRule` tier 1→2→3 via `classify()`. 
   fix and the (separate, already-closed) phase-order fix this lane must not duplicate
 - `prompts/BUILDINGSMART_IFC_SCHEMA_CLASSIFICATION.md` — the tier 1→2→3 substrate this lane extends
   coverage of, not a new mechanism
+
+## §SESSION HANDOFF (read this first if picking this lane back up)
+**Where the code lives**: `bim-ootb` branch `fix/exact-lookup-classify-p1`, PR **#1196**
+(https://github.com/red1oon/bim-ootb/pull/1196), 4 commits (P1/P2/P3/P4), all pushed. Worktree used
+this session (`/tmp/wt-exact-lookup-p2` → recreated as `/tmp/wt-exact-lookup-p4`) has been pruned
+(fully pushed, clean) — recreate with `git worktree add <path> fix/exact-lookup-classify-p1` if you
+need to touch this code again; don't assume a worktree still exists.
+
+**Why it's not merged yet — and why that's expected, not stalled**: PR #1196's BASE is
+`feat/ifc-schema-classification` (PR **#1191**, itself still OPEN as of 2026-08-05), not `main`.
+`classify()` (P1) is a thin wrapper around the 4-arg `matchRule(cls, rules, dflt, hierarchy)` tier
+1→2→3 signature that #1191 introduces — that signature does not exist on `main` yet. **Merge order
+matters: #1191 must merge first, then #1196 can merge on top (or get rebased onto `main` if #1191's
+shape changes during its own review).** Check `gh pr view 1191 --repo red1oon/bim-ootb --json state`
+before assuming either PR's status — both were last confirmed OPEN this session.
+
+**What's genuinely done**: all 6 originally-identified exact-lookup consumers (§THE GAP above) plus
+`WORK_PACKAGES`' separate classification system now route through the real `matchRule` tier 1→2→3 via
+`classify()`. 8 new witness files, all passing, all driving REAL required code or literal shipped
+blocks sliced via `vm` (never reimplemented) — see the P1-P4 entries in §BUILD PLAN above for exact
+counts. Full existing regression suite (schema-exhaustive, GW Hospital fold, whatif sync, the
+root-level `witness_boq_charts_real_schedule.js` 91/91 against real Hospital+Terminal fixtures)
+reran clean at every step — zero regression introduced.
+
+**What's genuinely NOT done — the one honest gap**: no live-browser exercise. Every witness in this
+lane is headless (`node ...witness_*.js`), per the project's FUNDAMENTAL LAW (code/math is the proof,
+not screenshots) — that's the correct verification method, not a shortcut, but it means nobody has
+clicked the actual crew chart, ERP push button, Variation Order export, or Work Package Excel sheet in
+a running browser session yet. PR #1191 itself carries the identical open item ("Live-browser exercise
+— not yet done, same open item as prior fixes in this lane"). If a future session wants to close that
+gap: `localhost:8399` (the standing bim-ootb sandbox), load Hospital or Terminal, exercise the Find
+Panel → BIM→Project push, the boq_charts.html crew chart and Work Packages export, and the Variation
+Order export — and read the `§CLASS_UNMATCHED*` console lines while doing it, not the pixels.
+
+**If #1191 merges before you return here**: rebase `fix/exact-lookup-classify-p1` onto `main` (or
+retarget the PR base to `main` once #1191's own commits are on `main`), rerun the full witness list
+named above, then it's mergeable. No code changes should be needed — this was written against #1191's
+shipped `matchRule` signature, not a moving target.
