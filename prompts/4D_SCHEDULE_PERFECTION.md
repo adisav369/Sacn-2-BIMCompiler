@@ -1541,3 +1541,70 @@ CONTROL proving the branch is actually live (not vacuously always the main camer
 input). 5/5. This closes BOTH of the two open items this file named at its previous session close-out
 — nothing left unrecovered from that handoff.
 
+## Gantt drawer UX batch (2026-08-05, same session) — user-driven, aesthetics-first discussion before code
+
+User gave a screenshot (props panel overlapping the storey labels/ruler, no room to grow) and asked for
+an aesthetics/practicality/competitive-advantage DISCUSSION before any code — three concrete PRs came
+out of that discussion, each user-confirmed before implementation, plus one design thread deliberately
+left as discussion (§LINK_UX below) and two real gaps found and reported, not invented fixes for.
+
+**§TM_PANEL_RESIZE (bim-ootb PR #1201)** — the drawer had a resize grip for the internal Gantt box's
+HEIGHT only; the whole drawer's WIDTH was hardcoded 376px, which is what the screenshot's overlap
+actually was. New `tm-panel-resize-grip` on the drawer's right edge — `_panel` is horizontally centered
+(`left:50%`/`translateX(-50%)`), so one edge handle grows the box symmetrically (2x drag-distance math,
+tested). Also auto-expands to 560px the instant Editing toggles on (only if narrower already), restores
+the exact pre-edit width on lock — user's own follow-up ask ("make the borders auto expand when Edit is
+ON"). `witness_tm_panel_resize.js` 5/5.
+
+**§TM_RULER_SHIFT (PR #1202)** — user's own definition, given directly: "dragging the day ruler adjusts
+the whole project's start/finish... defaulted to today if the JSON is silent... when edited it is
+updated along with any other edit." New `ScheduleAuthor.shiftSchedule(db, scheduleId, deltaDays)`:
+translates EVERY task (leaf + summary) by a constant number of days — no C1/C2 constraint checking
+needed, a uniform shift preserves every relative task position by construction. The previously
+non-interactive day ruler is now draggable, gated behind the same Editing lock as everything else (this
+is the biggest possible edit, not a reason to exempt it), reuses the EXISTING single-level Undo
+unchanged. Also fixed `generateGanttSchedule()`'s hardcoded `'2026-01-01'` default to the real current
+date. `witness_shift_schedule.js` 8/8, `witness_gantt_ruler_shift_lock.js` 4/4.
+
+**§GANTT_GROUP_MOVE (PR #1204)** — user's own resolution of an MS-Word-style marquee-select question:
+"move is clear... thus the MS Word is for that only" (i.e. NOT for link — see §LINK_UX below). New
+`ScheduleAuthor.shiftTasks(db, taskIds, deltaDays)` (shares `_shiftRows` with `shiftSchedule`), scoped
+to an explicit task_id list. Dragging from empty canvas space starts a marquee (MS-Word convention),
+dragging any SELECTED bar moves the whole group together, dragging an unselected bar clears the group
+and falls back to a normal single drag, click-away (near-zero marquee) clears the selection — same
+gesture starts a new one and dissolves the old, no separate "ungroup" verb. Selection is EPHEMERAL UI
+state, explicitly never persisted (user confirmed this framing directly — "group" is not a saved
+concept, only the resulting date change from an actual drag is a real edit). `witness_shift_tasks.js`
+7/7, `witness_gantt_bars_in_rect.js` 5/5, `witness_gantt_group_move.js` 9/9.
+
+**§LINK_UX — discussion only, no code changed.** User asked whether long-press should replace the
+existing drag-bar-onto-bar link gesture, and whether a separate long-press should unlink. Recommended
+against both: the existing gesture already has a 14px-vertical-travel guard against accidental
+triggering, and unlink already has a deliberate, low-risk mechanism (the props panel's per-edge unlink
+button) that a canvas long-press would only duplicate with MORE misfire risk on touch. Long-press's one
+real use is disambiguating "start a marquee that begins ON a bar" from "move that bar" — user has not
+yet confirmed building that refinement; the base marquee (start-from-empty-space only) is what shipped.
+**User separately flagged the linking-via-props-panel flow itself as "a bit tedious and unfriendly to
+long tail DIY lay people"** and wants a way to confirm a link WITHOUT opening the panel — real, unshipped
+follow-on, next session should explore an inline confirmation (e.g. a toast/tooltip at the join point)
+rather than the panel.
+
+**§HISTORY_DOT_AUDIT — question answered by reading the code, not guessed.** User asked "is each Gantt
+edit counted as a [world-]history dot?" `common/history_tap.js`'s `sniff(true)` wraps `console.log`
+globally and captures every `§`-tagged line UNLESS its tag is in `DENY_TAG` or its label matches
+`NOISE_LABEL` (`universal_history.js` `_drainTap`, the bar's read-only subscription to that stream).
+**Answer: yes, automatically** — none of this session's Gantt commit tags (`§GANTT_DRAG_COMMIT`,
+`§TM_RULER_SHIFT_COMMIT`, `§GANTT_GROUP_SHIFT_COMMIT`, `§GANTT_EDIT_LINK/UNLINK`, `§GANTT_PROPS_APPLY`,
+`§GANTT_EDIT_UNDO`, `§SE_SHIFT`/`§SE_GROUP_SHIFT`, `§GANTT_GROUP_SELECT`) are denied or noise-filtered,
+so every one mints a dot with ZERO extra wiring — this is the "coverage falls out the moment a feature
+logs §" design `_drainTap`'s own comment describes. Caveat, also real: this only happens while the
+History knob/recording is actually active (`HB.isEnabled()`) — not an always-on background capture.
+
+**§SCHEDULE_JSON_PERSIST — real gap found, NOT built, do not assume it exists.** User referenced this as
+"granted" (i.e. already agreed) — grepped the codebase to confirm before touching anything and found NO
+such mechanism: `schedule_editor_ui.js` exports MSProject/PMXML/XER only, nothing JSON, no
+export-on-lock hook anywhere. Whatever "the JSON, source of truth, exportable and reapplying when
+imported" was agreed to be is not yet implemented. Next session picking this up needs the schema defined
+first (does it reuse the `captured`-schedule import shape already in `schedule_author.js`'s
+`activeSchedule()`, or is it new?) before writing any code — do not invent a shape.
+
