@@ -88,9 +88,31 @@ the same one substrate, rather than adding a 4th consumer of the shared helper.
   tier2=53, tier3=821 (G-I) — plus a no-`hierarchy`-arg call still resolves tier 1 correctly (G-J).
   5/5 pass. Reran `witness_schema_exhaustive_fallback.js` unchanged — still 6/6, confirming `matchRule`
   itself untouched. `eslint viewer/schedule_author.js` clean. No consumer wired yet — P2 does that.
-- **P2** — wire the two higher-priority live consumers (`boq_charts.html:1808/1813` chart,
-  `proj_fold.js:150` ERP push) through it. Witness: rerun `witness_schema_exhaustive_fallback.js`-style
-  sweep against these two call sites specifically.
+- **P2 ✅ DONE (witness)** — same PR #1196. Wired both higher-priority live consumers through
+  `classify()`, replacing the raw `SEQUENCE_RULES[cls]`/`SR[cls]` exact-key lookups:
+  - `boq_charts.html:1808/1813` (crew chart) → `window.ScheduleAuthor.classify(cls,
+    window.IFC_SCHEMA_HIERARCHY)`.
+  - `proj_fold.js` — all 3 internal `SR[cls]` sites (not just the one line originally named), via a
+    local `classifyCls()` resolved LAZILY inside `foldProjectOrder` — `viewer.html` loads
+    `proj_fold.js` (:868) BEFORE `schedule_author.js` (:932), so a top-level capture of
+    `global.ScheduleAuthor` would have frozen at `undefined` forever. Found and fixed before it shipped.
+  - **Found + preserved a real contract**: `classify()`'s tier-3 default is `phase:'Architecture'`, but
+    proj_fold.js's OWN pre-existing fallback was `'Unsequenced'` — and `time_machine.js:4376` +
+    `poc_dashboard_variance.js:31` both filter `WHERE Name<>'Unsequenced'` to keep un-grounded costs
+    out of the phase dashboard's committed-amount total. Routing tier-3 straight through would have
+    silently collapsed that bucket into `'Architecture'`, leaking ungrounded costs into a real phase's
+    total. Fixed: `classifyCls()` detects a genuine tier-3 hit (via the `§CLASS_UNMATCHED` warn, not
+    `§CLASS_UNMATCHED_INHERITED`) and remaps it back to `'Unsequenced'` locally — tier 1/2 (the actual
+    fix) pass through unchanged.
+  - `navigate_find.js`'s ERP-push call site now also passes `hierarchy` so proj_fold's tier 2 fires
+    live from the Find Panel, not just in tests.
+  - Witnesses: `witness_exact_lookup_p2.js` (real `foldProjectOrder` against real `erp/ad_seed.db` —
+    IfcTank tier 2 → MEP Rough-in/PLUMBER, IfcDoorType tier 1 substring → Architecture/CARPENTER,
+    IfcActor genuine tier 3 → still Unsequenced, dashboard filter still correct, no-hierarchy callers
+    degrade identically to pre-fix) 8/8 pass. `witness_exact_lookup_p2_boqchart.js` (the literal
+    shipped `boq_charts.html` block, sliced verbatim via `vm`, not reimplemented) 3/3 pass. Reran
+    `witness_schema_exhaustive_fallback.js` (6/6), `bake_gw_hospital_seed.js` (7/7, PlannedAmt golden
+    unchanged), `witness_whatif_authored_sync.js` (9/9) — zero regression on real fixtures.
 - **P3** — wire `variation_order.js`'s `getPhase()` path and decide+implement the `WORK_PACKAGES`
   derivation question above.
 - **P4** — lower-priority fallback-only sites (`boq_charts.html:477/908`, `schedule_read_4d.js`
