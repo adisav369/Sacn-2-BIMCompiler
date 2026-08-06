@@ -8803,7 +8803,33 @@ the grab zone IS the drawn sphere) and is the through-line for §CPE_WALK_AUTHOR
 from inside the shot. Worth keeping as the feature's name.
 
 ## ▶ §CPE_VF_DPR_DOUBLE — THE ROOT CAUSE OF BOTH THE POV FRAME *AND* THE STICK GRIP (2026-08-07)
-## ⛔ FIX WRITTEN, PUSHED, **NOT MERGED** — dispatch a scoped Fable to finish and verify it
+## ✅ VERIFIED + PR OPENED (2026-08-07) — dispatch below executed in full, both directions proven
+
+### VERIFICATION RESULT (2026-08-07, fresh session, worktree /tmp/wt-cpe-dpr)
+**PR bim-ootb#1234** (`fix/cpe-vf-dpr-double`, fix `8928457` + new witness `b386bd1`), auto-merge armed.
+Every dispatch task ran; every claim below is a measured number at dpr 1.25, 1483×769 (the user's geometry):
+1. **Engine restore (task 1)** — new `witness_cpe_vf_dpr_engine.js` wraps the raw `gl.viewport()` and
+   reads `gl.getParameter(gl.VIEWPORT)`. Fixed tree: `[0,0,1854,961]` == pristine pre-eye baseline
+   (±1 px, which is three.js's own floor-vs-round on css×ratio, NOT our bug — its render path floors
+   1483×1.25=1853.75→1853 while an immediate setViewport rounds→1854; the gate tolerates 1px and
+   separately forbids anything near baseline×1.25). Pre-fix tree (origin/main c46a602): `[0,0,2318,1201]`
+   = baseline×1.25 exactly. B's own render: fixed saw width 375 (=300css×1.25, once), never 469
+   (=×1.25², twice); pre-fix saw ONLY 469. Ratio applied once — engine-reported, not self-derived.
+2. **Stick claim PROVEN both directions (task 2)** — real tap at the handle's DRAWN position (NDC
+   mapped through the viewport the engine actually holds). Fixed, eye ON: drawn-vs-`_hitTest` off by
+   0.15 px → `§CPE_DRAG_SCALE grab`. Pre-fix, eye ON: off by **212.92 px** → tap misses, no grab —
+   the user's report, measured. Eye OFF (+ a resize event = the universal `setSize` viewport reset;
+   the user's own recovery was the §CPE_VF_DPR_GUARD ratio-drop, which only arms >5000 streamed):
+   grab works on BOTH trees — the decisive clue reproduced. `EXPECT=prefix` mode inverts the eye-ON
+   gates so the pre-fix run PASSES only by exhibiting the defect: 4/4 both trees.
+3. **PIL measurement (task 3)** — scissor edge is invisible against an identical clear color, so the
+   measured feature is the green roof inside B (static; handles pulse). Pre/post content scale
+   **1.294 ≈ the 1.25 signature** (user's PNGs: 1.263–1.267), displaced right+up (dx+47, dy−56
+   device px); fixed build's B content sits inside the frame at intended scale. Pre-fix screenshot
+   also shows the MAIN scene 1.25× oversized — the corrupted restore, visible.
+4. **Regressions (task 4)** — `witness_cpe_vf_grip.js` 6/6 at dpr 1, 1.25, 1.5, 2;
+   `witness_cpe_scrub_viewfinder.js` 33/33; `witness_cpe_drag.js` 4/4 Duplex + 4/4 Terminal.
+5. **PR opened (task 5)** — after all of the above, per the dispatch order.
 
 **Branch: bim-ootb `fix/cpe-vf-dpr-double` (commit `8928457`), off `origin/main`. No PR opened.**
 Everything below is measured. Where something is unverified it says so.
