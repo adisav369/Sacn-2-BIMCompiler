@@ -8072,3 +8072,48 @@ scoped architecture work, not a quick fix — needs the user's go before startin
 - **Before creating a new worktree, run `git worktree list`** — several exist from this session
   (`/tmp/wt-cpe-fixed-panels` is the last clean one, `ahead=0` on `fix/cpe-fixed-panels`, fully
   merged as of this handoff — safe to prune per Worktree Hygiene, or reuse if still present).
+
+## ▶ SAME-DAY FOLLOW-ON — §CPE_VF_FRAME_CRAFT closes Item 2 (framing), Item 1 confirmed WORKING, PR bim-ootb#TBD
+
+User, immediately after the handoff above: *"1. also working it actually closes TimeMachine."*
+(confirms §CPE_BUILDUP_OWNS_TM is genuinely live and correct — no further action). *"The pov frame
+smaller than the fov still there, and going blank when TM/Buildup but appear when paused. My
+suggestion to remove first pov frame then craft back to the working fov screen frame was not taken."*
+— a real, sharp correction: the ORIGINAL suggestion ("remove the outer pov frame that is ajar...
+craft back to the working fov screen frame") was misread as "stop it being draggable"
+(§CPE_FIXED_PANELS, already shipped) when it actually meant something more precise: the CSS
+border/frame and the ACTUAL RENDERED CONTENT were two INDEPENDENTLY-SIZED things (the border stayed
+at the raw `VF_DEFAULT_W/H` CSS box; the content's real aspect was the ROUNDED `w/h` the scissor math
+produces) that could disagree by the already-documented ~0.2% residual — "craft back" meant REBUILD
+the frame FROM the content's real numbers, not just stop moving it.
+
+### Fix — §CPE_VF_FRAME_CRAFT, `viewer/cinema_path_editor.js`
+Extracted the scissor-rect math (`x/y/w/h`) into a shared `_vfComputeAndCraftRect(panel, canvasR,
+panelR, pr)` helper. After computing `x/y/w/h` exactly as before, it now converts them BACK to CSS
+pixels (`backLeft = canvasR.left + x/pr`, `backW = w/pr`, etc.) and writes THOSE onto the panel's own
+`style.left/top/width/height` — the border is now DERIVED from the same integers the GL
+`setViewport`/`setScissor` call uses, not an independent approximation of them. Self-stabilizing (a
+tolerance-gated write, skipped once the DOM already matches — no per-frame layout thrash). Called from
+BOTH `_buildVFPanel()` (so the border is correct from the very first paint, not a one-frame flash of
+the raw default box) and `_vfRender()` (every frame, cheap due to the idempotent skip).
+
+### Witness — 32/32 green (Duplex), stable across repeats
+New `G-VF-FRAME-CRAFT`: the VISIBLE border's own `getBoundingClientRect()` aspect now matches
+`vfCam.aspect` to ~1e-4 (measured `1.28e-4`), not the old independent ~1.8e-3 gap — tolerance set to
+`1e-3` rather than bit-exact because writing a full-precision float into `style.width` and reading it
+back via `getBoundingClientRect()` round-trips through the browser's own CSS sub-pixel layout
+quantization, a real, distinct, much smaller precision floor than the w/h integer-rounding
+`G-VF-ASPECT` already documents. `G-CPE-FIXED-PANELS`'s "identical across an eye off/on cycle" gate
+initially FAILED after this change (caught before shipping, not after) — the correction was only
+wired into `_vfRender()`, so a synchronous rect read immediately after `_vfToggle()` (before any
+animation-frame tick) saw the stale uncrafted default; fixed by also crafting at `_buildVFPanel()`
+build time, which closed the gate AND removed a real one-frame visual flash the lazy-only version
+would have had live. `npx eslint` clean.
+
+### Item 1 (blank during BuildUp playback) — confirmed by the user as STILL happening, not yet
+### re-investigated this follow-on (scope was the frame-craft fix above)
+User: *"going blank when TM/Buildup but appear when paused"* — still reproducing on the live build.
+The HANDOFF section above already has the numeric pixel-readback tooling and the precise next step
+(fix the pause-race bug in `sandbox_blank_check.js`, sample many tn points correlating
+`flying`/`paused` state against real pixel variance) — not repeated here, follow it as written. Not
+touched this follow-on; the frame-craft fix above was the scoped, requested piece of this session.
