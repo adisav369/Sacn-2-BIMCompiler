@@ -8683,3 +8683,23 @@ So ~0.4–0.55s per commit on a 63k-element building. Acceptable per the user's 
 it is paid ONCE PER STOP during authoring — if a session drops many stops quickly this becomes the
 dominant cost, and it is the first thing to measure if authoring feels sluggish. Do NOT pre-optimise
 it; witness it first.
+
+### §CPE_WALK_AUTHORING — NO per-stick delete affordance (2026-08-06, decided)
+
+An `x` next to each stick on the canvas was proposed and then WITHDRAWN by the user in favour of what
+already exists: *"or simply UNDO or drag the stick around in the canvas. Whatever user has choice of
+not saving or revert or abort. After expert training it should be 2nd nature."*
+
+**Verified, not assumed — undo genuinely covers it.** `_undoPush` is called on every mutation path:
+`_spawnStick` → `'add stick at N%'` (line 330), `_removeStick` → `'remove <label>'` (344), band drags
+(2724), hose pulls (2704), pin/unpin (2409/2424), plan load (2040). A wrongful stick is one Ctrl+Z.
+`_removeStick` also refuses `bi <= 0 || bi >= bands.length - 1` — settle and stop can never be
+deleted, so the path cannot lose its endpoints.
+
+**Why the `x` was a bad idea anyway, recorded so it is not re-proposed:** `_hitTest` claims handles
+with an 18px screen-space tolerance (`GRAB_PX`). A second clickable target within that radius
+reproduces the near-miss ambiguity behind this session's "I lost grip of the stick" reports — except
+a mis-hit would DELETE rather than do nothing. And with walk-authoring producing many sticks, one
+`x` per stick scales clutter on a canvas the user has twice asked to keep clear (§CPE_FIXED_PANELS).
+
+Deletion stays where it is: the Alt+C row list's own delete button (wired at line 964), plus undo.
