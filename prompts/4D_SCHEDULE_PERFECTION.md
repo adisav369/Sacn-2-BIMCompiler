@@ -1937,6 +1937,54 @@ IFC classes → phase/sequence/resource). Concretely for this lane:
   §4D_ROOF_LOAD_PATH already used (its attempt-1 "any class supports any class" widening produced 3421
   false positives on Hospital — a metadata-driven widen still needs that same false-positive measurement).
 
+## 2026-08-07 — §DEFAULT_ENGINE_QUALITY — product goal: the default schedule must be P6-quality out of the box, no manual grunt-work correction
+
+User: "we got editor, but we want the default engine to give as much free best schedule freeing the user
+from doing grunt work that is common sense." This reframes today's whole session: the goal is NOT "give
+the user tools to fix a bad schedule" (the editor already does that — drag/resize/link, §GANTT_EDIT_LOCK)
+— it's that the DEFAULT/auto-generated schedule (`materializeZones`/`materializeDefault`/
+`generateGanttSchedule()`) should already be free of common-sense physics violations before any human
+touches it. The editor stays the mechanism for genuine PLAN changes, not the mechanism that mops up
+violations the engine itself introduced.
+
+**Every defect named in this file today is a concrete instance of this goal not yet being met:**
+- Fan-before-roof (§SUPPORT_CHECK / §METADATA_FIRST above) — seq7-vs-seq8 with no dependency tying them:
+  a "common sense" violation (a fan cannot exist before the structure holding it) shipping in the DEFAULT
+  schedule, not something a user broke by editing.
+- Hanging beams (Hospital) — same category, root cause not yet confirmed, but same class: physically
+  impossible sequencing in the auto-generated output, not an edit artifact.
+- §GANTT_DOUBLE_LOAD — a different bar (engine should just work cleanly, not violate physics), but the
+  same "default path must not need a human to notice something's off" standard.
+
+**DECIDED 2026-08-07 (user): v1 bar = criteria 1+3 — zero floating (all classes) + zero seq-vs-geometry
+contradictions. Criterion 2 (full FS/SS/FF/SF precedence) deferred — consistent with the 2026-08-03 ruling
+(auto-generated accuracy first). Sizing note: #2 is not a hand-off to another lane — THIS file is the CPM
+lane's mission, and zone-level CPM already exists (`materializeZones` writes `task_sequences` edges,
+§ZONE_CPM zones=71 edges=105, plus `computeCpm()`); the eventual work is extending that graph to
+element-level placement, augmenting `computeSchedule()` (standing rule: pre-existing, don't rebuild).
+Constraint for the 1+3 implementation: pool-widening alone is a no-op for fan-before-roof — Pass B places
+in ascending `(seq, base_z)`, so the seq-8 roof's `.end` doesn't exist when the seq-7 fan is gated; needs
+dependency-aware placement order OR roof promotion below MEP seq.**
+
+**What "P6-quality out of the box" concretely means — named to scope, NOT decided or sized this session:**
+1. Zero floating elements, for real — `§SUPPORT_CHECK floating=0` must be TRUE, not just reported as 0
+   while blind to whole classes (MEP/flow). Requires closing BOTH blind spots already named in
+   §SUPPORT_CHECK above (audit filter scope + promoted-structure support-pool gap).
+2. Correct precedence semantics — real FS/SS/FF/SF + float/critical-path, not a seq-and-base_z sort that
+   usually happens to look right. Matches this file's own earlier ruling to follow MSP/P6 convention
+   rather than invent a new idiom (§GANTT_EDITABLE_E2E, 2026-08-05).
+3. No sequence-vs-geometry contradictions, ever — a class's default `seq` (trade order, from
+   `SEQUENCE_RULES`) must never be allowed to place an element before its OWN real physical support
+   finishes, regardless of trade convention. Nothing enforces this today except the geo-gate, which — per
+   §METADATA_FIRST above — doesn't cover Pass-B-promoted structure or unaudited classes.
+
+**Recommended starting point for whoever picks this up (not started this session):** write the acceptance
+test FIRST — a witness (e.g. `witness_default_schedule_quality.js`) asserting 0 floating across ALL
+classes and 0 seq-vs-geometry contradictions, run across multiple real buildings (Terminal, Hospital) —
+before touching `schedule_gate.js`. That makes "good enough" a number, not an eyeball call, consistent with
+this file's own whitebox-only verification rule (§SUPPORT_CHECK above) and the project's Spec-First rule
+(`CLAUDE.md`) — spec/witness before implementation, every time.
+
 **For a new dev landing on this file cold:** read `## Why this file exists` + `## What's already shipped`
 at the top for original scope, then jump straight to this close-out and the dated 2026-08-06/08-07
 sections above it for the live edge — the numbered gap list right after the top summary predates all of the
