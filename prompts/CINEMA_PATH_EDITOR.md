@@ -8117,3 +8117,17 @@ The HANDOFF section above already has the numeric pixel-readback tooling and the
 (fix the pause-race bug in `sandbox_blank_check.js`, sample many tn points correlating
 `flying`/`paused` state against real pixel variance) — not repeated here, follow it as written. Not
 touched this follow-on; the frame-craft fix above was the scoped, requested piece of this session.
+
+### Second-opinion code review dispatched (Fable model, tight scope, not a re-investigation)
+User: *"return to my former request... update prompts/# with a Fable agent to do a quick code check
+on your work... within a proper scope which doesn't overspend tokens."* Dispatched a
+`general-purpose` agent (model=fable) scoped to ONLY the three diffs from this session
+(`git show ebaebd3` / `3216b38` / `51c7624c9cfa9e7d4d5facd4e78f347cad3254cf` — PRs #1215/#1217/#1218),
+explicit instruction not to re-run the witness suite or explore the wider codebase, capped at 400
+words, weighted toward PR #1218 (§CPE_VF_FRAME_CRAFT) as newest/riskiest — asked it to specifically
+check the tolerance-gated write for a possible non-convergent oscillation, the
+`_clampPanelToViewport`-then-craft ordering in `_buildVFPanel`, and dead references to the
+PR #1217-removed `_vfRect`/`_scrubRect`/`VF_MIN_W`/`VF_MIN_H`/`VF_RESIZE_HANDLE_PX`. **Findings not
+back yet as of this write-up** — if you're picking this up fresh, check whether that review
+completed and landed a follow-up commit/note; if not, it may be worth re-dispatching with the same
+scope rather than assuming it silently passed.
