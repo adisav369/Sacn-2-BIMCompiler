@@ -1720,3 +1720,31 @@ be — (a) persist the current drag-edit model durably (small: wire `persistDb()
 (b) build the JSON-form editor these specs describe as a parallel/alternate path. Nothing currently decides
 between them. Not implemented here per user instruction (triage only).
 
+## Session close-out, 2026-08-06
+
+Three items this session, all in a bim-compiler-rooted session (implementation dispatched to fresh
+`origin/main` worktrees per `feedback_diagnose_in_session_fix_in_other_session.md` where the target was
+bim-ootb code):
+
+- ✅ **§TM_PANEL_RESIZE_H DONE, twice** — shipped (bim-ootb PR #1208), then the user caught a real
+  regression live (grew the outer `_panel` shell, not the inner `#tm-gantt-box` content), fixed same
+  session (PR #1216, auto-merge armed). Witness `witness_tm_panel_resize_h.js` now 16/16 with checks
+  that specifically guard the regression class (targets `#tm-gantt-box`/`_ganttBoxH`, not `_panel`).
+- ⛔ **§GANTT_REFOLD_HANG — diagnosed + LIVE-confirmed, NOT implemented, needs a bim-ootb session.**
+  Root cause: `injectGantt()`'s `§WRITE_LOOP_TIMING` write loop (`time_machine.js:4253-4264`), confirmed
+  by a real user console paste (Hospital, 63,415 elements) — the log stream stops dead exactly where
+  that block's own completion log should print. Full handoff (caller chain, chunking fix plan, why the
+  loop can be chunked but not reordered) is in the dated section above. **Next session: pick this up
+  directly, no rediscovery needed** — implement the chunked-yield fix, convert `injectGantt()` to
+  return a Promise, update its 3 call sites (`_activateAsync` ×2, `window.tmGenerateTimeline`).
+- ⛔ **JSON schedule round-trip — spec reconciliation gap named, NOT resolved.** `GANTT_ACCURACY.md §B`
+  and `TM_SCHEDULE_EDITOR.md` both spec a JSON-form editor that was never squared against the drag-edit
+  UX actually shipped. **Open question for whoever picks this up:** persist the current drag-edit model
+  durably (small — wire `persistDb()` into Lock) vs. build the JSON-form editor as a parallel path (big
+  — the full `TM_SCHEDULE_EDITOR.md` plan). Not decided; don't build either without deciding first.
+
+**For a new dev landing on this file cold:** read `## Why this file exists` + `## What's already shipped`
+at the top for original scope, then jump straight to this close-out and the two dated 2026-08-06 sections
+above it for the live edge — the numbered gap list right after the top summary predates all of the
+2026-08-04 through 2026-08-06 sessions below it and is mostly still open, not superseded.
+
