@@ -1818,8 +1818,8 @@ Step 1 shipped; this is what remains, sized honestly as multi-session work rathe
   as a primary source (watchdog, §The decision above); a candidate set that is a large fraction of a
   building's doors is a FAILED test, not a result — a real building has a handful of exterior doors.
 
-## ▶ §SPINE-BRIDGE-CLUSTER — resume from `bim-compiler/prompts/Viewer/FindRooms/RESUME_ROOMPATH_DETOUR_BACKTRACK.md`
-§3.2 (2026-08-05), NOT STARTED — spec only, per this file's standing law (POC gate first)
+## ✅ SHIPPED + MERGED 2026-08-05 — §SPINE-BRIDGE-CLUSTER, bim-ootb PR #1200 @ `5a68932` (origin/main)
+resume from `bim-compiler/prompts/Viewer/FindRooms/RESUME_ROOMPATH_DETOUR_BACKTRACK.md` §3.2
 
 ```
 # ⚠ DO NOT REMOVE
@@ -1904,3 +1904,59 @@ all 9 buildings to prove the byte-identical-elsewhere half of the acceptance tes
 ### DONE WHEN
 POC gate numbers recorded for all 9 buildings → engine change → LTU `V1R1->V4R1` witness green →
 fleet connectivity witness shows only-equal-or-more reachable pairs, zero regressions → PR shipped.
+
+### ✅ RESULTS (2026-08-05, measured, real production code + real DBs, not simulated)
+- **POC gate** (`poc_spine_bridge_cluster.js`, committed): 7 of the 9 fleet buildings checkable
+  locally (Duplex has no `_meta.db` split present locally, skipped honestly — not evidence either
+  way). **6 isolated door-pair components / 12 rooms, ALL on `LTU_AHouse`** (VÅNING 2 ×2 pairs,
+  VÅNING 4 ×4 pairs) — **zero** on Hospital, Clinic, Terminal, JKR, HHS, TermRooms. Confirms this is
+  a real, general graph-topology gap (any IFC could hit it), not something LTU-specific about its
+  data — it just happens to be the one fleet building that currently exercises it.
+- **Engine change**: `common/room_graph.js` §ROOM-SPINE-BRIDGE block, union-find by E1 edges,
+  bridge-by-component. `§ROOM_SPINE_BRIDGE_CLUSTER`/`§ROOM_SPINE_BRIDGE_REJECT_CLUSTER` log lines
+  added so a witness can tell a cluster bridge apart from the pre-existing single-room case.
+- **Acceptance test**: `LTU_AHouse_meta.db` `RM_VÅNING_1_1 -> RM_VÅNING_4_1`, previously `null`, now
+  returns a real path (19 stops, 211.1m, 5 doors). `RM_VÅNING_4_10`/`_11` (the one pair with no
+  walkable route within reach, 67.35m to nearest spine candidate) still honestly rejects — the fix
+  does not invent a passage where none is legal.
+- **Fleet regression** (`witness_spine_bridge_cluster_regression.js`, committed — classifies
+  same/newlyFound/lost/changed, not the older raster-polyline witness's binary "any diff = fail",
+  which doesn't distinguish a real regression from an intended new connection): **89,627 existing
+  room pairs checked across all 7 loadable buildings — 0 lost, 0 changed. 3,500 newly connected,
+  all on LTU_AHouse** (nothing else in the fleet had an isolated cluster to fix). Matches the POC
+  gate's blast-radius prediction exactly.
+- ✅ Pushed, PR #1200 opened, **merged to `origin/main` 2026-08-05T03:01:05Z, commit `5a68932`.** The
+  pre-existing `witness_room_path_raster_polyline.js` G3/G4 checks fail on both before AND after
+  this change (Hospital fixture path issue, Clinic/Duplex rect-fallback 0% reduction) — confirmed
+  PRE-EXISTING on origin/main, unrelated to this fix, not something this PR fixed or hid. Nothing
+  further owed here; §3.2 is closed.
+
+## ▶ §PATH_LEGAL_DETOUR_REVISIT_FORCED — follow-on, found reviewing §3.1's length-guard mechanism
+✅ SHIPPED + MERGED 2026-08-05, bim-ootb PR #1210 @ `8574e51` (origin/main) — same session, different
+concern from §SPINE-BRIDGE-CLUSTER above (that's connectivity; this is a logging gap in the
+pre-existing `§NOREVISIT-LENGTH-GUARD` mechanism, `_legalizePath` around line 1466).
+
+**The gap:** `_legalizePath`'s revisit-guard only logged 2 of its 3 real outcomes — found a
+revisit-free alternative that's not longer (`§DETOUR_NOREVISIT`), or kept a longer one anyway
+(`§DETOUR_REVISIT_KEPT`, this is §3.1's Hospital case). The third outcome — **no revisit-free
+alternative exists at all**, i.e. the revisit is the ONLY legal route — fell through with ZERO log
+line, indistinguishable from a clean detour that never had a revisit to begin with. User caught this
+directly: "what if there was no alternative route and exists only a revisit?" The mechanism itself
+was already correct (it does keep the revisit and route successfully, no crash, no lost path) — the
+gap was purely visibility, against this project's own no-silent-fallback Log Mandate.
+
+**Fix:** one `else` branch, one `_log('§PATH_LEGAL_DETOUR_REVISIT_FORCED ...')` call. No other
+statement — no assignment to `mid`, no control-flow change — so the computed route is provably
+identical to before by inspection alone (verified anyway: spot-checked a real LTU_AHouse pair that
+hits this exact branch, `RM_VÅNING_1_1 -> RM_VÅNING_2_27`, path/doors/distance byte-identical
+before/after).
+
+**Measured real occurrence** (not theoretical): **437 fleet-wide** — 318 on `LTU_AHouse`, 119 on
+`Clinic`, 0 elsewhere. `§DETOUR_NOREVISIT` (the "found a shorter alternative" branch) never fires
+anywhere in the fleet (0 across all 7 checkable buildings) — worth knowing if anyone later tunes
+`_detourForChord`'s candidate search, but not itself a defect.
+⚠ **Shared-worktree stash caution, hit live this session:** `/tmp/wt-sandbox`'s stash stack is
+SHARED across every session that has ever used this standing sandbox (9+ unrelated stashes found
+sitting there mid-session). A `git stash` here is not scoped to your branch — verify with `git
+stash show -p stash@{0}` that the top entry is really yours before popping. Already documented in
+memory ([[feedback_git_stash_shared_across_worktrees]]); this is a live confirmation, not a new rule.

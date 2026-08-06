@@ -1,7 +1,27 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ File is 150 lines, over budget — next session should archive DONE items per the Rule above.
+> ⚠ File is 189 lines, over budget — this session archived one fully-resolved entry (2026-08-02
+> narrative → one-liners), the rest is still-open work owned by other sessions/lanes and wasn't
+> touched to avoid misjudging context this session doesn't own. Next session: a real archiving pass
+> still owed on the `## OPEN` section's oldest items once each is confirmed still-open or DONE.
+
+## Session 2026-08-06 — Room-pathing: §SPINE-BRIDGE-CLUSTER + §REVISIT_FORCED, both SHIPPED+MERGED
+Continued from `prompts/Viewer/FindRooms/RESUME_ROOMPATH_DETOUR_BACKTRACK.md` (now fully CLOSED,
+all 4 items resolved). Root-caused LTU_AHouse's `V1R1→V4R1` NO_PATH: `§ROOM-SPINE-BRIDGE` only
+bridged zero-degree rooms, so a 2-room door-pair island (degree 1, no route to the corridor) was
+never even attempted. Fixed by bridging per connected-component instead of per-node degree — bim-ootb
+PR #1200, `origin/main` @ `5a68932`. Fleet POC gate: 6 such components/12 rooms, all on LTU_AHouse,
+zero elsewhere (Hospital/Clinic/Terminal/JKR/HHS/TermRooms). Regression: 89,627 existing room pairs
+0 lost/0 changed, 3,500 newly connected (LTU only).
+
+Second, unrelated finding while closing the length-guard UX question (`§NOREVISIT-LENGTH-GUARD`,
+kept as-is by user decision): the revisit-guard's "no alternative exists at all" outcome logged
+nothing, indistinguishable from a clean detour. One-line log-only fix (`§PATH_LEGAL_DETOUR_REVISIT_
+FORCED`), behavior-unchanged by construction, spot-verified byte-identical route — bim-ootb PR
+#1210, `origin/main` @ `8574e51`. Real occurrence: 437 fleet-wide (318 LTU, 119 Clinic).
+Full detail: `prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md §SPINE-BRIDGE-CLUSTER` +
+`§PATH_LEGAL_DETOUR_REVISIT_FORCED`. Nothing left open in the resume doc.
 
 ## Session 2026-08-05 — §CLASS_UNMATCHED_INHERITED (schema-exhaustive tier-2 fallback) SHIPPED
 Watchdog/reviewer session, continued from `RESUME_SESSION_2026-08-05_WATCHDOG.md`. Verified+landed the
@@ -34,20 +54,6 @@ spec). Not a regression from today's work — pre-existing, just newly surfaced 
 session's close. Next session: check PR #1191 merged, then check P1's commit status before starting P2
 (wire `boq_charts.html`'s crew chart + `proj_fold.js`'s ERP push through `classify()`).
 
-## Session 2026-08-02 — 4D ordering CONFIRMED live, movie-maker batch shipped
-User confirmed on a real Hospital bake: no roof before walls, no upper deck before lower, to Day 282.
-Ordering half of the 4D lane is CLOSED (§4D_BAND_MONOTONIC #1129 + §4D_ROOF_LOAD_PATH #1120 + cache #1123).
-
-**Shipped to `origin/main`:** §CPE_DAY_COUNTER_POS (#1130, sw v914) — Day # counter now visible in Preview
-(hooks were never wired). §CPE_GAZE_ACQUIRE (#1131, sw v915) — gaze settles in 0.90s vs the flat cap's
-2.00s, bit-identical; G-SH-4 witness now reads the shipped curve, not a literal 45 (#1132).
-
-**NOT merged** (`feat/element-cpm`) — see OPEN §4D SUPPORT INVARIANT below: ruling given, root cause
-measured, next step named.
-
-**Open, specced, not built:** §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`) — caption several
-rooms in view with a level prefix instead of one ray-picked room.
-
 ## Session 2026-08-03 — Offline install doc shipped, docs-publish blocked
 `docs/OFFLINE_INSTALL_GUIDE.md` added (Viewer + iDempiere/ERP only, Modeller deliberately excluded —
 its mesh.db LFS bug is unrelated), linked from `USER_GUIDE.md`, committed+pushed to
@@ -71,10 +77,13 @@ side. Needs a human merge call before the new page (or any docs change) goes liv
 ⚠ `~/bim-ootb` main checkout is stale + conflicts on `merge origin/main` (tried+aborted 07-26); its local
 commits are NOT unique so nothing is at risk — **never measure from it**, use a fresh `origin/main` worktree.
 
-▶ **Roompath lane CLOSED 2026-08-03** — `prompts/Viewer/FindRooms/RESUME_FLEET_OPENINGS_BACKFILL.md`
-§LANE STATE: extractor openings fix permanent, 9/9 DBs ghost-shaped, §HM v3 two-layer metric is the
-headline (fleet draw backlog 157 links; buildings healthy in record). Next session resumes at its
-NEXT SESSION block. Hospital_3 DB rm'd (user; backup /tmp/db_bak_2026-08-02/).
+▶ **Roompath openings-backfill lane CLOSED 2026-08-03** — `prompts/Viewer/FindRooms/
+RESUME_FLEET_OPENINGS_BACKFILL.md` §LANE STATE: extractor openings fix permanent, 9/9 DBs
+ghost-shaped, §HM v3 two-layer metric is the headline (fleet draw backlog 157 links; buildings
+healthy in record). Next session resumes at its NEXT SESSION block. Hospital_3 DB rm'd (user;
+backup /tmp/db_bak_2026-08-02/). **Separate detour-backtrack lane also CLOSED 2026-08-06** —
+`RESUME_ROOMPATH_DETOUR_BACKTRACK.md`, see session entry above (PR #1178, #1200, #1210 merged).
+The BIG room-pathing effort (Clinic 49.3%, axis resweep) below is still open, unaffected by either.
 
 ▶ **In-flight work is NOT listed here — read it from git; every hand-written copy has been wrong.**
 `gh pr list --state open` · unmerged-no-PR: `for b in $(git for-each-ref --format='%(refname:short)'
@@ -140,7 +149,7 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
 - ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S4** — glazing metric (windows
   TE 236/HO 131/CL 58/LTU 976; curtain wall HO 178/CL 31) → S5 jerk softener (95th-pct −50%, profile
   FIRST). ⚠ S2 forked `deploy/dev/room_graph.js` from bim-ootb `common/room_graph.js` — needs porting back.
-- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`).
+- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`) · §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`, specced 07-02 not built) — caption several rooms in view with a level prefix instead of one ray-picked room.
 - ▶ **KUL070 datacentre** — `prompts/datacentre_cabling.md` (cabling) / `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md`
   (ingestion, §KUL009-13). Ingestion CLOSED: the 62,500 "missing" elements were the wasm32 4GB ceiling
   (not the call stack) — 8-way split → 87,333-element DB, 0 orphans. ⚠ §KUL013: `center_*` is the
@@ -172,6 +181,7 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
 - ✅ §SEAM_IDENTITY_AUDIT F2 (07-31) #1106/#1109 — IDB version drift; F1/F3–F18 still open, un-triaged — `SEAM_IDENTITY_AUDIT.md`.
 - ✅ O13 guide text (07-31) PR #64 — `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md` (⚠ do not re-attempt either screenshot without reading it).
 - ✅ 2026-08-02 batch LANDED #1129 `fc58210` — §4D_BAND_MONOTONIC (29,824→0 non-structure inversions), §CPE_DAY_COUNTER, §CPE_GHOST_PULL, room-title dwell/lead; sw v913, gantt cache 7, verified served.
+- ✅ 4D ordering CONFIRMED live on a real Hospital bake (07-02) — §CPE_DAY_COUNTER_POS #1130 sw v914, §CPE_GAZE_ACQUIRE #1131 sw v915 (0.90s vs 2.00s cap, bit-identical). `feat/element-cpm` NOT merged — tracked live in OPEN §4D SUPPORT INVARIANT, don't re-open here.
 - 🟡 P2P Material Receipt unblocked, signed M_MatchPO (07-23) PR #972 open; M_MatchInv NOT closed — `ERP_P2P_INVOICE_MATCH.md`.
 - ⛔ Hospital **missing walls on one side** — unproven hypothesis was the re-fetch race; re-verify on a clean `§CACHE_HIT` now the re-fetch is gone.
 - Older DONE: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-23.md` / `_pre_2026-07-17.md` / `_pre_2026-07-05.md` / `_pre_2026-06-14.md`.

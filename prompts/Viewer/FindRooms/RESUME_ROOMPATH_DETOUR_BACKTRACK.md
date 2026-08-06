@@ -65,18 +65,38 @@ fleet-wide `witness_full_connectivity.js` (Clinic/HHS/Duplex) and direct Hospita
 
 ## §3 OPEN ITEMS (not blocking, named for next session)
 
-**§3.1 Length-guard UX question, undecided:** the fix above made `Hospital L1R2→L4R4` correctly
-FIND a no-revisit alternative — but the existing `§NOREVISIT-LENGTH-GUARD` (2026-07-26) rejected it
-because it's 8.7m longer (82.8m → 91.5m, +10.5%) than the backtracking route, and that guard only
-ever accepts an alternative that's NOT longer. So this ONE case still backtracks, by design, not by
-bug. Question for the user: should a no-revisit route ever win even when longer (and by how much)?
-Left as-is — this is a product/UX call, not something to decide unilaterally.
+**§3.1 Length-guard UX question — ✅ DECIDED (2026-08-05), keep as-is.** `Hospital L1R2→L4R4`: the
+no-revisit alternative is 8.7m longer (82.8m → 91.5m, +10.5%) than the backtracking route, and
+`§NOREVISIT-LENGTH-GUARD` only ever accepts an alternative that's NOT longer, so this one case
+still backtracks. User's call, asked directly: revisiting a room costs zero extra distance here (no
+detour needed to revisit — it's already on the way), so "backtracking" is the physically shorter
+walk, not a wasteful one; the guard choosing shorter-over-clean is correct as-is. **No threshold
+override — leave `§NOREVISIT-LENGTH-GUARD` exactly as shipped 2026-07-26.**
 
-**§3.2 LTU unexplained gap, not investigated:** `LTU_AHouse V1R1→V4R1` returned NO PATH FOUND in
-this session's witness. Unlike the Hospital case, this was never traced to a cause (no `§`
-DETOUR_FAIL log inspected for it). VÅNING 4 only has 12 rooms — could be a genuinely small/isolated
-floor, or a real gap. Next session: rerun with that pair specifically, read the
-`§PATH_LEGAL_DETOUR_FAIL cause=...` line room_graph.js already logs, before assuming either way.
+**§3.2 LTU unexplained gap — ✅ DONE (2026-08-05), root-caused + fixed, see
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md §SPINE-BRIDGE-CLUSTER`.** Not a
+`§PATH_LEGAL_DETOUR_FAIL` case (that only fires inside `_legalizePath`, after a path is already
+found — a pure graph disconnect never reaches it). Real cause: `§ROOM-SPINE-BRIDGE`'s eligibility
+test only fired for zero-degree rooms; a 2-room island (door to its one sibling, nothing else) has
+degree 1 and was never attempted. Fixed by bridging per connected-component instead of per-node
+degree. **Shipped + MERGED**: bim-ootb PR #1200, `origin/main` @ `5a68932` (2026-08-05T03:01:05Z).
+Fleet POC gate: 6 such components / 12 rooms, all on LTU_AHouse, zero elsewhere in the checkable
+fleet. Full regression: 89,627 existing room pairs 0 lost/0 changed, 3,500 newly connected (LTU
+only). §3.2 fully closed, nothing further owed.
+
+**§3.4 (new, found while closing §3.1) — ✅ DONE (2026-08-05), `§PATH_LEGAL_DETOUR_REVISIT_FORCED`.**
+User's follow-up on §3.1: "what if there was no alternative route and exists only a revisit?" —
+correctly falls back and keeps the revisit (no crash, no lost path), but the fallback logged
+nothing, indistinguishable from a clean detour. Fixed with a one-line log addition (behavior
+unchanged, spot-verified byte-identical route). Shipped + MERGED: bim-ootb PR #1210, `origin/main` @
+`8574e51` (2026-08-05T07:54:33Z). Real occurrence: 437 fleet-wide (318 LTU, 119 Clinic). Full detail
++ the shared-worktree `git stash` caution hit while verifying this: see
+`prompts/Modeller/DISC_Walker/OCCUPANT_PATHFINDER.md §PATH_LEGAL_DETOUR_REVISIT_FORCED`.
+
+## SESSION CLOSED 2026-08-06 — all 4 items (§3.1–§3.4) resolved, both fixes merged to origin/main
+Nothing left open in this file. A future session picking up room-pathing should start from
+`OCCUPANT_PATHFINDER.md`'s own OPEN items (`§G1-EXTERIOR-DOOR-LANE`) or `PROGRESS.md`'s broader
+`§ROOM PATHING` entry — not this file, which is now fully DONE.
 
 ## DONE — this session, appendix
 - §0 corrected the deploy-target confusion (memory hardened: `reference_oci_deploy.md`,
@@ -84,4 +104,6 @@ floor, or a real gap. Next session: rerun with that pair specifically, read the
 - §1 live witness built and run against real production code + real DBs — not simulated.
 - §2 fix shipped, PR #1178 merged, verified zero regression by re-running the same witness + fleet
   connectivity check before/after.
-- §3 both open items named with enough detail to resume without re-deriving.
+- §3.1 decided (keep as-is), §3.2 shipped+merged (PR #1200), §3.4 shipped+merged (PR #1210) — all
+  three closed with witness numbers, not just narrative. §3.3 was never assigned (numbering gap from
+  an earlier draft; §3.1/§3.2 are the only items the prior session actually opened).
