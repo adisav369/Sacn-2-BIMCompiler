@@ -8936,3 +8936,29 @@ should be reverted — but the thing that was actually making both symptoms visi
 The feature is **"WYSIWYG BIM Movie Maker"** (user, 2026-08-06) — *"what you see is what you get - an
 old concept in programming"*. This bug is the literal violation of that: what was drawn and what was
 grabbable were different rectangles.
+
+## ▶ §CPE_FLY_WEDGE — PREVIEW DEAD AFTER STICK ROUND 2, ONLY REFRESH REVIVES (2026-08-07)
+**User:** *"sometimes it hangs after some round 2 of setting stick, when going back to preview it
+does not play, workaround is easy just refresh and reopen the saved path."*
+
+### Root cause — one counter shared by two unrelated animations
+`_frameBand` (the 420ms fly-to-band camera ease, fired by clicking a band ROW: `_hold(i,'mid',true)`)
+did `var gen = ++_state.flyId` — the SAME generation counter `_previewFly`'s step() checks
+(`myFly !== _state.flyId → return`). Sequence that wedges:
+1. play rehearsal (`flyId=N`, `flying=true`) → 2. pause (button, or the §CPE_SCRUB_BEARING_FLY_PAUSE
+auto-pause on touching a stick) → 3. click a band row → `_frameBand` bumps `flyId=N+1` → the paused
+flight is now DEAD, but `flying`/`flyPaused` stay true (only step()'s natural completion clears them)
+→ 4. every play click takes the "resume" branch; `_flyResume` sees `myFly !== s.flyId` and silently
+no-ops. Logs say "resumed", nothing moves, forever. Refresh = the only reset. Exactly the report.
+
+### Fix (branch fix/cpe-vf-dpr-double, rides PR #1234)
+1. `_frameBand` gets its OWN counter (`_state.frameFly`) — it must cancel a previous frame-fly,
+   never the rehearsal. `_previewFly` still cancels an in-flight frame-fly (one line, the one
+   direction that was ever correct).
+2. Self-heal in the play handler: resume that leaves `flyPaused` true = dead flight → clear state,
+   log `§CPE_FLY_WEDGE stale paused flight — restarting`, start fresh. Covers any other wedge path.
+
+### Witness — witness_cpe_fly_wedge.js
+G-WEDGE names the issue: play → pause → row-click → play must ADVANCE the playhead. Run pre-fix it
+FAILS (playhead frozen, "resumed" log with no motion); post-fix PASSES. Uses `_flyState()` hook +
+`_state.scrubTn` motion, no screenshots.
