@@ -8597,3 +8597,52 @@ the position track from the aim track for exactly this reason — see prior art 
 - Whether authored points are hard keyframes (camera passes exactly through) or soft attractors the
   existing planner smooths — the current band/hose model is the latter, and mixing the two silently
   would reproduce the tempo-vs-work-pacing confusion §CPE_BUILDUP_EVEN_TEMPO just resolved.
+
+### §CPE_WALK_AUTHORING — surface DECIDED (2026-08-06, same session)
+
+**The POV window is the authoring surface, and it REPLACES pin-dropping as the editing model.**
+User: *"once we solve the elusive pov frame, we can have an edit ON button there, where user then
+navigate in that pov frame and each stop within those pipe can be new sticks. User sees on the big
+canvas it develops"* and, on the canvas-pick alternative: *"its a different editable purpose approach
+now. Instead of dropping pins which is not as friendly."*
+
+So the canvas-pick surface offered in the triage above is RETIRED from this design — not because it
+could not work, but because picking points on a canvas is not the friendly gesture the feature exists
+to provide. First-person navigation is.
+
+- **Edit toggle lives on B.** Turn it on, navigate in the POV, and the main canvas shows the path
+  developing as you go — you compose from inside the shot, and watch the route form outside it.
+- **Stop gesture = toggle the edit-POV off and on again.** One off→on cycle commits a stick where the
+  POV is standing.
+- **⚠ REVERSES a prior explicit user ruling.** B is display-only today — user, 2026-08-04: *"pov box
+  is purely display for user bearing"*, no drop/raycast interaction, which is why `§CPE_VF on` logs
+  "display-only, no drop interaction". Changing it is fine; recording it as DELIBERATE (same
+  treatment as §CPE_BUILDUP_EVEN_TEMPO's reversal) so it is never mistaken for drift.
+
+**This makes B's own `<canvas>` a HARD PREREQUISITE, not an optimisation.** B cannot receive input at
+all as built: `#cpe-vf-panel` is `pointer-events:none` over a transparent hole, and B is a scissor
+rect inside the MAIN canvas, not an element of its own. Nothing can be navigated in it until it is a
+real canvas. That single change now buys three things that were being tracked as separate problems:
+1. the exact frame (§CPE_VF_GRIP / §CPE_VF_STACK — the browser sizes picture and frame from one box),
+2. the composition/post-processing fix (§CPE_VF_PLAIN_FRAME's recorded root cause — B currently
+   inherits the main view's full-canvas post pass), and
+3. an interactive POV, which this feature requires.
+Any one of them alone was arguably not worth the WebGLRenderer work. Together they are.
+
+**Working assumption — free navigation, NOT constrained to the pipe.** The user was asked twice and
+answered around it; taking the read the evidence supports (*"walking thru the virtual building"*,
+*"instead of dropping pins"*, *"more idiot proof pathing"*), and because a dolly constrained to the
+existing pipe would only be the scrub bar with different controls — no authoring gain. **Consequence:
+a free stop is a NEW AUTHORED WAYPOINT, not a point on the existing curve, so `_spawnStick` is NOT
+the mechanism** (it takes an arc-fraction `s` on the flow polyline, which a free stop does not have).
+The `route=authored` waypoint plumbing that already exists is. **Flip this if the user says
+constrained — it changes the build, not just the trigger.**
+
+### Still open
+- **How to LEAVE edit mode without recording a spurious stop.** If off→on commits a stick, the final
+  off — the one meaning "I'm done" — either drops an unwanted stick or must be distinguished some
+  other way (Esc, the eye, a modifier). This is exactly the one-control-two-meanings overload
+  `§CPE_SOLE_OWNER` exists to prevent; decide it before building, not after.
+- Hard keyframes (camera passes exactly through each stop) vs soft attractors the planner smooths.
+  The band/hose model is the latter. Mixing the two silently would reproduce the two-mechanisms-
+  competing confusion that §CPE_BUILDUP_EVEN_TEMPO had to unpick.
