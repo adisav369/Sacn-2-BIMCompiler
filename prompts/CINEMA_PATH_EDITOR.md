@@ -8703,3 +8703,63 @@ a mis-hit would DELETE rather than do nothing. And with walk-authoring producing
 `x` per stick scales clutter on a canvas the user has twice asked to keep clear (§CPE_FIXED_PANELS).
 
 Deletion stays where it is: the Alt+C row list's own delete button (wired at line 964), plus undo.
+
+## ▶ §CPE_GRAB_WYSIWYG — "lost grip of the stick" ROOT-CAUSED (2026-08-06, bim-ootb PR #1233)
+
+**The "after preview" trigger was WRONG — mine, and the earlier handoff's. Recorded because the wrong
+diagnosis was asserted to the user three times from log correlation alone.** The user's console showed
+a working `§CPE_DRAG_SCALE grab` before a rehearsal and a `§PICK`/`§BATCHED_PICK` fall-through after
+one, and that correlation was read as causation. It is not: an identical 25px-off-centre miss
+reproduces BEFORE and AFTER a preview, and 7 preview/scrub/pause/viewfinder scenarios plus an
+authored-reopen run all left `_wire`/`_unwire`, `_state.handles`, the bands, the camera and the canvas
+fully intact. Every "preview tears something down" hypothesis was ruled out empirically, not argued.
+
+**ACTUAL ROOT CAUSE — the grab zone was not the handle you can see.** `_hitTest` accepted a click
+only within a FIXED `GRAB_PX=18px` of the handle's CENTRE, while the sphere DRAWS at
+`HANDLE_R=0.30m x drawScale` in WORLD METRES — a screen size that grows as the camera closes in. At
+real editing range (the user's own `§PICK d=11.89` proves ~12m; 57.7 px/m measured there):
+
+| handle state          | drawn radius | grabbable |
+|-----------------------|--------------|-----------|
+| unheld mid            | 15.6px       | 18px — just inside |
+| **held**              | 21px         | 18px |
+| **held, pulse peak**  | **37px**     | 18px |
+
+Most of the visible blob was dead. A click 19-37px off-centre — ON the sphere the user sees — returned
+no handle, `h.down` never claimed the gesture, and the viewer's model picker consumed it. #1228
+disabling `§CPE_AIM_PIN` did NOT cause this; it removed what had been swallowing the near-misses,
+which is why the fall-through became VISIBLE at that point. That timing is what made #1228 look guilty.
+
+**Why it looked like "after preview":** the FIRST grab lands on the small UNHELD blob (≈ inside 18px)
+and works; that drag leaves the band HELD + pulsing (up to 2.4x bigger on screen, same 18px zone); the
+next attempt — which in the user's edit→preview→edit loop comes after a rehearsal — aims at blob
+pixels that were never grabbable.
+
+**Fix:** `_handleGrabPx(h)` = `max(GRAB_PX, drawnRadius * pxPerM + 2)`, drawn radius READ BACK from the
+mesh's own geometry so draw and grab cannot drift apart, x1.8 for the pulse envelope when held (a
+constant — the zone must not depend on which pulse phase a pointerdown samples). `_hitTest` scores
+`distance / ownGrabPx` so a big near blob cannot shadow a small far one. Far away the projected radius
+drops below 18px and GRAB_PX stays the floor — nothing loosens for normal editing.
+
+**Witness `witness_cpe_stick_after_preview.js`** (Duplex, real preview, real pointer taps, SW bypassed,
+§-log assertions only): unmodified `origin/main` **4/6 FAIL**; with fix **6/6 PASS**. `G-SAP-3` proves
+the far-pose zone is still exactly 18px. No regressions: `witness_cpe_drag.js` 4/4,
+`witness_cpe_click_slop.js` 6/6.
+
+### ⛔ OPEN, found by the same agent, NOT fixed — the Preview button flies B only
+`#cpe-preview` is wired `addEventListener('click', _previewFly)` (~line 3019), so the **MouseEvent is
+passed as `_previewFly`'s `povOnly` argument** — truthy. Since #1197 the MAIN Preview button has
+therefore rehearsed B ALONE, never moving or restoring the main camera, while the done-log still
+prints "camera restored to the editing pose". Confirmed in every live run: `§CPE_PREVIEW click ...
+povOnly=1` straight from the button. #1197's own comment asserts "#cpe-preview's own wiring calls this
+with no argument — unaffected", which is not what the code does. **Needs its own change; a one-line
+wrap (`function () { _previewFly(); }`) is the obvious shape but the INTENDED behaviour must be
+confirmed first — the user may well have got used to POV-only previews.**
+
+### Process note for whoever picks this up
+The agent dispatched for this reused an EXISTING worktree (`/tmp/wt-cpe-scrub-buildup`) because the
+dispatch prompt told it to prefer reuse per Worktree Hygiene — and that worktree was the one the
+dispatching session was itself working in, switching its branch mid-session. No work was lost (the
+session's own branch was already merged), but **a dispatch prompt must name a worktree the parent is
+NOT using, or say "create a fresh one" outright.** Worktree Hygiene's reuse rule is about not
+accumulating clones; it was never meant to send an agent into the parent's live tree.
