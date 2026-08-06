@@ -1985,6 +1985,46 @@ before touching `schedule_gate.js`. That makes "good enough" a number, not an ey
 this file's own whitebox-only verification rule (§SUPPORT_CHECK above) and the project's Spec-First rule
 (`CLAUDE.md`) — spec/witness before implementation, every time.
 
+## 2026-08-07 — §DEQ_V1_IMPL — spec for the v1 bar implementation (criteria 1+3), branch `fix/4d-default-engine-quality`
+
+Advice rejected before this spec: base_z-primary Pass B sort (Sonnet proposal) — §STAGGER_SUPPORT_ORDER's
+invariant "carrier base_z always below carried" is FALSE for hang-from-above (fan.base_z < roof.base_z),
+so it guarantees the fan places before its carrier. Roof seq demotion in tm.js also rejected — ordering is
+fixed inside schedule_gate.js instead, keeping seq=8 as the promotion identity.
+
+All changes in `viewer/schedule_gate.js` (pure module, browser+node identical) + the `_audit` callsite in
+`time_machine.js`. Physics model addition: **support is bearing-below OR carrier-above (hanging)** — the
+existing gates only know bearing-below.
+1. `place()`: promoted slabs (`cls==='IfcSlab' && seq>4`) join the structure support `grid` (they are real
+   supports for what hangs beneath them). Safe vs attempt-1's false positives: as supports they sit ABOVE
+   most elements, so the bearing-below predicate rarely matches them; only the new hang predicate uses them.
+2. Pass B processing order: promoted slabs sort at `wallSeqMax + 0.5` (after their carriers, before MEP
+   rough-in under the live sequence_rules.json) — `el.seq` stays 8 for phaseTrade/bandTrade identity.
+3. New `hangGate(el)`, Pass B only, scoped to elements with NO bearing-below support (has one → not
+   hanging; excludes walls/furniture resting on slabs and all of Pass A): latest end of overlapping
+   structure whose underside is within ±GAP of `el.top_z` (what I'm mounted to).
+4. Bounded repair loop after Pass B (≤4 iterations, §-logged): re-check geo+hang gates against the FINAL
+   grids; shift violators later (duration kept, grids rebuilt). Guarantees zero contradictions regardless
+   of rule-set seq quirks (e.g. legacy rule sets where MEP seq < wall seq place carriers after dependents).
+   Crew slots are not re-solved for shifted elements — logged count, accepted v1 tradeoff.
+5. `auditFloating()`: mirror all of the above — structGrid includes promoted slabs; violation = start
+   before latest bearing-below support end OR (if no bearing-below) latest hang-carrier end. tm.js
+   `_audit` widened to ALL classes (metadata-first ruling; delivers what its own comment promised).
+6. Witness: `tests/witness_default_engine_quality.js` — asserts floating=0 with NO class filter on
+   Hospital + Terminal real DBs, prints §DEQ lines; existing `test_schedule_gate.js` must stay PASS.
+
+**✅ IMPLEMENTED same session — PR bim-ootb#1236 (`fix/4d-default-engine-quality`), auto-merge armed.**
+Witness evidence (all §-log, no browser): G-DEQ-1a fan-after-roof PASS (fan.start=roof.end, synthetic
+exact-defect case) · G-DEQ-1b roof-after-walls PASS (no §4D_WALLS_BEFORE_ROOF regression) · G-DEQ-2
+Hospital floating=**0/63415**, Terminal floating=**0/48428**, NO class filter · full suite PASS
+(gate 3251→0 / generated / projector / readonly / facade_stagger 662→0 / 4d_sidecar). Two cycle bugs
+found+fixed en route, both were "symmetric support relation → repair-loop livelock": (a) geoGate's
+§GEO_SUPPORT_LEAK contained-clause made same-z sibling slabs support each other — containment now
+strict (S.base > el.base+EPS) and never a promoted slab (a roof nested at a tall wall's top BEARS ON
+the wall; counting it was a wallGate cycle, measured on Hospital roof@199.66..199.81 inside
+wall@191.81..199.81); (b) hangGate carrier now requires S.top strictly above mine (same-z siblings
+otherwise carry each other). §DEQ_REPAIR converges: Hospital 1 sweep/8 shifts, Terminal 0.
+
 **For a new dev landing on this file cold:** read `## Why this file exists` + `## What's already shipped`
 at the top for original scope, then jump straight to this close-out and the dated 2026-08-06/08-07
 sections above it for the live edge — the numbered gap list right after the top summary predates all of the
