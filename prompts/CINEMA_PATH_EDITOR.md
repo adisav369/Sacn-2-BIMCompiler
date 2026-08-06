@@ -8801,3 +8801,109 @@ User, this session: **"we can call it the WYSIWYG BIM Movie Maker"** — *"what 
 - an old concept in programming"*. The same principle already names the grab fix (§CPE_GRAB_WYSIWYG:
 the grab zone IS the drawn sphere) and is the through-line for §CPE_WALK_AUTHORING: compose the shot
 from inside the shot. Worth keeping as the feature's name.
+
+## ▶ §CPE_VF_DPR_DOUBLE — THE ROOT CAUSE OF BOTH THE POV FRAME *AND* THE STICK GRIP (2026-08-07)
+## ⛔ FIX WRITTEN, PUSHED, **NOT MERGED** — dispatch a scoped Fable to finish and verify it
+
+**Branch: bim-ootb `fix/cpe-vf-dpr-double` (commit `8928457`), off `origin/main`. No PR opened.**
+Everything below is measured. Where something is unverified it says so.
+
+### The two symptoms, which looked unrelated for a whole session
+1. *"the pov is still same, screen slightly larger then the frame itself"* — repeated across many
+   rounds, surviving three separate "fixes" (§CPE_VF_GRIP, §CPE_VF_STACK, the grid snap).
+2. *"still cannot grip the stick"* — and then the decisive clue, volunteered by the user late on:
+   **"ah the grip stick only returns when the pov eye is switched OFF."**
+
+### The actual cause — one bug, applied twice
+**`THREE.WebGLRenderer.setViewport/setScissor` take CSS pixels and multiply by the renderer's
+`pixelRatio` THEMSELVES.** `_vfComputeRect` multiplied by `pr` as well, so ρ landed **twice**.
+
+Probed live rather than reasoned about (this is the evidence that ended the argument):
+```
+renderer.setPixelRatio(1.25); renderer.setViewport(0,0,100,80);
+gl.getParameter(gl.VIEWPORT)  ->  [0, 0, 125, 100]
+```
+And it matches the user's own screenshots exactly:
+| screenshot | frame (drawn border) | picture (rendered POV) | ratio |
+|---|---|---|---|
+| `povf.png` (13:37, old build) | 375 px | 475 px | 1.267 |
+| `Screenshot 2026-08-07 00-14-46.png` (current build) | 376 px | 475 px | **1.263** |
+
+Their devicePixelRatio is **1.25**. A rect wrong by a pure SCALE ABOUT THE BOTTOM-LEFT ORIGIN — i.e.
+it grows RIGHT and UP, never left or down — is the signature of a pixel-ratio applied the wrong
+number of times. That signature was visible from the first screenshot and was missed for hours.
+
+**And the same double factor corrupts the RESTORE** at the end of `_vfRender`:
+`setViewport(0, 0, canvasR.width * pr, canvasH)` → the MAIN scene is also drawn 1.25× oversized,
+about the same bottom-left origin, **but only on frames where `_vfRender` ran — i.e. only while the
+eye is ON.** So what is drawn is displaced from where `_hitTest` computes the handle to be, and
+clicks miss. Eye OFF → `_vfRender` never runs → no bad restore → grab works. **That is exactly the
+user's clue, and it makes the two symptoms one bug.**
+
+### What this RETIRES — previously-shipped diagnoses that were wrong
+- **§CPE_GRAB_WYSIWYG (PR #1233, MERGED AND LIVE)** — "the grab zone is a fixed 18px while the handle
+  draws in world metres." The maths in it is sound and the per-handle tolerance is a genuine
+  improvement, **but it was not the cause**: it is live and the user still cannot grip. Do NOT revert
+  it, but do NOT treat the stick as explained by it either.
+- **"after preview" (asserted three times, from log correlation)** — already disproven empirically by
+  the earlier agent, and now superseded: the real correlate is the EYE, not the preview. A rehearsal
+  turns B on, which is why it looked like preview.
+- **§CPE_VF_GRIP / §CPE_VF_STACK** — the content-box inset, the fused bar and the device-grid snap are
+  all correct and worth keeping, but they were treating a symptom one layer above the real one.
+
+### Why every witness stayed GREEN while the user could plainly see the defect
+`witness_cpe_vf_grip.js` converted the computed rect back to CSS with `rect.x / pr` and compared it to
+the DOM box. That is **self-referential** — it checked my arithmetic against my arithmetic, through
+the very multiplication the bug lived in, and agreed with itself at every pixel ratio. **Rule going
+forward: gate a viewport/scissor rect against what the ENGINE reports (`gl.getParameter(gl.VIEWPORT)`),
+never against your own derivation of it.** The witness has been amended (no `/pr`) and passes 6/6 at
+dpr 1, 1.25, 1.5, 2 with the fix.
+
+### The maths, since the user asked for it explicitly
+One `<canvas>` carries **two coordinate systems**, and they coincide only at ρ=1 — which is why this
+survived so long:
+- **CSS space** — `canvas.style.width`, origin **top-left**, y **down**, unit = CSS px. What
+  `getBoundingClientRect()`, `ev.clientX/Y` and every DOM panel speak.
+- **Drawing-buffer space** — `canvas.width`, origin **bottom-left**, y **up**, unit = device px =
+  CSS × ρ. What `gl.viewport` / `gl.scissor` speak.
+
+DOM rect → GL rect, with ρ applied EXACTLY ONCE (by three.js, not by us):
+```
+x  = L_css - Cx_css                       // left,   relative to the canvas
+y  = H_css - (T_css - Cy_css) - h_css     // bottom-left origin: flip about canvas height
+w  = w_css ,  h = h_css                   // sizes stay in CSS px
+```
+Diagnostic table — read the ERROR SHAPE, it names the mistake:
+| error shape | cause |
+|---|---|
+| pure scale about bottom-left (grows right+up) | ρ applied twice, or zero times |
+| pure translation | wrong origin — canvas offset, or the y-flip omitted |
+| scale about some other point | mixed units — origin in one space, size in the other |
+| correct at ρ=1, wrong elsewhere | ρ is involved. Always. |
+
+### DISPATCH — scoped Fable, for a fresh session
+Give it this whole section. Scope: `viewer/cinema_path_editor.js` `_vfComputeRect` / `_vfRender` /
+`_vfLayoutStack` / `_hitTest` / `_screenOf`, and `witness_cpe_vf_grip.js`. Tasks:
+1. **Verify the parked fix on `fix/cpe-vf-dpr-double`** — confirm `gl.getParameter(gl.VIEWPORT)`
+   equals the drawing-buffer size after `_vfRender` restores, with the eye ON, at dpr 1.25.
+   (A probe was written for this and never got to run: see the session's scratch `vp.js`.)
+2. **Prove the stick claim, which is the UNVERIFIED part** — with the eye ON at dpr 1.25, a tap on a
+   drawn handle must grab (`§CPE_DRAG_SCALE grab`) and must not fall through to `§PICK`. Gate it
+   eye-ON *and* eye-OFF; pre-fix the eye-ON case must FAIL or the theory is wrong and must be said so.
+3. Screenshot the panel at 1483×769 dpr 1.25 and measure frame-vs-picture the same way the user's PNGs
+   were measured (PIL border detection) — expect ratio **1.00**, not 1.25.
+4. Re-run `witness_cpe_scrub_viewfinder.js` (33/33 before this change) and `witness_cpe_drag.js` (4/4).
+5. Only then open the PR.
+**Use a worktree the parent session is NOT in** — a previous dispatch reused the caller's tree and
+switched its branch mid-session. Name a fresh path explicitly.
+
+### User-facing state, stated plainly
+The POV frame and the stick grab are **still broken for the user right now**. What is merged and live
+(§CPE_VF_GRIP, §CPE_VF_STACK, §CPE_GRAB_WYSIWYG, §CPE_BUILDUP_EVEN_TEMPO) is all sound and none of it
+should be reverted — but the thing that was actually making both symptoms visible is the fix parked on
+`fix/cpe-vf-dpr-double`, unmerged and unverified.
+
+### Naming
+The feature is **"WYSIWYG BIM Movie Maker"** (user, 2026-08-06) — *"what you see is what you get - an
+old concept in programming"*. This bug is the literal violation of that: what was drawn and what was
+grabbable were different rectangles.
