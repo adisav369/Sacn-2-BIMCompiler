@@ -8133,3 +8133,73 @@ completed and landed a follow-up commit/note; if not, it may be worth re-dispatc
 scope rather than assuming it silently passed.
 
 Fable review result: SHIP WITH FOLLOWUP NOTED (PR #1215/#1217/#1218 all hold) — one hardening catch, fixed in PR #1220 (`box-sizing:border-box` stated explicitly on B's panel, was silently relying on the global reset). Session closed here — Item 1 (B blank during BuildUp playback) still open, per the HANDOFF section above; user will test live and pick back up.
+
+## ▶ SESSION 2026-08-06 (takeover) — Item 1 ROOT-CAUSED AND FIXED, bim-ootb PR #1222 (auto-merge armed)
+
+User confirmed live: *"All issues stated prior still there"* + pasted a fresh live console log (no
+Chrome visual check — witness/log evidence only, per explicit user instruction this session). Root
+cause found by static read of `time_machine.js`/`cinema_path_editor.js`/`main.js`, not guessed:
+
+**Mechanism.** `time_machine.js` `renderAtTime()` (called every BuildUp tick, via
+`window.tmSetCursor` from `cinema_path_editor.js`'s `_previewFly()` `step()`) does its OWN direct
+`app.renderer.render(app.scene, app.camera)` — full canvas, MAIN camera — and never called
+`app._cpeViewfinderRender()` (the hook that runs B's scissor sub-render) afterward. That hook only
+ever fires inside `main.js`'s `animate()`, at both its render branches. So every BuildUp tick's own
+render call WIPES B's box, and B only gets repainted if `animate()`'s rAF loop happens to run again
+afterward and see `_needsRender` still true — a race against `_previewFly`'s OWN independent rAF
+chain (`step()` itself, which drives the very `tmSetCursor` calls that keep re-wiping B). During a
+POV-only rehearsal the second chain wins almost every time, so B reads as permanently blank/frozen,
+flickering to real content only on the rare tick `animate()` wins the race — this is EXACTLY what
+the earlier HANDOFF's inconclusive pixel-readback samples showed (one flat/stale sample, one real-
+content sample 2s later) without being able to name why.
+
+**Fix (bim-ootb `fix/cpe-vf-buildup-blank`, commit `c74cf4b`, PR
+[#1222](https://github.com/red1oon/bim-ootb/pull/1222), auto-merge armed):** one line —
+`if (app._cpeViewfinderRender) app._cpeViewfinderRender();` right after `renderAtTime()`'s own
+render call, mirroring the exact call `animate()` already makes. Removes the race entirely instead
+of hoping to win it; no-op when B is off.
+
+**Witness, not a screenshot** (`witness_cpe_vf_buildup_blank.js`, committed to bim-ootb root):
+measures B's render count (`cinemaPathEditor._vfPerf().n`) against Time Machine's own real tick
+count (`§PERF_TRAVERSE` lines) during a live 5s povOnly+BuildUp rehearsal, headless swiftshader,
+`HHS_Office_Federated` (75MB, already-local, no new LFS pull). A/B'd via `git stash` on unmodified
+current `origin/main` vs the fix, same building, same run shape:
+```
+without fix: TM ticks=5  B renders=3  coverage=60%   → FAIL (< 90% threshold)
+with fix:    TM ticks=5  B renders=8  coverage=160%  → PASS
+```
+(coverage can exceed 100% — B also renders once at toggle-on and occasionally via `animate()` itself,
+on top of the guaranteed per-tick repaint the fix adds.) Confirmed this reproduces on CURRENT
+`origin/main` (fetched fresh via a NEW worktree, `git worktree add ... origin/main` — the
+`/tmp/wt-cpe-buildup-tm` worktree named in earlier handoffs was stale: `fix/cpe-buildup-tm-ownership`
+had already been merged and deleted upstream, main had moved 5 commits further including PR #1218/
+#1220 named above. **Anyone picking this up: check `git worktree list` ages against `origin/main`
+before trusting an old worktree's checkout as current — this one silently wasn't.**)
+
+**Item 2 (POV framing) — untouched this session**, out of scope (user's report this session was
+specifically the blank/frozen symptom). The architecture note in the HANDOFF above (B needs its own
+`WebGLRenderer` to close the residual ~0.2% scissor-rounding mismatch) still stands, still needs the
+user's go before starting.
+
+**New report, mid-session, not yet root-caused:** *"when buildUp box is unchecked the bottom part
+'Record' also goes away where user cannot record a non buildUp movie"* — read as: unchecking
+`#cpe-buildup` makes the OK button (footer bar, `#cpe-panel`, whose text becomes "OK — record this"
+when the plan is edited — the only "record" affordance in this panel) disappear or become
+unreachable. **Investigated, NOT reproduced, NOT fixed — do not guess-patch from this alone:**
+- Static read of the `#cpe-buildup` change handler (`cinema_path_editor.js`) and `_syncButtons()`:
+  neither touches the OK/Save/Cancel footer row's visibility. The only side effect of unchecking is
+  closing Time Machine if it was open (`§CPE_BUILDUP_OWNS_TM`, already-shipped, already-correct per
+  the user's own confirmation earlier in this file) — no code path found that hides or removes
+  `#cpe-ok`.
+- DOM-geometry witness (numbers, not a screenshot — `getBoundingClientRect`/`getComputedStyle`/
+  `offsetParent` on `#cpe-ok` before vs after clicking `#cpe-buildup`, both on a cramped 700px-tall
+  viewport where the panel's own `overflow:auto` already clips the footer BEFORE any interaction, and
+  on a taller 900px viewport where it doesn't): **no change in the OK button's display/visibility/
+  position/in-viewport state from the toggle alone**, either way.
+- **Not settled** — this only rules out "the checkbox handler itself hides it" and "generic
+  scroll-clipping from the toggle alone." It does NOT rule out a state-dependent trigger (e.g. only
+  after a rehearsal has run, only with Time Machine already open before the uncheck, only at a
+  specific panel scroll position, or something the static read missed). **Needs the user's own
+  console log captured across the EXACT repro steps** (what was open/active immediately before
+  unchecking BuildUp) before this can be root-caused the same rigorous way as Item 1 — do not invent
+  a fix without that evidence.
