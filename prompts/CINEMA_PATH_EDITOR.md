@@ -8763,3 +8763,41 @@ dispatching session was itself working in, switching its branch mid-session. No 
 session's own branch was already merged), but **a dispatch prompt must name a worktree the parent is
 NOT using, or say "create a fresh one" outright.** Worktree Hygiene's reuse rule is about not
 accumulating clones; it was never meant to send an agent into the parent's live tree.
+
+### ⛔ §CPE_PREVIEW_ARG — latent, and the one-line fix EXPOSES a broken restore. NOT SHIPPED.
+
+Investigated to a conclusion this session; deliberately **not** merged. Read this before "just fixing"
+the one-liner.
+
+**The bug is real but LATENT.** `document.getElementById('cpe-preview').addEventListener('click',
+_previewFly)` (~line 3055) hands the MouseEvent to `_previewFly`'s first parameter, `povOnly` — and an
+Event is truthy. The comment at `_previewFly`'s definition claims "#cpe-preview's own wiring calls
+this with no argument — unaffected"; that was never true of this line.
+
+**Corrected scope — an earlier report of this (including to the user) OVERSTATED it.** `#cpe-preview`
+is `style="display:none" aria-hidden="true"` (line 798) and is **never unhidden**, so no user can
+click it. The visible transport is the scrub panel's play button, which passes `true` deliberately
+(§CPE_SCRUB_POV_ONLY). The `povOnly=1` seen in the user's live logs is that button working AS
+DESIGNED — not this defect. The only callers of the hidden button are WITNESSES
+(`witness_cpe_room_title_live/_timing`, `witness_cpe_stick_after_preview`), which have therefore been
+rehearsing B alone while asserting against a "full preview". Test fidelity, nothing user-facing.
+
+**Why the fix is not shipped — it uncovers a SECOND, bigger bug.** Wrapping the listener
+(`function () { _previewFly(); }`) makes the button run a real full preview, and then:
+`witness_cpe_stick_after_preview.js` goes **6/6 → 4/6**, because after that full preview the band
+handle projects to **(-411, 1123)** — off-screen — on an 800px-tall viewport. The witness recomputes
+the handle's screen position immediately before the tap (`probe()`, line 140), so those coordinates
+are live, not stale. **The full-preview path does not restore the main camera to the editing pose,
+despite `§CPE_PREVIEW done` printing "camera restored to the editing pose".** That path has been
+unreachable since #1197, so nothing has exercised it and the restore has rotted unnoticed.
+
+Shipping the one-liner alone would therefore turn a harmless latent bug into an exposed broken path
+AND leave a witness red on `main`. **Order of work when this is picked up: fix the camera restore
+FIRST, prove it with the existing witness, and only then wrap the listener.** The `povOnly` one-liner
+is the last step, not the first.
+
+### Naming
+User, this session: **"we can call it the WYSIWYG BIM Movie Maker"** — *"what you see is what you get
+- an old concept in programming"*. The same principle already names the grab fix (§CPE_GRAB_WYSIWYG:
+the grab zone IS the drawn sphere) and is the through-line for §CPE_WALK_AUTHORING: compose the shot
+from inside the shot. Worth keeping as the feature's name.
