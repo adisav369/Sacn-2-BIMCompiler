@@ -7967,3 +7967,108 @@ rounded second on a short film. Fixed to assert the real number with a tolerance
 tn↔pixel round-trip. 31/31 green, stable across 3 consecutive runs. Branch `fix/cpe-buildup-tm-
 ownership` deleted (both remote and local) once its content was confirmed fully carried forward —
 nothing left uncaptured.
+
+## ▶ HANDOFF 2026-08-06 (LATE) — for a fresh session, read this whole section before touching code
+
+Two items confirmed by the user as STILL live on the current deployed build (`v956`, PR #1215 +
+#1217 both confirmed live by fetching `cinema_path_editor.js` directly from
+`https://red1oon.github.io/bim-ootb/viewer/cinema_path_editor.js` and checking for
+`CPE_BUILDUP_OWNS_TM` present / `cpe-vf-resize` absent — do this same check yourself before assuming
+stale cache is the explanation for anything, it was the wrong explanation for most of this session's
+early reports and burned real time before being ruled out properly):
+
+1. **"When BuildUp is ON, the POV inset (B) goes blank during playback, only appears when paused."**
+2. **"The POV inset framing is still ajar/bigger" — even now that B is FIXED in position (drag/resize
+   retired this session, §CPE_FIXED_PANELS), ruling out drag/resize instability as the cause.**
+
+**User's own words this session, verbatim, before handing this off — read literally, do not drift
+from it:** *"I hate to use visual when u own the code. And worse, your logging tells you nothing.
+GIGO. Go back to your coding."* — the ask is CODE-LEVEL and NUMERIC investigation, not another
+"please describe what you see" round-trip, and not console-log lines that don't actually settle
+anything either (§-tagged logs are necessary but this session found them insufficient ALONE for these
+two symptoms — see the pixel-readback approach below, which is numeric ground truth, not a
+screenshot: it computes a statistic from real GPU pixel data, never displays or "looks at" an image).
+
+### Item 1 — B blank during playback: real numeric evidence gathered, NOT a clean confirmation, do not guess-fix from this alone
+Built a numeric pixel-readback probe (`gl.readPixels` on B's exact scissor rect, computing luminance
+mean/stddev across a sampled grid — a genuinely blank/flat render has stddev≈0; real geometry has
+real variance) and ran it against the LIVE deployed URL, Hospital building, matching the user's own
+repro exactly (eye on, buildup on, scrub-play → povOnly+buildup preview). Script:
+`/tmp/claude-1000/-home-red1-bim-compiler/096248ca-a52c-41d7-b6fc-dbf89c817742/scratchpad/
+sandbox_blank_check.js` (scratchpad path — copy it into the repo/worktree before reuse, it was never
+committed). Results from one run:
+```
+BEFORE flight (idle):          stddev=21.26  sameAsFirstFrac=0.952   (normal, real content)
+DURING playback, sample 1:     stddev=0      sameAsFirstFrac=1       ← FLAT/BLANK
+  same instant's §CPE_VF_FRAME_DIAG: scrubTn=0 nearestSurfaceDist=none-within-200m
+DURING playback, sample 2 (+2s): stddev=40.41 sameAsFirstFrac=0.831  ← REAL CONTENT
+  same instant's §CPE_VF_FRAME_DIAG: scrubTn≈0.21 nearestSurfaceDist=0.26m
+AFTER "pause" click:           stddev=0      sameAsFirstFrac=1       ← flat again, BUT SEE CAVEAT
+```
+**Honest read, not overclaimed:** the FIRST "blank" sample correlates exactly with
+`nearestSurfaceDist=none-within-200m` — i.e. vfCam is genuinely looking at open air/sky at that
+instant (the dive/settle beat opens wide, matching the ALREADY-DOCUMENTED "composition varies by
+beat" finding from the 2026-08-06 earlier session, not a new defect). Sample 2, two seconds later
+during the SAME uninterrupted playback, shows real content (stddev=40) — so B does **not** stay
+permanently blank while playing; content clearly renders during active playback when something is
+actually in front of the camera. **The "AFTER pause" reading is NOT trustworthy evidence either
+way** — the log shows `§CPE_PREVIEW done frames=3 msPerFrame=4551.5` between sample 2 and the pause
+click: Hospital (63182 elements) under SwiftShader software rendering in this sandbox ran the ENTIRE
+rehearsal in only 3 frames (~4.5s/frame) and had already finished (`u=1`, flight over) before the
+"pause" click landed — that click therefore STARTED A NEW flight from tn=0 rather than pausing the
+running one (`§CPE_SCRUB_PLAY started` appears a second time right after). A fresh tn=0 read is
+expected to be near-blank again for the same "open air at the dive beat" reason as sample 1, not
+because pausing revealed content. **This run neither confirms nor refutes "blank while playing, fine
+when paused" — it only re-confirms the already-known "wide/open beats read as blank" fact.**
+**What a fresh session needs to do, precisely, not a re-run of the same flawed test:**
+- Re-run `sandbox_blank_check.js` (or a rewritten version) against a SMALLER/faster building
+  (`Duplex`, present locally in `~/bim-ootb/buildings/Duplex_extracted.db` and in
+  `/tmp/wt-*` worktrees) so the flight runs at real frame-rate and an actual PAUSE (not a
+  race-condition restart) can be captured mid-flight, OR increase the sleep budget and poll
+  `_flyState().paused` before reading pixels, don't just sleep-and-hope.
+  after each `_probeVF()`/pixel read, so it's provable the sample was taken from the intended
+  state (`flying=true` vs `flying=false,paused=true`), not assumed from elapsed time.
+- Sample MANY tn points across a full rehearsal (not just 2), correlating each pixel-variance
+  reading against BOTH `nearestSurfaceDist` (already logged) AND whether `flying`/`paused` was true
+  at that exact instant — build a table, don't eyeball a couple of samples.
+- If a genuine "stddev=0 while flying=true AND nearestSurfaceDist is CLOSE (not none-within-200m)"
+  moment is found — THAT is the real bug signature (content should be there but isn't). If every
+  stddev=0 moment correlates with `nearestSurfaceDist=none-within-200m`, this item is NOT a bug,
+  it's the same composition-varies-by-beat fact already settled and signed off by the user earlier
+  this session ("Dont really get you but i go with your judgement, as larger to fit that pov screen
+  is OK") — close it as such, don't keep re-opening a settled finding without new evidence.
+
+### Item 2 — POV framing "ajar" even with fixed panels
+Ruled out this session, by code + witness (not visual): position/FOV/aspect/viewport-rect are all
+bit-exact (`G-VF-1`, `G-VF-ASPECT`, `G-VF-RECT-ASPECT`, `witness_cpe_scrub_viewfinder.js`). The one
+remaining, mathematically real, already-measured residual is the scissor-viewport rounding when B's
+CSS box (300×190) is scaled by a fractional device-pixel-ratio (~0.2% aspect mismatch, `G-VF-ASPECT`'s
+own tolerance documents this) — unavoidable while B shares the main canvas via
+`setScissorTest`/`setViewport`/`setScissor` instead of owning a dedicated render target. **User
+confirmed this is STILL visible even with drag/resize retired** (§CPE_FIXED_PANELS, this session) —
+ruling out drag-induced staleness as an explanation too. **The only way left to fully close this,
+not yet built:** give B its OWN `THREE.WebGLRenderer` on its own `<canvas>`, CSS-positioned over the
+main canvas, instead of a scissor sub-rect of the shared one. This is a standard, well-precedented
+three.js pattern (minimaps/split-screen/multi-viewport demos) — same `Scene`/`Camera` objects can be
+rendered by multiple renderers, geometry is not tied to one renderer. Cost: a second WebGL context
+(one extra, well within the ~8-16 browsers allow) and a duplicate first-use shader compile. **Real,
+scoped architecture work, not a quick fix — needs the user's go before starting, since it replaces
+`_vfRender()`'s core mechanism, not a patch on top of it.**
+
+### Tooling now available for either item, reuse it rather than rediscovering
+- **Correct headless-Chrome launch args for this environment** (a previously silent hang for ~30 min
+  of this session, worth never re-deriving): `puppeteer.launch({ headless: 'new', protocolTimeout:
+  300000, args: ['--use-gl=angle', '--use-angle=swiftshader', '--no-sandbox',
+  '--enable-unsafe-swiftshader'] })`. `--use-gl=swiftshader` alone (with or without
+  `--ignore-gpu-blocklist`) fails GPU-process init silently and the page hangs forever waiting on
+  `window.APP._composer`.
+- `witness_cpe_scrub_viewfinder.js` (repo root, bim-ootb) — the full regression suite, 31/31 green as
+  of this handoff. Run against `Duplex` (fast, default) or `HHS_Office_Federated`/`Hospital` (slow,
+  matches the user's own scale) via `PORT=8460 BLDS=<name> node witness_cpe_scrub_viewfinder.js`
+  from a worktree serving on that port (`python3 -m http.server 8460 --directory <worktree>`).
+- `sandbox_blank_check.js` (scratchpad, path above) — the pixel-readback probe described in Item 1.
+  Not committed; copy it into a worktree first, and fix the pause-race bug named above before trusting
+  its "after pause" reading.
+- **Before creating a new worktree, run `git worktree list`** — several exist from this session
+  (`/tmp/wt-cpe-fixed-panels` is the last clean one, `ahead=0` on `fix/cpe-fixed-panels`, fully
+  merged as of this handoff — safe to prune per Worktree Hygiene, or reuse if still present).
