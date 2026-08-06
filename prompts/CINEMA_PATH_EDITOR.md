@@ -8265,3 +8265,266 @@ at ~400 words per the same discipline the earlier Fable review used (see the "Se
 review dispatched" section above this one). Verify with a witness in the same shape as
 `witness_cpe_vf_buildup_blank.js` (bim-ootb repo root) — before/after `§PERF_TRAVERSE`-tick-count vs
 `window.tmGetState().cursor` sampled immediately after a scrub drag, not a screenshot.
+
+## ▶ SESSION 2026-08-06 (cont'd) — scrub-vs-BuildUp gap FIXED, witnessed, not yet pushed
+
+Dispatched exactly as scoped above (`model=fable`, isolated worktree `/tmp/wt-cpe-scrub-buildup`,
+branch `fix/cpe-scrub-buildup`, off fresh `origin/main` — chosen over the shared `~/bim-ootb`
+checkout because that tree had another session's uncommitted 456-line in-progress rework of this
+exact same area live at dispatch time; worktree isolation avoided any file collision).
+
+**Root-cause read confirmed against current code**, one live discrepancy found beyond the original
+diagnosis: fixing the cursor sync exposed that B's day readout also went stale after a scrub (only
+ever refreshed on Play/`step()` frames before) — folded into the same patch.
+
+**Fix:** new `_scrubBuildupSync(tn)` in `cinema_path_editor.js`, called from `_scrubTo` after the
+pose update. Gated on `_state.buildup` AND `window.tmGetState().active` — derives the same buildup
+cursor `step()` computes and calls `window.tmSetCursor(bkMs)`, then refreshes B's readout. Logs
+`§CPE_SCRUB_BUILDUP`.
+
+**Open question resolved (conservative, as instructed):** a scrub does NOT auto-arm Time Machine —
+before the first Play this session, scrubbing stays pose-only, identical to today's behavior. Matches
+the existing "only a real Play opens Time Machine" doctrine. Asserted as its own gate
+(`G-SCRUB-BK-NOARM`) so any future change to this is a deliberate, witnessed decision, not a silent
+drift.
+
+**Witness** (`witness_cpe_scrub_viewfinder.js`, Duplex, extended with new gates) — **34/34 PASS,
+exit 0**: `G-SCRUB-BK-CURSOR` — scrub(0.25)→cursor=1783791925000, scrub(0.75)→cursor=1784378187000,
+both `diffMs=0` against independently-computed expected values (same shared helpers `step()` uses).
+`G-SCRUB-BK-NOARM` — tmActive stays `false` across a scrub when Time Machine was never armed.
+`G-VF-2b` — B's readout now agrees with the cursor's day after a scrub. All 5 pre-existing gates
+(G-SCRUB-1/2, G-VF-1/2a, G-PERF-1) still pass, unbroken by this change.
+
+**State:** committed `e62d19c` on `fix/cpe-scrub-buildup` in `/tmp/wt-cpe-scrub-buildup` —
+**not pushed**, per dispatch instructions (this bim-compiler session doesn't own bim-ootb pushes,
+[[feedback_diagnose_in_session_fix_in_other_session.md]]). `origin/main` has advanced by one
+docs-only commit since the worktree was cut (`4e3b320`) — no overlap with this diff, trivial rebase
+at PR time. Shared `~/bim-ootb` checkout was never touched. Next: user decides whether to push/PR
+this branch (and whether/how it should reconcile with whatever the other concurrent session ships
+to the same file).
+
+## ▶ SESSION 2026-08-06 (cont'd) — live-log discrepancy analyzed, no code touched
+
+**(a) Live log is stale-state, not a new bug.** PR #1226 is `OPEN`, `mergedAt: null` — the deployed
+site (`red1oon.github.io/bim-ootb`) is built from `origin/main`, which does NOT contain `e62d19c`.
+The pasted console log matches exactly: Play phase fires `§PERF_TRAVERSE` every frame (buildup ticks),
+the scrub-drag phase moves `scrubTn`/vfCam pose with zero `§PERF_TRAVERSE`/cursor lines, and no
+`§CPE_SCRUB_BUILDUP` tag appears anywhere (that tag only exists in #1226). Expected pre-fix behavior.
+
+**(b) `_scrubTo` is still the one real hook point on current `origin/main`.** Traced in
+`viewer/cinema_path_editor.js` @ `origin/main` (`fdec1cc`): the standalone panel (`_buildScrubPanel`,
+L1190; `#cpe-scrub-track` L1219) is wired by `_wireScrub` (L1317) — pointermove → `_scrubTo(tn)`
+L1337, click/pointerup → `_scrubTo(tn)` L1357; stick-click bearing also reuses `_scrubTo(bearTn)`
+L2254. `_scrubTo` itself is at L1309. PR #1184's rework did NOT create a parallel drag path — it only
+extracted `_applyVFPose` (L1298, §CPE_SCRUB_POV_ONLY) for the scrub-play button, whose Play path goes
+through `_previewFly()`'s `step()`, which already drives the cursor. #1226's `_scrubBuildupSync`
+inserted inside `_scrubTo` therefore covers every scrub entry point. The log's own sequence (Play
+first → TM armed → then drag) is exactly the `ts.active` gated case the fix handles.
+
+**(c) Merge-safety: CLEAN.** `mergeStateStatus: CLEAN`; `git merge-tree` base→main→branch = 0
+conflict markers. `fix/cpe-scrub-buildup` sits on `1b157f4`; the two commits main gained since
+(`4e3b320`, `fdec1cc`) are docs-only, no overlap with the diff (which touches only
+`_scrubTo`/adds `_scrubBuildupSync` + one witness probe). No dead-code risk found.
+
+**(d) Why auto-merge didn't stick:** not settings — repo has `allow_auto_merge: true` AND branch
+protection on `main` with required checks `fast-checks`/`e2e-tests`. The real cause is ordering:
+`ci.yml`'s step ran on the PUSH-triggered run at 07:59:20Z (`gh pr merge --auto --squash
+"fix/cpe-scrub-buildup"` → logged `no pull requests found for branch`, swallowed by `|| true`), but
+PR #1226 was only created at 08:38:33Z — 39 min later — and nothing re-runs the step after PR
+creation. Fix is one manual command: `gh pr merge 1226 --repo red1oon/bim-ootb --auto --squash`.
+
+## ▶ SESSION 2026-08-06 (cont'd) — PR #1228 merged+deployed (checkbox fix, AIM_PIN disabled, plain
+## POV frame, quiet banners); user re-tested LIVE — 1 of 3 confirmed, 2 still open, wrap-up handoff
+
+**PR #1228** (`fix/cpe-followups`, commit `0215a3a`) — merged `2026-08-06T09:48:29Z`, `deploy-pages`
+ran clean immediately after (finished ~09:53Z). Everything below was tested by the user AGAINST THIS
+LIVE DEPLOY, not a stale build — confirmed by their own pasted console showing zero `§CPE_AIM_PIN`
+lines anywhere (the disable is live) and the RECORD-button behavior matching the fix.
+
+**1. RECORD button (checkbox edit-detection) — ✅ CONFIRMED FIXED, user's own words:** "RECORD button
+no longer goes away on buildUp off." `_isEdited()`'s `origBuildup`/`origRoomTitle` baseline fix
+(cinema_path_editor.js `_isEdited()`, ~line 649) is working as intended. **Closed, no further action.**
+
+**2. POV screen issue — ⚠ user reports "still there", but WHICH issue is ambiguous, don't assume:**
+This PR deliberately did NOT attempt to fix subject framing/composition (the "subject reads small in
+the box" issue, Item 2 from the `SESSION HANDOFF` above, root-caused as B sharing the main renderer's
+full-canvas post-processing — a real fix needs B's own `WebGLRenderer`, explicitly deferred pending
+user go). What THIS PR changed was cosmetic-only, per the user's own request this session: retired the
+pixel-fit-chase border-crafting and replaced it with a plain thin white rounded border
+(`§CPE_VF_PLAIN_FRAME`, 1px, radius 12px, `rgba(255,255,255,0.85)`) — witnessed via `G-VF-PLAIN-FRAME`,
+33/33 PASS. **So "still there" may mean two different things and a fresh session must ask, not guess:**
+(a) the composition/small-subject issue is still unsolved — expected, it was never in scope this PR,
+or (b) the new plain border itself doesn't look right / isn't rendering as described. Get the user to
+clarify which, with a screenshot or a `getComputedStyle` readout of `#cpe-vf-panel`'s border, before
+touching any code — do not re-open the WebGLRenderer architecture question without an explicit user go
+(per the earlier HANDOFF section), and do not re-touch the border CSS on a guess either.
+
+**3. "Stick cannot be edited" — ⚠ NOT the pin-click regression (that's confirmed gone), root cause
+UNKNOWN, needs a fresh repro+log before any fix is attempted:** The user's pasted live-deploy console
+(full session, BuildUp toggled, a stick selected: `§CPE_SELECT band=0 zone=mid`) shows **zero**
+`§CPE_AIM_PIN` lines and **zero** `§CPE_DRAG_SCALE grab band=...` lines anywhere — meaning the pin
+regression this PR fixed is genuinely gone (no full-replan cascade fired), but the log also never shows
+a successful drag-grab being attempted or registered. Two live possibilities, unconfirmed either way:
+- **(a) A pre-existing UX-difficulty issue, not a regression.** `_wireDrag`'s pointerdown handler
+  (cinema_path_editor.js, `h.down`, ~line 2454) only starts a drag when the raycast returns a `hit` on
+  a band's own handle geometry (end/mid spheres, `HANDLE_R=0.30m`, `GRAB_PX=18` screen-space
+  tolerance) — line ~2444-2452: when a band is already selected (`_state.held` set) and the click does
+  NOT land on that hit-zone, the code explicitly does `_state._pinCandidate = {...}; return;` **without**
+  `preventDefault()`/`stopPropagation()`, so the gesture falls through to OrbitControls by design (the
+  code comment says so verbatim: "OrbitControls still owns this gesture exactly as it does today").
+  Before this PR, a near-miss click ALSO triggered `§CPE_AIM_PIN`'s raycast-and-replan on release,
+  which at least did something visible; now a near-miss is a silent orbit. If the handle hit-zone is
+  genuinely hard to land a click on at typical zoom/scale, this PR's fix didn't create that
+  difficulty, but it did remove the (broken, replan-storm) fallback that used to at least react —
+  possibly making a marginal hit-test feel MORE like "nothing happens" than before, even though
+  dragging when you DO land the hit still works (`witness_cpe_drag.js` G-DRAG-1..4, 4/4 PASS, scripted
+  — not a substitute for a real mouse-precision read).
+- **(b) A genuine separate bug**, unrelated to hit-tolerance, not yet ruled out.
+- **Do not guess which. Next session: get the user's console log captured across the EXACT repro** —
+  click to select a stick, THEN attempt to drag it (not just re-select), paste that specific gesture's
+  full log (same evidence discipline as the earlier `§CPE_OK_VISIBILITY`/scrub-buildup investigations
+  this file already used successfully). If the log shows a `hit`/`§CPE_DRAG_SCALE grab` line with no
+  visible movement, it's a math bug in the drag delta — cheap fix. If it shows NO grab line at all on a
+  deliberate handle click, the hit-test tolerance itself is the target (`GRAB_PX`/`HANDLE_R`, both in
+  cinema_path_editor.js's top constants) — a UX tuning fix, not a logic bug. Either way, root-cause from
+  the log first, per this project's standing rule — do not invent a fix without it.
+
+**Session closed here per user's explicit "wrap up" instruction.** State for pickup: 1/3 confirmed
+closed, 2/3 open with next steps named above, nothing left mid-edit, worktree `/tmp/wt-cpe-scrub-buildup`
+clean (branch `fix/cpe-followups`, fully pushed/merged) — safe to prune per Worktree Hygiene once
+confirmed no longer needed, or reuse for the next CPE pickup.
+
+## ▶ SESSION 2026-08-06 (pickup) — §CPE_VF_GRIP + §CPE_BUILDUP_EVEN_TEMPO, both measured, both fixed
+
+Picked up the handoff above cold. Of its two open items, **item 3 ("stick cannot be edited") is
+CLOSED by the user directly** — asked which gesture they used, answer: *"It is working already."*
+No code touched, no fix needed. The handoff's leading hypothesis (GRAB_PX hit-test tolerance) was
+never exercised; if it recurs, that analysis is still on record above.
+
+Item 2 (POV) was disambiguated by the user and turned out to be a THIRD thing, not either of the two
+the handoff offered. Their words: *"Subject playing screen is bit larger that is fine. The pov
+original frame size has always been wrong. Now it tries to redraw its borders rather flimsy and not
+aware of the bit larger inset screen. I think this has to be look at holistically why it is not
+gripping."* — i.e. not composition, not the border's styling: the border and the picture are
+DIFFERENT RECTANGLES.
+
+### §CPE_VF_GRIP — the frame did not hold the picture (FIXED, witnessed)
+
+**Root cause, and it is NOT the deferred post-processing issue.** `_vfComputeRect` derived the
+scissor rect from `panel.getBoundingClientRect()` — the panel's OUTER BORDER BOX. Three separate
+consequences, all plain rect arithmetic:
+- the rect covered the 1px border ring on all four sides, so the frame painted ON TOP of the
+  outermost ring of the picture instead of around it;
+- it covered the 22px opaque `#cpe-vf-title` header, which is absolutely positioned INSIDE that same
+  box — 23px, **12.11% of the framed image, was painted over and never seen**;
+- square scissor corners against a `border-radius:12px` frame → the picture poked out through each
+  rounded corner by `r*(1-1/√2)` = **3.51px**.
+And `vfCam.aspect` followed the same outer box (**1.5789**) while the visible picture is **1.7952** —
+**12.05% out**, so the composition was centred on a box 24px taller than exists and the subject rode
+high, under the header. *This is why "the pov original frame size has always been wrong."*
+
+⚠ **This was conflated with §CPE_VF_PLAIN_FRAME's recorded root cause for several sessions.** That
+one (B sharing the main renderer's full-canvas post pass, needing B's own `WebGLRenderer`) is about
+how the picture is SHADED. This one is about WHERE IT LANDS. Only the second was ever the "frame
+size" complaint. **The WebGLRenderer work remains deferred and unstarted** — it was not needed here.
+
+**Fix** (`viewer/cinema_path_editor.js`): new `_vfPanelInset(panel)` reads the real computed border
+widths + the header's own `offsetHeight`; `_vfComputeRect(canvasR, panelR, pr, inset)` now computes
+the CONTENT box. Both call sites (`_vfRender`, `_vfRectForTest`) pass it. `border-radius` 12px → **0**:
+the panel is a TRANSPARENT hole punched over the main canvas (an opaque background would cover the
+very render it frames), so an inset dodging the corner arc would show the MAIN scene through the gap,
+not a mat — a square frame is the only shape that grips this architecture exactly. One-line revert if
+rounded is wanted back, at 3.51px of poke per corner. Also dropped §CPE_VF_RECT_ASPECT's derive-w-from-h
+trick: `vfCam.aspect = w/h` already makes rect and camera agree by definition, so deriving w from h now
+only lets w miss the content box by up to a pixel — the exact bleed being removed. Both rounded
+independently against their own box.
+
+**Witness `witness_cpe_vf_grip.js` (NEW, Duplex) — 0/4 → 4/4.**
+```
+pre-fix   BLEED  left=1.00 right=1.00 top=23.00 bottom=1.00 px   render 300x190 @(16,454) vs visible 298x166 @(17,477)
+          TITLE  hidden 23.00px of 190.00 = 12.11% of the frame
+          ASPECT vfCam 1.5789 vs visible 1.7952 — 12.05% out
+          CORNER radius 12px, needInset 3.51px, gotInset 0.00px
+post-fix  BLEED  left=0.00 right=0.00 top=0.00 bottom=0.00       render 298x166 @(17,477) == visible, exactly
+          TITLE  hidden 0.00px (0.00%)     ASPECT err 0.00%      CORNER radius 0px, needInset 0.00px
+```
+`witness_cpe_scrub_viewfinder.js` **33/33 PASS** after amending two gates that encoded the old wrong
+geometry: `G-VF-PLAIN-FRAME` (radius 12px → 0px) and **`G-VF-ASPECT`, which had been reading the OUTER
+box and so passed green through the entire 12% error — reading the outer box in the witness is part of
+why this went unnoticed for several sessions.** It now reads the content box.
+
+### §CPE_BUILDUP_EVEN_TEMPO — the days sprint during the dive-in (FIXED, witnessed)
+
+**User, mid-session:** *"why does the movie baking makes the first few seconds or during the dive in
+jumps days too fast tempo? Should be even throughout - separation of concern. Let the user plays with
+the sticks and timings to catch this linear buildup."*
+
+**Answer to "why": §CPE_BUILDUP_WORK_PACED, working exactly as written.** `_workCursorAt`
+(`cinema_maxq.js`) maps film fraction → the k-th ELEMENT PLACED, `k = round(t * total)`. Even element
+rate is uneven DAY rate by construction — the two cannot both be constant unless the schedule spreads
+elements uniformly in time, which no real 4D schedule does. Wherever the schedule is sparse in
+elements (site/substructure — the opening of the film, which is where the dive-in happens) the date
+cursor sprints through weeks to reach the next element. Measured on Duplex, pre-fix: per-step calendar
+advance ranged **0.01d → 0.29d, a 57.21× swing** across one 10-day buildup, cursor departing the
+straight line by **9.47% of the whole span**.
+
+**Fix:** `BUILDUP_EVEN_TEMPO = true` in `cinema_maxq.js`; `_workCursorAt` returns
+`projectStart + t*span` before any schedule is consulted, and logs `mode=even-calendar`. Work pacing
+is kept intact behind the flag (one-line revert), not deleted.
+
+⚠ **This REVERSES a prior user decision and trades back into the problem that motivated it** — the
+burst §CPE_BUILDUP_WORK_PACED records (a quarter of the Hospital model appearing in the first 5% of
+the film) returns wherever a schedule clusters its elements. Made deliberately, on the user's stated
+grounds: **separation of concern.** The buildup engine does one predictable thing — linear days — and
+dramatic pacing belongs to the path editor, where the user places sticks and sets timings and can see
+what they are doing. Two mechanisms silently competing to set tempo is what produced a pacing nobody
+asked for and nobody could steer.
+
+**Witness `witness_cpe_buildup_tempo.js` (NEW, Duplex) — 1/3 → 3/3.**
+```
+pre-fix   EVEN   maxStep 0.29d / minStep 0.01d = 57.21x (tol 1.05x), worst at u=0.28
+          LINEAR maxDeviation 0.9d = 9.47% of span (tol 0.50%)
+post-fix  EVEN   maxStep 0.10d / minStep 0.10d = 1.00x        DIVEIN first 10% of film = 10.00% of calendar
+          LINEAR maxDeviation 0.0d = 0.00% of span
+```
+
+**A REAL defect this change introduced, caught by an existing witness and fixed at the source — not
+retired.** `_ghostGroundArm` picks its trigger threshold as `elementsFirstT ?? calendarFirstT`,
+mirroring `_workCursorAt`'s own branch. Moving the cursor to calendar while leaving the threshold in
+the elements domain **reintroduced #1148 from the other direction**: threshold `firstT=0.0027`
+(elements) against a real cursor crossing at `t=0.0083` (calendar), so the ground began un-ghosting
+~2 frames of 400 BEFORE the first above-ground element was placed. `witness_cpe_ghost_ground.js` went
+**15/15 → 13/15**, confirmed a genuine regression by re-running the witness against stashed pre-fix
+code (baseline 15/15) rather than assuming. Fixed by gating the elements-domain branch on
+`BUILDUP_EVEN_TEMPO` — back to **15/15 ALL GREEN**, and the live log's `cursorConfirms` went **0 → 1**
+(threshold and real cursor now agree, `firstT=0.0090` = the calendar crossing).
+
+**Superseded gates retired IN PLACE, never deleted or silently flipped** — each keeps the number it
+last measured, because the decision each encodes was real, was the user's, and was reversed on the
+record:
+- `witness_cpe_work_pacing.js` **9/9**: G-WP-1 (*"k% of the film is k% of the building"* IS work
+  pacing — last measured 5.48pp against a 3pp tol), G-WP-2 (its RED control; both branches are now
+  calendar so the deviations are equal by construction), G-WP-8 (even ELEMENT-per-frame rate — last
+  measured 81.0% deviation against a 25% tol) retired. G-WP-7 AMENDED, not retired: the log must still
+  NAME the pacing in force, and now accepts either mode. G-WP-3/4/5/6/9 (monotonicity, determinism,
+  degrade-not-disable, preview==bake, full placement) stay LIVE — they are orthogonal to which pacing
+  is in force. Flip the flag false and all four retired gates go green again unchanged.
+- `witness_cpe_ghost_ground.js` **15/15**: G-GG-12c retired — its premise is that the calendar-fraction
+  and real-cursor clocks are DIFFERENT clocks that can diverge, true only under work pacing. They are
+  one clock now; gap=0 is the correct state, not the #1148 regression. G-GG-12a stays LIVE and is what
+  caught the regression above.
+
+### State
+bim-ootb branch `fix/cpe-vf-grip-and-tempo` off fresh `origin/main` (`d04cb5c`), in the reused
+worktree `/tmp/wt-cpe-scrub-buildup` (branched fresh rather than re-using the squash-merged
+`fix/cpe-followups`, per the concurrent-branches rule). Shared `~/bim-ootb` checkout never touched —
+it is 21+ commits stale and carries another session's staged changes.
+
+**Not verified, and why:** `witness_cpe_buildup_schedule.js` could not run at all — its first
+building `TerminalHi4D` is an LFS pointer locally (60-74 byte stubs for every building except Duplex),
+so it times out at page load. **Pre-existing environment limitation, not a regression from this
+change** — no gate in it ever executed. Every witness above ran on Duplex only, for the same reason;
+deliberately did NOT pull LFS blobs (Worktree Hygiene / DB policy).
+
+**Still open, unchanged, needs an explicit user go before anyone starts:** B's own `THREE.WebGLRenderer`
+(the composition/post-processing item). §CPE_VF_GRIP did not touch it and does not depend on it.
