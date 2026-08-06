@@ -8131,3 +8131,5 @@ PR #1217-removed `_vfRect`/`_scrubRect`/`VF_MIN_W`/`VF_MIN_H`/`VF_RESIZE_HANDLE_
 back yet as of this write-up** — if you're picking this up fresh, check whether that review
 completed and landed a follow-up commit/note; if not, it may be worth re-dispatching with the same
 scope rather than assuming it silently passed.
+
+Fable review result: SHIP WITH FOLLOWUP NOTED (PR #1215/#1217/#1218 all hold) — one hardening catch, fixed in PR #1220 (`box-sizing:border-box` stated explicitly on B's panel, was silently relying on the global reset). Session closed here — Item 1 (B blank during BuildUp playback) still open, per the HANDOFF section above; user will test live and pick back up.
