@@ -8830,6 +8830,9 @@ Every dispatch task ran; every claim below is a measured number at dpr 1.25, 148
 4. **Regressions (task 4)** — `witness_cpe_vf_grip.js` 6/6 at dpr 1, 1.25, 1.5, 2;
    `witness_cpe_scrub_viewfinder.js` 33/33; `witness_cpe_drag.js` 4/4 Duplex + 4/4 Terminal.
 5. **PR opened (task 5)** — after all of the above, per the dispatch order.
+6. **USER CONFIRMED LIVE (2026-08-07, Hospital via localhost:8470 serving the fix worktree, OCI DB):
+   "issues solved."** Both symptoms gone on the fix build. Merge of PR #1234 still pending at the
+   time — blocked only by GitHub's declared major outage stalling the required CI queue.
 
 **Branch: bim-ootb `fix/cpe-vf-dpr-double` (commit `8928457`), off `origin/main`. No PR opened.**
 Everything below is measured. Where something is unverified it says so.
