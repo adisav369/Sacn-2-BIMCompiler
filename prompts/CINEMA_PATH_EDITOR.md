@@ -8528,3 +8528,72 @@ deliberately did NOT pull LFS blobs (Worktree Hygiene / DB policy).
 
 **Still open, unchanged, needs an explicit user go before anyone starts:** B's own `THREE.WebGLRenderer`
 (the composition/post-processing item). §CPE_VF_GRIP did not touch it and does not depend on it.
+
+## ▶ §CPE_WALK_AUTHORING — SPEC (2026-08-06, design decided, NOT built)
+
+**Status: spec only. No code written. Two design questions were put to the user and both are now
+answered — recorded here so the decisions are not re-litigated.**
+
+### The idea (user)
+*"How about the path is done by a more intuitive 'walk' ie the user drag to a spot and snap, then to
+another spot and snap. It is as if he is making the movie by walking thru the virtual building and
+say OK this is where the cam will come here and look here where he is facing."*
+
+### The two rulings — BOTH decided, do not re-open
+1. **Does the authored walk REPLACE the derived path?** → **NO.** User: *"Shouldn't as the older one
+   can be quick and easy. The new way is to give more idiot proof pathing."* The derived path stays
+   the default and stays exactly as it is. Walk-authoring is an OPT-IN layer for users who want
+   control, not a new default.
+2. **Do the dive-in and closing orbit stay automatic?** → **YES, ALWAYS.** User: *"The preset dive
+   into largest hall then out is for quick just hit and go users. This is the hallmark signature of
+   our project - frictionless."* Alt+C with zero further input must keep producing a complete film.
+   **Frictionless is the product signature — any design that makes the zero-input path worse is
+   wrong by definition, however good the authoring experience is.**
+
+### What this means architecturally — ADDITIVE, and mostly already present
+The film is already beat-structured (`§CINEMA_BEATS dive / spin / out / rise`) and the plan ALREADY
+carries the distinction this feature needs: `§CINEMA_PATH_EDIT authored waypoints=6 (derived route
+replaced)` and `§CINEMA_BEATS ... route=authored waypoints=6` both appear live today the moment a
+band is dragged. So:
+- Walk-authoring is **a new way to PRODUCE authored waypoints**, not a new film engine.
+- It substitutes for the **WALK beat only**. Dive, spin, pull-back and orbit are untouched.
+- Ruling 1 falls out for free: no authored waypoints → `route=line`, today's behaviour, bit-identical.
+
+**The one genuinely new thing: a per-waypoint AIM.** Today the aim is DERIVED (`§CPE_AIM_DEPTH`,
+`§CPE_AIM_DENSITY`, `§CPE_AIM_SERIES`, and the `§CPE_AIM_PIN` override). "Look here where he is
+facing" means an authored `{position, aim, time}` triple. Every mature tool in this space separates
+the position track from the aim track for exactly this reason — see prior art below.
+
+### Prior art (the pattern is mainstream; today's derive-then-nudge is the unusual one)
+- **Enscape / Twinmotion / Lumion video editors** — fly the camera, click to drop a keypoint storing
+  position + orientation (+ FOV, time), tool interpolates. The AEC-native form of this idea.
+- **Unity Cinemachine (Dolly Track + Cart + LookAt)** — the cleanest split: cart rides the spline,
+  aim target is independent. Architecturally the closest match to the ruling above.
+- **Blender (Follow Path + Track To)** — same decoupling.
+- **Google Earth Studio** — explicit position and target keyframes on one timeline.
+- **Matterport Highlight Reel** — pick saved viewpoints, fly between them; its click-a-floor-point
+  navigation is the closest existing analogue to "drag to a spot and snap".
+- **Navisworks viewpoint animation** — record viewpoints, tween.
+
+### Surface triage — canvas pick vs POV window (OPEN, needs a user decision)
+- **Canvas pick** gives POSITION naturally (raycast → snap to a legal standing spot) but NOT facing;
+  facing needs a second gesture (e.g. drag out from the dropped pin to set look direction).
+- **POV window** gives FACING naturally — it IS the shot, what you see is what is recorded — but not
+  position; you fly there first, then press "drop this shot". This is the Enscape/Twinmotion pattern
+  and the reason they all put a record-viewpoint button on the live camera.
+- B's inset already renders exactly the frame that would be filmed, so the POV route is closer than
+  it looks. **Not decided — ask before building.**
+
+### Assets that already exist (no new extraction needed)
+- `storey_walkable_raster` table ships in the building DB (confirmed in the user's own live
+  `§CENTRES_QUERY` table list), and the planner already consumes it: `§PATH_LEGAL_RASTER
+  storeys=Level 1..Level 7`. So "snap to a legal standing spot" is computable TODAY.
+- Room graph + door graph + spine bridging (`§ROOM_GRAPH`, `§ROOM_SPINE_BRIDGE`) for legal routing
+  between authored points.
+- `_spawnStick` / `_scrubTo` / `plan.poseAt()` — the existing authored-waypoint plumbing.
+
+### Still open before any code
+- The surface triage above (canvas pick vs POV-window record button, or both).
+- Whether authored points are hard keyframes (camera passes exactly through) or soft attractors the
+  existing planner smooths — the current band/hose model is the latter, and mixing the two silently
+  would reproduce the tempo-vs-work-pacing confusion §CPE_BUILDUP_EVEN_TEMPO just resolved.
