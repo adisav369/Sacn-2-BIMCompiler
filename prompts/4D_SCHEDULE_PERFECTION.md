@@ -1743,8 +1743,202 @@ bim-ootb code):
   durably (small — wire `persistDb()` into Lock) vs. build the JSON-form editor as a parallel path (big
   — the full `TM_SCHEDULE_EDITOR.md` plan). Not decided; don't build either without deciding first.
 
+## 2026-08-07 — §GANTT_DOUBLE_LOAD — clicking the Gantt/TM icon runs `injectGantt()` TWICE, diagnosed only, NOT fixed (handoff for a Fable agent)
+
+User: clicking the Gantt chart icon "acts as if it is loading twice." Confirmed from the user's own
+pasted browser console (Terminal, 48,428 elements) — this is a real double full-recompute on a SINGLE
+click, not a perception issue. **Diagnosed in this session by reading `origin/main:viewer/time_machine.js`
+(bim-ootb) — do NOT re-derive, the mechanism is fully pinned below. Not implemented per user instruction
+("don't fix, just document what to check").**
+
+**The two passes, both visible in the pasted log:**
+1. Pass 1 — `§TIME_MACHINE ON — 48428 ops, 111 days, project: 7/24/2025 → 11/13/2025` (placeholder/stale
+   start date). Full `§GANTT band 0..9` computation, `§GANTT_CACHE_SAVE ops=48428`, `§XRAY_EDGES`,
+   `§4D_BAND_MONOTONIC`, etc. — the whole heavy chain runs once.
+2. Immediately after, `§GANTT_BAR_IDENTITY schedule=none bars=71 editable=0` → `§GANTT_AUTO_GENERATE no
+   editable bars — materializing a schedule natively` → `§TM_REFOLD wasActive=true clearedPlaceOps=48428`
+   → `§TIME_MACHINE OFF` → `§TIME_MACHINE ON — 48428 ops, 112 days, project: 8/6/2026 → 11/25/2026` (today's
+   date this time) — the ENTIRE band/xray/monotonic/cache chain runs a SECOND time, discarding pass 1's
+   result completely.
+
+**Root cause, by line (`viewer/time_machine.js`, `origin/main`):**
+- `activate()` (~6450) → `_activateAsync()` (~6495): no existing `ELEMENT_PLACE` ops → calls `injectGantt()`
+  (pass 1, placeholder-dated schedule, no `task_id`s) → `_finishActivate()` → `drawGanttMini()` (~5772).
+- `drawGanttMini()` counts editable bars (bars with a real `task_id`); pass 1's ops have none, so it hits
+  the 2026-08-05 §GANTT_EDIT_LOCK auto-materialize branch (~5817-5820): `_ganttAutoGenAttempted = true` →
+  `generateGanttSchedule()` (~5457).
+- `generateGanttSchedule()` calls `SA.materializeZones(...)` with `start=today` (~5483), then at line 5503
+  calls `window.tmRefoldSchedule()` to "refresh" — but `refoldSchedule()` (~6764) does a synchronous
+  `deactivate()` + `activate()` round-trip, which re-enters `_activateAsync()` and runs `injectGantt()`
+  AGAIN — pass 2, full cost, no reuse of pass 1's work.
+
+**Why this matters beyond UX polish:** `injectGantt()` is the SAME function already diagnosed as the
+hang cause in `§GANTT_REFOLD_HANG` above (2026-08-06, unfixed, `§WRITE_LOOP_TIMING` blocks the main
+thread on large buildings — Hospital, 63,415 elements, tab froze). This double-load means EVERY first-ever
+open of a building with no already-authored schedule pays that synchronous cost TWICE on one click, not
+once — directly compounding the still-open hang, not a separate lighter bug.
+
+**What to check next (for whoever/whatever picks this up — Fable agent or a session), in order:**
+1. Confirm this reproduces on every "cold" open (no `SCH_AUTHORED` schedule with real `task_id`s yet) and
+   does NOT reproduce on a building that already has one cached/authored — i.e. is pass 2 truly a
+   first-time-only cost, or does it fire on every activate? (`_ganttAutoGenAttempted` is reset to `false`
+   inside `activate()` at line ~6453 every time — check whether that makes this refire on EVERY open, not
+   just the first, since the flag can't remember "already generated" across a deactivate/reactivate.)
+2. Whether `generateGanttSchedule()` needs pass 1's `injectGantt()` result at all before it materializes —
+   if `SA.materializeZones()` only needs the DB's element/schedule tables (not the ops pass 1 just wrote),
+   the fix is likely: skip the placeholder-dated `injectGantt()` call entirely when no authored schedule
+   exists yet, and go straight to native generate — one pass, not two.
+2b. Alternatively, whether `refoldSchedule()`'s deactivate+reactivate round-trip is overkill for this one
+    caller — it exists to re-run the drawer overlay after an EXTERNAL edit (§TM-REFOLD, W-TM-REFOLD
+    comment ~6758), but `generateGanttSchedule()` is calling it on its OWN freshly-generated data, not an
+    external edit. Check whether a lighter in-place refresh (`invalidateGanttModel()`/`computeDays()`/
+    `drawGanttMini()`/`renderAtTime()` — the `else` branch already sitting right next to this call at
+    line ~5504) is sufficient here instead of the full deactivate/activate/injectGantt round-trip.
+3. Any fix here must not break `refoldSchedule()`'s OTHER caller (the real external-edit consumer named
+   in its own comment, `4D_SCHED_EDIT` in `main.js`) — that path genuinely needs the full re-fold.
+4. Once a fix direction is chosen, needs a witness proving `injectGantt()`'s expensive log lines
+   (`§GANTT band`, `§WRITE_LOOP_TIMING`, `§XRAY_EDGES`) appear ONCE per cold TM activation, not twice —
+   same class of proof `witness_gantt_og_grid_perf.js` already uses for timing, extend rather than
+   duplicate.
+
+**Not investigated this session (explicitly out of scope per user instruction):** no fix, no witness, no
+browser trial beyond reading the user's own pasted log. This section exists purely so the next session/agent
+does not have to re-read `time_machine.js` cold to find the mechanism.
+
+**Operational note (2026-08-07, user correction) — track this HERE, don't fragment to bim-ootb sessions.**
+Prior sessions on this file (2026-08-05, 2026-08-06) dispatched bim-ootb fixes to fresh `origin/main`
+worktrees per `feedback_diagnose_in_session_fix_in_other_session.md` — but in practice, Claude sessions on
+this whole lane have always actually been run FROM `bim-compiler` (this repo), never a standalone session
+opened inside `bim-ootb`. Splitting tracking across a second location is exactly how the local `~/bim-ootb`
+checkout ended up 5 commits stale AND carrying ~5000 uncommitted lines of an unrelated session's WIP
+(found 2026-08-05, §TM_PANEL_RESIZE_H section above) — state got lost, not just delayed. **User directive:
+keep this file the single tracking point for this lane's status; do not rely on a separate bim-ootb-side
+session/thread to carry context forward.**
+
+**Before the next fix attempt (this or any future session/agent): study WHY three sessions in a row
+(2026-08-05, 2026-08-06, 2026-08-07) diagnosed a real bug in this exact area and none of them shipped a
+fix** — `§GANTT_REFOLD_HANG` (2026-08-06, root cause pinned, chunking plan written, still unfixed) and
+`§GANTT_DOUBLE_LOAD` (this section) are BOTH inside `injectGantt()`/`refoldSchedule()`, and both stalled at
+"diagnosed, handed off" rather than landing. That repetition is itself a signal worth reading before
+attempting a fourth pass — check what specifically blocked implementation each time (scope/time,
+cross-repo handoff friction, the stale-worktree/WIP collision above, or something else) rather than
+assuming this pass will simply succeed where three did not.
+
+## 2026-08-07 — §SUPPORT_CHECK blind spots: fans floating over roof/seats (Terminal), hanging beams (Hospital) — user-observed, NOT fixed
+
+User, watching Time Machine playback: "in Terminal, fans appearing in mid air first before seats or roofs
+comes about" and separately "in Hospital still has hanging beams." Both are real physics violations in the
+4D sequence, both CONTRADICT the `§SUPPORT_CHECK floating=0/2088` (Terminal) log line already shown in this
+session's own pasted console — i.e. the audit that's supposed to catch exactly this reports clean while the
+user watches it happen. **Diagnosed by reading `schedule_gate.js`/`time_machine.js` on `origin/main` — NOT
+fixed, no witness run, per the same "document only" instruction as §GANTT_DOUBLE_LOAD above.**
+
+**Fans (Terminal) — two compounding, code-confirmed blind spots in the audit itself, not just bad luck:**
+1. `time_machine.js:4021-4022`, the `_audit` class filter used by `§SUPPORT_CHECK`:
+   `e.cls === 'IfcBeam' || e.cls === 'IfcMember' || e.cls === 'IfcSlab' || e.cls.indexOf('Furni') >= 0 ||
+   e.cls.indexOf('Wall') >= 0` — **no MEP/flow class matches this at all** (a fan is `IfcFlowTerminal` or
+   similar, contains neither "Furni" nor "Wall"). Fans are silently never checked for floating, full stop.
+   Notably the SAME function's own header comment (line 4019) records the pre-fix Hospital baseline as
+   "133 furniture + **1980 flow** + 1156 walls" floated — "flow" was clearly a tracked category once; the
+   live `_audit` predicate today does not include it. Whether that's a regression (dropped when the
+   filter was last edited) or the comment always overstated scope needs `git log -p` on that filter, not
+   assumed either way.
+2. Even for a class that WAS in the filter, `schedule_gate.js`'s support grid can't see a roof anyway:
+   `place()` (line ~174-183) only pushes an element into the support pool `grid` when `el.seq <= 4`
+   (Pass-A structure); everything else (`else if IfcWall`) goes to a separate `wallGrid`, and anything
+   that's neither is added to NO pool. A roof slab promoted to seq>4 by the load-path rule (M1,
+   `§GANTT_OVERRIDE ... promoted to roof role`, seen in this session's own Terminal log: "60 slabs
+   promoted to roof role") is placed in Pass B and therefore **never becomes a support candidate for
+   anything scheduled after it** — `geoGate()`/`auditFloating()`'s `structGrid` (line 310-314) is built
+   the same `seq<=4`-only way. So nothing placed later (a ceiling-mounted fan, or anything else) can ever
+   be geometrically gated on a promoted roof slab's completion, by construction — the exact "fan before
+   roof" symptom, and the same class of blind spot already named and accepted as `⚠ LIMIT 1` for slabs-vs-
+   walls in the existing `§4D_ROOF_LOAD_PATH` comment (line ~287-309) — this is that same limitation
+   showing up one level further downstream (MEP/furniture vs. a promoted roof slab, not slab vs. wall).
+
+**Beams (Hospital) — reported, NOT re-diagnosed this session.** `IfcBeam` IS in the `_audit` filter and
+IS seq<=4 (Pass-A structure, included in `structGrid`), so this is NOT explained by either mechanism above
+— don't assume a shared cause without evidence. The in-code comment at `schedule_gate.js:4017-4020` claims
+this exact defect ("84 beams... floated") was already fixed 2-pass + ε=0.05 → 0 on Hospital specifically.
+A live report of it recurring means one of: (a) genuine regression since that fix, (b) a beam sub-case the
+ε/two-pass fix didn't actually cover (e.g. lateral beam-to-beam framing rather than vertical support — 
+`geoGate()` only checks "structure rising from BELOW my footprint," not a beam's end-to-end framing
+connections to columns/other beams at the SAME base_z), or (c) the visual symptom is real but is a
+DIFFERENT thing than "floating" (e.g. a beam rendered before its OWN slot but still gated correctly, i.e.
+a rendering/DLOD timing issue rather than a scheduling one). **Needs a fresh live console capture on
+Hospital with `§SUPPORT_CHECK` visible, same as the Terminal evidence used above, before guessing further.**
+
+**What to check next (for study, not immediate fix):**
+1. Confirm via `git log -p -- viewer/time_machine.js` around line 4021 whether the `_audit` filter's
+   "flow" class match was ever present and got dropped, or the "1980 flow" comment predates the current
+   filter entirely.
+2. Identify the real IFC class name(s) for "fan" in this DB (`SELECT DISTINCT cls FROM elements_meta WHERE
+   name LIKE '%fan%'` or similar) — confirm it's excluded by the current `_audit` regex before assuming.
+3. Decide whether promoted-seq roof slabs (and any other Pass-B-promoted structure) should be added to
+   `structGrid`/`grid` as valid supports for later Pass-B elements — this is a scope decision (mirrors the
+   already-accepted LIMIT 1 tradeoff: widening the pool fixed 24/10979 real cases but the earlier `attempt
+   1` widening (ANY element as a support for ANY class) produced 3421 false positives on Hospital — so this
+   is not a free widen, needs the same measured, narrow-scope approach `§4D_ROOF_LOAD_PATH` already used).
+4. Get a fresh Hospital console capture with `§SUPPORT_CHECK` before touching beams at all — do not reuse
+   the 2-pass/ε=0.05 fix's old "floating=0" claim as current truth without re-measuring live.
+
+**Verification method for ALL of the above (user directive, 2026-08-07, restated explicitly for whoever
+picks this up — Fable agent or otherwise): whitebox `§`-tagged console log ONLY, never Claude-in-Chrome or
+any other browser-visual method.** "Fresh live console capture" above means the user (or a script) runs
+the app and captures/pastes the raw `§`-tagged log lines — it does NOT mean an agent drives a browser and
+looks at rendered pixels or a screenshot to judge correctness. This is already this project's standing rule
+(`CLAUDE.md` FUNDAMENTAL LAW, `feedback_whitebox_not_playwright.md`, `feedback_log_not_visual_proof.md`) —
+restated here in-file because the fix lane above involves visibly-wrong geometry (fans mid-air, hanging
+beams), which is exactly the kind of bug where a screenshot LOOKS like the obvious verification tool and
+is not: "AI is blind" to whether a screenshot is actually right (per the user, verbatim this session) —
+only a numeric/log assertion (e.g. `§SUPPORT_CHECK floating=N/M` read programmatically, or a witness script
+asserting on the same data `auditFloating()` already computes) counts as proof here, for the SAME reason a
+screenshot never counted as proof for the camera/orbit work this rule was originally hardened against.
+
+## 2026-08-07 — §SUPPORT_CHECK code-verified + §METADATA_FIRST ruling: the fan-before-roof inversion is a SEQ NUMBER fact, not just an audit blind spot
+
+**Code verification (this session, `git show origin/main` @ c46a602 — GitHub outage, cached ref, no
+browser):** every file:line claim in §GANTT_DOUBLE_LOAD and §SUPPORT_CHECK above CHECKS OUT verbatim.
+Corrections/additions from the verification pass:
+- The beam-fix comment attributed above to `schedule_gate.js:4017-4020` is actually in
+  `time_machine.js:4017-4020` (`schedule_gate.js` is only 407 lines).
+- §GANTT_DOUBLE_LOAD check 1 leans ANSWERED: pass 2 `cachePut`s ops carrying real `task_id`s, so the
+  next open hits `§GANTT_CACHE_HIT` and the auto-gen branch can't fire — first-open-only cost.
+- §GANTT_DOUBLE_LOAD check 2b has a documented counter-argument to answer: `time_machine.js:5501`
+  explicitly justifies reusing `tmRefoldSchedule()` as "real, already-working machinery, not a second
+  lighter-weight refresh path whose correctness would need its own separate proof."
+- The `_audit` header comment (`time_machine.js:4017`) PROMISES MEP coverage ("beam/member/slab/
+  furniture/MEP/wall") that the predicate at 4021-4022 does not deliver — the comment/code mismatch is
+  itself confirmed, answering check 1's "regression or overstated comment" question halfway: the intent
+  was clearly MEP-inclusive.
+
+**NEW root cause, sharper than the audit blind spot — the inversion is baked into the sequence numbers:**
+`rates/sequence_rules.json` gives fans (`IfcFlowMovingDevice`, MEP Rough-in) **seq=7**; the load-path
+rule promotes roof slabs to **seq=8** (`time_machine.js:3930`). PASS B sorts by `(seq, base_z)`, so
+seq-7 fans are scheduled BEFORE the seq-8 roof over them **by construction** — the geometric gate never
+gets a chance to correct it because promoted roofs enter no support pool (§SUPPORT_CHECK blind spot 2
+above). Class-global sequence metadata is Z-blind by design; Z correctness MUST come from the geometric
+support gates. Any fix that only widens the audit filter will REPORT the fans floating but not stop them.
+
+**User ruling (verbatim intent, 2026-08-07): code tackles IFC metadata, not building quirks.** Prefer
+abstract, metadata-driven code that needs no training on any particular building's data — "we already
+have whole IFC classes into the 4D.JSON" (`viewer/rates/sequence_rules.json`: SEQUENCE_RULES maps whole
+IFC classes → phase/sequence/resource). Concretely for this lane:
+- The `_audit` filter's hardcoded class-name substrings (`'Furni'`, `'Wall'`) are the building-quirk
+  style to eliminate — audit scope should derive from the SEQUENCE_RULES metadata (every scheduled
+  class), not a hand-picked list.
+- `seq<=4` as "structure" is ALREADY metadata-keyed (sequences 1–4 = Substructure+Superstructure in the
+  JSON) — that part is fine; the class-name special cases around it (`cls.indexOf('IfcWall')===0`,
+  promoted-slab-only wall pool) are the quirk layer.
+- **"But that last part impacts a bit the Z stack" (user, same message):** whole-class sequences order
+  TRADES, not vertical reality — the Z stack is exactly what class metadata cannot express, so the
+  support-pool/geo-gate layer (currently excluding promoted roofs, currently not auditing MEP) is where
+  the fan-before-roof class of bug must be fixed, using the same measured narrow-scope method
+  §4D_ROOF_LOAD_PATH already used (its attempt-1 "any class supports any class" widening produced 3421
+  false positives on Hospital — a metadata-driven widen still needs that same false-positive measurement).
+
 **For a new dev landing on this file cold:** read `## Why this file exists` + `## What's already shipped`
-at the top for original scope, then jump straight to this close-out and the two dated 2026-08-06 sections
-above it for the live edge — the numbered gap list right after the top summary predates all of the
-2026-08-04 through 2026-08-06 sessions below it and is mostly still open, not superseded.
+at the top for original scope, then jump straight to this close-out and the dated 2026-08-06/08-07
+sections above it for the live edge — the numbered gap list right after the top summary predates all of the
+2026-08-04 through 2026-08-07 sessions below it and is mostly still open, not superseded.
 
