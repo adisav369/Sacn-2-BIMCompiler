@@ -8203,3 +8203,65 @@ unreachable. **Investigated, NOT reproduced, NOT fixed — do not guess-patch fr
   console log captured across the EXACT repro steps** (what was open/active immediately before
   unchecking BuildUp) before this can be root-caused the same rigorous way as Item 1 — do not invent
   a fix without that evidence.
+
+## ▶ SESSION 2026-08-06 (takeover, cont'd) — user confirms Item 1 live, Item 2 still open (already
+## scoped above), + NEW finding: scrub does not drive BuildUp — dispatch a Fable-scoped check/fix
+
+**Item 1 (B blank during BuildUp) — user-confirmed fixed live**, from their own pasted console:
+`§CPE_VF_FRAME_DIAG` now fires continuously across a full rehearsal (`scrubTn` sweeping 0→1 with
+`nearestSurfaceDist`/`refObj1mVerticalFrameFraction` changing every ~0.5s, no dead stretch) and
+`§CPE_VF_PERF G-PERF-1 frames=229` — B rendered 229 times in that one run. bim-ootb PR #1222 is the
+fix (commit `c74cf4b`, `time_machine.js` `renderAtTime()` calling `app._cpeViewfinderRender()`).
+
+**Item 2 (POV "f to p" / frame-to-picture sizing — same as the earlier-recorded "pov frame smaller
+than the fov")** — user confirms still open. Root cause was already fully diagnosed in the HANDOFF
+above and is NOT a coordinate bug (`vfCam_fov=60 main_fov=60`, `vfCam_aspect=1.5798 box_aspect=1.5798`,
+bit-identical per that same live log) — it's structural: B shares the main canvas's renderer via
+`setScissorTest`/`setViewport`, inheriting the main view's post-processing pass (TAA/SSAO/output)
+tuned for the FULL canvas, not a small scissored sub-rect. **Only real fix, already named, not yet
+built:** give B its own `THREE.WebGLRenderer` on its own CSS-positioned `<canvas>` instead of
+scissoring the shared one (standard three.js multi-viewport pattern — one extra WebGL context + a
+duplicate first-use shader compile). Real, scoped architecture work — get the user's explicit go
+before starting, it replaces `_vfRender()`'s core mechanism, not a patch on it.
+
+**NEW, user-reported and CODE-CONFIRMED (not yet fixed) — scrubbing the POV timeline does not drive
+the BuildUp construction reveal, only Play-from-start does:** user's own words: *"scrubbing the
+preview POV, does not convey the buildUp process. Only play from beginning does show buildUp under
+construction sequence."* Confirmed by static read, `viewer/cinema_path_editor.js`:
+- `_scrubTo(tn)` (line 1309) calls `_applyVFPose(tn)` only — that function (line 1298) sets
+  `_state.vfCam.position`/`lookAt` and nothing else. It NEVER calls `window.tmSetCursor`.
+- Compare to the REAL Play path: `_previewFly()`'s `step()` (line ~2050) calls
+  `window.tmSetCursor(bkMs)` every frame, gated on `bkPrev && s.buildup` — `bkPrev` comes from an
+  async `tmActivateForBake()` + `tmFollowTimeline()` pair that only runs once, right before `step()`
+  starts (lines ~2136-2158), and lives in `_previewFly`'s own closure — `_scrubTo` has no access to
+  it at all, being a separate module-level function.
+- **Net effect, matches the report exactly:** dragging/clicking the scrub bar moves B's camera
+  through space correctly (the log shows `scrubTn` and `nearestSurfaceDist` changing normally on
+  drag) but the BUILDING GEOMETRY stays frozen at whatever construction state it was last left in —
+  the reveal only ever advances via the Play transport's own rAF loop, never via a scrub.
+- **A path to the fix, for whoever picks this up (do not treat this as the only viable shape,
+  verify first):** `_scrubTo`/`_applyVFPose` would need to, when `_state.buildup` is on AND Time
+  Machine is already active (`A()._tmOn`), independently derive the same buildup cursor
+  `_previewFly`'s `step()` computes (`a.buildupTAt(tn, _state.plan)` → `a.buildupCursorAt(bkTn,
+  bkState)`) and call `window.tmSetCursor(bkMs)`. `bkPrev`'s only two fields `buildupCursorAt` reads
+  are `projectStart`/`projectEnd`, both already exposed read-only via `window.tmGetState()` (see
+  `time_machine.js`, `window.tmGetState`) — so `_scrubTo` may not need `_previewFly`'s closure at
+  all, just `window.tmGetState()` when `.active` is true. **Open question a fresh session/agent must
+  settle, not assume:** what should scrubbing DO when BuildUp is on but Time Machine has never been
+  activated yet (no Play has ever run this session) — arm it silently, or leave the reveal at
+  whatever TM's default/last state is until Play is pressed once? The spec doesn't say; ask the user
+  rather than guessing if this comes up mid-fix.
+- **Not yet fixed this session** — user asked specifically for this to be written up here so a
+  fresh session can dispatch a scoped review/fix, not for an immediate patch.
+
+**Dispatch instruction for a fresh session (user's own ask, verbatim: "new session may launch a
+Fable scoped to check the code"):** spawn a `general-purpose` agent, `model=fable`, scoped ONLY to
+`viewer/cinema_path_editor.js`'s `_scrubTo`/`_applyVFPose`/`_previewFly`/`step()` and
+`viewer/time_machine.js`'s `window.tmSetCursor`/`window.tmGetState`/`renderAtTime` — give it this
+section verbatim as context, ask it to (1) confirm the root-cause read above is correct by re-reading
+the same functions, (2) propose the minimal fix, flagging the open question above rather than
+silently picking an answer, (3) NOT re-run the full witness suite or explore unrelated code, capped
+at ~400 words per the same discipline the earlier Fable review used (see the "Second-opinion code
+review dispatched" section above this one). Verify with a witness in the same shape as
+`witness_cpe_vf_buildup_blank.js` (bim-ootb repo root) — before/after `§PERF_TRAVERSE`-tick-count vs
+`window.tmGetState().cursor` sampled immediately after a scrub drag, not a screenshot.
