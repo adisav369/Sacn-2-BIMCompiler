@@ -8646,3 +8646,40 @@ constrained — it changes the build, not just the trigger.**
 - Hard keyframes (camera passes exactly through each stop) vs soft attractors the planner smooths.
   The band/hose model is the latter. Mixing the two silently would reproduce the two-mechanisms-
   competing confusion that §CPE_BUILDUP_EVEN_TEMPO had to unpick.
+
+### §CPE_WALK_AUTHORING — buildup interplay DECIDED (2026-08-06, same session)
+
+User: *"and it be nice with buildUp on as it travels, the construction happens. There be alot of
+interplay dynamics but easily resolved as buildUp is linear gantt line to the timeline"* and then,
+on how a stop's date behaves as the path grows: *"each stick elongates or even if skews the timeline,
+buildUp readjusts after a sec in the pov and canvas."*
+
+**Decision: stops store a FILM FRACTION, not an absolute date. The timeline is ELASTIC.** Adding or
+moving a stick lengthens/skews the film, every stop's date moves with it, and the buildup re-derives
+and re-renders shortly after — visibly, in both B and the main canvas.
+
+This declines the alternative that was put to the user (pin each stop to an absolute date so a shot
+framed at week 12 stays week 12, using the fact that the linear mapping is invertible —
+`fraction = (date - projectStart) / span`). Recorded because it is a real fork, cheaply reversible,
+and the reasoning should not have to be rediscovered: the user chose visible re-adjustment over
+pinned framing.
+
+**Why this is now cheap — and was NOT cheap this morning.** The user's premise ("buildUp is linear
+gantt line to the timeline") became literally true only with §CPE_BUILDUP_EVEN_TEMPO earlier the same
+day. Before it, `_workCursorAt` mapped film fraction to the k-th ELEMENT PLACED — a non-linear curve
+that swung 57x across one buildup. Position→time→date is now a single straight chain, which is what
+makes "readjusts" a re-evaluation rather than a re-search.
+
+**Plumbing already exists — no new mechanism:**
+- `_scrubBuildupSync(tn)` (shipped today, PR #1226) already derives the buildup cursor for a given
+  film fraction and calls `window.tmSetCursor`, refreshing B's day readout. One call re-syncs both.
+- The once-on-release re-plan discipline is already the rule for band drags (`§CPE_DRAG_SCALE`: the
+  gesture only moves handles; the film re-derives ONCE after it lands). A stop commit is the same
+  shape of event.
+
+**Measured cost, matching the user's "after a sec"** — from their own live Hospital log:
+`§CINEMA_PLAN_MS 388.2 / 443.6 / 480.8 / 514.4 / 529.7 / 555.8` and `§CPE_REPLAN_SLOW ms=445/515/530`.
+So ~0.4–0.55s per commit on a 63k-element building. Acceptable per the user's own framing, but note
+it is paid ONCE PER STOP during authoring — if a session drops many stops quickly this becomes the
+dominant cost, and it is the first thing to measure if authoring feels sluggish. Do NOT pre-optimise
+it; witness it first.
