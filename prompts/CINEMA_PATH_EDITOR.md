@@ -8962,3 +8962,11 @@ no-ops. Logs say "resumed", nothing moves, forever. Refresh = the only reset. Ex
 G-WEDGE names the issue: play → pause → row-click → play must ADVANCE the playhead. Run pre-fix it
 FAILS (playhead frozen, "resumed" log with no motion); post-fix PASSES. Uses `_flyState()` hook +
 `_state.scrubTn` motion, no screenshots.
+
+## §CPE_PANEL_PERF — measured stall inventory (2026-08-07, findings only, not implemented)
+From the user's own Hospital log (63K elems): (1) first ▶ play with buildup = ~2.1s freeze
+(§CPE_PREVIEW_BUILDUP setupMs=2052 — tmActivateForBake cold init on the click path: §XRAY_CACHE_BUILD
+435ms + timeline activation + ghost-ground scan); fix candidate = pre-arm TM at editor open (idle).
+(2) Alt+C open runs the full plan 3× identically (~560ms, §CINEMA_PLAN_MS 291+133+135) — space/exit/fan
+don't depend on duration/waypoints, compute once. (3) scrub-jump DLOD flip storm (flips_mean=2671,
+FPS→53) — smaller lever, DLOD landmine, touch last. Eye toggle itself measured cheap.
