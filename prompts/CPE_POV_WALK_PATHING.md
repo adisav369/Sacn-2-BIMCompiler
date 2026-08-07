@@ -337,6 +337,17 @@ pointer lock hides the cursor so it was physically impossible mid-walk anyway. L
   glide descends) and there is no collision — the walker can pass through walls. This is an
   authoring camera, not a physics walk; fast free positioning is the point.
 
+**§CPE_WALK_SCRUB_SPAWN follow-up ruling (same day, SHIPPED PR #1249):** user, after understanding
+the flow: *"user can bring further along the path, then began the stick planting... that is
+alternative to speed things up, but in essence the walk finger mode is also it."* So: the scrub bar
+is an OPTIONAL accelerator, never a requirement — a scrub already sitting inside the walk stretch
+makes shoes spawn there; untouched (or outside-stretch) scrub keeps the walk-head default; and a
+scrub MOVED since the last walk beats the resume pose (moving it = choosing a new start), while an
+untouched scrub keeps the resume (continue where the user stood). The feature's user-facing name is
+**walk finger mode** (user's own term — trackpad finger = look, pinch = glide, all inside the POV
+frame). Witness G-WALK-SCRUB-SPAWN drives the real scrub track at the plan-derived mid-stretch
+fraction; Duplex 23/23. Cache v961.
+
 ### Handed to the implementation session as fact
 - New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
   button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
