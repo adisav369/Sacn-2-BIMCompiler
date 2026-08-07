@@ -16,6 +16,22 @@ frames while walking (repaints only at mount/snap-wow/unmount). Worktree pruned 
 Remaining (unwitnessed by design, needs a human hand): live pointer-lock feel on a real
 building — first real-use feedback goes in a new dated section here.
 
+**§CPE_WALK_HALLWAY witnessed (2026-08-07, user ask: "walk along HHS Office or Clinic hallway") —
+16/16 PASS on HHS_Office_Federated (6.8k elems) + Clinic (16k elems),** run against merged main
+(`1165d03`) in a throwaway worktree, hallway EXTRACTED from each DB (longest aligned same-storey
+door pair: HHS "Level 1" 54.75m run / 0.00m cross-offset; Clinic "First Floor" 52.69m / 0.65m).
+Three snaps at u=0.25/0.5/0.75 walking the line: centres bit-identical to walked poses; insertion
+fractions strictly monotonic (Clinic's DECREASE — s=[0.537→0.485→0.426] — is correct: ordering
+follows the PATH's own traversal direction, which there runs opposite the walk; direction-agnostic
+determinism is the guarantee, now asserted as such); mid-hall perpendicular facing raycast-HIT a
+real wall (HHS 0.041m, Clinic 2.235m — the in-building HIT path proven, complementing the shipped
+witness's 500m-out MISS/fallback proof); along-hall facings all real HITs too (1.6–15.6m); replanMs
+155–234 on these mid-size buildings (vs 38–68 small residential); §CPE_SEAM_CONTINUOUS seamGapDeg =
+0.000 in ALL six pin-bearing replans (landmine silent — note its log family also prints routine
+openDeg/handoffYaw lines; gate on the parsed seamGapDeg value, not tag presence). Witness:
+scratchpad `witness_cpe_walk_hallway.js` (not committed — one-off coverage run; promote alongside
+`witness_cpe_walk_edit.js` if hallway coverage should become repeatable).
+
 **Coverage caveat (2nd watchdog pass, 2026-08-07):** the witnessed run covered TWO buildings —
 log tail `PASS Duplex (14/14)` + `PASS SampleHouse (14/14)` — but `witness_cpe_walk_edit.js:28`
 defaults to `BLDS || 'Duplex'`, so an env-less rerun regresses to Duplex-only. Both witnessed
