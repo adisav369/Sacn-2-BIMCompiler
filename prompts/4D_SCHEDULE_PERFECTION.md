@@ -2083,3 +2083,166 @@ at the top for original scope, then jump straight to this close-out and the date
 sections above it for the live edge — the numbered gap list right after the top summary predates all of the
 2026-08-04 through 2026-08-07 sessions below it and is mostly still open, not superseded.
 
+## 2026-08-07 — §GEOMETRIC_SUPPORT_ORDER — next task: make "nothing floats" a structural fact of the placement order, not a per-building patch (user ruling)
+
+**User framing:** every IFC building — any of them — is real XYZ coordinates. There is no such thing as
+an element legitimately floating in midair during construction; that is a physical impossibility, not a
+building-specific edge case. Yet every fix so far (fan-before-roof, walls-before-foundation, hanging
+beams, the two symmetric-support cycle bugs in §DEQ_V1_IMPL) has been a SEPARATE patch discovered on a
+SPECIFIC building. That pattern — chase one geometry shape, ship a special-case gate, wait for the next
+building to surface a new one — does not converge. The task is to stop patching shapes and fix the
+mechanism so it generalizes to any building's IFC by construction.
+
+**Root cause, named plainly:** `computeSchedule()`'s Pass B places elements primarily by `(seq, base_z)`
+— `seq` is a CLASS/TRADE guess (`sequence_rules.json`), not a physical fact. Real geometric support
+(`geoGate`, `hangGate`) is checked only as a GATE against that seq-driven order, and violations are
+caught after the fact by a bounded repair loop (`§DEQ_REPAIR`, ≤4 sweeps) or an audit
+(`auditFloating`). Every mishap to date has been a hole in that gate/audit machinery — not proof the
+approach is unsound, but proof it is inherently reactive: it can only catch shapes someone already
+thought to test.
+
+**The generalization:** derive the placement order FROM real geometry FIRST, and use `seq` only as a
+tiebreaker within what geometry already allows — not the other way around.
+1. Build a support DAG directly from XYZ data alone, before `seq` is consulted: element E depends on
+   every element that bears E from below (bbox overlap + top_z ≈ E.base_z within tolerance) OR carries E
+   from above (E hangs, no bearing-below found, nearest overlapping structure's underside ≈ E.top_z).
+   This is pure geometry — it needs nothing building-specific and applies to any extracted DB.
+2. Topologically place elements by that DAG (a support must be scheduled before what it supports).
+   `seq`/trade convention breaks ties ONLY among elements the DAG already says are mutually placeable —
+   it never overrides a real geometric dependency. The existing Pass A/B, `hangGate`, repair-loop
+   machinery becomes the FALLBACK for whatever the DAG genuinely cannot order (see cycle handling
+   below), not the primary mechanism.
+3. If the geometry DAG contains a true cycle (two elements spatially "supporting" each other — should
+   not happen in real construction geometry, but has appeared twice already as MODELING artifacts:
+   same-z sibling slabs in `geoGate`, same-z sibling carriers in `hangGate`, both already fixed by
+   strictness rules), name and log it explicitly (`§SUPPORT_CYCLE`) rather than silently resolving it —
+   per this project's own no-invent discipline, a cycle is a data/modeling fact to report, not a
+   heuristic to paper over.
+4. **Prove it generalizes, don't assume it:** the acceptance witness must run zero-floating (ALL
+   classes, no audit filter) across Hospital + Terminal (already covered) AND at least one small/
+   residential building (`Duplex_extracted.db` — the standing fallback fixture, per the still-open
+   Multi-building validation gap above, §2 in the original gap list). A fix proven only on the two
+   large buildings already tested is not proof it generalizes — that is exactly the gap this task
+   exists to close.
+
+**Order of work (Spec-First, per CLAUDE.md — witness before code):**
+1. Write `witness_geometric_support_order.js` FIRST: asserts 0 floating (no class filter) on Hospital,
+   Terminal, AND Duplex, using only geometry-derived ordering — must be RED on current `main` for the
+   right reason (seq-primary order, not geometry-primary) before any implementation lands.
+2. Implement the geometry-first DAG + topological placement in `schedule_gate.js`, `seq` demoted to
+   tiebreak only.
+3. Re-run the FULL existing suite named in §DEQ_V1_IMPL (gate/generated/projector/readonly/
+   facade_stagger/4d_sidecar) — must stay PASS; this is a placement-order change, not a new feature, so
+   nothing already proven should regress.
+4. Only then revisit the individually-patched cases (fan-over-roof, hang-carrier, symmetric-support
+   cycles) — confirm they now fall out of the general mechanism rather than needing their own gate, and
+   remove any gate/rule that's now redundant (KISS — don't keep a special case once the general rule
+   subsumes it).
+
+**Scope boundary:** this is ordering/placement only — it does not touch precedence semantics
+(FS/SS/FF/SF, Criterion 2, still deferred) or the working-calendar gap (#1 in the original list). Those
+stay separate, unstarted work.
+
+## 2026-08-07 — §GANTT_LOCK_INTEGRITY — next task: verify physical integrity on lock-back, flag breach, force Undo (user ruling)
+
+**Ask:** the `_ganttEditable` toggle (§GANTT_EDIT_LOCK above) already gates editing behind
+🔓 Editing / 🔒 Locked. Today, locking back just flips the flag — whatever the user dragged/resized/
+relinked is accepted as-is, immediate-write, no re-check. New requirement: the moment the user toggles
+LOCK BACK ON (🔓→🔒), run a verification that the edited schedule still holds physical integrity. If it
+doesn't, block the lock, show an **"Integrity Breach"** flag, and require the user to press the existing
+single-level Undo (§GANTT_EDIT_UNDO) before locking is allowed to complete.
+
+**What "integrity" means here — reuse, don't invent:** the check IS `ScheduleGate.auditFloating(elements,
+sched, null)` — already unfiltered/all-class since §DEQ_V1 (PR #1236), already the exact instrument
+`§SUPPORT_CHECK` logs on every TM activation. Nothing new to design for "is anything floating" — call the
+same function on the post-edit schedule state at the lock-back moment. If/when §GEOMETRIC_SUPPORT_ORDER
+above lands, this hook upgrades automatically (same function name, stronger check) — no separate
+integration work later.
+
+**Open questions, named not decided (spec before code, resolve before implementing):**
+1. **Undo depth vs breach depth.** §GANTT_EDIT_UNDO is single-level. If the breach traces to an edit
+   further back than the last one (several drags ago, each individually "valid" but combining into a
+   floating element), one Undo press may not clear it. Does the flag stay up and require repeated Undo
+   presses until `auditFloating` is clean again, or does breach-detection need to name WHICH edit broke
+   it? Don't assume single-Undo-and-done — verify against a real multi-edit scenario before shipping.
+2. **What's gated.** User's ask is specifically "when locking back" — i.e. the check blocks the LOCK
+   transition, not every individual edit mid-session (that would defeat the whole point of an editable
+   drawer). Confirm this reading before building — don't gate `pointerdown`/`endDrag` themselves.
+3. **Cost.** `auditFloating` over ALL elements (e.g. 63,415 on Hospital) on every lock-back — measure
+   this before shipping; if it's not instant, needs a spinner/async path rather than blocking the UI
+   thread on the toggle click.
+4. **Recovery UX.** Does "Integrity Breach" name which element(s) are floating (helps the user judge
+   whether Undo is enough or they need several), or just flag pass/fail? Lean toward naming them —
+   `auditFloating` can already report a count; extending it to return the offending GUIDs is a small
+   addition, not a redesign.
+
+**Order of work:** write `witness_gantt_lock_integrity.js` FIRST — drive a real edit that's known to
+break support (e.g. drag a foundation slab's bar later than a wall it carries), attempt lock-back, assert
+the breach is flagged and the lock is refused; then Undo, re-attempt lock-back, assert it succeeds. RED
+before any implementation, per this file's own Spec-First discipline.
+
+## 2026-08-07 — §GEOMETRIC_SUPPORT_ORDER ✅ SHIPPED (PR bim-ootb#1242, MERGED) + §GANTT_LOCK_INTEGRITY ✅ SHIPPED (PR bim-ootb#1244, auto-merge armed) — both worked witness-first to zero
+
+**§GEOMETRIC_SUPPORT_ORDER — DONE exactly per the spec's own order of work.**
+- Witness FIRST: `tests/witness_geometric_support_order.js`, RED on main for the right reason —
+  legacy-seq synthetic (fan seq 5 < wall seq 6, carrier sorts after dependent) `§DEQ_REPAIR shifted=1`,
+  Hospital `shifted=8`, `§SUPPORT_CYCLE` line absent everywhere. 15/15 GREEN after.
+- Implementation (`viewer/schedule_gate.js`): support DAG from XYZ alone — edge S→E for exactly the
+  pair predicates the timing gates consult (geoGate below/contained, wallGate, hangGate) — Kahn
+  topological placement with the old (pass, seq, rank, base_z) order as the heap TIEBREAK only.
+  PASS A/B per-element gate semantics untouched; only iteration order changed. `§DEQ_REPAIR` retained
+  as fallback, now `shifted=0` on all fixtures. `§SUPPORT_CYCLE cycles=N` always logged (0 included).
+- **Load-bearing discovery en route: `contained(S,E)` definitionally implies `below(E,S)`** — every
+  element nested in a taller pool member's z-span was a hidden 2-cycle (406 Kahn leftovers on a 5k
+  Hospital subset). Main never saw it: base_z-ascending PASS A silently resolved every such pair in
+  favor of below, and the nonst-only repair loop never re-checks structure. Made explicit + uniform:
+  between two support-pool members only BELOW orders them; contained edges never target a pool member.
+  With that, pool-vs-pool edges are strictly base_z-ordered ⇒ DAG acyclic for real geometry.
+- `sortSeq` (§DEQ_V1's promoted-slab wallSeqMax+0.5 ordering hack) REMOVED as subsumed — wall→roof and
+  roof→hanger are DAG edges now; witnessed green with the plain-seq tiebreak before removal (KISS,
+  spec step 4 honored: general rule replaced the special case, not layered on it).
+- Numbers: Hospital 63,415 → `§GEO_ORDER edges=665078 orderMs=785`, computeSchedule total 936ms
+  (main 848ms — the DAG costs ~90ms). Duplex small-building coverage NEW (floating=0/1122), closing
+  original gap-list §2's small-regime hole. Full §DEQ_V1 suite re-run PASS.
+  Perf lesson: per-element `{}` dedup measured 28s at just 15k elements (dict churn) — stamp
+  Int32Array + generation counter → ~1s at 63k. Also: any loop calling the placement bodies must not
+  use the shared c/cs/k scratch vars (geoGate clobbers them — cost a debugging round).
+
+**§GANTT_LOCK_INTEGRITY — DONE, all 4 spec open questions resolved, witness-first.**
+- Witness FIRST: `viewer/tests/witness_gantt_lock_integrity.js`, RED on main (11 fails, feature
+  absent) → 22/22 after.
+- `verifyGanttIntegrity()` (time_machine.js): pure read — `_buildXrayElements()` geometry (works on
+  the §GANTT_CACHE_HIT path) + CURRENT `_ops` times, audited by `ScheduleGate.auditFloating`, ALL
+  classes. Lock handler verifies on 🔓→🔒 ONLY; breach ⇒ lock REFUSED (stays Editing), lockbar shows
+  "⚠ Integrity Breach: N floating — press ↺ Undo edit (or fix), then lock again", `§GANTT_LOCK_BREACH`
+  logs a guid sample; clean path logs `§GANTT_LOCK_VERIFY ok floating=0/N ms=…`.
+- Q1 undo-depth: gate is STATELESS — every lock attempt re-audits; Undo or further corrective edits
+  both clear it, no edit-history tracing needed. Q2: Editing→Locked transition only, witness-asserted.
+  Q3 cost MEASURED: `§LI_COST auditFloating n=63415 ms=796` (0.8–1.7s range across runs) — a
+  "Verifying integrity…" state paints (setTimeout(0)) before the audit. Q4: `auditFloating` gained an
+  optional `collectGuids` arg (count return unchanged for all existing callers) — breach NAMES offenders.
+- **Second load-bearing discovery, caught by the witness's own clean-state check (G-LI-2b), not by any
+  prior suite: wall-bears-roof vs roof-carries-wall was still a mutual timing cycle.** On Duplex with
+  the real load-path promotion (`_buildXrayElements`, different promotion pattern than the top-band
+  approximation the earlier witnesses used): seq-5 upper walls with no bearing-below "hung" from the
+  promoted roof whose base their tops meet, while the roof's wallGate waited on those same walls —
+  `§DEQ_REPAIR sweeps=16 shifted=379` livelock, clean state auditing floating=22. New clause, mirrored
+  in hangGate + DAG emission + auditFloating: **a WALL that BEARS a promoted slab (top reaches its
+  base — wallGate's own relation) never also hangs from it.** A fan in the same geometric relation
+  keeps its hang — it is not wall-pool material; pure pair geometry cannot distinguish the two, the
+  class-scoped pool (already-measured practice, §4D_ROOF_LOAD_PATH) is what disambiguates. After: 0
+  sweeps / 0 shifts / floating=0, and the full suite re-ran PASS.
+- Housekeeping in the same PR: `witness_gantt_edit_undo.js` was broken on stock main since #1240
+  (`_tmResyncAfterRetime` undefined in its sandbox — verified pre-existing before touching it); stub
+  added, 9/9 Duplex + 9/9 Terminal again. `sw.js` v957→v958 (#1242 did v956→v957) — same-commit bumps.
+
+**Reference note:** user-recorded `~/Videos/demo4D.mp4` (225s, Hospital on GH Pages) reviewed once for
+defect reference per the one-look rule — it shows the PRE-#1239 deployed build (v956 signatures), so
+its day-1 trucks/early-walls symptoms are already fixed on main but not yet deployed; all verification
+this session was §-log/numeric, no visual proof used.
+
+**OPEN after this session (unchanged elsewhere):** §GANTT_REFOLD_HANG write-loop chunking (still the
+standing hang, untouched here); pre-construction phase unmodeled; boq_charts.html fourth scheduler
+redirect; docs/4D5DAnalysis.md stale; support-predicate consolidation across the 4 copies (partially
+mooted for schedule_gate.js internals by the DAG work, but the tm.js/boq copies still stand).
+
