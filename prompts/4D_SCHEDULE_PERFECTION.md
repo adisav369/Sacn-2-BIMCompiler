@@ -1745,6 +1745,22 @@ bim-ootb code):
 
 ## 2026-08-07 — §GANTT_DOUBLE_LOAD — clicking the Gantt/TM icon runs `injectGantt()` TWICE, diagnosed only, NOT fixed (handoff for a Fable agent)
 
+**✅ FIXED same day — §GANTT_SINGLE_LOAD, PR bim-ootb#1237 (`fix/gantt-double-load`), auto-merge armed.**
+User re-reported the double load live (pasted console: full chain twice, `§GANTT_AUTO_GENERATE` →
+`§TM_REFOLD clearedPlaceOps=63415` between the passes — exactly the mechanism pinned below). Fix took
+check 2's direction: `_materializeNativeSchedule(app)` (extracted materialize core, no UI tip/refold)
+runs BEFORE the first `injectGantt()` on a truly-cold open (no schedule row), so the single pass absorbs
+the authored schedule — bars editable immediately, project starts today, auto-generate branch never
+fires. Check 2b's refold-vs-lighter-refresh question is MOOT on this path (no refresh needed at all);
+`refoldSchedule()` untouched for its external-edit caller (check 3 honored). Witness (check 4):
+`tests/witness_gantt_single_load.js`, headless §-log, fresh profile, Hospital 63,415 elements, INCLUDING
+the Gantt-icon press: `§GANTT_PREMATERIALIZE=1, §SUPPORT_CHECK=1, §GANTT injected=1, §XRAY_EDGES=1,
+§GANTT_AUTO_GENERATE=0, §TM_REFOLD=0, editable=35/35, opsWithTask=63415/63415` — PASS. Check 1's answer
+confirmed en route: with the fix the first-open cache stores task-carrying ops, so warm opens hit
+`§GANTT_CACHE_HIT` and can never re-fire. (The "why did 3 sessions diagnose but not ship" study item
+below stands answered by events: sessions 1–3 were document-only per user instruction; the 4th shipped
+§DEQ_V1 + this within hours once told to resolve — the blocker was instruction scope, not friction.)
+
 User: clicking the Gantt chart icon "acts as if it is loading twice." Confirmed from the user's own
 pasted browser console (Terminal, 48,428 elements) — this is a real double full-recompute on a SINGLE
 click, not a perception issue. **Diagnosed in this session by reading `origin/main:viewer/time_machine.js`
