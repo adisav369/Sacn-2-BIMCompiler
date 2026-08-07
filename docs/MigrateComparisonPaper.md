@@ -188,10 +188,10 @@ details.fold .fbd{padding:6px 16px 14px}
  
 
 <div style="max-width:1000px;margin:18px auto 8px;text-align:center" markdown="0">
-<a href="TwoAppsOneKernelInfographicLandscape.html" title="Open the live infographic">
-<img src="img/two_apps_one_kernel_infographic.png" alt="Two Apps, One Kernel — pie chart: 76% legacy bloat, 14% code logic (both ERP and BIM legacies), 10% ours split into kernel (4%), ERP (3%) and BIM (3%) logic, ~10× fewer lines even at full logic parity" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12)">
+<a href="../TwoAppsOneKernelInfographicLandscape.html" title="Open the live infographic">
+<img src="../img/two_apps_one_kernel_infographic.png" alt="Two Apps, One Kernel — pie chart: 76% legacy bloat, 14% code logic (both ERP and BIM legacies), 10% ours split into kernel (4%), ERP (3%) and BIM (3%) logic, ~10× fewer lines even at full logic parity" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12)">
 </a>
-<div style="margin-top:8px;font-size:12.5px;color:#78909c">Updated 2026-08-07, both apps (ERP + BIM). <a href="TwoAppsOneKernelInfographicLandscape.html">Open the live infographic →</a> · <a href="TwoAppsOneKernel/">full write-up →</a></div>
+<div style="margin-top:8px;font-size:12.5px;color:#78909c">Updated 2026-08-07, both apps (ERP + BIM). <a href="../TwoAppsOneKernelInfographicLandscape.html">Open the live infographic →</a> · <a href="../TwoAppsOneKernel/">full write-up →</a></div>
 </div>
  
 <span id="status"></span>
