@@ -84,11 +84,16 @@ re-derive.
 | swap the active DB then draw | `city.js:707-708` (also `:796-797`, `:950`) `A.db = …[k].db; A.libDb = …[k].libDb` → `A.streamBuilding(name)` | **works** |
 | track what's already drawn | `A.buildingCentres`, `A.buildingsRendered`, `A.savedStreams` (`streaming.js:39-60`) | **works** |
 | dedup on merge | `import_db_builder.js:45` `INSERT OR IGNORE INTO elements_meta` — same GUID dropped twice collapses (proved live: CONTAINMENT dropped twice → 21,009 not 42,018) | **works** |
-| merge-or-new PROMPT, already written | `archive/gallery.html:1044` `showMergeModal()` — "Merge X into Y?" / Merge / New, dropdown when >1 target, Enter=merge Esc=new | **works, just orphaned in archive/** |
-| shared frame | `project_metadata.georef_offset_x/y/z`; multi-file drops already pin one frame from the first file — `import_own.js:657` `§GEOREF_SESSION frame pinned by …` | **works** |
+| merge-or-new PROMPT, already written | `archive/gallery.html:1045` `showMergeModal()` — "Merge X into Y?" / Merge / New, dropdown when >1 target, Enter=merge Esc=new; called at `:1369` | **works, just orphaned in archive/** |
+| shared frame | `project_metadata.georef_offset_x/y/z`; multi-file drops already pin one frame from the first file — `import.js:308` `§GEOREF_SESSION frame pinned by …` | **works** |
+
+> **⚠ CITATIONS RE-VERIFIED 2026-07-30 against `origin/main` — the original spec's were stale.**
+> There is **no `viewer/import_own.js`** in this repo; the file is **`viewer/import.js`**
+> (`importMultiIFC` at `:267`, `_parseOneIFC` at `:388`). Corrected throughout this section. Every
+> `city.js` and `import_db_builder.js` line above was checked and is correct as written.
 
 ### §SM-2 The ONLY blocker
-`scene.js:663`, in `_openDbBytes`:
+`scene.js:723`, inside `A._openDbBytes` (declared `scene.js:712`):
 ```js
 location.assign('viewer.html?db=' + encodeURIComponent(dbUrl) + '&lib=' + … + '&ghost=1');
 ```
@@ -96,8 +101,9 @@ File Open **navigates the page**. The scene is destroyed and rebuilt. That is th
 opening a second file resets the canvas — not a data limit, not a memory limit.
 
 ### §SM-3 What to build (wiring only)
-1. In `A.openModelDb` / `_openDbBytes`: when a building is **already open**, show the prompt instead
-   of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1044` — port it, don't rewrite it.
+1. In `A._openDbBytes` (`scene.js:712`): when a building is **already open**, show the prompt instead
+   of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1045` — port it, don't rewrite it.
+   Note there are **two** call sites to cover — `scene.js:735` (drag-drop) and `:744` (file picker).
 2. **Replace** → today's `location.assign` path, unchanged.
 3. **Merge** → do exactly what City mode does:
    - register the new DB: `A.cityBuildingDbs[newName] = { db, libDb }` (or the same shape under a
@@ -105,11 +111,12 @@ opening a second file resets the canvas — not a data limit, not a memory limit
    - `A.db = …; A.libDb = …;` then `A.streamBuilding(newName)`
    - the new building appears **alongside** the current one; `buildingsRendered` keeps both
 4. **Frame:** the ALREADY-OPEN building's `project_metadata.georef_offset_*` is the pin. The incoming
-   DB rebases to it — same rule `import_own.js:657` already applies to a multi-file drop, applied to
-   an existing scene instead of the first file of a batch.
+   DB rebases to it — the same rule `import.js:299-310` already applies to a multi-file drop
+   (`sessionGeorefOffset`, pinned by the first file that reports a non-zero offset), applied to an
+   existing scene instead of the first file of a batch.
 5. **Open source IFC in the same door:** the picker currently accepts `.db,.sqlite` only
-   (`scene.js:669-671`). Widen to `.ifc`, route to the existing `importIFC`/`importMultiIFC`, then
-   feed the produced DB into step 3. No new import path.
+   (`scene.js:739` `input.accept = '.db,.sqlite'`). Widen to `.ifc`, route to the existing
+   `A.importMultiIFC` (`import.js:267`), then feed the produced DB into step 3. No new import path.
 
 ### §SM-4 Witness (name the issue, per project rule)
 **W-SCENE-MERGE** — open building A, then Open→Merge building B:
@@ -121,10 +128,19 @@ opening a second file resets the canvas — not a data limit, not a memory limit
 ### §SM-5 Named risks (flagged, not solved)
 - **Memory.** Two 485MB DBs resident = ~1GB of sql.js heap in one tab. City mode's DBs are much
   smaller. Needs a real measurement before promising N-way merge, not an assumption.
-- **Variants vs federation are different things.** Today's `§VERSION_MERGE` (`import_own.js:697`) is
-  VERSIONING — `_rec.versions.push()` then `_rec.metaDb = …` OVERWRITES. Do not build scene-merge on
-  that path or it will replace instead of accumulate. A variant SWITCHER (show v1 or v2) is a third,
-  separate feature — do not fold it in without a decision.
+- **Variants vs federation are different things.** ⚠ **`§VERSION_MERGE` no longer exists** — grepped
+  2026-07-30 across `viewer/`, `common/`, `archive/`: zero hits for `VERSION_MERGE` or
+  `_rec.versions.push`. It lived in the gallery/landing code that is now in `archive/`. The *warning*
+  still stands as doctrine — do not build scene-merge on a versioning path that OVERWRITES
+  (`_rec.metaDb = …`) instead of accumulating — but **do not go looking for that code, it is gone.**
+  A variant SWITCHER (show v1 or v2) remains a third, separate feature; don't fold it in without a
+  decision.
+- **The 4 GB wasm ceiling caps "Open source IFC" (step 5), and it is measured, not theoretical.**
+  See `IFC_LARGE_PRIVATE_STRESS_TEST.md` §KUL009: a 2,045 MB IFC consumes ~3.4 GB of the wasm32
+  4 GB budget on *parse alone*, and geometry building dies at element #3,956 of 66,214. Each file
+  does get a fresh Worker (`import.js:391` `new Worker(...)` + `terminate()` on done), so merging N
+  files does not compound wasm memory — but any single source file near ~1 GB will silently import
+  partial. Step 5 should surface that, not hide it behind a merge prompt.
 - **Cross-check §KUL008_CACHE** in `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md` before testing any
   edit to a precached `viewer/*.js` — bump `sw.js CACHE_VERSION` + the file's `?v=`, reload twice,
   or the change is invisible and looks like a code failure.

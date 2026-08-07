@@ -29,6 +29,38 @@ cannot open at all. The rest of this guide is how to stay under it.
 
 ---
 
+## The hard wall nobody warns you about: 4 GB, and it fails *quietly*
+
+Browser-based viewers (ours, and every other IFC viewer built on WebAssembly) run in a **32-bit
+address space**. That is a hard ceiling of **4,294,901,760 bytes** — not a setting, not a licence
+tier, not something a bigger laptop fixes.
+
+Measured on KUL OVERALL.ifc (2,045 MB), 2026-07-29:
+
+| stage | result |
+|---|---|
+| parse the file | ✅ succeeds in 17 s — and consumes **~3.4 GB of the 4 GB budget on its own** |
+| find the elements | ✅ all **66,214** found, perfectly |
+| build the geometry | ❌ dies at element **#3,956** — `Cannot enlarge memory` |
+| what the user sees | a building with **3,955 elements** and **no error message** |
+
+**That is the part that matters: it does not crash.** It opens. It renders. It looks like a
+building. It is missing **94 %** of the model — including *every single MEP element in the file* —
+and nothing on screen says so. A reviewer can sign off on a model that is almost entirely absent.
+
+Two consequences for you as the author:
+
+1. **A file over ~1 GB cannot be delivered as one piece to any browser viewer.** Not "will be slow" —
+   *cannot*, structurally. The parse alone eats most of the address space before geometry starts.
+2. **Steps 1 and 3 below are what buy the headroom back.** Solids instead of tessellation cuts the
+   entity count ~20×; per-discipline export keeps each file's parse cost small enough that geometry
+   still has room to build. They are the same fix, from two directions.
+
+For reference, the sibling file exported the right way — KUL CONTAINMENT.ifc, 57 MB — imports
+**21,009 of 21,009 elements, zero losses**, from the identical pipeline on the identical machine.
+
+---
+
 ## Step 1 — Export SOLIDS, not tessellation ← biggest single win
 
 This is 95.6% of the problem in the KUL OVERALL file:

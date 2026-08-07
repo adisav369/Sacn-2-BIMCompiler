@@ -585,6 +585,7 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | [DAGeVu Modeller Guide](ModellerGuide.md) | Author geometry — the editable 3D Grid |
 | [Clash Detection](CLASH_DETECTION.md) | Clash detection engine |
 | [4D/5D Analysis](4D5DAnalysis.md) | nD analytics (4D–8D) |
+| [Asset Classification & JKR/SKATA](JKR_SKATA.md) | Classification codes, Malaysian handover compliance — what we measure, and what we don't yet certify |
 
 ---
 
