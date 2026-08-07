@@ -2041,6 +2041,43 @@ the wall; counting it was a wallGate cycle, measured on Hospital roof@199.66..19
 wall@191.81..199.81); (b) hangGate carrier now requires S.top strictly above mine (same-z siblings
 otherwise carry each other). §DEQ_REPAIR converges: Hospital 1 sweep/8 shifts, Terminal 0.
 
+## 2026-08-07 — §4D_LAYER_TRUTH + §GANTT_RETIME_RESYNC — the "layer buffer" the user asked for, SHIPPED (PRs #1239 merged, #1240 auto-merge armed)
+
+User, watching Hospital on the fixed engine: "walls coming up before the foundation slabs all around...
+the 2 trucks still came out on day 1... take a step back and look at 4D Generate abstract logic
+mechanism, perhaps needing a layer buffer to manage the gantt." **The step-back finding, witnessed in
+the user's own console:** the 4D generator is THREE layers — L1 element scheduler (`computeSchedule`,
+proven floating=0), L2 zone rollup (`materializeZones`/`deriveZones`, 35 task windows), L3 playback
+injection (`injectGantt` task-window overlay) — and L3 DISCARDED L1's times (even index-stagger across
+each window): `§XRAY_EDGES staged=284/63415` on the task-window pass vs `staged=0` on the generative
+pass. Plus `§GANTT band 0 z=[0.0,0.0] 233 elements: Architecture:233` — 233 geometry-less elements
+(no transform row, COALESCE→origin) scheduling at day 0 AND dragging their zone windows there (the
+day-1 walls and trucks). Fix = the layer buffer (PR #1239, `witness_4d_layer_truth.js` staged 284→0):
+- **§4D_NOGEO**: geometry-less elements excluded from the support-gated schedule and zone rollup in
+  BOTH extractors (tm.js + schedule_author.js), parked at project end (parked=233 on Hospital).
+- **L3 affine map**: each element's generative [start,end] maps affinely into its task window
+  (ls-primary order) — the window layer can no longer re-time against the schedule layer; a
+  user-dragged window rescales without reordering.
+- **§PHASE_OVERLAP_SUPPORT_GUARD**: single bz-pass → fixpoint sweep (≤16), bearing-below OR
+  hang-carrier, predicate ALIGNED with `auditFloating`/`_buildXraySupportCache` (carrier top REACHES
+  the base, unbounded above — the old ±GAP band left exactly the last 25 staged).
+
+**§GANTT_RETIME_RESYNC (PR #1240)** — user: "foundation piling nor others does not seem to come onto
+canvas anymore, though i dragged to certain bars passing," witnessed as `§PERF_TRAVERSE cand=0` on
+every scrub after `§GANTT_RETIME`: the retime paths moved op timestamps but never rebuilt the
+§PERF_INCR event index (`_evMesh` — so the incremental reveal skipped meshes straight across their
+moved transitions = the blackout), never re-sorted `_ops`, never rebuilt the §XRAY solidify cache.
+One `_tmResyncAfterRetime()` called by all four retime commit paths (drag, ruler shift, group shift,
+undo). Witness `witness_gantt_retime_resync.js` drives the REAL ruler-shift path (−93d): rows=63182
+retimed, both caches rebuilt after the shift, `tmPlacedCount` at 30% of the new span = 22766.
+Known-and-accepted: a shift leaves ~177 sub-day staged elements (task windows are date-floored, so
+seam elements offset <1 day) — the xray staging mechanism ghosts them until their carrier finishes,
+and the count is now honestly REPORTED where the stale cache previously hid it.
+
+**Note for testing:** GH Pages still serves the pre-fix build (v956 signatures: `§GANTT_CACHE_HIT`
++ auto-generate refold + staged=284). All of today's fixes are verified on localhost:8484 (worktree
+`/tmp/wt-4d-engine`); they reach GH Pages via the normal deploy pipeline after the PRs land.
+
 **For a new dev landing on this file cold:** read `## Why this file exists` + `## What's already shipped`
 at the top for original scope, then jump straight to this close-out and the dated 2026-08-06/08-07
 sections above it for the live edge — the numbered gap list right after the top summary predates all of the
