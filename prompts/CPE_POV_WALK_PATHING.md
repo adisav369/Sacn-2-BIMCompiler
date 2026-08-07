@@ -2,6 +2,12 @@
 
 # CPE — Movie Pathing by POV Walk (next stage, one-liner)
 
+**🔒 VISION (LOCKED, user 2026-08-07 — "the perfect rehash"):
+POV walk is an input device for the existing stick edit, not a new authoring model.**
+Every design question on this feature resolves against this line: if a proposal adds a second
+path-authoring model, second path truth, or new mechanics beyond navigate-in-B → snap stick with
+facing → existing replan re-snakes, it is out — same mechanics, better experience.
+
 **Author the film path by WALKING it in POV**: drive B (the §CPE_SCRUB_POV_ONLY viewfinder) with
 walk-mode controls, record the traversed poses, and let that recorded walk BECOME the path — sticks
 derived from the walk instead of the walk derived from sticks. Builds on `§CPE_SCRUB_POV_ONLY` +
