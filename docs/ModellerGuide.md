@@ -384,6 +384,13 @@ to disarm. `R` is reserved for Insert, so it doesn't arm anything here.
 2. Drag a **gridline**.
 3. Release to commit. Walls attached to that line **recompose** — a span stretches, an attached wall translates — as one signed operation. A hosted door or window **rides** its wall rather than stretching or divorcing from it, same as Move.
 
+What that recompose actually does, in plain terms:
+
+1. **Walls fill the gap, never leave one.** Every wall on the dragged gridline is classified against it first — a wall that only touches the gridline **translates** with it, a wall that **spans** across to another gridline **stretches**, with its far end staying anchored on that other gridline. Either way the wall keeps meeting the gridline; it can't detach or overshoot.
+2. **Only the grabbed bay moves.** The edit is scoped to the walls actually connected to the dragged gridline — a wall elsewhere in the building that happens to sit at the same coordinate, but belongs to an unrelated room, is left alone.
+3. **Hosted doors and windows ride, never distort.** A filling keeps its own size; it moves by its own share of the stretch (see below), it never scales and never divorces from its host.
+4. **Furniture and fixtures stay put.** They aren't part of the grid at all — a couch sitting in a room doesn't drag when the room's wall stretches.
+
 The ride is not a guess about what looks hosted. It follows the **authored** host↔opening↔filling chain
 recovered verbatim from the building's own IFC, so a door rides the wall its designer actually put it in —
 and where a building's author never declared that relationship, the modeller says so rather than inventing
@@ -423,6 +430,14 @@ verify=true 23 RED`) rather than silently accepting a bad edit — visible in th
 
 ![Before — Duplex's real ground floor near the stair, the authoring grid aligned to a real wall's own measured edge](img/modeller/grid-editor-before.png)
 ![After — gridline "2" dragged 0.5 m for real: 16 elements recomposed, 9 hosted doors rode, the conformity gate flags the resulting clashes live in the status line](img/modeller/grid-editor-after.png)
+
+Roofs recompose the same way. *SampleHouse*'s barrel-vault roof spans the two gridlines bracketing the
+building; dragging the far one **0.5000 m** grows the roof's own rendered X-extent from **14.8410 m → 15.3410
+m** — exactly the drag, with the near edge held fixed at the other gridline — while the wall it sits on rides
+along in the same recomposed group (`recomposed=8`, `§STRETCH-RIDE riders=7`). Undo restores the roof's extent
+byte-exact. Witnessed end-to-end: `modeller/tests/witness_e2e_gridmove_roof.js`, 8/8 §-tagged assertions green.
+
+![The roof stretched 0.5 m along with the wall it sits on — gridline "2" dragged for real on SampleHouse](img/modeller/grid-editor-roof.png)
 
 ### Delete
 *Soft-deletes from the signed log (reversible).*
