@@ -203,6 +203,14 @@ v1 is discrete snap-sticks, which reuses existing machinery nearly everywhere:
 - **Facing = the existing pin data path.** Bands already carry `lookAt` (§CPE_AIM_PIN, `_setPin`
   :2407); §CPE_AIM_PIN_DISABLED only disabled its CLICK trigger, the storage/clone/_buildOverride/
   plan paths all still carry it. Snap sets `band.lookAt` from vfCam facing — zero new plumbing.
+  **Two-layer facing model, confirmed in code (user 2026-08-07: "generated to be smooth... a
+  separate always-present influence that calmly reorients after that pin-point snap"):** the
+  always-present layer is the DERIVED gaze (density/depth LOS + §CINEMA_GAZE_SENSE blend); a pin
+  overrides it only inside its band's Voronoi zone on the walk curve (`_pinLookAtAt`,
+  effects.js:5161-5189 — "the pin always wins locally at its own band, with LOS/density resuming
+  immediately after, no bleed into neighbours"). The calm reorientation on zone exit is the existing
+  blend machinery, not new code. Known wrinkle on that seam: §CPE_SEAM_CONTINUOUS gap (57-93° where
+  ~0 expected) once seen on pin replans — log if hit, separate bug, do not chase in v1.
 - **Save/visibility = unchanged.** OK/Save staging (§CPE_REOPEN_NODE) and `_pathsSave` untouched;
   new sticks appear in the main view at unfreeze via the normal `_redrawScene`.
 - **Genuinely NEW code, all inside `viewer/cpe_walk.js`:** (a) walk controls driving `_state.vfCam`
