@@ -6,6 +6,12 @@
 > touched to avoid misjudging context this session doesn't own. Next session: a real archiving pass
 > still owed on the `## OPEN` section's oldest items once each is confirmed still-open or DONE.
 
+## Session 2026-08-07 — 4D engine upgrade lane, 4 PRs SHIPPED+MERGED (bim-ootb #1236/#1237/#1239/#1240)
+§DEQ_V1 (zero floating all classes, bearing+hang) · §GANTT_SINGLE_LOAD (cold open one pass) ·
+§4D_LAYER_TRUTH (staged 284→0, no-geometry parked) · §GANTT_RETIME_RESYNC (edit blackout fixed).
+Full detail + witness numbers: `prompts/4D_SCHEDULE_PERFECTION.md` (dated 2026-08-07 sections).
+Next: GH Pages deploy pipeline to pick up main; Hospital hanging-beams still needs fresh evidence.
+
 ## Session 2026-08-06 — Room-pathing: §SPINE-BRIDGE-CLUSTER + §REVISIT_FORCED, both SHIPPED+MERGED
 Continued from `prompts/Viewer/FindRooms/RESUME_ROOMPATH_DETOUR_BACKTRACK.md` (now fully CLOSED,
 all 4 items resolved). Root-caused LTU_AHouse's `V1R1→V4R1` NO_PATH: `§ROOM-SPINE-BRIDGE` only
