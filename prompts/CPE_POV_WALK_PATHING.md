@@ -8,6 +8,11 @@ derived from the walk instead of the walk derived from sticks. Builds on `§CPE_
 the eye-owned scrub transport (prompts/CINEMA_PATH_EDITOR.md). Getting the sticks themselves is
 already solved — this is an additional helper tool, not a replacement. Unexplored; spec before any code.
 
+> ⚠ SUPERSEDED 2026-08-07 (user ruling, see §CPE_WALK_EDIT_V1): "the walk BECOMES the path" is
+> RETIRED, not deferred — POV walk is an input device for the EXISTING stick-edit mechanics (navigate
+> in B, snap a stick with facing, planner re-snakes), never a second path-authoring model. Same
+> mechanics, better experience. The paragraph above stands only as the idea's origin.
+
 ## Pre-work: perf code study (separate session, before implementation)
 
 Before any walk-mode code: a deep-code-study session profiles the CURRENT canvas cost —
@@ -179,7 +184,13 @@ to snap again. The path re-snakes itself with each new snap. The POV carries the
 the snap captures the part and FACING the user navigated to.*
 
 **This SHRINKS v1 versus the original one-liner.** Continuous walk-RECORDING ("the walk becomes the
-path") is DEFERRED — v1 is discrete snap-sticks, which reuses existing machinery nearly everywhere:
+path") is **RETIRED by user ruling (2026-08-07, "for the synch and sanity reason")**, not deferred:
+the canvas already edits via sticks+replan, and POV merely gives a better experience over the SAME
+mechanics. Design rationale, agreed: (a) one source of path truth — bands → `cinemaPathPlan` → film;
+a recorded pose stream is a second truth that must be resampled into bands anyway, and undo/hose/
+clip/staging/§CPE_HOLDER_INTEGRITY are all band-shaped; (b) the planner out-films the hand — raw walk
+poses carry jitter/hesitation/backtracking, and cleaning them needs smoothing heuristics = invention.
+v1 is discrete snap-sticks, which reuses existing machinery nearly everywhere:
 - **Re-snake = the existing re-plan, not new script.** `_replanFilm` → `cinemaPathPlan` already
   re-derives the whole path when a band is added/moved (drag-release path today). Cost 291–1218ms,
   fired once per snap (discrete click, never per-frame) — same budget as today's pointerup.
