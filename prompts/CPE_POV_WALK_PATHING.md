@@ -171,6 +171,44 @@ window) and draw calls halve when the main pass stops. During walk, render only 
 - **DLOD bonus:** with the main view frozen pixels, the walk tick can cull for vfCam ALONE — the
   union frustum and main-camera terms drop out of dlodTick for the duration.
 
+### §CPE_WALK_EDIT_V1 — user UX recap = the v1 scope (2026-08-07, spec now sufficient to code)
+User recap, confirmed: *user edits the POV (walks in B) to navigate to the spot he wants the stick,
+presses 'stick snap' → a stick is assigned there (visible when edit ends — main view is frozen per
+§CPE_WALK_CANVAS_FREEZE until then); user may stop walk, save path on the main Alt+C panel, return
+to snap again. The path re-snakes itself with each new snap. The POV carries the cam heading too —
+the snap captures the part and FACING the user navigated to.*
+
+**This SHRINKS v1 versus the original one-liner.** Continuous walk-RECORDING ("the walk becomes the
+path") is DEFERRED — v1 is discrete snap-sticks, which reuses existing machinery nearly everywhere:
+- **Re-snake = the existing re-plan, not new script.** `_replanFilm` → `cinemaPathPlan` already
+  re-derives the whole path when a band is added/moved (drag-release path today). Cost 291–1218ms,
+  fired once per snap (discrete click, never per-frame) — same budget as today's pointerup.
+- **Facing = the existing pin data path.** Bands already carry `lookAt` (§CPE_AIM_PIN, `_setPin`
+  :2407); §CPE_AIM_PIN_DISABLED only disabled its CLICK trigger, the storage/clone/_buildOverride/
+  plan paths all still carry it. Snap sets `band.lookAt` from vfCam facing — zero new plumbing.
+- **Save/visibility = unchanged.** OK/Save staging (§CPE_REOPEN_NODE) and `_pathsSave` untouched;
+  new sticks appear in the main view at unfreeze via the normal `_redrawScene`.
+- **Genuinely NEW code, all inside `viewer/cpe_walk.js`:** (a) walk controls driving `_state.vfCam`
+  (pointer-lock look + WASD, pattern from navigate_controls.js:28-56, private mode flag — NOT
+  APP.walkModeActive); (b) the snap: project vfCam position onto the current path curve
+  (`flowHosed`/`filmPts`) to derive the insertion fraction `s` and band ordering, create the band at
+  vfCam pos with `_stick:true` + `lookAt` from facing — the ONE new maths piece; (c) the
+  §CPE_WALK_CANVAS_FREEZE overlay + §CPE_WALK_TM_LOCK pause, mounted/unmounted at the `_wire/_unwire`
+  seam with teardown in `finish()`.
+- **Standalone-codable without impact: YES** — zero edits to effects.js/time_machine.js/
+  schedule_*.js; cinema_path_editor.js touched only at the named seams. Build in a `/tmp/wt-*`
+  worktree per the Isolation section above. Verification per FUNDAMENTAL LAW: §-log numeric pose
+  series (vfCam position/yaw/pitch per snap, band s/centre/lookAt asserted against the walked pose).
+
+**§CPE_WALK_SNAP_WOW (user, same day: "if the main canvas is cheap in just concurrent shows the new
+stick it be a wow"):** the frozen backdrop REFRESHES ONCE PER SNAP — snap already pays the
+0.3–1.2s replan, so one extra main repaint + snapshot re-capture is noise on top of it. Sequence at
+snap: replan (existing) → `_redrawScene` + one painted main frame → re-capture the overlay
+**in the same task as that render** (`drawImage` immediately after `renderer.render`, same rAF —
+`preserveDrawingBuffer:false` invalidates the buffer after present). Walking stays single-pass
+(B only); the user still SEES each stick + re-snaked pipe land in the main view the moment they
+snap it. Per-frame freeze economics unchanged.
+
 ### Handed to the implementation session as fact
 - New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
   button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
