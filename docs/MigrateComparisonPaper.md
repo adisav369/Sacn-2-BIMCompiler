@@ -114,9 +114,6 @@ details.fold[open]>summary::before{transform:rotate(90deg)}
 details.fold>summary:hover{background:rgba(124,179,66,.07)}
 details.fold>summary .hint{font-weight:400;font-size:12px;opacity:.55;margin-left:auto}
 details.fold .fbd{padding:6px 16px 14px}
-/* "At a glance" stat cards — whole card is a link */
-.glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
-.glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
 /* "Proven ideas" pillar cards — one per row of the old table */
 .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:18px 0}
 .pillar{border:1px solid var(--pc);border-radius:12px;background:var(--pcbg);display:flex;flex-direction:column;overflow:hidden}
@@ -190,32 +187,11 @@ details.fold .fbd{padding:6px 16px 14px}
 
  
 
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
-  <a class="glance-card" href="#dr-tco" style="background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="cost savings" role="img" style="width:100%;height:72px;color:#ffa000;display:block;margin:0 auto 6px"><path d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z"/><path d="M16 10h.01"/><path d="M2 8v1a2 2 0 0 0 2 2h1"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ffa000">≥30×</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">less disaster-recovery storage at equal guarantee (<b>TCO</b>)</div>
-  </a>
-  <a class="glance-card" href="#no-server" style="background:rgba(124,179,66,.12);border:1px solid rgba(124,179,66,.45)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="zero network round-trips" role="img" style="width:100%;height:72px;color:#7cb342;display:block;margin:0 auto 6px"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#7cb342">0</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">network round-trips on the read / fold path</div>
-  </a>
-  <a class="glance-card" href="#speed" style="background:rgba(255,112,67,.12);border:1px solid rgba(255,112,67,.45)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="speed" role="img" style="width:100%;height:72px;color:#ff7043;display:block;margin:0 auto 6px"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ff7043">~53×</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">faster bootstrap from a signed checkpoint vs genesis replay</div>
-  </a>
-  <a class="glance-card" href="#realistic-conversion-estimate-loc" style="background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="code bloat" role="img" style="width:100%;height:72px;color:#42a5f5;display:block;margin:0 auto 6px"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈21×</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity <i>(conservative)</i> — <i>≈51× engine-shell delivered today</i></div>
-  </a>
-  <a class="glance-card" href="#dr-tco" style="background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="database backup" role="img" style="width:100%;height:72px;color:#ab47bc;display:block;margin:0 auto 6px"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ab47bc">192 GB→0.78 GB</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85"><b>Back up the recipe, not the result.</b></div>
-  </a>
+<div style="max-width:1000px;margin:18px auto 8px;text-align:center" markdown="0">
+<a href="TwoAppsOneKernelInfographicLandscape.html" title="Open the live infographic">
+<img src="img/two_apps_one_kernel_infographic.png" alt="Two Apps, One Kernel — pie chart: 76% legacy bloat, 14% code logic (both ERP and BIM legacies), 10% ours split into kernel (4%), ERP (3%) and BIM (3%) logic, ~10× fewer lines even at full logic parity" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12)">
+</a>
+<div style="margin-top:8px;font-size:12.5px;color:#78909c">Updated 2026-08-07, both apps (ERP + BIM). <a href="TwoAppsOneKernelInfographicLandscape.html">Open the live infographic →</a> · <a href="TwoAppsOneKernel/">full write-up →</a></div>
 </div>
  
 <span id="status"></span>
