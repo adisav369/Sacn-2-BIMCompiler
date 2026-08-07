@@ -310,6 +310,33 @@ snap: replan (existing) → `_redrawScene` + one painted main frame → re-captu
 (B only); the user still SEES each stick + re-snaked pipe land in the main view the moment they
 snap it. Per-frame freeze economics unchanged.
 
+### §CPE_WALK_UX_V2 — user's walk model, ruled live on Hospital (2026-08-07, SHIPPED PR #1248)
+User's Hospital bug report (deployed v959): shoes at the aerial pose planted a SKY STICK
+(`§CPE_WALK_SNAP_RESULT s=0.000 centre=(141.01,68.94,212.14)`), pinch did nothing, walk read as
+"orbit around a static pos only". Their corrections, now the ruling (and a drift correction: the
+"scrub first, then shoes" flow was the assistant's invention — user never asked for it, and
+pointer lock hides the cursor so it was physically impossible mid-walk anyway. LISTEN FIRST.):
+- **Walk is SELF-SUFFICIENT** (§CPE_WALK_SPAWN): first shoes press spawns at the walk stretch's
+  eye-level start (plan-derived via new narrow surface `_walkSpawnPose`); shoes off/on resumes
+  bit-identically; only eye-off/editor-close clears the resume. Scrub bar: not part of the flow.
+- **Trackpad-first** (§CPE_WALK_GLIDE): "usual finger on mousepad controls, all in the POV only" —
+  finger move = pivot (pointer-lock look), two-finger scroll / pinch (ctrl+wheel) = glide along
+  facing (1.2m/notch, Shift ×4). WASD stays as a bonus, not the primary.
+- **Enter/Space = plant + release** (§CPE_WALK_ENTER_LOCK, Space added "for finger dexterity"):
+  one stroke plants the stick (facing = aim pin), runs the replan ("pause a sec to update the
+  stick along the path"), and releases to canvas review where the stick is draggable; shoes
+  resumes at the same spot for the next stick. Click while locked = snap-and-keep-walking.
+- **User's insertion model confirmed 1:1 with shipped maths**: "path adds nearest to where POV is,
+  then drag to that spot" IS `_walkSnap` (nearest-point insertion fraction, centre = walked pose).
+  "Doable because we do it anyway manually" — the locked vision restated from the user's side.
+- Witness 22/22 Duplex (5 new gates: SPAWN / SPAWN-SNAP / GLIDE / RESUME / ENTER-LOCK). Two
+  witness-authoring lessons: s=0.000 at the SPAWN is correct (spawn IS the walk head — the bug
+  signature was s=0.000 with an aerial centre); a same-tick stop/start toggle races the deferred
+  pointerlockchange auto-stop (synthetic-only, precondition documented in the witness).
+- **Viability caveats stated, accepted as design**: the glide follows the FULL facing (aim down →
+  glide descends) and there is no collision — the walker can pass through walls. This is an
+  authoring camera, not a physics walk; fast free positioning is the point.
+
 ### Handed to the implementation session as fact
 - New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
   button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
