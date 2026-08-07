@@ -2210,7 +2210,10 @@ before any implementation, per this file's own Spec-First discipline.
 
 **§GANTT_LOCK_INTEGRITY — DONE, all 4 spec open questions resolved, witness-first.**
 - Witness FIRST: `viewer/tests/witness_gantt_lock_integrity.js`, RED on main (11 fails, feature
-  absent) → 22/22 after.
+  absent) → **19/19** after. (⚠ PR #1244's commit message says "22/22" — wrong, my transcription
+  error caught by the watchdog re-running the witness from scratch: the file has exactly 19
+  executable assertions on the success path, and my own mid-session run printed `pass=17 fail=2`
+  = 19 total. Corrected here and in a PR comment; the merged commit message itself is immutable.)
 - `verifyGanttIntegrity()` (time_machine.js): pure read — `_buildXrayElements()` geometry (works on
   the §GANTT_CACHE_HIT path) + CURRENT `_ops` times, audited by `ScheduleGate.auditFloating`, ALL
   classes. Lock handler verifies on 🔓→🔒 ONLY; breach ⇒ lock REFUSED (stays Editing), lockbar shows
