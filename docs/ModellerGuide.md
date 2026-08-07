@@ -394,6 +394,36 @@ aren't separate things to ride.
 ![Before — a wall spanning two gridlines](img/modeller/gridstretch-before.png)
 ![After — dragging the gridline stretched the attached wall by exactly the drag distance](img/modeller/gridstretch-after.png)
 
+#### On a real building, not a diagram
+
+The two frames above are a clean teaching diagram (Move Grid on a synthetic scratch wall). The mechanic works
+identically against a real, fully-loaded building — no separate mode, nothing cleared first. Here it is on
+Duplex's own ground floor, near the stair: a column grid aligned to a real wall's own measured edge, then that
+gridline dragged for real.
+
+Witnessed end-to-end (`modeller/tests/witness_e2e_gridmove_real.js`, 8/8 §-tagged assertions green, real
+`pg.mouse` down→move→up, no synthetic shortcuts):
+
+- A real mouse drag on gridline "2" landed at **delta = 0.5000 m**. The governed wall's own *rendered*
+  Y-extent grew from **2.920 m → 3.420 m** — exactly the committed op's delta, read back off the live mesh,
+  not assumed from the drag alone.
+- Its hosted door — a real `rel_fills_host` edge recovered from the IFC, not a proximity guess — **rode
+  0.273 m**, not the wall's full 0.500 m: §STRETCH-RIDE keeps a filling's *proportional* position along its
+  host, so it moves by its own anchored share of the stretch, never scales, never divorces.
+- The gesture landed as **one** signed `GEOM_GRID_MOVE` plus **9** induced rider `GEOM_MOVE`s (other walls the
+  same gridline governs, several carrying their own hosted doors) — one Ctrl+Z undoes the whole group,
+  verified: cursor and wall extent both restored byte-exact.
+- `verifyChain` held throughout. The drag-session cache (§SCALE_CHECK_FIX) is built once per gesture and reused
+  every pointermove frame, not rebuilt per frame, cited from its own log line rather than re-profiled.
+
+The conformity gate runs on every drag, real building included — it doesn't get a pass because the input is a
+big, dense floor plan. This particular 0.5 m test drag pushed the wall into real clashes against neighbouring
+structure; the app's own status line reports the count instantly (`recomposed=16 §STRETCH-RIDE riders=9
+verify=true 23 RED`) rather than silently accepting a bad edit — visible in the "after" frame below.
+
+![Before — Duplex's real ground floor near the stair, the authoring grid aligned to a real wall's own measured edge](img/modeller/grid-editor-before.png)
+![After — gridline "2" dragged 0.5 m for real: 16 elements recomposed, 9 hosted doors rode, the conformity gate flags the resulting clashes live in the status line](img/modeller/grid-editor-after.png)
+
 ### Delete
 *Soft-deletes from the signed log (reversible).*
 
