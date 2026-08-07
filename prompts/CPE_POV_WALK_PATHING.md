@@ -131,6 +131,26 @@ frame-loop changes**:
    already flagged (FPS→53). Same verdict as there: known DLOD landmine
    (project_dlod_geometry_swap_landmine.md), smallest lever, touch last, not a blocker for v1.
 
+### §CPE_WALK_TM_LOCK — user ruling (2026-08-07, on reviewing the study)
+User: *"when POV 'walk' mode, TM is locked or goes to background to avoid user meddling, jamming up
+the canvas perf."* Confirmed gap: nothing locks TM today — its panel stays user-drivable while CPE is
+open, and its scrub self-renders outside the rAF loop (time_machine.js:3367 `playTick` →
+`renderAtTime`), so a user TM-scrub mid-walk stacks full re-render passes onto the walk loop.
+**Rule for implementation:** walk-mount pauses TM playback and disables/backgrounds its panel;
+walk-unmount restores exactly the prior state. Extends §CPE_SOLE_OWNER ownership doctrine (only the
+owner drives a tool); supersedes nothing — the "never ARM TM from a scrub" rule (:1345) still holds
+for CPE's own writes.
+
+Clarifications recorded from the same review:
+- **"Both cams" ≠ two moving cameras.** While B is on, two cameras PAINT each frame (main full-canvas
+  + vfCam inset); in POV walk only vfCam moves. DLOD's idle-skip consults both because its culling is
+  global (a zero-scaled instance vanishes in every view — dlod.js:196), so a moving vfCam alone
+  defeats the skip.
+- **Main canvas is camera-static during POV, not scene-static.** §CPE_SCRUB_POV_ONLY never moves the
+  main camera, but BuildUp visibility is per-element scene state, not per-camera — a cursor change
+  repaints construction state in BOTH views. Truly freezing the main view would need per-camera
+  visibility (three.js layers) — out of v1 scope, noted only.
+
 ### Handed to the implementation session as fact
 - New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
   button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
