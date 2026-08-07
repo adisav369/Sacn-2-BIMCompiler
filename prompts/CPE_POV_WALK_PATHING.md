@@ -16,6 +16,14 @@ frames while walking (repaints only at mount/snap-wow/unmount). Worktree pruned 
 Remaining (unwitnessed by design, needs a human hand): live pointer-lock feel on a real
 building — first real-use feedback goes in a new dated section here.
 
+**Coverage caveat (2nd watchdog pass, 2026-08-07):** the witnessed run covered TWO buildings —
+log tail `PASS Duplex (14/14)` + `PASS SampleHouse (14/14)` — but `witness_cpe_walk_edit.js:28`
+defaults to `BLDS || 'Duplex'`, so an env-less rerun regresses to Duplex-only. Both witnessed
+buildings are small residential; **Hospital-class is unwitnessed** (where replan is 291–1218ms
+and the DLOD flip-storm lives — same gap shape as DEQ_V1's large-building-only caveat). Named
+follow-on for any next walk-edit session: run `BLDS=Duplex,Hospital_3` once and record the
+replan/snap §-numbers here before claiming large-building fitness.
+
 **🔒 VISION (LOCKED, user 2026-08-07 — "the perfect rehash"):
 POV walk is an input device for the existing stick edit, not a new authoring model.**
 Every design question on this feature resolves against this line: if a proposal adds a second
