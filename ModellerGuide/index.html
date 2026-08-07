@@ -1257,6 +1257,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#room-move-engine-ready-not-yet-on-the-toolbar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Room Move (engine-ready — not yet on the toolbar)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-drag-engine-ready-not-yet-on-the-toolbar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item Drag (engine-ready — not yet on the toolbar)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2655,6 +2677,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#room-move-engine-ready-not-yet-on-the-toolbar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Room Move (engine-ready — not yet on the toolbar)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-drag-engine-ready-not-yet-on-the-toolbar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item Drag (engine-ready — not yet on the toolbar)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3185,6 +3229,62 @@ byte-exact. Witnessed end-to-end: <code>modeller/tests/witness_e2e_gridmove_roof
 <li>The feature hides from the model — the signed payload is never rewritten, so the chain stays valid. <strong>Redo</strong> (<code>Ctrl+Y</code>) brings it back exactly.</li>
 </ol>
 <p><img alt="Delete — the selected feature removed; Redo restores it" src="../img/modeller/delete-gone.png" /></p>
+<h3 id="room-move-engine-ready-not-yet-on-the-toolbar">Room Move <em>(engine-ready — not yet on the toolbar)</em><a class="headerlink" href="#room-move-engine-ready-not-yet-on-the-toolbar" title="Permanent link">&para;</a></h3>
+<p><em>Commits <code>GEOM_ROOM_MOVE {spaceGuid,dx,dy,members[]}</code>.</em></p>
+<p>Moving furniture around a room one piece at a time divorces the room from its contents the moment anything
+gets left behind. Room Move grabs the <strong>whole room</strong> instead — everything it actually contains, plus
+anything sitting freestanding inside its footprint, plus any hosted door or window riding a wall that moves
+with it — and translates it all by one shared delta, as a single signed operation with one-step undo.
+Membership is never a proximity guess: an element joins the move only because a real recovered relationship
+says so —</p>
+<ul>
+<li>every element with a real <code>rel_contained_in_space</code> edge into the room,</li>
+<li>a bounding wall, <em>if</em> the building's extracted schema carries a real space-boundary edge for it (most
+  don't yet — a room's walls stay put rather than being swept in by nearness),</li>
+<li>a freestanding, non-structural item with no containment edge whose real footprint centre falls inside the
+  room (tagged <code>derived-footprint</code> in the op, so it's always visible which leg brought each element in), and</li>
+<li>any door/window hosted by a wall that's already a member, carried over the same one-hop host→filling ride
+  Grid-Stretch uses.</li>
+</ul>
+<p>Because the whole set shares one rigid <code>(dx,dy)</code> — never a per-member recompute — the room's contents stay in
+the same relative arrangement, and the BOM needs zero work to follow: no containment edge changes, so the
+same tree replay is valid before and after. The move is in-plane only (a <code>dz</code> is refused outright — moving a
+room to a different storey is a bigger, separate decision this tool doesn't make) and it snaps back to
+nothing on an empty room (nothing honest to move).</p>
+<p>Verified on SampleHouse's "1 - Living room" (<code>witness_room_move.js</code>, 10/10): 16 real members — 12 via
+<code>rel_contained_in_space</code>, 4 via <code>derived-footprint</code> — move as one <code>GEOM_ROOM_MOVE</code>, every member's rendered
+centre landing on the committed delta to within float32 precision (max error 2.4×10⁻⁷ m). Round-tripping
+<code>(dx,dy)</code> then <code>(−dx,−dy)</code> (<code>witness_room_move_roundtrip.js</code>, 7/7) returns all 16 members to their exact
+starting position — 0.000 mm residual. The engine module (<code>bonsai_roommove.js</code>) is loaded and proven; it
+isn't hooked up to a grab handle or Outliner gesture yet, so there's no click-path or screenshot for this
+section until that wiring lands.</p>
+<h3 id="item-drag-engine-ready-not-yet-on-the-toolbar">Item Drag <em>(engine-ready — not yet on the toolbar)</em><a class="headerlink" href="#item-drag-engine-ready-not-yet-on-the-toolbar" title="Permanent link">&para;</a></h3>
+<p><em>Commits <code>GEOM_MOVE {parent,dx,dy,dz}</code>.</em></p>
+<p>A free single-item drag for one non-structural piece — a fixture, fitting, or loose furnishing — placed by
+eye onto a real surface rather than nudged axis-by-axis. Two refusals happen before anything can move, and
+neither ever falls back to a guess:</p>
+<ul>
+<li><strong>No real dimensions, no lift.</strong> The drag session looks up the item's real product dimensions before it
+  starts; with nothing to match, it throws <code>WalkerGapError</code> and the item never leaves its spot — never a
+  placeholder box standing in for a real size.</li>
+<li><strong>No real host, no drop.</strong> A wall-mounted item must find an actual wall face under the cursor (a floor
+  item an actual slab, a ceiling item an actual soffit) — no real host at the candidate point refuses that
+  drop.</li>
+<li>A drop that collides with another element's real footprint is refused the same way, and every refusal
+  reports what it hit — never a silent nudge into validity.</li>
+</ul>
+<p>While dragging, the preview tints <strong>green</strong> where the drop would be valid and <strong>red</strong> where it wouldn't; an
+invalid release snaps the item straight back to its pre-drag position, uncommitted. A valid release commits
+one ordinary <code>GEOM_MOVE</code> — item-drag introduces no new op type, so it plays back through the exact same fold
+and undo path as the Move gizmo.</p>
+<p><code>witness_item_drag_gate.js</code> (9/9, real SampleHouse data) proves both refusals live: a session with no
+product hint throws <code>WalkerGapError</code> and adds zero rows to the op-log; a matched item (a real sink,
+0.5×0.45×0.2 m from <code>ad_product_dim</code>) that collides with a neighbour is refused with the colliding fids named
+and the log length unchanged; the same item dropped against a real wall face commits exactly one <code>GEOM_MOVE</code>
+with a <code>snappedPos</code> read off that wall's own geometry. A wall itself, or an element already hosting a door or
+window, is refused as a drag <em>subject</em> outright — those move via Grid-Stretch or Room Move instead. Like Room
+Move, <code>bonsai_itemdrag.js</code> is loaded and witness-proven but has no pointer-drag surface wired into the canvas
+yet, so this section has no screenshot until that lands.</p>
 <hr />
 <h2 id="generate-walkers-fill-the-arc">Generate — walkers fill the ARC<a class="headerlink" href="#generate-walkers-fill-the-arc" title="Permanent link">&para;</a></h2>
 <p>When you open a bare <strong>ARC</strong> building, the other disciplines <em>fill themselves in</em>. You pick a discipline
