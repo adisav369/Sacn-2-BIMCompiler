@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two Apps, One Kernel — One-Page Infographic</title>
+<style>
+  :root{
+    --bg:#050810; --ink:#f4f7fc; --muted:#93a2c4;
+    --bloat:#9fc4ff; --logic:#6f95d6;
+    --kernel:#ff8a1e; --erp:#ff5fa8; --bim:#ffd23f;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg)}
+  body{
+    color:var(--ink); font-family:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    background:
+      radial-gradient(ellipse 1000px 620px at 100% -10%, rgba(159,196,255,.09), transparent 60%),
+      radial-gradient(ellipse 900px 700px at -5% 110%, rgba(255,138,30,.10), transparent 60%),
+      var(--bg);
+  }
+  .tnum{font-variant-numeric:tabular-nums}
+
+  .stage{
+    width:100vw; height:100vh; display:grid;
+    grid-template-rows:minmax(0,1fr) auto;
+    padding:clamp(8px,1.2vh,16px) clamp(14px,2vw,28px);
+    gap:clamp(6px,1vh,10px);
+  }
+
+  .main{display:grid; grid-template-columns:.46fr 1.8fr; align-items:stretch; gap:0; min-height:0}
+
+  .pitch{display:flex; flex-direction:column; justify-content:center; gap:clamp(16px,2.8vh,30px); min-height:0}
+  .datebadge{font-size:clamp(14px,1.3vw,19px); color:var(--muted); border:1px solid rgba(159,196,255,.25); border-radius:999px; padding:6px 17px; white-space:nowrap; font-weight:700; width:fit-content}
+  .datebadge b{color:var(--ink)}
+  .hero{font-size:clamp(100px,15.5vw,270px); font-weight:800; color:var(--kernel); line-height:.86; letter-spacing:-.02em;
+    text-shadow:0 0 80px rgba(255,138,30,.5); margin:2px 0 0}
+  .hero small{display:block; font-size:.24em; color:var(--muted); font-weight:800; letter-spacing:-.005em; margin-top:4px}
+  h1{font-size:clamp(46px,6.4vw,92px); font-weight:800; letter-spacing:-.015em; margin:0; line-height:1.03}
+  h1 em{font-style:normal; color:var(--kernel)}
+  .sub{font-size:clamp(19px,2vw,29px); color:var(--muted); font-weight:600; line-height:1.4; max-width:40ch}
+  .sub b{color:var(--ink)}
+
+  .piestage{min-height:0; display:flex; align-items:center; justify-content:center}
+  .piestage svg{width:100%; height:100%}
+
+  footer{border-top:1px solid rgba(159,196,255,.16); padding-top:clamp(12px,1.8vh,18px);
+    display:grid; grid-template-columns:1fr auto; align-items:start; gap:32px;
+    font-size:clamp(13px,1.05vw,15.5px);
+    color:var(--muted); line-height:1.55}
+  footer b{color:var(--ink)}
+  footer .swatches{display:grid; grid-template-columns:repeat(3,1fr); gap:6px 26px; margin-bottom:13px;
+    font-weight:700; padding-bottom:12px; border-bottom:1px dashed rgba(159,196,255,.18)}
+  footer .swatches span{display:flex; align-items:flex-start; gap:7px}
+  footer .swatches i{width:10px; height:10px; border-radius:3px; display:inline-block; flex:none; margin-top:5px}
+  footer .l p{margin:0 0 10px}
+  footer .l p:last-child{margin-bottom:0; opacity:.82; font-size:.92em}
+  footer .r{white-space:nowrap; text-align:right; font-weight:700; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:.9em; padding-top:2px}
+  footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <section class="main">
+    <div class="pitch">
+      <div class="datebadge">measured <b>2026&#8209;08&#8209;07</b> &middot; conservative, still growing</div>
+      <div class="hero tnum">~10&times;<small>fewer lines</small></div>
+      <h1>Two Apps. <em>One Kernel.</em></h1>
+      <div class="sub"><b>Their code: 76% bloat, 14% code logic — both the ERP and BIM legacies.</b> Ours: one shared kernel (4%) plus the ERP (3%) and BIM (3%) logic that runs on it &mdash; 10% total, even at full logic parity.</div>
+    </div>
+
+    <div class="piestage">
+      <svg viewBox="-108 -84 1080 984" role="img" aria-label="Pie chart: 76% legacy bloat, 14% code logic, 10% ours split into kernel, ERP and BIM">
+        <path d="M408,456 L408.00,132.00 A324,324 0 1,1 84.64,435.66 Z" fill="var(--bloat)" opacity=".55"/>
+        <path d="M408,456 L84.64,435.66 A324,324 0 0,1 217.56,193.88 Z" fill="var(--logic)" opacity=".8"/>
+        <path d="M408,456 L217.56,193.88 A324,324 0 0,1 288.73,154.75 Z" fill="var(--kernel)" transform="translate(-12.61,-38.8)" style="filter:drop-shadow(0 0 16px rgba(255,138,30,.7))"/>
+        <path d="M408,456 L288.73,154.75 A324,324 0 0,1 347.29,137.74 Z" fill="var(--erp)" transform="translate(-12.61,-38.8)" style="filter:drop-shadow(0 0 16px rgba(255,95,168,.7))"/>
+        <path d="M408,456 L347.29,137.74 A324,324 0 0,1 408.00,132.00 Z" fill="var(--bim)" transform="translate(-12.61,-38.8)" style="filter:drop-shadow(0 0 16px rgba(255,210,63,.7))"/>
+
+        <text x="675.4" y="481" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="82" fill="var(--bloat)">76%</text>
+        <text x="675.4" y="523" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="700" font-size="26" letter-spacing="1.2" fill="var(--muted)">BLOAT</text>
+        <text x="593.1" y="358" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-weight="800" font-size="41" letter-spacing="1.8" fill="#dce9ff" opacity=".8">DB</text>
+        <text x="468.6" y="660" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-weight="800" font-size="41" letter-spacing="1.8" fill="#dce9ff" opacity=".8">JVM</text>
+        <text x="276.8" y="622" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-weight="800" font-size="38" letter-spacing="1.2" fill="#dce9ff" opacity=".8">UI</text>
+        <text x="206.8" y="509" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-weight="800" font-size="34" letter-spacing="1.2" fill="#dce9ff" opacity=".8">UTILS</text>
+
+        <line x1="146.8" y1="312.4" x2="84" y2="274" stroke="var(--muted)" stroke-width="2.4" opacity=".6"/>
+        <circle cx="146.8" cy="312.4" r="6" fill="var(--logic)"/>
+        <text x="72" y="240" text-anchor="end" font-family="-apple-system,sans-serif" font-weight="800" font-size="62" fill="var(--logic)">14%</text>
+        <text x="72" y="274" text-anchor="end" font-family="-apple-system,sans-serif" font-weight="700" font-size="23" fill="var(--muted)">CODE LOGIC</text>
+
+        <line x1="258.0" y1="167.3" x2="204" y2="108" stroke="var(--muted)" stroke-width="2.4" opacity=".6"/>
+        <circle cx="258.0" cy="167.3" r="6" fill="var(--kernel)"/>
+        <text x="192" y="72" text-anchor="end" font-family="-apple-system,sans-serif" font-weight="800" font-size="48" fill="var(--kernel)">4%</text>
+        <text x="192" y="101" text-anchor="end" font-family="-apple-system,sans-serif" font-weight="700" font-size="19" fill="var(--kernel)">KERNEL</text>
+
+        <line x1="315.8" y1="143.4" x2="288" y2="72" stroke="var(--muted)" stroke-width="2.4" opacity=".6"/>
+        <circle cx="315.8" cy="143.4" r="6" fill="var(--erp)"/>
+        <text x="283.3" y="38" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="48" fill="var(--erp)">3%</text>
+        <text x="283.3" y="67" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="700" font-size="19" fill="var(--erp)">ERP</text>
+
+        <line x1="368.6" y1="133.3" x2="366" y2="54" stroke="var(--muted)" stroke-width="2.4" opacity=".6"/>
+        <circle cx="368.6" cy="133.3" r="6" fill="var(--bim)"/>
+        <text x="365.9" y="18" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="48" fill="var(--bim)">3%</text>
+        <text x="365.9" y="47" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="700" font-size="19" fill="var(--bim)">BIM</text>
+      </svg>
+    </div>
+  </section>
+
+  <footer>
+    <div class="l">
+      <div class="swatches">
+        <span><i style="background:var(--bloat)"></i>Bloat 1,228,468 LOC — DB/ORM, JVM/OSGi/servlets/JDBC, ZK UI, tests/batch</span>
+        <span><i style="background:var(--logic)"></i>Code logic — both legacies (iDempiere + Bonsai); iDempiere's share measures 198,679 LOC</span>
+        <span><i style="background:var(--kernel)"></i>Kernel — SQLite&#8209;WASM + Three.js + signed oplog (shared by both apps)</span>
+        <span><i style="background:var(--erp)"></i>ERP logic — iDempiere rules ported into the kernel</span>
+        <span><i style="background:var(--bim)"></i>BIM logic — Bonsai/IFC rules ported into the kernel</span>
+      </div>
+      <p><b>iDempiere: 1,427,147 Java LOC / 4,465 files</b> (2026-06-08). <b>Bonsai (CAD, Python): 235,365 LOC</b> —
+      measured. For scale, a full desktop CAD app is bigger still: <b>FreeCAD (C++/Python): 1,917,224 LOC</b> / 5,413
+      files, measured 2026-08-07 via github.com/FreeCAD/FreeCAD. (Navisworks: proprietary, no public LOC — not
+      included, not guessed.)</p>
+      <p>The 76/14 legacy split and the 4/3/3 kernel split are a round, conservative big-picture estimate, not a
+      line-by-line measurement. Basis: bloat 1,228,468 + logic 198,679 (both measured) against a projected
+      &asymp;150,000&ndash;160,000 LOC kernel &mdash; today's engine (55,283 measured 2026-08-07, plus growth headroom)
+      roughly doubling for full AD-interpretation breadth, plus 100% of the remaining business logic at a conservative
+      3&times; fold (104,940 M-class code-LOC &divide; 3 &asymp; 35,000, below the documented 5&ndash;8&times; range on
+      purpose) — split across the shared kernel and the two domains' logic. Even at that full-parity basis: ~10&times;
+      fewer lines than iDempiere alone. Exact snapshot + full method in the write-up.</p>
+    </div>
+    <div class="r"><a href="TwoAppsOneKernel/">full write-up &rarr;<br>TwoAppsOneKernel</a></div>
+  </footer>
+
+</div>
+</body>
+</html>

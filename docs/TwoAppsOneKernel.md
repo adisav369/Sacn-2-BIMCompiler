@@ -2,7 +2,7 @@
 description: An ERP (iDempiere) and a BIM/CAD authoring tool (Bonsai) folded onto one browser-native SQLite-WASM kernel — measured, not asserted, why that shrinks the codebase instead of bloating it.
 ---
 
-*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md) · companion to [Migrate & Compare](MigrateComparisonPaper.md)*
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md) · companion to [Migrate & Compare](MigrateComparisonPaper.md) · [One Page InfoGraphics - Landscape](TwoAppsOneKernelInfographicLandscape.html)*
 
 <style>
 .tak-lede{font-size:1.08em;line-height:1.55;max-width:760px;margin:6px 0 22px}
