@@ -1197,6 +1197,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Grid-Stretch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-a-real-building-not-a-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On a real building, not a diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2578,6 +2595,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Grid-Stretch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-a-real-building-not-a-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On a real building, not a diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -3074,6 +3108,32 @@ its 38), and partial on <em>SampleCastle</em>, whose window-frame walls are cons
 aren't separate things to ride.</p>
 <p><img alt="Before — a wall spanning two gridlines" src="../img/modeller/gridstretch-before.png" />
 <img alt="After — dragging the gridline stretched the attached wall by exactly the drag distance" src="../img/modeller/gridstretch-after.png" /></p>
+<h4 id="on-a-real-building-not-a-diagram">On a real building, not a diagram<a class="headerlink" href="#on-a-real-building-not-a-diagram" title="Permanent link">&para;</a></h4>
+<p>The two frames above are a clean teaching diagram (Move Grid on a synthetic scratch wall). The mechanic works
+identically against a real, fully-loaded building — no separate mode, nothing cleared first. Here it is on
+Duplex's own ground floor, near the stair: a column grid aligned to a real wall's own measured edge, then that
+gridline dragged for real.</p>
+<p>Witnessed end-to-end (<code>modeller/tests/witness_e2e_gridmove_real.js</code>, 8/8 §-tagged assertions green, real
+<code>pg.mouse</code> down→move→up, no synthetic shortcuts):</p>
+<ul>
+<li>A real mouse drag on gridline "2" landed at <strong>delta = 0.5000 m</strong>. The governed wall's own <em>rendered</em>
+  Y-extent grew from <strong>2.920 m → 3.420 m</strong> — exactly the committed op's delta, read back off the live mesh,
+  not assumed from the drag alone.</li>
+<li>Its hosted door — a real <code>rel_fills_host</code> edge recovered from the IFC, not a proximity guess — <strong>rode
+  0.273 m</strong>, not the wall's full 0.500 m: §STRETCH-RIDE keeps a filling's <em>proportional</em> position along its
+  host, so it moves by its own anchored share of the stretch, never scales, never divorces.</li>
+<li>The gesture landed as <strong>one</strong> signed <code>GEOM_GRID_MOVE</code> plus <strong>9</strong> induced rider <code>GEOM_MOVE</code>s (other walls the
+  same gridline governs, several carrying their own hosted doors) — one Ctrl+Z undoes the whole group,
+  verified: cursor and wall extent both restored byte-exact.</li>
+<li><code>verifyChain</code> held throughout. The drag-session cache (§SCALE_CHECK_FIX) is built once per gesture and reused
+  every pointermove frame, not rebuilt per frame, cited from its own log line rather than re-profiled.</li>
+</ul>
+<p>The conformity gate runs on every drag, real building included — it doesn't get a pass because the input is a
+big, dense floor plan. This particular 0.5 m test drag pushed the wall into real clashes against neighbouring
+structure; the app's own status line reports the count instantly (<code>recomposed=16 §STRETCH-RIDE riders=9
+verify=true 23 RED</code>) rather than silently accepting a bad edit — visible in the "after" frame below.</p>
+<p><img alt="Before — Duplex's real ground floor near the stair, the authoring grid aligned to a real wall's own measured edge" src="../img/modeller/grid-editor-before.png" />
+<img alt="After — gridline &quot;2&quot; dragged 0.5 m for real: 16 elements recomposed, 9 hosted doors rode, the conformity gate flags the resulting clashes live in the status line" src="../img/modeller/grid-editor-after.png" /></p>
 <h3 id="delete">Delete<a class="headerlink" href="#delete" title="Permanent link">&para;</a></h3>
 <p><em>Soft-deletes from the signed log (reversible).</em></p>
 <ol>
