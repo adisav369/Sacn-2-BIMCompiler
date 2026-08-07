@@ -374,3 +374,118 @@ unaffected and stay.
 `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s 2026-07-09 dated section — that is now the
 canonical doc for this thread. Do not re-derive; do not re-attempt items 4/6's screenshots until that doc's §NEXT
 items 3/4 (the actual code fixes, numeric-witness-gated, spec-first) land.
+
+## 2026-08-07 — §3D-GRID-EDITOR ✅ SHIPPED (PR bim-compiler#70 + #71, both merged, live-verified) — user re-scoped this session to chase this ONE feature first, ahead of the broader stale-frame audit / room-move / item-drag brief
+
+**Re-scope, verbatim intent:** user interrupted mid-session to prioritize a new "3D Grid Editor" ModellerGuide
+subsection with real witness proof over the originally-dispatched stale-frame audit + room-move/item-drag work.
+That broader brief (see the MISSION this session was given) is **NOT started** — this section covers ONLY the
+grid-editor work; the rest is ⛔ carried to whoever picks this card up next, not abandoned.
+
+### What shipped
+- **New test** `modeller/tests/witness_e2e_gridmove_real.js` (bim-ootb, NOT yet upstreamed/committed there — it
+  lives only in the ephemeral worktree `/tmp/wt-guide-recapture` this session used; **⛔ open item: push this
+  test to bim-ootb** so it's not lost — see §NEXT below). Real-user E2E of the Grid-Stretch tool against
+  Duplex's **actual loaded geometry** (not the existing synthetic `#b-clear` scratch-wall demo
+  `witness_e2e_gridstretch.js` already covers, which stays in the guide as-is — deliberately not replaced,
+  see GUIDE_VISUAL_QUALITY.md's own "arguably clearer uncluttered" note).
+- **Final run: 8/8 § assertions green** (`/tmp/claude-1000/.../scratchpad/logs/witness_gridmove_real_FID106_run6.log`,
+  not preserved past session end — rerun to reproduce, recipe below). Real numbers, not asserted-then-forgotten:
+  - Real `pg.mouse` down→move→up on gridline "2" (world y=-6.80, wall106's own measured far edge) landed at
+    **delta=0.5000 m** exactly.
+  - Wall106's (`IfcWallStandardCase`, ground floor, real `rel_fills_host` host of a real `IfcDoor`) *rendered*
+    Y-extent grew **2.920 m → 3.420 m** — matches the committed op's delta to <1cm, read off the live mesh
+    post-commit, not assumed from the drag input.
+  - Hosted door rode **0.273 m** (not 0.500 m) — §STRETCH-RIDE's anchored-proportional mapping, asserted against
+    the door's OWN rider row (`GEOM_MOVE {parent:doorFid, induced:'hosted-by'}`), not just "did something move."
+  - **One** `GEOM_GRID_MOVE` + **9** induced rider `GEOM_MOVE`s landed as one gesture group (`opLen 196→206`),
+    `verifyChain=true`, one `undoToCursor` scrub restored cursor AND wall extent byte-exact.
+  - §SCALE_CHECK_FIX drag-session cache-once line cited from the log (not re-profiled) per the re-scope's
+    "cite the log line, don't profile" instruction.
+- **Two new real captures** embedded in `docs/ModellerGuide.md` under a new "On a real building, not a diagram"
+  subsection (Transform → Grid-Stretch): `docs/img/modeller/grid-editor-before.png` / `-after.png`. Real
+  interior view (Duplex ground floor near the stair), NOT the drag-camera (see §CAMERA-LESSON below) — a
+  separate `closeCam` placement used only for the two still frames, before/after the live gesture.
+- `mkdocs build --strict` exit 0. **Live, verified**: both images 200,
+  `curl .../ModellerGuide/ | grep "On a real building"` finds the new section text on the deployed page.
+
+### §CAMERA-LESSON (real finding, worth keeping — chased numerically, not by re-eyeballing)
+Every "dolly in on the wall from the whole-building fit direction" attempt (the harness's own `frameElement()`,
+proven elsewhere in this guide) and a straight-overhead plan view both rendered a **flat, textureless plane
+filling the frame** — traced to Duplex's sloped roof (z≈6.0–6.6): both camera strategies approached or looked
+through it at close range. Fix: pick a **ground-floor** wall (wall106, not the first-tried wall98 which is
+Level-1/z:3.1-6.0) so the grid line (always z=0, `bonsai_grid.js`) and the wall are vertically co-located, AND
+use a manually-placed **interior** camera (`closeCam`: 2.2m into the room, at the wall's own mid-height) for
+the STILL SHOTS only. The live drag gesture itself still needs `frameElement()`'s camera (or any camera that
+keeps the ground plane, z=0, on-screen) — the app's pointerdown/pointermove raycast a z=0 plane unconditionally
+regardless of which floor the dragged wall is on, so a close interior camera (whose target sits off the ground
+plane) can arm Move-Grid but the down/up screen points never land on a gridline and the gesture silently no-ops
+(`opLen` unchanged) — measured twice before finding this. Sequence that works: frameElement's camera for
+G3/G4 (the real gesture) → reposition to closeCam only for the "before"/"after" screenshots, taken with no
+gesture live.
+
+### §UNRELATED BLOCKER found + fixed en route: master was NOT a gh-pages superset
+`scripts/safe_gh_deploy.sh` aborted the first deploy attempt — gh-pages (last deployed from `fable/meshdb-livewire`
+@ `1afdb06e5`) has `JKR_SKATA.md` + `OFFLINE_INSTALL_GUIDE.md` + a richer `IFC_ExportGuide.md` that `master` never
+had (pre-existing gap, unrelated to this session's change). Per the deploy guard's own documented resolution
+("become the superset, never force"): cherry-picked the 5 real already-authored commits that account for the gap
+from `fable/meshdb-livewire` onto a fresh branch off master (PR bim-compiler#71, merged) — no invented content,
+no app-code changes, just docs + 2 new standalone python export-helper scripts that shipped alongside the
+original IFC_ExportGuide commit. Guard now PASSes; **if the next docs deploy still finds it merged, don't
+re-chase this — it's closed.**
+
+### §NEXT — what a resuming session should do
+1. **⛔ Push `witness_e2e_gridmove_real.js` to bim-ootb** (currently only in an ephemeral worktree,
+   `/tmp/wt-guide-recapture`, branch is a detached HEAD off `origin/main` — will be lost if that worktree is
+   pruned). Recipe to reproduce if the worktree is already gone: open Duplex, wait for `window.__arcGuidByFid`
+   to populate (poll, not a fixed sleep — see §CAMERA-LESSON commit for why), measure wall106
+   (`IfcWallStandardCase`, y:[-9.73,-6.80], ground floor, hosts a door), `Bonsai.grid.define({xs:[1.5,3.5],
+   ys:[-9.73,-6.80], xlabels:['A','B'], ylabels:['1','2']})`, `frameElement(106, 0.22)`, click `#b-gridmove`,
+   real mouse drag on gridline "2" by +0.5m, assert per the numbers above.
+2. **The ORIGINAL mission's tasks 1-4 are still fully open** (stale-frame audit of the 2026-07-03/07-07/07-09
+   batch, coverage cross-check, room-move + item-drag guide sections) — this session did NOT reach them. Not
+   ⛔-blocked on anything, just not started; pick up from the mission brief's own task list.
+3. Prune `/tmp/wt-guide-recapture` and `/tmp/wt-guide-land` if still present and clean/fully-pushed by the time
+   you read this (this session's own closeout should have done it — if not, verify before removing, per the
+   worktree-hygiene standing rule).
+
+### §AUDIT (partial — one-look verdicts only, NO recaptures executed this session; time ran out after the grid-editor lane above)
+Opened the highest-risk stale candidates directly (real eyes, per the mission's audit step) rather than
+inferring purely from capture date:
+- **`cut-select.png` (2026-07-03) — ❌ STALE, recommend recapture.** Real close-up of a wall corner with a
+  window: the glazing renders as a flat pale opaque panel, no visible see-through/depth — matches the
+  PRE-glass-parity-fix look (fix landed 2026-07-12), not the transparent glass `glass-window-transparent.png`
+  (07-11) or the guide's own "Realistic glass" section show. `cut-open.png` is the same wall/window context —
+  same verdict, not opened separately (would be redundant).
+- **`move-gizmo.png` (2026-07-08) — ❌ STALE, recommend recapture.** Still the wide whole-building shot flagged
+  as a "composition regression" back on 2026-07-02 (its neighbours `gizmo.png`/`scale-stretched.png`/
+  `rotate-yaw.png` got BOTH the close-up harness fix AND the glass-parity recapture on 07-13; `move-gizmo` was
+  explicitly deferred to the later-retired SampleCastle-swap lane and never circled back). Fix pattern is
+  proven and sitting right next to it in the same guide section — mirror whatever `witness_e2e_move.js`
+  capture recipe produced `gizmo.png`'s close-up framing.
+- **`insert-catalog.png` (2026-07-09) — borderline, NOT recaptured.** SampleCastle backdrop shows small window
+  panes that may or may not be pre-fix (hard to call at that render distance/angle), but the caption's subject
+  is the Insert catalog panel + ghost preview, not the glass — low material impact either way. Left as-is,
+  disclosed rather than silently skipped.
+- **`fillet-edges2/rounded`, `route-run/spine`, `sketch-profile/wall/dims-square/dims-angled/weld/circle/
+  circle-extruded` (07-03/07-07) — ✅ OK, not recaptured, none needed.** All use `t.clearGround()` /
+  `#b-clear` per `witness_e2e_*.js` (confirmed by reading the scripts, not assumed) — synthetic scratch
+  geometry, no real building glass ever in frame, so the glass-parity fix date is irrelevant to these.
+- **`workspace-open.png` (07-08, user's own manual capture)** — not opened this session ("replace only if
+  clearly stale" per the mission; no evidence gathered either way, genuinely unknown, not ⛔ — just unchecked).
+- **`snap-to-geometry.png`, `multiselect-marquee.png`, `gridstretch-before/after.png`** — confirmed out of
+  scope per the mission brief (synthetic-by-design), untouched.
+- **Orphan found, not cleaned up:** `docs/img/modeller/sketch-extruded.png` exists on disk but is NOT
+  referenced anywhere in `ModellerGuide.md` (grepped) — a leftover from the same naming-convention cleanup
+  the 2026-07-09 pass did for 9 other orphans. Cheap `git rm` for whoever's next, not done here (out of the
+  grid-editor lane's diff).
+
+### §NOT STARTED (⛔ — explicit, not silently dropped)
+- Recapturing `cut-select.png`/`cut-open.png`/`move-gizmo.png` (verdicts above, fix pattern known, not executed).
+- Coverage cross-check of the full module list in the original mission brief against guide sections (only
+  room-move/item-drag were confirmed gaps before this session started; the fuller sweep wasn't run).
+- **Room-move (`bonsai_roommove.js`) and item-drag (`bonsai_itemdrag.js`) new guide sections** — the mission's
+  other named gap, spec at `prompts/Modeller/ROOM_MOVE_AND_ITEM_DRAG_SPEC.md`, code shipped on bim-ootb
+  `origin/main` per the dispatching session's own witnesses (`witness_room_move.js` 10/10,
+  `witness_room_move_roundtrip.js` 7/7, `witness_item_drag_gate.js` 9/9, all green at tip `a06223e`) — guide
+  text + captures not written.
