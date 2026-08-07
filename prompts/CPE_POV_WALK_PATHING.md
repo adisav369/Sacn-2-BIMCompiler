@@ -2,6 +2,20 @@
 
 # CPE — Movie Pathing by POV Walk (next stage, one-liner)
 
+## ✅ §CPE_WALK_EDIT_V1 SHIPPED (2026-08-07) — PR bim-ootb#1243 MERGED
+Sonnet agent implementation, watchdog-verified from the witness log (not the report): 28 gates
+(31 PASS lines, Duplex + SampleHouse) — listener isolation proven by dispatched events
+(G-WALK-ISOLATE-1/2/3), snap maths numeric (band centre bit-identical to walked pose,
+lookAt=pos+facing·10m fallback exact, s∈[0,1], replanMs 38–68), TM lock/restore, freeze
+overlay on/off, finish() force-stop. §CPE_SEAM_CONTINUOUS did NOT fire. Diff = seams-only:
+`viewer/cpe_walk.js` (new), `cinema_path_editor.js` (panel button, `_walkSnap`, `_walkMount/
+_walkUnmount`, finish() guard), `viewer.html`, `sw.js` (precache + v958). Zero edits to
+effects.js/time_machine.js/schedule_*/main.js. Agent improvement over the brief: no per-pose
+markDirty — walk drives B's scissor pass in its own rAF chain, so the main view stays at 0
+frames while walking (repaints only at mount/snap-wow/unmount). Worktree pruned post-merge.
+Remaining (unwitnessed by design, needs a human hand): live pointer-lock feel on a real
+building — first real-use feedback goes in a new dated section here.
+
 **🔒 VISION (LOCKED, user 2026-08-07 — "the perfect rehash"):
 POV walk is an input device for the existing stick edit, not a new authoring model.**
 Every design question on this feature resolves against this line: if a proposal adds a second
