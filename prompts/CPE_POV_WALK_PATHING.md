@@ -151,6 +151,26 @@ Clarifications recorded from the same review:
   repaints construction state in BOTH views. Truly freezing the main view would need per-camera
   visibility (three.js layers) — out of v1 scope, noted only.
 
+### §CPE_WALK_CANVAS_FREEZE — user proposal assessed (2026-08-07): freeze main view during walk
+User: *"locking up the canvas, ie only when POV walk edit is done and locked back it refreshes, does
+this help perf?"* — **Yes, and it is the biggest lever available.** While B is on, every painted
+frame is TWO full-scene renders (main full-window + B inset); pixel cost ∝ area (inset ≈ 10-15% of
+window) and draw calls halve when the main pass stops. During walk, render only B.
+- **Mechanism (the naive way breaks):** three.js default `preserveDrawingBuffer:false` means pixels
+  outside the scissor rect are UNDEFINED after present — you cannot simply skip the main pass and
+  keep presenting. Freeze via one-time snapshot overlay instead: at walk-mount capture the canvas
+  into an `<img>`/2D-canvas overlay covering the main view, render only B's rect live, drop the
+  overlay at unmount + one `markDirty` repaint. ~30 lines, deterministic.
+- **No "refresh from last path save" needed:** nothing visual is consumed while frozen — unmount is a
+  single repaint of live scene state, not a reload; a TM cursor that moved meanwhile shows correctly
+  in that same repaint.
+- **TM lock stays programmatic, not instruction-only:** a user TM scrub during walk renders UNDER the
+  overlay — invisible but still burning GPU per tick (renderAtTime is a direct render). The ~5-line
+  lock (pause playback + `pointer-events:none` on the TM panel, restore on unmount) removes it;
+  instruction-only would not.
+- **DLOD bonus:** with the main view frozen pixels, the walk tick can cull for vfCam ALONE — the
+  union frustum and main-camera terms drop out of dlodTick for the duration.
+
 ### Handed to the implementation session as fact
 - New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
   button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
