@@ -39,6 +39,44 @@ buildings are small residential; **Hospital-class is unwitnessed** (where replan
 and the DLOD flip-storm lives — same gap shape as DEQ_V1's large-building-only caveat). Named
 follow-on for any next walk-edit session: run `BLDS=Duplex,Hospital_3` once and record the
 replan/snap §-numbers here before claiming large-building fitness.
+→ **CLOSED same day: Hospital 8/8 PASS** (87.05m Level-1 hallway run, cross-offset 1.26m;
+replanMs 975/1160/1474 — the known §CPE_REPLAN_SLOW scale, within the 5s budget; seamGapDeg
+0.000 ×6; perpendicular facing raycast-HIT at 18.469m — a real hit into a larger adjacent
+space, which taught the witness its `<10m` wall assumption was residential-shaped: the gate now
+asserts hit-vs-exact-10m-fallback, distance-agnostic). Editor-open needed a 600s budget under
+swiftshader (300s timed out with zero diagnostics — witness now dumps the page's §-console tail
+on INFRA-ERROR). **Witness promoted**: `witness_cpe_walk_hallway.js` committed via PR #1246
+(watchdog ask), DB preconditions documented in its header.
+
+### §CPE_WALK_CHROME_POC — live-Chrome Duplex run (2026-08-07, user-instructed visual PoC)
+Real Chrome (user's own browser, real GPU, real gestures), localhost worktree serve. Confirmed
+live, §-logs + screenshots: mount/unmount clean; freeze overlay captured with B's hole
+(`§CPE_WALK_FREEZE_CAPTURE w=1483 h=724 hole={x:16,y:457,w:300,h:190}`); B renders alone while
+main is frozen; walk rAF ticking (§CPE_WALK_POSE); WASD moved position and mouse-look swept
+yaw/pitch under REAL pointer lock; Esc/lock-loss auto-stopped the walk cleanly (editor stayed
+open — the review handoff below). Two real findings, both resolved there-and-then:
+1. **Pointer lock requires a real user gesture** — a synthetic `.click()` mounts but lock is
+   denied (`NotAllowedError`); a trusted click locks fine. Consequence for tooling only (the
+   witness's synthetic path can never test lock itself); product UX unaffected.
+2. **The viewer's incidental DB-404→OCI fallback carried the run** — worktree lacked the
+   untracked Duplex binary; `§DB_404_OCI_RETRY` fetched it transparently.
+Also user-observed live: pointer lock captures the OS cursor screen-wide (their mouse was
+"taken over") — which surfaced the §CPE_WALK_SHOES_BTN ruling below, and the confirmed answer
+that walk-exit → un-freeze + stick-editor re-wire + repaint is automatic and symmetric
+(cpe_walk.js `_onLockChange`→`stop()`; witnessed G-WALK-ISOLATE-3/FREEZE-DROP/TMLOCK-2).
+
+### §CPE_WALK_SHOES_BTN — walk button on B's frame header (2026-08-07, SHIPPED PR #1246)
+User: *"The Walk button (shoes icon preferred) should be at the POV frame and the navigation
+within that pov frame while the rest supposedly frozen."* Freeze/B behavior already matched;
+the button did not. Ruling (advisor-confirmed option A): shoes icon ON B's frame header,
+pointer-lock unchanged — lock hides the OS cursor entirely, so screen-wide capture is an
+invisible implementation detail; drag-confined-look was declined (limited rotation per gesture,
+constant re-grabbing). Implementation: Lucide `footprints` inline SVG (stroke:currentColor —
+active-color swap preserved), `pointer-events:auto` opt-in on the pointer-events:none frame,
+wired in `_toggleViewfinder`'s ON branch (B is lazy-built), removed from the CPE title row;
+**eye-off during an active walk force-stops it first** (§CPE_SOLE_OWNER: the frame owns its
+walk, the eye owns the frame). Witness +3 gates (BTN-ABSENT / BTN-B / EYE-OFF-STOP), Duplex
+17/17 PASS. sw CACHE_VERSION v959.
 
 **🔒 VISION (LOCKED, user 2026-08-07 — "the perfect rehash"):
 POV walk is an input device for the existing stick edit, not a new authoring model.**
