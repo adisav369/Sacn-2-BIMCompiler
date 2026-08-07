@@ -5,4 +5,136 @@
 **Author the film path by WALKING it in POV**: drive B (the §CPE_SCRUB_POV_ONLY viewfinder) with
 walk-mode controls, record the traversed poses, and let that recorded walk BECOME the path — sticks
 derived from the walk instead of the walk derived from sticks. Builds on `§CPE_SCRUB_POV_ONLY` +
-the eye-owned scrub transport (prompts/CINEMA_PATH_EDITOR.md). Unexplored; spec before any code.
+the eye-owned scrub transport (prompts/CINEMA_PATH_EDITOR.md). Getting the sticks themselves is
+already solved — this is an additional helper tool, not a replacement. Unexplored; spec before any code.
+
+## Pre-work: perf code study (separate session, before implementation)
+
+Before any walk-mode code: a deep-code-study session profiles the CURRENT canvas cost —
+CPE's existing render/raycast loop (stick handles, pipe/hose rendering), the building
+mesh load path, and what's live per frame during Alt+C editing. Goal: find the actual
+mount/unmount seam so walk-mode (pointer-lock movement, pose recording) and the stick
+editor never render/tick in the same frame — one heavy tool live at a time, same canvas,
+same loaded mesh, no reload. Output = a written cost breakdown + the seam location,
+handed to the implementation session as fact, not re-derived by it.
+
+## Awareness: concurrent sessions on the same viewer surface
+
+Two other sessions are live in parallel on this codebase: **Time Machine** (`viewer/time_machine.js`)
+and **4D Generating** (`viewer/schedule_gate.js`, `viewer/schedule_author.js`, `viewer/schedule_diff.js`).
+CPE itself lives in `viewer/effects.js`. All four are viewer-side and can be mounted in the same canvas
+session — walk-mode must not assume it's the only thing running.
+
+**Isolation requirements, both git and runtime:**
+- **Git:** work in a dedicated `/tmp/wt-*` worktree (never the shared checkout — CLAUDE.md Worktree
+  Hygiene already logged a real concurrent-edit collision in this repo). `fetch`/merge fresh before
+  starting; re-check before pushing since three sessions may land around the same time.
+- **Runtime:** the perf-study output (mount/unmount seam, cost breakdown) must state isolation against
+  ALL THREE neighbors, not just CPE's own stick editor — if Time Machine's scrub transport or a 4D-driven
+  visibility pass can be active while walk-mode's pointer-lock/recording loop runs, the study names
+  that conflict explicitly. Walk-mode's own code stays in its own module/file; touch `effects.js` /
+  `time_machine.js` / `schedule_*.js` only where unavoidable, and say exactly where and why.
+
+---
+
+## §CPE_WALK_SEAM — pre-work perf code study DONE (2026-08-07, findings only, no code)
+
+Read from `origin/main` @ `fa506ef` via `git show` (the `~/bim-ootb` shared checkout was dirty with a
+concurrent CPE session mid-edit in `viewer/cinema_path_editor.js` — not touched, not merged). NOTE
+for the implementation session: **CPE no longer lives in effects.js** — the editor is
+`viewer/cinema_path_editor.js` (3331 lines); effects.js keeps the plan maths (`cinemaPathPlan`,
+`cinemaSeedBands`, `cinemaHoseReanchor`) and the Alt+C entry that calls `cinemaPathEditor.open()`.
+
+### Frame-loop truth (what is live per frame during Alt+C editing)
+
+- **One loop owns all painting:** `main.js animate()` (main.js:857), single-owner rAF, self-parking
+  (§IDLE-PARK). Awake term (main.js:862): `_needsRender || streaming || walkModeActive || walkMode ||
+  flyActive || _orbiting || _pipelinesCompiling`. Idle Alt+C editing **parks at 0 frames** — CPE is
+  fully event-driven and wakes the loop via `A.markDirty()`.
+- Per awake frame: `controls.update()` + `walkTick/flyTick` (skipped when `walkModeActive`),
+  `streamTick` (no-op post-stream), `dlodTick`, clash LOD, `walkModeGpsTick` (no-op), `walkOrientTick`
+  (device-orientation, mobile walk only), `updateMeasureLabels`, then ONE `renderer.render` + the
+  opt-in `A._cpeViewfinderRender()` scissor pass (main.js:912 mobile / :927 desktop).
+
+### CPE cost inventory, itemized (all file:line = cinema_path_editor.js unless said)
+
+1. **Editing idle, eye off: zero per-frame.** No CPE rAF exists outside `_pulse` and rehearsal.
+2. **`_pulse` (:533)** — rAF chain ONLY while a handle is held; throttled to PULSE_HZ; scales one
+   sphere + markDirty. Killed by `_stopPulse()`/release.
+3. **Drag (`h.move` :2681)** — per pointermove: `_dragDelta` + `_redrawScene` (:448 — full clear +
+   rebuild: film tube of FILM_SAMPLES pts, fat walk tube, ~4 objects per band, then `_renderScrub`
+   DOM). Deliberately NO re-plan mid-gesture (§CPE_DRAG_LAND_FIRST); `_replanFilm` runs ONCE on
+   pointerup — measured 291ms typical, up to 1218ms on Hospital (§CPE_REPLAN_SLOW; §CPE_PANEL_PERF
+   in CINEMA_PATH_EDITOR.md:8966 has the triple-run finding: Alt+C open plans 3× ≈ 560ms).
+4. **Eye ON (B)** — `A._cpeViewfinderRender = _vfRender` (:1764): one extra full-scene
+   `renderer.render` into a scissor rect per painted frame (:1735). Measured cheap (G-PERF-1;
+   §CPE_PANEL_PERF: "eye toggle itself measured cheap"). Side effect: B being open disables the
+   orbit DPR drop (§CPE_VF_DPR_GUARD, main.js:721) — orbiting stays full-DPR while B is on.
+5. **POV rehearsal (§CPE_SCRUB_POV_ONLY, `_previewFly(povOnly)` step loop :2194)** — CPE's own rAF
+   chain; per frame: `plan.poseAt` → vfCam pose (`_applyVFPose` :1315), `_renderScrub` DOM, optional
+   TM cursor drive (`tmSetCursor` → `renderAtTime`: 2ms delta path / ~23ms full at 16k objs,
+   TM_INCREMENTAL_RENDER_PERF.md), ghost ground + day counter, `markDirty` (which makes animate paint
+   main + B). **This loop is the exact template a walk-record loop replaces.**
+6. **DLOD (`dlodTick`, dlod.js:127)** — every EVAL_EVERY-th frame; skips when BOTH cameras idle
+   (<1cm, dlod.js:140-145); already unions B's camera via `A.cinemaPathEditor.activePOVCamera()`
+   (§CPE_DLOD_VF_UNION, dlod.js:132-160). A continuously-moving vfCam defeats the idle skip → full
+   InstancedMesh pass + flip storms (measured flips_mean=2671, FPS→53 — §CPE_PANEL_PERF item 3).
+7. **Mesh load path: NOT a walk-mode cost.** Meshes are load-time state (streaming.js); walk-mode
+   mounts on the same loaded scene, no reload. The one heavyweight deferred init that can land on a
+   first Play is TM cold activation (~2.1s, §CPE_PANEL_PERF item 1) — pre-arm idea already named there.
+
+### THE SEAM — mount/unmount, found not invented
+
+CPE already has exactly one input seam and one render seam; walk-mode slots into both with **zero
+frame-loop changes**:
+
+- **Input seam = `_wire()` / `_unwire()` (:2628 / :2835).** The whole stick editor's interaction is 4
+  capture-phase listeners (keydown/pointerdown/pointermove/pointerup) held in `_state.handlers`.
+  Walk-record mount = `_unwire()` + add walk-mode's own listeners (pointer-lock mousemove + WASD);
+  unmount = remove them + `_wire()` back. The stick editor's per-move `_redrawScene` structurally
+  CANNOT run during a walk because its handlers are off the DOM — "one heavy tool per frame" enforced
+  at the listener level, not by an if-guard.
+- **Render seam = the `A._cpeViewfinderRender` hook** (set/cleared in `_toggleViewfinder`
+  :1764/:1793, master teardown `_vfTeardown` from `finish()` :3102). B IS the walk viewport: drive
+  `_state.vfCam` from the pointer-lock pose exactly as `_applyVFPose` does (pose write + markDirty),
+  reusing B's existing scissor pass. No new render pass, no second renderer, same canvas, same mesh.
+- **Do NOT touch `APP.walkModeActive` / `APP.walkMode`.** Those are walk.js (mobile GPS/device-orient
+  walk) and tour.js (tour playback) state — setting them flips `controls.update()` off and arms
+  `walkOrientTick` in animate (main.js:877-888). CPE-walk keeps a private flag inside its module;
+  markDirty-per-pose-write is all animate needs (identical to how `_previewFly` stays painted).
+- **Pose recording:** sample `{pos, look, t}` per step-frame (same shape `plan.poseAt` returns);
+  sticks derive from the recorded polyline via the same band shape `open()`'s clone builds
+  (:2864-2891) — the walk becomes `plan.bands`, provenance `_stick` flags included.
+- **Teardown home:** `finish()` (:3094) is the master teardown ("must not outlive the editor" rule,
+  :3099) — walk-mode teardown registers there alongside `_vfTeardown`/`_scrubPanelTeardown`.
+- **Pointer-lock precedent in-repo:** navigate_controls.js:28-56 (`canvas.requestPointerLock`,
+  mousemove yaw/pitch with clamp, `pointerlockchange` flag) — copy the pattern, not the file (it is
+  gated on nav.active and owned by turn-by-turn nav).
+
+### Isolation vs the three neighbors (required output)
+
+1. **CPE's own stick editor** — isolated by the `_wire/_unwire` seam above; also `_stopPulse()` on
+   walk-mount. Editor visuals (`_state.objs`) can stay parked (no `_redrawScene` calls happen without
+   its handlers); optionally hide them during walk so B's view is clean.
+2. **Time Machine** — TM never writes the camera; it renders via its OWN `setTimeout playTick →
+   renderAtTime` (time_machine.js:3367), outside the rAF loop, so it CAN legitimately run mid-walk
+   (that is today's rehearsal-with-buildup, additive GPU cost only). One rule to inherit: CPE drives
+   TM's cursor ONLY through `window.tmSetCursor` and ONLY when TM is already active — never arms it
+   (§CPE_SCRUB_BUILDUP_SYNC :1345, "never arm TM from a scrub"). Walk-record with buildup ON follows
+   the same rule. No shared mutable state otherwise.
+3. **4D modules (schedule_gate/author/diff)** — grep-verified ZERO per-frame presence: no rAF, no
+   intervals, no pointer listeners of their own; they act by mutating TM's model and calling
+   `renderAtTime`. A Gantt retime mid-walk just triggers TM re-render passes (§GANTT_RETIME_RESYNC
+   path) — additive, nothing walk-mode reads or writes.
+4. **DLOD is the ONE real added per-frame cost** — a walking vfCam gets correct culling free
+   (§CPE_DLOD_VF_UNION) but continuously defeats the idle skip → the flip-storm cost §CPE_PANEL_PERF
+   already flagged (FPS→53). Same verdict as there: known DLOD landmine
+   (project_dlod_geometry_swap_landmine.md), smallest lever, touch last, not a blocker for v1.
+
+### Handed to the implementation session as fact
+- New module file (e.g. `viewer/cpe_walk.js`). `cinema_path_editor.js` touched only at: a mode-toggle
+  button in the panel, the `_wire/_unwire` calls at mount/unmount, `finish()` teardown, and a narrow
+  read surface for `_state.vfCam`/`_state.plan` (precedent: `activePOVCamera()` :3173).
+  `effects.js` / `time_machine.js` / `schedule_*.js`: **zero edits needed.**
+- Verification is §-log numeric truth per the FUNDAMENTAL LAW: recorded pose time-series
+  (position/yaw/pitch/rate) asserted programmatically — no screenshots.
