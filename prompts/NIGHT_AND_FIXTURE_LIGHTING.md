@@ -549,3 +549,239 @@ edge; a quad does not.
 
 **Keep from the reverted branch:** `§LUM_VARIANT` only, and only if a later job needs per-luminaire
 materials. **Do not recover `§NIGHT_DIFFUSER`** — §1 is why, and it is a data fact, not a tuning one.
+
+## §GLOW_LENS_QUAD SHIPPED (2026-08-07) — as verdicted above, still-render only
+User directive that scoped it: *"only for the render, such realism will be a wow. while night fly
+thru it is OK, we got alt-g noise"* — i.e. build exactly the §6 verdict above, do not touch live
+navigation/night-mode's round sprite at all.
+
+`bim-ootb` branch `fix/glow-lens-quad-stillonly` (on top of `fix/mep-material-classfix`),
+`/tmp/wt-mep-material-classfix`. `tools.js` `_loadNightFixtures`/`_nightFixtureWorldPositions`
+extended to carry `bbox_x`/`bbox_y`/`rotation_z` (previously only `bbox_z`). `effects.js` adds
+`_glowLensOn`/`_glowLensOff` — an `InstancedMesh` of quads, each sized to its own fixture's
+`bbox_x × bbox_y` and yawed by `rotation_z`, called ONLY from `startStillRefine`/
+`_teardownStillRefine` (swaps with the round sprite, never stacks). Exit signs excluded on purpose,
+stay on the round `§GLOW_EXIT_SOFT` treatment. Only `rotation_z` (yaw) applied, not a full 3-axis
+tilt — stated simplification, no shipped luminaire is tilted off-horizontal.
+
+Syntax-checked (`node -c`). **Not yet witnessed on real data** — per this doc's own standing
+testing rule (§Testing rule above), that's a user round-trip: point Alt+S at a building with a
+troffer close to camera and confirm the rectangle fits, not an AI vision check.
+
+**Not addressed, separate issue:** "overly blue metal" (user, same screenshot round) — traced to
+`PHOTO_ENVMAP_BOOST = 3.0` (`effects.js:2455`, triples every material's env-reflection strength
+during Alt+S), independent of both this fix and the material class-name fix. No data pulled yet on
+the actual HDRI colour or which classes it hits hardest — flagged, not fixed.
+
+## §SESSION HANDOFF (2026-08-07, end of session) — READ THIS FIRST in the next session
+
+**Branch:** `bim-ootb` `fix/glow-lens-quad-stillonly`, currently checked out onto a throwaway merge
+branch `test/localhost-combined-v2` in worktree `/tmp/wt-mep-material-classfix` (also carries the
+unrelated material class-name fix, `fix/mep-material-classfix`, as its base — see
+`PHOTOREAL_STILL_RENDER.md`'s own SHIPPED note for that one). `test/localhost-combined-v2` also has
+`wt/cpe-dpr-verify` merged in for local browsing convenience only — **do not carry that merge into
+any real PR**, it's other sessions' unrelated in-progress work. The real work to eventually PR is on
+`fix/glow-lens-quad-stillonly` alone (or a clean rebase of it).
+
+### ⚠ THE ONE THING TO DO FIRST — verify the cache fix actually worked
+Near end of session, found (live, in this session's own testing) that `effects.js`/`tools.js`/
+`streaming.js` are all in `sw.js`'s `PRECACHE_ASSETS`, which its own `isNetworkFirst()` routes to
+**cache-first**, not network-first (line ~292-294 — precached files are explicitly excluded from the
+network-first branch). This means every edit made to those three files THIS ENTIRE SESSION was very
+likely served stale to the browser during testing — confirmed by a console log showing
+`§PHOTO_GLOW_SPRITE` staging in live nav on a `localhost:8410` origin, which the actual committed
+source (verified by `grep`, same commit chain) does not call anymore (`§GLOW_SPRITE_NAV_OFF` removed
+that call several commits earlier). **This is the exact trap this doc's own §Testing rule /
+"process traps" section already named from a prior session — walked into it again before catching
+it, this time on the SW's PRECACHE routing specifically, not the simpler `?v=` pin staleness that
+section describes.**
+
+Fix applied same session: `CACHE_VERSION` bumped `v959`→`v960` in `sw.js`, plus `effects.js?v=11→12`,
+`streaming.js?v=59→60`, `tools.js?v=32→33` in `viewer.html`. **Not yet confirmed this actually fixed
+it** — next session's first job: hard-refresh / unregister the old SW, reload, confirm
+`§BUILD_VERSION v960` in the console, and re-verify from there. Every finding below this line about
+"what the user saw" should be treated as **possibly against stale code** until that's confirmed.
+
+### What actually shipped this session, in order (re-verify each once the cache is confirmed fresh)
+1. Material class-name fix (`streaming.js` `TRIPLANAR_MAT`) — separate feature, documented in
+   `PHOTOREAL_STILL_RENDER.md`, believed solid (syntax-checked, logically independent of the cache
+   issue since it's a still-render texture pass, less iterated-on this session).
+2. `§GLOW_LENS_QUAD` — still-render lens quad, sized/oriented to real fixture bbox+rotation_z.
+3. Found + fixed: quad skipped synthetic-sourced fixtures; exit-sign glow regression (still gave
+   exits no glow at all); the round-sprite eye-offset nudge caused visible misalignment on an
+   angled/corridor view (user: "misalignment", `FitUpstairs.png`) — first "fix" attempt used the
+   wrong magnitude (dumped the full 0.3m onto one axis instead of splitting it), made it WORSE, was
+   reverted, tried again smaller (0.03m straight down) — **this second attempt is the one now
+   sitting in the code, unverified against fresh-cache reality.**
+4. User: **"remove all them, return to PL days"** — round sprite + quad both fully disabled at one
+   point (real point lights only). Then reversed again ("the PLs with those quads will be perfect")
+   once the misalignment was understood as one small fixable nudge, not a fundamental flaw.
+5. Final 5-piece rework (user go-ahead, all in one commit `751de1a`):
+   - Nav stays 24 PLs, greedy-with-4m-min-spacing selection (spreads down a corridor instead of
+     clustering at the camera).
+   - Quad restored for real named fixtures only (clearance fix from point 3).
+   - Room-fallback tier 2 (`§NIGHT_ROOM_FALLBACK`, any real overhead element in a room lacking a
+     named light — was already in the code from earlier in the session) — PL only, quad explicitly
+     gated OFF for it (`p.__guid == null && !p.__presentation` → skip).
+   - New tier 3, `§NIGHT_CEILING_PLANT` — only if tiers 1+2 together found NOTHING: one point per
+     storey (real centroid + near-top Z, not a 15m grid), tagged `presentation: true`, gets BOTH
+     quad and PL. Explicitly user-sanctioned as presentation-layer only (same category as
+     ground/sky), not asserted as real IFC data — his own framing, not one I invented.
+   - Still/baking light selection switched from a flat 50-cap to frustum-culled (`§NIGHT_STILL_FRUSTUM`
+     in `tools.js` `_nightUpdateLights`) — everything actually in the camera's view gets a PL, sanity
+     ceiling 200. `cinema_maxq.js` already calls `A.startStillRefine()` per baked frame, so movie
+     baking gets this for free, no separate wiring needed — confirmed by grep, not assumed.
+
+### Open, unresolved at session end
+- **The cache-fix verification above — do this first, everything else depends on it being real.**
+- User's last message before handoff: "quads are not fit downstairs as in png" — i.e. even
+  disregarding the cache confusion, `FitUpstairs.png` itself showed good fit upstairs but NOT
+  downstairs in the SAME screenshot — meaning the misalignment may not be fully explained by the
+  eye-offset nudge alone, or there's a second contributing factor not yet found. Don't assume the
+  0.03m clearance fix is sufeicient — re-derive from fresh evidence once cache is confirmed clean.
+- "Overly blue metal" (`PHOTO_ENVMAP_BOOST`) — still untouched, flagged only.
+- `§NIGHT_STILL_FRUSTUM`'s 200-fixture sanity ceiling and the `THREE.Frustum` construction are
+  syntax-checked but not witnessed against a real wide-shot building — worth a real check once the
+  cache issue is confirmed resolved.
+
+## §GLOW_LENS_NO_DOUBLE_YAW — the second cause, found and fixed (2026-08-07, next session)
+
+**Cache-fix (job 1 above) — confirmed at the file/server level, not yet witnessed in a live
+browser session** (user paused Chrome tool use for this session — "Use Chrome only when
+finalised"). Evidence gathered instead: `sw.js` `CACHE_VERSION='v961'` (bumped again this session,
+was `v960`), `viewer.html` pins match (`effects.js?v=13`, `streaming.js?v=60`, `tools.js?v=33`),
+worktree tree is clean at commit `df66d2d` + this session's uncommitted fix on top, and
+`curl -sI localhost:8410/viewer/sw.js` serves that same file byte-for-byte. **Still open:** an
+actual browser load confirming `§BUILD_VERSION v961` in-console — do this first, in Chrome, next
+time Chrome use is authorized.
+
+**The "quads not fit downstairs" open item — root cause found, NOT the eye-offset nudge.** Per
+`docs/internal` / `RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s documented convention and confirmed by
+direct query against `Terminal_extracted.db`: `element_transforms.bbox_x`/`bbox_y` are the
+**WORLD-frame AABB** (rotation already baked in) for ordinary elements — proven by the SAME
+physical fixture (`E_LFixture_EmergencyLight_EL3`) reporting `bbox_x`/`bbox_y` **swapped** between
+its `rotation_z=+pi/2` instances (0.168 x 0.419) and its `rotation_z=pi` instances (0.419 x 0.168).
+
+`effects.js` `_glowLensOn()` treated `(bbox_x,bbox_y)` as the fixture's LOCAL (unrotated) size and
+then applied `rotation_z` as an EXTRA yaw on top — a double-rotation. Numeric witness (old vs new,
+computed from the real DB rows, no rendering/screenshot involved):
+
+```
+rz=-3.1416  true=(0.419,0.168)  OLD_drawn=(0.419,0.168) err=0.000m  NEW_drawn=(0.419,0.168) err=0.000m
+rz=-1.5708  true=(0.168,0.419)  OLD_drawn=(0.419,0.168) err=0.355m  NEW_drawn=(0.168,0.419) err=0.000m
+rz=+0.0000  true=(0.419,0.081)  OLD_drawn=(0.419,0.081) err=0.000m  NEW_drawn=(0.419,0.081) err=0.000m
+rz=+1.5708  true=(0.168,0.419)  OLD_drawn=(0.419,0.168) err=0.355m  NEW_drawn=(0.168,0.419) err=0.000m
+```
+
+At `rotation_z` = 0 or pi (a no-op yaw either way) the bug is invisible — explains why the fit
+looked fine wherever it did. At `rotation_z` = +-pi/2 the quad's width/depth land on the wrong
+world axis — a 0.355m footprint error for this fixture type, visibly "not fitting" from any angled
+view. This is orientation-independent of camera position, unlike the eye-offset nudge theory —
+consistent with the user's screenshot showing good fit on one storey and bad fit on another in the
+SAME frame (a nudge-magnitude bug would not do that; a per-fixture rotation-dependent bug would).
+
+**Coverage check — is dropping the yaw an approximation or exact?** Queried `rotation_z` for every
+real luminaire across all 4 buildings with fixture rotation data: **0 of 823+1282+32+443 fixtures**
+have a rotation off the 90-degree grid. So `q = qFace` only (no yaw) is **exact, zero residual
+error**, not a compromise — every shipped fixture's rotation is an exact multiple of pi/2, where
+the world AABB IS the true rotated rectangle (no bounding-box inflation).
+
+**Fix applied**, `viewer/effects.js` `_glowLensOn()`: removed `qYaw`/`q.premultiply(qYaw)` entirely,
+`q` is now `qFace` only. `p.__rz` (tools.js:1383) is now unused by this consumer — left in place,
+harmless, still documents the source column. `sw.js` bumped `v960`->`v961`, `viewer.html`
+`effects.js?v=12`->`?v=13`. Syntax-checked (`node --check`) — passes. Full numeric witness log:
+`/tmp/claude-1000/-home-red1-bim-compiler/40c46350-a01a-4838-91e5-99c13e82add1/scratchpad/glow_lens_no_double_yaw_witness.log`
+(scratchpad — copy out before it's cleaned up if this needs to survive long-term).
+
+**Not yet done:** live-browser/log-based re-verification of the ACTUAL rendered quads (per
+FUNDAMENTAL LAW: `§`-tagged log values + numeric object state, never a screenshot) once Chrome use
+is reauthorized — the DB-level math above proves the fix is correct against the data, but the full
+pipeline (query -> `A._nightFixtureWorldPositions()` -> `_glowLensOn()` -> actual `InstancedMesh`
+matrices) hasn't been asserted end-to-end this session. Suggest a `§GLOW_LENS_QUAD_VERIFY` log line
+in `_glowLensOn()` that dumps computed world corner extents per quad for a spot-checked GUID, then
+compare programmatically against `bbox_x`/`bbox_y` from the DB — same pattern as this witness, run
+inside the real app instead of standalone Python.
+
+Uncommitted at end of session — sitting in `/tmp/wt-mep-material-classfix`,
+`fix/glow-lens-quad-stillonly` branch (via the `test/localhost-combined-v2` throwaway merge, same
+as job 1). Commit message drafted, not yet run — next session's call whether to commit as one or
+split cache-bump/quad-fix into two commits.
+
+## §GLOW_TRUE_BOTTOM — the ACTUAL cause of "quad not fitting downstairs" (2026-08-07, same session)
+
+User re-tested with the `§GLOW_LENS_NO_DOUBLE_YAW` fix live (confirmed `§BUILD_VERSION v961` in
+console) on Hospital and reported the quad **still** doesn't fit downstairs. That's real signal,
+not stale cache: Hospital's 1282 luminaires are **100% `rotation_z=0`** (queried directly), so the
+double-yaw fix above is a genuine, separately-proven bug (proven on Terminal, which DOES have
+rotated fixtures) but provably **cannot** be what Hospital's symptom is showing — the yaw fix is a
+no-op wherever rotation_z=0. Root cause was elsewhere. Per user directive this session ("No AI
+visual... use WITNESS logging" / "quad map to element xyz... matter of setting up logging to
+return GIGO") — found via DB + extraction source code only, zero rendering/screenshots.
+
+**Root cause, `DAGCompiler/python/extractIFCtoDB.py:2314`:** `element_transforms.center_z` is
+stored as the raw IFC placement-origin translation (`mat4[:3,3]` from the object's own placement
+matrix) — NOT the bbox midpoint. `bbox_z` (line 2318) is the full world AABB height
+(`maxXYZ[2]-minXYZ[2]`). The viewer's drop formula in `tools.js` (`§GLOW_EMIT_DOWN`,
+`p.__drop = bbox_z/2 + 0.12`) assumed `center_z` sits at the bbox midpoint, so that `center_z -
+bbox_z/2` lands on the true bottom face. **That's only true when a fixture's authored mesh happens
+to be symmetric about its own placement origin.** Most Revit families are NOT — a pendant's origin
+is typically at the ceiling attach point, with most of the mesh hanging below it; even flush
+fixtures aren't perfectly centered.
+
+**Numeric witness** (pulled real mesh vertices from `Hospital_geo.db` `component_geometries`,
+decoded local Z min/max, computed true world bottom = `center_z + local_min_z`, compared against
+both the OLD formula and the NEW fix — full log:
+`/tmp/claude-1000/-home-red1-bim-compiler/40c46350-a01a-4838-91e5-99c13e82add1/scratchpad/glow_true_bottom_witness.log`):
+
+```
+Pendant Linear (Level 1, the reported "downstairs" fixture family):
+  TRUE bottom=170.6814  OLD=170.3955 (err -286mm)  NEW=170.6514 (err -30mm, by-design clearance)
+Plain Recessed (Level 2 — thought "fine", actually also wrong, just less visually obvious):
+  TRUE bottom=174.5878  OLD=174.4634 (err -124mm)  NEW=174.5578 (err -30mm, by-design clearance)
+Pendant Hemisphere (Level 2, third family checked):
+  TRUE bottom=173.6628  OLD=173.3908 (err -272mm)  NEW=173.6328 (err -30mm, by-design clearance)
+```
+
+**Every fixture type was wrong**, not just Level 1's — the error is smaller for flush/recessed
+fixtures (thin mesh, small mismatch) and much larger for suspended pendants (mesh mostly below its
+own origin), which is exactly why Level 1 (the ONLY level using `M_Pendant Light - Linear`) looked
+visibly broken while other levels (mostly `M_Plain Recessed`) looked closer to right without
+actually being exact.
+
+**Fix, no schema/migration needed** — the true data already ships: `element_instances.geometry_hash`
+(already in both the monolithic and split `_meta.db`, confirmed via direct query) points at
+`component_geometries.vertices` in `_geo.db`, and by the time night mode runs, the fixture's mesh
+is normally already decoded into `A.meshCache[ghash]` (same `THREE.BufferGeometry`, same
+IFC-Z-is-local-Y convention as `A.blobToGeometry` already uses — confirmed by reading that function
+directly, not assumed). `tools.js` `_loadNightFixtures()`: added `i.geometry_hash` to the SELECT
+(`LEFT JOIN element_instances i`). `_nightFixtureWorldPositions()`: `p.__drop` now reads
+`-A.meshCache[f.ghash].boundingBox.min.y + 0.03` when the mesh is cached (exact, real geometry),
+falling back to the old heuristic only when it isn't (mesh not streamed yet, or a synthetic
+room-fallback/ceiling-plant fixture with no `geometry_hash` at all). `0.03` reuses
+`GLOW_LENS_CLEARANCE`'s already-established value from `effects.js` (same physical purpose —
+clearing the fixture's own depth test — not a new invented number.
+
+`sw.js` bumped `v961`->`v962`, `viewer.html` `tools.js?v=33`->`?v=34`. Syntax-checked, both files
+pass `node --check`. Uncommitted, same worktree/branch as the other two fixes this session.
+
+**Not yet done:** live confirmation that `A.meshCache[ghash]` is actually populated by the time
+`_loadNightFixtures` runs in the real page load order (plausible — geometry streams in before a
+user manually toggles night mode — but not asserted this session, no browser used per user
+directive). Suggest a one-line `§GLOW_TRUE_BOTTOM_COVERAGE` log counting how many of the staged
+fixtures used the real-mesh path vs the fallback, next time browser/log verification is
+authorized — that number should be close to 100% for a fully-streamed building.
+
+Brightness: user reported "too bright" twice this session. `NIGHT_LIGHT_INTENSITY` 8.0->6.5->4.5,
+`emissiveIntensity` (fixture glow) 0.8->0.65->0.45, ~44% down from original on both. `GLOW_GAIN`
+(bloom trigger on the lens quad) left untouched — cutting it below 1.0 disables bloom entirely,
+a different behavior change, not a brightness tweak. Not yet confirmed acceptable by the user.
+
+## §NIGHT_LIGHT_CHURN — the real hiccup source, found via user's A/B, fixed same session (2026-08-08)
+
+User's controlled test ("when lighting is off, its smooth") pinned it: `A._nightUpdateLights()`
+(`tools.js`) was wired to `A.controls`'s `'change'` event on every 5m of camera travel, and on
+every firing it disposed ALL active `THREE.PointLight`s and rebuilt them from scratch (up to 24)
+— light add/remove churns three.js's per-material light-uniform list, this doc's own §RAM section
+already flags that as the expensive part. Explains "hiccups now and then" (fires per 5m, reads as
+periodic), "nothing to do with the tour" (fires on any navigation), and "smooth when off" (listener
+isn't attached) all at once. Fixed below — reuse in place, dispose/create only the delta.

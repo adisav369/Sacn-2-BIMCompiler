@@ -2771,3 +2771,62 @@ Confirmed no interaction: whatever stop order that spec settles on inherits this
 base speed and bounded look-ahead for free. Do not re-open this pacing thread without a new,
 specific, live-reproduced complaint — the four rounds of tuning above are validated against real
 user live-review, not guesses.
+
+## §26 — ⚠ SERIOUS, UNFIXED: `_boxIndex` null-deref crash on rapid DLOD-nav toggle (2026-08-08)
+
+**Found live on `red1oon.github.io`, LTU_AHouse, `viewer/dlod_nav.js`, real console stack:**
+```
+Uncaught TypeError: Cannot read properties of null (reading '1I_$5N3tj3shirkTIDgMMy')
+    at _evalChunk (dlod_nav.js?v=1:4:16259)
+    at _tick (dlod_nav.js?v=1:4:20508)
+```
+The unreadable property name is a GUID — something is reading `null[<guid>]`. Not from tonight's
+night-lighting session's own changes (that session never touched this file) — pre-existing, found
+by accident while investigating an unrelated "still lags" report on LTU_AHouse.
+
+**Reproduction pattern seen in the log** (rapid `o` — toggleDlodNav — presses): TWO
+`§DLOD_NAV_DISENGAGE reason=pill-off` lines fire back to back, with a `§DLOD_NAV_BUILD`/
+`§DLOD_NAV_ENGAGE` pair sandwiched between them but no visible re-press of `o` logged between the
+two disengages — i.e. the toggle fired faster than the engage/disengage cycle can cleanly settle.
+
+**Root cause, traced by direct code read (not fully execution-verified — this is the leading
+hypothesis, next session should confirm with a live repro + breakpoint before patching):**
+- `_boxIndex` (`dlod_nav.js:164`) is nulled in exactly one place: `_disposeBoxes()` (`:378-386`,
+  `_boxIndex = null` at `:384`).
+- `_evalChunk(app)` (`:1552`) reads `_boxIndex[guid]` at `:1581` with **no null-guard** — it checks
+  `!_guidArr || !_guidArr.length` at the top (`:1553`) but never checks `_boxIndex` itself.
+- `_evalChunk` is called from exactly one place: `_tick()` at `:1751` (`if (_scanPending)
+  _evalChunk(app);`), one chunk per animation frame while a scan pass is in progress.
+- Toggling DLOD-nav OFF (`:1809-1819`) does `cancelAnimationFrame(_rafId)` (killing the MAIN
+  `_tick` rAF chain) then calls `_restoreAllNow(app, 'pill-off', _disposeBoxes)` — this starts a
+  **separate, uncoordinated** multi-frame drain loop (`_restoreAllNow`, `:1656-1690`) that
+  schedules its OWN `requestAnimationFrame(step)` calls, NOT tracked by `_rafId` and therefore
+  **not cancelled by anything**. When that drain finishes (`finish()`, `:1673-1682`), it
+  unconditionally calls `onDone()` = `_disposeBoxes`, nulling `_boxIndex` — with no check for
+  whether a NEWER engage has since rebuilt it.
+- If the user toggles back ON before that old drain finishes, `_tick` resumes, rebuilds a FRESH
+  `_boxIndex` (`_buildBoxes`/`_buildRealIndex`, `:1704-1705`) and starts scanning against it. The
+  OLD drain is still running in the background, decoupled from this new session. When the old
+  drain eventually finishes, its `_disposeBoxes` call nulls the FRESH `_boxIndex` out from under
+  the actively-running new scan — the next `_evalChunk` call crashes on `_boxIndex[guid]`.
+- This needs the two toggles close enough together that the old restore drain (a multi-frame,
+  `EVAL_CHUNK`-sized loop over up to `boxIndex`'s full guid count — up to 122k entries on
+  LTU_AHouse) hasn't finished before the new engage starts and runs a scan pass — consistent with
+  it surfacing on LTU_AHouse (largest tested building) under rapid toggling, not smaller buildings.
+
+**Why this matters beyond a console error:** an uncaught exception thrown from inside a
+`requestAnimationFrame` callback (`_tick`) breaks that specific rAF chain silently — no visible
+crash dialog, just DLOD-nav's tick loop dying mid-session, which would present exactly as "lag" or
+"nav mode stuck" without any obvious cause, since nothing after that point re-schedules `_tick` for
+that chain. Genuinely worth fixing, not a cosmetic console-log issue.
+
+**Not fixed this session — deliberately, out of scope for the night-lighting work in progress and
+found only by accident. Two candidate fix directions for next session to evaluate, not prescribe:**
+1. Add the missing null-guard to `_evalChunk` (`if (!_boxIndex) return;` alongside the existing
+   `_guidArr` check) — cheapest, stops the crash, but doesn't address the underlying stale-drain
+   race (state could still silently corrupt without the exception surfacing it).
+2. Make `_restoreAllNow`'s `onDone` callback generation-aware — tag each restore drain with the
+   `_engaged`/session generation it started under, and skip `_disposeBoxes` if a newer engage has
+   superseded it by the time the drain finishes. Addresses the root cause, more invasive.
+Confirm the race with a live repro (rapid `o` `o` `o` on LTU_AHouse, breakpoint in `_disposeBoxes`)
+before picking a fix — the hypothesis above is a code-read diagnosis, not yet a witnessed one.

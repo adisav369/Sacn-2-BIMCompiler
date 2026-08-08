@@ -340,3 +340,24 @@ Findings measured 2026-07-19 during PR bim-ootb#891 (§GROUP_SPARK). Full measur
 including three retracted perf hypotheses (`§RENDER_LOOP total`, per-tick `ad_seed.db` refetch, and
 the spark-side micro-optimisations that benchmarked as no-ops), is in that PR's second commit
 message and in `HOSPITAL_4D_SUPERSTRUCTURE_DURATION_ANOMALY.md` §GROUP_SPARK.
+
+## §UPDATE 2026-08-08 — LTU_AHouse §BVH_DEFERRED measured at 41-54s, not 17.4s, confirmed NOT cache/lighting
+
+Same mechanism this file already named unresolved (§ above: "17.4s `§BVH_DEFERRED`, same-tab thread
+contention"), re-measured on LTU_AHouse specifically during an unrelated night-lighting investigation.
+Two real numbers, same building, same session family:
+- Cold geo cache (21s download): `§BVH_DEFERRED built=83537 ms=41109`
+- Warm geo cache (690ms hit): `§BVH_DEFERRED built=83537 ms=54175` — **worse**, not better, than the
+  cold-cache run. Rules out cache-coldness as the driver of the BVH number itself (it clearly explains
+  the separate geo-download cost, but not this).
+- Not correlated with night-mode on/off in either run — night mode was toggled on once, well before
+  `§BVH_DEFERRED` fired, stable light count throughout, no toggling near the build.
+- Warm-cache run had heavy concurrent main-thread activity right around the build (rapid DLOD-nav
+  toggle on/off/on, tour-scrub interaction, an xray pick) — consistent with this file's own
+  "same-tab thread contention" hypothesis (3) being the actual driver, worse here because LTU_AHouse's
+  83,537-mesh raycastable set is larger than whatever building the original 17.4s figure came from.
+
+**Still unresolved, still real, now with LTU-scale numbers attached.** Next session on this file:
+confirm the thread-contention hypothesis with a clean run (LTU_AHouse, warm cache, no other
+interaction until the build completes) vs a busy run (same, but toggling DLOD-nav / scrubbing tour
+concurrently) — if the busy run is reliably worse, that's the proof this file asked for and never got.

@@ -5834,6 +5834,14 @@ Hospital's 20k m² of unnamed grey proxy slabs are reachable by neither 3 nor 4 
 signal). If they matter visually, that is a **class+size heuristic**, a separate decision — do not
 let it ride in as part of a material library.
 
+**Item 1 SHIPPED (2026-08-07)** — `bim-ootb` `viewer/streaming.js` `TRIPLANAR_MAT`: deleted the 5 dead
+lines (`IfcPile`, `IfcRamp`, `IfcPipe`, `IfcDuct`, `IfcCableCarrier` — 0 elements fleet-wide, last 3
+not real IFC class names); added `IfcFlowSegment`/`IfcFlowTerminal`/`IfcFlowFitting` → `_TRI_METAL`
+(the IFC2x3 generic-MEP convention Clinic/LTU/HHS actually export), `IfcStairFlight` → `_TRI_CONCRETE`,
+`IfcCableCarrierSegment`/`IfcCableCarrierFitting` → `_TRI_METAL`. Zero new texture bytes, zero new draw
+calls, per the verdict above. Branch `fix/mep-material-classfix`, worktree `/tmp/wt-mep-material-classfix`.
+Syntax-checked (`node -c`); visual witness on Clinic/LTU/HHS still owed before merge.
+
 ---
 
 # §GROUND_DARK_RETHINK + §FACADE_COLOUR (2026-07-28, analysis + sourcing measurement, no code)
