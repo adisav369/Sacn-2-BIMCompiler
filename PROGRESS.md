@@ -4,6 +4,18 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-08 — §27 (Viewer perf/crash) chased to ZERO, 2 PRs SHIPPED+MERGED+LIVE
+User-priority WORK-TO-ZERO item from `FLY_TOUR_DLOD_SCALE.md` §27 (overrode Watchdog's "stop here").
+§26 `_boxIndex` null-deref crash on rapid DLOD-nav `o`/`o` toggle: idempotency-guard fix in
+`dlod_nav.js`'s restore-drain, live-witnessed on real GPU (exact field stack trace reproduced
+pre-fix, zero crashes post-fix) — bim-ootb PR #1259 MERGED. §BVH_DEFERRED 41-54s stall: user
+correctly suspected the just-concluded night-lighting session's own un-merged fix
+(`§NIGHT_STILL_BOOST_GATE_FIX`, nav mode silently running ~200 lights instead of 30) — controlled
+real-GPU A/B isolated it exactly (buggy+busy interaction never finished within 90s; fixed+busy
+finished in 9.8s; light count alone, idle, was cheap either way) — bim-ootb PR #1255 MERGED, no new
+code needed. Both confirmed clean in a live field session afterward (`nightLights=30`, clean single
+disengage/engage pair on rapid toggle). Full detail: `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md` §28.
+
 ## Session 2026-08-07→08 — 4D construction-integrity lane worked to zero, 3 PRs SHIPPED+MERGED+LIVE (v971)
 §GEOMETRIC_SUPPORT_ORDER (bim-ootb #1242): placement order = geometry DAG (Kahn), seq demoted to
 tiebreak, shifted 8→0, cycles logged, Duplex small-regime covered, sortSeq hack removed as subsumed.

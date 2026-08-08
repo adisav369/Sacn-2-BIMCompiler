@@ -2830,3 +2830,92 @@ found only by accident. Two candidate fix directions for next session to evaluat
    superseded it by the time the drain finishes. Addresses the root cause, more invasive.
 Confirm the race with a live repro (rapid `o` `o` `o` on LTU_AHouse, breakpoint in `_disposeBoxes`)
 before picking a fix — the hypothesis above is a code-read diagnosis, not yet a witnessed one.
+
+## §27 — ⚠ USER PRIORITY DIRECTIVE (2026-08-08): chase §26 + the BVH-stall re-measurement to ZERO next session
+
+**Watchdog's own read was "stop, both are correctly filed as next-session material, not blockers."
+User overrode that explicitly: "this is serious... chase this mem issue till zero as it affects
+everything else."** Treat this the same as the project's standing WORK-TO-ZERO backlog contract
+(`CLAUDE.md`) — this is now that contract's item, not an optional "if time permits" note. Don't
+re-litigate whether it's worth doing; that call was already made.
+
+**The two items, both from the same LTU_AHouse session, both real, both witnessed with numbers —
+work them in this order:**
+
+1. **§26 above — `_boxIndex` null-deref crash in `dlod_nav.js`.** Confirm the generation-race
+   hypothesis with a live repro (rapid `o` `o` `o` on LTU_AHouse + breakpoint in `_disposeBoxes`),
+   then fix it — §26 names two candidate directions (null-guard in `_evalChunk` vs. making
+   `_restoreAllNow`'s `onDone` generation-aware). An uncaught exception inside a `requestAnimationFrame`
+   callback silently kills that tick chain — this is a plausible contributor to "lag" reports that
+   have no other explanation, not just a console-log nuisance.
+
+2. **`§BVH_DEFERRED` 41-54s on LTU_AHouse, re-measured from `TM_INCREMENTAL_RENDER_PERF.md`'s
+   never-closed "17.4s, same-tab thread contention" hypothesis.** Two real runs this session:
+   cold geo cache → `ms=41109`; warm geo cache → `ms=54175` (**worse**, ruling out cache-coldness
+   as the driver). Not correlated with night-mode on/off in either run. Next step, already named
+   and not yet run: a clean-vs-busy A/B on LTU_AHouse — same building, same cache state, one run
+   with no other interaction until `§BVH_DEFERRED` completes, one run toggling DLOD-nav/scrubbing
+   the tour concurrently. If the busy run is reliably worse, that confirms thread contention as the
+   cause and points at the fix (defer other main-thread work while this build runs, or chunk it
+   more aggressively); if not, the 41-54s figure needs a different explanation and this task isn't
+   done at "confirmed a hypothesis" — keep going per WORK-TO-ZERO until the actual cause is fixed,
+   not just diagnosed.
+
+**"Affects everything else" — why this outranks other backlog items:** both mechanisms sit in the
+main render/interaction thread of every large building this viewer opens (LTU_AHouse is the largest
+tested, but the same code paths run on every building), not behind a feature flag or an opt-in
+toggle — a fix here compounds across every future session's testing on any building at this scale,
+where a bug specific to e.g. one night-mode constant would not.
+
+**Session end = both items ✅ (fixed + witnessed) or ⛔ (blocked on a named, specific question) —
+not "diagnosed, filed for later" again. That already happened once this session.**
+
+## §28 — §27 CHASED TO ZERO (2026-08-08, follow-on session): both items closed
+
+**1. §26 `_boxIndex` null-deref race — ✅ FIXED + WITNESSED.** Confirmed the generation-race
+hypothesis by direct code trace, not just belief: `_restoreAllNow()`'s first synchronous `step()`
+call schedules its own `requestAnimationFrame(step)` continuation — a handle the module's `_rafId`
+never tracks. A rapid OFF→ON toggle makes `_tick()` force-complete that drain early via
+`_restoreFlush()` (so the fresh re-engage can rebuild `_boxIndex` without racing it), but the
+drain's stale leftover `step()` still fires on a later frame regardless, sees the loop already
+finished, and calls `finish()` a SECOND time — disposing whatever `_boxIndex` is CURRENTLY live
+(the freshly rebuilt one). `_evalChunk` then reads it as null on its very next call.
+Live-witnessed on real GPU (RTX 4060 passthrough, headless Chrome, LTU_AHouse 122,330 elements,
+`witness_boxindex_race.js`, scratch/not checked in): unfixed build reproduces the EXACT field
+stack trace (`Cannot read properties of null (reading '<guid>')`) on rapid `o`/`o`; fixed build
+(closure-local `_done` flag makes `finish()`/`step()` idempotent per invocation) shows zero
+crashes across repeated 2-press and 3-press toggle patterns, `__dlodNavAudit()` mismatch=0
+afterward — structurally correct, not just crash-silenced. **Shipped: bim-ootb PR #1259, MERGED
+2026-08-08T05:03:01Z.**
+
+**2. `§BVH_DEFERRED` 41-54s stall — ✅ FIXED (root cause was NOT a new dlod_nav/streaming bug).**
+User flagged mid-session: "i strongly suspect the just concluded night lighting work is the
+culprit though denied by that session." That suspicion was right. The night session's own
+`§NIGHT_STILL_BOOST_GATE_FIX` (commit `0316db7`, PR bim-ootb#1255) — nav mode silently running
+the still-capture branch's ~200-light cap instead of the intended 30-light nav budget — had been
+written, tested, and pushed, but **left unmerged** ("denied" = not prioritized as the stall's
+cause, not actually ruled out). A controlled real-GPU A/B (RTX 4060, LTU_AHouse, `db=` URL
+load + `toggleNightMode()` + `toggleDlodNav()`/orbit-drag interaction during the stream+BVH
+window) isolated it cleanly:
+| variant | §BVH_DEFERRED |
+|---|---|
+| buggy (~200 lights, confirmed `nightLights=153` in the witness log) + BUSY interaction | **did not complete within 90s** (worse than the field's 41-54s) |
+| buggy (~200 lights) + IDLE (no interaction) | 8.8s |
+| fixed (30 lights) + BUSY interaction | 9.8s |
+
+Light count alone (idle) is cheap; interaction alone (fixed-light busy run, and separately the
+original §27 clean/busy runs before the light bug was isolated) is cheap. Only the COMBINATION —
+the still-unmerged bug's ~200-light rebuild firing on every `_nightControlsListener`
+camera-movement event, competing with the BVH's cooperative `setTimeout(_bvhBatch, 0)` chain on
+the same main thread — produces the catastrophic stall. This also explains §27's own earlier
+"not correlated with night-mode on/off" finding: that test toggled Night on/off but never paired
+it with sustained interaction DURING the stream/BVH window, so it never hit the specific
+combination that triggers the starvation.
+**Fix: merge the existing PR, no new code needed.** Synced bim-ootb PR #1255 with current main
+(conflicts: `sw.js` CACHE_VERSION bump, `viewer.html` cache-buster — both mechanical, `.md`-safe
+per this repo's own sw.js conflict-magnet doctrine), CI green, **MERGED
+(`00d1925`, 2026-08-08T04:56:04Z)**.
+
+**Closeout:** both §27 items are ✅ DONE — PR #1255 and PR #1259 both MERGED to bim-ootb main.
+No further "affects everything else" investigation needed unless a NEW report surfaces after both
+land; if it does, re-open with a fresh witness rather than assuming these two mechanisms recur.
