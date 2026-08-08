@@ -785,3 +785,38 @@ every firing it disposed ALL active `THREE.PointLight`s and rebuilt them from sc
 already flags that as the expensive part. Explains "hiccups now and then" (fires per 5m, reads as
 periodic), "nothing to do with the tour" (fires on any navigation), and "smooth when off" (listener
 isn't attached) all at once. Fixed below — reuse in place, dispose/create only the delta.
+
+## §GLOW_LENS_BUILDUP_GATE — quads flooding the canvas during Alt+C movies (2026-08-08)
+
+User report: "During alt-c movie making, the scene on canvas is flooded with lighting quads" —
+clarified: they're "supposed to appear under 4D schedule after light fixtures are present." User
+first thought this was already fixed the night before ("maybe it was localhost") — traced and it
+genuinely wasn't: two separate gate-fix branches (PR bim-ootb#1235 `fix/night-glow-buildup-gate`,
+and a duplicate-titled commit on `fix/glow-lens-quad-stillonly`) existed but neither ever reached
+`origin/main`, and by the time either was written main had already replaced the mechanism they
+targeted (`§GLOW_LENS_QUAD`'s round-sprite predecessor removed, "real point lights only").
+
+Root cause found by reading current `origin/main` directly, not by resurrecting either stale
+branch: `§GLOW_BUILDUP_GATE` (the round-sprite gate, `_glowOn()` in `effects.js`) **is already
+merged and correct** — it filters through `A._tmIsVisible(guid)`. But `§GLOW_LENS_QUAD`'s
+`_glowLensOn()` (the still-render quad, added in a later commit) was never wired to the same
+filter — it builds its `InstancedMesh` straight from `A._nightFixtureWorldPositions()` with no
+Time Machine check. `cinema_maxq.js` calls `stopStillRefine()`/`startStillRefine()` every single
+baked frame during an Alt+C buildup bake (confirmed by reading the frame loop, not assumed), so
+`_glowLensOn()` staged every fixture's quad in the FINISHED building on every frame regardless of
+how much was actually built yet — exactly the reported flood.
+
+**Fix (bim-ootb PR #1260, `fix/glow-buildup-gate-v2`, auto-merge armed):** ported the identical
+`p.__guid == null || A._tmIsVisible(p.__guid)` filter line into `_glowLensOn()`. No restage/
+subscribe wiring needed — the quad already rebuilds fresh every baked frame via the existing
+teardown/restart cycle, unlike the round sprite (which persists across ticks during a live Alt+S
+and needs `A._tmVisSubscribe` to restage mid-stream).
+
+Witnessed: `tests/witness_glow_buildup_gate.js` extended V5-V8, same exact-substring-extraction-
+from-shipped-source pattern as the existing V1-V4, run against real `TerminalHi4D.db` kernel_ops
+(818 real `IfcLightFixture` elements): 0 quads before any fixture is scheduled, exact partial
+match mid-buildup, full quads once built, unchanged outside a buildup. 8/9 gates pass — `G0` fails
+pre-existing and unrelated (stale exact-match regex against `tools.js`'s SQL shape from before
+`bbox_x`/`bbox_y`/`rotation_z`/`geometry_hash` were added for other work; guid-threading itself is
+proven live by every other gate). `sw.js` `CACHE_VERSION` v972→v973, `viewer.html`
+`effects.js?v=14→15`.
