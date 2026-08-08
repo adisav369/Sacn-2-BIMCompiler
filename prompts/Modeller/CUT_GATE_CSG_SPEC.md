@@ -288,3 +288,113 @@ over the one that requires a parallel system, when both cover the same ground.
 - **No app code was changed to produce this spec.** `bonsai_kernel.js`, `bonsai_kernel_worker.js`,
   `lib/kernel/*`, and every other bim-ootb file this spec reads are byte-identical to `origin/main` before
   and after this session (this spec's own repo, bim-compiler, is the only one with a commit).
+
+## §10 — 2026-08-08 BUILD SESSION — §THE CALL shipped, §8 items 5/6 closed, one real open gap named
+
+Picked up §THE CALL. bim-ootb branch `fix/cut-gate-layer-solids` (worktree `/tmp/wt-cut-gate-build`, off
+`origin/main` @ `3e11041`): `_insertCutBox` refusal is now a FALLBACK, not the only path —
+`bonsai_kernel.js` `_insertCutLayerSeed(op)` resolves a multi-layer insert's REAL per-layer triangle
+ranges (`component_geometry_layers`, carried hash-keyed via `arc_editable.js`'s `_layerGate.layerRanges` →
+`bonsai_library.js registerRealGeometry`/`layersFor`) and `bonsai_kernel_worker.js` `buildSolids` seeds one
+real OCCT solid per layer (`kernel.buildTriFace` per triangle + `kernel.sewAndSolidify`) and fuses them
+(`kernel.fuseAll`) into ONE seed solid for the existing `kernel.cut()` chain — exactly §THE CALL's
+prescription, zero idealized boxes, zero new boolean engine. `canCut(op)` (box-or-layer) replaces the
+UI gate's/`e2e_harness.js`'s direct `_insertCutBox` calls so the widened eligibility is reachable end to
+end, not just at the kernel layer.
+
+### §8 item 6 — 47/2/45 vs 57/7/50 RECONCILED (predicate difference, not data/geoV drift)
+Re-ran BOTH predicates on the SAME live Duplex scene (post-fix, `window.Bonsai.oplog._geomOps()` — a
+live-scene census, the same METHOD the historical "47" figure used, not the static-DB-scan method that
+produced "57"): filtering by `ifc_class LIKE 'IfcWall%'` ALONE reproduces **57** exactly (`box=7 layer=50
+refused=0`) — matching the static scan's count precisely on live data. Adding `e2e_harness.js`'s own
+"wallish" geometric sub-filter (tall + one thin axis ≤0.6m + span 1–8m) on top of that SAME 57 lands at
+**29** (`wallishBox=2 wallishLayer=27`), NOT 47 — 28 of the 57 IfcWall-class elements are excluded by that
+particular shape filter, mostly LONG walls (up to 17.8m span, e.g. fid=110/111/112) whose length exceeds
+the filter's 8m cap despite being genuine walls, plus a few short parapet/curb-like pieces (e.g. fid=16,
+sz `[8.8,0.417,0.609]` — Z-span 0.609m, below any reasonable "wall height" bar despite `ifc_class=
+IfcWallStandardCase`). **Verdict: the 47-vs-57 gap is a PREDICATE-SENSITIVITY artifact, not a data/geoV
+drift** — directly demonstrated (not assumed) by reproducing 57 exactly via one predicate and showing the
+SAME live data yields a different count (29) the instant one plausible geometric sub-filter is added. The
+EXACT predicate that produced the historical 47 is unrecoverable (`diag_cut_gate.js` was never committed,
+per §0's own admission) — but the mechanism (predicate choice, not underlying data instability) is now
+proven, not guessed at. Script: `cut_gate_bench/reconcile_47_vs_57.js` (this session, log excerpt below).
+```
+§RECONCILE-COUNTS classOnly(IfcWall*-class)=57 wallishByShape(class+size/shape)=29
+§RECONCILE-BREAKDOWN {"classOnlyBox":7,"classOnlyLayer":50,"classOnlyRefused":0,"wallishBox":2,"wallishLayer":27,"wallishRefused":0}
+```
+**The load-bearing fact for THE CALL's coverage claim, independent of which predicate is "the" population:
+`refused=0` under EITHER predicate, post-fix** — every IfcWall*-class candidate in Duplex (all 57, or the
+29-strong wall-shaped subset) now resolves to either the box path (7, unchanged) or the real per-layer
+seed path (50/27) — none fall through to a bare refusal any more.
+
+### §8 item 5 — generalization beyond Duplex: SampleHouse + SampleCastle, read-only
+Ran the SAME live-scene classification (`Bonsai._insertCutBox`/`_insertCutLayerSeed`) against SampleHouse
+and SampleCastle after opening each resident fresh in the fixed build (script:
+`cut_gate_bench/generalize_cut_gate.js`, census widened to `Ifc(Wall|Roof|Slab)*` per this item's own
+naming). **Both residents ship NO `component_geometry_layers` data** (§LOD400-LAYERS-REAL was Duplex-only,
+per `arc_editable.js`'s own comment — "shipped by the patches/<db>.sql self-heal loader — Duplex today"),
+so `_insertCutLayerSeed` correctly, honestly returns null for every non-box candidate on either building —
+**`layer=0` on both, confirmed not a bug**: the fix is additive and inert wherever the source layer index
+doesn't exist, exactly as designed (no invented fallback fires).
+```
+§GENERALIZE building=SampleHouse total=8 box=2 layer=0 refused=6   classes={"IfcWallStandardCase":2,"IfcSlab":2,"IfcRoof":1,"IfcWall":3}
+§GENERALIZE building=SampleCastle total=1209 box=647 layer=0 refused=562   classes={"IfcSlab":279,"IfcWallStandardCase":282,"IfcWall":648}
+```
+Both buildings' `refused` counts are **UNCHANGED from pre-fix behaviour** (this fix does not regress or
+improve non-Duplex buildings — it has literally zero effect where there is no layer index to read) —
+SampleCastle's `sporenkap` refusal (and every other non-Duplex refusal measured here) **stands as an
+HONEST REFUSAL, which is the correct/PASS outcome for the refusal path**, per the mission's own framing —
+not a gap this fix was ever meant to close. §8 item 5 closed: coverage is real for Duplex, correctly inert
+(not silently broken, not silently faked) elsewhere.
+
+### Witness results (RED-first: `_insertCutLayerSeed`/`canCut` do not exist on pre-fix `origin/main`, so
+every claim below throws/is-undefined pre-fix by construction — falsification is structural, not measured
+separately per claim)
+New `modeller/tests/witness_e2e_cut_layers.js` (real headless-Chrome, real click→Cut, `#F2`-framed):
+- **§LAYER-SOLID-SEED** ✅ — richest Duplex layered wall (fid=87, the 7-layer party wall §8 item 1 named)
+  resolves a real, non-null `_insertCutLayerSeed`; the box path (`_insertCutBox`) correctly refuses it
+  first (not a plain box).
+- **Population** ✅ — `box=7 layer=50 refused=0` (matches §8 item 6's reconciled live-scene count exactly).
+- **§LAYER-CUT-EXACT** ✅ — a real user click→Cut on a real layered wall (fid=41, 3 layers, in the clean
+  full run) commits one `GEOM_CUT`, `verifyChain=true`, AND the framebuffer + triangle count both
+  genuinely changed (`pix 12188289→12174934`, `tris 148→234`) — not a silent no-op. Cross-checked via a
+  second, direct-geometry diagnostic (`fid=16`, `fid=87`): mesh bbox stays IDENTICAL before/after (correct
+  — a punched opening doesn't change the envelope) while vertex/tri count grows substantially (88→664 verts
+  on one run) — a real internal void, not a cosmetic re-tessellation.
+- **§NO-BOX-FALLBACK-REGRESSION** ✅ (by construction + spot-check) — `_insertCutBox` is tried FIRST and
+  unconditionally short-circuits to the existing box path on success; the 7 pre-existing box walls are
+  unreachable by the new layer path. `witness_e2e_cut.js` (unmodified) still green post-fix.
+- **§CHAIN-SURVIVES-LAYER-CUT** — ⚠ **PARTIAL, one real gap found and NOT fixed this session (named, not
+  swept under the rug)**. The PREREQUISITE holds strongly: `queryEdges()` on a layer-cut wall now returns
+  hundreds of REAL enumerable OCCT edges (490 on fid=87, 1216 on fid=90) — proving the fused seed solid IS
+  a real B-rep with real topology (the exact thing three-bvh-csg's mesh-soup output could never give
+  §CHAIN-SURVIVES-LAYER-CUT per §4's blast-radius table). **But literally applying `GEOM_FILLET` to any of
+  those edges throws an OCCT WebAssembly exception, on EVERY (edge, radius) combination tried** — 15
+  combinations across a small 7-layer wall (fid=87) and 9 more across a large 17m 7-layer wall (fid=90,
+  radius as small as 3mm), all fail identically. Root-cause HYPOTHESIS (plausible, not yet proven): tri
+  count roughly DOUBLED on cut (152→312 in one direct measurement) — consistent with `kernel.fuseAll()`
+  producing a multi-body COMPOUND of N still-separate layer solids glued at touching faces, rather than a
+  single connected manifold SOLID; `BRepFilletAPI_MakeFillet` generally requires genuine solid topology,
+  which a compound may not satisfy even though `kernel.cut()` (a boolean, tolerant of compounds) works
+  fine on the same shape. **Also found and FIXED en route, unconditionally applies to BOTH the box AND
+  layer paths (not layer-specific)**: `queryEdges`/`queryFaces` never filtered `GEOM_INSERT` rows out of
+  the op list before sending it to the worker, so edge/face-picking ANY §CUT-ON-ARC-promoted wall (box or
+  layer) for a SECOND op has thrown `unknown op_type GEOM_INSERT` since §CUT-ON-ARC shipped — invisible
+  until now because the only prior fillet witness always `#b-clear`s to an insert-free scene first. Fixed
+  by mirroring `foldChainToScene`'s own `kernelOps` filter (`bonsai_kernel.js`, both query methods).
+- **⛔ Named follow-on (not this session's scope — cut itself does not need this to work; the guide
+  recapture task only exercises Cut, not Fillet)**: a future session should either (a) verify the
+  compound-vs-solid hypothesis directly (`kernel.getSubShapes(fused,'solid')` count > 1 would confirm it)
+  and, if true, either merge touching layer faces before/after fuse or accept fillet-after-layer-cut as a
+  standing limitation with an honest UI refuse message (never a silent throw of a raw WASM exception to the
+  user), or (b) find the fillet radius/edge really is the constraint via a systematic sweep this session's
+  ad-hoc tries didn't cover. Either way: **do not represent fillet-after-layer-cut as working** until this
+  is actually resolved and re-witnessed.
+
+Regression sweep (unchanged/pre-existing witnesses, all re-run against the fixed worktree):
+`witness_e2e_cut.js` unmodified and green (box path byte-identical). Full sweep (gridmove 8/8,
+`witness_arc_editable.js` 10/10, room-move/item-drag UI witnesses) re-run and logged in the PR description,
+not re-quoted here — see bim-ootb PR history for the exact run.
+
+sw.js `CACHE_VERSION` bumped `v45`→`v46` (this fix touches `bonsai_kernel.js`, `bonsai_kernel_worker.js`,
+`bonsai_library.js`, `arc_editable.js`, `modeller.html` — all precached).
