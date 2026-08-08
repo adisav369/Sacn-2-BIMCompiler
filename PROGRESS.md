@@ -4,6 +4,16 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-07→08 — 4D construction-integrity lane worked to zero, 3 PRs SHIPPED+MERGED+LIVE (v971)
+§GEOMETRIC_SUPPORT_ORDER (bim-ootb #1242): placement order = geometry DAG (Kahn), seq demoted to
+tiebreak, shifted 8→0, cycles logged, Duplex small-regime covered, sortSeq hack removed as subsumed.
+§GANTT_LOCK_INTEGRITY (#1244): 🔓→🔒 refuses on breach, names floaters, Undo clears; witness 19/19
+(watchdog-corrected from a 22/22 transcription error). §GANTT_STALE_CACHE (#1257): warm-open double
+load killed (live user log RED-reproduced → single-pass). All verified served on GH Pages (minified,
+v971). Next named: §TM_GEO_ORDER_CYCLES (Terminal live: 24,353 Kahn leftovers + floating=33 on the
+tm-promotion pass — author pass 0/0 same log) + schedule-persistence decision (blocks warm reuse).
+Full detail: `prompts/4D_SCHEDULE_PERFECTION.md` (dated 2026-08-07/08 sections).
+
 ## Session 2026-08-07→08 — CPE "walk finger mode" LANE CLOSED, 6 PRs shipped+merged, viewer v971 LIVE
 Walk-in-POV stick authoring end-to-end: bim-ootb #1243 (walk v1) → #1246 (shoes on B frame) →
 #1248 (walk-stretch spawn + trackpad glide + Enter/Space plant) → #1249 (scrub accelerator) →
