@@ -560,3 +560,79 @@ with no click-path.
 **Worktrees used this round:** `/tmp/wt-guide-roommove` (bim-ootb, branch `feat/roommove-itemdrag-ui`,
 merged via bim-ootb#1247 — safe to prune) and `/tmp/wt-guide-roommove-docs` (bim-compiler, branch
 `docs/roommove-itemdrag-toolbar` — prune after this PR merges).
+
+## 2026-08-08 (round 5) — cut-gate FIXED FOR REAL (bim-ootb PR #1262, §LAYER-SOLID-SEED), but the
+## cut-select.png/cut-open.png recapture itself is ⛔ BLOCKED — not by the fix, by capture-environment friction
+
+Picked up round 3's exact named blocker: `CUT_GATE_CSG_SPEC.md` §THE CALL (per-layer real OCCT solids
+seeding the cut gate, not idealized boxes, not a second mesh-CSG engine) has now actually SHIPPED —
+bim-ootb PR #1262 (`fix/cut-gate-layer-solids`), merged, CI green (`fast-checks` + `e2e-tests` both pass on
+a clean runner). Full build detail, witness numbers, and the one real named open gap (fillet-after-
+layer-cut throws an OCCT exception — separate, not fixed this round): `CUT_GATE_CSG_SPEC.md` §10. Duplex's
+cut-eligible population is now **57/57 wallish IfcWall-class candidates seedable (7 box + 50 real-layer,
+0 refused)** — up from 2/57 pre-fix. This is the real, load-bearing fix round 3 stopped short of.
+
+### The recapture itself: real content proven, but no legible PNG landed this session
+- **The cut ITSELF is proven working end-to-end, repeatedly, numerically**: real click→select (via
+  `window.Bonsai.select(fid)`, modeller.html's own documented "witness/programmatic hook" — the SAME
+  `highlight`→`setSelectionIds`→`_paintSel`/`zoomToSelection` path a real click drives) → real `#b-cut`
+  click → `GEOM_CUT` committed → `verifyChain()==true` → **tri count genuinely changed (424→520,
+  reproduced identically across 3 separate runs)** on fid=87, Duplex's richest layered wall (7 layers, the
+  party wall `2O2Fr$t4X7Zf8NOew3FKRH` §CUT_GATE_CSG_SPEC.md §8 item 1 names). This is real, not assumed —
+  §-tagged numeric proof, read from saved logs, per this project's own doctrine.
+- **The screenshots themselves came out illegible THIS session, for two SEPARATE, now-diagnosed reasons —
+  neither is a defect in the cut-gate fix**:
+  1. **Local environment resource exhaustion** (this session ran dozens of concurrent headless-Chrome
+     puppeteer instances over many hours chasing this fix+recapture; `free -h` showed ~1.3GB/29GB free at
+     the worst point). At that point EVEN A FULL-PAGE, UNCROPPED screenshot of a correctly-cut, correctly-
+     selected, correctly-chained scene rendered as flat, textureless gray — reproduced identically on
+     `witness_e2e_cut.js`'s OWN pre-existing, unmodified box-wall capture path (fid=81/82) — proving this
+     wasn't specific to the new layer-cut code. After some concurrent load cleared, an IDENTICAL script
+     (`diag_fullpage.js`, same worktree) produced a real, detailed render (visible wall edges, roof,
+     shadows) — confirming the render pipeline itself is fine; the earlier blanks were a resource-exhaustion
+     artifact of this one long dev session, not an app bug. **If a future session sees the same "flat gray
+     screenshot despite correct op-log/tris" symptom, check `free -h`/concurrent Chrome count FIRST** before
+     assuming a code regression (same lesson as the documented W-E2E-MOVE/fid=112 swiftshader precedent,
+     now confirmed to generalize beyond just move ops).
+  2. **Even with the environment healthy, the specific crop (`e2e_harness.js`'s `frameElement`+`shotClip`,
+     via `bboxScreen`'s screen-space projection) still composed poorly for fid=87** — the clip region
+     consistently landed mostly on empty background with the actual wall only a sliver at one edge, across
+     several different `fill` values (0.42, 0.22) and two different selection-entry methods (`clickOn`'s
+     raycast-verified mouse click, and `window.Bonsai.select()`'s programmatic hook). This is a real,
+     reproducible composition issue with the CURRENT `frameElement`/`shotClip` pair specifically for this
+     subject/camera combination — separate from (1), and NOT chased to a root cause this round (time
+     budget spent proving/shipping the actual fix first, correctly per this mission's own priority). A
+     capture utility (`capture_guide_cut.js`, ad-hoc per round-4's own precedent for "NOT the audited
+     witnesses" — not committed to bim-ootb, lives only in the worktree below) encodes the full working
+     recipe (candidate selection by real per-layer seed eligibility, cold-worker tri-count polling instead
+     of a fixed sleep, `select()`+`#b-fit`+`frameElement` sequencing) — reusable, just needs either a
+     different `fill`/subject or a `bboxScreen` fix to land a properly-composed crop.
+- **Per this card's own established fail-hard doctrine** (§THREAD 2, 2026-07-01: "if the underlying [issue]
+  is not fixed, FAIL HARD — do not embed it"): `docs/img/modeller/cut-select.png`/`cut-open.png` are left
+  **UNTOUCHED** this round — no downgrade, no broken/blank embed. The guide's cut-tool text is also
+  UNCHANGED (still accurate — it never claimed a specific eligibility count that the fix changes).
+
+### §RESUME for whoever picks this up next
+1. **The fix does not need re-verification** — `CUT_GATE_CSG_SPEC.md` §10 has the full witness table;
+   bim-ootb `main` already has it (commit `0e719d2`, PR #1262).
+2. **Re-run the recapture with a clean environment** (check `free -h` and concurrent Chrome/puppeteer count
+   BEFORE starting — abort/wait if memory is tight, per finding 1 above). Reuse
+   `/tmp/wt-cut-recapture/modeller/tests/capture_guide_cut.js` if that worktree still exists (`git worktree
+   list`), else recreate off bim-ootb `origin/main` and re-derive the same script (short — the logic is
+   fully described above and in the file's own header comment).
+3. **If the crop still lands wrong** (finding 2), try: (a) a real click via `t.pick({cuttable:true,
+   prefer:'wall'})` instead of `window.Bonsai.select()` — may compose differently since it drives the
+   SAME code path a real user does, not tested combined with the cold-worker poll fix this round; (b) a
+   DIFFERENT subject than fid=87 — one of the other 26 wallish-shaped layer candidates (`§CAPTURE-POOL`
+   logs the full list) may frame better; (c) instrument `bboxScreen`/`shotClip`'s own NDC math with a
+   one-off console.log of the 8 projected corners to see exactly why the clip rect undershoots.
+4. Once a legible pair lands: `mkdocs build --strict`, PR off current `origin/master`, auto-merge,
+   `scripts/safe_gh_deploy.sh`, live-verify, append the dated record to this card in the SAME PR (this
+   card's own established convention) — do not open a separate docs PR for the record afterward.
+
+**Worktrees this round:** `/tmp/wt-cut-gate-build` (bim-ootb, `fix/cut-gate-layer-solids`, merged via
+bim-ootb#1262 — safe to prune), `/tmp/wt-cut-gate-docs` (bim-compiler, `docs/cut-gate-csg-spec-reconcile`,
+merged via bim-compiler#79 — safe to prune), `/tmp/wt-cut-recapture` (bim-ootb, detached at `origin/main`,
+carries the NOT-yet-landed `capture_guide_cut.js`/`diag_fullpage.js` diagnostic scripts — **do not prune
+yet**, the next session should reuse it per §RESUME step 2), `/tmp/wt-cut-gate-task3` (bim-compiler, this
+card's own PR branch — prune after merge).
