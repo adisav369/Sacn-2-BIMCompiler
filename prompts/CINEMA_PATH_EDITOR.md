@@ -8805,7 +8805,19 @@ from inside the shot. Worth keeping as the feature's name.
 ## ▶ §CPE_VF_DPR_DOUBLE — THE ROOT CAUSE OF BOTH THE POV FRAME *AND* THE STICK GRIP (2026-08-07)
 ## ✅ VERIFIED + PR OPENED (2026-08-07) — dispatch below executed in full, both directions proven
 
-### VERIFICATION RESULT (2026-08-07, fresh session, worktree /tmp/wt-cpe-dpr)
+### ⚠ LANDED ONLY 2026-08-08 — the PR sat OPEN a full day and the bug "returned" (it never left)
+PR #1234 was verified and opened 2026-08-07 but NEVER MERGED — every session that day ran at
+devicePixelRatio 1.0, where the double-applied ratio cancels visually, so nothing looked wrong and
+nobody noticed the PR hadn't landed. 2026-08-08 the user opened the deployed site in a 125% window
+(their TerminalMerged log: `§CPE_VF_STACK pr=1.25`) and reported "the povf out of frame issue
+returned." Same-day landing: merged fresh main into the branch (clean — includes the walk/shoes/
+gamepad lanes), re-witnessed BOTH sides on the combined tree (witness_cpe_vf_dpr_engine 4/4:
+gl-reported viewport carries css·dpr once, never css·dpr², restore bit-exact, drawn-handle tap grabs
+eye-on AND eye-off; witness_cpe_walk_edit Duplex 23/23: no walk regression), cache bumps cpe v14 /
+sw v970, auto-merge armed. Lesson, same family as [[feedback_verify_pr_merge_before_followup_push]]:
+a VERIFIED fix is not a SHIPPED fix — the check "is the PR actually merged" belongs at the end of
+every dispatch report, and a symptom that only manifests under an environment condition (fractional
+DPR here) will hide an unmerged fix from every session that doesn't share that condition.
 **PR bim-ootb#1234** (`fix/cpe-vf-dpr-double`, fix `8928457` + new witness `b386bd1`), auto-merge armed.
 Every dispatch task ran; every claim below is a measured number at dpr 1.25, 1483×769 (the user's geometry):
 1. **Engine restore (task 1)** — new `witness_cpe_vf_dpr_engine.js` wraps the raw `gl.viewport()` and
