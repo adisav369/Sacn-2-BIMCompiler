@@ -2249,3 +2249,41 @@ standing hang, untouched here); pre-construction phase unmodeled; boq_charts.htm
 redirect; docs/4D5DAnalysis.md stale; support-predicate consolidation across the 4 copies (partially
 mooted for schedule_gate.js internals by the DAG work, but the tm.js/boq copies still stand).
 
+## 2026-08-08 — §GANTT_STALE_CACHE ✅ FIXED (PR bim-ootb#1257, auto-merge armed) + NEW live finding §TM_GEO_ORDER_CYCLES (Terminal, NOT fixed — next task)
+
+**User: "why it still twice load timeline?" — answered from their own pasted Terminal log (v969) and
+fixed same session.** §GANTT_SINGLE_LOAD (#1237) fixed the COLD path only. The live log was a WARM
+open: `§GANTT_CACHE_HIT ops=48428` served cached ops, but bar editability is a DB JOIN
+(tasks/task_elements — `buildTaskIndex`), NOT an op field, and the DB is re-fetched schedule-less
+every session → `§GANTT_BAR_IDENTITY schedule=none editable=0` → `§GANTT_AUTO_GENERATE` →
+`§TM_REFOLD` discarded the whole cached pass and re-ran the full chain. **Recurred every warm open**,
+not once. Fix (PR #1257): `_activateAsync`'s cache branch applies #1237's own guard — no
+`activeSchedule` in the DB ⇒ cache stale by construction ⇒ `§GANTT_STALE_CACHE`, drop cache, take
+the single-pass cold path. Witness: `witness_gantt_single_load.js` scenario B (same-context reload =
+real next-session open), RED reproduced the exact live signature (cacheHit=1 autogen=1 refold=1
+editable=0), GREEN after (stale=1 cacheHit=0 prematerialize=1 injected=1 autogen=0 refold=0
+editable=35); scenario A unchanged. sw.js v969→v970 (⚠ first commit's "v958→v959" claim was wrong —
+base was already v969, sed matched nothing, bump landed in the follow-up commit; PR body corrected).
+**Residual: one cold-cost pass per session per building remains BY DESIGN until the authored schedule
+persists in the DB — the still-open persist-into-Lock / §SCHEDULE_JSON_PERSIST decision is now the
+blocking item for true warm-open reuse.**
+
+**§TM_GEO_ORDER_CYCLES — NEW, from the same live log, NOT fixed (next task for this lane):** on the
+tm.js `injectGantt()` pass (real load-path promotion, `§GANTT_OVERRIDE 60 slabs`, storey-Z
+reassignment 33,848), Terminal live shows `§SUPPORT_CYCLE cycles=24353` + `§DEQ_REPAIR shifted=251`
++ `§SUPPORT_CHECK floating=33/48428` — while the schedule_author pass IN THE SAME LOG (same building,
+same session, edges 348,882 vs tm's 348,866) shows cycles=0/shifted=0. Facts to carry, don't
+re-derive: (a) the `§SUPPORT_CYCLE` count is the KAHN LEFTOVER count (cycle members + everything
+downstream), not the number of cycles — one small cycle low in the structure strands half the
+building into seq-order fallback; (b) the delta between passes is the PROMOTION PATTERN (tm's
+load-path seed=44 + M4=16 vs author-side), 16 edges difference; (c) Hospital live is clean
+(floating=0/63182, witnessed again in the #1257 run), so this is Terminal-geometry-specific —
+likely the predicted 3-cycle class (wall hangs from structure S1, wall bears promoted P2, P2
+below-supports S1) that #1244's 2-cycle wall-bears-carrier clause does not cover; (d) the user SAW
+the 33 floaters live ("some stuff hanging first... we can forgive") — forgiven by the user, NOT by
+this lane's own zero bar. **Next task: reproduce headlessly with tm.js's REAL promotion**
+(`_buildXrayElements` on Terminal, or slice injectGantt's own element build), witness-first —
+witness must assert leftover=0 AND floating=0 on Terminal under load-path promotion, RED first with
+the 24,353, then generalize the antisymmetry rule (candidate: no pool member may hang from any
+structure it transitively bears — or break the specific 3-cycle by the same class-scoped method).
+
