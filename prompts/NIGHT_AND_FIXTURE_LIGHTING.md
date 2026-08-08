@@ -820,3 +820,10 @@ pre-existing and unrelated (stale exact-match regex against `tools.js`'s SQL sha
 `bbox_x`/`bbox_y`/`rotation_z`/`geometry_hash` were added for other work; guid-threading itself is
 proven live by every other gate). `sw.js` `CACHE_VERSION` v972→v973, `viewer.html`
 `effects.js?v=14→15`.
+
+**CLOSED (2026-08-08):** PR #1260 MERGED to `origin/main` (both CI checks SUCCESS, verified via
+`gh pr view` — not assumed from auto-merge armed). User confirmed live: "works in LTU baking."
+Superseded predecessor PR bim-ootb#1235 (`fix/night-glow-buildup-gate`, the stale/conflicting
+branch this bug was originally traced to) closed without merging, comment cross-links #1260.
+Worktree `/tmp/wt-glow-buildup-gate2` and branch `fix/glow-buildup-gate-v2` pruned post-merge
+(0 ahead, 0 dirty). Nothing left open on this item.
