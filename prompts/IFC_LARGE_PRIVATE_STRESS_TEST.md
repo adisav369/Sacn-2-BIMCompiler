@@ -697,6 +697,24 @@ layers and must not be conflated.
    — it is outward-facing and beyond what "ship to the BIM author" asked. One command when wanted.
    Underlying fact unchanged: at 570 entities/element KUL is ~20× heavier than LTU's 29, purely from
    tessellated export; no downstream tool recovers that.
+3. **Complete OVERALL DB via the 8-way split** (never run to completion). `split_ifc_by_discipline.py
+   --parts 8` is written, dry-run verified (8 × 10,971 products, 36MB RAM). Discipline axis is the
+   WRONG one here — measured ARC 1924MB/17.4GB vs MEP 76MB/0.6GB (§KUL003 tail). Then extract each
+   part under `systemd-run --user -p MemoryMax=…` (MemoryMax ONLY — `MemoryHigh` is a throttle that
+   stalled run 1 for 24 minutes). Expected result ~200MB DB, 66,214 elements.
+4. **Scene-merge on File Open** — user's ask: opening a fresh IFC/DB should offer "merge into the
+   current scene" instead of replacing. **Spec belongs in `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`
+   (a dated §SCENE_MERGE section), not here** — that file already owns `importMultiIFC` + Open Building.
+   Recon done, do not redo: (a) today's `§VERSION_MERGE` is a VERSION merge — `_rec.versions.push()`
+   then `_rec.metaDb = dbs.metaDb` OVERWRITES; it is not additive. (b) `importMultiIFC` merges only
+   within ONE drop; nothing reads an existing DB and appends. (c) **The scene layer ALREADY federates**
+   — `city.js:701` `A.cityBuildingDbs[archetype] = { db, libDb }` streams N buildings, each with its
+   own DB pair, via `A.buildingCentres`/`A.buildingsRendered`/`A.streamBuilding()`. (d) The ONLY
+   blocker is `scene.js:663` `_openDbBytes` → `location.assign('viewer.html?db=…')`, a full page
+   navigation. (e) The saved DB is already shaped for it: `elements_meta.building` labels the source,
+   `project_metadata.georef_offset=(0,-14420,0)` gives the shared frame.
+5. **Ship `docs/IFC_ExportGuide.md` to the BIM author** — the upstream fix. At 570 entities/element
+   KUL is ~20× heavier than LTU's 29 purely from tessellated export; no downstream tool recovers that.
 
 ## §KUL008 — SHIPPED to sandbox 2026-07-29: two viewer fixes, both witnessed live
 ⚠ **Two claims below are now superseded — do not quote them:** (a) the "NOT committed / detached HEAD"
@@ -1022,6 +1040,7 @@ the cadence derivation once over all 87,333 elements. **If a walker needs true w
 re-derive them on the merged element set; do not trust the 27,385 as distinct physical planes.**
 Everything else in the DB (elements, geometry, transforms, r-tree, adjacency, aggregates) is a clean
 guid/hash-keyed union with no such caveat.
+
 
 ## §HOUSEKEEPING
 - `~/bim-ootb/IFC/KUL/` added to `.gitignore` (PR

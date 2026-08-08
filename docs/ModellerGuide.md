@@ -384,6 +384,13 @@ to disarm. `R` is reserved for Insert, so it doesn't arm anything here.
 2. Drag a **gridline**.
 3. Release to commit. Walls attached to that line **recompose** — a span stretches, an attached wall translates — as one signed operation. A hosted door or window **rides** its wall rather than stretching or divorcing from it, same as Move.
 
+What that recompose actually does, in plain terms:
+
+1. **Walls fill the gap, never leave one.** Every wall on the dragged gridline is classified against it first — a wall that only touches the gridline **translates** with it, a wall that **spans** across to another gridline **stretches**, with its far end staying anchored on that other gridline. Either way the wall keeps meeting the gridline; it can't detach or overshoot.
+2. **Only the grabbed bay moves.** The edit is scoped to the walls actually connected to the dragged gridline — a wall elsewhere in the building that happens to sit at the same coordinate, but belongs to an unrelated room, is left alone.
+3. **Hosted doors and windows ride, never distort.** A filling keeps its own size; it moves by its own share of the stretch (see below), it never scales and never divorces from its host.
+4. **Furniture and fixtures stay put.** They aren't part of the grid at all — a couch sitting in a room doesn't drag when the room's wall stretches.
+
 The ride is not a guess about what looks hosted. It follows the **authored** host↔opening↔filling chain
 recovered verbatim from the building's own IFC, so a door rides the wall its designer actually put it in —
 and where a building's author never declared that relationship, the modeller says so rather than inventing
@@ -394,6 +401,44 @@ aren't separate things to ride.
 ![Before — a wall spanning two gridlines](img/modeller/gridstretch-before.png)
 ![After — dragging the gridline stretched the attached wall by exactly the drag distance](img/modeller/gridstretch-after.png)
 
+#### On a real building, not a diagram
+
+The two frames above are a clean teaching diagram (Move Grid on a synthetic scratch wall). The mechanic works
+identically against a real, fully-loaded building — no separate mode, nothing cleared first. Here it is on
+Duplex's own ground floor, near the stair: a column grid aligned to a real wall's own measured edge, then that
+gridline dragged for real.
+
+Witnessed end-to-end (`modeller/tests/witness_e2e_gridmove_real.js`, 8/8 §-tagged assertions green, real
+`pg.mouse` down→move→up, no synthetic shortcuts):
+
+- A real mouse drag on gridline "2" landed at **delta = 0.5000 m**. The governed wall's own *rendered*
+  Y-extent grew from **2.920 m → 3.420 m** — exactly the committed op's delta, read back off the live mesh,
+  not assumed from the drag alone.
+- Its hosted door — a real `rel_fills_host` edge recovered from the IFC, not a proximity guess — **rode
+  0.273 m**, not the wall's full 0.500 m: §STRETCH-RIDE keeps a filling's *proportional* position along its
+  host, so it moves by its own anchored share of the stretch, never scales, never divorces.
+- The gesture landed as **one** signed `GEOM_GRID_MOVE` plus **9** induced rider `GEOM_MOVE`s (other walls the
+  same gridline governs, several carrying their own hosted doors) — one Ctrl+Z undoes the whole group,
+  verified: cursor and wall extent both restored byte-exact.
+- `verifyChain` held throughout. The drag-session cache (§SCALE_CHECK_FIX) is built once per gesture and reused
+  every pointermove frame, not rebuilt per frame, cited from its own log line rather than re-profiled.
+
+The conformity gate runs on every drag, real building included — it doesn't get a pass because the input is a
+big, dense floor plan. This particular 0.5 m test drag pushed the wall into real clashes against neighbouring
+structure; the app's own status line reports the count instantly (`recomposed=16 §STRETCH-RIDE riders=9
+verify=true 23 RED`) rather than silently accepting a bad edit — visible in the "after" frame below.
+
+![Before — Duplex's real ground floor near the stair, the authoring grid aligned to a real wall's own measured edge](img/modeller/grid-editor-before.png)
+![After — gridline "2" dragged 0.5 m for real: 16 elements recomposed, 9 hosted doors rode, the conformity gate flags the resulting clashes live in the status line](img/modeller/grid-editor-after.png)
+
+Roofs recompose the same way. *SampleHouse*'s barrel-vault roof spans the two gridlines bracketing the
+building; dragging the far one **0.5000 m** grows the roof's own rendered X-extent from **14.8410 m → 15.3410
+m** — exactly the drag, with the near edge held fixed at the other gridline — while the wall it sits on rides
+along in the same recomposed group (`recomposed=8`, `§STRETCH-RIDE riders=7`). Undo restores the roof's extent
+byte-exact. Witnessed end-to-end: `modeller/tests/witness_e2e_gridmove_roof.js`, 8/8 §-tagged assertions green.
+
+![The roof stretched 0.5 m along with the wall it sits on — gridline "2" dragged for real on SampleHouse](img/modeller/grid-editor-roof.png)
+
 ### Delete
 *Soft-deletes from the signed log (reversible).*
 
@@ -402,6 +447,101 @@ aren't separate things to ride.
 3. The feature hides from the model — the signed payload is never rewritten, so the chain stays valid. **Redo** (`Ctrl+Y`) brings it back exactly.
 
 ![Delete — the selected feature removed; Redo restores it](img/modeller/delete-gone.png)
+
+### Room Move
+*Commits `GEOM_ROOM_MOVE {spaceGuid,dx,dy,members[]}`.*
+
+Moving furniture around a room one piece at a time divorces the room from its contents the moment anything
+gets left behind. Room Move grabs the **whole room** instead — everything it actually contains, plus
+anything sitting freestanding inside its footprint, plus any hosted door or window riding a wall that moves
+with it — and translates it all by one shared delta, as a single signed operation with one-step undo.
+
+1. Open the **Outliner**'s BOM Tree and expand down to the room you want (Building → Storey → Room).
+   An `IfcSpace` has no rendered mesh of its own, so the room's Outliner row — not a click in the 3D view —
+   is the grab target.
+2. Click the **⛶** icon next to the room's name. It enumerates every real member for that room right then
+   (logged to the status line and the console) and arms the drag; a room with nothing honest to move (zero
+   members across every leg) refuses the grab instead of dragging an empty box.
+3. Drag anywhere on the canvas — it's the **ground-plane delta** that moves the room, not where inside the
+   room you happened to click.
+4. Release to commit. Everything the grab found moves together, as one signed operation with one-step undo
+   (`Esc` cancels an armed grab before you release).
+
+Membership is never a proximity guess: an element joins the move only because a real recovered relationship
+says so —
+
+- every element with a real `rel_contained_in_space` edge into the room,
+- a bounding wall, *if* the building's extracted schema carries a real space-boundary edge for it (most
+  don't yet — a room's walls stay put rather than being swept in by nearness),
+- a freestanding, non-structural item with no containment edge whose real footprint centre falls inside the
+  room (tagged `derived-footprint` in the op, so it's always visible which leg brought each element in), and
+- any door/window hosted by a wall that's already a member, carried over the same one-hop host→filling ride
+  Grid-Stretch uses.
+
+Because the whole set shares one rigid `(dx,dy)` — never a per-member recompute — the room's contents stay in
+the same relative arrangement, and the BOM needs zero work to follow: no containment edge changes, so the
+same tree replay is valid before and after. The move is in-plane only (a `dz` is refused outright — moving a
+room to a different storey is a bigger, separate decision this tool doesn't make) and it snaps back to
+nothing on an empty room (nothing honest to move). Like every other geometry edit, a room move still runs
+through the modeller's conformity gate — if the delta pushes a member into another element's real footprint,
+the status line names the clash the same way Move or Grid-Stretch would.
+
+Verified on SampleHouse's "1 - Living room" (`witness_room_move.js`, 10/10): 16 real members — 12 via
+`rel_contained_in_space`, 4 via `derived-footprint` — move as one `GEOM_ROOM_MOVE`, every member's rendered
+centre landing on the committed delta to within float32 precision (max error 2.4×10⁻⁷ m). Round-tripping
+`(dx,dy)` then `(−dx,−dy)` (`witness_room_move_roundtrip.js`, 7/7) returns all 16 members to their exact
+starting position — 0.000 mm residual. The Outliner grab-to-drag UI above is verified the same way, with real
+pointer input instead of a direct engine call: `witness_e2e_roommove_ui.js` (9/9, real Duplex) clicks a real
+⛶ glyph, drags a real mouse gesture across the canvas, and asserts the committed op's member list is
+byte-identical to what the grab enumerated, the moved elements' rendered centres shifted by exactly the
+committed delta, and one scrub undoes it exactly.
+
+![Room Move armed on Duplex — the Outliner's ⛶ glyph next to A101 grabbed 4 real members; the status line tracks the live ground-plane delta as the drag continues](img/modeller/room-move.png)
+
+### Item Drag
+*Commits `GEOM_MOVE {parent,dx,dy,dz}`.*
+
+A free single-item drag for one non-structural piece — a fixture, fitting, or loose furnishing — placed by
+eye onto a real surface rather than nudged axis-by-axis. It's a dedicated tool (its own **Drag Item** toolbar
+button), not the Move gizmo from the [Transform](#move) section above — Move is an ungated axis drag for
+anything already selected; Item Drag is specifically gated by real product data and a real drop surface, so
+it stays a separate button rather than silently changing what Move already does.
+
+1. Tap **Drag Item**.
+2. Click a fixture or fitting in the 3D view to grab it. Two refusals happen before anything can move, and
+   neither ever falls back to a guess:
+   - **No real dimensions, no lift.** The drag session looks up the item's real product dimensions before it
+     starts; with nothing to match, it throws `WalkerGapError`, refuses the grab, and the item never leaves
+     its spot — never a placeholder box standing in for a real size.
+   - **Not a valid subject.** A wall, or an element already hosting a door or window, is refused as a drag
+     *subject* outright — those move via Grid-Stretch or Room Move instead.
+3. Drag across the canvas. The preview tints **green** where the drop would be valid, **red** where it
+   wouldn't — a wall-mounted item must find an actual wall face under the cursor (a floor item an actual
+   slab, a ceiling item an actual soffit), and a drop that collides with another element's real footprint is
+   refused the same way, with every refusal reporting what it hit.
+4. Release. A valid drop commits one ordinary `GEOM_MOVE` — item-drag introduces no new op type, so it plays
+   back through the exact same fold and undo path as the Move gizmo. An invalid release snaps the item
+   straight back to its pre-drag position, uncommitted (`Esc` cancels an armed grab before you release).
+
+On today's building data, every already-placed fixture in the log honestly refuses at step 2 — the product
+identity a walker used to place it lives only in a transient value at commit time, never written to the
+signed log, so there's nothing left afterward for a generic pick to match against. That's not a UI gap, it's
+the same refuse-don't-fabricate rule the rest of the modeller runs on: a future catalog-drop flow that still
+holds the product id at drag time reaches the real match/commit path shown below; a plain pick on existing
+content reaches the refusal path, cleanly, every time.
+
+`witness_item_drag_gate.js` (9/9, real SampleHouse data) proves both refusals live at the engine level: a
+session with no product hint throws `WalkerGapError` and adds zero rows to the op-log; a matched item (a real
+sink, 0.5×0.45×0.2 m from `ad_product_dim`) that collides with a neighbour is refused with the colliding fids
+named and the log length unchanged; the same item dropped against a real wall face commits exactly one
+`GEOM_MOVE` with a `snappedPos` read off that wall's own geometry. `witness_e2e_itemdrag_ui.js` (8/8, real
+Duplex) proves the UI above end-to-end with real pointer input: a real **Drag Item** arm + real canvas pick
+on existing content refuses cleanly (zero ops); a held product hint reaches a real wall face found by
+scanning with the tool's own validity check and commits one `GEOM_MOVE`, the dragged mesh's rendered centre
+landing on the exact committed delta; the same grab dropped onto another element's real box refuses the
+commit and leaves the mesh exactly where it started.
+
+![Item Drag armed on Duplex — a real fixture grabbed and dragged to a wall face; the status line reads "valid drop — release to commit" as the live preview tints green](img/modeller/item-drag.png)
 
 ---
 

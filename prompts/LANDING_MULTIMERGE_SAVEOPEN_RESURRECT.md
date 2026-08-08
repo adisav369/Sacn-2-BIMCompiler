@@ -95,6 +95,7 @@ re-derive.
 ### §SM-2 The ONLY blocker
 `scene.js:758`, inside `A._openDbBytes` (declared `scene.js:747`) — **line numbers verified against
 `origin/main` 2026-07-30; they drift every week, so GREP THE SYMBOL, never trust the number**:
+`scene.js:723`, inside `A._openDbBytes` (declared `scene.js:712`):
 ```js
 location.assign('viewer.html?db=' + encodeURIComponent(dbUrl) + '&lib=' + … + '&ghost=1');
 ```
@@ -108,6 +109,9 @@ opening a second file resets the canvas — not a data limit, not a memory limit
    (hidden `<input type=file>` fallback). ⚠ **CORRECTED 2026-07-30 by the implementing session: 770 is
    NOT drag-drop — there is no drag-drop caller of `_openDbBytes`. Both sites live inside
    `A.openModelDb` (`scene.js:761`).**
+1. In `A._openDbBytes` (`scene.js:712`): when a building is **already open**, show the prompt instead
+   of navigating. Reuse `showMergeModal()` from `archive/gallery.html:1045` — port it, don't rewrite it.
+   Note there are **two** call sites to cover — `scene.js:735` (drag-drop) and `:744` (file picker).
 2. **Replace** → today's `location.assign` path, unchanged.
 3. **Merge** → do exactly what City mode does:
    - register the new DB: `A.cityBuildingDbs[newName] = { db, libDb }` (or the same shape under a
@@ -120,6 +124,7 @@ opening a second file resets the canvas — not a data limit, not a memory limit
    existing scene instead of the first file of a batch.
 5. **Open source IFC in the same door:** the picker currently accepts `.db,.sqlite` only
    (`scene.js:774` `input.accept = '.db,.sqlite'`). Widen to `.ifc`, route to the existing
+   (`scene.js:739` `input.accept = '.db,.sqlite'`). Widen to `.ifc`, route to the existing
    `A.importMultiIFC` (`import.js:267`), then feed the produced DB into step 3. No new import path.
 
 ### §SM-4 Witness (name the issue, per project rule)

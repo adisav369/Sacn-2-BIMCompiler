@@ -419,6 +419,36 @@ To work with them:
 
 ![The same panel after authoring — the yellow flight tube now bent through the model with draggable band handles along it, and the list grown to settle, four added sticks (each labelled with how far along the walk it sits and carrying a × to remove it) and stop, above the same Whole path block and the Preview / Cancel / Save this path / OK row](img/viewer/filmmaker-path-editor.png)
 
+#### Walk finger mode — walk into the shot, plant the stick where you stand
+
+Dropping sticks by clicking the tube works from the outside looking in. **Walk finger mode** does the
+same edit from the inside: you walk through the building in first person and plant the stick exactly
+where you are standing, aimed exactly where you are looking.
+
+1. Press the **eye** on the Cinema path panel's title row — the **POV frame** opens bottom-left,
+   showing the film's own camera view.
+2. Press the **shoes** (footprints) icon on the POV frame's header. You are now standing inside the
+   film, at the start of its walkable stretch, at walking height. (Optional shortcut: drag the
+   timeline bar to a point along the walk first, and the shoes start you there instead.)
+3. **Walk with the usual trackpad moves, all shown in the POV frame:** move your finger to look
+   around; pinch out or scroll to glide toward what you are facing (hold **Shift** to glide faster);
+   the **W A S D** keys do the same moving from the keyboard. The rest of the screen freezes while
+   you walk — that is deliberate, it keeps the walk smooth on large buildings.
+4. **Enter or Spacebar plants the stick** — where you stand becomes its position, where you look
+   becomes its aim — and drops you straight back into the editor to review it. A **click** plants
+   the stick and keeps you walking, for laying several in one pass. **Esc** leaves without planting.
+   Pressing the shoes again continues from the exact spot you left.
+
+Proof from a real session on the Terminal building: the user walked into the POV, hit Spacebar, and
+**stick @ 13%** appeared — the new row highlighted in the panel and its blue middle dot on the path
+in canvas right beside it. One keypress, one stick, position and aim both set:
+
+![Walk finger mode's result the moment Spacebar was hit — the Cinema path panel now lists a highlighted "stick @ 13%" row with its pinned aim coordinates, the same stick's blue middle dot visible on the yellow flight tube in canvas just left of the panel, the POV frame bottom-left still showing the walker's own view, and the Time Machine's construction timeline still running top-left](img/viewer/filmmaker-walk-stick13.png)
+
+Two small behaviours keep this honest: planting re-shapes the flight around the new stick immediately
+(the brief pause is the film re-deriving), and clicking again at the stick you just planted does
+**not** stack a duplicate — the editor reads it as "I'm done here" and returns you to review.
+
 #### Whole path — the controls that act on the entire film
 
 - **reach %** — how far a drag on the tube carries along the walk. Drag the tube *between* the bands and
