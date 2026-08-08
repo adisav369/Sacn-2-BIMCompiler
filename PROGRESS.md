@@ -1,10 +1,17 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ File is 189 lines, over budget — this session archived one fully-resolved entry (2026-08-02
-> narrative → one-liners), the rest is still-open work owned by other sessions/lanes and wasn't
-> touched to avoid misjudging context this session doesn't own. Next session: a real archiving pass
-> still owed on the `## OPEN` section's oldest items once each is confirmed still-open or DONE.
+> ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
+> needs a still-open-vs-DONE check by a session that owns its context before compressing).
+
+## Session 2026-08-07→08 — CPE "walk finger mode" LANE CLOSED, 6 PRs shipped+merged, viewer v971 LIVE
+Walk-in-POV stick authoring end-to-end: bim-ootb #1243 (walk v1) → #1246 (shoes on B frame) →
+#1248 (walk-stretch spawn + trackpad glide + Enter/Space plant) → #1249 (scrub accelerator) →
+#1234 (DPR-double, had sat unmerged a day) → #1258 (duplicate-stick guard, same-spot click =
+auto-Esc). User-validated live on Terminal 48k ("no lag", replan 118ms). User guide "Walk finger
+mode" section + stick@13% screenshot deployed (guard PASS, canaries 200). Full context + open
+threads: **`prompts/CPE_POV_WALK_PATHING.md` 🏁 top block** (aim-pin click still disabled, DLOD
+flip-storm lever untouched, gamepad/XR lanes = other sessions').
 
 ## Session 2026-08-07 — 4D engine upgrade lane, 4 PRs SHIPPED+MERGED (bim-ootb #1236/#1237/#1239/#1240)
 §DEQ_V1 (zero floating all classes, bearing+hang) · §GANTT_SINGLE_LOAD (cold open one pass) ·

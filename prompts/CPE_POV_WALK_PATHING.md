@@ -2,6 +2,35 @@
 
 # CPE — Movie Pathing by POV Walk (next stage, one-liner)
 
+## 🏁 LANE CLOSED 2026-08-08 — everything below is SHIPPED AND LIVE (viewer v971, docs deployed)
+**Read this block first; the rest of the file is the how-we-got-here record.** Feature: "walk finger
+mode" (user's name). Shipped chain, all merged to bim-ootb main and serving on github.io:
+- PR #1243 §CPE_WALK_EDIT_V1 (walk mount/snap/freeze/TM-lock) → #1246 §CPE_WALK_SHOES_BTN (shoes
+  icon on B's frame header, eye-off guard) → #1248 §CPE_WALK_SPAWN/GLIDE/ENTER_LOCK (walk-stretch
+  spawn, trackpad pinch/scroll glide, Enter/Space plant+release) → #1249 §CPE_WALK_SCRUB_SPAWN
+  (scrub = optional accelerator) → #1234 §CPE_VF_DPR_DOUBLE finally landed (had sat OPEN a day;
+  125% window re-exposed it) → #1258 §CPE_WALK_SNAP_GUARD (duplicate-stick guard, same-spot
+  re-click = auto-Esc to review — user's own suggestion).
+- **User-validated live on Terminal (48k, deployed site, real GPU): "all the way good news, walk in
+  pov snap stick lands works with no lag"** — their log: spawn tn=0.151 ground level, glide moving,
+  Space plant s=0.133 with replanMs=118, §CPE_WALK_ENTER_LOCK key=space, clean unmount.
+- **User guide section live**: BIMUserGuide "Walk finger mode" (Cinema chapter) with the user's
+  stick@13% Terminal screenshot — red1oon.github.io/BIMCompiler/BIMUserGuide/.
+- Witness coverage: witness_cpe_walk_edit.js 24 gates (Duplex); witness_cpe_walk_hallway.js
+  (HHS 8/8 · Clinic 8/8 · Hospital 8/8, committed); witness_cpe_vf_dpr_engine.js 4/4.
+
+**Open threads a future session could pursue (none blocking):**
+1. §CPE_AIM_PIN's CLICK trigger still disabled (§CPE_AIM_PIN_DISABLED in cinema_path_editor.js) —
+   walk-snap writes lookAt fine; the canvas click-to-pin path awaits proper root-cause (one-line
+   revert site). CINEMA_PATH_EDITOR.md owns it.
+2. DLOD flip-storm lever (§CPE_PANEL_PERF item 3, flips_mean=2671 on scrub jumps) — known landmine,
+   smallest lever, deliberately untouched.
+3. Sibling lanes owned by OTHER sessions: walk gamepad (witness_cpe_walk_gamepad.js,
+   project_cpe_walk_gamepad_lane.md — check PR state before touching) and XR stub
+   (witness_cpe_xr_stub.js, §CPE_XR_MODULE_LOADED in the user's live log).
+4. Multi-stick-per-walk flow relies on click (plant-and-continue); if users mostly Enter/Space-exit
+   per stick, the click path's discoverability is untested with real hands.
+
 ## ✅ §CPE_WALK_EDIT_V1 SHIPPED (2026-08-07) — PR bim-ootb#1243 MERGED
 Sonnet agent implementation, watchdog-verified from the witness log (not the report): 28 gates
 (31 PASS lines, Duplex + SampleHouse) — listener isolation proven by dispatched events
