@@ -27,14 +27,43 @@ The shift is real. These are the numbers the sceptics should weigh:
 
 | Metric | Figure | Source |
 |--------|--------|--------|
-| Developers using or planning to use AI tools | 76% | Stack Overflow Developer Survey 2024 |
+| Developers using or planning to use AI tools | 76% (2024) → 84% (2025) | Stack Overflow Developer Survey 2024 / 2025 |
 | GitHub Copilot paid users | 2M+ | GitHub, late 2024 |
 | Code suggestions accepted (Copilot) | ~30% | GitHub Blog, 2023-2024 |
 | Developer task completion speed with AI | 55% faster | GitHub/Microsoft Research, 2023 |
 | AI-generated code share in enabled repos | ~46% | GitHub Octoverse 2024 |
-| Code churn increase with AI assistants | +39% | GitClear "Code Quality in 2024" |
+| Code churn (new code revised within 2 weeks) | 3.1% (2020) → 5.7% (2024) → 7.1% (2025) | GitClear, 211M-line study, 2025-2026 reports |
 
-That last number is the one that matters. **39% more churn** means AI-generated code gets written and then rewritten. The code drifts. The architecture erodes. This is the central risk — and the central problem this project solved.
+That churn trajectory is the one that matters — and it kept climbing after this paper first cited it. Adoption went up; stability did not follow. More usage produced more code, written faster, more of which got rewritten within two weeks. This is the central risk — and the central problem this project solved.
+
+---
+
+## 2026: The Industry Starts Lamenting "Vibe Slop"
+
+Sixteen months after Karpathy's tweet, the term earned an unflattering sequel. In a May 2026 *Wall Street Journal* interview, **Mario Zechner** — an engineer behind Pi, OpenClaw's foundational engine — put it bluntly:
+
+> *"You see infrastructure crumbling, and software is now much, much more buggy than before. We can keep playing this game for a few more months, maybe even years, but eventually it's going to come back to bite us."*
+
+His collaborator **Armin Ronacher** coined the harsher phrase: "vibe slop at inference speeds." Even Karpathy walked part of it back — building his `nanochat` model, he found AI tools "just didn't work well enough at all and net unhelpful," and wrote it by hand instead.
+
+The trend data backs the lament:
+
+| Metric | Figure | Source |
+|--------|--------|--------|
+| Developer trust in AI code accuracy | 40% (2024) → 29% (2025) | Stack Overflow Developer Survey 2025 |
+| Developers with a favorable opinion of AI tools | 72% (2024) → 60% (2025) | Stack Overflow Developer Survey 2025 |
+| Cite "almost right, but not quite" as their #1 AI frustration | 45% | Stack Overflow Developer Survey 2025 |
+| Spend more time fixing AI output than writing it themselves | 66% | Stack Overflow Developer Survey 2025 |
+| Copy-pasted code, share of all lines | 8.3% (2020) → 12.3% (2024) | GitClear AI Copilot Code Quality 2025 |
+| Refactored ("moved") code, share of all lines | 24.1% (2020) → 9.5% (2024) | GitClear AI Copilot Code Quality 2025 |
+| AI-generated code samples failing security tests | 45% overall, 72% for Java | Veracode, 100+ LLMs / 80 coding tasks, 2025-2026 |
+| Enterprise tech leaders seeing more production issues from AI code | 81% | CloudBees State of Code Abundance 2026 |
+| ...same leaders still confident shipping it anyway | 92% | CloudBees State of Code Abundance 2026 |
+| Fortune 50 monthly AI-code security findings, Dec 2024 → Jun 2025 | ~1,000 → 10,000+ | Apiiro, via Cloud Security Alliance research note 2026 |
+
+**A concrete case:** in March 2026, Amazon suffered two outages within one week, traced in part to AI-assisted code changes — the first cost 120,000 lost orders and 1.6 million website errors, the second 6.3 million lost orders (Business Insider, via CloudBees).
+
+**This project's answer to the lament is not "the sceptics are wrong."** They're right, and the numbers above are worse than when this paper was first written. The disagreement is about the fix. The industry-wide pattern is AI code shipped *without* an independent, deterministic check — trust the vibes, ship, discover the crumbling infrastructure later. This project inverts that: [6 mathematical gates](TestArchitecture.md) that don't care about vibes, where G3 alone can fail a build over one wrong coordinate in 48,428 elements. The backlash is evidence the industry needs more projects built this way, not fewer.
 
 ---
 
@@ -139,7 +168,7 @@ The concerns are valid. This project has lived through all of them:
 
 **"AI code drifts from architecture."** Yes. Relentlessly. The AI will invent shortcuts, merge concerns that should be separate, and silently change assumptions. [The Drift](LAST_MILE_PROBLEM.md) exists because this happened dozens of times. The solution is not to stop using AI — it's to build gates that catch the drift before it ships.
 
-**"AI code has more bugs."** The GitClear study found 39% more code churn in AI-assisted codebases. This project's answer: 6 gates, 408 tests, 35 reference buildings. The bug rate per shipped line is lower than most hand-written projects because the verification is more rigorous, not because the AI writes better code.
+**"AI code has more bugs."** True, and getting worse, not better — GitClear's code churn climbed from a 3.1% pre-AI baseline to 7.1% by 2025, and Veracode found 45% of AI-generated samples fail security tests outright (see [2026: The Industry Starts Lamenting "Vibe Slop"](#2026-the-industry-starts-lamenting-vibe-slop) above). This project's answer: 6 gates, 408 tests, 35 reference buildings. The bug rate per shipped line is lower than most hand-written projects because the verification is more rigorous, not because the AI writes better code.
 
 **"You don't understand your own codebase."** Partially true. The architect understands the *architecture* — what each module does, how data flows, what correct output looks like. He does not memorise every Java method signature. This is a feature, not a bug: the spec is the source of truth, not the code. If the code drifts from spec, the code is wrong — regardless of what it says internally.
 
