@@ -2897,3 +2897,117 @@ peer's list which didn't name it). Did not start items 4–5 (extractor root-fix
 — per the checklist's own gating ("only after 1–3 are live and stable") and given three concurrent
 sessions were actively still finding new affected surfaces (Clinic, LTU_AHouse, Modeller) during this
 same window, the lane was not yet stable enough to start the bigger rewrite.
+
+## ▶ NEXT SESSION — PLANNED, NOT STARTED (2026-08-10): promotion-classifier consolidation + Modeller compose port
+**Read this whole section before touching code — it corrects itself once already, on purpose, left
+in so the correction isn't lost.** Fully researched and planned this session (two Explore passes + one
+Plan pass + direct code verification), written to `/home/red1/.claude/plans/replicated-crunching-flame.md`
+during the session, copied here per user instruction ("your plan has to be saved in the prompt... we do
+it in a brand new session") since that plans-directory file is session-scoped and won't survive. Nothing
+below has been implemented — no worktree opened, no code written, no PR opened. Treat this as a ready
+plan, not a done item.
+
+**Origin**: user asked for a "big refactor" pass, refined to: find a selective, high-level, minimal
+interface pattern that's amiss, specifically re: Time Machine's/Movie Maker's dependency on the 4D
+generator not leaving elements floating or violating construction practice.
+
+**⚠ Self-correction, load-bearing — read before assuming the headline claim:** research first surfaced
+`time_machine.js` has two copies of the roof/load-path promotion classifier
+(`_buildXrayElements()` lines 3468-3507, `injectGantt()` lines 3882-3974) and an agent claimed they'd
+diverged 16 edges on Terminal — i.e. that this duplication was the root cause of `§TM_GEO_ORDER_CYCLES`
+above. **Direct verification (diffed both code blocks by hand, ran both in a live sandboxed
+Node vm against real `Terminal_extracted.db`) found this claim FALSE**: the two copies already produce
+byte-identical `.seq` classification output (only bookkeeping fields differ — `el.phase`,
+debug counters — neither feeds the DAG). The earlier "16-edge divergence" was actually a comparison
+against `schedule_author.js`, a third file with no promotion logic at all, not evidence of drift
+between these two. **So: the consolidation below is real DRY value + protects a genuine correctness
+consumer (see Part A), but will NOT move `cycles=`/`floating=` on Terminal.** The actual
+`§TM_GEO_ORDER_CYCLES` bug is still exactly where the entry above says it is (schedule_gate.js's DAG,
+the named 3-cycle class), untouched by this plan, still open. User confirmed proceeding on this
+corrected, more modest scope (consolidation + a new reproduction witness, not chasing the cycle bug
+itself) — don't re-inflate the claim back to "fixes the cycles bug" on a resume.
+
+### Part A — `viewer/time_machine.js`: extract `_promoteRoofLoadPath(elements)`
+1. New function, placed immediately before `_buildXrayElements()` (current line ~3387). Body = the
+   fuller/better-commented `injectGantt()` copy (keeps the `§4D_WALLS_BEFORE_ROOF` doc comments).
+   Signature: single `elements` array param (both copies are order-independent two-phase passes).
+   Returns `{ total, seedCount, m4Count }` (renamed `loadPathOverrides`/`lpSeed.length`/`m4Promoted`)
+   so each caller keeps its own log line's exact wording — grep-safety for `§GANTT_OVERRIDE`.
+2. `_buildXrayElements()`: replace lines 3468-3506 with `var _lp = _promoteRoofLoadPath(elements);`
+   before its `return elements;`. Fix the now-stale header comment ("copied, not shared").
+3. `injectGantt()`: replace lines 3882-3974 with the call + the existing `§GANTT_OVERRIDE`
+   console.log rebuilt from the returned fields (reproduce the exact current string).
+4. Confirmed via full-file grep: `loadPathWalls`/`lpSlabs`/`lpSeed`/`loadPathOverrides`/`m4Promoted`
+   referenced nowhere else — self-contained, no other call sites to update.
+5. **Real correctness stake, not just cosmetics**: `verifyGanttIntegrity()` (line ~3612, the schedule
+   LOCK gate) calls `_buildXrayElements()` directly — a future silent divergence here would have been
+   a correctness bug blocking/passing a lock incorrectly, not just an x-ray rendering glitch. That's
+   the actual reason this is worth doing even though it doesn't fix the cycles number.
+6. Expected behavior change: **none**. Frame the PR as a pure refactor.
+
+**New witness** (the real deliverable — this reproduction doesn't exist anywhere today):
+`tests/witness_tm_geo_order_cycles.js`, cloned from `viewer/tests/witness_gantt_lock_integrity.js`'s
+`sliceFn()`+`vm.createContext`+`sql-wasm.js` sandbox pattern. Slice `_promoteRoofLoadPath` +
+`_buildXrayElements`, load `Terminal_extracted.db` (`BLD_DIR` env, default `~/bim-ootb/buildings`), run
+through `ScheduleGate.computeSchedule()`/`auditFloating()` (canonical, unchanged). **Assert `cycles=`/
+`floating=` are IDENTICAL before vs after the refactor** — do NOT assert they drop toward 0; a live
+sandboxed run during planning got `cycles=37927, floating=45` on Terminal today (already differs from
+this doc's earlier recorded `24353`/`33`, cause unexplained — log as `§TM_GEO_ORDER_CYCLES_REPRO`,
+flag the drift, don't silently overwrite the old number). Note the witness's own approximation caveat
+(no `resource`/`installSecs` fields — doesn't affect cycle count, which is structural, but name it).
+Command: `BLD_DIR=~/bim-ootb/buildings node tests/witness_tm_geo_order_cycles.js`, run on branch base
+and after, diff the `§TM_GEO_ORDER_CYCLES_REPRO` line.
+
+### Part B — Modeller ghost-compose port (separate PR, separate app)
+Picked up mid-session as the "low hanging fruit, push further without impact" from this doc's own
+Modeller sub-item above. Both pieces confirmed portable by direct code reading against fresh
+`origin/main` (not assumed):
+
+- **B1.** Port `composeGhostsFromAggregates(db)` verbatim from `viewer/scene.js:1346-1435` into
+  `modeller/str_walker_outliner.js` (check for an existing shared-util convention before adding a new
+  file). Zero Viewer-global references inside the body (only `db.run/exec/prepare`) — pure function of
+  `db`. Schema spot-checked compatible: Modeller's own `cross_edges.js`/`bom_tree.js` already query
+  `element_transforms`/`rel_aggregates`/`elements_meta` with identical column names.
+- **B2.** Wire the call into `_openBuffer(buf, name)` — `str_walker_outliner.js:133-195`, right after
+  `new window.SQL.Database(...)` (line 136), BEFORE `swbInit`/`BOMTreeOutliner.loadFromDb`/
+  `CrossEdges.deriveAll` (lines 161-177). Confirmed this is Modeller's ONE true funnel — all three real
+  open-a-building paths (resident fetch, local-file, IFC-import) route through it.
+- **B3.** Port `§PATCH_CHUNK` statement-aware chunking (accumulate lines to a `;`-terminated statement,
+  batch 500/`pdb.run()` call) into `_applyPendingPatch` (`str_walker_outliner.js:648-688`). **Not a
+  blind copy** — Modeller's version already has its own try/catch (a "duplicate column name"
+  statement-by-statement recovery for `§ANCHOR`/void-anchor hardening) wrapping the same `pdb.run(sql)`
+  call. Merge: chunk first; a chunk that throws "duplicate column name" falls back to THAT chunk's own
+  statement-by-statement recovery, not the whole patch's.
+- **B4.** Land B3 before/with B1-B2 — a fresh Modeller `rel_aggregates` patch for any of the 7 affected
+  DBs is exactly the multi-thousand-statement patch that triggers the un-chunked crash.
+- **Verification**: extend `tests/witness_nogeo_compose.js` (already proven against the real bundled
+  `sql-wasm.wasm`) to Modeller's DB-open path. Assert ghosts→0 on: `Hospital_ARC.db` 232,
+  `SampleCastle_ARC.db` 117 (⚠ a THIRD element-class shape — `IfcWallStandardCase`/`IfcCovering`, not
+  curtain-wall/stair — confirm composition works on this shape too, don't assume),
+  `Ifc4_Revit_extracted.db` 49, `Clinic_ARC.db` 34, `HHS_ARC.db` 33, `Garage_ARC.db` 19,
+  `Duplex_ARC.db` 3. Regression: `JKR_ARC.db`/`Terminal_ARC.db`/`Duplex_extracted.db` stay at 0.
+- **Explicitly out of scope**: items 4-5's extractor root-fix (`extractIFCtoDB.py`, bigger/riskier,
+  shared Python pipeline, doc's own gate reserves it for later) and the LTU_AHouse canonical-DB
+  question (genuinely the user's call — see below, don't decide it here).
+
+### Git/deploy mechanics
+Two separate `/tmp/wt-*` worktrees off fresh `origin/main` (`~/bim-ootb` is edit-blocked by a
+PreToolUse hook — `git worktree list` first, several already exist from concurrent sessions, don't
+collide). Branches: `fix/4d-roof-promotion-consolidate` (A), `feat/modeller-nogeo-compose-port` (B).
+Two separate PRs (different apps, no shared code, keep independently revertable) — implement → witness
+before/after → commit with numeric proof → PR → `gh pr merge <n> --auto --squash` (push permission ON
+per CLAUDE.md) → verify merged → prune worktree. Part A's PR description leads with the self-correction
+above so a reviewer doesn't expect a cycles improvement. Part B's names the two items still open.
+
+### Still open, unchanged by this plan, needs the user (not this session)
+**LTU_AHouse canonical-DB question** (named above): `_meta`/`_geo` (337 ghosts, live-served) vs
+`_extracted` (0 ghosts, none of the 337 GUIDs even exist in it — different extraction vintages, not a
+lossy split) — re-extract the split pair, or retire one? Nobody can EXTRACT this answer from the data;
+it's a real decision. Surface it at the start of whichever session picks this up, don't silently pick one.
+
+### Critical files
+Part A: `viewer/time_machine.js` (3380-3387, 3468-3507, 3612-3638, 3882-3974), `viewer/schedule_gate.js`
+(read-only reference), `viewer/tests/witness_gantt_lock_integrity.js` (pattern to clone),
+`tests/witness_geometric_support_order.js` (existing approximate precedent, not replaced).
+Part B: `viewer/scene.js` (1346-1435, read-only source), `modeller/str_walker_outliner.js` (133-195,
+648-688), `tests/witness_nogeo_compose.js` (extend).

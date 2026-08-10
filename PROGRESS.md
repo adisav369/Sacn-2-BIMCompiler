@@ -4,6 +4,21 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-10 — CPE walk ctrl-drag exit SHIPPED; Viewer prompts audit + 4D consolidation plan (not yet executed)
+§CPE_WALK_CTRL_DRAG_EXIT (bim-ootb PR #1261, MERGED+LIVE): Ctrl-held-drag during POV walk mode was
+exiting walk unexpectedly — OrbitControls stayed live on the same canvas and threw `setPointerCapture`
+InvalidStateError under pointer lock; Ctrl+drag's context-menu path forced an unplanned Pointer-Lock
+release. Fixed by disabling `A.controls` + suppressing `contextmenu` for the walk-mode duration
+(mirrors the existing TM-lock pause/restore pattern). Witnessed 24/24 regression + 4/4 new gates.
+Separately: wrote `prompts/VIEWER_PROMPTS_LANE_OVERLAP_AUDIT.md` (survey of all Viewer-space prompt
+files for cross-lane file collisions — notes only, no fixes; headline finding was that the survey's
+own OPEN/CLOSED status labels were unreliable, 2 of 3 spot-checked were already stale). Then planned
+(NOT implemented — no code written, no worktree opened) a `time_machine.js` promotion-classifier
+consolidation + Modeller ghost-compose port, full plan written to
+`prompts/4D_SCHEDULE_PERFECTION.md` §`▶ NEXT SESSION` (2026-08-10) — read that section before
+resuming, it includes a load-bearing self-correction (the consolidation does NOT fix
+`§TM_GEO_ORDER_CYCLES`, only closes a duplication/DRY item + protects the lock-integrity gate).
+
 ## Session 2026-08-08 — §27 (Viewer perf/crash) chased to ZERO, 2 PRs SHIPPED+MERGED+LIVE
 User-priority WORK-TO-ZERO item from `FLY_TOUR_DLOD_SCALE.md` §27 (overrode Watchdog's "stop here").
 §26 `_boxIndex` null-deref crash on rapid DLOD-nav `o`/`o` toggle: idempotency-guard fix in

@@ -31,6 +31,89 @@ mode" (user's name). Shipped chain, all merged to bim-ootb main and serving on g
 4. Multi-stick-per-walk flow relies on click (plant-and-continue); if users mostly Enter/Space-exit
    per stick, the click path's discoverability is untested with real hands.
 
+## ✅ REGRESSION FOUND + FIXED (2026-08-08) — §CPE_WALK_CTRL_DRAG_EXIT
+**User report on live v971 (Hospital, real GPU). Diagnosed read-only from a bim-compiler session
+(per [[feedback_diagnose_in_session_fix_in_other_session]]), then the user said "fix it, I need to
+demo it" — implemented in `/tmp/wt-cpe-walk-ctrldrag` (worktree, branch `fix/cpe-walk-ctrldrag-exit`
+off `origin/main`@`618943e`), NOT in the shared `~/bim-ootb` checkout (another session has
+uncommitted staged work there right now — `cinema_path_editor.js`/`main.js`/`rates.js` etc,
+confirmed via `git status`).**
+
+User's own words: *"during walk mode, user is trying to ctl hold drag to move the POV scene
+laterally ie moving upstairs etc. IT should not ESC out of walk mode and allow full normal
+navigation in it."* Full console dump (not just the last 5 lines the in-app bug reporter captures)
+showed the real trigger, mis-read on the first pass from the truncated report:
+
+```
+[S274] §ERR_GLOBAL Uncaught InvalidStateError: Failed to execute 'setPointerCapture' on 'Element'
+  at OrbitControls.onPointerDown (OrbitControls.module.js:1550)
+```
+
+`git show origin/main` (read-only, no working-tree edits) traced both bugs to source:
+
+1. **Bug A — OrbitControls never disabled during walk.** `A.controls` (`scene.js:143`, the main
+   `THREE.OrbitControls`, `mouseButtons.LEFT=ROTATE`) sits on the SAME `canvas` `cpe_walk.js` drives,
+   and stays `enabled=true` the whole time. `cpe_walk.js`'s own mount only unwires the stick-editor's
+   handlers (`_wire`/`_unwire`) — it never touches `A.controls.enabled`. Every click during walk
+   reaches OrbitControls' live `pointerdown` listener, which calls `setPointerCapture` — forbidden by
+   spec while the pointer is locked (`InvalidStateError`, `OrbitControls.module.js:1543`).
+2. **Bug B — the likely ESC-out mechanism, matches the user's exact repro (best-evidence hypothesis,
+   NOT 100% certain — see caveat below).** OrbitControls' own mapping (`OrbitControls.module.js:1679`)
+   treats **Ctrl-held + LEFT-drag as PAN** — the same lateral/vertical camera-pan gesture the user is
+   reaching for from normal-mode muscle memory (`screenSpacePanning=true`, `panSpeed=1.5`,
+   `scene.js:143-160` — this IS how "moving upstairs" works outside walk mode). Ctrl+Left-Click is
+   also a recognised alternate context-menu trigger in some browser/platform combos. IF that fires
+   here, a `contextmenu` request forces the browser to auto-release any active Pointer Lock — that
+   release fires `pointerlockchange`, which `cpe_walk.js:204` `_onLockChange` reads as the "user
+   pressed Esc" exit gesture and calls `stop()`. Walk mode ends, main nav (OrbitControls) resumes —
+   exactly the "slips out... allows full normal navigation" the user described.
+   **Caveat, found while witnessing the fix (not before — this correction belongs on the record):**
+   OrbitControls ALREADY carries its own `onContextMenu` (`OrbitControls.module.js:1927`), gated on
+   `this.enabled`, unconditional `preventDefault()` whenever enabled — and it was enabled the whole
+   time pre-fix (Bug A). So if Ctrl+Click really does raise a `contextmenu` DOM event here, that
+   handler should already have suppressed it even before any fix. Genuine browser-level Pointer-Lock
+   auto-release cannot be forced by synthetic/untrusted events, so this exact mechanism could not be
+   directly witnessed headless — treat Bug B as the best available explanation, not a proven one.
+
+**Fix shipped, same file (`cpe_walk.js`), same mount/stop seam as the existing §CPE_WALK_TM_LOCK
+pause/restore pattern — 43 lines, no other file touched (`git diff --stat`):**
+- Mount: `A.controls.enabled = false` via new `_navLock()`/`_navUnlock()` pair (restores prior value
+  on `stop()`) — stops OrbitControls receiving `pointerdown` at all during walk, closing Bug A
+  outright. New log lines `§CPE_WALK_NAV_LOCK OrbitControls disabled`/`restored`.
+- Mount: `canvas.addEventListener('contextmenu', _onContextMenu, true)` calling `e.preventDefault()`
+  while `_active`, removed on `stop()` — belt-and-suspenders against Bug B's exact trigger AND against
+  the side-effect of disabling `A.controls` in the fix above (which also disables OrbitControls' own
+  enabled-gated `contextmenu` suppression during walk — this handler covers that gap either way).
+
+**Witnessed (`witness_cpe_walk_edit.js` regression + new `witness_cpe_walk_ctrldrag_fix.js`, both in
+the worktree, Duplex, headless swiftshader):**
+- Regression: **24/24 PASS**, unchanged — the new NAV_LOCK log lines appear in the existing mount/
+  unmount gates, no existing gate broke.
+- New fix-specific witness, **4/4 PASS**: `A.controls.enabled` false during walk / true before+after
+  (G-NAVLOCK-0/ON/OFF); a real `contextmenu` dispatched on the canvas WHILE walking has its default
+  prevented AND walk mode stays active with no `LOCK_LOST` logged (G-CTXMENU-BLOCK).
+- **What this proves vs. doesn't**: proves Bug A is closed (OrbitControls provably can't touch the
+  canvas during walk) and proves the new suppression fires correctly and doesn't break anything.
+  Does NOT prove the exact real-browser Ctrl+Click→Pointer-Lock-release chain (Bug B's mechanism) —
+  that needs the user's own live retest of their original repro (Ctrl+held-drag during walk) after
+  deploy, since headless synthetic events cannot trigger genuine browser security-sensitive unlock.
+
+**Open design question, NOT answered by this fix (do not invent — ask first):** Ctrl-drag still does
+nothing useful inside walk once OrbitControls is disabled — the user wants it to actually PAN/move
+the POV laterally+vertically like normal-mode does. That's new walk-mode navigation logic (translate
+`_vfCam.position` from pointer-lock `movementX/Y` deltas when `ctrlKey` is held, mirroring
+`screenSpacePanning`), not a bug fix — needs a user-confirmed spec (direction mapping, speed) before
+coding, same as every other walk gesture in this file's §CPE_WALK_UX_V2/GLIDE sections.
+
+**Status: MERGED + LIVE.** PR bim-ootb#1261, squash-merged 2026-08-08T06:12:29Z, confirmed present in
+`origin/main` (checked via `git show origin/main:viewer/cpe_walk.js`) and auto-published to GitHub
+Pages (repo serves Pages directly from `main` root, `deploy-pages.yml`). Worktree pruned post-merge.
+User asked (2026-08-10) to re-sync since other sessions are concurrently landing work on `main` —
+refetched, confirmed the fix survived intervening merges (#1262 §LAYER-SOLID-SEED, #1263
+§NOGEO_COMPOSE, both unrelated files). Real-browser confirmation of the Ctrl-drag exit no longer
+firing is still the user's to do live — the caveat above about headless not being able to force a
+genuine Pointer-Lock release stands.
+
 ## ✅ §CPE_WALK_EDIT_V1 SHIPPED (2026-08-07) — PR bim-ootb#1243 MERGED
 Sonnet agent implementation, watchdog-verified from the witness log (not the report): 28 gates
 (31 PASS lines, Duplex + SampleHouse) — listener isolation proven by dispatched events
