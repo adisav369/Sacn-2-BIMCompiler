@@ -3011,3 +3011,44 @@ Part A: `viewer/time_machine.js` (3380-3387, 3468-3507, 3612-3638, 3882-3974), `
 `tests/witness_geometric_support_order.js` (existing approximate precedent, not replaced).
 Part B: `viewer/scene.js` (1346-1435, read-only source), `modeller/str_walker_outliner.js` (133-195,
 648-688), `tests/witness_nogeo_compose.js` (extend).
+
+## ✅ EXECUTED 2026-08-10 (session 2): Part A MERGED + urgent needle-chunk fix + two pattern follow-ons
+**Part A — MERGED** (bim-ootb PR #1272, auto-squash): `_promoteRoofLoadPath(elements)` extracted, both
+callers swapped, `§GANTT_OVERRIDE` strings byte-identical, `viewer/tests/witness_tm_geo_order_cycles.js`
+NEW (note: `viewer/tests/`, not the plan's `tests/`). Witness identical before/after AND independently
+re-run on merged main: `§TM_GEO_ORDER_CYCLES_REPRO cycles=37927 floating=45 n=48428/48428
+promotedRoofSlabs=57`. Drift vs this doc's older 24353/33 is REAL and now permanently flagged by
+`§TMREPRO_DRIFT_FLAG` — cause still unexplained, cycles bug in schedule_gate.js still OPEN.
+**Urgent (found in live log, same session) — MERGED** (PR #1271, live-verified on GH Pages sw v974):
+navigate_find.js needle path ran Hospital's 9,466-statement patch through ONE un-chunked `A.db.run()` →
+"memory access out of bounds" bricked the shared sql.js wasm heap (all later queries + geo.db load +
+streaming init died; viewer degraded to bboxes-only; cinema planned on empty data). Fix = §PATCH_CHUNK
+chunker extracted to shared `A._runSqlChunked(db,sql)` (scene.js), needle path now uses it. Witness:
+`tests/witness_nogeo_compose.js` 9/9 PASS on bundled wasm incl. the exact 1,381,431-byte/19-chunk patch.
+Along the way: kernel_ops v8-clobbers-v13 double-include removed from viewer.html (blue_fold/whatif call
+v13-only discardBranch/acceptBranchUpTo — were silently broken), §SHORTCUT_AUDIT false-deads (+,-,z,w,r)
+fixed (dotted-target resolution + window._zoomStep/_cycleRoom exposure), mobile-web-app-capable meta added.
+**Part B — dispatched, in flight at time of writing** (branch feat/modeller-nogeo-compose-port); outcome
+to be appended below when its report lands.
+**LTU_AHouse canonical-DB question surfaced to user this session — still awaiting the call.**
+
+### ▶ FOLLOW-ON SPECS (2026-08-10, user-approved "spec both, fix if low-hanging") — meta-pattern:
+one shared invariant enforced at ONE choke point, not per-call-site discipline (that's what drifted, twice).
+
+**F1 — §CHUNK_ONLY enforcement witness** (`tests/witness_chunk_only.js`, bim-ootb)
+Issue it proves/disproves: a NEW call site feeding fetched/patch SQL text into a raw `db.run()`/`.exec()`
+reintroduces the wasm-heap crash class that §PATCH_CHUNK fixed twice already (scene.js 2026-08-10 am,
+navigate_find.js 2026-08-10 pm — same bug, missed call site).
+Spec: static lint-witness, no wasm needed. Scan `viewer/*.js` for `.run(<ident>)`/`.exec(<ident>)` where
+<ident> matches /sql/i (sql, sqlText, sqlStr...), EXCLUDING (a) the body of `_runSqlChunked` itself,
+(b) lines annotated `// §CHUNK-EXEMPT: <reason>`. Any hit = FAIL with file:line. Log
+`§CHUNK_ONLY_WITNESS scanned=N hits=0 PASS`. Extend scope to `modeller/*.js` ONLY after
+feat/modeller-nogeo-compose-port lands (its pre-port `pdb.run(sql)` would be a true-positive red until then).
+**F2 — §SCRIPT_DUP boot audit** (`viewer/input_registry.js`, bim-ootb)
+Issue: the same script loaded twice under different paths lets load order silently pick the winner —
+live log showed BOTH `§KERNEL_OPS_LOADED v13` and `v8` banners and nothing flagged it; v8 clobbered v13.
+Spec: `InputReg.checkScriptDups()` — scan `document.scripts` basenames (strip query), report any basename
+appearing >1: `§SCRIPT_DUP basename=<f> srcs=[...]` (warn), summary `§SCRIPT_DUP_AUDIT total=N dup=0`.
+Log-only, zero behavior change. Invoke where checkShortcuts() already self-runs. Same-basename-different-
+file false positives: none in current viewer.html (verified flat include list); if one ever appears
+legitimately, exempt via a DUP_OK list in the function, with reason.
