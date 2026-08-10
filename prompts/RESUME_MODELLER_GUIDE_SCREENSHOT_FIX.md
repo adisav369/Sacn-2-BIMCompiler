@@ -636,3 +636,58 @@ merged via bim-compiler#79 — safe to prune), `/tmp/wt-cut-recapture` (bim-ootb
 carries the NOT-yet-landed `capture_guide_cut.js`/`diag_fullpage.js` diagnostic scripts — **do not prune
 yet**, the next session should reuse it per §RESUME step 2), `/tmp/wt-cut-gate-task3` (bim-compiler, this
 card's own PR branch — prune after merge).
+
+## 2026-08-10 (round 6) — PARKED mid-mission: a repo-wide review session pre-empted this card. Both
+## dispatched tasks reached a real, honest stopping point of their own accord before the pause landed —
+## nothing left mid-file, nothing left mid-witness. Record below, then STOP (per explicit wind-down order).
+
+Dispatched two parallel background sessions against this round's mission: (1) recapture
+`cut-select.png`/`cut-open.png` now that the cut-gate fix (PR #1262) is live, (2) root-cause the
+`§CHAIN-SURVIVES-LAYER-CUT` fillet-after-layer-cut OCCT exception §10 named as an open gap, build only if
+bounded. **Both finished and reported back before the wind-down order arrived** — their PRs (test-only /
+doc-only, no app code, no deploy) were already merged by that point. The wind-down order's real effect on
+this round was: no third task was started, and the two agents' worktrees were left parked rather than
+pruned. Per explicit user instruction this same session ("Leave PR #81 as-is... reverting would churn
+master during the review, which is worse... Stand down"), neither already-merged PR is being touched.
+
+| Task | Verdict | Evidence |
+|---|---|---|
+| 1. Recapture `cut-select.png`/`cut-open.png` | ⛔ **still blocked — new, narrower root cause than round 5's** | The cut-gate fix itself is rock-solid: `GEOM_CUT` on fid=89 (3-layer partition wall) committed, `verifyChain()===true`, tris 148→318, **identical across all 14 runs**. The blocker is pure screen-composition/render flakiness under headless-Chrome+swiftshader on this shared machine (load average 7–23 observed) — roughly 1-in-3 individual shots render legibly but the SAME run never lands both `cut-select` AND `cut-open` clean together, across 14 attempts, plus 2 Chrome crashes mid-run (same "detached Frame"/"Target closed" signature as round 2/5). A real, separate finding this round: fid=87 (round 5's subject) sits almost exactly at Duplex's own bbox centroid `[4.4,-8.9]`, so no `frameElement` camera-offset direction escapes into open room space — that's WHY round 5's harness-composition theory never resolved; it wasn't a `bboxScreen` bug, it was a bad subject. Switched to fid=89 (only 1 of 4 manually-placed-camera candidates probed that ever composes legibly) — proves a subject exists, doesn't yet prove a *repeatable clean run*. **No images embedded** — `docs/img/modeller/cut-select.png`/`cut-open.png` and `ModellerGuide.md` confirmed untouched (empty diff), per this card's own fail-hard doctrine. bim-ootb PR [#1270](https://github.com/red1oon/bim-ootb/pull/1270) **merged** (test-only — 7 diagnostic/capture scripts preserved: `capture_probe_candidates.js`, `capture_guide_cut.js`, `capture_guide_cut_v2.js`, `diag_fullpage.js`, `diag_candidate_z.js`, `diag_closecam_orient.js`, `diag_closecam_v2.js` — `§CAPTURE-POOL n=27` in the first script lists 23 more untried candidates). No bim-compiler docs PR (nothing to embed). |
+| 2. Fillet-after-layer-cut root-cause | ✅ **root-caused numerically, ruled NOT architecturally bounded — no app code shipped, correctly per its own dispatch instruction** | §10's compound hypothesis **confirmed, not just plausible**: `kernel.fuseAll()` on N touching layer solids produces a multi-body COMPOUND, never one manifold solid — measured `kernel.getSubShapes(combined,'solid').length` = **4** (fid=87, 7 layers, partial fusion) and **7** (fid=90, 7 layers, zero fusion). Both of the mission's own named "already-vendored, no new kernel surface" candidates were tried and BOTH fail: `kernel.unifySameDomain(combined)` — no effect (4→4, edge count dropped 490→144 but sub-solid count didn't move — it merges redundant coplanar geometry *within* a shape, not a boolean merge *across* separately-touching bodies); `kernel.healSolid(combined, 1e-3)` — itself throws a WASM exception on this input, doesn't even complete. Real methodology catch made en route: the fillet-failure path logs via `console.warn` not `console.error`, and an early diagnostic script's error-only console filter produced a FALSE 3/3-success read before this was caught — same "replay corruption" trap §10 already named (`oplog.commit` pushes the `GEOM_FILLET` row before the fold throws, so `opsLen` incrementing alone is never proof). Findings recorded in `CUT_GATE_CSG_SPEC.md` §11 (bim-compiler PR [#81](https://github.com/red1oon/BIMCompiler/pull/81), **merged** to `origin/master` as `0276832c5`/`bc2f0d388` — user explicitly confirmed leave-as-is, doc-only, no revert). One architecture question posed there for whoever owns `bonsai_kernel_worker.js`'s cut/fillet chain next: given neither already-vendored op works, does the project want (a) a new tolerance-bearing boolean fuse primitive, or (b) a layer-boundary-fillet-ownership semantics ruling + an honest UI refuse message instead of today's raw `[object WebAssembly.Exception]` reaching the user. **No bim-ootb PR** (correct outcome — nothing bounded to ship). |
+
+**Card status: NOT drainable, still open** — task 1 needs a genuinely repeatable clean capture run (composition
+theory now correct, reliability isn't there yet); task 2 is closed as a diagnosis (real root cause, real
+verdict, both candidate fixes exhausted) but the underlying gap itself is still live pending the architecture
+decision in §11. Do not re-walk either task's own reasoning above — resume from the concrete next steps below.
+
+### §RESUME for whoever picks this up next
+1. **Task 1**: fid=89 is a real, working subject (numerically proven cut, occasionally-legible frames) —
+   the open problem is run-to-run reliability, not subject/camera choice anymore. Try: (a) sample-based
+   render-completeness check (`pixsum`/variance) *before* calling `pg.screenshot()`, retrying the render
+   itself rather than the whole script, per round 6's own "what to try next" note; (b) run off-hours /
+   verify machine load is low first (`uptime`, `free -g`) — this round explicitly observed load 7–23 with
+   2 Chrome crashes, consistent with contention from concurrent sessions on this shared dev box, not a code
+   regression; (c) if fid=89 keeps flaking, the other 23 untried real-layer candidates are listed in
+   `capture_probe_candidates.js`'s own `§CAPTURE-POOL` log (now committed, bim-ootb PR #1270).
+2. **Task 2**: this is a real product decision, not a diagnosis gap — pick (a) or (b) from §11's own
+   question, or defer explicitly with a reason, before any future session attempts another fix pass. Don't
+   re-attempt `unifySameDomain`/`healSolid` — both are now proven not to work on this input, re-trying them
+   without a new approach would just re-spend the same diagnosis.
+3. Re-verify PR #81 and #1270 are still merged/live before trusting anything above as current (both were
+   merged 2026-08-10, should be stable, but this project's own doctrine is "verify against a fresh fetch,
+   don't trust a citation").
+
+**Worktrees this round (left PARKED, not pruned, per the wind-down order — verify still clean/unoccupied
+before reusing or removing):**
+- `/tmp/wt-fillet-diag` (bim-ootb, branch `fix/fillet-after-layer-cut`, **pushed** to
+  `origin/fix/fillet-after-layer-cut` this round — 2 scratch diagnostic scripts (`diag_fillet_clean.js`,
+  `diag_fillet_repro.js`) committed and preserved so they survive a prune; NOT a PR, not merged, holds no
+  app-code change — the verdict itself already landed via PR #81's spec text).
+- `/tmp/wt-fillet-diag-spec` (bim-compiler, branch `spec/fillet-after-layer-cut-diagnosis`, 1 local commit
+  — content already squash-merged into `origin/master` via PR #81, so this branch is redundant/safe to
+  prune once confirmed, not pushed this round since it would add nothing).
+- `/tmp/wt-cut-recapture` — **pruned this round** (bim-ootb agent's own closeout: fully pushed via #1270,
+  0 dirty, confirmed unoccupied before removal). If task 1 is resumed, recreate fresh off `origin/main`
+  rather than expecting it to still exist.
+- `/tmp/wt-winddown-park` (bim-compiler, branch `docs/cut-gate-winddown-park`, this section's own commit —
+  pushed, NOT merged, per the wind-down order's explicit "push to feature branch, do not merge" instruction).
