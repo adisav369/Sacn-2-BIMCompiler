@@ -398,3 +398,116 @@ not re-quoted here — see bim-ootb PR history for the exact run.
 
 sw.js `CACHE_VERSION` bumped `v45`→`v46` (this fix touches `bonsai_kernel.js`, `bonsai_kernel_worker.js`,
 `bonsai_library.js`, `arc_editable.js`, `modeller.html` — all precached).
+
+## §11 — 2026-08-10 DIAGNOSIS SESSION — §10's compound hypothesis PROVEN true, ruled NOT ARCHITECTURALLY
+## BOUNDED, no app code shipped (per this session's own dispatch instruction)
+
+Picked up §10's named open gap ("does `GEOM_FILLET` on a layer-cut edge throw an OCCT WASM exception, and
+is the root cause `kernel.fuseAll()` producing a multi-body COMPOUND rather than one true SOLID"). Fresh
+bim-ootb worktree `/tmp/wt-fillet-diag`, off `origin/main` @ `bbb9e00` (post-§10, zero commits touched
+`bonsai_kernel_worker.js`/`bonsai_kernel.js`/`lib/kernel/*` since `0e719d2` — confirmed via `git log
+0e719d2..bbb9e00 -- <those files>`, empty output, so this is the SAME code §10 measured, not a moving
+target). Dispatched with a HARD instruction: diagnose first, build only if the fix is architecturally
+bounded (reuses already-vendored kernel ops, no new kernel surface, no solids-model redesign).
+
+### RED-first: `witness_e2e_cut_layers.js` L3 SELECT is flaky in this environment, unrelated to fillet
+Running the committed witness unmodified failed at **L3 SELECT** (raycast click-loop picks nothing),
+2/2 runs — a PRE-EXISTING environment flake in that witness's own manual click-loop, not this session's
+subject: `witness_e2e_cut.js`'s `t.pick()` helper (a more robust selector) selects fine in the same
+environment/run. Rather than debug an unrelated flake, this session used the SAME production selection
+entry point the click handler itself calls — `window.Bonsai.select(fid)` (`modeller.html:1176`, the exact
+function every other click-driven witness/self-test in this file already calls programmatically at e.g.
+lines 5270/5314/5395/6321) — to reach the target walls directly, then drove the real `#b-cut`/`#b-fillet`/
+`#dim-rad`/`#b-applyfillet` UI exactly as a user would. This is a diagnosis-session workaround for an
+unrelated flake, not a witness change — `witness_e2e_cut_layers.js` itself is untouched.
+
+**A real methodology trap found and corrected before trusting any number**: an early multi-target diagnostic
+script appeared to show 3/3 successful fillets on fid=87 (`opsLen` incrementing, no captured exception) —
+this was a FALSE READ. The actual fillet-failure path (`modeller.html:1783`,
+`bApplyFillet.onclick`'s catch block) logs via `console.warn`, not `console.error`; the script's console
+listener filtered to `msg.type() === 'error'` only, silently missing every `warning`-level message. This
+is the EXACT "replay corruption" side-note §10 already flagged ("the informational L8 attempt may also
+append a row regardless of its own success") — `oplog.commit` had already pushed the `GEOM_FILLET` row
+before the fold threw, so `opsLen` incrementing is NOT proof of success. A corrected script
+(`diag_fillet_clean.js`, single-target, polls the `#stat` element for the literal
+`"filleted #…"`/`"FAIL …"` terminal text and captures BOTH `error` and `warning` console levels) is the
+one this section's findings are sourced from. Logged so a future session doesn't repeat the same miss.
+
+### Numeric root cause — §10's hypothesis directly measured, not assumed
+Added a temporary diagnostic log (`bonsai_kernel_worker.js`, right after the existing `kernel.fuseAll()`
+call in `buildSolids`, REVERTED before this session ended — `git diff` against `origin/main` is clean) —
+`kernel.getSubShapes(combined, 'solid').length` immediately after fuse:
+
+| wall | input layers | `fuseAll()` output sub-solid count |
+|---|---|---|
+| fid=87 (7-layer party wall, §10's own richest-case pick) | 7 | **4** — partial fusion, 3 pairs merged into 2 groups + 1 lone, still a 4-body compound |
+| fid=90 (17m 7-layer wall, §10's second pick) | 7 | **7** — ZERO fusion, every layer stayed a fully separate solid |
+
+**§10's hypothesis is confirmed, not merely plausible: `kernel.fuseAll()` on N touching layer solids
+produces a multi-body COMPOUND, never a single connected manifold SOLID**, on both measured walls. Neither
+count is anywhere near 1.
+
+Re-ran the exact fillet repro (`diag_fillet_clean.js`, single wall, single edge, radius 0.02, polling the
+UI's own terminal status text) against this UNMODIFIED code: **both walls, verbatim identical failure**:
+```
+finalStat="FAIL fillet: [object WebAssembly.Exception]"
+```
+No richer message is available from the kernel binding at this layer — `bApplyFillet.onclick`'s own catch
+just stringifies whatever the WASM boundary throws (`err.message` on a raw WASM exception has no useful
+text, confirmed — this matches §10's own "OCCT WebAssembly exception" description verbatim, not a new or
+different failure mode).
+
+### Bounded-fix attempt 1 — `kernel.unifySameDomain(combined)` (already-vendored, `lib/kernel/index.js:1172`)
+Applied immediately after `fuseAll()`, same fid=87 case: **`beforeUnify=4` → `afterUnify=4` — NO CHANGE**.
+Edge count DID drop (490→144, `ShapeUpgrade_UnifySameDomain` merged some coplanar faces within each of the
+4 still-separate bodies, reducing face/edge count), but the sub-SOLID count did not move. Fillet on the
+unified shape still threw the identical `[object WebAssembly.Exception]`. **This is the mission brief's own
+named candidate bounded-fix, and it does not work** — `ShapeUpgrade_UnifySameDomain` merges redundant
+coplanar geometry WITHIN a shape's existing topology; it does not perform a boolean merge across originally-
+separate solid bodies that are merely touching, which is what would actually be needed here.
+
+### Bounded-fix attempt 2 — `kernel.healSolid(combined, tolerance)` (already-vendored, `lib/kernel/index.js:1178`)
+Tried next, same fid=87 case, tolerance loosened to `1e-3` (1mm, well above the `1e-4` sew tolerance the
+seed path already uses) specifically to try to snap the touching-but-not-exactly-coincident layer boundary
+faces together: **`healSolid` itself threw a WASM exception** (`healSolid: [object WebAssembly.Exception]`)
+on this compound input — it did not even complete, let alone fix the topology.
+
+### THE CALL — NOT BOUNDED, no app code shipped
+Both already-vendored candidate ops this session could try without adding new kernel surface (a fair-faith
+reading of "already-vendored OCCT ops, no new kernel surface" per the dispatch brief) **either do nothing
+(`unifySameDomain`) or themselves throw (`healSolid`)**. Neither collapses the compound to a genuine single
+manifold solid. `bonsai_kernel_worker.js` was left byte-identical to `origin/main` (temporary diagnostic
+lines added and removed in the same session, `git diff` clean) — **per this session's own dispatch
+instruction ("diagnosis-first, build only if bounded — a HARD instruction, not a suggestion"), no app code
+change ships.**
+
+What WOULD actually close this gap, named but explicitly NOT attempted this session (both fall outside the
+bounded-fix criteria the dispatch brief itself set):
+1. **A tolerance-adjustable boolean fuse.** `kernel.fuseAll(shapes)` (`lib/kernel/index.js:212`) takes no
+   tolerance parameter today — OCCT's default boolean fuse tolerance is presumably too tight to recognize
+   independently-tessellated-then-resewn layer boundary faces (§3b already documented real T-junction/
+   reveal detail at layer boundaries — the SAME non-watertight seam trait candidate A's evaluation hit in
+   §2) as truly coincident. Exposing a tolerance param on `fuseAll` (or a new `fuseAllTol` binding) IS new
+   kernel surface — explicitly out of this session's bounded-fix scope, not attempted.
+2. **A single-sew-pass seed** (sew ALL layers' triangles together in one `sewAndSolidify` call instead of N
+   separate per-layer solids + `fuseAll`) would only produce a genuine manifold if adjacent layers' meshes
+   share EXACTLY coincident boundary vertices — which §3b's own measurement says they do NOT always (real
+   authored reveals/notches independent of the thickness axis). This is the exact "real per-layer-boundary
+   semantics decision" the dispatch brief named as its own NOT-BOUNDED disqualifier ("which solid does the
+   fillet edge belong to when a fillet edge straddles a layer seam") — not attempted, not a small tweak.
+
+### Follow-on architecture question (for whoever owns `bonsai_kernel_worker.js`'s cut/fillet chain next)
+**Given `kernel.fuseAll()` cannot be coaxed into a single manifold solid via any already-vendored op
+(`unifySameDomain` no-ops on it, `healSolid` throws on it), and a real fix needs either a new tolerance-
+bearing boolean primitive or a semantics ruling on layer-boundary fillet ownership — which of those two
+paths does this project want, and in the meantime should the UI refuse `GEOM_FILLET`/`GEOM_SHELL`/
+`GEOM_OFFSET`/`GEOM_DRAFT`/`GEOM_CHAMFER_DIST_ANGLE` up front on any layer-cut element (an honest
+"fillet not yet supported on a layered cut" message) instead of letting the click reach the kernel and
+surface a raw, user-facing `[object WebAssembly.Exception]`?** The current UI does not refuse — the
+exception reaches `setStat('FAIL ' + ...)` verbatim (§10 named this same "never a silent throw of a raw
+WASM exception to the user" concern; it is still live, unaddressed since §10).
+
+Diagnostic scripts (not committed, not witnesses — scratch only, left in the bim-ootb worktree for the
+coordinating session to find or prune): `/tmp/wt-fillet-diag/modeller/tests/diag_fillet_repro.js`,
+`/tmp/wt-fillet-diag/modeller/tests/diag_fillet_clean.js`. Full run logs (RED baseline, sub-shape counts,
+both bounded-fix attempts, final clean repro) under `/tmp/wt-fillet-diag/logs/`.
