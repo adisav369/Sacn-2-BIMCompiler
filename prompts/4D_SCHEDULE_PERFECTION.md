@@ -2875,3 +2875,25 @@ statements, 2 chunk(s))`, `§NOGEO_COMPOSE composed=43 ms=203`, `§DB_META_LOADE
 `§LIVE_WITNESS PASS`. Side-fact worth keeping: `streaming.js` §6.9 split detection routes Clinic
 through `_meta.db` **even when the URL names `_extracted.db`** — that is why both variants must be
 patched, and why a `_meta`-only patch is what actually reaches a live user for split buildings.
+
+**Watchdog follow-up, same day, third session in this lane (cross-checked, not assumed) — the HHS
+root-copy landmine above was flagged but not yet CLOSED as of the entry above.** Independently
+re-verified everything in this section against live state before acting: PR #1263 merged+live
+(fetched `scene.js` from `red1oon.github.io`, `composeGhostsFromAggregates`/`PATCH_CHUNK` present in
+served bytes), HHS 41-ghost count reproduced from the byte-identical (md5-confirmed) served DB,
+JKR 0-ghost reproduced independently, and the peer's live-uploaded HHS patch object fetched directly
+from OCI and diffed byte-for-byte against origin/main's `viewer/` copy — confirmed identical, confirmed
+safe, did not re-upload over it. The one gap still open at that point: `buildings/patches/
+HHS_Office_Federated_extracted.db.sql` (root copy) **on `origin/main` itself** was still missing the
+148-line `spatial_structure` section — the peer's OCI upload fixed the *served* bytes but the *repo's*
+root-path copy still didn't match, leaving the landmine live in git history for the next session that
+trusts the root path as canonical. Fixed via bim-ootb PR #1269 (`fix/hhs-patch-root-parity`,
+non-code, repo-hygiene only): copied the `viewer/` copy over the root copy, verified byte-identical to
+both the `viewer/` copy and the live OCI object afterward. Also independently spot-checked two of the
+peer's Modeller claims rather than taking them on faith: `modeller/HHS_ARC.db` — 33 ghosts (all
+`IfcCurtainWall`, confirmed), zero `composeGhostsFromAggregates` hits anywhere in `modeller/*.js`
+(confirmed, Modeller genuinely has no port); `modeller/JKR_ARC.db` — 0 ghosts (confirmed, matches the
+peer's list which didn't name it). Did not start items 4–5 (extractor root-fix, Modeller compose port)
+— per the checklist's own gating ("only after 1–3 are live and stable") and given three concurrent
+sessions were actively still finding new affected surfaces (Clinic, LTU_AHouse, Modeller) during this
+same window, the lane was not yet stable enough to start the bigger rewrite.
