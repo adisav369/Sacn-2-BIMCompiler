@@ -2549,6 +2549,44 @@ Final commit on the branch: `a268f05`. Re-ran the full real-browser witness one 
 four fixes — still 4/4 PASS, `§PATCH_APPLY (9466 statements)`, `§NOGEO_COMPOSE composed=233 ms=163`.
 Still not pushed.
 
+**🏁 SHIPPED TO PRODUCTION (2026-08-10) — the NOGEO class is closed, for real, verified against the
+live site.** User: "proceed to upload path."
+
+**Discovered before touching anything:** production code (`viewer/*.js`) is NOT served by
+`deploy/OCI_UPLOAD.md`'s documented `bim-ootb-live` OCI bucket route — that route's local mirror
+(`bim-compiler/deploy/dev/`) has drifted significantly stale (missing whole features present in
+`bim-ootb/viewer/`, confirmed by diff) and appears abandoned. The REAL, current code deploy is
+**GitHub Pages, auto-built from `main` on every push** (`https://red1oon.github.io/bim-ootb/`) — this
+matches this session's own `reference_gh_deploy.md` memory, which should have been checked first
+rather than rediscovered from scratch. Buildings + patches remain OCI (`bim-ootb` bucket), via the
+mandatory `scripts/oci_patch_gate.js` (`deploy/OCI_UPLOAD.md` §RULES rule 6 — never by hand).
+
+This mattered for ORDERING: uploading the patch before the code fix went live would have crashed
+any real user opening Hospital — the pre-fix `_applyPendingPatch()` still does one giant
+`pdb.run()` and would hit the exact WASM crash found earlier this session. Sequence followed:
+
+1. Pushed `fix/4d-nogeo-compose-indexeddb`, opened PR bim-ootb#1263. CI green (`fast-checks`,
+   `e2e-tests`). Squash-merged → `a081480` on `main`.
+2. Confirmed GH Pages actually rebuilt (`pages-build-deployment` run succeeded for `a081480`) and
+   fetched the LIVE `scene.js` from `red1oon.github.io/bim-ootb/viewer/scene.js` — confirmed
+   `composeGhostsFromAggregates`/`composed_aggregate` present in the served bytes. Code confirmed
+   live before touching OCI, not assumed.
+3. Per this project's squash-merge worktree rule, started a FRESH worktree off `origin/main`
+   (old branch worktree can't be reused post-squash) and ran `scripts/oci_patch_gate.js` for all
+   three patches — each one downloads the ACTUAL live served bytes itself, applies the patch,
+   verifies (`rel_aggregates` row/parent counts match exactly: Hospital 9457/233, Duplex 11/3)
+   before allowing upload. All three: `§GATE_VERDICT PASS` → `--upload` → `§GATE_VERDICT
+   UPLOAD_VERIFIED`. `Hospital_meta.db` confirmed served gzipped on OCI — gate handled it
+   correctly, matches the split-load path this fix targets.
+4. **Final end-to-end proof, the real thing, not a stand-in:** ran the real-browser witness against
+   the actual production URL — `https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=<live OCI
+   Hospital URL>`, real internet fetch, no localhost, no simulation. `§PATCH_APPLY` (19 chunks),
+   `§NOGEO_COMPOSE composed=233 ms=171`, no `§NOGEO_COMPOSE_UNRESOLVED`, `§DB_META_LOADED` — **4/4
+   PASS on production itself.**
+
+Worktrees pruned (`fix/4d-nogeo-compose-indexeddb` merged+deleted, `wt-oci-patch-upload` removed)
+per this repo's worktree-hygiene rule.
+
 **NEW finding, unrelated to NOGEO, flagged not investigated:** user, watching Hospital: multiple
 trucks appear "way onset" (very early) and near-concurrently rather than staggered — a 4D
 scheduling-realism gap (construction vehicle/delivery placement bunching), separate from both NOGEO
@@ -2664,15 +2702,19 @@ commits `1fcefa6`..`a268f05`, watchdog-reverified at every step, not taken on fa
 
 **Push-to-zero checklist, work top-to-bottom:**
 
-1. **⛔ BLOCKED: HHS_Office_Federated needs its own relationship-only patch before ANY push.** Found
+1. **✅ DONE (witness) — HHS_Office_Federated patched + LIVE on OCI** (see the 2026-08-10 second-session
+   section at the end of this file; patch landed via bim-ootb#1265, upload `§GATE_VERDICT UPLOAD_VERIFIED`,
+   production `§LIVE_WITNESS PASS composed=41`). Original note, kept for the record: found
    late in this lane's own review, not by the implementing session — **41 ghosts**, same class, never
    patched. Generate `buildings/patches/HHS_Office_Federated_extracted.db.sql` the same way as
    Hospital/Duplex (raw `rel_aggregates` rows only, no computed values) before this branch is
    considered complete. Do not push/PR/OCI-upload with only 2 of 3 known-affected buildings covered.
-2. **Check JKR too** — never verified (source `.db` not available in the local sandbox at review time).
+2. **✅ DONE (witness) — JKR has 0 ghosts, no patch needed; but the sweep found a FOURTH affected
+   building, Clinic (43 ghosts, live, unpatched) — fixed in bim-ootb#1267.** Original note: check JKR (source `.db` not available in the local sandbox at review time).
    Query it the same way (`SELECT COUNT(*) FROM elements_meta m LEFT JOIN element_transforms t ON
    t.guid=m.guid WHERE t.guid IS NULL`) before calling the landed-DB scope closed.
-3. **Once 1–2 are ✅: push `fix/4d-nogeo-compose-indexeddb`, open the PR, OCI-upload all patch files**
+3. **✅ DONE — pushed/PR'd/merged/uploaded** (HHS + Clinic; see the end-of-file section). Original note:
+   push `fix/4d-nogeo-compose-indexeddb`, open the PR, OCI-upload all patch files
    (Hospital, Duplex, HHS_Office_Federated, +JKR if it needs one) per `deploy/OCI_UPLOAD.md §RULES`
    (content-type headers mandatory).
 4. **Root-fix, next lane (bigger, do only after 1–3 are live and stable):** bake the compose logic into
@@ -2704,3 +2746,132 @@ commits `1fcefa6`..`a268f05`, watchdog-reverified at every step, not taken on fa
 
 **Session end for this section = every numbered item above is ✅ or ⛔ named. Not "mostly done."**
 
+
+### 2026-08-10 (later, second session) — push-to-zero items 1–3 ✅ SHIPPED; scope was WIDER than the list
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: closes items 1-3 of the checklist above with witnesses, and corrects the checklist's own
+premise: the "3 known-affected buildings" scope was incomplete. Read the log lines, not the prose.
+Items 4-5 (extractor root-fix lane) remain OPEN, now with real preconditions measured.
+```
+
+**⚠ Two sessions worked this same checklist concurrently.** The other one shipped the HHS patch as
+bim-ootb#1265; this one had derived it independently. **Both derivations are byte-identical on all
+2120 `INSERT` rows** — a real cross-check of "extract, don't invent," not a coincidence to paper
+over. The duplicate patch hunk was dropped (merge resolved to main's copy); what survived from this
+side is the witness + everything below.
+
+**1. ✅ DONE (witness) — HHS_Office_Federated, 41 ghosts → 0, LIVE on production.**
+`41 = 33 IfcCurtainWall + 8 IfcStair`. 2120 real `IfcRelAggregates` pairs, extracted literally from
+`internal/UNMERGED/opensourceBIM_HHS_Office_architect.ifc` (2096) + `_construction.ifc` (24); MEP
+contributed none. Patch landed via #1265; **OCI upload done by this session** —
+`scripts/oci_patch_gate.js … --upload` → `§GATE_VERDICT PASS` → `§GATE_VERDICT UPLOAD_VERIFIED`
+(353,072 bytes, `application/sql`), manifest committed. Final proof is production itself, not a
+stand-in: real GH-Pages viewer + real live OCI bytes, `§`-log capture only, no screenshots —
+`§PATCH_APPLY … (352624 bytes, 2237 statements, 5 chunk(s))`, `§NOGEO_COMPOSE composed=41 ms=66`,
+no `§NOGEO_COMPOSE_UNRESOLVED`, `§CENTRES_RESULT rows=1 … 6880` → `§LIVE_WITNESS PASS`.
+
+**⚠ The upload had a landmine the checklist did not know about — the patch file exists TWICE and the
+two copies are NOT the same file.** For HHS:
+`buildings/patches/HHS_….sql` = raster(4) + rel_aggregates(2120), **no spatial_structure**;
+`viewer/buildings/patches/HHS_….sql` = spatial_structure(109) + raster(4) + rel_aggregates(2120);
+the object live on OCI before today = **spatial_structure(109) only** (28,838 bytes, 2026-07-12).
+The 109 rows are byte-identical between the live object and the `viewer/` copy (diffed, not assumed)
+— so uploading the ROOT copy, which is what Hospital/Duplex precedent does, would have **DELETED the
+live ROOM_VIEWER_HHS001 room-accuracy fix** from the path real users take (`config.js PROD_BASE`;
+the patch URL is derived from the DB URL's own directory, so OCI-served DB ⇒ OCI-served patch).
+Uploaded the `viewer/` **superset** instead — additive-only, verified in the gate: `spatial_structure=109
+raster=4 rel_aggregates=2120 parents=41`. **Rule for any future patch upload: diff BOTH repo copies
+against the live object first; upload the superset, never assume the two copies match.** Peer session
+was warned directly before it could upload the subset.
+
+**2. ✅ DONE (witness) — JKR: 0 ghosts, no patch needed. But the checklist's building list was
+incomplete: Clinic is a FOURTH affected building, and it had no patch of any kind.**
+A local copy of JKR did exist (`~/bim-ootb/buildings/JKR_extracted.db`) — the "not available"
+note was stale. Rather than check only JKR, swept the ghost query over **every** shipped DB:
+```
+Clinic_extracted.db / Clinic_meta.db   43   IfcCurtainWall:31 IfcRoof:7 IfcStair:4 IfcRamp:1   ← NEW, live, unpatched
+HHS_Office_Federated_extracted.db      41   IfcCurtainWall:33 IfcStair:8
+Hospital_extracted/_meta.db           233   IfcCurtainWall:178 IfcStair:31 IfcRoof:24
+Duplex_extracted.db                     3   IfcStair:2 IfcRoof:1
+LTU_AHouse_meta.db                    337   IfcWindow:204 IfcDoor:95 IfcStair:15 …            ← NEW, live, DIFFERENT class (below)
+JKR / Terminal (all copies) / LTU_AHouse_extracted.db / warehouse_gardenworld      0
+```
+Clinic fixed the same way (PR bim-ootb#1267): **738 real pairs / 43 parents** from
+`internal/UNMERGED/Clinic_Architectural_IFC2x3.ifc` (726) + `Clinic_Structural_IFC2x3.ifc` (12) —
+Electrical/HVAC/Plumbing none. Note `~/Downloads/Clinic.ifc` is **NOT** the source (0 GUID matches);
+the real source is the 5 `Clinic_*_IFC2x3.ifc` federated files. Confirmed against the **downloaded
+live OCI `Clinic_meta.db`** (43 ghosts there too), not just the local copy: `43→0`.
+
+**3. ✅ DONE — pushed, PR'd, merged, OCI-uploaded** (HHS above; Clinic patches ×4 files land with
+#1267, its two OCI objects uploaded by the same gate). Nothing in this lane is committed-but-unpushed.
+
+**W-NOGEO-COMPOSE is now a committed, re-runnable witness** (`tests/witness_nogeo_compose.js`,
+PR bim-ootb#1266) — the earlier lane proved everything ad-hoc in a worktree that was then pruned, so
+none of it could be re-run. It slices the REAL `A._applyPendingPatch` + `A.composeGhostsFromAggregates`
+out of `viewer/scene.js` and runs them against the project's OWN bundled `viewer/lib/sql-wasm.wasm`
+(md5 `618e54b08615e92780b0a3a418da43d4`) — **not** npm `sql.js`, the different build whose absence of
+the crash hid the chunking bug. Asserts `ghosts→0` (or NAMED in `§NOGEO_COMPOSE_UNRESOLVED`) **and**
+the served `.db` byte-identical afterwards. Current: **9/9 PASS** across Clinic ×2, HHS, Hospital ×2,
+Duplex, JKR, Terminal ×2. Second invocation form `--db <path>` is what `oci_patch_gate.js --verify`
+runs against the bytes it downloads from the bucket.
+
+Numbers, not eyeballs, on every composed set: **0 degenerate bboxes, 0 centres outside the real
+building extent** (HHS curtain walls 0.2 m thick × 10.51 m tall ≈ 3 storeys; stairs ≈ 2.4×4.2×3.9).
+Scheduler participation re-checked on COMPOSED copies (not the ghost-blind `COALESCE(...,0)` read the
+support-order witness does by default): HHS `floating=0/6880`, `§GEO_ORDER edges 61860→64267 (+2407)`;
+Clinic `floating=0/16912`, `edges 65428→68047 (+2619)`, `promotedRoofSlabs 0→1` — composed elements
+genuinely enter the support DAG, not present-and-inert.
+
+**⛔ NEW, NOT the NOGEO class — `LTU_AHouse_meta.db`, 337 ghosts, needs its own task.**
+`204 IfcWindow + 95 IfcDoor + 15 IfcStair + 12 IfcRoof + 6 IfcWall + 5 IfcCurtainWall` in the
+`_meta` split, while `LTU_AHouse_extracted.db` has **0**. Windows and doors are not aggregate
+parents, so `rel_aggregates` composition is the wrong tool. Checked further, and it is NOT a lossy
+split of one extract either: **none of the 337 ghost GUIDs exist anywhere in `LTU_AHouse_extracted.db`**
+(0/337 in `elements_meta`, 0/337 in `element_transforms`) — the two live OCI objects are different
+extraction vintages of the same building. Both are served live, and `streaming.js` §6.9 prefers
+`_meta.db` when present, so **live LTU_AHouse users get the 337-ghost file**
+(`dlod_nav.js`'s own "real 122,330-element LTU_AHouse" measurements match `_meta`'s 122,667 —
+that is the file in play). The one question a session cannot EXTRACT: **is `_meta`/`_geo` or
+`_extracted` meant to be canonical for LTU_AHouse, i.e. re-extract the split pair, or retire it?**
+
+**⛔ Item 4's Modeller sub-item is much bigger than "2 of 4 copies to check" — Modeller has NO
+compose at all.** `modeller/str_walker_outliner.js` has its own `_applyPendingPatch` port (line
+~648) but **no port of `composeGhostsFromAggregates`** — grep confirms the function exists only in
+`viewer/scene.js`. So every Modeller-resident DB with ghosts is uncomposed there regardless of what
+the Viewer does:
+```
+Hospital_ARC.db 232 · SampleCastle_ARC.db / _extracted 117 (IfcWallStandardCase:51 IfcCovering:48 — a
+THIRD class shape) · Ifc4_Revit_extracted.db 49 · Clinic_ARC.db 34 · HHS_ARC.db 33 · Garage_ARC.db 19 ·
+Duplex_ARC.db 3 · SampleHouse_ARC.db 2 · JKR_ARC.db 0 · Terminal_ARC.db 0 · Duplex_extracted.db 0
+```
+Latent, related: Modeller's `_applyPendingPatch` still does **one giant `pdb.run(sql)`** — the exact
+pattern that crashes the bundled WASM ("memory access out of bounds") on a multi-thousand-statement
+patch. Same WASM build as the Viewer (identical md5, verified), so the bug is real, just not yet
+triggered: today's largest Modeller patch is 219 statements (`Duplex_ARC.db.sql`). It WILL fire the
+first time a Modeller patch reaches ~thousands of statements — which is exactly what a Modeller
+rel_aggregates patch would be. Port the Viewer's `§PATCH_CHUNK` statement-aware batching before, not
+after.
+
+**Item 4 precondition MEASURED (the storey-aggregate worry): safe on every shipped DB.**
+`elements_meta` carries **no** `IfcBuildingStorey`/`IfcBuilding`/`IfcSite`/`IfcProject`/`IfcZone`
+rows in Hospital, Terminal, JKR, HHS, Clinic or Duplex — so an unconditional extractor-side
+ghost-detection query cannot compose a "position" for a storey. It DOES carry `IfcSpace` (Duplex 21,
+Clinic 798), none of which are ghosts today; keep spaces named-and-excluded rather than silently
+composed. HHS's source IFCs are located (above), so item 4's "HHS source not yet located" is closed.
+
+**Items 4–5 (bake compose into `extractIFCtoDB.py`, then retire the patches) remain OPEN** — bigger
+lane, unchanged in shape, now with the preconditions above settled and two extra affected surfaces
+(Clinic, and all of Modeller) to include in its scope.
+
+**Clinic upload + production confirmation (same session, closing item 3 for Clinic too):** both new
+OCI objects added, nothing overwritten (`§GATE_TARGET {"exists":false} (ADD)`) — each gate run
+downloaded the real live bytes (`Clinic_meta.db` gunzipped by the gate; `Clinic_extracted.db` all
+128 MB) and ran W-NOGEO-COMPOSE on them → `ghosts 43→0` → `§GATE_VERDICT UPLOAD_VERIFIED`, 91,238
+bytes, `application/sql`. Manifests committed (bim-ootb#1268). Production witness, real GH-Pages
+viewer + real OCI bytes, `§`-log only: `§PATCH_APPLY Clinic_meta.db applied (91236 bytes, 739
+statements, 2 chunk(s))`, `§NOGEO_COMPOSE composed=43 ms=203`, `§DB_META_LOADED size=6.1MB` →
+`§LIVE_WITNESS PASS`. Side-fact worth keeping: `streaming.js` §6.9 split detection routes Clinic
+through `_meta.db` **even when the URL names `_extracted.db`** — that is why both variants must be
+patched, and why a `_meta`-only patch is what actually reaches a live user for split buildings.
