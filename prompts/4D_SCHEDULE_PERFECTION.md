@@ -3052,3 +3052,25 @@ appearing >1: `§SCRIPT_DUP basename=<f> srcs=[...]` (warn), summary `§SCRIPT_D
 Log-only, zero behavior change. Invoke where checkShortcuts() already self-runs. Same-basename-different-
 file false positives: none in current viewer.html (verified flat include list); if one ever appears
 legitimately, exempt via a DUP_OK list in the function, with reason.
+
+### ✅ Part B outcome (2026-08-10, appended per section above) + F1/F2 shipped
+**Part B — MERGED** (bim-ootb PR #1273): B1-B4 all landed — modeller chunked `_applyPendingPatch`
+(merged with its per-chunk §ANCHOR duplicate-column recovery), `composeGhostsFromAggregates` port,
+`_openBuffer` wiring, modeller sw v47. PLUS the 7 modeller rel_aggregates patch files themselves
+(plan implied, not itemized — patch+loader together per CLAUDE.md). Witness (modeller mode, bundled
+wasm; independently re-run by the coordinating session, counts confirmed): Hospital_ARC 232→0,
+SampleCastle_ARC 117→0 (52 composed + 65 via pre-existing §ANCHOR void-anchors — own-Body/zero-
+rel_aggregates extractor-gap class, NOT NOGEO), Ifc4_Revit 49→0, Clinic_ARC 34→0, HHS_ARC 33→0,
+Duplex_ARC 3→0, SampleHouse_ARC 2→0; Terminal_ARC/JKR_ARC/Duplex_extracted regressions 0→0.
+`§NOGEO_WITNESS_TOTAL mode=modeller pass=8 fail=0`.
+**⛔ BLOCKED — Garage_ARC.db stays at 19 ghosts** (all IfcCurtainWall): source `HospitalGarage_IFC4.ifc`
+no longer exists anywhere on disk (GUID-grepped every local .ifc) — pairs cannot be EXTRACTED.
+Named at every open via §NOGEO_COMPOSE_UNRESOLVED; unblocks only if the source IFC resurfaces.
+**F1+F2 — implemented same session** (bim-ootb PR #1274, auto-merge armed): F1 spec REFINED during
+implementation — /sql/i ident-name matching drowned in constant-literal false positives; shipped rule =
+idents bound from network `.text()` (async/promise/arrow forms) passed to `.run()/.exec()` on a line
+AFTER the binding (the order rule kills the real false positive hit on first run: modeller
+`_count(db, sql)` :422 vs patch ident :652). Scans viewer+modeller by default (both green post-#1273).
+`§CHUNK_ONLY_WITNESS PASS scanned=164 files hits=0 selftest_fail=0` with 5/5 self-tests incl. both
+historical bug shapes. F2 = `InputReg.checkScriptDups()`, log-only §SCRIPT_DUP basename audit beside
+the shortcut audit — would have flagged the kernel_ops v8/v13 double-load on sight.
