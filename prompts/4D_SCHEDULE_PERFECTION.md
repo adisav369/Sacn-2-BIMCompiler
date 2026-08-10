@@ -2287,3 +2287,420 @@ witness must assert leftover=0 AND floating=0 on Terminal under load-path promot
 the 24,353, then generalize the antisymmetry rule (candidate: no pool member may hang from any
 structure it transitively bears — or break the specific 3-cycle by the same class-scoped method).
 
+## 2026-08-08 — §4D_NOGEO root cause traced: the 233 are real IFC aggregate-parent shells with NO own mesh, geometry lives in their children — extractor gap, not a viewer bug, fix = compose from children (never invent)
+
+User pushback on §4D_NOGEO ("I thot there are hard no fallback fails outright") led to tracing why
+233 Hospital elements have no `element_transforms` row at all (`viewer/time_machine.js:noGeo`,
+bim-ootb PR #1239 origin — confirmed still live on `origin/main` d98faa9, this session's local
+`~/bim-ootb` checkout was 97 commits stale and briefly gave a false "not found"). Class breakdown,
+queried directly off `Hospital_meta.db`/`Hospital_extracted.db`:
+
+| ifc_class      | discipline | count |
+|-----------------|------------|-------|
+| IfcCurtainWall  | ARC        | 178   |
+| IfcStair        | ARC        | 30    |
+| IfcRoof         | ARC        | 24    |
+| IfcStair        | STR        | 1     |
+
+**Traced 3 real GUIDs (one per class) straight into `internal/UNMERGED/Hospital_IFC4_ARC.ifc` via
+ifcopenshell — root cause confirmed, not hypothesized:**
+```
+IfcCurtainWall 2HaS6zNOX8xOGjmaNi_r6T  Representation=None  ObjectPlacement=real
+  IsDecomposedBy → IfcPlate 2HaS6zNOX8xOGjmaNi_r6S (real geometry, already extracted)
+IfcStair 1wrNt7GW19tOpUaBTGwvsc  Representation=None  ObjectPlacement=real
+  IsDecomposedBy → IfcStair 1wrNt7GW19tOpUaBLGwvsc + 2×IfcRailing (all 3 real geometry, already extracted)
+IfcRoof 2wV7MXoU9CUuWvtM7XEk_5  Representation=None  ObjectPlacement=real
+  IsDecomposedBy → IfcSlab 2wV7MXoU9CUuWvtMFXEk_5 (real geometry, already extracted)
+```
+All three children queried back out of `Hospital_meta.db.element_transforms` with real, non-zero
+center/bbox. **These 233 are IFC aggregate-parent containers** (standard IFC authoring for curtain
+walls/multi-flight stairs/roofs: the parent is a logical grouping object with a real placement but
+no mesh of its own; its actual geometry is authored entirely on its `IfcRelAggregates` children) —
+not a missed-mapped-item extractor bug as first guessed, and not placement-less source data either
+(`ObjectPlacement` is present and real on all three).
+
+**Checked all 3 current extraction code paths for how the 233 got an `elements_meta` row with no
+`element_transforms` row** (`tools/extract.py`, `DAGCompiler/python/extractIFCtoDB.py
+extract_reference` §S172 iterator, `scripts/topup_extracted_db.py`): every one of them writes
+`elements_meta` and `element_transforms` in the SAME insert / same try-block, and every exception
+path skips both together — none of the three, as currently written, can produce a meta-only row.
+`bbox_from_placement()` (`extractIFCtoDB.py:464`) is a deliberate banned stub that always raises
+("parametric box generation is a no-invent violation") — confirms the pipeline is already hardened
+against inventing a synthetic bbox here; it is NOT the source of the gap. Exactly which pass wrote
+the meta-only row historically is still open (not blocking the fix direction) — flagging so a future
+session doesn't re-assume one of these 3 paths is guilty without re-checking.
+
+**Fix direction, per the earlier (b) call — find real geometry, don't hard-fail:** for any element
+with `Representation=None` but real `IsDecomposedBy` children, compose its `element_transforms` row
+as the union bbox of its children's ALREADY-EXTRACTED real transforms (center = midpoint of the
+union AABB, bbox = union AABB extent). This is EXTRACT/COMPILE, not invent — it's a deterministic
+composition over already-extracted real facts (same doctrine as [[BOM PRINCIPLE]]: a parent's
+envelope from its real children is a legitimate recursive rollup). Kills the need for
+`time_machine.js`'s `§4D_NOGEO` synthetic-project-end park for these 233 outright — they'd get a
+real position and re-enter the support-gated schedule/audit like everything else.
+
+**⚠ SUPERSEDED same session — user correction: "my cardinal rule is not to change source DB. Such
+extra metadata has to be one time processed and stored IndexDB and when saved locally goes along with
+it."** The extractor-pipeline approach above was reverted (`git checkout --
+DAGCompiler/python/extractIFCtoDB.py`, clean) — it would have required a full `pipeline_library.sh
+Hospital` rerun + OCI-redistributing the 263MB served binary just to fix 233 rows, and it mutates the
+shipped DB, which is off-limits. Re-read against CLAUDE.md's own already-documented doctrine (`DB
+CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER`) — this is exactly the case that section describes: an
+incremental fix to an already-distributed building DB goes via the patch+self-heal-loader convention,
+not a binary rebuild. bim-ootb already has the exact mechanism live: `viewer/scene.js
+A._applyPendingPatch()` fetches `buildings/patches/<dbFile>.sql` and runs it against the in-memory
+sql.js buffer on every load (idempotent, `INSERT OR IGNORE`/`DELETE`-then-`INSERT`) — the served .db
+file on disk/OCI is NEVER touched, only the patched in-memory copy the viewer actually uses. Once
+loaded, kernel_ops.js's existing whole-DB `_persistToIdb` already caches that live (patched) buffer
+into IndexedDB (`bim_ootb_cache`) on save — so "process once, IndexedDB, rides along on local save"
+falls out of infrastructure that already exists; no new IndexedDB code was needed.
+
+**✅ DONE this way instead, witnessed on the REAL served DB (not a synthetic copy):** generated 233
+`INSERT OR IGNORE INTO element_transforms (...)` statements — center/bbox = union AABB of each
+parent's real `IsDecomposedBy` children, read directly from `viewer/buildings/Hospital_extracted.db`'s
+OWN already-extracted `element_transforms` rows (no re-tessellation; the parent→child mapping came
+from the real source IFC — `rel_aggregates` isn't in this older-vintage served DB, so IFC was the only
+place that relationship still existed; the geometry numbers themselves came from the DB, not the IFC).
+Appended to the existing patch files (both copies stay byte-identical, as they were before):
+`buildings/patches/Hospital_extracted.db.sql` and `viewer/buildings/patches/Hospital_extracted.db.sql`
+(226,962 → 253,924 bytes, +233 lines). **Verified against a scratch copy of the ACTUAL served file**
+(`/home/red1/bim-ootb/viewer/buildings/Hospital_extracted.db`, matching the `served_db.object` path
+named in the file's own `.manifest.json` provenance record): applied the FULL patch (pre-existing
+walkable-raster rows + the new 233) in one `sqlite3 < patch.sql` shot — exit 0, all 7 raster rows
+intact, **0 remaining elements anywhere in the DB without a transform** (was 233; confirms 233 was the
+whole gap, not a sample). No `time_machine.js`/`schedule_author.js` code change was needed at all —
+`noGeo` is already computed from a `LEFT JOIN element_transforms` COALESCE-to-zero, so once the patch
+supplies a real row, the existing logic stops classifying these elements as `noGeo` on its own.
+
+Work happened in a fresh worktree off `origin/main` (`/tmp/wt-4d-nogeo-compose`,
+`fix/4d-nogeo-compose-indexeddb`) per this repo's worktree-hygiene rule — `~/bim-ootb`'s main checkout
+was 97 commits stale with unrelated uncommitted changes sitting in it, unsafe to edit directly.
+
+**⚠ SUPERSEDED again, same day (2026-08-09) — user: "why OCI? DB is to remain intact as much as can,
+push code snips to be injected for any IFC."** The value-patch above (233 precomputed center/bbox
+floats, Hospital-only) worked but wasn't reusable — Terminal/Duplex would each need the same manual
+"trace GUIDs from source IFC" exercise repeated by hand. Checked and confirmed: **every currently
+shipped building DB lacks `rel_aggregates`** (all 26 local files, not just Hospital) — it's a
+pipeline-vintage gap, not a Hospital quirk; `extractIFCtoDB.py` already writes it for any *current*
+extraction (untouched by the earlier revert). Also confirmed per-building ghost counts DON'T carry
+over: **Hospital 233, Duplex 3 (2×IfcStair+1×IfcRoof), Terminal 0** (Terminal's separate
+§TM_GEO_ORDER_CYCLES problem below is NOT a NOGEO gap — good to have that distinction hard-confirmed).
+
+**✅ DONE this way instead — generic code, not a per-building value patch (commit `5542d0f`,
+`fix/4d-nogeo-compose-indexeddb`):**
+1. **`A.composeGhostsFromAggregates(db)` in `viewer/scene.js`**, next to `_applyPendingPatch()` —
+   the SAME ~25-line union-AABB logic already proven in `import_worker.js`'s `§4D_NOGEO_COMPOSE`,
+   ported from import-time to **load-time**, so every already-shipped building gets it too, not just
+   fresh drops. Wired into both `streaming.js` load paths (meta.db split-load line ~1988, full
+   single-DB load line ~2134) — one function, every building, no per-building code. Operates on the
+   in-memory sql.js instance only; never writes back to the fetched buffer or the served file/OCI.
+   Fixpoint over passes (multi-level aggregates). Guards ported verbatim from `import_worker.js`:
+   only touches guids with no existing transform row (structurally true — the ghost set comes from a
+   `LEFT JOIN ... WHERE t.guid IS NULL` — `INSERT OR IGNORE` besides, so real data is never
+   overwritable even in principle); a ghost with zero resolvable geometric children stays a ghost and
+   is **named** in a `§NOGEO_COMPOSE_UNRESOLVED` log (count + class breakdown) — never a silent fall
+   to `time_machine.js`'s `§4D_NOGEO` project-end park.
+2. **Per-building patches shrink to relationship-only** — `buildings/patches/*.sql` now ships just
+   the real `IfcRelAggregates` parent→child GUID pairs (Hospital: 9,457 rows/233 parents — large
+   curtain walls really do have 37–212 member/plate children each, verified against the source IFC,
+   not a bug; Duplex: 11 rows/3 parents), no computed geometry at all. `A.composeGhostsFromAggregates`
+   does the actual math live from data already in `element_transforms`. Any building extracted via
+   the current pipeline from now on needs **zero patch** — `rel_aggregates` is already in its output.
+
+**Verified end-to-end with `sql.js` in Node — the actual runtime engine, not a stand-in** — ran the
+committed function against scratch copies of the REAL served DBs with the REAL patch files applied
+(same as `_applyPendingPatch` would): Hospital 233→0, Duplex 3→0, Terminal 0→0 (correct no-op — it
+was already clean). **Confirmed the served files on disk are byte-identical before/after** (buffer
+diff = 0) — the cardinal constraint holds. Separately, a synthetic guard test (a ghost with a
+`rel_aggregates` row pointing at a child that has no transform of its own) confirms an unresolvable
+ghost stays absent from `element_transforms` **and** shows up in `§NOGEO_COMPOSE_UNRESOLVED` — not
+silently dropped.
+
+**Scope, stated explicitly per user instruction — do not over-claim:** this closes the **NOGEO class
+only** (missing-transform aggregate-parent elements: 233 on Hospital, 3 on Duplex, 0 on Terminal).
+It does **NOT** touch **§TM_GEO_ORDER_CYCLES** (Terminal, `cycles=24353`, `floating=33/48428` — a
+genuine support-DAG cycle under `tm.js`'s load-path promotion; separate root cause, still open, next
+task per the entry above). Report as "NOGEO class closed," never "floating solved."
+
+**Still open:** (1) commit not yet pushed/PR'd — cross-repo (bim-ootb) commit from a bim-compiler
+session, confirming with user first; (2) OCI-upload of the relationship-only patch files — smaller
+than before but still a production-facing action per `deploy/OCI_UPLOAD.md`, needs its own explicit
+go; (3) not run through a live browser end-to-end (Node/sql.js verification only — see above); (4)
+§TM_GEO_ORDER_CYCLES itself, unrelated to this fix, still the next task.
+
+**⚠ Consolidated further, same day — user: "one script, one trigger."** Two implementations
+existed (`import_worker.js` at import time, `scene.js` at OCI-load time) — redundant. Checked, not
+assumed: `streaming.js` routes an OCI sample, a fresh drop-your-own-IFC import, AND a reopened
+`bim_ootb_imports` building through the exact same two `A.db = new SQL.Database(...)` sites
+(`import://` URLs resolve via `A.cachedFetch` to the SAME construction — traced the code, not
+guessed). So `scene.js`'s load-time function already covered every case; `import_worker.js`'s copy
+was pure duplication — **reverted** back to its pre-fix state (commit `c4cdea5`).
+
+`composeGhostsFromAggregates()` now handles both relationship-table shapes it might encounter,
+since the two DB-building paths don't share one schema: `rel_aggregates(parent_guid,child_guid)`
+(server-side `extractIFCtoDB.py`, AGGREGATES-only) or `bom_tree(parent_guid,child_guid,rel_type)`
+(client-side `import_worker.js` §S267, mixed VOIDS/FILLS/AGGREGATES — filtered to
+`rel_type='AGGREGATES'` here so a door-fills-opening relation is never mistaken for aggregation).
+One compose algorithm, one copy, reading whichever table is present.
+
+**Added provenance, not just a log line:** composed rows now carry `transform_source=
+'composed_aggregate'` — `ALTER TABLE element_transforms ADD COLUMN transform_source TEXT` runs
+in-memory, guarded (try/catch — no currently-shipped DB or the fresh-import schema in
+`import_db_builder.js` has the column yet, checked both). Matches the project's own existing
+convention (`extractIFCtoDB.py`'s `'void_anchor'` rows) — six months from now, "is this position
+real or composed" is a column query, not a memory of a console log.
+
+**Re-verified with `sql.js` in Node after the redesign:** Hospital 233→0, Duplex 3→0, Terminal 0→0
+(same real served-DB copies + real relationship patches as before; `transform_source` breakdown
+confirms the split — e.g. Hospital `[null: 63182, 'composed_aggregate': 233]`; served files on disk
+still byte-unchanged). New: a synthetic test using `import_db_builder.js`'s EXACT fresh-import
+schema (`bom_tree`, no `transform_source` column) confirms a `CW1→PLATE1` `AGGREGATES` pair composes
+correctly, and a sibling `OPENING1→DOOR1` `FILLS` pair (present in the same table, different
+`rel_type`) correctly does NOT get composed and shows up named in `§NOGEO_COMPOSE_UNRESOLVED` —
+confirms the relation-type filter is doing its job, not just present in the SQL text.
+
+**⚠ Two open items closed for real, same day — user: "confirm two things yourself... local test
+parity with OCI... a real end-to-end live-browser check, not just Node/sql.js."** Right call — the
+live-browser check caught a real bug the Node tests missed.
+
+**1. Local-vs-OCI parity, checked directly (not assumed):** the local `Hospital_extracted.db` this
+session had been testing against is NOT byte-identical to the live OCI object (263,307,264 bytes,
+etag `b95cabb6-141f-46a0-a1eb-3f18910ae199`, confirmed live via a real HEAD request, matching
+exactly). Downloaded the actual live object and diffed content (not just file bytes) against the
+local copy: the only differences are (a) two tables the local copy is missing entirely —
+`spatial_structure` + `rel_contained_in_space` — accounting for exactly 647,168 of the 647,168-byte
+size delta (158 pages × 4096), and (b) a `material_name` "≈ colorname" backfill present on 6,664
+`elements_meta` rows live but empty locally. **Neither touches anything this fix depends on** —
+`elements_meta.guid/ifc_class/storey/discipline` and all of `element_transforms` diffed byte-for-byte
+identical between local and live; `rel_aggregates` confirmed absent on both. Re-ran the fix directly
+against the freshly-downloaded live bytes as a second, independent confirmation (not just "should be
+equivalent") — same 233→0 result.
+
+**2. Real browser check — found and fixed a genuine bug Node/sql.js testing could not have caught:**
+a live headless-Chromium run (Puppeteer, `§`-tagged console capture only — no screenshots, per this
+project's hardened no-visual-proof rule) against Hospital served through the real path threw
+`§PATCH_APPLY_FAIL ... memory access out of bounds` applying the ~9,465-statement relationship patch.
+Root cause: `viewer/lib/sql-wasm.wasm` (the WASM binary the app actually bundles and ships) is a
+**completely different build** from the npm `sql.js` package used in every earlier Node
+verification this session (different byte size, different md5 — confirmed) — the earlier "verified
+with sql.js, the actual runtime engine" claims were wrong on that specific point; npm's sql.js is
+NOT the runtime engine, it only looks like it. Reproduced the crash directly against the real
+bundled binary in Node (bypassing Puppeteer for fast iteration), isolated it to one giant
+`pdb.run()` call over the whole multi-thousand-statement patch, and fixed `_applyPendingPatch()`
+itself (not just this one patch) to run in ~500-statement line-batches — every patch line, old and
+new, is one complete statement by convention, so batching by line never cuts a statement. Small
+pre-existing patches (a handful of lines) are unaffected — still one batch, unchanged behavior.
+
+Re-verified end to end, for real: real bundled WASM in Node against Hospital `_meta.db` (the actual
+file Hospital's split-load uses — confirmed the earlier `Hospital_extracted.db` patch was for a code
+path Hospital never even exercises at runtime), `_extracted.db`, Duplex `_extracted.db`, and the
+literal live-OCI-downloaded bytes — all four apply clean now. Then the full real-browser witness,
+rerun after the fix: `§PATCH_APPLY Hospital_meta.db applied (... 9473 statements, 19 chunk(s))`,
+`§NOGEO_COMPOSE composed=233`, no `§NOGEO_COMPOSE_UNRESOLVED`, `§DB_META_LOADED`, `§CENTRES_RESULT
+rows=1 first=["Hospital",63415,...]` — every line printed for real, in an actual browser, not
+simulated. Duplex confirmed separately (`composed=3`, 1 chunk, `§CENTRES_RESULT ...1122` elements).
+
+Noted, unrelated: 5 identical `TypeError: Cannot read properties of undefined (reading
+'RoundingMode')` page errors on every load — traced to `roundingMode`-using ERP/finance modules
+(`proj_claim.js`/`vo_fold.js`/`proj_fold.js`/`whatif.js`/`proj_control.js`, none touched this
+session), pre-existing, environment/Chromium-version related, does not block DB load or the compose
+fix. Flagging rather than silently dropping it — not investigated further, out of scope here.
+
+**Commits on `fix/4d-nogeo-compose-indexeddb`:** `1fcefa6` (superseded) → `cb2f136` (superseded) →
+`5542d0f` → `c4cdea5` → `8d8fff4` (the chunk fix). Still not pushed — cross-repo confirmation still
+wanted before push + OCI upload, per standing practice this session.
+
+**⚠ Watchdog review, same day — 4 points raised, all checked with real re-runs, not assumed:**
+
+1. **Biggest one, correctness: does the composed data actually reach the schedule/support-order
+   graph, or just rendering/BOM?** `tests/witness_geometric_support_order.js` (the source of the
+   earlier "floating=0/63415" claim) reads `deploy/buildings/*.db` DIRECTLY via `sqlite3` CLI —
+   bypasses `_applyPendingPatch`/`composeGhostsFromAggregates` entirely, so that earlier PASS was
+   computed with all 233/3 ghosts sitting at `COALESCE(...,0)` — a degenerate zero-bbox point at
+   world origin, invisible to `auditFloating` by construction, not proof the composed geometry is
+   safe. Built REAL composed copies (real patch + real `composeGhostsFromAggregates`, same function,
+   not a reimplementation) of Hospital and Duplex, pointed the witness's own
+   `ScheduleGate.computeSchedule`/`auditFloating` at them: **floating=0/63415 (Hospital),
+   floating=0/1122 (Duplex), shifted=0, cycles=0 on both** — same zero as before, but now with the
+   233+3 elements REALLY in the graph (`§GEO_ORDER` edge count rose, Duplex 5366→5406 — proof they're
+   participating, not just present and inert). This was the one open correctness question and it's
+   closed with a re-run, not "the mechanism should just work."
+2. **`_applyPendingPatch`'s chunking is generic — checked the OTHER patches, not just this fix's.**
+   Two pre-existing patches (`Terminal_extracted.db.sql`/`Terminal_meta.db.sql`) have a multi-line
+   `CREATE TABLE spatial_structure (...)` spanning 2-3 lines — a naive 500-RAW-LINE batch could in
+   principle cut it in half. Checked directly: it sits at lines 8-13, nowhere near a chunk boundary
+   today, so nothing was actually broken — but that was file-layout luck, not a property of the
+   code. Fixed properly: batching is now statement-aware (accumulate lines until one ends in `;`,
+   batch ~500 statements), so a multi-line statement always stays whole regardless of where it
+   lands. Verified against the real bundled WASM: the multi-line CREATE TABLE parses whole and runs
+   standalone; Hospital/Terminal/Duplex patches all still apply clean.
+3. **`composeGhostsFromAggregates()` runs on every load, including Terminal's zero-ghost case — is
+   that a real cost?** Measured, not asserted: ~30-60ms for the LEFT JOIN ghost-scan alone
+   (Terminal's 48,428-row `elements_meta`), 163ms end-to-end composing Hospital's 233 — both
+   negligible against the multi-second DB fetch/parse this runs alongside. Added a `§NOGEO_COMPOSE`
+   / `§NOGEO_COMPOSE_SKIP` elapsed-ms log either way, so this stays a checkable number going
+   forward, not a re-derived guess.
+4. **Shared-tree conflict risk** — checked, not assumed: `origin/main` advanced 5 commits since this
+   worktree forked; only one touches `viewer/streaming.js` (an unrelated `TRIPLANAR_MAT` material
+   table edit, zero line overlap with this fix's two call sites) and **none** touch `viewer/scene.js`.
+   Low conflict risk, confirmed by diffing the actual commit, not by hoping.
+
+Final commit on the branch: `a268f05`. Re-ran the full real-browser witness one more time after all
+four fixes — still 4/4 PASS, `§PATCH_APPLY (9466 statements)`, `§NOGEO_COMPOSE composed=233 ms=163`.
+Still not pushed.
+
+**NEW finding, unrelated to NOGEO, flagged not investigated:** user, watching Hospital: multiple
+trucks appear "way onset" (very early) and near-concurrently rather than staggered — a 4D
+scheduling-realism gap (construction vehicle/delivery placement bunching), separate from both NOGEO
+and §TM_GEO_ORDER_CYCLES. Likely lives in the crew-cap / trade-scheduling logic (`schedule_gate.js`),
+not the support-order gate. Not root-caused this session — next session should trace it with real
+§-log evidence (per this file's own numeric-proof standard) before proposing a fix.
+
+**✅ Second front, same session — user: "users drop their IFCs too, we have to do so likewise."**
+The patch above only fixes the pre-shipped Hospital/Terminal/Duplex buildings. A user-dropped IFC
+(Viewer's "drop your own IFC" flow, `viewer/import_worker.js`) hits the identical gap — worse, even:
+it was already self-documented in-code as **`§GHOST_ADMISSION`** (line ~621, "elements without
+geometry are BOM containers (IfcCurtainWall, IfcStair)... don't write them to elements_meta") —
+same defect, dropped from meta entirely rather than just missing a transform.
+
+Fixed directly in `import_worker.js`, ahead of the existing ghost-admission split: every import
+already collects `bomTree` (§S267, walks `IfcRelAggregates` parent→child into memory — no new IFC
+pass needed) and `transforms` (every geometry-bearing element's real center/bbox, from the SAME
+pass). Composition is therefore a pure in-memory lookup over data the worker was already computing
+— for each still-geometry-less element, union its `AGGREGATES` children's real transforms, and only
+if none resolve does it stay a true ghost. New `transforms` entries feed straight into the existing
+unit-autoscale/georef-rebase pass right after (untouched — it already iterates the whole `transforms`
+array), so composed elements land in the same corrected coordinate frame as everything else with zero
+extra plumbing. **No new IndexedDB code, no new store** — `import.js`'s existing `bim_ootb_imports`
+save path (and, once opened, `kernel_ops.js`'s existing whole-DB `_persistToIdb`) already captures
+whatever this worker returns; composed elements simply ride along in `result.elements`/
+`result.transforms` like any other element. Runs inside the existing Worker (`self.onmessage`, off
+the main thread already) — negligible added cost (one map-lookup pass over the small ghost subset,
+against a pass that's already tessellating tens of thousands of meshes).
+
+Verified the exact added math (not the full browser pipeline — see below) against real, previously
+SQL-verified Hospital children data in an isolated Node script: single-child curtain wall composes
+to its child's own bbox bit-for-bit (mod float64 rounding), 3-child stair unions correctly (bbox
+larger than any single child in each axis, as a union must be). `node --check import_worker.js`
+clean. **Not run end-to-end through the real browser worker this session** (Hospital's 77MB ARC file
+is too slow for a quick Puppeteer witness like `tests/morpheus_import_live.js`'s small fixture) — the
+math is proven, the wiring is proven by inspection (same `transforms.push()` shape as every other
+element), but nobody has watched `§4D_NOGEO_COMPOSE` actually print from a live drop yet. Flagging
+so a future session doesn't assume that's been done — reuse `tests/morpheus_import_live.js`'s harness
+with a curtain-wall/stair-bearing IFC to close that gap.
+
+**User: "perhaps Modeller already has it — unify, or maybe not, users have separate usage."**
+Checked: **Modeller doesn't need a separate fix — it already shares this exact file.**
+`modeller/str_walker_outliner.js:249` does `new Worker(new URL('../viewer/import_worker.js?v=8', ...))`
+— literally the same worker, same code path, same comment at line 206 confirming intent: "Reuses the
+Viewer's OWN parse engine." One edit, both apps fixed; no unify-vs-separate call was actually needed
+because the two were never forked apart for import/extraction in the first place. Worth remembering
+for next time this class of question comes up: **`viewer/import_worker.js` is the one shared
+IFC-parse engine for BOTH apps** — a gap found via one app's drop-IFC flow is very likely present (and
+fixed) in the other's too, check here first before assuming separate work is needed.
+
+## 2026-08-10 — §NOGEO_COMPOSE — load-time fix DONE+verified, PUSH-TO-ZERO checklist for the root-fix lane
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: this section is a WORK-TO-ZERO checklist (CLAUDE.md §WORK-TO-ZERO) for the §NOGEO ghost-position
+lane. Work items top-to-bottom. Mark ✅ DONE (witness) or ⛔ BLOCKED: <question> — never leave one
+"parked" silently. Read the whole section before touching anything; it supersedes nothing above, it
+closes the loop the §GEOMETRIC_SUPPORT_ORDER / §TM_GEO_ORDER_CYCLES sections opened.
+```
+
+**Doctrine this lane runs on (read before editing):** `CLAUDE.md` PRIME RULE (extract or compile only,
+never invent) · `DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER` section (two categories — a small SQL
+patch+loader for schema/relationship facts, vs. a full rebuilt binary via OCI for anything not
+reproducible from a short script) · `deploy/OCI_UPLOAD.md §RULES` (content-type headers, mandatory) ·
+Sacred Files (binary `.db` commits banned EXCEPT the explicit `.gitignore` carve-outs already in place
+for a handful of small Modeller sample DBs — `modeller/Duplex_extracted.db`, `SampleCastle_extracted.db`,
+`SampleHouse_extracted.db`, `Terminal_meta.db`, `Terminal_geo.db` — do not add new ones without the same
+deliberate exception) · Worktree Hygiene (this lane lived entirely in `/tmp/wt-4d-nogeo-compose`, prune
+once merged).
+
+**Floating-items awareness — do not conflate the two open floating issues:**
+1. **§NOGEO ghost class (this section)** — elements with NO `element_transforms` row at all (233
+   Hospital / 3 Duplex / 41 HHS_Office_Federated, confirmed — see below), silently parked at project-end
+   with a synthetic timestamp by `time_machine.js`'s old `§4D_NOGEO` fallback, invisible to
+   `ScheduleGate.auditFloating`'s own denominator. Root cause: `IfcCurtainWall`/`IfcStair`/`IfcRoof`
+   containers legitimately authored `Representation=None` in the source IFC — real geometry lives on
+   `IfcRelAggregates` children. Not an extractor bug, not invented data — confirmed by reading
+   `extractIFCtoDB.py:2537` (`ifc_file.by_type("IfcRelAggregates")`, literal `GlobalId` pairs).
+2. **§TM_GEO_ORDER_CYCLES (Terminal, separate, still open, untouched by this lane)** — a genuine
+   support-DAG cycle under `tm.js`'s load-path promotion pattern, `cycles=24353` Kahn leftovers,
+   `floating=33/48428`. Different root cause, different fix. Do not close this section and think that
+   one is also solved — it isn't, it needs its own task.
+
+**What's DONE (load-time compose lane, `/tmp/wt-4d-nogeo-compose`, branch `fix/4d-nogeo-compose-indexeddb`,
+commits `1fcefa6`..`a268f05`, watchdog-reverified at every step, not taken on faith):**
+- ✅ One shared `A.composeGhostsFromAggregates(db)` in `scene.js`, called at DB-open time via BOTH
+  `streaming.js` load-path call sites (confirmed the only two `A.db = new SQL.Database(...)` sites in
+  the file) — covers OCI sample loads, fresh imports, and IndexedDB-reopened buildings uniformly, one
+  algorithm, not per-source special-casing. `import_worker.js`'s separate import-time copy reverted
+  (was pure duplication once this existed).
+- ✅ Handles both relationship-table shapes: `rel_aggregates` (server extraction) and `bom_tree` filtered
+  to `rel_type='AGGREGATES'` (browser import) — isolation-tested against a sibling `VOIDS` (door-fills-
+  opening) relation with a REAL transform on the child, confirmed it does not leak into compose.
+- ✅ `transform_source='composed_aggregate'` marks every composed row (reuses this project's existing
+  `void_anchor` provenance convention, `extractIFCtoDB.py:189`) — a derived value never looks like a
+  literal extracted fact.
+- ✅ Never mutates the served file — in-memory only, verified structurally (no `db.export()` write-back
+  in the compose path) and verified numerically (served file byte-unchanged before/after every test run).
+- ✅ `_applyPendingPatch()` batching fix (`§PATCH_CHUNK`) — a real, would-have-shipped-broken bug: a
+  single `pdb.run()` over a 9,465-statement patch crashes the project's ACTUAL bundled
+  `viewer/lib/sql-wasm.wasm` ("memory access out of bounds") — a DIFFERENT WASM build from npm's
+  `sql.js` (confirmed different md5/size), so Node-only testing structurally cannot catch this class of
+  bug. Found only because a real headless-browser run was insisted on before push. Fixed with
+  statement-aware chunking (not naive line-count), re-verified against the real bundled binary.
+- ✅ The correctness question that mattered most — does the composed data actually reach the scheduler —
+  re-verified with a real re-run of `ScheduleGate`'s support-order audit against composed copies (not
+  the raw ghost-blind DBs the witness reads by default): `floating=0/63415` Hospital,
+  `floating=0/1122` Duplex, edge counts genuinely rising (Duplex `5366→5406`), proving the 233/3
+  composed elements are participating in the support DAG, not just present and inert.
+- ✅ Perf logged, not assumed: `~30-60ms` zero-ghost scan, `~163ms` full Hospital compose.
+- ✅ Merge-conflict risk checked directly: `origin/main` 5 commits ahead, only one touches
+  `streaming.js` (unrelated), none touch `scene.js`. Low risk, confirmed not hoped.
+
+**Push-to-zero checklist, work top-to-bottom:**
+
+1. **⛔ BLOCKED: HHS_Office_Federated needs its own relationship-only patch before ANY push.** Found
+   late in this lane's own review, not by the implementing session — **41 ghosts**, same class, never
+   patched. Generate `buildings/patches/HHS_Office_Federated_extracted.db.sql` the same way as
+   Hospital/Duplex (raw `rel_aggregates` rows only, no computed values) before this branch is
+   considered complete. Do not push/PR/OCI-upload with only 2 of 3 known-affected buildings covered.
+2. **Check JKR too** — never verified (source `.db` not available in the local sandbox at review time).
+   Query it the same way (`SELECT COUNT(*) FROM elements_meta m LEFT JOIN element_transforms t ON
+   t.guid=m.guid WHERE t.guid IS NULL`) before calling the landed-DB scope closed.
+3. **Once 1–2 are ✅: push `fix/4d-nogeo-compose-indexeddb`, open the PR, OCI-upload all patch files**
+   (Hospital, Duplex, HHS_Office_Federated, +JKR if it needs one) per `deploy/OCI_UPLOAD.md §RULES`
+   (content-type headers mandatory).
+4. **Root-fix, next lane (bigger, do only after 1–3 are live and stable):** bake the compose logic into
+   `extractIFCtoDB.py` itself so it runs ONCE at extraction time — every future extraction ships with
+   zero ghosts from the start, no runtime patch/compose needed at all for anything freshly extracted.
+   This is the fuller expression of "extract, don't invent," not a rule exception — the composed value
+   is still 100% derived from real extracted facts, just computed once at write-time instead of every
+   read-time.
+   - **Precondition, verify before making this unconditional:** `IfcRelAggregates` is ALSO how IFC
+     expresses the spatial-structure hierarchy (Building→Storey→elements), not only physical assemblies.
+     Confirm `elements_meta` never carries `IfcBuildingStorey`/`IfcBuilding`/`IfcSite` rows before the
+     extractor-side ghost-detection query runs unconditionally — composing a "position" for a storey is
+     semantically wrong even if harmless, name it if found rather than silently composing it.
+   - Source IFCs confirmed present: Duplex `~/bim-ootb/IFC/Duplex_ARC.ifc`; Hospital (federated,
+     multi-discipline) `internal/UNMERGED/Hospital_IFC{2x3,4}_{ARC,STR,MECH,ELE,PLB,FIRE,SPR}.ifc` +
+     `~/Downloads/Hospital 2.0.ifc`. HHS_Office_Federated's source not yet located — find it first.
+   - Re-extract + republish fresh, complete DBs to OCI for whichever of Hospital/Duplex/
+     HHS_Office_Federated/JKR need it — this is the FULL BINARY category per `CLAUDE.md`'s DB doctrine
+     (not a migration script), same URL, needs a cache-bust (sw.js `CACHE_VERSION` bump) so clients
+     don't keep serving stale cached bytes.
+   - **Modeller check, only 2 of 4 buildings checked so far:** `modeller/Duplex_extracted.db` (git-
+     tracked, confirmed already 0 ghosts — no action needed). Hospital — Modeller has no
+     `Hospital_extracted.db` at all (only the unrelated `Hospital_ARC.db`), not affected. **Still
+     open: `modeller/HHS_ARC.db` and any JKR Modeller copy — check the same ghost-count query before
+     assuming they're clean.**
+5. **Once the root-fix lands and republished DBs are live: retire the now-redundant relationship-only
+   OCI patches** for whichever buildings got a fresh extraction (KISS — don't keep a special case once
+   the general mechanism subsumes it, same principle §GEOMETRIC_SUPPORT_ORDER's own closeout used).
+
+**Session end for this section = every numbered item above is ✅ or ⛔ named. Not "mostly done."**
+
