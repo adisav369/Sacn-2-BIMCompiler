@@ -3074,3 +3074,43 @@ AFTER the binding (the order rule kills the real false positive hit on first run
 `§CHUNK_ONLY_WITNESS PASS scanned=164 files hits=0 selftest_fail=0` with 5/5 self-tests incl. both
 historical bug shapes. F2 = `InputReg.checkScriptDups()`, log-only §SCRIPT_DUP basename audit beside
 the shortcut audit — would have flagged the kernel_ops v8/v13 double-load on sight.
+
+## ▶ RESUME AFTER POWER-DOWN (2026-08-10 late): §GANTT_REFOLD_HANG WIP + LTU live-log findings
+**State at power-down (worktrees in /tmp are GONE after reboot — everything pushed):**
+- **§TM_GEO_ORDER_CYCLES ✅ FIXED+MERGED** (PR #1276): Terminal cycles 37,927→0, DEQ shifts 251→0,
+  floating 45→8. Real class (SCC-proven, predicted hang-3-cycle REFUTED): tall walls + crown-contained
+  + mid-span wallBearsPromoted. Fix: contained support must top in consumer's LOWER HALF; wallCarries
+  only AT wall top (±GAP). Witness asserts cycles=0/floating=8. gantt_lock witness was crashing since
+  #1272 (missing _promoteRoofLoadPath slice) — repaired in #1276.
+- **§GANTT_REFOLD_HANG — code COMPLETE, NOT witnessed, branch `fix/gantt-refold-hang` pushed, NO PR.**
+  _ogSupportGuard() + _writeScheduledChunked() extracted (verbatim inner code), _TM_CHUNK=2500 yields,
+  per-chunk txns (never BEGIN across a yield), injectGantt async, 3 call sites awaited, navigate_find
+  thenable-aware. witness_gantt_og_grid_perf REWRITTEN (was DEAD on main — text end-mark rotted at
+  §4D_LAYER_TRUTH; now slices the named fn; brute force updated to sweep+hang semantics).
+  NEW witness_gantt_refold_yield (identity yield-vs-sync + chunked-vs-single-txn rows + <200ms span
+  bound). First combined run TIMED OUT at 10min (Hospital+Terminal ×4 loads — likely just slow, split
+  the runs). **Next: checkout branch to a fresh /tmp worktree, run all 4 witnesses (refold_yield,
+  og_grid_perf, gantt_lock, tm_geo_order_cycles), bump sw (take current), PR, auto-merge.**
+- **LTU re-extract ✅ LIVE on OCI** (meta 50MB/0-ghosts + geo 160MB + positions, gzip, fetch-back
+  byte-verified; June pair backed up: OCI copy UNCONFIRMED, local copy at
+  `~/bim-ootb/buildings/_backup_ltu_june_2026-08-10/`). merge_db no-library blob-destruction fixed in
+  bim-compiler (BLOB_COVERAGE gate). Resident RAM 440→210MB.
+**From the user's live LTU test log (pasted 2026-08-10, full log in that session):**
+1. **⚠ STALE IDB CACHE — the session loaded the OLD June vintage** (dbElements=122,667, §4D_NOGEO
+   parked=337, heap 2.6GB) despite the new pair being live — [S203] building cache is cache-first with
+   NO revalidation, so returning users NEVER get re-uploaded DBs. **Open item: check/build a
+   revalidation path (HEAD etag/Content-Length compare on cache-hit, or a bucket version stamp).**
+   This gates the whole mem win reaching users.
+2. **NEW cycle class on LTU under tm promotion: §SUPPORT_CYCLE cycles=75,943, §DEQ_REPAIR shifted=8,848,
+   floating=2,521/122,330** (schedule_author pass clean, cycles=0 — same signature shape as Terminal's).
+   Measured against the OLD vintage; re-measure on the NEW extracted.db
+   (203MB, staging was /tmp — REGENERATE via scripts/extract_merge_disciplines.py, ~15min, or pull
+   meta+geo from bucket) then SCC-analyze (the tm_cycle_scc.js analysis scratch was in /tmp — rebuild
+   from this section: replicate DAG predicates, Tarjan on Kahn leftovers, cross-check leftover count).
+3. §WRITE_LOOP_TIMING ms=2044.9 on LTU = the refold-hang freeze class, live — confirms the WIP fix's
+   priority. Also §CINEMA_SPACE all-candidates enclosed=0% (room enclosure data absent on old vintage —
+   re-check on new), needle §PATCH_NONE 404 handled clean (no wasm crash — #1271 held).
+**Still open, unchanged:** floating=8 Terminal tail; witness_geo_support_leak pre-existing FAIL
+(10 ungated/7 leaked, identical on baseline); LTU bucket extracted.db still Aug-3 71MB library-pattern
+vintage (split pair is newer — unify when extractor root-fix lands); OPFS/sqlite-wasm paging spec
+(structural mem lever) still to be scoped after cache-revalidation lands.
