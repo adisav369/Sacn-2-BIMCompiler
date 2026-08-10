@@ -4,6 +4,19 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-10 — §NOGEO_COMPOSE push-to-zero items 1-3 ✅ SHIPPED+LIVE (bim-ootb #1266/#1267/#1268)
+HHS_Office_Federated 41 ghosts→0 and Clinic 43→0 (a 4th affected building the checklist never listed —
+found by sweeping the ghost query over EVERY shipped DB, not just JKR; JKR itself is 0). Real
+`IfcRelAggregates` pairs only, no computed values; OCI uploads all `§GATE_VERDICT UPLOAD_VERIFIED`;
+production `§LIVE_WITNESS PASS composed=41` / `composed=43` on the real GH-Pages viewer + live OCI bytes.
+W-NOGEO-COMPOSE is now a committed re-runnable witness (`tests/witness_nogeo_compose.js`, 9/9 PASS
+against the project's OWN bundled `sql-wasm.wasm`). Landmine caught pre-upload: `buildings/patches/` and
+`viewer/buildings/patches/` are NOT the same file for HHS — uploading the root copy would have deleted
+the live `spatial_structure` fix; uploaded the superset. Items 4-5 (extractor root-fix) still OPEN, now
+with the storey-aggregate precondition measured safe. Full record + 2 new ⛔ (LTU_AHouse_meta 337 ghosts
+= different class, needs a user decision; Modeller has NO compose port, 7 DBs) —
+`prompts/4D_SCHEDULE_PERFECTION.md` §NOGEO_COMPOSE (2026-08-10 second-session section).
+
 ## Session 2026-08-10 — CPE walk ctrl-drag exit SHIPPED; Viewer prompts audit + 4D consolidation plan (not yet executed)
 §CPE_WALK_CTRL_DRAG_EXIT (bim-ootb PR #1261, MERGED+LIVE): Ctrl-held-drag during POV walk mode was
 exiting walk unexpectedly — OrbitControls stayed live on the same canvas and threw `setPointerCapture`
