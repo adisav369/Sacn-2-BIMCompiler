@@ -4,6 +4,53 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-12 — §MAIN_BUILDING_SHADOW SOLVED after 5 sessions stuck (bim-ootb PR #1302, MERGED)
+Main building + rooftop fixtures cast no shadow in a MaxQ bake while skyline props and Time Machine's
+Shadow mode both did. Root cause: `shadow.bias` is NORMALISED depth (`shadowCoord.z += shadowBias`
+over [0,1] across near..far), so its world-space size is `bias x (far-near)`. `_enablePhotoShadows`
+copied `toggleShadow`'s `-0.0005`, but toggleShadow moves the sun to ~150 m (range 609 m = 0.305 m)
+while the photo path cannot move it (updateSky/Sky/lensflare read `A.sun.position`, sunDist=5000,
+range 19,748 m = 9.874 m). 32.4x. Erases any caster under `casterHeight/sin(elevation)` ~ 8.1 m tall
+at the 55 deg film opening — every rooftop fixture and a short building's ground shadow — while the
+tall skyline props cleared it. Prior PRs #1293/#1295/#1298/#1299/#1300 all fixed real but different
+bugs; none touched the depth comparison. Fix holds the WORLD-space bias (floor 0.305 m, raised to
+`texel/tan(lowest arc elevation)` against grazing-sun acne). Paired A/B, only bias changed: 1,665 px
+darkened at 55 deg, 12,095 at dusk, 0 brightened either. User confirmed shadows now seen. Also fixed
+a stale-`matrixWorld` read that made `§PHOTO_SHADOW_FRUSTUM_COVERAGE` untrustworthy as evidence.
+Full record: `prompts/PHOTOREAL_STILL_RENDER.md` §MAIN_BUILDING_SHADOW. Witnesses:
+`scripts/witness_shadow_bias_{ab,postfix}.js`. sw.js v991->v992.
+
+## Session 2026-08-11 — CPE POV walk "toppled/upside-down" camera FIXED+SHIPPED (bim-ootb PR #1292, MERGED)
+User report: walk-mode camera rolls/flips easily, should behave like canvas mouse/finger nav. Root
+cause: `cpe_walk.js` used THREE's default Euler `'XYZ'` order — pitch composes around WORLD X after
+yaw, so any diagonal mouse move bakes real roll into the camera (OrbitControls never has this; it
+uses clamped spherical coords). Fix: `'YXZ'` order (three.js's own PointerLockControls convention,
+mathematically roll-free for any yaw/pitch) + fresh-spawn branch now re-levels immediately instead of
+only on resume. Built in `/tmp/wt-cpe-walk-rollsnap` (worktree, pruned post-merge), not the shared
+dirty checkout. Witness: new `witness_cpe_walk_roll_snap.js` 3/3 PASS, confirmed FAILS 2/3 on pre-fix
+code (right.y up to 0.66 — a real regression catch, not a tautology); full regression unaffected
+(`witness_cpe_walk_edit.js` 24/24, `witness_cpe_walk_ctrldrag_fix.js` 4/4). sw.js v983→v984. Full
+diagnosis + fix record: `prompts/CPE_POV_WALK_PATHING.md` §CPE_WALK_ROLL_SNAP.
+
+## Session 2026-08-11 — Modeller-vs-Revit competitive positioning: clipboard spec written, no code touched
+Chat-only strategic session (bim-compiler root; target code is bim-ootb `modeller/` — nothing there edited,
+read-only Explore verification only). Chain: why Revit/ArchiCAD don't bind IFC at placement time
+(strategic — IFC is a competitor-neutral schema, not their moat) → what a Revit modeller's daily-routine
+presets (office template, type catalogs, groups/copy-paste) already solve vs. the grunt work that survives
+(project-specific Pset/classification filling, precedent-matched type selection) → recorded as
+`prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` §6 (2026-08-11), extending its existing Revit-positioning
+thread rather than forking a new doc. Picked the §4a static clipboard as the one safe-to-build item (pure
+addition, no existing code touched) and split it into a real, grounded build spec:
+`prompts/MODELLER_CLIPBOARD_COPY_PASTE.md`. An Explore pass against `bim-ootb origin/main` (`9197a09`)
+corrected the original design's assumptions: `expandAssembly` doesn't fit a live-selection copy;
+`foldInsert` + `arc_editable.js buildSeedOps()`'s non-catalog path does; signed-op-group commit is
+`commitGesture` (grid-stretch's own pattern, undo/redo for free), not `commitSeedGroup`; DAG-guided
+severance-aware pick needs new code, deferred out of scope. **⛔ BLOCKED: dispatch needs a user go + a check
+that no other concurrent session already owns Modeller work** (cross-repo dispatch rule, see
+`feedback_diagnose_in_session_fix_in_other_session` memory) — do not dispatch cold, ask first. Pset/
+classification-mining track separately flagged, not started: check `DAGCompiler`/`internal/UNMERGED` source
+IFCs directly for Pset presence before assuming a new mining pass is needed (user steer, 2026-08-11).
+
 ## Session 2026-08-10 — §NOGEO_COMPOSE push-to-zero items 1-3 ✅ SHIPPED+LIVE (bim-ootb #1266/#1267/#1268)
 HHS_Office_Federated 41 ghosts→0 and Clinic 43→0 (a 4th affected building the checklist never listed —
 found by sweeping the ghost query over EVERY shipped DB, not just JKR; JKR itself is 0). Real
@@ -212,7 +259,7 @@ refs/heads/); do n=$(git rev-list --count origin/main..$b); [ "$n" -gt 0 ] && ec
 - ▶ **NEXT: `Viewer/FLY_TOUR_CORRIDOR_GRAPH.md §STAKEHOLDER_STROLL` S4** — glazing metric (windows
   TE 236/HO 131/CL 58/LTU 976; curtain wall HO 178/CL 31) → S5 jerk softener (95th-pct −50%, profile
   FIRST). ⚠ S2 forked `deploy/dev/room_graph.js` from bim-ootb `common/room_graph.js` — needs porting back.
-- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · Held: `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`) · §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`, specced 07-02 not built) — caption several rooms in view with a level prefix instead of one ray-picked room.
+- Small opens: Terminal Aras 03/04 raster refresh (Clinic/Terminal/LTU ship NO raster table — blocks G1) · `docs/userguide-roompath-fixed` no PR · HBA IoT 1/2/0 (CCTV dbl-click, camera-POV fly-to ⛔ needs facing vector, mobile card-stack) `RESUME_HBA_MOBILE_CARD_STACK.md` · `PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md` §6 → spec split out as `MODELLER_CLIPBOARD_COPY_PASTE.md`, ⛔ BLOCKED on dispatch go · Kernel op-log T4+T5 BROWSER-GATED `KERNEL_HARDENING_BATCH1_SPEC.md §STATUS` · Modeller onboarding `ARC_GEO_FETCH_SPEC.md §NEXT` item 2 · ⛔ `DV_*_rules.sql` append-only exempt? `CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` · Modeller polish: PBR textures (9), SSAO (needs EffectComposer), ARC occupancy drift 99%→92-95% (`project_arc_meshreadpixels_branch_unmerged.md`) · §CPE_ROOM_TITLE_MULTI (`prompts/CINEMA_PATH_EDITOR.md`, specced 07-02 not built) — caption several rooms in view with a level prefix instead of one ray-picked room.
 - ▶ **KUL070 datacentre** — `prompts/datacentre_cabling.md` (cabling) / `prompts/IFC_LARGE_PRIVATE_STRESS_TEST.md`
   (ingestion, §KUL009-13). Ingestion CLOSED: the 62,500 "missing" elements were the wasm32 4GB ceiling
   (not the call stack) — 8-way split → 87,333-element DB, 0 orphans. ⚠ §KUL013: `center_*` is the
