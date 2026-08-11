@@ -3063,9 +3063,19 @@ SampleCastle_ARC 117→0 (52 composed + 65 via pre-existing §ANCHOR void-anchor
 rel_aggregates extractor-gap class, NOT NOGEO), Ifc4_Revit 49→0, Clinic_ARC 34→0, HHS_ARC 33→0,
 Duplex_ARC 3→0, SampleHouse_ARC 2→0; Terminal_ARC/JKR_ARC/Duplex_extracted regressions 0→0.
 `§NOGEO_WITNESS_TOTAL mode=modeller pass=8 fail=0`.
-**⛔ BLOCKED — Garage_ARC.db stays at 19 ghosts** (all IfcCurtainWall): source `HospitalGarage_IFC4.ifc`
-no longer exists anywhere on disk (GUID-grepped every local .ifc) — pairs cannot be EXTRACTED.
-Named at every open via §NOGEO_COMPOSE_UNRESOLVED; unblocks only if the source IFC resurfaces.
+**✅ UNBLOCKED 2026-08-11 — the "source no longer exists" claim above was WRONG, corrected same day.**
+User: "All landed buildings IFCs do exist on disk in this machine... buried sometimes but they do
+exist and no way we throw sources away." Verified, not just taken on faith: both
+`~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/HospitalGarage_IFC4.ifc` (6.45MB) and the sibling
+`HospitalGarage_IFC2x3.ifc` (6.41MB) exist, valid IFC, 20 `IFCCURTAINWALL` entries — matches the "19
+ghosts, all IfcCurtainWall" description. The earlier session's "GUID-grepped every local .ifc" search
+was too narrow (missed `~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/` and
+`~/bim-compiler/internal/UNMERGED/` — both real source-IFC archive locations on this machine, see
+`reference_source_ifc_locations.md`). Garage_ARC's 19-ghost item is REOPENED, not permanently
+blocked — pairs CAN be extracted once someone runs the compose pass against this file. Not
+re-composed yet this session (pulled focus, not scoped here) — next session picking this up: run
+§NOGEO_COMPOSE against `HospitalGarage_IFC4.ifc`/`_IFC2x3.ifc`, expect Garage_ARC.db 19→0 same as the
+other 7 buildings in this same push-to-zero pass.
 **F1+F2 — implemented same session** (bim-ootb PR #1274, auto-merge armed): F1 spec REFINED during
 implementation — /sql/i ident-name matching drowned in constant-literal false positives; shipped rule =
 idents bound from network `.text()` (async/promise/arrow forms) passed to `.run()/.exec()` on a line
