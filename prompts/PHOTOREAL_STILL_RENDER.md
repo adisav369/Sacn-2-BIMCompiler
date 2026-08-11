@@ -101,12 +101,34 @@ does today, byte-identical output. No new architecture needed.
   volumetric fog, clouds with correct occlusion, wet reflections and — decisively — **any shadow
   change** cannot. Compositing cannot fix a shadow, which is the thing being asked for.
 
-**One capability the architecture already gives for free, worth knowing before scoping:** captured
-frames are written to IndexedDB **one at a time** (`_idbPut(db, k, v)`) and muxing is a **separate**
-step (`_stitchMp4(db, framesDone, fps, w, h)` reads them back). Combined with `poseAt` determinism,
-any frame index is independently reproducible — so an advanced pass can re-render **only a sub-range**
-(e.g. the last 20% of frames) and re-mux against the frames already stored. A partial re-bake costs
-only the frames actually re-shot, not the whole film.
+**⚠ CORRECTION (same day, before anyone scoped against it): the IndexedDB frame store is NOT a cache
+and gives NO second-bake speedup today.** An earlier note in this section called sub-range re-rendering
+a free capability. It is not free — it is achievable, which is a different claim. Verified in
+`cinema_maxq.js`:
+- one fixed store, `IDB_NAME = 'bim_ootb_cinema_maxq'`, `IDB_STORE = 'frames'` (line ~412);
+- **`await _idbDelete()` at the START of every bake** (line ~1124), immediately before `_idbOpen()`;
+- **`await _idbDestroy(db)` at the END** (line ~1458).
+
+So the frames are a scratch buffer that exists only between capture and mux, wiped at both ends. **A
+second bake today costs exactly what the first did.** Nothing is reused.
+
+**What IS achievable, and its real limit.** `poseAt(tNorm)` determinism means any frame index is
+independently reproducible, so frames COULD be kept — keyed by (plan hash, frame index, settings hash)
+— and an advanced pass could then re-render only the frames it actually changes and re-mux the rest.
+But note where that does and does not pay:
+- **Whole-film weather change: no saving at all.** Every frame's pixels change, so every frame is
+  re-rendered regardless. An advanced bake costs a full bake plus whatever weather costs per frame.
+  The expense is the per-frame `_composer.render()` + SSAA/N8AO + `toBlob`, not the muxing.
+- **Sub-range change: real saving.** The dusk-shadow case (re-shoot only the last ~20% of frames at a
+  higher arc-end elevation) is exactly the shape that benefits, and is the case worth building for.
+
+**⚠ Load-bearing constraint — do not simply delete the deletes.** The start-of-bake `_idbDelete()`
+exists because a leftover/blocked store caused a real, diagnosed hang: "stuck right after
+§MAXQ_PREVIEW done, zero further lines" (LTU, v810/MAXQ v7 — see the §MAXQ_IDB comment block at
+line ~510, which documents the three guards added: track+close our own connection, purge a pending
+delete BEFORE opening, and race the open against `IDB_OPEN_TIMEOUT_MS`). Any frame-persistence design
+must keep those guards intact and add explicit invalidation + a storage budget (360–576 webp frames at
+bake resolution is not free disk), not remove the cleanup that fixed a shipped bug.
 
 ### The dusk shadow at the end of the film — not a bug, and weather will NOT fix it
 
