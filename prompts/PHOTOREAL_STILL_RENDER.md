@@ -118,6 +118,97 @@ polish. Recommend costing this BEFORE building the cosmetic version, since the c
   the whole film, produces a flat or black bake. The `_elevDeg > 0.5` guard in the reach math is a
   precedent but does not cover the azimuth case.
 
+### §SUN_START_TIME — SPEC (2026-08-12, user ask: "set the start time, default 12 noon, 6-hour span") — FEASIBLE, NOT STARTED
+
+**Verdict: feasible and cheap in plumbing, but it only behaves the way the ask assumes if it is built
+on REAL solar geometry. On today's synthetic curve it does not.** Three measured findings drove this
+spec (script: this session's scratchpad; formulas are standard solar-position, `alt = asin(sin φ sin δ
++ cos φ cos δ cos H)`).
+
+**1. The current film is NOT "noon to dusk over 6 hours".** Mapping today's hard-coded constants onto
+Time Machine's own hour curve: `PHOTO_SUN_ELEVATION_START = 55` lands at **15:29**, `_END = 6` lands at
+**17:44** — a **2.26-hour** late-afternoon-into-sunset window, with azimuth **frozen** the whole time.
+
+**2. A window centred on noon is symmetric — 9am→3pm starts and ends at the SAME sun height.** On the
+synthetic curve, 09:00 = 63.6° and 15:00 = 63.6°, peaking at 90° in the middle. Shadow length/height
+runs **0.50 → 0.00 → 0.50**: identical at both ends, *shortest in the middle of the film*. That is a
+legitimate "day passes overhead" look, but it is the opposite of the progressive lengthening the
+current film has, and it throws away the dusk payoff. Any symmetric window does this.
+
+**3. With REAL solar geometry the user's proposed default is not just workable, it is better than
+today's hand-tuned arc.** 12 Aug, start 12:00, span 6h:
+
+| site | elevation | azimuth swing | shadow / height |
+|---|---|---|---|
+| London 51.5°N | 53.6° → 11.8° | 180° → 279° (**100°**) | 0.74 → 4.8 |
+| Kuala Lumpur 3.1°N | 78.0° → 0.8° | 0° → 285° (285°) | 0.21 → **71** |
+| Sydney 33.9°S | 41.0° → **−8.4°** | 0° → 283° (283°) | 1.15 → **below horizon** |
+| *today, hard-coded* | *55° → 6°* | *fixed (0°)* | *0.70 → 9.5* |
+
+London's 53.6° → 11.8° is within a couple of degrees of the hand-tuned 55° → 6° — **the existing "high
+noon look" constant is, to within 1.4°, the literal solar noon altitude of a mid-latitude European site
+on this date.** So `start 12:00, span 6h` reproduces today's film at a European site, correctly differs
+elsewhere, and adds the 100° azimuth swing today's fixed azimuth completely lacks (shadows currently
+lengthen but never rotate, which is the main thing that reads artificial).
+
+**Therefore: build it on real solar position, not on the synthetic sine.** The sine cannot deliver what
+the ask assumes — it is latitude-free and date-free, puts the sun at the zenith at noon everywhere on
+Earth (so a literal 12:00 default would be flat and shadowless, the exact thing
+`PHOTO_SUN_ELEVATION_START`'s own comment says it chose 55 to avoid), and freezes azimuth.
+
+#### Spec
+
+- **Inputs:** `startTime` (default **12:00**), `spanHours` (default **6**), site latitude/longitude,
+  date. Per frame: `tOfDay = startTime + tNorm * spanHours` → `(elevation, azimuth)` from a standard
+  solar-position algorithm (NOAA/SPA — tens of lines, no dependency) → the EXISTING
+  `A.updateSky(elevation, azimuth)`. `_sunElevationAt` / `_sunArcStep` are the only call sites.
+- **Georeference:** read `IfcSite` `RefLatitude`/`RefLongitude` (IFC-standard, present in most real
+  files; **nothing in `viewer/` reads them today** — grep finds only `clash_snag.js`'s *device* GPS).
+- **Fallback when the file has no georeference:** fall back to **today's exact hard-coded 55°→6°
+  arc**, unchanged. Never guess a latitude — an invented site would silently produce wrong shadows,
+  which is exactly the class of thing the Prime Rule forbids.
+- **Clamp by elevation, never by the clock (load-bearing).** A literal 6h span breaks near the equator
+  and in southern winter: KL ends at 0.8° and Sydney ends **below the horizon** — the film would end in
+  darkness. Measured frustum consequence for a 10m building (`reach = height/tan(elev)`, then
+  `texels/m = 4096/(2·_env)`):
+
+  | end elevation | shadow reach | `_env` | texels/m |
+  |---|---|---|---|
+  | 15° | 37 m | 57 m | 35.7 |
+  | 11.8° | 48 m | 68 m | 30.2 |
+  | **6° (today)** | 95 m | 115 m | **17.8** |
+  | 3° | 191 m | 211 m | 9.7 |
+  | 0.8° | 716 m | 736 m | **2.8 — shadows turn to mush** |
+
+  So floor the end elevation at **~6°** and SHORTEN the span when the site/date would go lower. Report
+  the honoured span in the §log rather than silently delivering a different film than the label says.
+- **Staging cautions (both already-shipped mechanisms, now driven by a user input):**
+  `§PHOTO_SUN_SHADOW_REACH` (frustum) and `§PHOTO_SHADOW_BIAS_SCALE` (grazing bias term) are computed
+  ONCE at staging. Both must be sized from the **lowest elevation the chosen window reaches** — which
+  becomes easy, since the window is known up-front instead of being read off the staging instant.
+- **Persist with the plan.** The saved Cinema path already travels with the building; sun settings must
+  ride with it, or re-baking an old saved plan silently produces a different film.
+
+#### Option worth a look-test, not a default: tie the date to the 4D cursor
+
+Every frame of a 4D bake already knows its **construction date**. Feed that as the solar date and the
+sun becomes seasonally correct across the build — a winter phase genuinely looks like winter. Cheap
+once the solar algorithm exists, and it ties the atmosphere to the schedule rather than to decoration,
+which is the one framing that clears `feedback_schedule_accuracy_over_movie_polish`. **Flagged, not
+recommended yet:** across a multi-month programme compressed into ~24s the sun's elevation would drift
+noticeably within the film, which may read as an error rather than as seasonality. Needs a look-test.
+
+#### Witness (spec-first — name the proof before the code)
+
+1. **Table test, no rendering:** assert computed `(elevation, azimuth)` against published NOAA values
+   for 3 known lat/long/date/time triples, tolerance ~0.1°. Proves the algorithm, not the wiring.
+2. **Arc test:** for a georeferenced building, assert the logged per-frame elevation is monotonic
+   (or symmetric, for a noon-centred window) and that the honoured end elevation respects the 6° floor.
+3. **Shadow test:** re-run `scripts/witness_shadow_bias_ab.js` at both ends of the chosen window —
+   shadow contrast at the END must be no worse than today's measured −15.2 mean luminance drop.
+4. **No-georeference regression:** a file without `IfcSite` lat/long must produce a byte-identical
+   arc to today's 55°→6°.
+
 ### Separation + re-render architecture (answered 2026-08-12, verified against `origin/main`)
 
 **Q: keep it separate so it can't disturb the working bake — and can we render over the same frames,
