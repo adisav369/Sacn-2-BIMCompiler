@@ -3378,8 +3378,9 @@ schedule physically constructed perfectly." Four items dispatched as one coheren
 resolved — two by code fix, one by latent-gap close, one by root-causing a long-standing FAIL as
 witness rot. Honest bottom line first: **the remaining §SUPPORT_UNCHECKED population is now 246,
 of which 246 are evidence-classified data/modeling limits (class b) — no further clean code fix
-exists in this lane without inventing physics.** Forensics scripts + all run logs in the session
-worktree `_logs/` (forensic_250.log, measure_sog_pattern.log, debug_leak7.log, og_bound.log, …).
+exists in this lane without inventing physics.** Forensics scripts + all run logs preserved in the
+session scratchpad `4d_closure_logs/` (forensic_250.log, measure_sog_pattern.log, debug_leak7.log,
+og_bound.log, layer_truth_base.log, …) — key numbers all restated inline here and in the PR body.
 
 ### Item 1 — the 250 §SUPPORT_UNCHECKED findings root-caused (fresh re-measure: exactly 250)
 Method identical to PR #1278: per-finding neighborhood forensics from real DB geometry (nearest
