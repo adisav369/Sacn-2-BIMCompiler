@@ -3371,3 +3371,108 @@ was replaced 2026-05-30 specifically because it floated beams over still-buildin
 too early relative to its own real height). `§4D_BAND_MONOTONIC` is the refined per-trade successor
 that fixed that measured bug while keeping real floor progression — Tier 1 inherits the fixed
 version, not the one with the known defect.
+
+## ▶ 2026-08-11 — CLOSURE PASS: the four remaining support/order items, one PR (bim-ootb `fix/4d-support-order-closure`)
+User mission verbatim: "Put to rest this already weeks running issue of getting 4D generated
+schedule physically constructed perfectly." Four items dispatched as one coherent pass; all four
+resolved — two by code fix, one by latent-gap close, one by root-causing a long-standing FAIL as
+witness rot. Honest bottom line first: **the remaining §SUPPORT_UNCHECKED population is now 246,
+of which 246 are evidence-classified data/modeling limits (class b) — no further clean code fix
+exists in this lane without inventing physics.** Forensics scripts + all run logs in the session
+worktree `_logs/` (forensic_250.log, measure_sog_pattern.log, debug_leak7.log, og_bound.log, …).
+
+### Item 1 — the 250 §SUPPORT_UNCHECKED findings root-caused (fresh re-measure: exactly 250)
+Method identical to PR #1278: per-finding neighborhood forensics from real DB geometry (nearest
+pool member below/above, co-planar count, any-class bearing, ground offset, family names), across
+all 5 buildings. Cluster verdicts, all measured not guessed:
+- **ONE clean (a)-class fix found and shipped**: `slab_on_grade_substructure` name-override
+  (rates.js + rates/sequence_rules.json, the pile-override mechanism). Slab-on-grade is the
+  original 1c spec's own named ground-bearing class ("IfcFooting/IfcPile/slab-on-grade rests on
+  unmodeled soil") — but only class-level rules ever implemented 1c, so plain-IfcSlab
+  slabs-on-grade sat at seq 4 warning forever. Pattern `slab[ _-]?on[ _-]?grade` under the IfcSlab
+  class gate measured against EVERY shipped buildings/*.db: exactly Duplex 4 + Clinic 4, zero
+  elsewhere, every hit at true grade over its own footings (Duplex: footing tops 1.1m below over
+  fill). Duplex unchecked 6→2, TOTAL 250→246, per-building floating HELD (8/0/0/0/1).
+- **Class (b) — real detection/modeling limits, documented, warn-only stays (the remaining 246)**:
+  1. *Co-planar framing* (Terminal 22 IfcBeam, Hospital ~56 IfcBeam + C-channels/UBs): secondary
+     members supported by SAME-elevation primaries (coplanar pool neighbors med 3–6); bearing
+     requires a base strictly below — a symmetric co-planar "carries" relation would create DAG
+     2-cycles (pool members have outgoing edges), not a §HANG_NEAREST-shape safe extension.
+  2. *Wall-through-slab idiom* (Hospital 39+24+7 walls, Clinic partition/furring walls): Revit
+     bottom-constraint puts the wall base 0.3–0.4m BELOW its own floor slab's base; the slab
+     crosses the wall's base plane from above (wall is the slab's DAG support, not vice versa —
+     crediting the slab would contradict the scheduled order and flip these to floating).
+     geoGate's below-clause still gates them after the storey below — ordering is sane, only
+     CONTACT-bearing is unverifiable.
+  3. *XY-isolated railings* (Hospital 30): balcony/roof-edge railings whose bbox overlaps ZERO
+     pool members at any z (outside every slab bbox). Nothing to detect against.
+  4. *Absent transfer structure* (Terminal 7 observatory IfcColumn, base 4m above nearest slab;
+     Hospital 13 'Brick Column w_cap' standing on WALLS — wall-carries-column is barred by the
+     MEASURED M3 rule, 3421 false positives when class-blind; HHS top-level ducts/sun-shade
+     louvers with no pool above; HHS 66×53m ground plate in a bms=false building).
+  Gate-vs-warn verdict unchanged: these 246 are true "nothing detectable supports this" signals
+  on which a gate would false-block; the warn is the correct final state.
+
+### Item 2 — Part 2 Option C SHIPPED as §OG_BEARING_BOUND (A/B untouched, still the user's open decision)
+The archive's "verified unbounded-upward bearing bug" was real but subtler than written: the
+unbounded test was DELIBERATE alignment (§4D_LAYER_TRUTH 2026-08-07 — the old ±GAP band was
+narrower than the audits and left exactly 25 audit-visible staged violations; the code comment
+says so). A naive bound would re-open that desync. Shipped fix = **two-tier, applied to BOTH
+halves of the aligned pair** (guard `_ogSupportGuard` block AND judge `_buildXraySupportCache` in
+time_machine.js; schedule_gate.js untouched — generative path/floating baselines can't move):
+in-extent carriers (top ≤ T.top+GAP — the wallCarries "carry at top, never metres below the
+crown" lesson generalized to the element's own span) define the bearing plane; ENVELOPING
+carriers (full-height column a beam frames into) still DETECT as support but only GATE when no
+in-extent carrier exists — support is never reduced to zero, no new silent-unchecked population.
+**Measured: 1,072 over-corrections removed** (Terminal pushed 32,907→31,842, Hospital
+24,576→24,569), detection byte-identical, guard↔judge staged=0 on both fixtures, and a
+deliberately-desynced control (unbounded judge over bounded guard) fires 129/121 — the symmetry
+assert has teeth. NEW `viewer/tests/witness_og_guard_bearing_bound.js` (9/9).
+**Bonus real finding**: `witness_gantt_og_grid_perf.js` had been DEAD on main since 2026-08-07 —
+its slice end-mark text rotted when §4D_LAYER_TRUTH reworded the guard's log line, so it THREW at
+load; its brute-force reference had also frozen at pre-sweep/pre-hang semantics. Revived: current
+sweep+hang+two-tier reference, Duplex 0/1122 mismatches, Terminal 7806ms/2 sweeps (ceiling 15s).
+⚠ Merge-conflict note: the unmerged `fix/gantt-refold-hang` branch (worktree /tmp/wt-refold-hang)
+extracts this same guard block verbatim and rewrote og_grid_perf its own way — whichever lands
+second syncs per the N-terminal rule (BEHIND/DIRTY = sync, not redo).
+
+### Item 3 — Gap A closed: `IfcPile` SEQUENCE_RULES entry
+rates.js + sequence_rules.json, mirrors IfcFooting exactly (Substructure/1/CONCRETE_GANG). Latent
+by construction: zero count change on all 5 buildings (re-verified in the coverage witness run) —
+pure correctness for any future building that labels its piles honestly. Comments naming the
+seq-1 population (schedule_gate.js bms block, coverage-witness header) updated to the now-three
+class rules + two name-overrides.
+
+### Item 4 — `witness_geo_support_leak` "pre-existing FAIL 10/7" ROOT-CAUSED: witness rot, not an engine bug
+Two independent rot axes, both proven by differential runs (logs saved):
+1. **It never tested the code under review**: `VIEWER_DIR` defaulted to the absolute shared
+   checkout `/home/red1/bim-ootb/viewer` — 118 commits behind origin/main at measurement time.
+   Same witness, same fixtures, pointed at current main: 10 ungated/7 leaked → 2/2, zero code
+   changes. (JKR's 2 walls + Hospital's 2 truck-proxies + 1 wall were all fixed by #1276-era
+   engine work; the FAIL number was frozen history.)
+2. **Its `isRealSupport` froze at v2 (2026-08-04)** while shipped geoGate moved twice: §DEQ_V1
+   strict base (co-based ≠ support, antisymmetry) and #1276 lower-half containment (an upper-half
+   neighbor rests ON you). The final 2 "leaks" are exactly those two exclusions (Hospital
+   `0KbYdy…bo9` 11m blockwork wall — only candidates top in its UPPER half; `0WoET…Ltn` proxy —
+   only candidate co-based within EPS): genuinely zero detectable support under current physics,
+   NOT geoGate misses; bo9 is precisely one of item 1's 177 warned findings.
+v3 shipped: predicate aligned to current geoGate, VIEWER default = own checkout (env overrides
+kept). Result: **0 leaked, WITNESS PASS** (2 ungated reported, correctly). Same root cause family
+as item 2's dead witness — this pass un-rotted two witnesses and re-pointed one at its own tree.
+
+### Regression sweep (every log read, none exit-code-only)
+big_element_support_coverage 26/26 at re-locked baselines (Terminal 32 / Hospital 177 / Duplex 2 /
+HHS 13 / Clinic 22 = 246, floating 8/0/0/0/1 HELD) · tm_geo_order_cycles 5/5 (cycles=0,
+floating=8 EXACT, hangNearest=217 unchanged) · gantt_lock_integrity PASS (§LI_COST 63,415
+floating=0) · test_schedule_gate 3252→0 · geometric_support_order 0 shifts · default_engine_quality
+0/48428 · chunk_only 164 files 0 hits · **nogeo_compose §NOGEO_WITNESS_TOTAL pass=9 fail=0 in BOTH
+viewer and modeller modes** · facade/host GREEN · gantt native/shift/baseline/undo/shop-dates PASS.
+`witness_gantt_refold_yield` does NOT exist on main (only on the unmerged refold branch) — N/A here.
+LIVE `witness_4d_layer_truth` (Playwright, real Hospital, worktree served on :8484): the invariants
+this diff touches are GREEN — §XRAY_EDGES staged=0/63415, §SUPPORT_CHECK floating=0/63415 — but the
+witness's OVERALL verdict FAILs on two OTHER rotted expectations, CONFIRMED IDENTICAL ON BASE
+origin/main (differential run, :8485): (a) `noGeoParked>0` — obsolete since the §NOGEO_COMPOSE lane
+zeroed Hospital's ghosts (parked=0 is now the healthy state); (b) `first20Clean` — a
+IfcWallStandardCase in day-1 ops, which is the live face of item 1's documented zero-candidate
+wall class. Pre-existing, not touched by this PR; named here as the third rotted witness of this
+family — repairing its two expectations is a small follow-on for whoever next touches that file.
