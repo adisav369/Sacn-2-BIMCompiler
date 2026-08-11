@@ -3477,3 +3477,116 @@ zeroed Hospital's ghosts (parked=0 is now the healthy state); (b) `first20Clean`
 IfcWallStandardCase in day-1 ops, which is the live face of item 1's documented zero-candidate
 wall class. Pre-existing, not touched by this PR; named here as the third rotted witness of this
 family — repairing its two expectations is a small follow-on for whoever next touches that file.
+
+## ▶ 2026-08-11 (late): §TIER_SERIAL SHIPPED — phase-window collapse, PR #1282 (bim-ootb `feat/4d-phase-window-collapse`)
+The evening spec above implemented and merged as one PR. All three open questions answered with
+measured numbers; two mid-flight findings changed the internal design (both measured, neither
+changes the decided two-tier structure). Every § number below is from saved logs (worktree
+`_logs/` + session scratchpad `tier2_logs/`: furniture_measure, tabletop_measure, stragglers,
+promoted_deps, clinic_cycle, w_tier_serial4, w_live_tier, plus one log per regression witness).
+
+### What shipped (viewer/time_machine.js + rates.js + rates/sequence_rules.json + new witness)
+- **Tier 1 strictly serial, Tier 2 one concurrent pool** — exactly the decided design.
+  `_twoTierRemap` (new, top-level, sliceable) = `_tier1Serialize` (uniform phase-group shifts) +
+  `_tierAuditRegate` (push-after-support fixpoint) + §TIER_DAG_WINS marking, applied to
+  computeSchedule's output BEFORE the kernel_ops write. `_sched` stays RAW — §SUPPORT_CHECK/
+  §ROOF_GATE audit the generative layer unchanged; **schedule_gate.js has a ZERO-LINE diff**
+  (the §4D_BAND_MONOTONIC / auditFloating "untouched" requirement verified, not assumed).
+- **_cap overlay = Option A**: ONE global monotone affine into the captured project window
+  replaced the independent per-task rescale + §STAGGER_HOST (measured inert since §4D_LAYER_TRUTH's
+  ls-affine — element times derive from ls alone, its reshuffle changed nothing) + guard-as-repair.
+  The §PHASE_OVERLAP_SUPPORT_GUARD block was hoisted VERBATIM (byte-identical interior, original
+  indentation — both slicing witnesses' markers intact, re-run green with identical numbers) into
+  `_ogSupportSweep`, kept as cap-path verification: live Hospital run = 0 pushes, the affine
+  preserves order by construction. `_GANTT_CACHE_VERSION` 8→9 (stale-IDB purge), sw v978.
+- **Furniture safeguard**: `furniture_generic_bucket` NAME_OVERRIDE — word-boundary terms, scoped
+  to IfcBuildingElementProxy/IfcBuildingElementPart per the spec's measurement (naive unscoped =
+  327 FPs, re-confirmed). Zero live hits on all 5 buildings (proactive, as specced). NEW REAL FIND
+  while measuring: Terminal `IfcSlab` 'Floor:Table Top:904745' — a 3.96×22.43m ×150mm built-in
+  counter in Superstructure. Deliberately NOT reclassified (IfcSlab = unambiguous class per the
+  spec's own scoping rule, and it is a seq≤4 support-pool member — reclassifying would perturb the
+  locked floating/§SUPPORT_UNCHECKED baselines); the witness NAMES and LOCKS it (Terminal=1,
+  others=0) as reported-not-gated. If ever ruled furniture, it is a one-line override with the
+  witness already watching.
+
+### Open question 1 — where the enforcement lives (resolved against post-#1281 code)
+New smaller functions upstream of the write (option 3 of the spec's list), with the guard
+"repurposed rather than deleted" (option 1) as the cap-path verifier. #1281's §OG_BEARING_BOUND
+landed untouched — its two witnesses re-ran green byte-identical (9/9, 1,072 removed, desync
+controls 129/121; og_grid_perf 3/3, Duplex 0/1122, Terminal 8767ms < 15s ceiling).
+
+### Mid-flight finding A — guard physics is NOT the remap physics (measured, forced a redesign)
+First implementation re-gated Tier 2 with the hoisted guard block. The new witness caught it:
+guard/judge grids are seq≤4-only — **promoted roof slabs are audit/DAG carriers but invisible to
+the guard** — so Tier-1 shifts stranded audit-visible dependents (HHS alone: 1,383 rooftop/hanging
+elements floating vs their shifted promoted-slab carriers; Terminal 159, Duplex 81). Fix:
+`_tierAuditRegate` mirrors auditFloating's full physics (struct∪promoted pools, walls-for-promoted,
+unbounded bearing max, hang + §HANG_NEAREST + both antisymmetry exclusions). schedule_gate.js
+stays untouched, so this is a deliberate, WITNESS-PINNED mirror: W-TS-2 runs the REAL auditFloating
+over the remap output on all 5 buildings — drift surfaces as displayed>raw floating. Result:
+displayed floating == raw floating EXACTLY (8/0/0/0/1) on all 5. Note the pre-existing asymmetry
+this exposed (guard/judge blind to promoted-slab carriers) is now documented here — a candidate
+follow-on for whoever next touches the guard/judge pair, NOT fixed in this PR.
+
+### Mid-flight finding B — §TIER_DAG_WINS: where strict serialization is topologically impossible
+Two measured shapes of Tier-1 elements the support DAG itself places inside a LATER phase:
+- Isolated forward deps: Hospital's 'Foundation Slab' IfcFooting + Clinic's 2 slab-on-grade —
+  each poured around full-height Superstructure columns whose base sits below theirs.
+- **The wall-carried cone**: Terminal has 45 direct "upper column stands on a load-path-PROMOTED
+  structural flat slab" edges (promoted_deps.log); the whole dependency cone above them —
+  **24,007 of Terminal's 34,768 Superstructure elements** — must follow Architecture-phase
+  carriers. HHS: same shape, 420. A frame building barely has any (Hospital 9, Duplex 0).
+Support order WINS for these (the mission's own ranking): they ride the regate at DAG-consistent
+times, are excluded from the serialization extents, and are counted (`tier1DagWins` in the
+§TIER_SERIAL log) + per-building LOCKED in the witness (24007/9/0/420/6). **Honest bottom line:
+on Terminal/HHS the backbone is strictly serial for the serializable population, and the
+wall-carried cone plays through the Architecture window in real per-storey construction order —
+that is the building's extracted topology, not a solver shortfall. Hospital/Duplex/Clinic get the
+clean textbook Sub→Super→Arch the user pictured.**
+Also measured: the regate must EXEMPT the raw floating tail (the DAG's own deliberate
+cycle-breaks) — chasing Clinic's parapet-wall/roof-slab loop pushed 43k times over 400 sweeps
+without converging (clinic_cycle.log). Exempting it makes the enforced constraint set exactly the
+raw-satisfied one, so the fixpoint provably exists; Clinic converges in 3 sweeps.
+
+### Open question 2 — the real serialization cost (§TIER_COST, display layer only)
+Terminal 113.1→191.4d (**1.69x**) · Hospital 314.9→603.9d (**1.92x**) · Duplex 10.5→10.5d
+(**1.00x**) · HHS 46.1→69.4d (1.51x) · Clinic 143.7→206.8d (1.44x). The ~2x on Hospital is the
+genuine price of a serial backbone (Architecture's 17,236 elements no longer overlap
+Superstructure's tail) — visible, not hidden; the generative layer and all its baselines are
+unchanged, and on the live _cap path the whole timeline is affine-compressed into the captured
+project window, so the user-visible project span is set by the authored window as before.
+
+### Open question 3 — Movie Maker verification (§TIER_MOVIE + live run, numbers not eyeballs)
+Backbone slices are exclusive + contiguous on every building (Hospital: Sub 1.7% / Super 49.1% /
+Arch 49.2% of the timeline; shares sum ≤100%), Tier 2 fills alongside (100% of Tier-2 elements run
+concurrent with a backbone window on the 4 larger buildings). LIVE (puppeteer, real Hospital,
+worktree :8450): §TIER_SERIAL overlapPairs=0 dagWins=9 · §SUPPORT_CHECK floating=0/63415 ·
+§XRAY_EDGES staged=0/63415 · **§GANTT_OPS_FIRST20 is now ALL IfcFooting** — the movie opens with
+foundations (the day-1 wall that rotted witness_4d_layer_truth's first20Clean expectation is gone;
+that witness's expectation can likely be un-rotted by whoever next touches it). Live also
+confirmed the _cap path IS the live default (viewer auto-authors 35 zone tasks, covered=100%) —
+so Option A is exercised in production, not just in harnesses.
+
+### Regression sweep (every log read; differential runs where a FAIL appeared)
+NEW witness_tier_serial_display 41/41 · og_guard_bearing_bound 9/9 · gantt_og_grid_perf 3/3 ·
+big_element_support_coverage 26/26 (246 + floating 8/0/0/0/1 HELD) · tm_geo_order_cycles 5/5
+(cycles=0 floating=8 EXACT) · gantt_lock_integrity 19/19 (§LI_COST 63,415 floating=0) ·
+geo_support_leak PASS · test_schedule_gate 3252→0 · nogeo_compose 9/9 · default_engine_quality
+0/48428 · geometric_support_order 0 shifts · chunk_only 164 files 0 hits · facade/host/stagger
+GREEN · gantt native/shift/baseline/undo/shop-dates/bar-identity/row-order/edit-coherence/
+zstack/wall-carrier-scope ALL PASS. **Pre-existing FAILs, proven identical on origin/main by
+stash-differential (named, not touched):** (a) gantt_ops_blackbox G-3 — computeDays carries a
+DUPLICATED §GANTT_AXIS_OUTLIER block whose second copy reads `_ops` (incl. bookkeeping ops)
+instead of `cOps`, so the display axis absorbs BUILDING_OPEN; (b) witness_4d_roof_load_path
+G-RLP-2 + its LTU_AHouse §SUPPORT_CHECK floating=2839/122330 — third/fourth members of the
+rotted-witness family the closure pass documented.
+
+### Merged + notes
+PR #1282, auto-squash. ⚠ The unmerged `fix/gantt-refold-hang` branch extracts the guard block
+verbatim and now conflicts with its hoist into `_ogSupportSweep` — whichever lands second syncs
+per the N-terminal rule. Follow-ons named (not owed by this lane): guard/judge promoted-slab
+blindness (finding A), the two rotted witnesses in (a)/(b), witness_4d_layer_truth's two stale
+expectations (first20Clean now likely fixable), and the schedule_author.js §PHASE_OVERLAP_BAND
+task-window GENERATION (bar dates in the tasks table still author overlapped windows — display
+timing no longer follows them per-bucket by design, but a future pass could serialize the authored
+backbone windows too so the Gantt bar dates match the two-tier element reality exactly).
