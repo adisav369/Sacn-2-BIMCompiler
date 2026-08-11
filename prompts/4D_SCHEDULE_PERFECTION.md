@@ -3323,3 +3323,51 @@ would guarantee a file collision. Queued to start the moment that PR lands — c
    structure rather than the fully-interleaved one it renders today; the user named this as a real
    benefit ("the movie maker will compress well, and each phase can be sighted") — confirm it actually
    delivers that, don't just assume the visual improvement follows automatically from the data change.
+
+### Safeguard, added same session — misclassified furniture must NOT ride into Tier 1
+User: "knowing furniture can be part of ARCH, thus the caution there to caveat those to last."
+Checked against the real `SEQUENCE_RULES` table (Q2's extraction, this doc): `IfcFurniture`/
+`IfcFurnishingElement` already resolve cleanly to `Finishes/seq=11` — genuinely-tagged furniture is
+already last, already safe under Tier 2. **The real risk is furniture that ISN'T cleanly tagged** —
+source IFCs that export furniture-like content as `IfcBuildingElementProxy` (which resolves to
+`Architecture/seq=5`, i.e. Tier 1) because the authoring tool had no proper mapping for it — the exact
+same generic-catch-all failure mode already found driving a real share of the big-element findings in
+PR #1277/#1278. Undetected, that would pull a chair or desk into the strict serial backbone and gate
+real structural completion on furniture — a correctness bug in the OPPOSITE direction from this
+session's main thread, but a real one.
+
+**Required before Tier 1 goes live, not optional:** extend the existing `SEQUENCE_NAME_OVERRIDES`
+mechanism (already proven twice this session — curtain-wall glazing disambiguation, Terminal's
+`foundation_pile_misclassified_slab` fix) with a furniture-pattern override that reclassifies any
+element matching common furniture naming (measure real name patterns across the 5 shipped buildings
+first — EXTRACT, don't guess a regex — the way the pile fix measured `str-fo|\bpile\b` against real
+data before shipping) to `Finishes/seq=11` regardless of its raw IFC class. Scope this check to
+`IfcBuildingElementProxy` and other generic/unclassified buckets specifically — don't touch classes
+that are already unambiguous (e.g. a real `IfcWall` should never match a furniture pattern by
+accident). Add a witness asserting zero furniture-pattern matches remain in Tier 1's phase set after
+the override runs, on all 5 buildings.
+
+**Checked same session, not left as a guess:** a first naive pattern (`table|cabinet|...`, unscoped)
+produced 327 "hits" — almost entirely false positives (`table` substring-matched "adjus**table**" in
+a shower-head name; `cabinet` matched a fire-extinguisher cabinet already correctly in `MEP Final`/
+Tier 2, and a wall-opening element for a cabinet insert, not the cabinet itself) — exactly the kind of
+noise the "measure, don't guess a regex" instruction above exists to prevent. Re-run scoped correctly
+(word-boundary pattern, `IfcBuildingElementProxy` only — the actual Tier-1-risk class): **zero real
+hits across all 5 shipped buildings.** No live evidence of furniture misclassification today — the
+safeguard is still required (the pile-misclassification precedent proves this bug class is real on
+real-world IFCs, just not present in this sample), built proactively, not because it's currently firing.
+
+### Storey-by-storey discipline — already preserved, not something Tier 1 needs to rebuild
+User: "at one time we do see storey by storey rule in action too, where a storey gets completed before
+the next, again for constant consideration." Confirmed: that's `§4D_BAND_MONOTONIC`
+(`schedule_gate.js`, 2026-08-02) — a trade cannot run ahead of ITSELF on the floor below (Level 3's
+walls wait for Level 2's walls of the same trade). It lives inside `computeSchedule` itself, which
+this spec's own "What this does NOT change" section already leaves untouched — Tier 1 only reorders
+how `computeSchedule`'s OUTPUT gets mapped to the displayed timeline, it doesn't rebuild the ordering
+logic. So this discipline carries forward automatically, not a new item to implement. Note for
+provenance: an EARLIER, stricter version existed first — a hard "band N waits N-1" floor gate — and
+was replaced 2026-05-30 specifically because it floated beams over still-building tall columns
+(Hospital's columns average 6.87m against 3m bands, so a column spanning multiple bands got released
+too early relative to its own real height). `§4D_BAND_MONOTONIC` is the refined per-trade successor
+that fixed that measured bug while keeping real floor progression — Tier 1 inherits the fixed
+version, not the one with the known defect.
