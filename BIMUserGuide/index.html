@@ -1126,6 +1126,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#sun-sky-and-shadow-while-the-film-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sun, sky and shadow while the film records
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2464,6 +2475,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#sun-sky-and-shadow-while-the-film-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sun, sky and shadow while the film records
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3178,6 +3200,49 @@ that order depends on the data in <em>your</em> building, and the viewer picks a
 workflow is to <strong>preview the Time Machine first</strong> — its Gantt is in the Inspect drawer — and then place
 your <strong>mark in / mark out</strong> against what the programme actually shows.</p>
 <p><a href="https://youtu.be/sUTscAgnQMc">Watch the film</a> this feature produced on a real building.</p>
+<h4 id="sun-sky-and-shadow-while-the-film-records">Sun, sky and shadow while the film records<a class="headerlink" href="#sun-sky-and-shadow-while-the-film-records" title="Permanent link">&para;</a></h4>
+<p>A recorded film is not lit the way the live viewport is. The moment recording starts, the viewer stages a
+photographic pass — and it keeps running <em>while the 4D reveal assembles the building</em>, so the light and the
+construction sequence advance together in the same take:</p>
+<table>
+<thead>
+<tr>
+<th>what happens</th>
+<th>detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The sun travels</strong></td>
+<td>It starts at a high 55° "late morning" angle and sinks to a 6° dusk by the last frame. Shadows lengthen and swing across the film — the sun is not parked.</td>
+</tr>
+<tr>
+<td><strong>Real cast shadows</strong></td>
+<td>The building, its rooftop plant, and the distant skyline all cast real shadows onto the ground, at a 4096² shadow map for the recording only (the live viewport uses a cheaper one). The shadow frustum widens as the sun drops so a long dusk shadow isn't clipped at its tip.</td>
+</tr>
+<tr>
+<td><strong>Atmospheric sky</strong></td>
+<td>A physically-based clear-sky scattering model (Preetham), pushed warmer and hazier for the shoot — deeper reds and a tighter sun glow near the horizon than normal navigation shows.</td>
+</tr>
+<tr>
+<td><strong>Photographic reflections</strong></td>
+<td>Glass and metal reflect a real photographed sky (HDRI), refreshed as the sun moves, so the glint tracks where the sun actually is at that moment of the film.</td>
+</tr>
+<tr>
+<td><strong>Warm evening key light</strong></td>
+<td>The sun tints warm and window/fixture glow comes up as the light falls.</td>
+</tr>
+</tbody>
+</table>
+<p>You can also stage a <strong>single still</strong> rather than a whole film: <strong>Alt+S</strong> applies the same photographic pass
+and then refines the frozen frame over 16 jittered sub-pixel samples for clean edges. <strong>Alt+J</strong> adds an
+optional bounce-light (GI) pass — off by default, and deliberately excluded from film recording because it
+costs far more per frame than a film's frame budget allows.</p>
+<p><strong>What this is honestly not.</strong> There is no weather: no rain, no snow, no cloud shapes — the sky model is a
+clear-sky one and has no cloud geometry at all. And it does not claim to be indistinguishable from a
+photograph: the geometry is idealised IFC with no real-world wear, materials are assigned by class rather
+than hand-tuned per surface, and nothing is colour-graded per shot. What it does target is the good-archviz
+tier — and, unlike a still-render tool, it does it <em>while the building assembles itself to the programme</em>.</p>
 <h3 id="display-options-palette-night-shadow-ground-background-sound-fx">Display options — Palette, Night, Shadow + Ground, Background, Sound FX<a class="headerlink" href="#display-options-palette-night-shadow-ground-background-sound-fx" title="Permanent link">&para;</a></h3>
 <p>The <strong>Palette</strong> pill (key <strong>P</strong>) opens one panel for every visual-appearance control — five lighting
 sliders, plus four more toggles appended below them:</p>
@@ -3324,6 +3389,14 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 <tr>
 <td><strong>Alt+C</strong></td>
 <td><a href="#cinema-film-maker-altc-the-bim-ootb-film-maker">Film-Maker</a> — derive a cinematic film, edit the flight, record</td>
+</tr>
+<tr>
+<td><strong>Alt+S</strong></td>
+<td><a href="#sun-sky-and-shadow-while-the-film-records">Photographic still</a> — stages the sun/sky/shadow pass, then refines the frozen frame over 16 sub-pixel samples</td>
+</tr>
+<tr>
+<td><strong>Alt+J</strong></td>
+<td>Bounce-light (GI) pass — optional, off by default, not used while recording a film</td>
 </tr>
 <tr>
 <td><strong>Click the flight tube</strong> (in the Film-Maker)</td>
