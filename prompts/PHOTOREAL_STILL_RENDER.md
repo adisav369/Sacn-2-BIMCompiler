@@ -78,6 +78,55 @@ accumulation, and an overcast lighting state.** Everything else a weather preset
 - Advanced mode must be **opt-in and bake-only**, like Alt+J/SSGI — never a default that slows every
   film or changes an existing bake's look without being asked for.
 
+### Separation + re-render architecture (answered 2026-08-12, verified against `origin/main`)
+
+**Q: keep it separate so it can't disturb the working bake — and can we render over the same frames,
+or must it be anew?**
+
+**Separate: yes, and the pattern already exists — copy it, don't invent one.** Alt+J/SSGI is already
+opt-in and deliberately excluded from the bake path. Advanced weather is the same shape: one flag read
+at `_applyPhotoStaging` time, plus a `_weatherStep(tNorm)` called beside the existing
+`_sunArcStep(tNorm)` in `cinema_maxq.js`. Flag off ⇒ every existing code path executes exactly as it
+does today, byte-identical output. No new architecture needed.
+
+**Anew, not over the same frames — and the reason is structural, not a preference:**
+- `cinema_maxq.js` `poseAt(tNorm)` is a **pure function of tNorm** over the saved plan
+  (`plan.poseAt(tNorm)` with the §CPE_CLIP window remap as the ONE place the clip is applied), and the
+  4D buildup order is derived from that same `plan.poseAt`. So re-running a saved plan reproduces the
+  **identical** film frame-for-frame — same camera, same reveal — with only the atmosphere different.
+  That is a re-shoot of the same take, not a similar one.
+- The saved frames cannot support the alternative. `_captureFrame()` renders the composer, draws into a
+  2D canvas, composites the room title / day counter, and `toBlob('image/webp', 0.92)` — **flat RGB, no
+  depth, no normals, no motion vectors.** A flat 2D rain overlay could be composited onto that;
+  volumetric fog, clouds with correct occlusion, wet reflections and — decisively — **any shadow
+  change** cannot. Compositing cannot fix a shadow, which is the thing being asked for.
+
+**One capability the architecture already gives for free, worth knowing before scoping:** captured
+frames are written to IndexedDB **one at a time** (`_idbPut(db, k, v)`) and muxing is a **separate**
+step (`_stitchMp4(db, framesDone, fps, w, h)` reads them back). Combined with `poseAt` determinism,
+any frame index is independently reproducible — so an advanced pass can re-render **only a sub-range**
+(e.g. the last 20% of frames) and re-mux against the frames already stored. A partial re-bake costs
+only the frames actually re-shot, not the whole film.
+
+### The dusk shadow at the end of the film — not a bug, and weather will NOT fix it
+
+User observation on the landed mp4: the shadow stops working toward the end, "hardly noticeable."
+That is the cosine law, not a defect. `PHOTO_SUN_ELEVATION = 6` is the arc's end elevation, and direct
+sun on horizontal ground scales with `sin(elevation)` — `sin(6°) = 0.105`, about a tenth of the noon
+term. A shadow is the *removal* of direct light, so when there is barely any direct light left there is
+barely any shadow to see. **Measured, same building, same session, same fix:** mean luminance drop on
+shadowed pixels was **−32.7 at 55° vs −15.2 at 6°** — less than half the contrast (scratchpad
+`witness_shadow_bias_ab.js`).
+
+Weather mode makes this WORSE, not better: an overcast preset removes directional shadows entirely.
+
+**The actual lever is the arc's end elevation, not the atmosphere.** Ending at ~12–15° instead of 6°
+roughly doubles the direct-light term (`sin 12° = 0.208`, `sin 15° = 0.259`) while still throwing long
+shadows (`1/tan 12° = 4.7×` building height). **Put that inside advanced mode**, not in the shared
+constant — the default film's look then stays exactly as shipped, honouring "separate so as not to
+disturb this." Measure the contrast at the candidate elevation with the existing A/B witness before
+committing to a number; the sine law predicts ~2× but that is a prediction, not yet a measurement.
+
 **Priority flag, stated once and then it is the user's call.** `feedback_schedule_accuracy_over_movie_polish.md`
 (user ruling 2026-08-05) puts movie-maker polish behind 4D schedule accuracy, and
 `prompts/4D_SCHEDULE_PERFECTION.md` still carries an open punch list. Weather is polish by that
