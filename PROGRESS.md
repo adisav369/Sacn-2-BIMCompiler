@@ -19,6 +19,16 @@ darkened at 55 deg, 12,095 at dusk, 0 brightened either. User confirmed shadows 
 a stale-`matrixWorld` read that made `§PHOTO_SHADOW_FRUSTUM_COVERAGE` untrustworthy as evidence.
 Full record: `prompts/PHOTOREAL_STILL_RENDER.md` §MAIN_BUILDING_SHADOW. Witnesses:
 `scripts/witness_shadow_bias_{ab,postfix}.js`. sw.js v991->v992.
+Also this session: user manual updated + published (BIMUserGuide "Sun, sky and shadow while the film
+records" + Alt+S/Alt+J in the cheat-sheet + What's New entry) via `safe_gh_deploy.sh`, guard PASS
+283->283 files, canaries 200, content verified live. And `prompts/PHOTOREAL_STILL_RENDER.md`
+§WEATHER_ADVANCED_MODE written SPEC-ONLY (Twinmotion/Lumion parity ask): most machinery already
+shipped (fog save/restore, §PHOTO_PUDDLE wet ground, §LAYER2_HDRI swap, §SUN_ARC, staffage) — the gap
+is only clouds/precipitation/snow-accumulation/overcast; start at a Phase 1 overcast preset. Includes
+the corrected finding that the MaxQ IndexedDB frame store is SCRATCH (deleted at both ends of every
+bake) so there is no second-bake speedup today, and the dusk-shadow cosine-law answer (shadows ARE
+cast on the roof, drowned by unshadowed fill the staging itself boosts; dusk drama and shadow contrast
+are the same dial). NOT STARTED — user closed the session judging current realism good enough.
 
 ## Session 2026-08-11 — CPE POV walk "toppled/upside-down" camera FIXED+SHIPPED (bim-ootb PR #1292, MERGED)
 User report: walk-mode camera rolls/flips easily, should behave like canvas mouse/finger nav. Root
