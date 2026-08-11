@@ -318,6 +318,15 @@ that re-creates a hanging is REFUSED — `auditFloating` alone cannot see that p
 whole §MIDAIR_REPAIR finding. Round-trip is otherwise unchanged: drag → `retimeTaskElements` →
 §GANTT_RETIME_RESYNC → lock verifies → Undo restores.
 
+### Merged + live
+**PR bim-ootb#1303 MERGED (`add18e5`), GH Pages deploy success — verified by content on the served
+files, not by PR status: `viewer/sw.js` serves `CACHE_VERSION="v993"`, `viewer/time_machine.js`
+serves `captureLockBaseline` + `_GANTT_CACHE_VERSION=11`.** Branch sync note: the follow-up was
+built on the SAME branch #1301 was squash-merged from, so `origin/main` came back as add/add
+conflicts on both new test files (the squash-merge history collision CLAUDE.md warns about) — take
+the branch side (it is the superset), and on `sw.js` keep the HIGHER version. Start the next
+follow-up off fresh `origin/main`.
+
 ### Witnesses
 `witness_midair_zero.js` **38/38** (W-MZ-6a/6b lock-gate wiring, W-MZ-7 the judge catches a
 re-introduced hanging — moved 1 element 5d before its first contact, W-MZ-8 the trade locked per
