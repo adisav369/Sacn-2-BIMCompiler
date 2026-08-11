@@ -22,7 +22,9 @@ Full record: `prompts/PHOTOREAL_STILL_RENDER.md` §MAIN_BUILDING_SHADOW. Witness
 Also this session: user manual updated + published (BIMUserGuide "Sun, sky and shadow while the film
 records" + Alt+S/Alt+J in the cheat-sheet + What's New entry) via `safe_gh_deploy.sh`, guard PASS
 283->283 files, canaries 200, content verified live. And `prompts/PHOTOREAL_STILL_RENDER.md`
-§WEATHER_ADVANCED_MODE written SPEC-ONLY (Twinmotion/Lumion parity ask): most machinery already
+§SUN_START_TIME written SPEC-ONLY (fixed 6h film + one start-time setting, default 12:00, range
+06:00-12:00 since 6h from any later start ends below the horizon; PHOTO_SUN_ELEVATION_START/_END
+become elevationForHour() using TM's existing sine) and §WEATHER_ADVANCED_MODE written SPEC-ONLY (Twinmotion/Lumion parity ask): most machinery already
 shipped (fog save/restore, §PHOTO_PUDDLE wet ground, §LAYER2_HDRI swap, §SUN_ARC, staffage) — the gap
 is only clouds/precipitation/snow-accumulation/overcast; start at a Phase 1 overcast preset. Includes
 the corrected finding that the MaxQ IndexedDB frame store is SCRATCH (deleted at both ends of every
