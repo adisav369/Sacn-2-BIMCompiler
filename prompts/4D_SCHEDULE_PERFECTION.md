@@ -3114,3 +3114,24 @@ the shortcut audit — would have flagged the kernel_ops v8/v13 double-load on s
 (10 ungated/7 leaked, identical on baseline); LTU bucket extracted.db still Aug-3 71MB library-pattern
 vintage (split pair is newer — unify when extractor root-fix lands); OPFS/sqlite-wasm paging spec
 (structural mem lever) still to be scoped after cache-revalidation lands.
+
+
+## ▶ Big-element-support-coverage sub-lane — CLOSED 2026-08-11, archived
+Part 1 SHIPPED: bim-ootb PR #1277 merged (`§SUPPORT_UNCHECKED`, threshold 1.556 m³, warn-only,
+831/6,377 (13%) big elements found with zero support check across 5 buildings, split by
+`buildingModelsSubstructure`). 26/26 witness PASS, zero regressions. Full diagnosis → spec → real-data
+extraction → design decision → shipped-PR chain (STUDY/CORRECTION/SPEC/OPEN-QUESTIONS/Gap-B-DECIDED/
+Part-1-SHIPPED) archived verbatim: `prompts/archive/4D_BIG_ELEMENT_SUPPORT_COVERAGE_2026-08-11.md`.
+
+**Still OPEN, lifted forward (not closed by the archive):**
+- **Part 2** — the per-bucket phase-window rescale redesign (`_ogSupportGuard`/`§PHASE_OVERLAP_BAND`).
+  Three options named in the archive (A: one global rescale · B: derive window/lag from real
+  cross-bucket dependencies · C: keep the pipeline, fix the one verified unbounded-upward bearing-test
+  bug). Recommendation if picked up cold: **C first, unconditionally** — doesn't foreclose A/B later.
+  Lower priority than Part 1 was: confirmed `_cap` (the mechanism Part 2 would touch) is null on every
+  currently-shipped building — real code, currently dormant, not user-facing yet on any shipped bldg.
+- **Gap A** — `IfcPile` has no `SEQUENCE_RULES` entry in `rates.js` (would default to
+  `Architecture/seq=6` if ever modeled). Latent only: no shipped building models `IfcPile` today.
+- **Possible follow-on** (named, not started): eyeball a sample of Terminal's 236 unchecked `IfcSlab`
+  / Hospital's 139 `IfcDuctSegment` findings to decide whether 1a should ever graduate warn→gate —
+  decide on the real counts in the archive, don't re-guess.
