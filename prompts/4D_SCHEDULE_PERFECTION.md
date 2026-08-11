@@ -3145,3 +3145,63 @@ Part-1-SHIPPED) archived verbatim: `prompts/archive/4D_BIG_ELEMENT_SUPPORT_COVER
 - **Possible follow-on** (named, not started): eyeball a sample of Terminal's 236 unchecked `IfcSlab`
   / Hospital's 139 `IfcDuctSegment` findings to decide whether 1a should ever graduate warn→gate —
   decide on the real counts in the archive, don't re-guess.
+
+## ▶ Big-element follow-up 2026-08-11 (post-archive): the two offender classes ROOT-CAUSED — 831→250
+User dispatch: investigate WHY Terminal's 236 unchecked `IfcSlab` and Hospital's 139 `IfcDuctSegment`
+found zero support candidates (real DB forensics, not guesswork), THEN decide fix-vs-document per
+class. Outcome: **both got real fixes, neither was the anticipated answer** — bim-ootb **PR #1278**
+(branch `fix/big-element-support-followup`), forensics scripts + logs in session scratchpad
+(`forensics_unchecked.log`, `measure_hang_reach.log`, `big_sink_gaps.log`).
+
+**Terminal 236 IfcSlab = misclassified FOUNDATION PILES (answer (c), neither pool-gap nor plain data
+gap).** Every one is family `jkrST_str-fo_pc_rcp:300 x 300mm` — 300×300mm × 30.15m precast RC piles
+(`str-fo` = JKR structural-foundation code) authored as `IfcSlab`. All sit at the building's absolute
+lowest z (base −16.04..−15.94 vs model min −16.04) with NOTHING modeled beneath (no pool member, no
+wall, no any-class bearing) — genuinely ground-bearing Substructure. This is the archive's "latent
+Gap A (`IfcPile` has no SEQUENCE_RULES entry)" arriving disguised: Terminal DOES model piles, class
+lookup just can't see them. Fix = `foundation_pile_misclassified_slab` SEQUENCE_NAME_OVERRIDES entry
+(rates.js + rates/sequence_rules.json, the shipped curtainwall-override mechanism) → Substructure/
+seq 1 → 1c-exempt, and **Terminal's `buildingModelsSubstructure` flips false→true** (Q2's "Terminal
+models zero Substructure" was an artifact of the misclassification; HHS remains the only true
+bms=false). Pattern `str-fo|\bpile\b` measured against EVERY shipped buildings/*.db: exactly those
+236 match under the IfcSlab class gate, zero false positives (Hospital's 'M_Pile Cap-6 Pile' are
+already IfcFooting). Widening the support pool would have been WRONG here — there is genuinely
+nothing below them; the fix is naming what they are.
+
+**Hospital 139 IfcDuctSegment = rod-suspension outside the ±GAP carrier band (answer (a), real
+detection incompleteness — but NOT a bug in #1277's code).** The 1a hang path IS exercised; the
+predicate requires the carrier's base within ±0.5m of the duct's top (direct mount). Measured: all
+139 have real pool structure 0.51–4.61m above (p50 1.22m) — hanger-rod drops. Fix = **§HANG_NEAREST**
+fallback in schedule_gate.js: for a BIG (>BIG_ELEMENT_VOL) pure-SINK hanger (seq>4, never a wall,
+never a promoted slab) with ZERO in-band carriers, carrier = the NEAREST overlapping pool member
+above + its co-planar GAP band (a duct rods to its whole beam grid). Symmetric at all three
+consumers (DAG `edgeCarrier` + `hangGate` + `auditFloating`) so order, gate and audit test one
+physics. Provably acyclic: sinks are in neither support pool ⇒ no outgoing DAG edges ⇒ added
+carrier in-edges cannot close a cycle (cycles=0 stays structural). Parameter-free — no invented
+reach constant. **Deliberately scoped to BIG sinks only**: widening ALL sinks would newly gate
+48,904 elements across the 5 buildings (measured) — a Part-2-scale schedule reorder, not a seam
+close. Small sinks keep warn-only visibility.
+
+**Witness-harness bug found and fixed on the way (REAL finding):** witness_big_element_support_
+coverage / witness_tm_geo_order_cycles / witness_gantt_lock_integrity all read
+`rulesJson.SEQUENCE_NAME_OVERRIDES` but the JSON's key is `NAME_OVERRIDES` — all three silently ran
+with name overrides OFF while the live viewer always runs rates.js's in-file copy ON (so #1277's
+baselines were measured in a config no user ever sees — e.g. Hospital's 83 "unchecked IfcPlate"
+were curtainwall glazing the live viewer classes seq 7). Fixed to the class_fallback-style key
+chain; witnesses are now live-parity.
+
+**Numbers (all logs read):** unchecked Terminal 279→32 (−236 pile-exempt, −11 §HANG_NEAREST:
+8 DuctSegment+3 DuctFitting), Hospital 503→177 (−139 DuctSegment, −60 DuctFitting, −83 IfcPlate),
+HHS 21→13, Clinic 22→22 (mix changed), Duplex 6→6 — **TOTAL 831/6,377 → 250/6,141**; per-building
+floating HELD exactly (8/0/0/0/1). witness_big_element_support_coverage 26/26 (baselines re-locked
+with per-cause deltas in the witness comment) · witness_tm_geo_order_cycles 5/5 (cycles=0,
+floating=8 EXACT, DEQ shifted=0, §GEO_ORDER hangNearest=217 edges) · witness_gantt_lock_integrity
+19/19 (§LI_COST 63,415 floating=0) · zero regressions across test_schedule_gate,
+default_engine_quality (0/48428), geometric_support_order (0 shifts), facade/host order, gantt
+native/shift/baseline/undo/shop-dates; geo_support_leak pre-existing FAIL byte-identical (10/7).
+
+**Warn→gate NOT flipped, deliberately:** the remaining 250 are pool-class elements (beams/walls/
+columns/railings) whose zero-candidate state is now a REAL "nothing detectable supports this"
+signal, not a detection artifact — but 32 of them live in buildings whose remaining findings are
+roof-edge railings / bms-false ground elements where a gate would false-block. The warn is now
+high-signal; gating stays a future decision on these 250, not a default.
