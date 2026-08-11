@@ -78,54 +78,65 @@ accumulation, and an overcast lighting state.** Everything else a weather preset
 - Advanced mode must be **opt-in and bake-only**, like Alt+J/SSGI — never a default that slows every
   film or changes an existing bake's look without being asked for.
 
-### §SUN_START_TIME — one control: the bake's start time. Default 12:00. (user spec 2026-08-12) — FEASIBLE, NOT STARTED
+### §SUN_START_TIME — one setting: start time. Fixed 6-hour film. (user spec 2026-08-12, reaffirmed) — FEASIBLE, NOT STARTED
 
-**The whole feature, in one line:** the user picks a **start time**; the film runs from there to dusk,
-so shadows always lengthen across the take. Nothing else to set.
+**User decision, final:** a **fixed 6-hour duration** and **one setting: the start time**. Default
+**12:00**. No span setting, no dusk anchoring, no solar calculation. The film runs
+`startTime → startTime + 6h`.
 
-| start time | opening sun | film's sun travel |
-|---|---|---|
-| **12:00 (default)** | overhead, short shadows | **6 hours**, noon → dusk — the biggest change across a film |
-| 15:00 | low-ish | 3 hours — close to what ships today |
-| 16:00 | low | 2 hours — gentle, mostly golden |
+**What each setting produces** (hour → elevation via the sine Time Machine already uses,
+`time_machine.js` `applySunCycle`: `elevation = sin((t/24)·2π − π/2)·90` — no new maths):
 
-Later start = shorter, gentler arc. It is one number, and the default gives exactly the 6-hour
-noon-to-dusk film the user described.
+| start | end | sun elevation | shadow length / height |
+|---|---|---|---|
+| 06:00 | 12:00 | 0° → 90° | sunrise → overhead |
+| 08:00 | 14:00 | 45° → 77.9° | 1.00 → 0.21 |
+| 09:00 | 15:00 | 63.6° → 63.6° | 0.50 → 0.50 (peaks overhead mid-film) |
+| 10:00 | 16:00 | 77.9° → 45.0° | 0.21 → 1.00 |
+| 11:00 | 17:00 | 86.6° → 23.3° | 0.06 → 2.32 |
+| **12:00 (default)** | **18:00** | **90° → 0°** | **0 → sunset** |
 
-**The one thing that made a fixed span wrong, and why "ends at dusk" fixes it.** The original idea was
-a fixed 6-hour window — 9am start ⇒ 3pm end. But a window centred on noon is **symmetric**: 09:00 and
-15:00 are the *same sun height* (63.6° both), so shadows would be the same length at the start and the
-end, and *shortest in the middle of the film*. Anchoring the END at dusk instead makes every start time
-produce monotonically lengthening shadows — which is the film everyone actually wants — and it removes
-the need for any span setting at all.
+**The one range bound, and it is mechanical, not a preference:** with a fixed 6-hour span, any start
+later than 12:00 ends after 18:00 — below the horizon, i.e. the film ends in the dark (13:00 start ends
+at −23.3°). So the setting's range is **06:00–12:00**. That is the whole rule: *the film is six hours,
+so noon is the latest you can start.*
 
 #### Implementation — deliberately small
 
-- Hour → elevation uses the **same sine Time Machine already uses** (`time_machine.js` `applySunCycle`:
-  `elevation = sin((t/24)·2π − π/2)·90`). No new maths, no new dependency.
-- `PHOTO_SUN_ELEVATION_START` stops being a constant and becomes `elevationForHour(startHour)`.
-  `PHOTO_SUN_ELEVATION_END` stays as it is (6°, dusk). `_sunElevationAt` / `_sunArcStep` are unchanged.
-- Slider range **09:00–16:00**. Below 09:00 the arc gets very long for little visual gain; past 16:00
-  there is barely a film left. Default **12:00**.
+- `PHOTO_SUN_ELEVATION_START` and `PHOTO_SUN_ELEVATION_END` stop being constants and become
+  `elevationForHour(startHour)` and `elevationForHour(startHour + 6)`. `_sunElevationAt(tNorm)` keeps
+  interpolating between them exactly as it does now. `_sunArcStep` is untouched.
+- Setting range 06:00–12:00, default 12:00. One control.
 - Persist the chosen start time with the saved Cinema path, so re-baking an old plan gives the same
   film.
-- **Only real caution, and it is already-shipped machinery:** `§PHOTO_SUN_SHADOW_REACH` (frustum) and
-  `§PHOTO_SHADOW_BIAS_SCALE` (grazing term) are computed once at staging from one elevation. They must
-  use the window's **lowest** elevation — which is always the fixed dusk end here, so this is simpler
-  than today, not harder.
-- Honest labelling: with no site latitude, "12:00" means *overhead sun*, not literal local noon. Fine
-  for a look control; just don't market it as a sun study.
+- `§PHOTO_SUN_SHADOW_REACH` (frustum) and `§PHOTO_SHADOW_BIAS_SCALE` (grazing term) are computed once
+  at staging from a single elevation — they must use whichever end of the chosen window is **lower**,
+  since with a settable start that is no longer always the end frame (e.g. a 06:00 start is lowest at
+  the START). One `Math.min`, no new machinery.
 
-#### Deliberately NOT in this spec
+#### Two consequences of the default worth recording (statements of fact, not objections)
 
-Real solar geometry (`IfcSite` `RefLatitude`/`RefLongitude` + a date + a NOAA solar-position algorithm)
-would make the hour label literally true, add a real azimuth swing so shadows *rotate* as well as
-lengthen, and turn the same control into a genuine shadow/solar-access study — a BIM deliverable rather
-than a look control. Measured supporting number, kept because it is a good argument for doing it
-someday: on 12 Aug at London's latitude, real solar noon is **53.6°**, within 1.4° of the 55° that was
-hand-tuned into `PHOTO_SUN_ELEVATION_START` — the current constant is, by coincidence, mid-latitude
-solar noon. **Not the plan.** Ship the one-slider version first; it is the intuitive feature that was
-asked for, and the georeferenced version reuses the exact same UI if it is ever wanted.
+1. The default **changes today's shipped look**: 55° → 6° becomes 90° → 0°. The opening is an overhead
+   sun (short shadows — what `PHOTO_SUN_ELEVATION_START`'s own comment describes as reading flat), and
+   the film now ends at the horizon rather than 6° above it.
+2. At the 0° end, `§PHOTO_SUN_SHADOW_REACH`'s existing `_elevDeg > 0.5` guard skips frustum widening
+   (`height/tan(0)` is unbounded). Practically the last frames are at sunset and near-dark, so there is
+   nothing to widen the frustum for — the guard already handles it correctly, no change needed.
+
+#### Witness
+
+1. Assert the logged per-frame elevation matches `elevationForHour` for the chosen window, first and
+   last frame, at three start times.
+2. Assert the setting rejects/clamps a start later than 12:00.
+3. Re-run `scripts/witness_shadow_bias_ab.js` at the window's lowest elevation — shadow contrast there
+   must be no worse than today's measured −15.2 mean luminance drop.
+
+#### Not in this spec
+
+Real solar geometry (site latitude/longitude + date). It would make the hour label literally true and
+make shadows rotate as well as lengthen, and it reuses this same setting — but it is explicitly out of
+scope here. Recorded only because the measured coincidence is worth keeping: on 12 Aug at London's
+latitude real solar noon is 53.6°, within 1.4° of the 55° hand-tuned into the current constant.
 
 ### Separation + re-render architecture (answered 2026-08-12, verified against `origin/main`)
 
