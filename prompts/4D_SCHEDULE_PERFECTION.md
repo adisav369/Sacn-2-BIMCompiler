@@ -3590,3 +3590,99 @@ expectations (first20Clean now likely fixable), and the schedule_author.js §PHA
 task-window GENERATION (bar dates in the tasks table still author overlapped windows — display
 timing no longer follows them per-bucket by design, but a future pass could serialize the authored
 backbone windows too so the Gantt bar dates match the two-tier element reality exactly).
+
+## ▶ 2026-08-11 (night): CHASE-TO-ZERO — all named follow-ons closed, LTU+JKR covered, PR #1283 (bim-ootb `fix/4d-chase-to-zero`)
+User mission: "You have to chase any FAILS/gaps till zero. Meanwhile have u tested on JKR or LTU?"
+Plus mid-pass priority note: "Even if it improves LTU ARCH parallel phase to consecutive be good
+enough as initial start, was too fast coming on." All six dispatched items closed; every log read.
+
+### Item 1 — gantt_ops_blackbox G-3 FIXED (6 pass/1 fail → 7/0)
+Exactly as diagnosed: `computeDays` carried a byte-duplicate `§GANTT_AXIS_OUTLIER` block (same
+`var` redeclarations, so no syntax error) whose second copy read `_ops` and OVERWROTE the qualified
+axis. Duplicate deleted; the cOps block is the single authority. Axis: 2026-08-04 (BUILDING_OPEN
+wall-clock) → 2024-08-05 (real construction max end).
+
+### Item 2 — witness_4d_roof_load_path un-rotted (7/9 → 9/9), engine healthy
+Forensic probe (probe_rlp2.log): the refold DID rerun (sync injectGantt blocks the event loop ~10s
+— why the witness's wait loop "returned" at 1000ms) and `§GANTT_OVERRIDE 11 slabs promoted
+(seed=10 + M4=1)` fired WITH storeys blanked — G-RLP-2's claim is true in the engine. The rot: on
+the `_cap` path (the live default since auto-authored zone tasks) every covered op's `phase` param
+is overwritten with the task NAME (`p.phase = w.name` — "Superstructure — Level 7"), so
+`phase==='Architecture'` was a dead detection channel. Fix: engine exposes
+`window.__tmLoadPathPromoted` (the `__tmGanttShift` debug convention; `_promoteRoofLoadPath` now
+returns its promoted GUIDs); G-RLP-2 nulls it before refold and requires it repopulated with both
+slabs; G-RLP-3 asserts the floor-slab control absent from it. G-RLP-6's LTU `=0` also un-rotted →
+locked at the live-vintage 334 (item 4).
+
+### Item 3 — witness_4d_layer_truth un-rotted (FAIL → PASS)
+Baseline run confirmed the capstone's prediction exactly: staged=0, floating=0, first20Clean
+ALREADY true (all IfcFooting — #1282 removed the day-1 wall), refolds=0; the ONLY failing
+expectation was `parked>0` — obsolete since §NOGEO_COMPOSE zeroed the ghost population (§4D_NOGEO
+never prints with nothing to park). Expectation rewritten to the actual invariant: (no §4D_NOGEO
+line OR parked>0) AND no `§GANTT band 0 z=[0.0,0.0]` day-0 population (the witnessed pre-fix
+signature). first20Clean kept and re-locked.
+
+### Item 4 — LTU_AHouse: 2839 root-caused as VINTAGE, §TIER_SERIAL confirmed live, 334 = documented tail
+- **Vintage differential (probe_ltu.log)**: live-served `_meta`/`_geo` pair (§6.9) → rawFloating
+  **334**/122330, unchecked=611; old `_extracted.db` → **2839**/122330, unchecked=70. The doc's
+  2839 was measured against the file real users don't get; the Aug-10 re-extraction fixed ~2500
+  wrong-order floats (trading them for honestly-unverifiable warns). Browser run confirms 334
+  end-to-end (§SUPPORT_CHECK floating=334/122330 live).
+- **The 334 (probe_ltu_cycles.log)**: ALL 334 are support-POOL members; 172 have a co-planar
+  carrier (the symmetric "would create DAG 2-cycles" class); §SUPPORT_CYCLE cycles=25,393 on the
+  live vintage (the 75,943-cycle class, improved by re-extraction, still structural); §DEQ_REPAIR
+  repairs seq>4 ONLY by design — pushing a pool member of a mutual pair never converges (the
+  measured Clinic 43k-pushes/400-sweeps lesson). Verdict: same class-(b) warn-only family as the
+  closure pass's 246, at steel-detail scale. LOCKED (not hidden) in three witnesses.
+- **The user's minimum bar — MET**: §TIER_SERIAL applies to LTU unchanged: tier1OverlapPairs=0,
+  dagWins=882, iterations=2. Architecture RAW window started **day 0.0** (fully parallel — "too
+  fast coming on"); displayed window starts **day 214** after Superstructure's serialized extent
+  (§TIER_COST ratio 1.19, 810.9→966.1d). LTU is now a permanent member of tier_serial_display +
+  big_element_support_coverage, tested at the LIVE vintage.
+- **Canonical-vintage question NOT decided** (explicitly the user's open call): witnesses test what
+  live users get; both files left untouched.
+
+### Item 5 — JKR first-ever coverage, all green at measured baselines
+floating=**81**/8985 (same steel co-planar family: CHS members 33, columns 24, slabs 18, beams 6),
+unchecked=**6**, bms=**false** (zero seq-1 elements — foundation slabs authored plain IfcSlab at
+the z≈84m site datum), tier1OverlapPairs=**0**, dagWins=**398**, dispFloating==raw (81),
+§TIER_COST ratio 1.59 (36.4→57.8d). geo_support_leak (already had JKR): ungated=0 leaked=0.
+Witness extensions: tier_serial_display 41/41 → **57/57**; big_element_support_coverage 26/26 →
+**37/37** — 5-building locked baselines byte-held in both (floating 8/0/0/0/1, 246 unchecked
+total, dagWins 24007/9/0/420/6). Furniture safeguard measured 0/0 on both new buildings.
+Mechanism witnesses (lock_integrity, og_bearing_bound, og_grid_perf, gantt family) are
+fixture-scoped — run green as-is; not force-parameterized to JKR.
+
+### Item 6a — §PROMOTED_CARRIER_POOL: guard/judge promoted-slab blindness FIXED (finding A closed)
+Guard (`_ogSupportSweep`) + judge (`_buildXraySupportCache`) struct grids were seq≤4-only. Pool
+aligned with auditFloating's (seq≤4 ∪ promoted slabs, bearing AND hang — the same move
+`_tierAuditRegate` already made); both witness REFERENCE implementations (og_grid_perf brute-force,
+og_bearing_bound detection grid) mirrored in lockstep — their own documented lifecycle. Proof the
+fix is live and safe: **§XRAY_EDGES n=38039 → 38117 on live Hospital (+78 real promoted-slab
+edges), staged=0 HELD** (guard/judge stay one physics — guard pushes start past carrier end, so
+judge-after-guard is 0 by construction); og_bearing_bound 9/9 byte-same numbers (removed=1072,
+desync 129/121 — its harness has no promoted slabs, correctly unaffected); og_grid_perf 3/3
+(Duplex mismatches=0/1122 vs the UPDATED reference = shipped≡reference under the new semantics;
+Terminal 7862ms < 15s, pushed=33422 unchanged).
+
+### Item 6b — §PHASE_OVERLAP_BAND authored-window serialization: NAMED REMAINING, deliberately not forced
+Serializing the AUTHORED task windows changes user-editable tasks-table bar-date semantics on
+every newly generated schedule — a visible design change the doc itself frames as "a future pass
+could". ⛔ BLOCKED on one design question for the user: **should authored Gantt bar windows also
+serialize to match the two-tier display, changing bar layout for all newly generated schedules?**
+
+### Regression sweep (post-change, every log read; logs in worktree `_logs/`)
+tier_serial 57/57 · bigsup 37/37 (LTU 334/611, JKR 80/6 — coverage-witness floating differs ±1
+from probe by duration approximation, reported not asserted) · tm_geo_order_cycles 5/5 (cycles=0
+floating=8 EXACT) · lock_integrity 19/19 (§LI_COST 63,415 floating=0) · geo_support_leak PASS ·
+test_schedule_gate 3252→0 · nogeo_compose 9/9 · default_engine_quality 0/48428+0/63415 ·
+geometric_support_order 0 shifts · chunk_only 164/0 · facade+stagger GREEN · gantt
+bar-identity/row-order/edit-coherence/native/ruler-shift/baseline/undo/edit-lock/group-move/
+bars-in-rect/single-load/retime-resync/shop-dates ALL PASS · zstack PASS · wall-carrier 14/14 ·
+LIVE layer_truth PASS · roof_load_path 9/9 · ops_blackbox 7/7.
+
+### Merged + notes
+PR #1283, auto-squash. ⚠ The `fix/gantt-refold-hang` conflict caution now covers the guard block's
+two new §PROMOTED_CARRIER_POOL lines too — whichever lands second syncs per the N-terminal rule.
+Chase-to-zero ledger: items 1,2,3,4,5,6a ✅ DONE (witnessed) · 6b ⛔ BLOCKED on the one design
+question above · LTU canonical-vintage question remains the user's (unchanged by this pass).
