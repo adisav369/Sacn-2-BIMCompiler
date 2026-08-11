@@ -10,7 +10,10 @@
 #   its commit/PR; full diagnostic narrative for closed items lives in the archive if ever needed.
 
 ## ▶ RESUME — START HERE
-Two open threads, both below in full detail:
+Three open threads, all below in full detail:
+0. **§WEATHER_ADVANCED_MODE** — SPEC ONLY, no code. Opt-in bake-only weather (the Twinmotion/Lumion
+   parity ask). Most of the machinery is already shipped; start at the Phase 1 overcast preset, not
+   at clouds. Flagged against the schedule-accuracy-first ruling — a decision, not a queued task.
 1. **§LTU_FLOOR_FLICKER** — MaxQ bake floor flicker on `LTU_AHouse`. Mechanism-confirmed
    (transparent-sort instability, ghost-ground × x-ray-staging), NOT pixel-proven, NOT fixed.
 2. **§SHADOW_FRONTIER** — shadows on in-progress/ghosted construction elements during a MaxQ bake.
@@ -19,6 +22,66 @@ Two open threads, both below in full detail:
    session on it.**
 Closed this session, confirmed working live: §CAM_LIGHT (camera fill-light) and §SUN_ARC
 (noon→dusk sweep) — see their one-line status below, full story in the archive.
+
+## §WEATHER_ADVANCED_MODE — SPEC ONLY (2026-08-12, user ask: "can we incorporate what they have as an advanced mode during baking?") — NOT STARTED, NO CODE
+
+**Context for the ask.** Twinmotion and Lumion both ship weather (rain, snow, fog, wind, seasons;
+Twinmotion adds volumetric clouds) AND 4D construction phasing in the same tool, so "a film with
+weather while the 4D reveal runs" is an existing, documented competitor workflow, not white space.
+This viewer currently has **no weather at all** — the sky is a clear-sky Preetham model with no cloud
+geometry (see the §PHOTO_SKY comment in `effects.js`, which says so explicitly).
+
+**The surprise on inspection: most of the hard half is already shipped.** Verified against
+`origin/main` before writing this — nothing below is assumed:
+
+| already live | where |
+|---|---|
+| Scene fog colour + density saved, re-tuned for the shoot, restored on teardown | `effects.js` `_photoFogColorSaved` / `A.scene.fog.density = Math.min(..., 0.00006)` |
+| **Wet ground** — 6 seeded circular puddles, per-puddle roughness drop + diffuse darkening via a ground-material `onBeforeCompile` injection, plus `§GROUND_WETNESS_OVERRIDE` | `effects.js` §PHOTO_PUDDLE |
+| Real photographed HDRI env, swapped in at staging and restored at teardown, loaded by filename from `viewer/textures/hdri/` | `effects.js` §LAYER2_HDRI (`belfast_sunset_puresky_1k.hdr` — currently the ONLY file in that dir) |
+| Sun travel 55°→6° per frame of the bake | `effects.js` §SUN_ARC `_sunArcStep` |
+| Staffage/entourage trees with real spatial placement + ground seating | `effects.js` §STAFFAGE |
+
+So the gap vs Lumion/Twinmotion is exactly four things: **clouds, precipitation particles, snow
+accumulation, and an overcast lighting state.** Everything else a weather preset needs is wired.
+
+**Recommended order — cheapest real gain first. Do NOT start at clouds.**
+
+1. **Phase 1 — an "Overcast / after rain" preset. Highest realism-per-line in the whole list, and it
+   needs no new rendering technique at all.** It is a preset over knobs that already exist: add one
+   overcast `.hdr` beside the sunset one (the loader takes a filename in a single place), raise fog
+   density above the current `0.00006` cap, drop `A.sun.intensity` and lift hemi/ambient for diffuse
+   sky-dome light, and leave the shipped puddles on. **The structural reason this is the right first
+   move:** the one genuine conflict between an HDRI sky and §SUN_ARC is that an HDRI has its sun
+   baked at a fixed position while the arc sweeps — and an overcast sky has *no visible sun disc*, so
+   that conflict simply does not arise in this preset. Free pass on the hardest integration problem.
+2. **Phase 2 — rain streaks.** GPU points / instanced quads in a camera-locked volume, additive.
+   Modest cost. Deliberately AFTER Phase 1: rain particles over dry ground read fake, and the wet
+   ground that sells them is the part already built. Rain without Phase 1 is the wrong order.
+3. **Phase 3 — clouds.** Either a scrolling cloud-layer texture on a dome (cheap, moves, fake
+   parallax) or raymarched volumetrics (real, expensive). Budget reality from this file's own Layer 4
+   note: N8AO alone already costs ~317 ms/frame extra on an RTX 4060, and volumetrics are the same
+   order — so this is bake-only and will lengthen a bake noticeably. A cloudy HDRI gives photographed
+   clouds for free in reflections but cannot move or parallax, and its baked sun WILL fight §SUN_ARC
+   in any non-overcast preset.
+4. **Phase 4 — snow accumulation.** The payoff shot for "seasons", and the biggest lift: needs an
+   up-facing-normal blend in the triplanar shader (`streaming.js` Layer 3). Snow as particles alone,
+   with no accumulation on roofs and sills, will not read.
+
+**Honesty constraints on whatever ships.**
+- This closes the "no weather at all" gap. It will not match Lumion's weather quality, and the
+  positioning must not claim it does — the durable differentiator remains *the film and the 4D
+  sequence are derived from the IFC itself, in a browser, with no export round-trip*, not atmosphere.
+- `docs/BIMUserGuide.md` §"Sun, sky and shadow while the film records" currently states in print:
+  *"There is no weather: no rain, no snow, no cloud shapes."* That sentence must be updated in the
+  same PR as whatever phase ships, or the manual becomes false.
+- Advanced mode must be **opt-in and bake-only**, like Alt+J/SSGI — never a default that slows every
+  film or changes an existing bake's look without being asked for.
+
+**Priority flag, stated once and then it is the user's call.** `feedback_schedule_accuracy_over_movie_polish.md`
+(user ruling 2026-08-05) puts movie-maker polish behind 4D schedule accuracy, and
+`prompts/4D_SCHEDULE_PERFECTION.md` still carries an open punch list. Weather is polish by that
+definition. Worth deciding explicitly rather than drifting into it.
 
 ## HONEST VERDICT (read this before anything else)
 **No — this will not be "truly photorealistic" in the indistinguishable-from-a-photograph sense.**
