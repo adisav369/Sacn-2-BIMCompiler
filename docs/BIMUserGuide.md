@@ -498,6 +498,31 @@ your **mark in / mark out** against what the programme actually shows.
 
 [Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
 
+#### Sun, sky and shadow while the film records
+
+A recorded film is not lit the way the live viewport is. The moment recording starts, the viewer stages a
+photographic pass — and it keeps running *while the 4D reveal assembles the building*, so the light and the
+construction sequence advance together in the same take:
+
+| what happens | detail |
+|---|---|
+| **The sun travels** | It starts at a high 55° "late morning" angle and sinks to a 6° dusk by the last frame. Shadows lengthen and swing across the film — the sun is not parked. |
+| **Real cast shadows** | The building, its rooftop plant, and the distant skyline all cast real shadows onto the ground, at a 4096² shadow map for the recording only (the live viewport uses a cheaper one). The shadow frustum widens as the sun drops so a long dusk shadow isn't clipped at its tip. |
+| **Atmospheric sky** | A physically-based clear-sky scattering model (Preetham), pushed warmer and hazier for the shoot — deeper reds and a tighter sun glow near the horizon than normal navigation shows. |
+| **Photographic reflections** | Glass and metal reflect a real photographed sky (HDRI), refreshed as the sun moves, so the glint tracks where the sun actually is at that moment of the film. |
+| **Warm evening key light** | The sun tints warm and window/fixture glow comes up as the light falls. |
+
+You can also stage a **single still** rather than a whole film: **Alt+S** applies the same photographic pass
+and then refines the frozen frame over 16 jittered sub-pixel samples for clean edges. **Alt+J** adds an
+optional bounce-light (GI) pass — off by default, and deliberately excluded from film recording because it
+costs far more per frame than a film's frame budget allows.
+
+**What this is honestly not.** There is no weather: no rain, no snow, no cloud shapes — the sky model is a
+clear-sky one and has no cloud geometry at all. And it does not claim to be indistinguishable from a
+photograph: the geometry is idealised IFC with no real-world wear, materials are assigned by class rather
+than hand-tuned per surface, and nothing is colour-graded per shot. What it does target is the good-archviz
+tier — and, unlike a still-render tool, it does it *while the building assembles itself to the programme*.
+
 ### Display options — Palette, Night, Shadow + Ground, Background, Sound FX
 
 The **Palette** pill (key **P**) opens one panel for every visual-appearance control — five lighting
@@ -603,6 +628,8 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | **Roof** | Roof plan view |
 | **Alt+Z** | Toggle X-ray mode |
 | **Alt+C** | [Film-Maker](#cinema-film-maker-altc-the-bim-ootb-film-maker) — derive a cinematic film, edit the flight, record |
+| **Alt+S** | [Photographic still](#sun-sky-and-shadow-while-the-film-records) — stages the sun/sky/shadow pass, then refines the frozen frame over 16 sub-pixel samples |
+| **Alt+J** | Bounce-light (GI) pass — optional, off by default, not used while recording a film |
 | **Click the flight tube** (in the Film-Maker) | Add a stick — a new band you can drag |
 | **Ctrl+Z / Ctrl+Shift+Z** (in the Film-Maker) | Undo / redo a path edit |
 | **F11** | Toggle fullscreen |

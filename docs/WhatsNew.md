@@ -6,6 +6,17 @@ A running log of shipped, user-visible changes across the Modeller, Viewer, ERP/
 module. Internal engineering work (kernel hardening, data-model migrations, CI fixes) isn't listed here —
 only things you'd actually notice using the app. See each app's guide for full how-to detail.
 
+## 2026-08-12
+
+**BIM Viewer**
+- **Buildings now cast their real shadow in a recorded film.** The main building and its rooftop plant
+  previously cast nothing during a film bake — only the distant skyline did. Shadows now fall correctly
+  from the whole model, throughout the sun's noon-to-dusk travel, while the 4D construction reveal runs.
+- The Film-Maker's sun/sky/shadow behaviour is now documented — see
+  **[Sun, sky and shadow while the film records](BIMUserGuide.md#sun-sky-and-shadow-while-the-film-records)**.
+- **Alt+S** (photographic still) and **Alt+J** (optional bounce light) are now listed in the Viewer
+  cheat-sheet.
+
 ## 2026-07-03
 
 **Modeller**
