@@ -78,6 +78,46 @@ accumulation, and an overcast lighting state.** Everything else a weather preset
 - Advanced mode must be **opt-in and bake-only**, like Alt+J/SSGI — never a default that slows every
   film or changes an existing bake's look without being asked for.
 
+### §SUN_HOUR — "set the starting hour of the bake" (user idea 2026-08-12, cheapest option on the table, NOT STARTED)
+
+**Why this beats advanced weather mode on cost/benefit.** The arc is ALREADY two constants feeding one
+function — `PHOTO_SUN_ELEVATION_START = 55`, `PHOTO_SUN_ELEVATION_END = PHOTO_SUN_ELEVATION = 6`, read
+by `_sunElevationAt(tNorm)` → `A.updateSky(elev, PHOTO_SUN_AZIMUTH)` in `_sunArcStep`. Exposing start
+(and end) costs **no bake time, no second staging path, no new rendering technique** — nothing like the
+1.5–3x wall-clock and duplicated-staging cost of §WEATHER_ADVANCED_MODE above. It also directly resolves
+the tension named in this file: dusk drama and shadow contrast are the same dial, so let the user choose
+where to sit on it per building instead of hard-coding one point for every project.
+
+**Honest labelling constraint — verified, not assumed.** Time Machine already maps an hour to a sun
+position (`time_machine.js` `applySunCycle`), but it is a **synthetic sine, not solar geometry**:
+`angle = (t/24)*2π - π/2; elevation = sin(angle); elDeg = elevation*90`, azimuth likewise from
+`cos(angle)`. So noon puts the sun at the **zenith (90°) everywhere on Earth**, with no latitude and no
+date. And nothing in `viewer/` reads a site georeference at all — grepping for latitude/longitude finds
+only `clash_snag.js`'s **device** GPS for snag photos, never `IfcSite`. Therefore a bake "start hour"
+built on today's data is a **mood control, not a sun study**, and must not be labelled in a way that
+implies solar accuracy.
+
+**The upgrade that changes what this feature IS (worth costing before choosing the cheap version).**
+`IfcSite` carries `RefLatitude`/`RefLongitude` in most real IFC files and the viewer ignores them today.
+Read those + a date, and swap the synthetic sine for a standard solar-position algorithm (NOAA/SPA —
+tens of lines, no dependency), and the SAME control becomes a real **shadow / solar-access study**:
+overshadowing, right-to-light, solar gain — BIM deliverables with regulatory weight, not movie polish.
+That reframing is the one thing in this whole weather/atmosphere discussion that would clear the
+project's own `feedback_schedule_accuracy_over_movie_polish` bar, because it is accuracy work, not
+polish. Recommend costing this BEFORE building the cosmetic version, since the cosmetic version's UI
+(an hour control) is the same UI either way — only what sits behind it differs.
+
+**Implementation cautions, all specific and all real:**
+- `_enablePhotoShadows` sizes the shadow frustum (`§PHOTO_SUN_SHADOW_REACH`) **and** the world bias
+  (`§PHOTO_SHADOW_BIAS_SCALE`, grazing term) **once at staging**, from the elevation at that instant. A
+  user-chosen hour RANGE must size both from the **lowest elevation the range reaches**, not from the
+  staging instant — exactly the reasoning already shipped for the bias, now applying to a second input.
+- `PHOTO_SUN_AZIMUTH` is a fixed constant. Real hours move azimuth too; elevation-only means shadows
+  lengthen but never swing, which reads artificial. Sweeping azimuth as well is nearly free and better.
+- Guard the degenerate picks: sun below the horizon, or an hour that puts the sun behind the camera for
+  the whole film, produces a flat or black bake. The `_elevDeg > 0.5` guard in the reach math is a
+  precedent but does not cover the azimuth case.
+
 ### Separation + re-render architecture (answered 2026-08-12, verified against `origin/main`)
 
 **Q: keep it separate so it can't disturb the working bake — and can we render over the same frames,
