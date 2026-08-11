@@ -19,6 +19,15 @@ twice failed to prove agreement with what was asked. Before reporting success, h
 number up against that sentence.
 
 ## ▶ RESUME — START HERE (state as of 2026-08-12, fourth pass)
+**NEWEST (2026-08-12, fourth session): §ARCH_START_TEMPO — "the ARCH starting first day part is too
+fast" is STUDIED, MEASURED, and deliberately NOT fixed yet.** Read that section (last in this file)
+BEFORE proposing anything: it names the three multipliers that produce the burst, the prior rulings
+each one came from (so a "fix" doesn't re-open a settled decision — the user's own words: *"solution
+has to be after understanding previous work or else we be in vicious cycles"*), and two ⛔ items that
+need the user's call. It also records two incidental defects found while measuring: a DUPLICATE
+`_midairRepair` in `time_machine.js`, and §TIER2_AFTER_TIER1's ledger claim being stronger than what
+actually ships post-`_midairRepair`.
+
 **§MIDAIR_REPAIR is the answer to the acceptance bar and it is built + witnessed — see its own
 section at the end of this file for the numbers.** The hanging population was never visible to the
 existing proof trail: `auditFloating` only counts an element as floating when a support it KNOWS
@@ -166,7 +175,12 @@ doing only if a case appears that the display repair cannot express.
    §SUPPORT_UNCHECKED) or model it explicitly?
 7. **`fix/gantt-refold-hang`** — pushed, unmerged, now 4+ PRs of drift in the same region of
    `time_machine.js`. Needs a real sync against current `main`, not a naive rebase. `git worktree list` first.
-8. **Modeller is out of scope by user ruling** ("Ignore modeller for now") — none of §TIER_SERIAL,
+8b. **§ARCH_START_TEMPO (2026-08-12, studied not built)** — the film's opening dumps whole trades in
+   its first day (Terminal: 236/236 substructure slabs in 0.8d of a 375d film; Duplex: whole backbone
+   + 75% of ARCH in ONE day). Levers §3.1–§3.4 in that section; §3.1 (8h vs 24h crew-day) and §3.2
+   (mobilisation) are ⛔ user calls, §3.3 (lock `workInFirst10%OfCalendar` in a witness) needs none.
+   Two defects found alongside: duplicate `_midairRepair`; §TIER2_AFTER_TIER1 claim vs shipped times.
+9. **Modeller is out of scope by user ruling** ("Ignore modeller for now") — none of §TIER_SERIAL,
    §TIER2_AFTER_TIER1, §SUPPORT_UNCHECKED, §HANG_NEAREST exist there. If it ever matters, start from
    `modeller/str_walker_outliner.js`, same pattern as the §NOGEO_COMPOSE port (#1273).
 
@@ -332,3 +346,144 @@ follow-up off fresh `origin/main`.
 re-introduced hanging — moved 1 element 5d before its first contact, W-MZ-8 the trade locked per
 building). `witness_gantt_lock_integrity.js` **all green**, including G-LI-2d (a real bad drag still
 breaches: +1 floating, +1 midair) and G-LI-4 (Hospital-scale lock audit 1,005ms / 63,415 elements).
+
+## ▶ 2026-08-12 (fourth session, STUDY ONLY — nothing implemented) — §ARCH_START_TEMPO: why the opening of the film is too fast
+User: *"recall back the prompts/# on the 4D PERFECTION, as the ARCH starting first day part is too
+fast. As this is always problematic, study first"* … *"solution has to be after understanding
+previous work or else we be in vicious cycles"* … and, on perf: *"also the loading timeline, look at
+perf issue but note another session is studying overall and fixing perf issue, so just make observation."*
+
+**No code was changed. No witness was added. Every number below is measured**, on `origin/main`
+`add18e5` (#1303), against the real shipped fixtures.
+- Probe (new, read-only, committed here — not in bim-ootb): `scripts/probe_arch_start.js`.
+  `VIEWER_DIR=~/bim-ootb/viewer BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js`
+  It runs the SHIPPED functions (`_buildXrayElements` → `ScheduleGate.computeSchedule` →
+  `_twoTierRemap` → `_midairRepair`), sliced out of `time_machine.js` exactly the way
+  `probe_midair_census.js`/`witness_midair_zero.js` do — no re-implementation of the physics.
+- All three rows (RAW / REMAP / REPAIR) share ONE epoch. A per-row epoch silently re-zeros the axis
+  and fakes an "element moved earlier" that never happened — caught while writing this.
+
+### §0 FIRST: what previous work already settled, so this doesn't loop
+The burst is **not a new bug and not a regression.** It is the named, accepted consequence of a
+ruling the user made on 2026-08-06, and every mechanism below was put there deliberately by an
+earlier pass:
+1. **§CPE_BUILDUP_WORK_PACED** (cinema_maxq.js) used to hide it: the film advanced by WORK, so
+   "10% of the film = 10% of the building" regardless of how the schedule clustered.
+2. **§CPE_BUILDUP_EVEN_TEMPO (2026-08-06) RETIRED that**, on the user's own words ("Should be even
+   throughout — separation of concern. Let the user play with the sticks and timings"). Its header
+   states the trade in advance: *"THIS IS A REVERSAL … the burst … (a quarter of the Hospital model
+   appearing in the first 5% of the film) returns wherever a schedule clusters its elements."*
+   `BUILDUP_EVEN_TEMPO = true` is live; the film clock is now **linear in calendar days**.
+   ⇒ **Do not "fix" this by flipping that flag back.** It was decided, with reasons. The consequence
+   is that any front-loading left in the SCHEDULE now maps 1:1 onto screen time — so the schedule is
+   the only correct place to work, which is what this file is for.
+3. §4D_BAND_MONOTONIC (2026-08-02) already ruled OUT a global floor gate ("would serialize the
+   project and destroy the trade train"). §TIER_SERIAL/§TIER2_AFTER_TIER1 (2026-08-11) then made the
+   BACKBONE serial anyway — that is as far as serialization was taken, deliberately.
+4. §PHASE_DURATION/§PHASE_OVERLAP_BAND (2026-08-04) exist to fix the OPPOSITE complaint (Terminal's
+   Architecture used to start at day 1,189 of 1,264). Anything proposed here must not walk that back.
+
+### §1 The measurement — the DISPLAY timeline (what `kernel_ops` plays), post-`_midairRepair`
+| building | film span | ARCH window | starts on day ≤1 | what those day-1 elements ARE |
+|---|---|---|---|---|
+| Terminal | 375.2d | 96.6–191.5d | 237 (0.5%) | **236 of 236 Substructure slabs — the ENTIRE substructure, in 0.8 days** |
+| Hospital | 1168.7d | 306.6–861.7d | 57 (0.1%) | 57 `IfcFooting`; all 553 Substructure elements inside the first 19.5d (1.7% of the film) |
+| Clinic | 399.8d | 103.7–274.6d | 57 (0.4%) | 56 `IfcFooting` + 1 slab; 100% of Substructure inside the first 6.2d |
+| HHS_Office_Federated | 122.1d | 33.6–95.1d | 65 (1.0%) | 54 `IfcColumn` + 11 `IfcSlab`; **51.6% of ALL Superstructure inside the first 10% of the film** |
+| JKR | 110.1d | 26.0–57.7d | 57 (0.6%) | 48 `IfcColumn` + 9 `IfcSlab` |
+| LTU_AHouse | 1855.1d | 216.7–1940.6d | 49 (0.0%) | 31 `IfcColumn` + 14 `IfcSlab` + 4 `IfcBeam` (film day 0 = raw day 86.0 — the repair shifts the whole start) |
+| **Duplex** | **18.0d** | **0.4–7.8d** | **80 (7.1%)** | **11 footings + 25 Superstructure + 44 Architecture (40 walls, 2 doors, 2 stair flights) — i.e. the whole backbone plus 3/4 of ARCH, in ONE day** |
+
+**Two different "ARCH on day 1" facts, and they live in two different artefacts. Both are real:**
+- **(A) The movie.** ARCH literally starts on day ~0 only on **Duplex** (0.4d of an 18d film, with
+  **75.2% of all Architecture starting inside its own first day**). On the big buildings ARCH starts
+  22–33% in (Terminal 26%, HHS 28%, JKR 24%, Clinic 26%, Hospital 26%). What IS on screen in the
+  first day everywhere else is the **backbone start** — and that is what looks too fast: Terminal's
+  entire substructure is 0.2% of the film (**under 1 frame of a 360-frame bake, ~2 frames of an
+  820-frame one**), Clinic's is 1.6%, Hospital's 1.7%.
+- **(B) The Gantt drawer (authored bars, `schedule_author.js` §PHASE_OVERLAP_BAND).** There the ARCH
+  bar starts at **day 2 (Duplex, of 36d) · 5 (JKR, of 55d) · 11 (Terminal, of 236d) · 12 (Clinic,
+  of 295d) · 14 (HHS, of 97d) · 24 (LTU, of 2194d) · 39 (Hospital, of 803d)** — every one of the six
+  phases has started inside the first ~15% of the programme on every building.
+
+### §2 The mechanism, read from code — three independent multipliers, all pre-existing
+**M1 — the display clock spends an 8-hour crew-day in 24 wall-clock hours (a hard 3×).**
+`schedule_author.js _installSecs` derives each element's seconds from `secsPerUnit = 28800 / productivity`
+— 28,800 s = one **8-hour** crew-day, and `materializeDefault` divides by `28800 * max_crews` for the
+authored bar width. But `schedule_gate.js place()` spends those same seconds as **continuous
+wall-clock** (`dur = installSecs * scaleFactor * 1000`, `scaleFactor` = 1 for any project ≥10 raw
+days, `time_machine.js:4853`), against `fullDayMs = 24*3600000` — the code even says so:
+`// Round the clock — 24/7, no weekends` (`time_machine.js:4847`).
+*Arithmetic check against the measurement, Terminal Substructure:* 236 `IfcSlab` × (28800/35 =
+822.9 s) ÷ 3 `CONCRETE_GANG` crews = 64,732 s = **0.75 d** — measured `Substructure=[0.0..0.8]d`. ✓
+The same labour on the 8-hour day its own rate table is written in is **2.25 d**; on a 5-day week,
+**3.15 d**. So the film runs the backbone **3× (or 4.2× vs 5-day/8h) faster than the rate table's own
+definition of a crew-day.** ⚠ This is adjacent to a SETTLED ruling — "24/7 continuous is the
+deliberate generator default" — but that ruling was about **weekends/holidays (the calendar)**, not
+about a crew working **24 h**. The two got conflated in one constant.
+
+**M2 — day 0 is full crew strength with nothing to wait for.** Every ground-layer element is
+ungated by construction (`geoGate` finds nothing below it), so at t=0 the only limiter is the crew
+cap. There is **no mobilisation, no site setup, no procurement lead, no ramp-up** anywhere in the
+model — `baseMs` is simply when everything can start.
+
+**M3 — the crew cap is the ONLY spreader, and it is small and project-wide** (§CREW-CAP, 2026-07-18:
+`CONCRETE_GANG` 3, `MASON`/`CARPENTER`/`ELECTRICIAN`/`PLUMBER`/`HVAC_TECH` 2, `ROOFER` 1,
+`MAX_CREWS_DEFAULT` 3). Combined with M1 each crew turns over ~3× its rated daily output, so a whole
+early band drains in hours: Duplex's 79 masonry-ish ARCH elements = 79 × 2,400 s ÷ 2 MASON crews =
+1.1 d (would be 3.3 d at 8 h).
+
+**M4 — the authored bars are front-loaded by a different rule entirely.** `materializeDefault` walks
+`_cursor += p.lagDays` where `lagDays = ceil(widthDays / numBands)` — each phase starts after the
+previous one clears ONE band, never after it finishes. That is textbook flowline and was the correct
+2026-08-04 fix, but with 12–17 bands it puts every trade's bar at the far left. It also means the two
+artefacts are **two different calendars** (already named as OPEN THREAD 6b — now with numbers):
+ARCH bar day 11 vs ARCH movie day 96.6 on Terminal; day 39 vs 306.6 on Hospital; day 24 vs 216.7 on
+LTU. Programme totals differ too (authored/display): Terminal 236/375d · Hospital 803/1169d ·
+Clinic 295/400d · JKR 55/110d · HHS 97/122d · LTU 2194/1855d · Duplex 36/18d.
+
+### §3 Levers — measured, NONE implemented, each needs its own spec section + a user pick
+1. **Spend labour on the crew-day the rate table is written in** (M1). One constant, but it
+   multiplies every building's display span ~3× and re-times every `kernel_ops` — needs
+   `_genVersion` + `_GANTT_CACHE_VERSION` + `sw.js` bumps and a re-measure of every LOCKED baseline
+   in `witness_tier_serial_display.js`. Biggest single effect on "too fast", smallest diff.
+   ⛔ Needs the user's call because it refines the SETTLED 24/7 ruling (calendar vs shift-length).
+2. **Mobilisation / ramp-in before the first element** (M2) — cannot be EXTRACTED from any building
+   DB. It would be a named business assumption (e.g. "no trade before day N", or crews arriving over
+   the first N days). ⛔ User's number, or it is invention.
+3. **Make the front-load visible instead of implicit.** `window.tmWorkSchedule()` already computes
+   and logs `workInFirst10%OfCalendar` (`time_machine.js:8333`, "10.0% would be evenly spread").
+   Nothing pins it, so it can drift silently. A witness locking it per building is a zero-risk first
+   step and the only lever here needing no user decision.
+4. **Item 6b (authored bars vs display timeline)** — unchanged, still the user's call, now with the
+   two-calendar numbers above.
+
+### §4 Three incidental findings, verified while measuring (not part of the ask)
+1. **`_midairRepair` is defined TWICE in `time_machine.js` at `origin/main`** (`:4248` refactored
+   onto `_contactGraph`, `:4391` the older inline copy — the #1303 add/add branch-side merge). JS
+   hoisting means **the browser runs the LAST one (`:4391`)** while `sliceFn` (probe + every witness)
+   picks the FIRST. **Measured: both produce byte-identical display times on Duplex and HHS**, so
+   this is dead duplication, not a behaviour split — but the witnesses are proving the copy that
+   does not ship, and one edit to the "wrong" one would be silent. ~145 dead lines.
+2. **§TIER2_AFTER_TIER1's "MEP Rough-in start == Architecture end, verified exact on 7 buildings" no
+   longer holds on the shipped timeline** — because `_midairRepair` (#1301) runs AFTER `_twoTierRemap`
+   and pushes backbone elements later (`t1Moved`, already reported per run). Measured ARCH tail
+   INSIDE the MEP window, post-repair: **Hospital 258.0d · Clinic 67.8d · HHS 26.2d · LTU 938.7d**
+   (Terminal/JKR/Duplex still exact at 0). Same for the backbone itself: Superstructure now runs
+   179.4d (Hospital) / 100.7d (Clinic) / 33.5d (HHS) past Architecture's start. `witness_tier_serial_display.js`
+   asserts on `_twoTierRemap`'s output only — it never runs the repair, so it cannot see this. Not
+   necessarily wrong (§TIER_DAG_WINS accepts support order beating serialization), but the *claim* in
+   this file's ledger is now stronger than what ships. Fix the claim or the witness — decide, don't drift.
+3. **Perf observation only (another session owns the perf lane — `prompts/CPE_4D_PERF_MEM_STUDY.md`
+   / `CPE_4D_PERF_MEM_FINDINGS.md`; nothing here to be actioned by this lane).** Node-side, one
+   generation pass: **`_twoTierRemap` dominates everything else** — LTU_AHouse 62.0 s, Terminal
+   25.6 s, Hospital 5.4 s, Clinic 1.6 s, JKR 1.8 s, HHS 0.8 s. Against `computeSchedule` (9.1/1.4/1.7 s),
+   `_midairRepair` (3.7/0.9/1.9 s), x-ray build (1.3/1.2/1.0 s), authored bars (2.3/1.7/1.3 s).
+   Full-pass totals: LTU 80.1 s · Terminal 31.7 s · Hospital 12.1 s. The shape is structural, not a
+   fixture artefact: `_twoTierRemap` runs up to 6 iterations × `_tierAuditRegate` (≤16 sweeps each),
+   and `_tierAuditRegate` rebuilds its spatial grid every call. Browser numbers will differ; the
+   ratio is what matters.
+
+### §5 What this study did NOT do
+No schedule change, no gate change, no witness, no PR, no cache bump. Levers §3.1–§3.4 are unbuilt
+and unspec'd. The probe is read-only and lives in bim-compiler only — bim-ootb is untouched.
