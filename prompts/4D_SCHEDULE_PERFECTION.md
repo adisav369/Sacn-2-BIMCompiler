@@ -273,3 +273,53 @@ limit, never a silent one. Revisit only on a real report that a half-built suppo
 `witness_big_element_support_coverage` 36/0. Plus `witness_midair_zero` 22/0. **129 + 22 assertions,
 zero FAILs.** `_GANTT_CACHE_VERSION` 10→11 and `sw.js` `CACHE_VERSION` v991→v992 both bumped in the
 same commit — the two cache landmines this lane has already been bitten by, checked deliberately.
+
+## ▶ 2026-08-12 (same session, follow-up) — the planner question, and the two real holes it exposed
+User: *"is the resulting 4D JSON edit wise still in compliance to engineer planners as P6 MPP
+quality? And easily changed also on Time Machine to effect back?"* Checking that instead of assuming
+it found two defects — one pre-existing, one introduced by PR #1301 — both closed here.
+
+### Answer 1: the planner-facing artefacts are untouched, provably
+`schedule_author.js`, `schedule_author_ui.js`, `schedule_diff.js`, `foreign_schedule.js` have a
+**zero-line diff** across this whole lane. `tasks` / `task_sequences` / `computeCpm(fixedDates)`
+float+criticality / the P6+MSPDI export path all build from `ScheduleGate.computeSchedule`'s RAW
+times (`schedule_author.js:352`); §MIDAIR_REPAIR rewrites only `kernel_ops` timestamps — the movie
+layer. So the exported programme is byte-identical to what it was.
+Measured consequence on the seam (`probe_bars_vs_ops.js`, HHS): of 6,839 elements linked to a task,
+**14 (0.2%) newly play outside their own bar** because of the repair, max 18.2d on a 46d authored
+span. Note 3,408 (49.8%) were ALREADY outside their bar before this lane touched anything — the
+authored zone rollup and the display timeline have always been two calendars. That pre-existing
+divergence is item 6b's territory, still the user's call, now with a number.
+
+### Hole 1 (introduced by #1301, fixed here): the repair traded one defect class for another
+Moving an element later so it stops hanging can leave a DEPENDENT starting before that now-later
+support FINISHES — which is exactly what `auditFloating` counts. **Measured across the repair:
+Hospital 0→135, Clinic 1→356, LTU_AHouse 334→1100, Terminal 8→102, JKR 81→158, HHS 0→11, Duplex 0→9.**
+A joint fixpoint was built and **rejected on its own numbers**: alternating the shipped
+`_tierAuditRegate` sweep with the midair fixpoint ran 4 rounds, pushed 7,650 times, still ended
+Hospital at 140, and cost 0.8s → 14.8s. The two rules genuinely fight (one keyed on a contact's
+START, the other on a support's END, and the contact relation is not a DAG). **Do not re-attempt
+that shape.** The trade is now LOCKED per building in `witness_midair_zero.js` W-MZ-8 and printed in
+every `§MIDAIR_REPAIR` line as `auditFloatingAfter=` — visible, never silent. The structural fix for
+both at once is gate-layer (§STRUCT_POOL_UNGATED), still open.
+
+### Hole 2 (pre-existing, older than this lane, fixed here): the lock gate demanded absolute zero
+`verifyGanttIntegrity` returned `ok: n === 0`. Measured pre-repair `auditFloating` on the shipped
+buildings: Terminal 8, Clinic 1, JKR 81, LTU_AHouse 334 — the documented warn-only tails. So
+**🔓→🔒 lock-back was already refused on 4 of 7 buildings for a freshly generated, UNEDITED
+schedule**; a planner there could never re-lock after any edit. §MIDAIR_REPAIR would have widened
+that to all 7. Fixed as **§GANTT_LOCK_DELTA**: `captureLockBaseline()` snapshots {floating, midair}
+on unlock (the state the planner inherited) and the lock refuses only on an **increase** in either.
+Absolute counts are still reported, so the known tails stay visible instead of being defined away.
+
+### And the lock gate now judges by the same rule the generator enforces
+`verifyGanttIntegrity` also runs `_midairAudit` (same `_contactGraph`, no mutation), so a dragged bar
+that re-creates a hanging is REFUSED — `auditFloating` alone cannot see that population, which is the
+whole §MIDAIR_REPAIR finding. Round-trip is otherwise unchanged: drag → `retimeTaskElements` →
+§GANTT_RETIME_RESYNC → lock verifies → Undo restores.
+
+### Witnesses
+`witness_midair_zero.js` **38/38** (W-MZ-6a/6b lock-gate wiring, W-MZ-7 the judge catches a
+re-introduced hanging — moved 1 element 5d before its first contact, W-MZ-8 the trade locked per
+building). `witness_gantt_lock_integrity.js` **all green**, including G-LI-2d (a real bad drag still
+breaches: +1 floating, +1 midair) and G-LI-4 (Hospital-scale lock audit 1,005ms / 63,415 elements).
