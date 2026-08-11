@@ -3686,3 +3686,86 @@ PR #1283, auto-squash. ⚠ The `fix/gantt-refold-hang` conflict caution now cove
 two new §PROMOTED_CARRIER_POOL lines too — whichever lands second syncs per the N-terminal rule.
 Chase-to-zero ledger: items 1,2,3,4,5,6a ✅ DONE (witnessed) · 6b ⛔ BLOCKED on the one design
 question above · LTU canonical-vintage question remains the user's (unchanged by this pass).
+
+## ▶ SESSION CLOSEOUT 2026-08-11 — all pushed live, lane paused here for a new session
+
+### Full arc, this session, in order (all merged, all verified against origin/main not assumed)
+1. **PR #1277** — `§SUPPORT_UNCHECKED` warn-only observability (bim-ootb).
+2. **PR #1278** — root-caused Terminal's 236 (misclassified foundation piles) + Hospital's 139
+   (rod-suspended MEP, `§HANG_NEAREST`). 831→250.
+3. **PR #1280** — Garage_ARC's 19 ghosts (source IFC was NOT lost, found under
+   `~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/` — see `reference_source_ifc_locations.md`).
+   `§NOGEO_COMPOSE` closed, 8/8 buildings.
+4. **PR #1281** — closure pass: `§OG_BEARING_BOUND` (Part 2 Option C), slab-on-grade reclass
+   (250→246), Gap A closed (`IfcPile` sequence rule), `geo_support_leak` un-rotted.
+5. **PR #1282** — `§TIER_SERIAL` two-tier phase-window collapse (the original capstone): Tier 1
+   (Substructure→Superstructure→Architecture) strictly serial; Tier 2 as one concurrent pool.
+6. **PR #1283** — chase-to-zero: 3 more witnesses un-rotted, JKR + LTU_AHouse extended (JKR
+   floating=81, LTU 2839 root-caused as a stale-vintage artifact → 334 on the live-served pair),
+   `§PROMOTED_CARRIER_POOL` guard/judge alignment fix.
+7. **PR #1286** — **the real correction**: PR #1282's Tier 2 ran CONCURRENT with Tier 1. User's
+   original words were "separate unrelated disciplines can run parallel **thereafter**" — after
+   Tier 1 finishes, not alongside it. Caught live by the user watching HHS's actual movie, not by
+   any witness — every prior witness checked internal consistency against what was built, never
+   against the user's literal wording. Fixed: Tier 2 now uniformly shifts to start only after
+   Tier 1's TRUE completion (stragglers included). Verified exact match on all 7 buildings (MEP
+   Rough-in's start == Architecture's end, to the day, e.g. HHS 68.9d==68.9d). Confirmed (not
+   assumed) the live `_cap` affine overlay absorbs the larger internal timeline into the same fixed
+   authored calendar window — real visible movie duration unchanged.
+8. **PR #1287** — **second real correction, same session**: PR #1286 shipped without bumping
+   `viewer/sw.js` `CACHE_VERSION`, so returning users kept getting the stale pre-#1286
+   `time_machine.js` from the service-worker cache. Caught live again — user reported "floats
+   still there" with CAM_LIGHT (a v978/v979 feature, PR #1284/#1285) working, which pinned the
+   browser at exactly v979: new-enough for torchlight, one version short of the Tier2 fix. Bumped
+   v979→v980, merged. **Every code change to `viewer/*.js` in this lane needs a paired
+   `sw.js` `CACHE_VERSION` bump in the SAME PR** — this was already this project's documented
+   convention (every prior PR #1277-#1285 did it) and I broke it once under the "fix it now" time
+   pressure of #1286. Named here so the pattern doesn't repeat: check `git diff --stat` before
+   calling any viewer-side PR done — if it touches a `.js` file and doesn't touch `sw.js`, that's
+   worth a deliberate check, not an assumption it's fine.
+
+### Process lesson from PR #1286, recorded here because it changes how the next session should verify
+Six PRs into this lane, a real gap between spec and shipped code survived witness review, PR review,
+AND my own "capstone shipped" report — because I checked "does this pass the witnesses I wrote"
+without ever checking "does this literal number match the user's literal sentence." The user's own
+words: "isn't this just brought up and u said u done it?... I AM NOT YOUR TESTER." Read as a standing
+instruction for whoever picks this up next: when a shipped result includes a concrete, literally-
+quotable number (a day count, a start/end time, a percentage), hold that number up against the
+ORIGINAL request's actual wording before reporting success — a passing witness proves internal
+consistency with what got built, not agreement with what was asked.
+
+### What's LEFT, for a new session — real punch list, not a vague "more to do"
+1. **Item 6b (named in PR #1283, still ⛔ BLOCKED, unchanged by this session's later work):**
+   should the AUTHORED Gantt bar windows (`schedule_author.js` `§PHASE_OVERLAP_BAND` task-window
+   generation — what a PM sees/drags in the task list, separate from the DISPLAY timeline
+   `§TIER_SERIAL`/`§TIER2_AFTER_TIER1` compute) also serialize to match the two-tier reality? This
+   changes bar-date semantics for every future generated schedule — a real product decision, not
+   something to default silently. Surface it fresh, don't assume the answer.
+2. **LTU_AHouse canonical-vintage question, still open, still the user's call (named repeatedly,
+   never decided):** `_extracted.db` (old, 71MB) vs `_meta.db`/`_geo.db` (new split, live-served) —
+   re-extract to unify, or retire one? This session tested against the live-served pair as a
+   pragmatic default for verification, but never decided the underlying architecture question.
+3. **`fix/gantt-refold-hang` branch, still unmerged (pushed, not witnessed-green as of last check)**
+   — extracts the guard block verbatim; now THREE PRs deep of drift from it (`§OG_BEARING_BOUND`,
+   `§PROMOTED_CARRIER_POOL`, and now `§TIER2_AFTER_TIER1`'s new code in the same region of
+   `time_machine.js`). Whoever picks this branch up needs a real sync against current `main`, not a
+   naive rebase — check `git worktree list` first (may need re-adding, prior worktree was pruned).
+4. **Modeller was explicitly out of scope this whole session** (user: "Ignore modeller for now") —
+   none of `§TIER_SERIAL`, `§TIER2_AFTER_TIER1`, `§SUPPORT_UNCHECKED`, or `§HANG_NEAREST` exist on
+   the Modeller side. If/when Modeller's own 4D view matters, this entire lane needs a port
+   decision — start from `modeller/str_walker_outliner.js`, same pattern as the earlier
+   `§NOGEO_COMPOSE` Modeller port (PR #1273).
+5. **The 246 remaining `§SUPPORT_UNCHECKED` findings (PR #1283's number, not re-measured since):**
+   documented as genuine data limits (co-planar framing, Revit wall-through-slab authoring idiom,
+   isolated railings) — warn-only, never gated. Re-open only if new evidence suggests otherwise; not
+   a live task.
+6. **3 pre-existing FAILs proven pre-existing via differential testing, not caused by this lane, but
+   still real and unfixed:** `gantt_ops_blackbox` (already fixed in PR #1283, scratch this one —
+   verify it's actually off this list next session), `witness_4d_roof_load_path` — check current
+   status, may already be closed by PR #1283's un-rotting pass, re-verify before assuming still open.
+
+### Verify-before-trust note for whoever opens this file next
+Everything above is written as of this session's own knowledge — per this project's own memory
+discipline, a file path, function name, or open-question status named here is a claim about what was
+true when this was written, not a guarantee it's still true. Re-check `git log --oneline -15` on
+`~/bim-ootb` and re-run the witnesses named above before trusting any status claim, this one included.
