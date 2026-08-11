@@ -1710,6 +1710,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-generated-4d-movie-support-order-is-a-measured-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Generated 4D Movie — Support Order Is a Measured Invariant
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Generated 4D Movie — Support Order Is a Measured Invariant">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The invariant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measured-on-every-shipped-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured, on every shipped building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-does-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this does not claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#no-other-player-does-this" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2842,6 +2892,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-generated-4d-movie-support-order-is-a-measured-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Generated 4D Movie — Support Order Is a Measured Invariant
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Generated 4D Movie — Support Order Is a Measured Invariant">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The invariant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measured-on-every-shipped-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured, on every shipped building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-does-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this does not claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#no-other-player-does-this" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3806,6 +3906,110 @@ to the console and embedded in the downloaded export log for auditability.</p>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Mobile mode granted on-the-fly.</figcaption>
 </figure>
 
+<hr />
+<h2 id="the-generated-4d-movie-support-order-is-a-measured-invariant">The Generated 4D Movie — Support Order Is a Measured Invariant<a class="headerlink" href="#the-generated-4d-movie-support-order-is-a-measured-invariant" title="Permanent link">&para;</a></h2>
+<p>The tables above are the <strong>task-level</strong> 4D (the Python <code>nD_engine.py</code> path — phases, durations,
+S-curve). The viewer's <strong>Time Machine</strong> plays a second, finer thing: an <strong>element-level</strong> schedule
+generated in the browser from the same extracted DB — every element gets its own start and finish
+from real geometry, real labour rates and real crew caps, and the movie reveals the building in that
+order. Nothing is authored by hand; drop an IFC and the film exists.</p>
+<p>The hard part of that is not the arithmetic. It is that <strong>an element must never appear before the
+thing holding it up.</strong> Get it wrong and the film shows a roof over open air, a duct hanging in a
+void, a stair flight floating between storeys — the single defect that makes an automated 4D look
+fake to anyone who has been on a site.</p>
+<h3 id="the-invariant">The invariant<a class="headerlink" href="#the-invariant" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>No element appears before the first element it physically touches appears.</strong></p>
+</blockquote>
+<p>"Touches" is geometric and class-blind: bearing below, carrier above, or embedded within — the
+element's real bounding geometry against every other element's, with no whitelist of IFC classes and
+no dependence on the model author having modelled relationships correctly. Elements that form the
+ground layer of their own footprint are exempt: they rest on soil, which no IFC file contains.</p>
+<h3 id="measured-on-every-shipped-building">Measured, on every shipped building<a class="headerlink" href="#measured-on-every-shipped-building" title="Permanent link">&para;</a></h3>
+<p>Before this invariant was enforced, the schedule looked clean by every internal check the engine had
+— and the film still had visible hangings, because the old audit only compared an element against
+the supports it already knew about (structure and walls), which is a small slice of what an element
+actually rests on. The census below counts the real thing: elements whose neighbours are all still
+invisible at the moment they appear.</p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Elements</th>
+<th>Appeared with nothing they touch on screen</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Terminal</td>
+<td>48,428</td>
+<td>161</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>Hospital</td>
+<td>63,182</td>
+<td>165</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>Duplex</td>
+<td>1,119</td>
+<td>19</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>HHS Office (federated)</td>
+<td>6,839</td>
+<td>156</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>Clinic</td>
+<td>16,071</td>
+<td>345</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>LTU A-House</td>
+<td>122,330</td>
+<td>4,605</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>JKR</td>
+<td>8,985</td>
+<td>110</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>266,954</strong></td>
+<td><strong>5,561</strong></td>
+<td><strong>0</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Verification is a witness (<code>witness_midair_zero.js</code>, 22/22 across the seven buildings) that
+<strong>re-derives the contact geometry itself</strong> rather than asking the scheduler whether it is happy — a
+mis-wired or no-op repair fails the witness instead of certifying itself. Cost is a one-time
+0.02–1.8 s at generation, scaling with element count.</p>
+<h3 id="what-this-does-not-claim">What this does not claim<a class="headerlink" href="#what-this-does-not-claim" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Orphans are reported, not repaired.</strong> 972 elements across the seven buildings touch nothing
+  anywhere in the model at any time. No schedule can fix an element that has no neighbour; that is an
+  authoring/extraction fact, and it is printed rather than hidden.</li>
+<li><strong>The invariant is "has appeared", not "is finished".</strong> An element may arrive while its support is
+  still being installed — which is exactly how real trades work, and how the viewer draws it (an
+  in-progress element is on screen, lit as the active work front). The stricter "wait for the support
+  to complete" rule was built and measured: it moves elements by up to 103 days, still leaves
+  violations because the supports move too, and converges only by serialising the whole project —
+  destroying the overlapping trade train that makes a construction programme realistic. It is
+  therefore deliberately not enforced, and the population it would affect is reported every run.</li>
+<li><strong>Seven buildings, not "all buildings".</strong> The invariant is structural and class-blind, so it should
+  hold generally — but what is <em>measured</em> is the seven shipped fixtures, 266,954 elements.</li>
+</ul>
 <hr />
 <h2 id="no-other-player-does-this">No Other Player Does This<a class="headerlink" href="#no-other-player-does-this" title="Permanent link">&para;</a></h2>
 <h3 id="what-the-industry-charges-for-nd-analytics">What the industry charges for nD analytics<a class="headerlink" href="#what-the-industry-charges-for-nd-analytics" title="Permanent link">&para;</a></h3>
