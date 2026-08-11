@@ -3205,3 +3205,44 @@ columns/railings) whose zero-candidate state is now a REAL "nothing detectable s
 signal, not a detection artifact — but 32 of them live in buildings whose remaining findings are
 roof-edge railings / bms-false ground elements where a gate would false-block. The warn is now
 high-signal; gating stays a future decision on these 250, not a default.
+
+## 2026-08-11 — §NOGEO_COMPOSE Garage_ARC 19→0 — 8th and LAST building closed (PR #1280), the lane's ghost table is now ALL ZEROS
+
+The "UNBLOCKED 2026-08-11" item above is DONE, same session-day. Verdict first: **no re-extraction
+was needed and none was performed** — this was a pure compose-and-patch pass, identical in shape to
+the other 7 buildings.
+
+**Mechanism check (measured before doing anything):** `Garage_ARC.db` (Modeller resident, key
+`HospitalGarage`, `str_walker_outliner.js:57` — no Viewer-side serving of this DB exists) has
+`elements_meta`=1271 vs `element_transforms`=1252 → 19 ghosts, all IfcCurtainWall, and **NO
+`rel_aggregates`/`bom_tree` table at all** — so the "just run compose on shipped data" path was
+structurally impossible (composeGhostsFromAggregates had no pairs to read; that's exactly why it
+logged §NOGEO_COMPOSE_UNRESOLVED at every open). Also checked the two
+`~/bim-compiler/deploy/buildings/HospitalGarage_*_extracted.db` files found during the source
+search: same vintage gap, no `rel_aggregates` either — not a shortcut.
+
+**Fix = the PR #1273 pattern, nothing new:** `modeller/patches/Garage_ARC.db.sql` (NEW, 490
+`IfcRelAggregates` parent→child GUID pairs recovered VERBATIM from
+`~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/HospitalGarage_IFC4.ifc` via ifcopenshell
+0.8.4.post1, filtered to the 19 ghost parents) + the self-heal loader #1273 already wired
+(`_applyPendingPatch` → `composeGhostsFromAggregates` union-bbox at open). Preconditions measured
+before writing the patch: 19/19 ghost parents present as aggregate parents in the IFC; the
+IFC2x3 sibling is pair-IDENTICAL (490=490, so the vintage question is moot); every parent's
+children (IfcMember/IfcPlate/IfcDoor) already have real `element_transforms` rows in the shipped
+DB (404 IfcMember + 85 IfcPlate were extracted fine — only the parent shells ghosted). Ghost GUIDs
+grep-verified present in both IFC files before trusting them as the source.
+
+**Witness (log read, saved):** `node tests/witness_nogeo_compose.js --modeller` →
+`§NOGEO_WITNESS PASS Garage_ARC.db ghosts 19→0 composed=19 unresolved=0
+served_file_untouched=true`, full set `§NOGEO_WITNESS_TOTAL mode=modeller pass=9 fail=0`
+(regressions: Hospital 232→0, SampleCastle 117→0, Ifc4_Revit 49→0, Clinic 34→0, HHS 33→0,
+Duplex 3→0, SampleHouse 2→0, Terminal 0→0). Numeric sanity, PR-#1273-style: the 19 composed rows
+independently recomputed (union-AABB from the DB's own child transforms) — 0 degenerate bboxes,
+0 centres outside the building extent. Also: patch applies clean standalone via bare sqlite3
+(490 rows, 19 distinct parents), witness header's stale "Garage: source lost" note corrected,
+modeller sw v47→v48. No OCI upload needed — Garage_ARC.db and its patch are GH-Pages-served from
+the repo's `modeller/` folder (unlike the Clinic/HHS viewer-side OCI DBs).
+
+**Shipped:** bim-ootb PR #1280 (`fix/garage-arc-nogeo-compose` off origin/main 366ed42),
+auto-merge armed after fast-checks SUCCESS. §NOGEO_COMPOSE per-building ghost table now reads
+zero across all 8 named buildings; nothing remains in this class.
