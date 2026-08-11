@@ -351,6 +351,11 @@ one icon:
   try a What-if slip, share a `?tm=play` link. On a large building (100K+ elements), a box-cube pill
   in the panel header trims GPU cost by rendering already-built-but-out-of-view elements as lightweight
   wireframe boxes, keeping whatever you're actually looking at full LOD400.
+  The schedule it plays is generated element-by-element from the model's own geometry, and it holds a
+  measured invariant — **no element appears before the first element it physically touches appears**
+  (0 violations across 266,954 elements on seven buildings; see
+  **[the generated 4D movie](4D5DAnalysis.md#the-generated-4d-movie-support-order-is-a-measured-invariant)**
+  for the numbers and the stated limits).
 
   <figure style="margin: 12px 0;">
   <a href="https://youtu.be/juwOrpqKhFE" target="_blank"><img src="https://img.youtube.com/vi/juwOrpqKhFE/hqdefault.jpg" alt="Time Machine box-proxy demo" style="width:100%; max-width:480px; border:1px solid #333; border-radius:8px;"/></a>
