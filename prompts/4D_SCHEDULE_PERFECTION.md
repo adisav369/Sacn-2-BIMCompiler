@@ -3246,3 +3246,80 @@ the repo's `modeller/` folder (unlike the Clinic/HHS viewer-side OCI DBs).
 **Shipped:** bim-ootb PR #1280 (`fix/garage-arc-nogeo-compose` off origin/main 366ed42),
 auto-merge armed after fast-checks SUCCESS. §NOGEO_COMPOSE per-building ghost table now reads
 zero across all 8 named buildings; nothing remains in this class.
+
+
+## ▶ SPEC 2026-08-11 (evening): phase-window collapse — the capstone piece, NOT YET DISPATCHED
+User's stated end goal, verbatim: "land a 4D construction mechanism that rids the long tail of users
+from ever thinking about 4D editing or at least reduced... one achievable hanging fruit, because all
+it has to do is not to leave a hanging item that has support not appearing first." This is that piece.
+
+### Where this sits relative to everything else shipped today
+PR #1277/#1278/#1280 all worked at the ELEMENT level (does this specific element have a detected
+support). This spec works one level up, at the PHASE-DISPLAY level — the reason `_ogSupportGuard`
+has to exist at all: elements get correctly ordered by `computeSchedule`'s generative DAG, then
+independently rescaled per phase-bucket for Gantt display (`§PHASE_OVERLAP_BAND`), which can undo
+that correct order across bucket boundaries. This spec removes the rescale-independence that causes
+that, per Part 2 Option A from the earlier archive — chosen deliberately over Option B (derive
+windows from real dependencies, keep independent editability) because the user wants users out of
+babysitting the schedule, not a better UI for babysitting it.
+
+### Explicit reversal of a prior ruling — recorded, not silently overwritten
+`schedule_gate.js`'s `§4D_BAND_MONOTONIC` (2026-08-02, "Design Ruling A") explicitly chose to KEEP
+cross-phase trade overlap: *"A global floor gate would serialize the project and destroy the trade
+train — the bands carry Superstructure, MEP Rough-in and Architecture simultaneously on purpose."*
+User, this session, confirmed reversing this deliberately: *"Yes I remember it, maybe my fault to ask
+for staggering of phases... but at least ARCH/STR should be exempt as they are the physical
+foundation. Separate unrelated disciplines can run parallel thereafter if construction practice
+permits."* Not a full reversal — a refinement: strict serialization ONLY for the structural backbone,
+concurrency preserved (as the 2026-08-02 ruling wanted) for everything downstream of it.
+
+### The two-tier design, DECIDED
+**Tier 1 — Backbone, strictly serial:** Substructure → Superstructure → Architecture (in that exact
+order, each phase's LAST element must complete before the next phase's FIRST element starts — no
+overlap, full stop). This is where "never appears before its support" becomes a structural guarantee
+instead of a corrected-after-the-fact one: a single global timeline for these three phases, ordered
+directly by the generative DAG's own `ls`/`le`, with no independent per-phase-bucket rescale to undo it.
+
+**Tier 2 — Everything else, one concurrent pool:** `FP`, `ELEC`, `ACMV`, `PLB`, the generic
+undifferentiated `MEP` discipline bucket, and Finishes — real discipline data (`elements_meta.
+discipline`, measured this session: `STR`/`ARC`/`MEP`/`FP`/`ELEC`/`ACMV`/`PLB` across the 5 shipped
+buildings) confirms genuine sub-trades exist, but the generic `MEP` bucket doesn't distinguish which
+trade an element belongs to. Considered treating the generic bucket conservatively (its own serial
+stage); user overruled with direct observational evidence — "MEP maybe inaccurate, it won't be that
+amiss by viewers, and as at present we can see they get constructed rather well" — the real support
+DAG (proven `floating=0/8`, hardened further by the concurrently-running closure pass) is what
+prevents "built before support," not discipline bucketing; the bucket only affects display grouping.
+**Decided: no special-case for the generic MEP bucket — it joins Tier 2's single concurrent pool
+along with the granular disciplines.** Each element in Tier 2 is still individually gated by the real
+support DAG exactly as today — Tier 2 removes the ARTIFICIAL phase-window barrier between
+disciplines, not the real per-element dependency check.
+
+### What this does NOT change
+The generative DAG (`schedule_gate.js` `computeSchedule`, `auditFloating`, the hang-gate, wall-carries,
+etc.) — untouched, already proven, this spec only changes how its output gets mapped into the
+displayed/Gantt timeline. Per-element correctness work (the 250→? remaining `§SUPPORT_UNCHECKED`
+findings, the guard bug fix, Gap A) is the currently-running closure pass (Task #14) — separate,
+complementary, must land first since it touches the exact same files this spec would touch next.
+
+### Blocked on, not yet dispatched
+The closure-pass agent (branch `fix/4d-support-order-closure`) is still actively editing
+`time_machine.js`/`schedule_gate.js` as of this write. Dispatching this spec's implementation now
+would guarantee a file collision. Queued to start the moment that PR lands — check `gh pr list` /
+`git log origin/main` on `~/bim-ootb` for its landing before starting a new worktree for this.
+
+### Open implementation questions for whoever picks this up (or the next dispatch)
+1. Where exactly does the Tier 1 / Tier 2 boundary enforcement belong — inside `_ogSupportGuard`
+   (repurposed rather than deleted), inside the phase-window construction in `time_machine.js`
+   (`§PHASE_OVERLAP_SUPPORT_GUARD` region, ~4180-4300), or as a new, smaller function once the
+   independent-rescale-per-bucket code is removed? Read the closure pass's landed diff first — it may
+   have already touched this region's bug (the unbounded bearing test) in a way that changes the
+   right seam to build this on top of.
+2. Confirm empirically (don't assume) that Tier 1's three phases, once forced strictly serial, don't
+   produce a wildly longer total schedule duration than today's overlapped version, on at least one
+   real building (Terminal or Hospital) — report the number, let the user see the real cost/benefit,
+   don't silently accept a schedule that's 3x longer without saying so.
+3. Movie Maker / Time Machine playback (`viewer/time_machine.js`'s cinema path) consumes this same
+   timeline — verify it still compresses/renders sensibly against a two-tier (serial-then-parallel)
+   structure rather than the fully-interleaved one it renders today; the user named this as a real
+   benefit ("the movie maker will compress well, and each phase can be sighted") — confirm it actually
+   delivers that, don't just assume the visual improvement follows automatically from the data change.
