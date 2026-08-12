@@ -538,3 +538,46 @@ Names the issue: **the value the palette keys on must be a phase, not a task nam
 G-PAL-1 (RED pre-fix): `"Architecture — Level 1"` → colour `#888`, rank 6 (unranked).
 G-PAL-2: all six engine phases resolve to a real colour and a rank < 6.
 G-PAL-3 (source): the captured overlay must not assign the task name into `p.phase`.
+
+### §DAY_GAP — the burst has a matching DEAD AIR, measured (2026-08-12, user-reported, STUDY ONLY)
+**User:** *"at Day 14 onwards nothing happens and when scrub forward it jumps to Day 48 with
+construction resuming"* → *"Day 1-14 too much too fast and then delay build up until Day 48 is
+telling. Day 1-14 should stretch till before Day 48."*
+
+Measured on the shipped display timeline (`scripts/probe_arch_start.js` §DAY_GAP, Hospital, all
+63,182 elements, post-`_twoTierRemap`+`_midairRepair`). Reported as PERCENT OF FILM because the
+browser maps this 1,168.7-day generated timeline through one global affine into the captured window
+(their run: a 126-day film) — an affine preserves relative position, raw days are not comparable.
+Their day 14→48 of 126 = **11%→38% of the film**.
+
+```
+§DAY_GAP_HIST Hospital startsPer5%=[2228,0,0,915,0,4452,640,2060,6437,2523,7305,9560,7630,9182,10056,149,0,1,0,44]
+                                     0-5  5-10 10-15 15-20 20-25 …
+§DAY_GAP Hospital longestEmptyRun=12% at 76%..88% of the film — zero element starts
+```
+Bursts separated by dead air, matching the report exactly:
+- **0–5%** of the film: **2,228 starts** (3.5% of the model) — the §ARCH_START_TEMPO burst.
+- **5–15%**: **zero starts**, 10% of the film with nothing happening. In their 126-day film that is
+  day 6.3 → 18.9 — the "Day 14 onwards nothing happens" they saw.
+- **15–40%**: 915 · 0 · 4,452 · 640 · 2,060 — a trickle, with a second dead 5% band at 20–25%.
+- **40%+**: the real ramp (6,437 → 10,056 starts per 5%).
+
+Phase windows behind it (§ARCH_PHASE REPAIR): `Substructure=[0.0..19.5]d n=553` ·
+`Superstructure=[10.3..486.0]d n=2603` · `Architecture=[306.6..861.7]d n=17236` ·
+`MEP Rough-in=[603.7..1168.7]d n=38362`. Substructure's entire 553 elements are spent in the first
+**1.7%** of the film; Architecture cannot start until **26%**; MEP Rough-in until **52%**. And 64.3%
+of Superstructure's own elements start inside the first 10% of the film (§ARCH_PHASE_FRONT), leaving
+the rest of its 296-day window empty. So the gap is not a data hole — it is the interval between
+"the tiny backbone is finished" and "the next tier is allowed to begin".
+
+**Diagnosis:** each phase's elements are packed at the FRONT of a window far longer than the
+crew-limited work inside it. Burst, then dead air, per phase. Same root as §ARCH_START_TEMPO, seen
+from the other end.
+
+**Lever (NOT implemented — schedule-side, not film-side per §CPE_BUILDUP_EVEN_TEMPO):** spread each
+phase's starts across its own already-computed window instead of packing them at its front. No new
+data needed — window boundaries and element order both already exist; only placement inside the
+window changes, and a monotone map inside a window preserves programme totals, phase order and
+support order by construction.
+⛔ Confirm before building: does *"Day 1-14 should stretch till before Day 48"* mean stretch each
+phase's work to fill its window up to the next phase's start — which is what this lever does?

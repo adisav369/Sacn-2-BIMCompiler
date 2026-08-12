@@ -208,6 +208,32 @@ function fmtExt(ext, base) {
     });
     console.log('  §ARCH_FRONT ' + bld + ' startedBy ' + front.join(' '));
 
+    // ── §DAY_GAP (added 2026-08-12, user: "at Day 14 onwards nothing happens and when scrub
+    // forward it jumps to Day 48 with construction resuming") ────────────────────────────────
+    // Buckets every element's display START into 1%-of-span slices and reports the longest run of
+    // slices with ZERO starts. Percent-of-span, deliberately: the browser maps this generated
+    // timeline through ONE global affine into the captured project window (the user's Hospital run
+    // shows 1186.3 generated days served as a 126-day film), and an affine preserves relative
+    // position — so a dead stretch is the SAME percentage of the film either way, while raw days
+    // are not comparable. Their report is day 14→48 of 126 = 11.1%→38.1% of the film.
+    const NB = 100, hist = new Array(NB).fill(0), spanMs = Math.max(1, endAll - base);
+    items.forEach(it => { hist[Math.min(NB - 1, Math.floor((it.s - base) / spanMs * NB))]++; });
+    let bestLo = -1, bestN = 0, curLo = -1, curN = 0;
+    for (let b = 0; b < NB; b++) {
+      if (hist[b] === 0) { if (curN === 0) curLo = b; curN++; if (curN > bestN) { bestN = curN; bestLo = curLo; } }
+      else curN = 0;
+    }
+    const dayOf = pct => (pct / 100 * spanD).toFixed(1);
+    console.log('  §DAY_GAP ' + bld + ' longestEmptyRun=' + bestN + '%' +
+      (bestN ? ' at ' + bestLo + '%..' + (bestLo + bestN) + '% of the film (raw day ' +
+        dayOf(bestLo) + '..' + dayOf(bestLo + bestN) + ' of ' + spanD.toFixed(1) + ')' : '') +
+      ' — a run of film with ZERO element starts');
+    // The whole shape, not just the worst run: starts per 5% of film, so a reader can see where the
+    // work actually sits without trusting the single max above.
+    const per5 = [];
+    for (let b = 0; b < NB; b += 5) per5.push(hist.slice(b, b + 5).reduce((a, c) => a + c, 0));
+    console.log('  §DAY_GAP_HIST ' + bld + ' startsPer5%=[' + per5.join(',') + ']');
+
     // per phase: how much of THAT phase lands in its own first day / first 10% of the span
     PH_ORDER.forEach(ph => {
       const set = items.filter(it => it.phase === ph);
