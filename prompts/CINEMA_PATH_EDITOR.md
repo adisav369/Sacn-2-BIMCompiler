@@ -8982,3 +8982,60 @@ From the user's own Hospital log (63K elems): (1) first ▶ play with buildup = 
 (2) Alt+C open runs the full plan 3× identically (~560ms, §CINEMA_PLAN_MS 291+133+135) — space/exit/fan
 don't depend on duration/waypoints, compute once. (3) scrub-jump DLOD flip storm (flips_mean=2671,
 FPS→53) — smaller lever, DLOD landmine, touch last. Eye toggle itself measured cheap.
+
+## §CPE_BUILDUP_ARM_GATE — the rehearsal armed onto an EMPTY timeline (2026-08-12, user-reported, FIXED)
+**Symptom, user's words:** *"in Alt-C movie making TM does not move, seems disengaged"* / *"chrome
+reset SW, refreshed twice, still TM not moving at all, nothing built during pov preview."* Not a
+cache problem — their run is `§BUILD_VERSION v997` / `§CPE_LOADED v24` / `§MAXQ_LOADED v22`, i.e. the
+tip that already carries R4 (`§TM_WARM elements=63415 ms=215.5`).
+
+### The evidence, from the user's own Hospital console (nothing here inferred)
+```
+§TM_OPS_CHECK total=1 place=0
+§CPE_BUILDUP_SOURCE mode=T reason=generated-timeline ops=1 placed=0 noGeom=1 window=1970-01-01..1970-01-01
+§GHOST_GROUND skip reason=buildup span is 0 (projectStart=0 projectEnd=0)
+§CPE_PREVIEW_BUILDUP armed mode=T ops=1 placed=0 setupMs=5850
+§PERF_TRAVERSE ms=0.2 objs=3916 skipped=3890 mode=delta span=0h      ← every frame, 497 of them
+…later, AFTER the flight had already started:
+§WRITE_LOOP_TIMING rows=63415 ms=2372.5 → §GANTT_CACHE_SAVE ops=63416
+§PERF_TRAVERSE ms=15.0 objs=3916 skipped=0 mode=full span=503952h    ← the real timeline, too late
+```
+
+### Root cause — `_ops.length` is truthy for ONE stale op
+`tmActivateForBake()` polled `if (_ops.length || ++n > 60)`. At that moment `_ops` held exactly one
+op — the `BUILDING_OPEN` kernel op (`id=1`, `§TM_OPS_CHECK total=1 place=0`) — and the epoch had
+never been computed (`_projectStart == _projectEnd == 0`, hence the 1970 window). So it resolved
+`true`, `tmFollowTimeline()` handed back a zero-span `bkState`, and `_previewFly`'s per-frame cursor
+expression `projectStart + bkTn * (projectEnd - projectStart)` evaluated to **0 on every frame**.
+`tmSetCursor(0)` clamps to the same value → `span=0h` on all 497 frames → camera flies, nothing
+builds. The real 63,415-op timeline finished loading seconds later, after the flight was underway.
+
+**The asymmetry that names the bug:** `ghostGroundArm` received the SAME `bkState` and refused it
+(`§GHOST_GROUND skip reason=buildup span is 0`), as did the day counter (`§CPE_DAY_COUNTER live off
+(no buildup span)`). Two of three consumers validated the state; the one that drives the cursor did
+not. Readiness was never "the array is non-empty" — it is **"the timeline has a real span."**
+
+### Fix — two guards, both in `viewer/time_machine.js`, one behaviour change
+1. **`tmActivateForBake` readiness predicate** — `_bakeTimelineReady()` = `_ops.length &&
+   _projectEnd > _projectStart`. Not a new wait: the existing 60×500 ms poll now waits for the
+   condition it always meant. On the user's trace the real ops land ~2.4 s later, well inside the
+   30 s budget, so the rehearsal arms on the real timeline instead of a 1970 stub.
+2. **`tmFollowTimeline` refusal** — return `null` + a loud `§CPE_BUILDUP_SOURCE reject` when the span
+   is zero or `placed === 0`, instead of returning a `bkState` that cannot drive a cursor. Same bar
+   ghost-ground already applies. The BAKE (`cinema_maxq.js:1183`) calls the same verb, so a film
+   bake cannot silently record a static building either.
+
+A real timeline always has span > 0 (`_projectStart = _ops[0].start_ts - 1`, `_projectEnd` = max
+`end_ts`), so neither guard can reject a usable state — including a single-op model.
+
+### Witness — `witness_cpe_buildup_arm_gate.js` (bim-ootb)
+Names the issue: **an arm that reports `placed=0` / a zero span must not produce a bkState the
+rehearsal will follow.** G-ARM-1 replays the user's exact state (one `BUILDING_OPEN` op,
+`_projectStart == _projectEnd == 0`): pre-fix `tmActivateForBake` resolves `true` and
+`tmFollowTimeline` returns a 1970 bkState whose cursor expression is constant; post-fix the arm
+waits and the follow refuses. G-ARM-2 proves the guards do NOT reject a real timeline. No
+screenshots — the pass/fail is the cursor delta across frames, a number.
+
+### Not the earlier hypothesis
+An earlier read of a partial log proposed `bkPrev === null` + a mid-flight re-arm. Wrong: `bkPrev`
+was non-null but degenerate. Late re-arm is not needed and is not implemented.
