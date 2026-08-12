@@ -949,3 +949,49 @@ WHICH support edge set their start (`_tierAuditRegate`/`_midairRepair`, both lat
    proof obligation is unchanged.
 3. Window derivation from work content (rank 1) — the actual dead-air fix, and the largest piece.
 4. `max_crews` scaled + JSON override — the overload half, the user's own idea.
+
+---
+
+## §BIM_USABILITY_REVIEW + §HOSTED_ZONE_SUSPECT (2026-08-12, session close)
+
+User framing, and it reframes the whole lane: *"the 4D Gantt edit, JSON model is highly usable by
+BIM people. That is the major purpose. What we doing on the fly is just a default useful fast poc
+demo. As long users get to find this suite highly usable is all we after."* The generated 4D is the
+DEMO; the editable Gantt + JSON is the PRODUCT. Rank future work that way.
+
+**Scored review (verified by reading the shipped files, one score corrected below):**
+- **9 — Data model.** Source of truth is IFC-native `schedules`/`tasks`/`task_elements` with the
+  full planner column set (`wbs_parent, early/late dates, free_float, total_float, is_critical`).
+  `task_elements` (task→guid) survives rename. A planner recognises this schema.
+- **8 — CPM is real.** `schedule_author.js:1249 computeCpm` writes early/late dates, float and
+  `is_critical` onto leaf tasks. Not a decorative schema.
+- **8 — Import.** `foreign_schedule.js` reads P6 XER, PMXML and MS Project MSPDI, including
+  `total_float_hr_cnt`/`driving_path_flag`.
+- **8 — Export.** ⚠ **I FIRST SCORED THIS 2/10 AND WAS WRONG.** `schedule_editor_ui.js` already
+  ships MS Project XML (`§SE_EXPORT_MSP`, :664) AND P6 PMXML/XER writers (`§X7`, :671) with
+  round-trip witnesses. I graded it after grepping only `schedule_author.js` and `boq_charts.html`
+  and never opening the editor UI. User: *"The export was done in a separate editor tab in TM
+  panel. Is it hard to find things already done?"* — SAME failure mode as GAP 4 below: looked in
+  the wrong place, reported an absence as fact. **Before claiming any capability is missing, grep
+  `viewer/*_ui.js` and `viewer/*editor*.js` — the user-facing surfaces live there, not in the
+  engine files.**
+- **7 — JSON rules.** `sequence_rules.json` is Settings-editable and every override carries a
+  `reason` with its measurement. One large file mixing rules + name-overrides + labour rates; a
+  planner changing one productivity figure has to hunt.
+- **6 — Persistence.** Staged only until Ctrl+S (`§CINEMA_PATH_STAGE ... Ctrl+S (Save Building)
+  writes`). Silent data loss if the user doesn't know.
+
+### §HOSTED_ZONE_SUSPECT — ⛔ OPEN REGRESSION, prime suspect is our own #1314
+User: *"electrical outlets and hanging elements appearing bit early. Didnt happen before."*
+Prime suspect **§TIER_SERIAL_BY_ZONE (#1314)**: it changed "Tier 2 waits for ALL Tier 1" to "Tier 2
+waits for ITS ZONE's Tier 1". An outlet's zone comes from the §ZONE_INDEX **median-Z band**, not
+from its host wall — so an outlet banded one storey off its wall now waits for the WRONG zone's
+backbone and can precede its own host.
+Already ruled out: W-TS-2 shows displayed floating <= generative on all 7 (LTU improved 334→328),
+so no new BEARING violations. The untested predicate is HOSTED/hanging.
+**Next measurement (not yet run):** per hosted element, start delta vs its own host wall's start.
+**Named fix if confirmed:** a hosted element inherits its HOST's zone, not its own median-Z band.
+User's own read was close — *"one whole phase Gantt set not measured before placing"* — and the
+answer to *"why can't we just have a template"* is that `sequence_rules.json` IS that template and
+it does work; it fixes WHEN electrical goes, but only geometry can say WHICH wall a given outlet
+waits for, and IFC ships no host link for most of them.
