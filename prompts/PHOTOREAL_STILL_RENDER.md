@@ -540,3 +540,15 @@ two, not more flag-reading:
 This is resourceful and does not require the user's own DevTools — it's a headless Puppeteer
 canvas-capture + numeric pixel comparison, the same class of witness already used successfully
 several times this session (see `scratchpad/witness_*.js` for the pattern).
+
+### §MOVIE_SHADOW_TM — CONFIRMED GOOD BY USER, live GPU (2026-08-12)
+User: *"shadows working great. Note that."* Movie-maker bake shadow strength now matches Time
+Machine exactly. Confirmed on the user's own GPU run, numerically not by eye:
+`§MOVIE_SHADOW_TM sun=4.400 ambient=0.785 hemi=1.257 fill=2.042 sunFillRatio=2.155` — identical to
+TM native `4.4/(0.785+1.257)`. Was 1.245 (42% weaker) because the sun was scaled x0.7 while the fill
+was scaled x1.21, and because §SUN_ARC animates the sun ANGLE every frame while the three intensity
+scales are applied ONCE at photo-mode entry — so noon frames were lit with dusk values.
+Shipped bim-ootb PR #1316, sw v1004. **Strength only** — PHOTO_SUN_COLOR, ambient/hemi colours,
+exposure lift, fog, ground albedo, env-map boost, PHOTO_SUN_ELEVATION and both §SUN_ARC endpoints
+deliberately untouched, so the dusk LOOK is unchanged. Do not "re-tune" these three scales without
+re-checking the ratio against TM's 2.155 — the §MOVIE_SHADOW_TM log line exists for exactly that.
