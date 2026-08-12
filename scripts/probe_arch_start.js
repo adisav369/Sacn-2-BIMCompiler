@@ -246,13 +246,26 @@ function fmtExt(ext, base) {
     //                              the gating, and the fix belongs in the gate, not in a stretch.
     // Same buckets, same items, no new data — an element is in progress in bucket b if it started
     // at or before the bucket's midpoint and had not yet ended.
+    // ⚠ MEASURED BY OVERLAP, NOT BY SAMPLING — the first cut of this probe sampled ONE instant per
+    // band (`it.s <= t && it.e > t` at the band midpoint) and reported minWIP=0/maxWIP=0 everywhere,
+    // which read as "every dead band is genuinely idle". That was a SAMPLING ARTEFACT, not a
+    // finding: on Hospital a 1% band is 11.7 days while p50 element duration is 0.015d, so a single
+    // instant has a ~0.1% chance of landing on any given element. With true concurrency near 1, an
+    // instantaneous sample returns 0 most of the time by luck alone. Correct measure = total
+    // element-days of work falling INSIDE the band ÷ band length = mean concurrency over the band.
     const wip = new Array(NB).fill(0);
-    for (let b = 0; b < NB; b++) {
-      const t = base + spanMs * ((b + 0.5) / NB);
-      wip[b] = items.filter(it => it.s <= t && it.e > t).length;
+    const bandMs = spanMs / NB;
+    for (const it of items) {
+      const b0 = Math.max(0, Math.min(NB - 1, Math.floor((it.s - base) / spanMs * NB)));
+      const b1 = Math.max(0, Math.min(NB - 1, Math.floor((it.e - base) / spanMs * NB)));
+      for (let b = b0; b <= b1; b++) {
+        const lo = base + b * bandMs, hi = lo + bandMs;
+        const ov = Math.min(it.e, hi) - Math.max(it.s, lo);
+        if (ov > 0) wip[b] += ov / bandMs;   // fraction of the band this element occupies
+      }
     }
     const wip5 = [];
-    for (let b = 0; b < NB; b += 5) wip5.push(Math.round(wip.slice(b, b + 5).reduce((a, c) => a + c, 0) / 5));
+    for (let b = 0; b < NB; b += 5) wip5.push((wip.slice(b, b + 5).reduce((a, c) => a + c, 0) / 5).toFixed(1));
     console.log('  §DAY_GAP_WIP ' + bld + ' meanInProgressPer5%=[' + wip5.join(',') + ']');
     // ── §DAY_GAP_DUR — why WIP is ~0 everywhere, not just in the gaps ─────────────────────────
     // If mean in-progress is 0-3 on a 63k-element building, elements are not "being built slowly in
@@ -270,15 +283,36 @@ function fmtExt(ext, base) {
       ' occupancy=' + (100 * sumD / spanD).toFixed(1) + '%' +
       ' (occupancy = mean elements in progress if work were spread evenly over the whole programme)');
 
+    // ── §DAY_GAP_PHASE_OCC — the number that decides WHOSE window is wrong ────────────────────
+    // Global occupancy (~100%) is dominated by the huge late phases; it hides the early ones. Per
+    // phase: work-days inside that phase vs the width of the window it was given. A phase at ~100%
+    // is honestly full. A phase at single-digit % has been handed a window tens of times longer
+    // than its own work content — and THAT is what a viewer sees as dead air.
+    const occPh = {};
+    items.forEach(it => {
+      const x = occPh[it.phase] || (occPh[it.phase] = { w: 0, s: Infinity, e: -Infinity, n: 0 });
+      x.w += (it.e - it.s) / D; x.n++;
+      if (it.s < x.s) x.s = it.s;
+      if (it.e > x.e) x.e = it.e;
+    });
+    console.log('  §DAY_GAP_PHASE_OCC ' + bld + ' ' + Object.keys(occPh).sort((a, b) => {
+      const ia = PH_ORDER.indexOf(a), ib = PH_ORDER.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    }).map(ph => {
+      const x = occPh[ph], winD = (x.e - x.s) / D;
+      return ph + '=' + (winD > 0 ? (100 * x.w / winD).toFixed(1) : '0.0') + '%' +
+        '(work=' + x.w.toFixed(1) + 'd win=' + winD.toFixed(1) + 'd n=' + x.n + ')';
+    }).join(' '));
+
     // Focused readout over the dead run §DAY_GAP just found, plus the zero-start bands generally.
     const deadBands = [];
     for (let b = 0; b < NB; b++) if (hist[b] === 0) deadBands.push(b);
     const wipInDead = deadBands.map(b => wip[b]);
-    const zeroWipDead = wipInDead.filter(w => w === 0).length;
+    const zeroWipDead = wipInDead.filter(w => w < 0.005).length;   // <0.5% of a band occupied = idle
     console.log('  §DAY_GAP_WIP ' + bld + ' zeroStartBands=' + deadBands.length +
       ' ofWhichAlsoZeroWork=' + zeroWipDead +
-      ' minWIP=' + (wipInDead.length ? Math.min.apply(null, wipInDead) : 'n/a') +
-      ' maxWIP=' + (wipInDead.length ? Math.max.apply(null, wipInDead) : 'n/a') +
+      ' minWIP=' + (wipInDead.length ? Math.min.apply(null, wipInDead).toFixed(2) : 'n/a') +
+      ' maxWIP=' + (wipInDead.length ? Math.max.apply(null, wipInDead).toFixed(2) : 'n/a') +
       ' → ' + (deadBands.length === 0 ? 'no dead bands'
         : zeroWipDead === 0 ? 'EVERY zero-start band still has work in progress — crew-limited grind, NOT a hole'
         : zeroWipDead === deadBands.length ? 'EVERY zero-start band is also zero-work — a real hole in the gating'

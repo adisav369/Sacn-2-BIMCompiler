@@ -648,3 +648,77 @@ it away, and the gap closes as a side effect rather than as the goal.
 `VIEWER_DIR=/tmp/vw BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js` after any
 duration change and watch `occupancy` stay ~100% while `meanInProgressPer5%` rises off the floor —
 that, not the starts histogram, is the number that says the film has something to show.
+
+---
+
+### §DAY_GAP_PHASE_OCC — ⚠ TWO CORRECTIONS TO THE SECTION ABOVE, and the real defect (2026-08-12)
+
+The §DAY_GAP_WIP section above is right that the specced lever is DO-NOT-BUILD, but **two of its
+supporting claims were wrong and are corrected here.** Both were caught by finishing the measurement
+rather than by review.
+
+**Correction 1 — the "every zero-start band is also zero-work" evidence was a SAMPLING ARTEFACT.**
+The first cut sampled ONE instant per band (`s <= t && e > t` at the band midpoint). On Hospital a
+1% band is 11.7 days while p50 element duration is 0.015d, so a single instant has a ~0.1% chance of
+landing on any given element — with true concurrency near 1, an instantaneous sample returns 0 by
+luck. Re-measured by OVERLAP (element-days falling inside the band ÷ band width). **The conclusion
+survives, on 5 of 7 buildings exactly and 2 approximately** — Hospital/Terminal/Clinic/LTU/JKR still
+show every zero-start band at zero work; Duplex 31 of 32, HHS 36 of 39. But the original
+`minWIP=0 maxWIP=0` line was not evidence, and is not how this should ever have been measured.
+
+**Correction 2 — "the cause is DURATION" was WRONG. Durations are already productivity-derived and
+arithmetically correct.** `getInstallSecs` (time_machine.js:4824) computes **`28800 / productivity`**
+seconds per element — an 8-hour crew-day divided by units-per-day. Measured p50 = 0.022d = 1,900s ≈
+15 units/day, sitting squarely inside the shipped table's range (`IfcDuct:18`, `IfcPipe:25`,
+`IfcLightFixture:20`, default 10). A productivity of 18 units/crew-day genuinely IS 27 minutes per
+unit. There is no missing default and nothing to invent.
+
+**THE REAL DEFECT — measured: the WINDOW is wrong, not the duration and not the placement.**
+`§DAY_GAP_PHASE_OCC` = work-days inside a phase ÷ the width of the window that phase was given:
+
+```
+Hospital    Substructure=157.8%(work=30.7d win=19.5d n=553)   Superstructure=24.4%(116.0d/475.7d n=2603)
+            Architecture=18.1%(100.7d/555.1d n=17236)          MEP Rough-in=128.5%(725.9d/565.0d n=38362)
+            MEP Final=323.2%(43.5d/13.5d)                      Finishes=119.9%(18.4d/15.3d)
+LTU_AHouse  Substructure=4.7%(9.7d/204.7d n=238)               Superstructure=14.6%(237.2d/1627.6d n=6268)
+            Architecture=10.9%(188.7d/1723.9d n=6586)          MEP Rough-in=174.3%(1636.6d/939.1d n=78940)
+Clinic      Superstructure=21.2%(42.7d/201.2d)                 Finishes=11.4%(9.1d/79.8d)
+Terminal    Finishes=17.7%(8.7d/49.1d)                         MEP Rough-in=97.0%(178.1d/183.7d)
+```
+
+**The structural/early phases are handed windows 4×–21× wider than their own work content, while the
+MEP phases are OVERLOADED at 128–174%.** Superstructure gets 475.7 days for 116 days of work;
+LTU's Substructure gets 204.7 days for 9.7. That imbalance IS the dead air — it is not a placement
+problem inside a correct window, it is a window that was never derived from work content at all.
+The width comes from `_twoTierRemap`'s tier serialization pushing phase ends out; the work never
+grew to fill it. Global occupancy (~88–146%) hides this completely because the huge MEP counts
+dominate the total — which is why §DAY_GAP_WIP's aggregate number pointed the wrong way.
+
+This also finishes off the specced lever: spreading Superstructure's 2,603 starts across its 476-day
+window would fake 4× the elapsed time to make a window look full **that should never have been that
+wide.** It hides the defect instead of fixing it.
+
+**User's question, answered (2026-08-12): "can't we have a standard default set in rates.JSON
+according to world normal practice, later editable?" — YOU ALREADY DO, and it is already wired.**
+`viewer/rates/sequence_rules.json` `LABOR_RATES` carries 10 trades, each with `crew_size`,
+`max_crews` and a `productivity` map (units per 8h crew-day, per IFC class):
+```
+HVAC_TECH 2/2 · PLUMBER 2/2 · ELECTRICIAN 2/2 · STEEL_ERECTOR 4/3 · CONCRETE_GANG 6/3
+MASON 3/2 · CARPENTER 2/2 · ROOFER 3/1 · FINISHER 2/2 · LABORER 1/1        (crew_size/max_crews)
+```
+It is already JSON, already editable, already consumed. Adding another default set changes nothing.
+
+**But the instinct points at a real gap, in the OTHER column: `max_crews` is 1–3 for every trade.**
+That is a small-job crew allocation being applied unchanged to a 63,182-element hospital and a
+122,330-element LTU — and it is exactly what drives MEP Rough-in to 128–174% occupancy. A
+size-scaled `max_crews` default (with the per-project JSON override the user describes) is a real,
+sourced, non-invented fix for the OVERLOADED half. **Be clear about what it does and does not do:
+raising crews COMPRESSES the busy phases; it does not fill the empty structural windows.** Those
+need the window derivation fixed.
+
+**Ranked, therefore:**
+1. **Phase window derivation** — structural phases at 4.7–24.4% occupancy. This is the dead air.
+   Window width should follow work content + support constraints, not tier-serialization push.
+2. **`max_crews` scaled to project size**, JSON-overridable (the user's idea, correctly aimed) —
+   fixes the 128–174% MEP overload.
+3. **Do NOT build the spread-starts lever** — see above, twice over.
