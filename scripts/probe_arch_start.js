@@ -221,6 +221,103 @@ function fmtExt(ext, base) {
     const spanD = (endAll - base) / D;
     const dispExt = extents(items, { s: 's', e: 'e' });
 
+    // ── §TIER1_HANDOFF (2026-08-12) — user: "the ARCH is a gap after piling done. make things
+    // back to back as usual if so." ──────────────────────────────────────────────────────────
+    // The ORIGINAL contract (W-TS-1, §TIER_SERIAL) is that the Tier-1 backbone
+    // Substructure→Superstructure→Architecture is STRICTLY SERIAL with no dead air between
+    // consecutive phases. #1314 §TIER_SERIAL_BY_ZONE rescoped that barrier per zone. Two framings
+    // can disagree wildly and only one of them is what a viewer sees:
+    //   GLOBAL — max Substructure end over the WHOLE model vs min next-phase start over the whole
+    //            model. Across zones this is not a gap at all: the latest zone's piling can finish
+    //            long after the earliest zone's walls started, so it reads NEGATIVE (overlap).
+    //   PER ZONE — for each derived storey band, the gap between consecutive PRESENT backbone
+    //            phases. THIS is the predicate _tier1Serialize actually enforces, so it is the one
+    //            that can be broken by the zone rescope.
+    // Both are printed, plus the only number that decides whether the user is seeing dead air:
+    // how much work is actually ON SCREEN in the window between global last-Substructure-end and
+    // global first-Architecture-start. Zero starts AND zero WIP there = a real hole. Work there =
+    // Superstructure legitimately sitting between the two phases, which is the correct programme.
+    (() => {
+      const T1 = ['Substructure', 'Superstructure', 'Architecture'];
+      const zoneOf = it => it.storey || '_ALL';
+      const dd = ms => (ms / D).toFixed(1);
+      const ext1 = (set) => {
+        const x = {};
+        set.forEach(it => {
+          if (T1.indexOf(it.phase) < 0) return;
+          const p = x[it.phase] || (x[it.phase] = { minS: Infinity, maxE: -Infinity, n: 0 });
+          if (it.s < p.minS) p.minS = it.s;
+          if (it.e > p.maxE) p.maxE = it.e;
+          p.n++;
+        });
+        return x;
+      };
+      // ── GLOBAL framing ──
+      const gAll = ext1(items);
+      const gSer = ext1(items.filter(it => !it._t1Straggler));   // the population _tier1Extents sees
+      const gLine = (lbl, g) => {
+        const seg = [];
+        for (let i = 0; i + 1 < T1.length; i++) {
+          const a = g[T1[i]], b = g[T1[i + 1]];
+          if (!a || !b) continue;
+          seg.push(T1[i].slice(0, 6) + '→' + T1[i + 1].slice(0, 6) + '=' + dd(b.minS - a.maxE) + 'd');
+        }
+        if (g[T1[0]] && g[T1[2]]) seg.push('Substr→Archit=' + dd(g[T1[2]].minS - g[T1[0]].maxE) + 'd');
+        return lbl + ' ' + T1.filter(p => g[p]).map(p =>
+          p.slice(0, 6) + '=[' + dd(g[p].minS - base) + '..' + dd(g[p].maxE - base) + ']d n=' + g[p].n).join(' ') +
+          ' | gaps ' + seg.join(' ');
+      };
+      console.log('  §TIER1_HANDOFF ' + bld + ' GLOBAL     ' + gLine('all', gAll));
+      console.log('  §TIER1_HANDOFF ' + bld + ' GLOBAL_SER ' + gLine('stragglerExcluded', gSer));
+
+      // ── PER-ZONE framing — the predicate _tier1Serialize enforces ──
+      const byZ = {};
+      items.forEach(it => { if (!it._t1Straggler) (byZ[zoneOf(it)] ||= []).push(it); });
+      const zGaps = [];      // one entry per consecutive-present-phase pair per zone
+      Object.keys(byZ).forEach(z => {
+        const g = ext1(byZ[z]);
+        const present = T1.filter(p => g[p]);
+        for (let i = 0; i + 1 < present.length; i++) {
+          zGaps.push({ z: z, pair: present[i].slice(0, 6) + '→' + present[i + 1].slice(0, 6),
+            gapD: (g[present[i + 1]].minS - g[present[i]].maxE) / D,
+            nPrev: g[present[i]].n, nNext: g[present[i + 1]].n });
+        }
+      });
+      const zs = zGaps.map(x => x.gapD).sort((a, b) => a - b);
+      const med = zs.length ? zs[Math.floor(zs.length / 2)] : 0;
+      const pos = zGaps.filter(x => x.gapD > 0.5).sort((a, b) => b.gapD - a.gapD);
+      console.log('  §TIER1_HANDOFF ' + bld + ' PER_ZONE   zones=' + Object.keys(byZ).length +
+        ' consecutivePairs=' + zGaps.length +
+        ' gapD min=' + (zs.length ? zs[0].toFixed(1) : 'n/a') +
+        ' med=' + med.toFixed(1) + ' max=' + (zs.length ? zs[zs.length - 1].toFixed(1) : 'n/a') +
+        ' pairsWithGap>0.5d=' + pos.length + '/' + zGaps.length +
+        (pos.length ? ' worst=' + pos.slice(0, 4).map(x =>
+          '"' + x.z + '" ' + x.pair + ' ' + x.gapD.toFixed(1) + 'd(n=' + x.nPrev + '→' + x.nNext + ')').join(' ') : ''));
+
+      // ── the decisive number: is the Substructure→Architecture window actually EMPTY on screen? ──
+      const sub = gAll['Substructure'], arch = gAll['Architecture'];
+      if (sub && arch && arch.minS > sub.maxE) {
+        const w0 = sub.maxE, w1 = arch.minS, wD = (w1 - w0) / D;
+        const startsIn = items.filter(it => it.s >= w0 && it.s < w1);
+        let workD = 0;
+        items.forEach(it => { const ov = Math.min(it.e, w1) - Math.max(it.s, w0); if (ov > 0) workD += ov / D; });
+        const phBk = {};
+        startsIn.forEach(it => { phBk[it.phase] = (phBk[it.phase] || 0) + 1; });
+        console.log('  §TIER1_HANDOFF ' + bld + ' WINDOW lastSubstrEnd=day' + dd(w0 - base) +
+          ' firstArchStart=day' + dd(w1 - base) + ' width=' + wD.toFixed(1) + 'd' +
+          ' startsInWindow=' + startsIn.length + ' workDaysInWindow=' + workD.toFixed(1) +
+          ' meanConcurrency=' + (wD > 0 ? (workD / wD).toFixed(2) : 'n/a') +
+          ' by phase{' + Object.keys(phBk).sort((a, b) => phBk[b] - phBk[a]).map(p => p + ':' + phBk[p]).join(' ') + '}' +
+          ' → ' + (startsIn.length === 0 && workD < 0.5 ? 'GENUINELY EMPTY — a real hole'
+            : 'OCCUPIED — the window between piling and ARCH is doing real work, not dead air'));
+      } else if (sub && arch) {
+        console.log('  §TIER1_HANDOFF ' + bld + ' WINDOW lastSubstrEnd=day' + dd(sub.maxE - base) +
+          ' firstArchStart=day' + dd(arch.minS - base) +
+          ' → NO global window at all: Architecture starts BEFORE the last Substructure element ends' +
+          ' (overlap ' + dd(sub.maxE - arch.minS) + 'd) — global "piling→ARCH gap" is not a thing here');
+      }
+    })();
+
     // ── §TIER_SERIAL_BY_ZONE (2026-08-12) — SIMULATION ONLY, shipped code untouched ──────────
     // §TIER_SERIAL makes the Tier-1 backbone (Substructure→Superstructure→Architecture) strictly
     // serial GLOBALLY: all Superstructure everywhere finishes before any Architecture starts. That

@@ -67,6 +67,17 @@ Report the before/after numbers, not an impression.
 changes shipped 2026-08-12 each passed its own witness in isolation while a visible bug survived.
 Never trust a single green witness again.
 
+### 5. §TIER1_HANDOFF — ✅ DONE (measured). NO SCHEDULE FIX WARRANTED; the cause was a stale cache.
+User: *"the ARCH is a gap after piling done. make things back to back as usual if so."* Measured, do
+not re-measure — full numbers in the §TIER1_HANDOFF section at the end of this file. Headlines: on
+current `main` there is **no piling→ARCH dead air on any building** (Hospital's 13.7d window carries
+1151 Superstructure starts at concurrency 4.36; Clinic/LTU/Duplex have no window at all, ARCH starts
+before the last footing ends). **#1314 §TIER_SERIAL_BY_ZONE CLOSED this gap ~21x** (Hospital 287.2d →
+13.7d, per-zone median 171.3d → 0.0d) — the user's insistence caused the fix, not the gap. What they
+were actually watching was the pre-#1313 schedule replaying out of IndexedDB because
+`_GANTT_CACHE_VERSION` sat at 11 through #1313/#1314/#1315/#1319; evicted by #1322 `6e1ca24` (v12,
+sw v1008). ⛔ still open: **nothing witnesses that bump** — three misses in one day. See the section.
+
 **What is already done — do not redo, cite it:** §DAY_GAP lane resolved to zero (#1313 §ZONE_INDEX ·
 #1314 §TIER_SERIAL_BY_ZONE · #1315 §CREW_DEMAND/§HR_COST · #1317 §ARCH_AREA_WEIGHT); movie shadow
 matched to TM exactly (#1316, ratio 2.155, user-confirmed "working great"); schedule export already
@@ -1259,3 +1270,102 @@ static gates (W-MZ-5/6a/6b) still pass, so it looks alive; the per-building cens
 Found independently by a concurrent session the same day, which added it to `gate_4d.sh` — so the
 gate now SHOWS the breakage, but nothing has fixed the slice yet and no PR is open for it. The fix
 is the two `sliceFn` lines the probe and `witness_hosted_before_host.js` already carry.
+
+---
+
+## §TIER1_HANDOFF — "the ARCH is a gap after piling done" (2026-08-12, MEASURED; NOT a #1314 regression)
+
+**User, verbatim:** *"maybe due to my insistence, the ARCH is a gap after piling done. make things
+back to back as usual if so"* — with the explicit standing instruction *"better to follow the facts
+and figures."* So it was measured before anything was touched. **Nothing was implemented for this
+item; no schedule code changed.** The measurement is the deliverable, plus the one real cause it
+found, which a concurrent session had already fixed 46 minutes earlier.
+
+**Measurement added to the canonical probe**, not a new script:
+`scripts/probe_arch_start.js` → `§TIER1_HANDOFF`, four lines per building on the DISPLAY timeline
+(post `_twoTierRemap` + `_midairRepair`, the same items every other §-line in that probe reads):
+`GLOBAL` / `GLOBAL_SER` (straggler-excluded, the population `_tier1Extents` actually sees) /
+`PER_ZONE` (the predicate `_tier1Serialize` enforces) / `WINDOW`. Run:
+`ONLY=Hospital VIEWER_DIR=<rev> BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js`
+
+**The two framings disagree, and only one is the film.** GLOBAL max-Substructure-end vs global
+min-next-phase-start is NOT a gap across zones — the latest zone's piling routinely finishes after
+the earliest zone's walls started, so it reads negative (overlap) on Duplex/Clinic/LTU/HHS. The
+number that decides dead air is `WINDOW`: how much work is on screen between global last-Substructure
+-end and global first-Architecture-start.
+
+### VERDICT 1 — on current `main` (`1660c99`) there is NO piling→ARCH dead air.
+
+| building | WINDOW after last Substructure | verdict |
+|---|---|---|
+| Hospital | 13.7d wide, **1151 Superstructure starts, 59.5 work-days, mean concurrency 4.36** | OCCUPIED |
+| Clinic | none — ARCH starts *before* last Substructure ends (overlap 0.0d) | no window |
+| LTU_AHouse | none — overlap 104.0d | no window |
+| Duplex | none — overlap 0.2d | no window |
+| HHS_Office_Federated | no Substructure phase at all | n/a |
+
+Hospital PER_ZONE: 20 zones, 13 consecutive backbone pairs, **median gap 0.0d**, 4/13 pairs >0.5d,
+worst `"Level 2 TOS" Supers→Archit 47.9d (n=401→162)`. That is a residual of the generative layer
+(`_tier1Serialize` only ever pushes LATER — where a zone's ARCH naturally starts after that zone's
+Superstructure ends, `d=0` and the natural gap survives by design), not of the barrier. It creates no
+visible dead air: the film's only empty run is at 84–95% (`§DAY_GAP`), nowhere near piling.
+
+### VERDICT 2 — PROVENANCE: today's changes CLOSED this gap ~21x. The opposite of the suspicion.
+
+Same probe at `42539c9` (pre-#1313, this morning's earliest point), identical fixtures:
+
+| | `42539c9` (pre-#1313) | `1660c99` (current) |
+|---|---|---|
+| Hospital WINDOW | **287.2d wide, mean concurrency 0.40** | 13.7d, concurrency 4.36 |
+| Hospital ARCH first start | day 306.6 | day 33.1 |
+| Hospital PER_ZONE gap med / max | 171.3d / 348.3d, 12/13 pairs gapped | **0.0d** / 47.9d, 4/13 |
+| Clinic WINDOW | **97.5d wide, mean concurrency 0.33** | none (overlap) |
+| Clinic PER_ZONE gap med / max | 4.3d / 109.4d | 0.0d / 8.8d |
+
+**Mean concurrency 0.40 on a 63k-element Hospital means less than one element in progress at a time
+for 287 days** — that is genuine dead air, and it is *precisely* the symptom the user described.
+**#1314 §TIER_SERIAL_BY_ZONE is what removed it.** The user's insistence did not cause the gap; the
+work done on that insistence is what fixed it.
+
+### VERDICT 3 — the real defect: the fix could not REACH the user. `_GANTT_CACHE_VERSION` stuck at 11.
+
+The gap the user is watching is real — it is the **`42539c9`-era schedule replaying out of IndexedDB**.
+`_GANTT_CACHE_VERSION` was **11** at `bcec670` (§MIDAIR_REPAIR) and still **11** at `1660c99`, i.e.
+un-bumped by every schedule-behaviour commit of the day:
+
+| commit | PR | changed | bumped? |
+|---|---|---|---|
+| `475373b` | #1313 §ZONE_INDEX | median-Z zone banding | ✗ |
+| `1a20932` | #1314 §TIER_SERIAL_BY_ZONE | **the display remap itself** | ✗ |
+| `99babe7` | #1315 §CREW_DEMAND | crew caps → `computeSchedule` inputs | ✗ |
+| `c972778` | #1319 §HOSTED_BEFORE_HOST | `hostGate` + a host push inside `_twoTierRemap` | ✗ |
+
+The constant's own comment states the rule: *"MUST bump on every change to computeSchedule's gating
+OR the display remap, or a building already materialized under an older version keeps replaying it
+forever."* Both cache paths key on it — the `gantt:v11:<bld>` IDB JSON entry (`_cacheKey`) and the
+`kernel_ops ELEMENT_PLACE` `_genVersion` stamp (`_kernelOpsSchedStale`). **A hard reset cannot clear
+either** (IndexedDB, not HTTP cache), so a Hospital first materialized under v11 before #1314 replays
+the 287-day gap against fully-deployed new code, indefinitely.
+
+✅ **ALREADY FIXED — bim-ootb #1322 `6e1ca24`, 18:12 today, by a concurrent session** ("§GANTT_CACHE_VERSION
+— bump for #1319's hostGate, missed on first landing"): v11→v12, sw v1007→v1008. It cites #1319 only,
+but the eviction it performs is what also delivers #1313/#1314/#1315. **No PR was opened from this
+lane — the one-line fix was already on `origin/main` before this measurement finished.** Next cold
+open of Hospital on v1008 regenerates and the gap goes 287.2d → 13.7d.
+
+**Gate baseline** (`VIEWER_DIR=/tmp/wt-tier1-gap/viewer`, `1660c99`, `/tmp/gate_4d_BASELINE.log`):
+`witness_zone_index` 5/5 · `witness_tier_serial_display` pass=57 fail=0 · `witness_crew_demand` 4/4 ·
+`witness_midair_zero` pass=38 fail=0 · `witness_hosted_before_host` 4/4 · `witness_arch_area_weight`
+MISS (not on this branch, expected). **6 witnesses, 0 FAIL.** No "after" run — no schedule code was
+changed by this lane.
+
+### ⛔ OPEN, named not fixed: nothing witnesses the `_GANTT_CACHE_VERSION` bump.
+
+Three misses in one day (#1286→#1287, #1319→#1322, and #1313/#1314/#1315 which were only ever evicted
+as a side effect of #1322). `witness_kernel_ops_sched_version.js` tests the *predicate*
+`_kernelOpsSchedStale`, never that the constant moved — so a missed bump is invisible to `gate_4d.sh`
+and only ever surfaces as a user reporting a fixed bug as still-live. **The guard is a git-level
+check, not a witness:** if a commit's diff touches `schedule_gate.js` gating, `computeSchedule`'s
+call sites, `_twoTierRemap`/`_tier1Serialize`/`_midairRepair`, or `sequence_rules.json`, then
+`_GANTT_CACHE_VERSION` must also change in that same diff. Cheapest home is a `gate_4d.sh` step
+guarded on `VIEWER_DIR` being a git tree (it is skipped for the exported-revision runs).
