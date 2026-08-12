@@ -26,7 +26,7 @@ say "§GATE_4D viewer=$VIEWER_DIR buildings=$BLD_DIR  $(date -Is)"
 say ""
 
 # ── 1. Witnesses — each returns n/N; we keep only the verdict + any failing gate ───────────────
-for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_arch_area_weight; do
+for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_arch_area_weight witness_hosted_before_host; do
   f="$VIEWER_DIR/tests/$w.js"
   if [ ! -f "$f" ]; then say "MISS  $w  (not in this revision)"; miss=$((miss+1)); continue; fi
   out=$(cd "$VIEWER_DIR/tests" && BLD_DIR="$BLD_DIR" timeout 900 node "$w.js" 2>&1)
