@@ -487,3 +487,54 @@ Clinic 295/400d · JKR 55/110d · HHS 97/122d · LTU 2194/1855d · Duplex 36/18d
 ### §5 What this study did NOT do
 No schedule change, no gate change, no witness, no PR, no cache bump. Levers §3.1–§3.4 are unbuilt
 and unspec'd. The probe is read-only and lives in bim-compiler only — bim-ootb is untouched.
+
+## §GANTT_PHASE_CLOBBER — the captured overlay overwrites `phase` with the TASK NAME (2026-08-12, FIXED)
+**Symptom, user:** *"at first load, the TM 4D gantt schedule has nice coloring looks OK but on refresh
+it goes away"* → *"U have to hunt back those pretty colors in the Gantt Chart bars of TM."*
+
+### One line, three broken things — all provable from the user's own log
+`time_machine.js:5238`, inside the captured/authored overlay:
+```js
+p.phase = w.name;    // real task name → shows in mini-Gantt
+```
+`w.name` is the TASK name. Since zone-level authoring became the default, `materializeZones` names
+its tasks **`"<Phase> — <Storey>"`**, so every op's `parameters.phase` becomes
+`"Architecture — Level 1"` instead of `"Architecture"`. The user's log prints it verbatim:
+```
+§AUTHOR_ZONES schedule=SCH_AUTHORED zones=35 … §GANTT_SOURCE captured tasks=35 covered=63415
+§GANTT_ROW_ORDER phases=["Architecture — Level 1","Architecture — Level 2",…,"Superstructure — Level 7A"]
+```
+Everything downstream keys on that field:
+1. **Colour** — `PHASE_COLORS[task.phase] || '#888'` (`:6896`) misses on every bar → all 35 bars grey.
+   Also `PHASE_INK[task.phase] || '#fff'` and `PHASE_SHORT[task.phase] || task.phase.substring(0,3)`
+   (`:6950`), so §GANTT_PALETTE's ink and short-codes go with it.
+2. **Row order** — `_phaseRank()` is `_ROW_PHASE_ORDER.indexOf(p)`; every lookup returns -1, so every
+   row ranks equal and the sort falls through to alphabetical. The user's `§GANTT_ROW_ORDER` shows
+   exactly that: Architecture, Finishes, MEP Final, MEP Rough-in, Substructure, Superstructure —
+   **Substructure 5th.** That is §GANTT_ROW_ORDER (K1)'s original bug back verbatim, and K1 exists
+   because the user reported it once already: *"Last session was a mess putting substructure which
+   has above ground appearing first."* It regressed silently — the K1 log line prints the broken
+   order and no gate reads it.
+3. **Dashboard phase bars** — `§DASH_PHASE`/`tm-dash-phases` buckets by the same field and then
+   filters through `PHASE_ORDER`; with 35 name-keys and 0 matches, the phase progress section
+   renders empty. There is not one `§DASH_PHASE` line in the user's whole session.
+
+### Why "OK on first load, gone on refresh"
+The colour survives exactly as long as the ops carry engine phases. Whether the overlay stamps names
+depends on whether an authored/captured schedule is present and covering when `injectGantt` runs —
+which on a first cold open it is not (the schedule is materialized in the same pass), and on a warm
+reopen it is (persisted zone tasks, `§GANTT_SOURCE captured tasks=35 covered=63415 pct=100`).
+
+### Fix — write the name where the name belongs
+`p.taskName = w.name;` instead of `p.phase = w.name;`. The mini-Gantt already reads the name from a
+different route entirely — `buildGanttTasks` sets `taskName` from the task index (`:5694`) and the
+bar detail header renders `bar.taskName || (bar.phase + ' — ' + bar.storey)` (`:6716`) — so the
+overlay's clobber was never what made the name visible. Nothing is lost; colour, ink, short-code, row
+order and the dashboard all key on a real phase again.
+
+### Witness — `witness_gantt_phase_palette.js` (W-PHASE-KEY)
+Names the issue: **the value the palette keys on must be a phase, not a task name.** Runs the shipped
+`PHASE_COLORS`/`PHASE_INK`/`PHASE_SHORT`/`_ROW_PHASE_ORDER` against the user's own strings.
+G-PAL-1 (RED pre-fix): `"Architecture — Level 1"` → colour `#888`, rank 6 (unranked).
+G-PAL-2: all six engine phases resolve to a real colour and a rank < 6.
+G-PAL-3 (source): the captured overlay must not assign the task name into `p.phase`.
