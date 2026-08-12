@@ -1020,3 +1020,24 @@ returns a VERDICT, not a file dump.
   what the answer looks like, the scope is wrong.
 - Headless swiftshader CANNOT load Hospital/LTU (§6, 14.5 s/frame) — never dispatch a browser
   witness for those; use the node probe.
+
+### §WORKING_STYLE — read before replying to anything in this lane (2026-08-12, user directive)
+Verbatim: *"FOLLOW TERSE RULE! I HATE YOUR LANGUAGE WHICH WHOLE WORLD IS COMPLAINING."* ·
+*"DO NOT ASK MORE when request is clear"* · *"maintain terse language, stop asking what is obvious,
+user wants results that are already spec'd in full."*
+
+- **Terse.** Verdict first, 1-3 lines. No preamble, no restating the question, no options menu.
+  Scored lists, not prose.
+- **Do not ask.** The guidance is already written down — in this file, in `CLAUDE.md`, in the
+  memory feedback entries, and in the § headers of the code itself. **Derive the answer from the
+  record and act.** This session asked three questions it could have answered by reading: the
+  §TIER_SERIAL_BY_ZONE ruling was sitting in §TIER_SERIAL's own header (the 2026-08-02 "if
+  construction practice permits" clause); the shadow target was stated plainly ("as strong as in
+  TM"); the export question was answerable by opening one file. Each ask cost a round trip and the
+  user's patience.
+- **Ship what is spec'd.** If a spec section names the fix, build it — do not re-spec it, do not
+  re-measure what is already recorded, do not end a message with "want me to take it?".
+- **5% error margin is acceptable** (user ruling). Do not chase exactness past the point of
+  usefulness; gate at 5% and move on.
+- **Only stop for:** something genuinely destructive, or a fact that exists nowhere in the record
+  and cannot be measured. Everything else: decide, do it, report the number.
