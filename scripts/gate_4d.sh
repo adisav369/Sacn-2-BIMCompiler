@@ -62,7 +62,7 @@ done
 say ""
 say "── §-numbers (compare against prompts/4D_SCHEDULE_PERFECTION.md; drift here is the finding) ──"
 VIEWER_DIR="$VIEWER_DIR" BLD_DIR="$BLD_DIR" timeout 1800 node scripts/probe_arch_start.js 2>&1 \
-  | grep -E "§DAY_GAP |§DAY_GAP_PHASE_OCC|§TIER_SERIAL_BY_ZONE|§CREW_AUTOSCALE|§ARCH_AREA_WEIGHT classes|§HOSTED_BEFORE_HOST" \
+  | grep -E "§RULES_TABLE_SOURCE|§DAY_GAP |§DAY_GAP_PHASE_OCC|§ZONE_BAR_TAIL|§STAGE_OCC|§TIER_SERIAL_BY_ZONE|§CREW_AUTOSCALE|§ARCH_AREA_WEIGHT classes|§HOSTED_BEFORE_HOST" \
   | tee -a "$OUT"
 
 # §DOOR_WINDOW_HOST_WALL / §CURTAIN_WALL_OPENING shape numbers (2026-08-12). Separate probe because

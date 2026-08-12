@@ -78,6 +78,32 @@ were actually watching was the pre-#1313 schedule replaying out of IndexedDB bec
 `_GANTT_CACHE_VERSION` sat at 11 through #1313/#1314/#1315/#1319; evicted by #1322 `6e1ca24` (v12,
 sw v1008). ⛔ still open: **nothing witnesses that bump** — three misses in one day. See the section.
 
+### 6. §PHASE_WINDOW_IDLE — measurement CORRECTED and root cause LOCATED. Fix ⛔ BLOCKED on one ruling.
+User: *"things are still rushed and not following its gantt bar length.. which gets idle the rest of
+it"* → *"the rush to build at onset leaving the rest idle is a bug"* → *"long timeline is OK, as long
+realistic but easy for user to edit the gantt chart."* Full numbers: **§PHASE_WINDOW_IDLE** section
+at the end of this file. Do not re-measure any of it. Headlines:
+- **Two probe bugs found first, both systemic, both fixed** (they invalidated a day of §-numbers):
+  `§RULES_TABLE_SOURCE` — every Node probe/witness read `rates/sequence_rules.json`, which
+  `viewer/rates.js:239` says in shipped source the viewer NEVER loads; and `§SERVED_BYTES` — the
+  local `buildings/*.db` is a newer re-extraction whose storey taxonomy differs from the OCI object
+  users fetch, worth 4.6% of totalDays on its own. Corrected Hospital span **2014.7d** vs live 2019.6
+  (0.24%); the old 1889.4 was wrong on both counts.
+- **The idle is INTERIOR and per-zone, not a trailing phase-bar overhang**, and it splits three ways
+  — one fix cannot cover them. Trim-the-bar-end helps MEP a lot, Architecture almost none, Finishes
+  not at all (Finishes' phase bar is 8% but its zone bars are 28% mean and up to 67% — that idle is
+  zone STAGGERING, and the honest fix there is to draw per-zone bars, not to trim).
+- **Stage bisect names the owner per phase:** MEP Final is COMPACT generatively (RAW 176%, win 121d)
+  and the display remap stretches it 6.5x to 27%/784d — `_twoTierRemap` owns it. Architecture is
+  ALREADY sparse in RAW (zone 9%) — `computeSchedule`'s support gate owns it, the remap only inherits.
+- ⛔ **BLOCKED: may `§TIER2_AFTER_TIER1` stop over-shifting?** It moves EVERY Tier-2 element in a zone
+  by `t1EndZ[z] - t2MinZ[z]` — the amount the EARLIEST one needs — so elements already past the
+  barrier are pushed further for no reason, and since each zone's shift differs the phase gets
+  SHEARED. A per-element clamp (`push only if it.s < t1EndZ[z]`) satisfies the barrier's own stated
+  contract exactly and moves strictly less, but it is NOT order-preserving within a zone (today's
+  uniform shift is, deliberately — see its header), so it needs `_midairRepair`/`witness_midair_zero`
+  to carry the ordering. That trade is a ruling, not a derivation. **Do not ship it unasked.**
+
 **What is already done — do not redo, cite it:** §DAY_GAP lane resolved to zero (#1313 §ZONE_INDEX ·
 #1314 §TIER_SERIAL_BY_ZONE · #1315 §CREW_DEMAND/§HR_COST · #1317 §ARCH_AREA_WEIGHT); movie shadow
 matched to TM exactly (#1316, ratio 2.155, user-confirmed "working great"); schedule export already
@@ -1568,3 +1594,136 @@ both `§CREW_DAY` and `§CURTAIN_WALL_OPENING`. **`_GANTT_CACHE_VERSION`: both b
 claimed v13 — took the higher and went one beyond, landing as v14** (`sw.js` likewise v1009→v1010,
 main having also taken v1009). Two independent gating changes on one day = two bumps, never a shared
 one; the constant's whole purpose is that one cache entry maps to exactly one algorithm.
+
+---
+
+# §PHASE_WINDOW_IDLE — the idle inside a Gantt bar (2026-08-13)
+
+User, in sequence: *"things are still rushed and not following its gantt bar length.. which gets idle
+the rest of it"* · *"the rush to build at onset leaving the rest idle is a bug"* · *"long timeline is
+OK, as long realistic but easy for user to edit the gantt chart."*
+
+Scope note: this is NOT M1's clock compression and NOT the point-event durations. It is the size of a
+phase's WINDOW against the size of the WORK inside it.
+
+## A. Two measurement bugs came first — and they invalidated the numbers this lane was reasoning from
+
+Both are fixed in `scripts/probe_arch_start.js`; both have their full argument in that file's header.
+
+**§RULES_TABLE_SOURCE.** Every Node probe and every `viewer/tests/witness_*.js` loaded
+`viewer/rates/sequence_rules.json` for `SEQUENCE_RULES` / `LABOR_RATES` / `SEQUENCE_DEFAULT` /
+`NAME_OVERRIDES`. `viewer/rates.js:239` says the opposite in shipped source, in its own words:
+*"viewer.html does NOT call initRateTemplate()/loadSequenceRules() (only mep_report.html/
+boq_charts.html do), so this hardcoded copy, NOT the JSON, is what actually runs in the main
+viewer/Time Machine/Author wizard."* Confirmed by grep: nothing on the viewer's load path calls it.
+
+The two sources had drifted, so it was not a harmless equivalence. Complete diff, measured:
+`SEQUENCE_DEFAULT` identical · `SEQUENCE_RULES` 58 keys, **zero** value differences ·
+`NAME_OVERRIDES` 4 both, identical but for a prose `reason` field · `LABOR_RATES` — the ONLY
+difference in the whole table is `ELECTRICIAN.productivity`, **15 class keys in rates.js vs 8 in the
+JSON**. Missing from the JSON: `IfcSwitchingDevice`, `IfcSensor`, `IfcActuator`, `IfcFlowInstrument`,
+`IfcDistributionControlElement`, `IfcProtectiveDeviceTrippingUnit`, `IfcUnitaryControlElement`, all
+at productivity 10. Those classes fell through to `_installSecs`' no-match default in every Node run
+and carried their real 2880 s in the browser. Hospital: span 1889.4d → 1926.4d, MEP Final occupancy
+14.1% → 21.0%. `viewer/rates/sequence_rules.json` is re-synced to rates.js in this change (the file's
+own header calls itself the "single shared source" and rates.js asks for the sync) — a data fix that
+cannot touch the viewer's generated schedule, because the viewer never reads the file.
+
+**§SERVED_BYTES.** `~/bim-ootb/buildings/Hospital_extracted.db` (264,642,560 B, Aug 3) is not the
+object the viewer loads; the live viewer fetches the OCI copy (263,307,264 B, Jun 5). Same model —
+identical class histogram, identical 63,182 scheduled elements, identical `totSecs=92,135,244`, ZERO
+numerically-differing `element_transforms` rows — but the local file is a **newer re-extraction with
+a finer storey taxonomy**: 21 storey names (`Level 3 TOS`, `Level 1 Ceiling`, …) against the served
+copy's 9 (`Level 1`..`Level 7A`), differing on 7,365 elements. `storey` IS the zone key (`_zoneOf`),
+and §TIER_SERIAL_BY_ZONE serializes per zone, so the entire remap changes: `tier1DagWins` 256→319,
+`shiftDays` 917.2→935.7, **totalDays 1926.4 → 2014.7**.
+
+**Resolution of the probe-vs-browser discrepancy, in one line:** live browser 2019.6 · corrected
+probe on served bytes **2014.7** (`hostFixed=80 openFixed=13` vs live 79/13) · residual **0.24%**,
+attributable to the browser's IndexedDB holding a slightly older vintage of the same object (raw
+server bytes are cached at first load and never content-revalidated). **1889.4 was wrong on both
+counts and must not be cited again.** Ruled out by measurement, each with a run: the runtime SQL
+patch (`Hospital_extracted.db.sql` is 8 lines, `storey_walkable_raster` only), all 16 rate packs (all
+land 1362–1668d, i.e. *below* baseline — no pack file carries `max_crews`, so merging one wipes all
+10 crew caps to `MAX_CREWS_DEFAULT`), element ordering (cross-swapped both ways, unchanged), and code
+version (worktree is exactly `0b97891`).
+
+**Systemic corollary, worth more than this lane: re-extracting a building silently re-dates its whole
+schedule.** 4.6% on the storey taxonomy alone, with geometry, element set and labour seconds
+byte-identical. Any Node measurement compared against something a user saw must load the served bytes.
+
+## B. Accurate occupancy — Hospital, served bytes, ship tables, REPAIR stage (`§STAGE_OCC`)
+
+`phase% / zone-mean%` — the second number is the honest work-package unit; a phase bar is the UNION
+of one bar per zone, so a phase reads "idle" either because its zones are staggered (every zone busy,
+the union empty) or because the zone bars are themselves empty. Only the split tells them apart.
+
+| phase | RAW | REMAP | REPAIR | window (REPAIR) |
+|---|---|---|---|---|
+| Substructure   | 300% / 300% | 158% / 158% | **158% / 158%** | 57d |
+| Superstructure |  39% /  16% |  40% /  15% | **40% /  16%** | 869d |
+| Architecture   |  34% /   9% |  26% /   7% | **23% /   6%** | 1303d |
+| MEP Rough-in   | 278% /  92% | 145% /  67% | **145% /  61%** | 1510d |
+| MEP Final      | 176% /  55% |  27% /  22% | **27% /  22%** | 784d |
+| Finishes       |  49% /  28% |   8% /  28% | **8% /  28%** | 745d |
+
+The stage bisect is the finding: **MEP Final and Finishes are compact generatively** (121d and 116d
+windows, 176% and 49%) and the DISPLAY remap stretches them ~6.5x while adding not one work-day —
+`_twoTierRemap` owns those two. **Architecture and Superstructure are already sparse in RAW**
+(zone 9% / 16%, before any remap runs) — `computeSchedule`'s support gate owns those, and the remap
+only inherits their spread. Two phases, two different layers; a single fix cannot own both.
+
+## C. The idle's SHAPE — front / middle / trailing (`§ZONE_BAR_TAIL`)
+
+Answering "is trimming each bar to its last real activity the fix?" — measured per zone bar, as the
+width it would have if it ended at its own 95%-of-work point:
+
+| phase | zone bars | Σ width | trimmed to 95%-work | occ before → after |
+|---|---|---|---|---|
+| MEP Final      | 5 |  956d | **310d (32%)** | 22.3% → **68.7%** |
+| MEP Rough-in   | 7 | 3591d | 1751d (49%) | 60.9% → 124.9% |
+| Superstructure | 8 | 2208d | 1402d (64%) | 15.9% → 25.0% |
+| Architecture   | 8 | 4955d | 2765d (56%) |  6.1% → **10.9%** |
+| Finishes       | 6 |  203d |  150d (74%) | 27.8% → 37.6% |
+
+Read together with B, the answer is **three different shapes, and no single fix covers them**:
+1. **MEP (both) — a real trailing tail.** `Level 3` MEP Final: 95% of a 485-day bar's work is done by
+   **12%** of it, then 114 of 962 elements drag the remaining 88%. This is literally "rush at onset,
+   idle the rest." Trimming recovers most of it (22.3% → 68.7%).
+2. **Architecture / Superstructure — genuinely spread, not a tail.** Trimming buys 6.1% → 10.9%,
+   i.e. nearly nothing. `Level 7A`: 282 elements, **0.7 work-days**, 720-day bar (0.1%).
+3. **Finishes — pure zone STAGGERING.** Phase bar 8%, zone-mean 28%, individual zone bars 43–67%
+   (`Level 5` 67.4%, `Level 2` 46.9%). The zone packages are dense and honest; the phase bar is the
+   union of well-separated dense bursts. Trimming is the wrong instrument — drawing per-zone bars is
+   the right one, and the viewer's mini-Gantt already groups `storey|phase`.
+
+⚠ **Why the trim must not be applied blind, even where it scores best:** the elements past the 95%
+mark are REAL scheduled elements — Architecture `Level 5` has **750 of 3497** out there, MEP Final
+`Level 3` has 114 of 962. Trimming the DRAWN bar would put hundreds of genuinely-scheduled elements
+outside their own bar, which is the same class of dishonesty as fabricating dates, pointed the other
+way. `§ZONE_BAR_TAIL` therefore reports `tailN` next to the trim gain and never trims anything.
+
+## D. The mechanism, and the ruling it is blocked on
+
+`_twoTierRemap`'s §TIER2_AFTER_TIER1 barrier (`viewer/time_machine.js`) computes, per zone,
+`d = t1EndZ[z] - t2MinZ[z]` and applies it to **every** Tier-2 element in that zone. `t2MinZ[z]` is
+the EARLIEST Tier-2 start, so the shift is sized for the one element that needs it most and every
+already-compliant element is pushed further for no reason. Because each zone's `d` differs (Hospital
+`shiftDays` max 935.7), Tier-2 is **sheared** rather than shifted, and that is what turns MEP Final's
+compact 121-day generative package into a 784-day display window.
+
+The minimal edit that satisfies the barrier's own stated contract — *"within any zone no Tier-2
+element starts before that zone's Tier-1 is complete"* — is a **per-element clamp**: push only when
+`it.s < t1EndZ[z]`, and only to `t1EndZ[z]`. It is strictly less movement than today and cannot
+violate the barrier.
+
+⛔ **BLOCKED — the one question:** today's uniform shift is order-preserving within a zone *by
+construction*, and its header says so deliberately; the clamp is not (it maps everything below the
+barrier onto the barrier, so a carrier can land after its dependent). `_midairRepair` +
+`witness_midair_zero` exist precisely to enforce that ordering afterwards and would have to carry it.
+**Trading a by-construction guarantee for a repaired-after-the-fact one is a ruling, not a
+derivation** — it must be asked, not assumed. Everything needed to decide is above.
+
+Not proposed, deliberately: artificial pacing, spreading starts evenly (rejected as `§DAY_GAP_WIP`,
+and the phase-vs-zone split above shows why it would still be wrong), and any change to
+`schedule_author.js`'s authored WBS bars — those stay the user-editable product, untouched here.

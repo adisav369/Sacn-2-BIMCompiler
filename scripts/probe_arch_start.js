@@ -16,6 +16,22 @@
 //   §ARCH_AUTH    §PHASE_OVERLAP_BAND authored bar start day per phase (planner-facing artefact)
 //   §ARCH_TIME    wall-clock ms per generation stage (observation only — perf lane is elsewhere)
 //
+// ⚠ §SERVED_BYTES (2026-08-13) — WHICH .db YOU POINT THIS AT IS PART OF THE MEASUREMENT.
+// `~/bim-ootb/buildings/Hospital_extracted.db` (264,642,560 B, Aug 3) is NOT the object the viewer
+// loads. The live viewer fetches the OCI-served copy (263,307,264 B, Jun 5). They are the same
+// model — identical class histogram, identical 63,182 scheduled elements, identical
+// totSecs=92,135,244, ZERO numerically-differing element_transforms rows — but the local file is a
+// NEWER RE-EXTRACTION with a finer storey taxonomy: 21 storey names ("Level 3 TOS", "Level 1
+// Ceiling", …) against the served copy's 9 ("Level 1".."Level 7A"), differing on 7,365 elements.
+// `storey` IS the zone key (_zoneOf), and §TIER_SERIAL_BY_ZONE serializes per zone, so the whole
+// remap changes: Hospital totalDays 1926.4 (local) vs 2014.7 (served) — 4.6% on the taxonomy alone,
+// with every other input byte-identical. The live browser at the same commit printed 2019.6; the
+// remaining 0.24% is its IndexedDB holding a slightly older vintage of the same object (raw server
+// bytes are cached at first load and never content-revalidated — §PATCH-SELFHEAL).
+// So: MEASURE AGAINST THE SERVED BYTES when comparing to anything a user saw, and never treat a
+// local-vs-browser span difference as a code defect before checking the two DBs are the same object.
+// Corollary worth its own line: re-extracting a building silently re-dates its whole schedule.
+//
 // Command (from bim-compiler/):
 //   VIEWER_DIR=~/bim-ootb/viewer BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js
 // To measure a specific revision rather than the working tree, export it first:
@@ -72,11 +88,46 @@ const sliced = [tierOrderLine,
   sliceFn(tmSrc, '_twoTierRemap'), sliceFn(tmSrc, '_contactGraph'),
   sliceFn(tmSrc, '_midairAudit'), sliceFn(tmSrc, '_midairRepair', MR)].join('\n');
 
-function loadRatesTable() {
+// ══ §RULES_TABLE_SOURCE (2026-08-13, bim-compiler prompts/4D_SCHEDULE_PERFECTION.md) ═══════════
+// THIS PROBE WAS MEASURING A TABLE THE VIEWER NEVER LOADS, and every §-number it produced since it
+// was written inherited the error. It read rates/sequence_rules.json for SEQUENCE_RULES /
+// LABOR_RATES / SEQUENCE_DEFAULT / NAME_OVERRIDES. viewer/rates.js:239 states the opposite, in the
+// shipped source, in its own words: "viewer.html does NOT call initRateTemplate()/
+// loadSequenceRules() (only mep_report.html/boq_charts.html do), so this hardcoded copy, NOT the
+// JSON, is what actually runs in the main viewer/Time Machine/Author wizard." Confirmed by grep:
+// nothing on the viewer's load path calls loadSequenceRules().
+//
+// The two sources HAVE DRIFTED, so this was not a harmless equivalence. MEASURED, Hospital:
+//   LABOR_RATES.ELECTRICIAN.productivity — rates.js 15 class keys, JSON 8. The JSON is missing
+//   IfcSwitchingDevice, IfcSensor, IfcActuator, IfcFlowInstrument, IfcDistributionControlElement,
+//   IfcProtectiveDeviceTrippingUnit, IfcUnitaryControlElement (all productivity 10). Those classes
+//   therefore fell through to _installSecs' no-match default in every probe/witness run, and
+//   carried their real 2880 s in the browser.
+//   Hospital displaySpan 1889.4d (JSON) -> 1926.4d (ship tables); MEP Final occupancy 14.1% ->
+//   21.0%; §HOSTED_BEFORE_HOST hostFixed 80, openFixed 14.
+// SEQUENCE_RULES (58 keys), SEQUENCE_DEFAULT and NAME_OVERRIDES are value-identical between the two
+// (NAME_OVERRIDES differ only in a `reason` prose field) — ELECTRICIAN is the whole measured drift.
+// RULES=json reverts to the old reading for an A/B against numbers recorded before this date.
+function loadShipTables() {
   const txt = fs.readFileSync(path.join(VIEWER_DIR, 'rates.js'), 'utf8');
-  const start = txt.indexOf('var RATES = {');
-  const defIdx = txt.indexOf('var SEQUENCE_DEFAULT');
-  return (new Function(txt.slice(start, txt.indexOf('};', defIdx) + 2) + '\n return RATES;'))();
+  // Brace/bracket-matched extraction of one top-level `var NAME = {...}` / `[...]` literal. The old
+  // single-slice trick (RATES..first '};' after SEQUENCE_DEFAULT) only ever worked because those
+  // three happen to be adjacent; matching properly lets NAME_OVERRIDES come from the same file.
+  const blk = (name, open) => {
+    const i = txt.indexOf('var ' + name + ' = ' + open);
+    if (i < 0) throw new Error('rates.js: ' + name + ' not found');
+    const close = open === '[' ? ']' : '}';
+    let d = 0, j = i, seen = false;
+    for (; j < txt.length; j++) {
+      if (txt[j] === open) { d++; seen = true; }
+      else if (txt[j] === close) { d--; if (seen && d === 0) break; }
+    }
+    return txt.slice(i, j + 1);
+  };
+  return (new Function([blk('RATES', '{'), blk('SEQUENCE_RULES', '{'), blk('LABOR_RATES', '{'),
+    blk('SEQUENCE_DEFAULT', '{'), blk('SEQUENCE_NAME_OVERRIDES', '[')].join(';\n') +
+    ';\n return { RATES: RATES, SR: SEQUENCE_RULES, LR: LABOR_RATES,' +
+    ' SD: SEQUENCE_DEFAULT, NO: SEQUENCE_NAME_OVERRIDES };'))();
 }
 
 const BLD_DIR = process.env.BLD_DIR || path.join(HOME, 'bim-ootb', 'buildings');
@@ -106,10 +157,22 @@ function fmtExt(ext, base) {
 
 (async () => {
   const SQL = await initSqlJs({ wasmBinary: fs.readFileSync(path.join(SQLJS_DIR, 'sql-wasm.wasm')) });
-  const rulesJson = JSON.parse(fs.readFileSync(path.join(VIEWER_DIR, 'rates', 'sequence_rules.json'), 'utf8'));
-  const SR = rulesJson.SEQUENCE_RULES, SD = rulesJson.SEQUENCE_DEFAULT, LR = rulesJson.LABOR_RATES;
-  const NO = rulesJson.NAME_OVERRIDES || [];
-  const RATES = loadRatesTable();
+  // §RULES_TABLE_SOURCE — ship reads rates.js's hardcoded tables, not the JSON. See loadShipTables().
+  const _ship = loadShipTables();
+  const _json = (() => { try {
+    return JSON.parse(fs.readFileSync(path.join(VIEWER_DIR, 'rates', 'sequence_rules.json'), 'utf8'));
+  } catch (e) { return null; } })();
+  const _useJson = process.env.RULES === 'json' && _json;
+  const SR = _useJson ? _json.SEQUENCE_RULES : _ship.SR;
+  const SD = _useJson ? _json.SEQUENCE_DEFAULT : _ship.SD;
+  const LR = _useJson ? _json.LABOR_RATES : _ship.LR;
+  const NO = _useJson ? (_json.NAME_OVERRIDES || []) : _ship.NO;
+  const RATES = _ship.RATES;
+  console.log('§RULES_TABLE_SOURCE ' + (_useJson ? 'rates/sequence_rules.json (A/B ONLY — NOT what the viewer runs)'
+    : 'viewer/rates.js hardcoded (what viewer.html actually runs — rates.js:239)') +
+    ' rules=' + Object.keys(SR).length + ' labor=' + Object.keys(LR).length +
+    ' nameOverrides=' + NO.length +
+    ' electricianProductivityKeys=' + Object.keys((LR.ELECTRICIAN || {}).productivity || {}).length);
   console.log('§ARCH_PROBE midairRepairCopy=' + MR + ' (0=first def / witness-sliced, 1=last def / browser-executed)');
 
   for (const bld of BUILDINGS) {
@@ -372,6 +435,46 @@ function fmtExt(ext, base) {
     console.log('  §ARCH_PHASE REMAP  ' + fmtExt(remapExt, remapBase));
     console.log('  §ARCH_PHASE REPAIR ' + fmtExt(dispExt, base));
 
+    // ── §STAGE_OCC (2026-08-13) — WHICH STAGE creates the idle? ──────────────────────────────
+    // §ARCH_PHASE above prints each stage's phase EXTENTS. Extents alone cannot say whether a
+    // stage widened a window around the same work or genuinely rescheduled it. This prints the
+    // same three stages as occupancy (work-days / window-days), which can only move when the ratio
+    // moves — so it attributes the idle to a stage instead of leaving it to inference. MEASURED,
+    // Hospital, and the two phases the user named split cleanly between two different stages:
+    //   MEP Final   RAW 176% (win 120d) -> REMAP 21% (win 1009d)   — COMPACT generatively; the
+    //               display remap stretched it 8.4x without adding one work-day. The remap owns it.
+    //   Architecture RAW 34% zone-mean 5% (win 891d)               — ALREADY sparse before any
+    //               remap runs. computeSchedule's support gate owns it; the remap only inherits.
+    // Read with §ZONE_BAR_TAIL below: RAW-vs-REMAP says WHICH LAYER, phase-vs-zone says WHICH UNIT.
+    (() => {
+      const occOf = (getS, getE) => {
+        const o = {};
+        items.forEach((it, i) => {
+          const s = getS(it, i), e = getE(it, i);
+          const x = o[it.phase] || (o[it.phase] = { w: 0, s: Infinity, e: -Infinity });
+          x.w += (e - s) / D; if (s < x.s) x.s = s; if (e > x.e) x.e = e;
+        });
+        const zz = {};
+        items.forEach((it, i) => {
+          const s = getS(it, i), e = getE(it, i), k = (it.storey || '_U') + '|' + it.phase;
+          const x = zz[k] || (zz[k] = { w: 0, s: Infinity, e: -Infinity });
+          x.w += (e - s) / D; if (s < x.s) x.s = s; if (e > x.e) x.e = e;
+        });
+        return PH_ORDER.filter(p => o[p]).map(p => {
+          const x = o[p], w = (x.e - x.s) / D;
+          const ks = Object.keys(zz).filter(k => k.slice(k.lastIndexOf('|') + 1) === p);
+          const zw = ks.reduce((a, k) => a + zz[k].w, 0);
+          const zwin = ks.reduce((a, k) => a + (zz[k].e - zz[k].s) / D, 0);
+          return p.slice(0, 6) + '=' + (w > 0 ? (100 * x.w / w).toFixed(0) : '0') + '%/zone' +
+            (zwin > 0 ? (100 * zw / zwin).toFixed(0) : '0') + '%(win' + w.toFixed(0) + 'd)';
+        }).join(' ');
+      };
+      console.log('  §STAGE_OCC ' + bld + ' RAW    ' + occOf(it => it.rawS, it => it.rawE));
+      console.log('  §STAGE_OCC ' + bld + ' REMAP  ' + occOf((it, i) => remapS[i], (it, i) => remapE[i]));
+      console.log('  §STAGE_OCC ' + bld + ' REPAIR ' + occOf(it => it.s, it => it.e) +
+        '   (phase%/zone-mean% — zone% is the honest work-package unit)');
+    })();
+
     // ── front-loading: share of the model whose START lands in the opening slice ──
     const cuts = [{ lbl: 'day<=1', ms: base + 1 * D }, { lbl: 'day<=2', ms: base + 2 * D },
       { lbl: 'day<=7', ms: base + 7 * D },
@@ -478,6 +581,64 @@ function fmtExt(ext, base) {
       return ph + '=' + (winD > 0 ? (100 * x.w / winD).toFixed(1) : '0.0') + '%' +
         '(work=' + x.w.toFixed(1) + 'd win=' + winD.toFixed(1) + 'd n=' + x.n + ')';
     }).join(' '));
+
+    // ── §ZONE_BAR_TAIL (2026-08-13, user: "the rush to build at onset leaving the rest idle is a
+    // bug", "not following its gantt bar length.. which gets idle the rest of it") ──────────────
+    // §DAY_GAP_PHASE_OCC above measures the PHASE-level bar. That is the wrong unit to diagnose in,
+    // and reading it alone points at the wrong fix. A phase bar is the UNION of one bar per zone
+    // (storey), so a phase can read "idle" purely because its zones are staggered — every zone busy,
+    // the union mostly empty — or because the zone bars are themselves empty. Those demand opposite
+    // fixes, and only this split tells them apart. MEASURED on Hospital, both cases are live at once:
+    //   Finishes      phase 5.6%  -> zone-mean 26.6%   (staggering; the zone packages ARE dense —
+    //                                                   Level 2 47%, Level 4 80%, Level 6 200%)
+    //   Architecture  phase 24.0% -> zone-mean  3.6%   (NOT staggering; the zone bars are 7x emptier
+    //                                                   than the phase bar — Level 5 Ceiling holds
+    //                                                   512 elements and 2.1 work-days over 969d)
+    //
+    // The second number here is the one that decides whether "trim the bar to the last real
+    // activity" is a fix or a cosmetic: it reports what each zone bar's width WOULD be if it ended
+    // at its own 95%-of-work point, and the occupancy that would follow. Hospital, measured:
+    //   MEP Final     1207d -> 310d (26%)  occ 17.5% -> 68.4%   trimming IS most of the fix here
+    //   Architecture  8444d -> 5487d (65%) occ  3.6% ->  5.5%   trimming is nearly worthless here
+    // So the trailing dead air is real and large in some phases and irrelevant in others; a single
+    // display-side trim cannot be the whole answer, and this line is what says which is which.
+    // tailN is reported next to it deliberately: the elements past the 95% mark are REAL scheduled
+    // elements (Architecture Level 4: 874 of 3293), so trimming the drawn bar would put hundreds of
+    // genuinely-scheduled elements outside their own bar. Reported, never silently trimmed.
+    (() => {
+      const zp = {};
+      items.forEach(it => { (zp[(it.storey || '_UNKNOWN') + '|' + it.phase] ||= []).push(it); });
+      PH_ORDER.forEach(ph => {
+        const ks = Object.keys(zp).filter(k => k.slice(k.lastIndexOf('|') + 1) === ph);
+        if (!ks.length) return;
+        const rows = ks.map(k => {
+          const set = zp[k];
+          const s0 = Math.min.apply(null, set.map(i => i.s)), e1 = Math.max.apply(null, set.map(i => i.e));
+          const win = (e1 - s0) / D, work = set.reduce((a, i) => a + (i.e - i.s) / D, 0);
+          // 95%-of-work point: walk the bar's elements by END time, accumulating work-days
+          const byEnd = set.slice().sort((a, b) => a.e - b.e);
+          let run = 0, p95e = e1;
+          for (const it of byEnd) { run += (it.e - it.s) / D; if (run >= 0.95 * work) { p95e = it.e; break; } }
+          return { z: k.slice(0, k.lastIndexOf('|')), win: win, work: work, n: set.length,
+            occ: win > 0 ? 100 * work / win : 0, tail: set.filter(i => i.e > p95e).length,
+            p95: (e1 > s0) ? 100 * (p95e - s0) / (e1 - s0) : 100 };
+        }).sort((a, b) => b.win - a.win);
+        const sumWin = rows.reduce((a, r) => a + r.win, 0);
+        const sumWork = rows.reduce((a, r) => a + r.work, 0);
+        const trimmed = rows.reduce((a, r) => a + r.win * r.p95 / 100, 0);
+        const phWin = (occPh[ph].e - occPh[ph].s) / D;
+        console.log('  §ZONE_BAR_TAIL ' + bld + ' ' + ph + ' zones=' + rows.length +
+          ' phaseBarOcc=' + (phWin > 0 ? (100 * sumWork / phWin).toFixed(1) : '0.0') + '%' +
+          ' zoneMeanOcc=' + (sumWin > 0 ? (100 * sumWork / sumWin).toFixed(1) : '0.0') + '%' +
+          ' (zoneMean>>phase = staggered zones, zoneMean<<phase = the zone bars are themselves empty)' +
+          ' | sumZoneWin=' + sumWin.toFixed(0) + 'd trimmedTo95%work=' + trimmed.toFixed(0) + 'd' +
+          ' (' + (sumWin > 0 ? (100 * trimmed / sumWin).toFixed(0) : '0') + '%) occIfTrimmed=' +
+          (trimmed > 0 ? (100 * sumWork / trimmed).toFixed(1) : '0.0') + '%' +
+          ' | widest=' + rows.slice(0, 3).map(r => '"' + r.z + '" ' + r.win.toFixed(0) + 'd work=' +
+            r.work.toFixed(1) + 'd occ=' + r.occ.toFixed(1) + '% n=' + r.n + ' 95%workAt=' +
+            r.p95.toFixed(0) + '% tailN=' + r.tail).join(' | '));
+      });
+    })();
 
     // ── §DAY_GAP_TAIL — is a phase's empty window caused by a FEW straggler elements? ─────────
     // Superstructure's Hospital window moved 306.6→486.0 between REMAP and REPAIR while its work
