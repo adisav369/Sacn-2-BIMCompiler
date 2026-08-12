@@ -827,3 +827,86 @@ Superseded predecessor PR bim-ootb#1235 (`fix/night-glow-buildup-gate`, the stal
 branch this bug was originally traced to) closed without merging, comment cross-links #1260.
 Worktree `/tmp/wt-glow-buildup-gate2` and branch `fix/glow-buildup-gate-v2` pruned post-merge
 (0 ahead, 0 dirty). Nothing left open on this item.
+
+## §BAKE_INTERIOR_LIGHTS — a movie bake had NO fixture lighting at all (2026-08-12)
+
+User: *"Night mode usually solves this PL well, when Fly or handsfree… during baking, there are no
+PLs shining at the lighting"* — interiors dark through the film, the exterior beat at the end fine.
+
+### Measured FIRST, on a real headless Duplex MaxQ bake of unpatched `main` (28 frames, swiftshader)
+
+| frame | `§NIGHT_STILL_LIGHTS` | `A._nightLights.length` | scene point-light intensity sum |
+|---|---|---|---|
+| 0 | raised to **18** lights | 18 | 127.39 |
+| 1 | raised to **0** lights | 0 | 82.39 |
+| 2 … 27 | never logged again | **0** | 82.39 |
+
+`127.39 − 82.39 = 45.00 = 18 × NIGHT_LIGHT_INTENSITY (2.5)` — every fixture light, exactly, gone for
+the whole remainder of the film. Probe: `probe_bake_lighting.js` (live `page.evaluate` census of
+`THREE.PointLight`s, not a screenshot).
+
+### Two defects; it is the PAIR that made it permanent
+- **(a) frustum-only selection, hard floor of zero.** `_nightUpdateLights`'s `§NIGHT_STILL_FRUSTUM`
+  branch selected only fixtures whose *centre* is inside the view frustum. A wide establishing beat —
+  or an interior lit by the troffers directly overhead/behind the eye — selects zero and every light
+  is disposed.
+- **(b) the re-arm gates read that selection's OUTPUT.** `§NIGHT_STILL_LIGHTS` and
+  `_teardownStillRefine` both asked `A._nightLights.length` before calling the selector. Once (a)
+  produced 0, nothing could call it again — a **self-latching zero**.
+
+Navigation never takes the frustum branch (`§NIGHT_STILL_BOOST_GATE_FIX`), which is precisely why
+Fly/handsfree stayed lit while the bake went dark — one mechanism, both halves of the report.
+
+### Interior vs exterior is structural, not coincidence
+Same run: `§MOVIE_SHADOW_TM sun=4.400 ambient=0.785 hemi=1.257 fill=2.042`, and staging enables sun
+shadow casting (`§PHOTO_SHADOW`). An interior surface is shadow-occluded from the sun and lit by the
+2.042 uniform fill **plus these point lights**; an exterior surface gets 4.400 + 2.042 = 6.44. Losing
+the point lights costs an exterior almost nothing and an interior everything that is not flat fill.
+
+### The fix (bim-ootb PR #1327, `fix/bake-interior-lighting`)
+1. `tools.js` **§NIGHT_PICK_NEAREST** — the nav nearest-to-aim + `§NIGHT_SPREAD` pick extracted
+   verbatim; the still/bake branch now **tops the frustum set up** to `A._nightMaxLightsStill` (50,
+   already the sanctioned still count) with that same rule. No new constant, nav unchanged.
+2. `tools.js` **§BAKE_FRUSTUM_STALE** — refresh `camera.matrixWorld`/`matrixWorldInverse` before the
+   frustum: the bake moves the camera and calls `startStillRefine()` before any render of that pose,
+   so the cull ran against the previous frame's view.
+3. `tools.js` **§BAKE_LIGHT_BUILDUP_GATE** — the identical `p.__guid == null ||
+   A._tmIsVisible(p.__guid)` line the sprite (#1235/#1260) and lens quad already use, now on the
+   ILLUMINATION. The baseline run logged `§PHOTO_GLOW_SPRITE_GATE 0/18 fixtures placed yet` while 18
+   point lights shone from those same unplaced fittings — the light was the one system ignoring the
+   schedule. TM's own predicate hides an unscheduled element's mesh
+   (`time_machine.js` `showReal = (isRecent || isPlaced)`), so the light now matches the mesh.
+4. `effects.js` — both re-arm gates read INPUTS (`A._nightMode` + `A._nightFixtures.length`); the
+   boost moved into `_stillNightLightBoost()` and runs **after** `_applyPhotoStaging()` (staging is
+   what turns night mode on, so bake frame 0 and every session's first Alt+S used to run at the nav
+   budget with the 0.3 near-fade penalty).
+5. `effects.js` (perf) — during a MaxQ bake with staging kept, the still budget is no longer handed
+   back per frame: the light set was rebuilt **twice per captured frame**, and a change in light
+   COUNT is the three.js shader recompile `§NIGHT_LIGHT_CHURN` named as the expensive part.
+6. **§BAKE_LIGHTS** — new numeric witness line, both per bake frame (`cinema_maxq.js`, `§CPE_BUILDUP`
+   cadence) and on every change of the selection answer (`tools.js`):
+   `placedFixtures=P/F inFrustum=V activePL=L mode=… budget=… nearFadeFloor=… plIntensitySum=… sun=… fill=…`
+
+Witness: bim-ootb `tests/witness_bake_interior_lights.js` — real headless bake, gates on numbers only
+(`G-BL-LATCH`, `G-BL-TRACK`, `G-BL-GATE`, `G-BL-RISE`, `G-BL-LIVE`, `G-BL-NAV`; `BASE=1` for the RED
+side). **7/7 PASS on this branch** (real headless Duplex bake, 28 frames, buildup on):
+`G-BL-LATCH lastFrame=27 placedFixtures=18/18 activePL=18` (baseline: 0);
+`G-BL-TRACK selections=47 placedButDark=0 litMoreThanPlaced=0`;
+`G-BL-RISE placed 14,18,18,4,…,12,…,18` with an **identical** active series;
+`G-BL-LIVE 263 samples night-on with placed fixtures, 0 with zero point lights`;
+`G-BL-NAV mode=all nightLights=14/14 budget=30 floor=0.3` (nav rule intact).
+Final frame `plIntensitySum=45` — exactly the 45.00 the baseline lost at frame 1.
+
+### OPEN, measured, NOT decided here — fixtures read weaker in a bake than in Night Mode
+Not a bug; a consequence of the two lighting environments, stated with the arithmetic so nobody
+re-derives it:
+
+| | non-directional fill (ambient+hemi) | exposure | a PL's own contribution | PL vs fill |
+|---|---|---|---|---|
+| Night Mode nav | 0.28 | 0.80 | `2.5 / d^1.5` | ≈ **8.9×** the fill |
+| Photo/MaxQ staging | 2.042 | 0.383 | same `2.5 / d^1.5` | ≈ **1.2×** the fill |
+
+So a fitting "pops" ~7.3× more in Night Mode than in a bake, at the same `NIGHT_LIGHT_INTENSITY`.
+If the user wants the luminaires to READ in the film, the levers are a still-specific intensity or a
+lower staged fill — both are user calls with a history of "too bright" (intensity was cut
+8.0→6.5→4.5→2.5 across 2026-07/08), so nothing was changed here on our own authority.
