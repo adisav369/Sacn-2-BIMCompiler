@@ -1471,7 +1471,51 @@ LENGTH is unchanged (11% both), `spanD` is unchanged (278.5→278.5), and MEP Ro
 which one is reported as the max. Not a regression; recorded so the next reader does not re-derive it.
 Every other building's §-numbers are byte-identical.
 
-## §DOOR_WINDOW_HOST_WALL_DISPLAY — OPEN, NOT FIXED: the display layer un-does `openingGate`
+## §DOOR_WINDOW_HOST_WALL_DISPLAY — ✅ FIXED (witness), bim-ootb `fix/door-window-host-display`
+**CLOSED 2026-08-12, same day it was found. Do not re-measure the before-numbers below — they are the
+pre-fix state, kept as provenance.** The fix is the display-layer twin this section itself predicted:
+`ScheduleGate.openingPairs()` (one pairing at module scope, `openingGate`'s own pools + fallback
+ORDER + its bracket predicate hoisted as `openingBrackets()`), honoured by `_twoTierRemap` right
+beside the `hostPairs` repair — same shape as §HOSTED_BEFORE_HOST, deliberately not a second
+mechanism. Later-only: an opening is pushed to its host's end, never pulled earlier.
+
+| building | dispEARLY BEFORE | dispEARLY AFTER | attribution of the residual |
+|---|---|---|---|
+| LTU_AHouse | 366/1280 (28.5%) | **25/1280 (2.0%)** | gen=0 remap=0 → display=25 |
+| Terminal | 61/371 (16.4%) | **0 (0.0%)** | — |
+| JKR | 15/148 (10.1%) | **0 (0.0%)** | — |
+| Hospital | 14/570 (2.5%) | **1/570 (0.2%)** | gen=0 remap=0 → display=1 |
+| HHS / Clinic / Duplex | 0 (0.0%) | **0 (0.0%)** | — |
+
+**Every residual is `remap=0 → display=N`** — i.e. `_midairRepair`, which runs AFTER the twin, moving
+a host wall later than what it hosts. That attribution is not inferred, it is the new **`G-CWO-STAGE`**
+gate printing gen/remap/display per building every run. Driving it to 0 means alternating the two
+rules to a joint fixpoint, which `_midairRepair`'s own header records as **built, measured and
+REJECTED** (4 rounds, 7,650 pushes, no convergence, 0.8s → 14.8s; one rule is keyed on a contact's
+START, the other on a host's END). So the residual is accepted at the lane's standing 5% margin —
+the same margin `G-HOST-DISPLAY` carries for the identical reason.
+
+**`gate_4d.sh` A/B — baseline run against a PRISTINE EXPORT of `main`, not this tree, so the two logs
+are a real A/B and not a self-comparison:** `pass=7 fail=0 missing=1` → **`pass=8 fail=0 missing=1`**
+(`missing` = `witness_arch_area_weight`, pre-existing; the +1 pass is `§CACHE_VERSION_GUARD` going
+`SKIP` (plain export can't diff) → **`PASS gating_changed=36 version_bumped=1`**). Every other witness
+byte-identical: `zone_index 5/5`, `tier_serial_display 57/0`, `crew_demand 4/4`, `midair_zero 38/0`,
+`hosted_before_host 4/4`, `kernel_ops_sched_version 12/0`; `curtain_wall_opening` **4/4 → 5/5**.
+**Zero §-number drift outside `§DW_COVER`** — `§TIER_SERIAL_BY_ZONE`, `§DAY_GAP`,
+`§DAY_GAP_PHASE_OCC`, `§CREW_AUTOSCALE`, `§HOSTED_BEFORE_HOST` are identical on all 7 buildings. The
+change moves openings and nothing else. `probe_door_wall.js`'s independent `§DW_COVER wallGrid`
+column reproduces the witness numbers exactly, and the unfiltered `any` pool (upper bound, never a
+target) improves as a side effect: Terminal 42.3→34.0%, LTU 65.4→50.4%, JKR 64.2→58.1%,
+Hospital 30.1→27.8%. **PR bim-ootb #1326.**
+
+**`G-CWO-DISPLAY` PROMOTED report-only → BLOCKING** (`<= 5%` of `hostMatched`). It shipped
+non-asserting for exactly one day so this fix could promote it rather than red-flag every run for an
+unowned defect. `witness_curtain_wall_opening` is now **5/5** (was 4/4).
+**`_GANTT_CACHE_VERSION` 14 → 15, `sw.js` v1010 → v1011** — `kernel_ops` is written from the DISPLAY
+timeline, so a building materialized under v14 replays the un-repaired order forever regardless of
+deployed code. `§CACHE_VERSION_GUARD` PASS is part of the after-run proof.
+
+### The pre-fix measurement (provenance — do not redo)
 Found by the same probe, 2026-08-12. **Separate defect, separate lane — deliberately NOT bundled into
 the §CURTAIN_WALL_OPENING fix** (this lane's own gate exists because five changes landed in one day
 and no witness owned the broken predicate). It does **not** affect HHS, so it is not the reported bug.
@@ -1494,10 +1538,14 @@ own note predicts, NOT a worsening of this defect: the dispEARLY **percentages a
 0.1pp** across the merge. Quote the percentages, not the days, when tracking this thread.
 
 4 of 7 buildings show doors on screen before their own host wall finishes, up to 974 days early.
-§HOSTED_BEFORE_HOST got a display-layer twin (`_midairRepair` reads `ScheduleGate.hostPairs`);
+§HOSTED_BEFORE_HOST got a display-layer twin (`_twoTierRemap` reads `ScheduleGate.hostPairs`);
 §DOOR_WINDOW_HOST_WALL never did. **The likely fix is symmetric** — give the display repair the same
 opening/host-wall pass, reusing `openingScan`'s pool now that both grids exist. Re-measure with
 `probe_door_wall.js` (the `dispEARLY` column IS the acceptance number) before and after.
+↳ That is exactly what shipped; the prediction held, and the twin needed no new threshold or class
+list of its own. One correction to the sentence above for the next reader: the `hostPairs` twin lives
+in **`_twoTierRemap`**, not `_midairRepair` — which is precisely why `_midairRepair` can still leave
+the small residual both twins share.
 
 **Also observed, unrelated and pre-existing (A/B-confirmed identical before this fix):** JKR reports
 `§SUPPORT_CYCLE cycles=4564` on a 8,985-element model — over half the model is Kahn-leftover. Not
