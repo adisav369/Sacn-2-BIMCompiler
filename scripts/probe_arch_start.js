@@ -35,11 +35,12 @@ const ScheduleGate = require(path.join(VIEWER_DIR, 'schedule_gate.js'));
 const ScheduleAuthor = require(path.join(VIEWER_DIR, 'schedule_author.js'));
 const tmSrc = fs.readFileSync(path.join(VIEWER_DIR, 'time_machine.js'), 'utf8');
 
+const OPTIONAL = { _zoneIndexBuild: 1, _zoneIndex: 1, _zoneOf: 1 };
 function sliceFn(src, name, which) {
   let from = 0;
   for (let pass = 0; pass <= (which || 0); pass++) {
     const idx = src.indexOf('function ' + name + '(', from);
-    if (idx < 0) throw new Error(name + ' #' + (which || 0) + ' not found');
+    if (idx < 0) { if (OPTIONAL[name]) return null; throw new Error(name + ' #' + (which || 0) + ' not found'); }
     let depth = 0, i = idx, seenOpen = false;
     for (; i < src.length; i++) {
       if (src[i] === '{') { depth++; seenOpen = true; }
@@ -56,7 +57,15 @@ function sliceFn(src, name, which) {
 // (what the browser executes). Default 1 = ship truth.
 const MR = parseInt(process.env.MR || '1', 10);
 const tierOrderLine = "var _TIER1_ORDER = ['Substructure', 'Superstructure', 'Architecture'];";
+// §ZONE_INDEX (bim-ootb #1313): _buildXrayElements now reads the shared memoized zone index, so
+// the probe must slice it too. sliceFn returns null on an older tmSrc that predates it, and
+// filter(Boolean) below drops it — so this file still measures pre-#1313 revisions unchanged.
+const zoneParts = [sliceFn(tmSrc, '_zoneIndexBuild'), sliceFn(tmSrc, '_zoneIndex')].filter(Boolean);
+// §TIER_SERIAL_BY_ZONE's zone key helper — optional the same way, so pre-change revisions still run.
+const zoneOfPart = sliceFn(tmSrc, '_zoneOf') || '';
 const sliced = [tierOrderLine,
+  (zoneParts.length === 2 ? 'var _zoneMemo = [];' : ''), zoneParts[0] || '', zoneParts[1] || '',
+  zoneOfPart,
   sliceFn(tmSrc, '_promoteRoofLoadPath'), sliceFn(tmSrc, '_buildXrayElements'),
   sliceFn(tmSrc, '_tier1Extents'), sliceFn(tmSrc, '_tier1Serialize'),
   sliceFn(tmSrc, '_tier1Protrusion'), sliceFn(tmSrc, '_tierAuditRegate'),
@@ -112,7 +121,8 @@ function fmtExt(ext, base) {
     t.dbOpen = now() - t0;
     const sandbox = { console: { log: () => {}, warn: () => {} }, performance: { now: () => Date.now() },
       window: { SEQUENCE_RULES: SR, SEQUENCE_DEFAULT: SD, SEQUENCE_NAME_OVERRIDES: NO },
-      ScheduleGate: ScheduleGate, Math: Math, A: () => ({ db: db }) };
+      ScheduleGate: ScheduleGate, Math: Math, RegExp: RegExp, Object: Object, Infinity: Infinity,
+      A: () => ({ db: db, activeBuilding: bld, _metaGen: 0 }) };
     vm.createContext(sandbox);
     vm.runInContext(sliced + '\nthis.__bxe = _buildXrayElements; this.__remap = _twoTierRemap; this.__repair = _midairRepair;', sandbox);
     t0 = now();
