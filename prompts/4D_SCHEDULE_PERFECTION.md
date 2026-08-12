@@ -1,6 +1,63 @@
 # ⚠ DO NOT REMOVE — 4D generated-schedule accuracy. Read the log after every run, spec-first,
 # no invented dependency edges or rates. Every number here traces to real extracted data or a
 # nameable, once-confirmed business assumption — never a plausible-looking value.
+
+---
+
+# ▶ NEXT SESSION — START HERE. THIS IS YOUR TASK LIST, NOT BACKGROUND READING.
+
+You are taking over a live lane with a **user-visible bug measured and unfixed**. Work it to zero.
+Do not re-survey the file first — the survey is done and recorded below. Read §WORKING_STYLE and
+§AGENT_DISPATCH (both near the end), then start at task 1.
+
+**Rules for this handover, from the user, non-negotiable:**
+terse replies · do not ask what is already in this file · ship what is spec'd rather than re-speccing
+it · 5% error margin is acceptable · one numbered list, work it top to bottom, mark each `✅ DONE
+(witness)` or `⛔ BLOCKED: <the one question>` and MOVE ON. Do not stop to report "it's parked."
+
+### 1. §HOSTED_BEFORE_HOST — the reported bug. Hospital 52.3% early, worst 147.7d.
+User saw it: *"electrical outlets and hanging elements appearing bit early."* Measured:
+`IfcLightFixture` starting up to 147.7 days before the `IfcCovering` it hangs on.
+```
+scripts/gate_4d.sh                       # baseline, all witnesses + probe, one pass/fail
+# provenance FIRST — do not assume it is a regression from #1314:
+mkdir -p /tmp/vw && cd ~/bim-ootb && for f in schedule_gate.js schedule_author.js time_machine.js rates.js; \
+  do git show 42539c9:viewer/$f > /tmp/vw/$f; done && mkdir -p /tmp/vw/rates && \
+  git show 42539c9:viewer/rates/sequence_rules.json > /tmp/vw/rates/
+VIEWER_DIR=/tmp/vw BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js | grep HOSTED_BEFORE_HOST
+```
+If EARLY% is the same pre-#1313 → long-standing, fix it on its merits. If it jumped → #1314's zone
+barrier, and the named fix applies: **a hosted element inherits its HOST's zone/schedule floor, not
+its own median-Z band.** Either way: promote `§HOSTED_BEFORE_HOST` from a probe line to a real
+witness that **asserts EARLY=0**, then fix until it passes. That witness is the deliverable.
+
+### 2. §DAY_GAP_TAIL — root cause still unfound.
+Dead run now sits at the film's END (Hospital 84–97%, LTU 94–99%). LTU: 313 structural members
+spanning 1386d past their phase's 95% mark, `IfcBeam@day1714` of a 1941d programme. **The
+geometry-outlier theory is DISPROVEN — do not re-walk it** (§DAY_GAP_PHASE_OCC). Next measurement is
+named there: for the tail elements, log WHICH support edge set their start
+(`_tierAuditRegate`/`_midairRepair`, both later-only — one bad edge drags an element and its window).
+
+### 3. Verify #1317 and #1318 actually landed, then re-check.
+Both were auto-merge armed at handover, not confirmed merged. `gh pr view 1317 --json state`.
+#1317 = §ARCH_AREA_WEIGHT (walls install by real area — the "ARCH too fast" fix, sw v1005).
+#1318 = §GANTT_CACHE_ERR stack logging (sw v1006). After they land, ask the user to re-bake and read
+the new `§GANTT_CACHE_ERR ... stack=` line — a live error was recovered-but-unlocated at handover.
+
+### 4. Standing gate for everything after.
+`scripts/gate_4d.sh` before AND after any 4D change; diff the two logs. It exists because five
+changes shipped 2026-08-12 each passed its own witness in isolation while a visible bug survived.
+Never trust a single green witness again.
+
+**What is already done — do not redo, cite it:** §DAY_GAP lane resolved to zero (#1313 §ZONE_INDEX ·
+#1314 §TIER_SERIAL_BY_ZONE · #1315 §CREW_DEMAND/§HR_COST · #1317 §ARCH_AREA_WEIGHT); movie shadow
+matched to TM exactly (#1316, ratio 2.155, user-confirmed "working great"); schedule export already
+ships MS Project XML + P6 PMXML/XER in `viewer/schedule_editor_ui.js`.
+
+**The product framing, from the user:** the editable Gantt + JSON is the PRODUCT; the generated 4D
+is a fast demo. *"As long users get to find this suite highly usable is all we after."* Rank
+accordingly — see §BIM_USABILITY_REVIEW.
+
 # Full day-by-day history (2026-08-03 → 2026-08-12, 3941 lines) archived verbatim, nothing lost:
 #   prompts/archive/4D_SCHEDULE_PERFECTION_full_history_2026-08-03_to_2026-08-12.md
 #   Consolidated 2026-08-12 per user ask ("first consolidate the prompts/#") — this file keeps the
