@@ -722,3 +722,113 @@ need the window derivation fixed.
 2. **`max_crews` scaled to project size**, JSON-overridable (the user's idea, correctly aimed) —
    fixes the 128–174% MEP overload.
 3. **Do NOT build the spread-starts lever** — see above, twice over.
+
+---
+
+### §TIER_SERIAL_BY_ZONE — mechanism located, fix SIMULATED, result is PARTIAL (2026-08-12)
+
+**Mechanism, measured.** `_twoTierRemap` (§TIER_SERIAL, #1282) makes the Tier-1 backbone
+(Substructure→Superstructure→Architecture) strictly serial **globally**: every Superstructure element
+anywhere finishes before any Architecture element starts. Hospital REMAP shows it exactly —
+`Architecture=[306.6..603.7]`, `MEP=[603.7..1168.7]`, each phase beginning on the tick the previous
+one ends, where RAW had `Superstructure=[0.0..296.3]`, `Architecture=[0.0..297.1]`,
+`MEP=[38.9..297.8]` running concurrently. **The remap inflates the programme on all 7 buildings:**
+
+```
+              RAW end   REMAP end  inflation        by-zone SIM   vs today   longestEmptyRun
+Hospital        314.9      1168.7    3.71x             616.7        0.53x       12% → 13%
+Terminal        113.1       375.2    3.32x             215.8        0.58x        6% →  8%
+JKR              36.4       110.1    3.02x              72.2        0.66x       10% →  6%
+Clinic          143.7       399.8    2.78x             278.4        0.70x       17% → 13%
+HHS_Office      46.1        122.1    2.65x              77.7        0.64x       10% → 12%
+LTU_AHouse      810.9      1941.1    2.39x            1240.6        0.64x       29% →  3%
+Duplex           10.5        18.0    1.71x              13.2        0.73x       23% → 10%
+```
+
+§TIER_SERIAL's own header cites the ruling it implements: *"ARCH/STR should be exempt as they are
+the physical foundation. **Separate unrelated disciplines can run parallel thereafter if
+construction practice permits**"* — and real practice starts walls on level 1 while level 7 is still
+framing. A global barrier is stricter than that ruling requires.
+
+**Simulation (probe only, shipped code untouched): run the SAME shipped remap per DERIVED storey
+band instead of once globally.** Nothing hardcoded, nothing per-building — the band key is the
+storey `_buildXrayElements` already assigns by median-Z ranking, straight out of the model; a
+single-storey model collapses to exactly today's behaviour.
+
+**Result, reported straight: it halves the inflation but does NOT fix the dead air.** Programme
+drops to 0.53×–0.73× (Hospital 1168.7d → 616.7d), but the longest empty run only improves on 4 of 7
+buildings and gets *worse* on Hospital (12→13%), Terminal (6→8%) and HHS (10→12%). Per-phase
+occupancy barely moves (Hospital Superstructure 24%→23%, Architecture 18%→18%). **So zone-scoping
+the barrier is a real and worthwhile programme-length fix, but it is NOT the dead-air fix, and must
+not be sold as one.** The dead air needs the window-derivation work (rank 1 above) as well.
+
+### §ZONE_KEY — the generic spatial key, and the COMMON-SENSE GAPS found while specifying it
+
+User direction (2026-08-12): *"as long u ensure this is all abstract, generic to use in any IFC, at
+earnest effort of the script rather than hard custom setting"* · *"we have other injections too ie
+storey room space, should all come into play amicably"* · *"consolidate them to run well efficiently
+cached for reuse thru out the building ops"* · *"then check for common sense gaps such as above."*
+
+**GAP 1 — the spatial key is MOSTLY MISSING, so it can never be the primary key.** Measured share of
+elements whose `elements_meta.storey` is null/empty/"unknown":
+```
+Duplex 86.0% (1,026/1,193) · Terminal 69.9% (33,848/48,428) · Clinic 32.2% (5,570/17,322) · Hospital 15.9% (10,192/64,150)
+```
+Any zone-scoped scheduling MUST run on the **derived** band (`assignStoreyByZ`'s median-Z ranking),
+not the raw column. That is already the shipped behaviour inside `_buildXrayElements` and it is
+generic — but it means "storey" in the scheduler is a **geometric inference, not IFC truth**, and
+every doc/log line about it should say so rather than implying the model supplied it.
+
+**GAP 2 — the richer spatial hierarchy exists on ONE building out of seven.** `Terminal_extracted.db`
+alone carries `spatial_structure` (n=59: `guid, type, name, parent_guid, object_type,
+predefined_type, center_*, size_*` — real `IfcBuildingStorey` rows) and `rel_contained_in_space`
+(n=2,181: `space_guid → element_guid`). Hospital/Clinic/Duplex have neither. So room/space zoning
+**cannot be required**. This is what "storey room space should all come into play amicably" has to
+mean in practice: a **fallback chain**, finest available wins, degrading silently —
+```
+  room/space  (rel_contained_in_space + spatial_structure, where extracted)
+    → storey  (elements_meta.storey, where non-null)
+      → derived band (assignStoreyByZ median-Z ranking — ALWAYS available, geometry only)
+        → single zone (degenerate: exactly today's global behaviour)
+```
+Each level is an optional refinement over the one below, never a prerequisite. A building extracted
+without spatial tables loses precision, never correctness.
+
+**GAP 3 — occupancy spread of 4.7% → 323% inside one building.** Hospital: `MEP Final=323.2%`,
+`MEP Rough-in=128.5%`, `Substructure=157.8%` against `Architecture=18.1%`, `Superstructure=24.4%`.
+LTU: `Substructure=4.7%` against `MEP Rough-in=174.3%`. A real programme keeps trades roughly
+continuously employed; a 70× spread between phases of the same building is the single clearest
+signal that windows are not derived from work content.
+
+**GAP 4 — a wall takes less time than a beam, by count.** Hospital `Architecture n=17,236 →
+100.7 work-days` (mean 0.006 d ≈ **8 minutes/element**) vs `Superstructure n=2,603 → 116.0
+work-days` (mean 0.045 d ≈ 64 min). 6.6× more architecture elements carrying *less* total work.
+Consistent with the parked weighting lane's "50–71% of labour-seconds carry no size signal" — the
+productivity table is right per unit (§DAY_GAP_PHASE_OCC correction 2), but the *unit count* an
+architecture element represents is not being derived from its size.
+
+**GAP 5 — the storey banding is ALREADY computed twice.** `_buildXrayElements`'s `assignStoreyByZ`
+and `injectGantt`'s own `§GANTT storey-bands: N bands from storey names (median Z)` are the same
+derivation in two places — the identical duplication pattern `CPE_4D_PERF_MEM_FINDINGS.md §R7`
+records for the support predicate (4 copies) and the element build (a self-described "DELIBERATE
+COPY"). Adding a third consumer (a zone barrier) without consolidating first would make it three.
+
+### §ZONE_INDEX — the consolidation the user asked for
+**ONE derived spatial-zone index, computed once per (building, `_metaGen`), memoized, consumed by
+every building op that needs a zone:** `injectGantt`'s storey bands · `_buildXrayElements` ·
+the §TIER_SERIAL_BY_ZONE barrier · zone-level authoring (`materializeZones`, already emitting
+`"<Phase> — <Storey>"`) · the Gantt's row grouping. Shape and cache discipline are already proven in
+this repo — **reuse `§XRAY_CACHE_MEMO`'s pattern verbatim** (bim-ootb #1308): a 2-slot memo keyed on
+`activeBuilding + _metaGen`, pure-function payload, runtime state never memoized, equivalence-gated
+(`mismatch=0`) against the un-memoized derivation. That is the "efficiently cached for reuse thru
+out the building ops" ask, and it is the same lever as R7 — consolidate first, then add the consumer.
+
+**Order of work (do not reorder — each step de-risks the next):**
+1. `§ZONE_INDEX` — extract the ONE banding derivation + fallback chain + memo. Pure refactor,
+   equivalence-gated, zero schedule change. Closes GAP 5 and GAP 1/2 in one place.
+2. `§TIER_SERIAL_BY_ZONE` — swap the global Tier-1 barrier for a zone-scoped one on top of (1).
+   Expect 0.53×–0.73× programme, **not** a dead-air fix. Witness must re-run W-TS-1..6 + tier_serial
+   + midair + gantt_lock; the "never before its support" guarantee is *strengthened* locally but the
+   proof obligation is unchanged.
+3. Window derivation from work content (rank 1) — the actual dead-air fix, and the largest piece.
+4. `max_crews` scaled + JSON override — the overload half, the user's own idea.

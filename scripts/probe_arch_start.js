@@ -165,7 +165,8 @@ function fmtExt(ext, base) {
 
     const items = geoEls.map(e => ({ guid: e.guid, s: sched[e.guid].start, e: sched[e.guid].end,
       rawS: sched[e.guid].start, rawE: sched[e.guid].end,
-      bz: e.base_z, tz: e.top_z, x0: e.x0, x1: e.x1, y0: e.y0, y1: e.y1, cls: e.cls, seq: e.seq, phase: e.phase }));
+      bz: e.base_z, tz: e.top_z, x0: e.x0, x1: e.x1, y0: e.y0, y1: e.y1, cls: e.cls, seq: e.seq, phase: e.phase,
+      storey: e.storey }));   // §TIER_SERIAL_BY_ZONE: storey comes from _buildXrayElements' median-Z banding — derived from the model, never configured
 
     // RAW generative extents
     const rawBase = Math.min.apply(null, items.map(i => i.rawS));
@@ -190,6 +191,54 @@ function fmtExt(ext, base) {
     const endAll = Math.max.apply(null, items.map(i => i.e));
     const spanD = (endAll - base) / D;
     const dispExt = extents(items, { s: 's', e: 'e' });
+
+    // ── §TIER_SERIAL_BY_ZONE (2026-08-12) — SIMULATION ONLY, shipped code untouched ──────────
+    // §TIER_SERIAL makes the Tier-1 backbone (Substructure→Superstructure→Architecture) strictly
+    // serial GLOBALLY: all Superstructure everywhere finishes before any Architecture starts. That
+    // is what inflates the programme 1.7-3.7x over RAW and creates the dead air. Its own header
+    // cites the user ruling it implements — "separate unrelated disciplines can run parallel
+    // thereafter if construction practice permits" — and real practice starts walls on level 1
+    // while level 7 is still framing.
+    // This measures what happens if the SAME shipped remap runs per DERIVED STOREY BAND instead of
+    // once globally. Nothing is hardcoded and nothing is per-building: the band key is the storey
+    // already assigned by _buildXrayElements' median-Z ranking, straight out of the IFC. A model
+    // with one storey collapses to exactly today's behaviour.
+    const bandOf = {};
+    items.forEach(it => { bandOf[it.storey || '_UNKNOWN'] = 1; });
+    const bandKeys = Object.keys(bandOf);
+    const simItems = items.map(it => ({ guid: it.guid, s: it.rawS, e: it.rawE,
+      bz: it.bz, tz: it.tz, x0: it.x0, x1: it.x1, y0: it.y0, y1: it.y1,
+      cls: it.cls, seq: it.seq, phase: it.phase, storey: it.storey }));
+    const byBand = {};
+    simItems.forEach(it => { (byBand[it.storey || '_UNKNOWN'] ||= []).push(it); });
+    for (const bk of bandKeys) {
+      sandbox.__band = byBand[bk];
+      if (!sandbox.__band || !sandbox.__band.length) continue;
+      vm.runInContext('this.__remap(this.__band); this.__repair(this.__band);', sandbox);
+    }
+    const simEnd = Math.max.apply(null, simItems.map(i => i.e));
+    const simSpanD = (simEnd - base) / D;
+    const simOcc = {};
+    simItems.forEach(it => {
+      const x = simOcc[it.phase] || (simOcc[it.phase] = { w: 0, s: Infinity, e: -Infinity, n: 0 });
+      x.w += (it.e - it.s) / D; x.n++;
+      if (it.s < x.s) x.s = it.s;
+      if (it.e > x.e) x.e = it.e;
+    });
+    const simSpanMs = Math.max(1, simEnd - base);
+    const simHist = new Array(100).fill(0);
+    simItems.forEach(it => { simHist[Math.min(99, Math.floor((it.s - base) / simSpanMs * 100))]++; });
+    let simBest = 0, simCur = 0;
+    for (let b = 0; b < 100; b++) { if (simHist[b] === 0) { simCur++; if (simCur > simBest) simBest = simCur; } else simCur = 0; }
+    console.log('  §TIER_SERIAL_BY_ZONE ' + bld + ' bands=' + bandKeys.length +
+      ' spanD ' + spanD.toFixed(1) + ' → ' + simSpanD.toFixed(1) +
+      ' (' + (simSpanD / spanD).toFixed(2) + 'x, RAW was ' + ((Math.max.apply(null, items.map(i => i.rawE)) - rawBase) / D).toFixed(1) + ')' +
+      ' longestEmptyRun ' + '→' + simBest + '%' +
+      ' occ=' + Object.keys(simOcc).sort((a, b2) => {
+        const ia = PH_ORDER.indexOf(a), ib = PH_ORDER.indexOf(b2);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      }).map(ph => { const x = simOcc[ph], w = (x.e - x.s) / D;
+        return ph.slice(0, 6) + '=' + (w > 0 ? (100 * x.w / w).toFixed(0) : '0') + '%'; }).join(' '));
 
     console.log('\n════ ' + bld + '  elements=' + items.length + '  displaySpan=' + spanD.toFixed(1) +
       'd  firstElementStartsDay=' + ((dispMin - rawBase) / D).toFixed(1) + ' (all rows share the RAW epoch)');
