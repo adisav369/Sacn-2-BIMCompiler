@@ -995,3 +995,28 @@ User's own read was close — *"one whole phase Gantt set not measured before pl
 answer to *"why can't we just have a template"* is that `sequence_rules.json` IS that template and
 it does work; it fixes WHEN electrical goes, but only geometry can say WHICH wall a given outlet
 waits for, and IFC ships no host link for most of them.
+
+### §AGENT_DISPATCH — how to work this lane with agents, token-wise (2026-08-12, user directive)
+*"put to prompt it can launch well scoped agents that spend tokens wisely."* This lane is now big
+enough that a fresh session should FAN OUT, not read everything itself. Scope each agent so it
+returns a VERDICT, not a file dump.
+
+**Dispatch these in parallel, one Agent each, each with its own §-log to read:**
+1. **Measure-only agent** — run `scripts/probe_arch_start.js` (it already carries §DAY_GAP,
+   §DAY_GAP_WIP, §DAY_GAP_DUR, §DAY_GAP_PHASE_OCC, §DAY_GAP_TAIL, §TIER_SERIAL_BY_ZONE,
+   §CREW_AUTOSCALE) and return ONLY the changed numbers vs the ones recorded above. It must NOT
+   read viewer source; the probe is the interface.
+2. **Witness-runner agent** — run the named witness (`witness_zone_index`, `..._tier_serial_display`,
+   `..._crew_demand`, `..._arch_area_weight`) and return `n/N + failing gate lines only`.
+3. **Locator agent** (Explore) — for "does X already exist", grep `viewer/*_ui.js` and
+   `viewer/*editor*.js` FIRST. The export mis-grade above happened because a session searched only
+   engine files. Return file:line, not excerpts.
+
+**Token rules that this session learned the hard way:**
+- Never paste a full bake log into context — grep it (`grep -E "§DAY_GAP|§TIER"`). One Hospital
+  bake log is tens of thousands of tokens and contains ~20 lines that matter.
+- Never re-derive a number this file already records — cite the § section.
+- One agent = one question with a pass/fail or a number as its answer. If the prompt cannot name
+  what the answer looks like, the scope is wrong.
+- Headless swiftshader CANNOT load Hospital/LTU (§6, 14.5 s/frame) — never dispatch a browser
+  witness for those; use the node probe.
