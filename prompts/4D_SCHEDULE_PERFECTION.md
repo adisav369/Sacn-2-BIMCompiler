@@ -581,3 +581,70 @@ window changes, and a monotone map inside a window preserves programme totals, p
 support order by construction.
 ⛔ Confirm before building: does *"Day 1-14 should stretch till before Day 48"* mean stretch each
 phase's work to fill its window up to the next phase's start — which is what this lever does?
+
+---
+
+### §DAY_GAP_WIP — ⛔ THE LEVER ABOVE IS **DO NOT BUILD**. Its premise is measured false (2026-08-12)
+
+The blocking question above was handed over unanswered. Answering it required one measurement
+§DAY_GAP never took, and that measurement kills the lever. **§DAY_GAP counts element STARTS. It
+never asked how many elements are IN PROGRESS.** Those are different questions with opposite fixes:
+work-in-progress through a gap means the programme is honest and moving starts would fabricate
+dates; zero work-in-progress means the gap is genuinely empty. Added `§DAY_GAP_WIP` + `§DAY_GAP_DUR`
+to `scripts/probe_arch_start.js` and ran all 7 buildings off `origin/main`:
+
+```
+                meanDur   p50      spanD    sumWorkDays  occupancy   zeroStartBands / alsoZeroWork
+Hospital        0.016d   0.015d   1168.7      1035.3       88.6%          55 / 55   minWIP=0 maxWIP=0
+Terminal        0.008d   0.002d    375.2       377.9      100.7%          40 / 40   minWIP=0 maxWIP=0
+Clinic          0.024d   0.022d    399.8       380.9       95.3%          46 / 46   minWIP=0 maxWIP=0
+LTU_AHouse      0.019d   0.022d   1941.1      2328.7      120.0%          42 / 42   minWIP=0 maxWIP=0
+HHS_Office_Fed  0.023d   0.022d    122.1       157.0      128.6%          39 / 39   minWIP=0 maxWIP=0
+JKR             0.017d   0.011d    110.1       151.1      137.3%          40 / 40   minWIP=0 maxWIP=0
+Duplex          0.023d   0.022d     18.0        26.3      146.0%          32 / 32   minWIP=0 maxWIP=0
+
+§DAY_GAP_WIP Hospital meanInProgressPer5%=[2,0,0,1,0,1,0,0,0,0,2,3,3,3,3,0,0,0,0,0]
+```
+
+**Three findings, each fatal to the specced lever:**
+
+1. **There is no surplus window to spread into.** `occupancy = sumWorkDays / spanD` is **88.6%–146%
+   on every building** — the total work-days already ≈ (or exceed) the whole programme span. The
+   lever's stated premise, *"a window far longer than the crew-limited work inside it,"* is false.
+   Spreading starts would redistribute the same ~1-element-at-a-time trickle and convert one 12%
+   dead band into dozens of small ones. The film would read empty *everywhere* instead of in one
+   place — strictly worse, and it would have looked like progress on the histogram.
+
+2. **The cause is DURATION, not placement.** `p50` element duration is **0.011–0.022 d ≈ 16–32
+   minutes**, near-identical across all 7 buildings regardless of type, size or discipline. Elements
+   are POINT EVENTS: they pop into existence and are done. That is why **every** zero-start band is
+   also zero-work — 294 bands across 7 buildings, `minWIP=0 maxWIP=0` without a single exception.
+   Nothing is ever visibly under construction, so between bursts there is genuinely nothing to show.
+   This matches `time_machine.js:4816`'s own admission of a **"SAME flat duration regardless of real
+   size"** and the parked weighting lane's finding that *50–71% of every building's labour-seconds
+   carry no size signal.*
+
+3. **It would have traded accuracy for polish.** Monotone re-timing of computed start dates so the
+   film looks even is re-timing a schedule for VIEWING reasons — the exact thing
+   `feedback_schedule_accuracy_over_movie_polish` rules against (*"a beautiful film of a WRONG
+   schedule is worse than a plain film of a right one"*), and the film-side twin of this was already
+   retired deliberately as §CPE_BUILDUP_EVEN_TEMPO.
+
+**Answer to the user's question, therefore:** *"Day 1-14 should stretch till before Day 48"* is a
+statement of the **desired outcome**, not of the mechanism. It should NOT be delivered by filling
+each window to the next phase's start. Delivered that way it fabricates dates and still shows an
+empty film. Delivered by giving elements their real durations, the same outcome falls out for free —
+work that occupies 3 days instead of 32 minutes fills the gap *because it is actually happening.*
+
+**§DAY_GAP and the weighting lane are the same bug.** `§LABOR_QUANTITY_WEIGHT` +
+`§HEAVY_MEMBER_SPEED_LIMIT` (spec-only, user already ruled: 24h crew-day norm + JSON shift override
+for imports) is the real lever. The data to do it is already shipped and unused: `rates.js`
+`LABOR_RATES[trade].productivity` gives units/day per IFC class, with `crew_size` and `max_crews`
+per trade, and `§CREW-CAP` (time_machine.js:5020) already reads `max_crews`. Deriving duration from
+quantity ÷ productivity is EXTRACT, not invention — it raises schedule accuracy instead of trading
+it away, and the gap closes as a side effect rather than as the goal.
+
+**Do not re-derive this.** The probe now carries `§DAY_GAP_WIP`/`§DAY_GAP_DUR` permanently; re-run
+`VIEWER_DIR=/tmp/vw BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js` after any
+duration change and watch `occupancy` stay ~100% while `meanInProgressPer5%` rises off the floor —
+that, not the starts histogram, is the number that says the film has something to show.

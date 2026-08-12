@@ -234,6 +234,56 @@ function fmtExt(ext, base) {
     for (let b = 0; b < NB; b += 5) per5.push(hist.slice(b, b + 5).reduce((a, c) => a + c, 0));
     console.log('  §DAY_GAP_HIST ' + bld + ' startsPer5%=[' + per5.join(',') + ']');
 
+    // ── §DAY_GAP_WIP (2026-08-12) — the measurement §DAY_GAP was MISSING, and the one that decides
+    // whether the "dead air" is a schedule defect or an honest crew-limited grind ─────────────────
+    // §DAY_GAP counts STARTS only. A band with zero starts is not the same as a band with no work:
+    // time_machine.js:1544 records that the real frontier on Hospital is "only ~7 elements at a time
+    // (crew-cap)", so a long pole being ground out by a capped crew produces exactly zero starts
+    // while being a perfectly truthful programme. The two cases demand OPPOSITE fixes:
+    //   WIP > 0 through the gap  → the schedule is honest; re-timing starts to fill the window
+    //                              would fabricate dates to fix a VIEWING complaint. Do not.
+    //   WIP = 0 through the gap  → genuinely nothing is happening; that is an artificial hole in
+    //                              the gating, and the fix belongs in the gate, not in a stretch.
+    // Same buckets, same items, no new data — an element is in progress in bucket b if it started
+    // at or before the bucket's midpoint and had not yet ended.
+    const wip = new Array(NB).fill(0);
+    for (let b = 0; b < NB; b++) {
+      const t = base + spanMs * ((b + 0.5) / NB);
+      wip[b] = items.filter(it => it.s <= t && it.e > t).length;
+    }
+    const wip5 = [];
+    for (let b = 0; b < NB; b += 5) wip5.push(Math.round(wip.slice(b, b + 5).reduce((a, c) => a + c, 0) / 5));
+    console.log('  §DAY_GAP_WIP ' + bld + ' meanInProgressPer5%=[' + wip5.join(',') + ']');
+    // ── §DAY_GAP_DUR — why WIP is ~0 everywhere, not just in the gaps ─────────────────────────
+    // If mean in-progress is 0-3 on a 63k-element building, elements are not "being built slowly in
+    // a long window" — they are POINT EVENTS. Measure the duration distribution directly and state
+    // it as a share of the programme, because that is the number that decides whether the gap is a
+    // placement problem (fix by moving starts) or a duration problem (fix by giving work real time).
+    const durD = items.map(it => (it.e - it.s) / D).sort((a, b) => a - b);
+    const sumD = durD.reduce((a, c) => a + c, 0);
+    const q = f => durD[Math.min(durD.length - 1, Math.floor(durD.length * f))];
+    console.log('  §DAY_GAP_DUR ' + bld + ' n=' + durD.length +
+      ' meanDur=' + (sumD / durD.length).toFixed(3) + 'd' +
+      ' p50=' + q(0.5).toFixed(3) + 'd p90=' + q(0.9).toFixed(3) + 'd max=' + durD[durD.length - 1].toFixed(2) + 'd' +
+      ' spanD=' + spanD.toFixed(1) +
+      ' sumWorkDays=' + sumD.toFixed(1) +
+      ' occupancy=' + (100 * sumD / spanD).toFixed(1) + '%' +
+      ' (occupancy = mean elements in progress if work were spread evenly over the whole programme)');
+
+    // Focused readout over the dead run §DAY_GAP just found, plus the zero-start bands generally.
+    const deadBands = [];
+    for (let b = 0; b < NB; b++) if (hist[b] === 0) deadBands.push(b);
+    const wipInDead = deadBands.map(b => wip[b]);
+    const zeroWipDead = wipInDead.filter(w => w === 0).length;
+    console.log('  §DAY_GAP_WIP ' + bld + ' zeroStartBands=' + deadBands.length +
+      ' ofWhichAlsoZeroWork=' + zeroWipDead +
+      ' minWIP=' + (wipInDead.length ? Math.min.apply(null, wipInDead) : 'n/a') +
+      ' maxWIP=' + (wipInDead.length ? Math.max.apply(null, wipInDead) : 'n/a') +
+      ' → ' + (deadBands.length === 0 ? 'no dead bands'
+        : zeroWipDead === 0 ? 'EVERY zero-start band still has work in progress — crew-limited grind, NOT a hole'
+        : zeroWipDead === deadBands.length ? 'EVERY zero-start band is also zero-work — a real hole in the gating'
+        : 'MIXED — ' + zeroWipDead + ' of ' + deadBands.length + ' zero-start bands are genuinely idle'));
+
     // per phase: how much of THAT phase lands in its own first day / first 10% of the span
     PH_ORDER.forEach(ph => {
       const set = items.filter(it => it.phase === ph);
