@@ -30,7 +30,12 @@ say ""
 # ~46% of LTU's Superstructure straggler tail — and it had been throwing `ReferenceError: _zoneIndex
 # is not defined` since #1313, exiting before it measured a single building. Four PRs of this lane
 # shipped while it certified nothing, which is the exact failure this gate exists to catch.
-for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host; do
+# witness_kernel_ops_sched_version added 2026-08-12 (§ARCH_START_TEMPO/M1): it owns the RUNTIME half
+# of the cache-version contract (_kernelOpsSchedStale + the _genVersion stamp) that §CACHE_VERSION_GUARD
+# below only checks statically — and it had been throwing `ReferenceError: _zoneIndex is not defined`
+# from W-KOS-4 onward since #1313, its first four gates still passing, so nobody saw it die. Same
+# dead-witness shape as witness_midair_zero. Revived in bim-ootb #1323; green 12/12.
+for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host witness_kernel_ops_sched_version; do
   f="$VIEWER_DIR/tests/$w.js"
   if [ ! -f "$f" ]; then say "MISS  $w  (not in this revision)"; miss=$((miss+1)); continue; fi
   out=$(cd "$VIEWER_DIR/tests" && BLD_DIR="$BLD_DIR" timeout 900 node "$w.js" 2>&1)
