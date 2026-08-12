@@ -891,6 +891,55 @@ and explicitly does **not** fill the empty structural windows. Deliberately sequ
 changes every phase's elapsed length, so landing it before item 3's root cause is found would move
 the very windows item 3 is trying to explain.
 
+### §DAY_GAP LANE — RESOLVED TO ZERO, 2026-08-12
+
+| # | item | state | evidence |
+|---|---|---|---|
+| 1 | §ZONE_INDEX | ✅ bim-ootb #1313 | W-ZONE 5/5, 267,274 elements, mismatch=0 |
+| 2 | §TIER_SERIAL_BY_ZONE | ✅ bim-ootb #1314 | witness 57/0, programme −27..−47% |
+| 3 | window derivation | ✅ folded into 2 | dead air gone from the film's opening |
+| 4 | §CREW_DEMAND + §HR_COST | ✅ bim-ootb #1315 | W-CREW 4/4, premise disproven |
+
+sw sequenced v1001 → v1002 → v1003.
+
+**Item 2's ruling was DERIVED, not re-asked** (user: *"all guidance has been given in specs all
+over. Do derive what is likely my response."*). §TIER_SERIAL's own header quotes the 2026-08-02
+ruling — *"ARCH/STR ... the physical foundation. Separate unrelated disciplines can run parallel
+thereafter IF CONSTRUCTION PRACTICE PERMITS"* — and practice permits walls on L1 while L7 frames.
+Global was the cruder reading of the user's own sentence; per-zone is the faithful one.
+
+**Items 2 and 3 were ONE fix**, as LTU predicted. Scoping the barrier per zone also bounds the
+straggler tails, because a straggler in one zone no longer holds another zone's phase open.
+Hospital's opening histogram — which IS the reported complaint — went
+`[2228,0,0,915,0,4452,…]` → `[1715,3499,3916,3669,0,4336,…]`; LTU's five consecutive dead bands
+`[514,4086,3541,4553,0,0,0,0,0,2,…]` → `[922,7248,7428,8260,8407,15525,…]`, none.
+5D now lands with it: HR cost per building, LTU 2,696,098 over 15,822 person-days down to
+Duplex 28,470 over 174.
+
+**THREE OF MY OWN CLAIMS WERE DISPROVEN BY FINISHING THE MEASUREMENT. Recorded so no one re-walks
+them:**
+1. *"The cause is DURATION"* — WRONG. `getInstallSecs` already computes `28800/productivity`; p50
+   0.022d ≈ 32 min is arithmetically right for 18 units/crew-day.
+2. *"Every zero-start band is also zero-work"* — the evidence was a SAMPLING ARTEFACT (one instant
+   per band against 0.015d elements). Re-measured by overlap; conclusion survived on 5 of 7
+   exactly, but the number quoted was not evidence.
+3. *"max_crews is a small-job list starving MEP"* — WRONG, and it was the whole basis of item 4.
+   `§DAY_GAP_PHASE_OCC`'s occupancy is a single-crew-equivalent ratio; >100% just means >1 crew
+   busy. Capacity is ~3,330 crew-days against 725.9 demanded. Worst real utilisation across all 7
+   is PLUMBER at 31.0–92.8%. No trade is crew-bound. The autoscaler was built, measured as a
+   no-op, and deleted rather than shipped.
+
+Also caught, and the closest call of the lane: **the tier witness was silently testing nothing.**
+It built its items without `storey`, so `_zoneOf` fell back to `'_ALL'` and the whole suite
+exercised the DEGENERATE single-zone path — reporting 57/0 while proving zero about the change.
+Found by diffing its `§TIER_COST` against the probe on the same code (JKR 110.1 vs 74.4). Any
+future harness that consumes zoned items must carry the zone key or it is measuring the old world.
+
+**Still open, small, and no longer in the film's way:** the residual dead run moved to the END
+(Hospital 84–97%, LTU 94–99%) — `§DAY_GAP_TAIL` stragglers. Root cause unfound; the
+geometry-outlier theory is disproven above. Next measurement is named: for the tail elements, log
+WHICH support edge set their start (`_tierAuditRegate`/`_midairRepair`, both later-only).
+
 **Order of work (do not reorder — each step de-risks the next):**
 1. `§ZONE_INDEX` — extract the ONE banding derivation + fallback chain + memo. Pure refactor,
    equivalence-gated, zero schedule change. Closes GAP 5 and GAP 1/2 in one place.

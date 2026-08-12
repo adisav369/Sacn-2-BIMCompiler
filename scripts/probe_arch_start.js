@@ -164,8 +164,27 @@ function fmtExt(ext, base) {
     t.authored = now() - t0;
     db.close();
 
-    const maxCrews = {};
-    for (const rk in LR) if (LR[rk].max_crews) maxCrews[rk] = LR[rk].max_crews;
+    // §CREW_AUTOSCALE (bim-ootb, injectGantt): mirrors the shipped formula so this probe measures
+    // the SAME schedule the viewer generates. crews(T) = max(base, ceil(workDays(T)/projectDays)),
+    // workDays from installSecs/28800, projectDays from the existing §4D length. CREWS=base env
+    // reverts to the pre-autoscale table for an A/B.
+    const crewWorkDays = {};
+    geoEls.forEach(e => { const r = e.resource || '_DEFAULT';
+      crewWorkDays[r] = (crewWorkDays[r] || 0) + (e.installSecs || 0) / 28800; });
+    let totSecs = 0; geoEls.forEach(e => { totSecs += e.installSecs || 0; });
+    const projDays = Math.max(10, Math.ceil(totSecs * 1000 / 86400000));
+    const maxCrews = {}, crewNote = [];
+    for (const rk in LR) {
+      if (!LR[rk].max_crews && LR[rk].max_crews_fixed == null) continue;
+      const base = LR[rk].max_crews || 0, wd = crewWorkDays[rk] || 0;
+      const need = Math.ceil(wd / projDays);
+      const use = (LR[rk].max_crews_fixed != null) ? LR[rk].max_crews_fixed
+                : (process.env.CREWS === 'base' ? base : Math.max(base, need));
+      maxCrews[rk] = use;
+      if (use !== base) crewNote.push(rk + ' ' + base + '->' + use + '(wd=' + wd.toFixed(0) + ')');
+    }
+    console.log('  §CREW_AUTOSCALE ' + bld + ' projectDays=' + projDays + ' scaled: ' +
+      (crewNote.length ? crewNote.join(' ') : 'none — baseline table already sufficient'));
 
     const quiet = console.log; console.log = () => {};
     let sched;
