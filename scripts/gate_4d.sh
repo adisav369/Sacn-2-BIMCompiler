@@ -65,6 +65,16 @@ if git -C "$VIEWER_DIR" rev-parse --git-dir >/dev/null 2>&1; then
     tm_diff=$(git -C "$VIEWER_DIR" diff "$base"...HEAD -- time_machine.js schedule_gate.js 2>/dev/null)
     if [ -n "$tm_diff" ]; then
       gating_touched=$(printf '%s\n' "$tm_diff" | grep -cE '^\+.*(function (computeSchedule|_twoTierRemap|_midairRepair|_tier1Serialize|_tierAuditRegate|bandGate|geoGate|hangGate|wallGate|openingGate|hostGate))')
+      # §GATE_GUARD_BODY (2026-08-12) — the declaration-line heuristic above fires only when a
+      # function's SIGNATURE line is added, so it sees a function being ADDED or RENAMED and is blind
+      # to one being REWRITTEN. MEASURED on its first real customer: §ARCH_START_TEMPO/M1 replaced
+      # computeSchedule's crew clock (place()'s duration advance + the §DEQ_REPAIR shift) and this
+      # guard reported gating_changed=0 — it would have waved a missing bump straight through, which
+      # is the exact miss it was written to stop. schedule_gate.js IS the gating engine, every line
+      # of it, so any NON-COMMENT added line there is a gating change by definition.
+      sg_body=$(git -C "$VIEWER_DIR" diff "$base"...HEAD -- schedule_gate.js 2>/dev/null \
+        | grep -E '^\+' | grep -vE '^\+\+\+' | grep -cvE '^\+[[:space:]]*(//|/\*|\*|$)')
+      gating_touched=$((gating_touched + sg_body))
       version_touched=$(printf '%s\n' "$tm_diff" | grep -cE '^\+.*_GANTT_CACHE_VERSION\s*=')
       if [ "$gating_touched" -gt 0 ] && [ "$version_touched" -eq 0 ]; then
         say "FAIL  §CACHE_VERSION_GUARD  gating/remap function(s) changed vs origin/main but _GANTT_CACHE_VERSION was not bumped in the same diff — a building already materialized will keep replaying the OLD schedule forever, even after deploy + hard reload. Bump time_machine.js's _GANTT_CACHE_VERSION (and sw.js CACHE_VERSION) in this PR."
