@@ -2919,3 +2919,151 @@ per this repo's own sw.js conflict-magnet doctrine), CI green, **MERGED
 **Closeout:** both §27 items are ✅ DONE — PR #1255 and PR #1259 both MERGED to bim-ootb main.
 No further "affects everything else" investigation needed unless a NEW report surfaces after both
 land; if it does, re-open with a fresh witness rather than assuming these two mechanisms recur.
+
+---
+
+## §17.17 — the §17.16 mechanism was never actually engaged: FBO-binding bug, occluder self-test, and coplanar bias (2026-08-12, SPEC then BUILD)
+
+**Premise correction to §17.16's own root-cause claim.** §17.16 closed by attributing its 12.33%
+false-hide residual to "LTU_AHouse's extracted wall meshes have no boolean door/window cutouts,"
+citing as evidence that swapping box proxies for real occluder geometry produced BYTE-IDENTICAL
+results. A follow-on probe (2026-08-12) falsified both halves. (a) Direct measurement — mapping each
+door/window's world centre into its host wall's local frame and rasterizing wall-thickness occupancy
+— found LTU's 1539 openings have a mean aperture blockage of 0.0035 and **0.0% genuinely solid**:
+the booleans ARE baked into the extracted meshes, whatever `IfcRelVoidsElement` extraction did or
+did not record. (b) The byte-identical result is explained by a mechanism bug, not by geometry
+equivalence: **neither variant was ever sampled.** A live FBO probe on real hardware measured
+`beginQueries=256 / boundToDefaultFramebuffer=256 / matchedOccluderPrepassFbo=0` — every single GPU
+occlusion query depth-tested the DEFAULT canvas framebuffer, which DLOD contaminates with its own
+box-proxy depth writes. The dedicated occluder-only depth target was written every issue cycle and
+read never. This is exactly the depth-contamination class §17.16 was built to eliminate; it simply
+never engaged, so §17.16's architecture has in fact never been measured at all.
+
+### 17.17.1 The binding fix (`W-OCC3-BIND`)
+`_occStructPrepass` (`viewer/dlod_nav.js`) restores `setRenderTarget(prevTarget)` before returning,
+handing the display framebuffer back BEFORE `_occStructIssueQueries` issues its raw-GL queries.
+§17.13's working `_occlDepthPrepass` deliberately does the opposite — it returns with the depth RT
+still bound and documents that the caller restores it. `_occStructIssueQueries` already calls
+`setRenderTarget(prevTarget)` at the end of its batch, so the early restore is pure bug, not a
+paired teardown. **Fix: delete the early restore, keep returning `prevTarget`.** One line. Witness =
+the FBO probe's own counters inverted (`matchedOccluderPrepassFbo` = every query) plus settle
+behaviour: an A/B on Hospital already showed timeout→stable and a 5x cut in query volume from this
+line alone. This fix is a PREREQUISITE for every number below — all prior §17.12-17.16 correctness
+figures were measured against a contaminated buffer and are not comparable.
+
+### 17.17.2 Occluder self-exclusion (`W-OCC3-SELF`)
+**Issue it proves or disproves:** are elements being hidden by their own depth contribution? The
+occluder set is `IfcWall/IfcWallStandardCase/IfcSlab/IfcRoof`; the query SUBJECT population is the
+UNCHANGED §9/§19/§13/§16 active set, which CONTAINS those same walls and slabs. A wall renders into
+the occluder depth target, then its own world AABB is drawn as a query proxy under LEQUAL against
+that same depth — a test the element can only marginally pass and which precision alone can flip.
+The post-fix Hospital hide-set was directly observed to contain its own occluders, with `IfcWall`
+among the false-hidden classes. **Fix: a guid that is a member of the occluder set is never a valid
+query subject.** Filter at candidate-accumulation time in `_evalChunk` (so `occlStructCandidates`
+and query volume both reflect it) AND hard-guard in `_occStructIssueQueries` (correctness does not
+depend on the candidate list being fresh); purge any occluder guid from `_occ2Hidden` when the
+occluder scene is built, so a live lever flip cannot strand stale hidden state. Direction of error
+is conservative: an occluder is simply never demoted by this criterion, which is what §17.16's own
+"occluders are static, never DLOD-mutated" principle already implies.
+
+### 17.17.3 Coplanar/thin-subject depth bias (`W-OCC3-BIAS`)
+**Issue it proves or disproves:** is the residual false-hide a depth-coincidence artifact rather
+than real over-occlusion? The false-hidden classes measured post-binding-fix are `IfcCovering`,
+`IfcFireSuppressionTerminal`, `IfcMember`, `IfcPlate` — thin elements sitting flush with, or
+recessed inside, exactly the structural surfaces that make up the occluder set. Their AABB's
+camera-facing face is at or behind the host wall/slab surface already in the depth buffer, so
+LEQUAL rejects every fragment and `ANY_SAMPLES_PASSED_CONSERVATIVE` returns 0 for a genuinely
+visible element. **Fix: inflate the queried AABB by a bias in world units before issuing** — a
+depth bias expressed in metres rather than in `polygonOffset` units, so the number is interpretable
+and does not vary with depth-buffer precision. Two levers, because a paper-thin plate embedded in a
+200 mm wall needs to clear the whole host thickness while a normal-sized subject needs only to clear
+coincidence: `occlStructBiasM` (all subjects) and `occlStructThinBiasM` (subjects whose smallest
+AABB extent is under `occlStructThinM`). **Values are NOT asserted here — they are swept and
+measured.** Inflation is strictly the conservative direction (a bigger proxy can only turn hidden
+into visible, never the reverse), so the cost of an over-large bias is missed true-occlusion, i.e.
+lost perf, never a wrongly-vanished element.
+
+### 17.17.4 LTU_AHouse unblock — single-building fallback (`W-OCC3-LTU`)
+Scoped strictly to let the target building stream for this measurement; NOT a schema migration.
+`CPE_4D_PERF_MEM_FINDINGS.md §R6` measured the blocker: the 2026-08-10 re-extracted
+`LTU_AHouse_meta.db` has no `building` column, so the centres bootstrap logs `§HELPERS_QUERY_ERR
+no such column: m.building` → `§CENTRES_RESULT rows=0` → `startStreaming()` finds no building and
+returns silently; geo loads, zero meshes ever stream. R6 named two options — re-extract, or a
+code-side single-building fallback. **Take the fallback** (re-extraction is a bigger, riskier,
+out-of-scope job, and this repo bans committing DB binaries outright regardless). Probe the column
+once via `PRAGMA table_info(elements_meta)`; when absent, treat the DB as containing exactly ONE
+building, derive its label from the DB URL basename (an EXTRACTION from a real source, not an
+invented name), and drop the `m.building = ?` predicate from the bootstrap + stream + recolour
+queries on that path only. DBs that carry the column are untouched and take the identical code path
+they take today — that equivalence is the witness.
+
+### 17.17.5 Gates
+- `occlStructEnabled` / `occlBvhEnabled` defaults stay **FALSE** throughout. Nothing here is a
+  default-behaviour change; this is lever-gated, additive work.
+- `W-OCC3-EQUIV` is non-negotiable and comes FIRST: lever off ⇒ counters all zero and the partition
+  identical to shipped. A correctness number measured without it is not evidence.
+- Correctness is measured on **LTU_AHouse specifically** — Hospital-only results do not close this
+  out, LTU is the building the whole §17 investigation has been about.
+- PERF (frame-time cost of leaving the lever on) has NEVER been measured in §17's history because
+  correctness never cleared its bar first. Measure it anyway this time and report it as
+  informative-only; it is not a ship gate while false-hide is non-zero, same discipline §17.13/
+  §17.14 used.
+- This session REPORTS numbers. It does not flip a default. That decision is the user's.
+
+### 17.17.6 RESULT — measured 2026-08-12, real RTX 4060, real LTU_AHouse (122,330 elements)
+Branch `bim-ootb fix/occl-struct-fbo-selfexclude-bias` @ `7818c27` (pushed, no PR — arming is the
+user's call). `witness/` is gitignored, so the numbers live here and in the commit message.
+Four deterministic poses derived from the building's own element-centre cloud and persisted
+(`witness/w_occ3_poses_ltu.json`) — §17.16's original 4 poses were never committed and are
+unrecoverable, so NOTHING here is comparable to its "12.33%".
+
+**W-OCC3-LTU: PASS.** §R6's blocker reproduced exactly and cleared:
+`§SINGLE_BLD_FALLBACK reason=no-building-column` → `§CENTRES_RESULT rows=1 bldCol=false` →
+122,330 elements streamed, `resident=122330` — R6's own measured streamable count, on the nose.
+
+**W-OCC3-EQUIV: PASS.** Lever off at all 4 poses ⇒ `mismatch=0`, every occlStruct counter zero.
+
+**W-OCC3-CORRECT** — falseHide / gtClear:
+| pose | gtClear | bind (§17.17.1) | + self (§17.17.2) | + bias (§17.17.3) |
+|---|---|---|---|---|
+| 0 | 107 | 36 (33.64%) | 35 (32.71%) | **10 (9.35%)** |
+| 1 | 17 | 3 (17.65%) | 0 (0.00%) | **0 (0.00%)** |
+| 2 | 117 | 66 (56.41%) | 44 (37.61%) | **0 (0.00%)** |
+| 3 | 1 | 0 (0.00%) | 0 (0.00%) | **0 (0.00%)** |
+
+mean-of-poses **26.92% → 17.58% → 2.34%**; pooled 105/242 → 79/242 → **10/242 (43.39% → 4.13%)**.
+Settle = `stable` at every pose for every variant, never `timeout`. Query volume at pose 0:
+94,784 → 53,248 → 48,576 issued (~49% cut). The bias removed `IfcCovering` entirely (8 → 0) —
+exactly the thin architectural class §17.17.3 predicted — leaving a residual that is MEP, not
+architecture: `IfcFlowSegment`×8, `IfcFlowFitting`×1, `IfcBeam`×1.
+
+**The residual is mostly a METRIC artifact, not a mechanism error — and the distinction is a real
+design question, not a rounding call.** Re-classifying pose 0's 10 survivors with the STATIC
+occluder set added to the ground truth's occluder list (`w_occ3_fhdiag.js`, falseHide=10/107
+reproduced exactly): **8 flip to `occluded`, 2 stay `clear`** (both `IfcFlowSegment`).
+The metric's ground truth uses "everything currently VISIBLE in the display scene" as its occluder
+population; this mechanism's entire premise is a static occluder set deliberately NOT subject to
+DLOD state, so the depth buffer contains walls/slabs the display scene has demoted. An element
+correctly hidden behind such a wall scores as a false hide purely from that mismatch.
+⚠ Do NOT quietly bank the 8 as "correct". In nav mode a demoted wall is drawn as a WIREFRAME BOX,
+so it does not visually occlude — whether it SHOULD occlude is exactly the question §17.16's static
+premise answers "yes" by construction and the §17.14 metric (kept unchanged here for comparability)
+answers "no". Both numbers are therefore reported and neither is chosen here:
+**10/242 = 4.13% by the unchanged metric, 2/242 = 0.83% after accounting for the population
+mismatch** (pose-0 mean-of-poses 2.34% and 0.47% respectively).
+
+**W-OCC3-PERF: INCONCLUSIVE — reported as such, not forced to a number.** Interleaved off/on/off/on
+× 300 frames at pose 0: median 44.6 / 46.7 / 27.1 / 43.1 ms. The two OFF legs differ from each other
+by 17.5 ms, which EXCEEDS the on-vs-off difference, so this run supports no frame-cost claim in
+either direction. This is §17's first PERF attempt at all (every prior section gated PERF behind a
+correctness pass that never arrived); it needs its own run on an idle machine, not a tail-end leg of
+a correctness witness. One incidental real number worth keeping: with the lever settled at pose 0
+the display's active population falls from ~31,700 to 1,587 (~95% fewer real elements) — the size of
+the prize, still unpriced.
+
+**Open, named, NOT done here:** (a) the 2 genuine `IfcFlowSegment` false-hides — long thin pipes
+whose smallest AABB extent clears the 0.12 m "thin" threshold, so they take the 0.05 m bias, not the
+0.25 m one; a bias SWEEP (`PROBE_SWEEP=0,0.05,0.15,0.25,0.5 node witness/w_occ3_correct.js`, already
+wired) is the next measurement, not a guess at a new constant. (b) the demoted-wall-occludes
+question above — a decision, not a measurement. (c) a real PERF run. (d) `occlStructEnabled` stays
+default **FALSE**; arming it is the user's call on these numbers.
