@@ -1480,13 +1480,18 @@ and no witness owned the broken predicate). It does **not** affect HHS, so it is
 DISPLAY timeline the movie actually plays — and **break the guarantee**. Measured, `wallGrid` pool,
 raw → display:
 
-| building | rawEARLY | dispEARLY | worst (display) |
+| building | rawEARLY | dispEARLY | worst (display) pre-#1323 → post-#1323 |
 |---|---|---|---|
-| LTU_AHouse | 0 (0.0%) | **366/1280 (28.6%)** | **974.0d** |
-| Terminal | 0 (0.0%) | **61/371 (16.4%)** | 28.1d |
-| JKR | 0 (0.0%) | **15/148 (10.1%)** | 11.7d |
-| Hospital | 0 (0.0%) | **14/565 (2.5%)** | **172.5d** |
+| LTU_AHouse | 0 (0.0%) | **366/1280 (28.6%)** → 365 (28.5%) | 974.0d → **2922.7d** |
+| Terminal | 0 (0.0%) | **61/371 (16.4%)** | 28.1d → **84.1d** |
+| JKR | 0 (0.0%) | **15/148 (10.1%)** | 11.7d → 35.0d |
+| Hospital | 0 (0.0%) | **14/565 (2.5%)** | 172.5d → **516.5d** |
 | HHS / Clinic / Duplex | 0 | 0 | 0.0d |
+
+⚠ The worst-day column roughly **TRIPLED** when this branch merged `origin/main` — that is
+**#1323 §ARCH_START_TEMPO/M1's 8-hour crew day** stretching the whole programme ~3x, exactly as its
+own note predicts, NOT a worsening of this defect: the dispEARLY **percentages are stable to within
+0.1pp** across the merge. Quote the percentages, not the days, when tracking this thread.
 
 4 of 7 buildings show doors on screen before their own host wall finishes, up to 974 days early.
 §HOSTED_BEFORE_HOST got a display-layer twin (`_midairRepair` reads `ScheduleGate.hostPairs`);
@@ -1497,3 +1502,21 @@ opening/host-wall pass, reusing `openingScan`'s pool now that both grids exist. 
 **Also observed, unrelated and pre-existing (A/B-confirmed identical before this fix):** JKR reports
 `§SUPPORT_CYCLE cycles=4564` on a 8,985-element model — over half the model is Kahn-leftover. Not
 touched here; worth its own look given §TM_GEO_ORDER_CYCLES took Terminal 37,927→0.
+
+### §CURTAIN_WALL_OPENING — POST-MERGE re-verification (the one that actually certifies it)
+The before/after table above is from the pre-merge tree. `fix/hhs-door-host-wall` then synced with
+`origin/main` (#1323 §ARCH_START_TEMPO/M1 + #1324), and **the 8-hour crew day moves every single
+date**, so the pre-merge run certifies nothing on its own. Re-run in full on the merged tree:
+
+**`gate_4d.sh` → `pass=8 fail=0 missing=1`** (`missing` = `witness_arch_area_weight`, pre-existing).
+All 7 witnesses green including the new `witness_curtain_wall_opening` **§CWO_WITNESS 4/4**, and
+**`§CACHE_VERSION_GUARD PASS gating_changed=32 version_bumped=1`**. HHS post-merge: `wallLike`
+rawEARLY **0 (0.0%)**, dispEARLY **0 (0.0%)**, `cwGated=34 stillUngated=0`, `§DEQ_REPAIR shifted=32`
+— identical to pre-merge, so the curtain-wall index is genuinely orthogonal to the crew clock.
+
+**Merge conflicts, all KEEP-BOTH** (main changed the CLOCK, this branch changed the POOL): `place()`
+kept main's `wallAt(prodAt(start)+dur)` advance *and* this branch's `prec` rec; the log block kept
+both `§CREW_DAY` and `§CURTAIN_WALL_OPENING`. **`_GANTT_CACHE_VERSION`: both branches independently
+claimed v13 — took the higher and went one beyond, landing as v14** (`sw.js` likewise v1009→v1010,
+main having also taken v1009). Two independent gating changes on one day = two bumps, never a shared
+one; the constant's whole purpose is that one cache entry maps to exactly one algorithm.
