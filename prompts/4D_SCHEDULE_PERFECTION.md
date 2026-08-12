@@ -243,10 +243,12 @@ doing only if a case appears that the display repair cannot express.
    (`IfcStair`/`IfcStairFlight`/proxy); what do `hasBearingBelow`/`geoGate` compute for them; is there
    a real modeled carrier (landing slab, stringers) simply unpromoted/unrecognized the same way the
    Terminal roof slabs are. EXTRACT the cause before reaching for the scaffolding explanation.
-3. **HHS Level-3 doors "come on in a split moment"** — the mp4 predates #1294, and the schedule data
-   shows no Level-3-specific anomaly (door window 0.94d vs L1 1.61d/L2 1.11d; 1427/1505/1783 elements
-   per storey). Two untested hypotheses: (a) it was simply the pre-#1294 bug, (b) `cinema_maxq.js`
-   frame-to-schedule-time pacing is non-uniform there. Re-verify against a FRESH post-#1294 bake.
+3. ✅ **DONE — HHS Level-3 doors.** MEASURED 2026-08-12, cause found, fixed: §CURTAIN_WALL_OPENING
+   (section below). It was NEITHER stale hypothesis — not pre-#1294 residue, not `cinema_maxq.js`
+   pacing. #1294's `openingGate` is correct and holds at 0.0% on every building; it simply could not
+   SEE HHS's façade, because `wallGrid` is keyed on `cls.indexOf('IfcWall')===0` and HHS's Level-3
+   glass doors are set into a CURTAIN WALL (IfcMember mullions + IfcPlate glazing). 34 of 133 HHS
+   openings were structurally ungated. L3 6/37 early, worst 9.5d → 0/37, 0.0d.
 4. **⛔ Item 6b (BLOCKED, user's call):** should the AUTHORED Gantt bar windows (`schedule_author.js`
    §PHASE_OVERLAP_BAND — what a PM sees and drags) also serialize to match the two-tier DISPLAY
    reality (§TIER_SERIAL/§TIER2_AFTER_TIER1)? Changes bar-date semantics for every future generated
@@ -1401,3 +1403,84 @@ has hit yet.
 `fix/hhs-door-host-wall` are still in flight — both are actively rewriting the exact gate functions
 (`computeSchedule`, `place()`, `openingGate`/`hostGate`) this generalization would replace. Build it
 AFTER both land and merge to `main`, off the then-current gate code, not before.
+
+## §CURTAIN_WALL_OPENING — HHS Level-3 floating doors, root-caused and FIXED (2026-08-12)
+**User report:** HHS_Office_Federated Level 3 doors appear before their host wall exists. Sat on the
+punch list as "not investigated… re-verify against a FRESH bake" (OPEN THREADS item 3, now ✅).
+
+**First deliverable: the probe that was cited but never existed.** `openingGate`'s own header claims
+"measured on all 7 shipped buildings (probe_door_wall.js)". No such file was ever committed. It now
+exists — `bim-compiler/scripts/probe_door_wall.js` — and reports per STOREY, on both the generative
+and the DISPLAY timeline, against three pools (`wallGrid` = what the gate sees today, `wallLike`,
+`any`). Run: `VIEWER_DIR=… BLD_DIR=… node scripts/probe_door_wall.js` (`ONLY=`, `DETAIL=<pool>`).
+
+**The finding, and it is NOT the predicate — it is the pool.** `openingGate` is correct: rawEARLY
+**0.0% on all 7 buildings** against `wallGrid`. The defect is coverage. `place()` fills `wallGrid`
+from `el.cls.indexOf('IfcWall') === 0`, and HHS's façade is a curtain wall, so **34 of 133 HHS
+openings (25.6%) had ZERO candidate** and `openingGate` fell straight through to `baseMs` —
+completely ungated from day 0. Same shape as §HOSTED_BEFORE_HOST's `IfcCovering` (a real class in no
+pool), one layer over.
+
+**The host classes are EXTRACTED, never guessed** — HHS's `element_name` column names them:
+`IfcCurtainWall` = "Curtain Wall:Standard" (assembly), `IfcPlate` = "Systemelement:**Verglasung**"
+(glazing), `IfcMember` = "Rechteckiger **Pfosten**:6 x 15 mit Deckprofil" (mullion). The offending
+L3 doors are "Türelement 1-flg - Drehflügel - **Glas**". Checked and confirmed: the DBs carry **no**
+`IfcRelAggregates`/`IfcRelFillsElement` (`spatial_structure` holds only `IfcBuildingStorey`/
+`IfcSpace`; zero `IfcPlate`/`IfcMember` rows have a parent) — so the assembly exists ONLY as its
+geometric parts, and `IfcCurtainWall` itself has **zero geometry rows** in HHS (pure container).
+Gating on the assembly class alone would have been a no-op; the PARTS are what must be indexed.
+
+**Why no other gate caught it, one fact:** `IfcMember` is seq 3 and `IfcPlate` seq 4, so both sit in
+the STRUCTURE grid — where `geoGate` only tests bearing-below or contained-in-lower-half. A
+full-height mullion beside a door starts at the SAME floor level, satisfying neither. A door cut into
+a curtain wall is a SIDEWAYS relation — exactly what §DOOR_WINDOW_HOST_WALL was written for, missed
+only because its pool is keyed on a class-name prefix.
+
+**The fix** (`viewer/schedule_gate.js`): `cwGrid`, a SECOND INDEX over records that already exist
+(same rec object as the structure grid ⇒ a §DEQ_REPAIR shift is seen through both, no copy to drift),
+consulted by `openingGate` **only when the wall pool yields nothing**. Strict addition — an opening
+gated today keeps its exact current start. No new threshold (reuses the existing EPS bracket). Cannot
+cycle: `IfcMember`/`IfcPlate` are seq ≤4 so the repair loop never moves them, and the one seq>4 pool
+member, `IfcCurtainWall`, is not an opening. New `§CURTAIN_WALL_OPENING cwGated/stillUngated/cwCells`
+log line makes the pool auditable. `_GANTT_CACHE_VERSION` 12→13 + `sw.js` v1008→v1009 in the SAME diff.
+
+**Before → after (`wallLike` pool, rawEARLY / worst; the number the fix must close):**
+| building | before | after |
+|---|---|---|
+| **HHS_Office_Federated** | **30/133 (22.6%) worst 9.5d** | **0 (0.0%) worst 0.0d** |
+| — HHS **Level 3** | **6/37 (16.2%) worst 9.5d** | **0/37 (0.0%) worst 0.0d** |
+| — HHS Level 1 / Level 2 | 14/50 (28.0%) / 10/46 (21.7%) | 0 / 0 |
+| Clinic | 10/312 (3.2%) worst 22.2d | 2 (0.6%) worst 16.1d |
+| Hospital | 10/570 (1.8%) worst 187.6d | 5 (0.9%) worst 172.5d |
+| Terminal / Duplex / LTU_AHouse / JKR | — | **byte-identical, zero change** |
+
+`§CURTAIN_WALL_OPENING cwGated=` 34 HHS / 8 Clinic / 5 Hospital / **0** Terminal, Duplex, JKR.
+`§DEQ_REPAIR shifted=` Terminal 44→44 (unchanged), HHS 2→32 (the newly-gated openings). A/B'd against
+the pre-fix `schedule_gate.js`, so "unchanged" is measured, not assumed.
+
+## §DOOR_WINDOW_HOST_WALL_DISPLAY — OPEN, NOT FIXED: the display layer un-does `openingGate`
+Found by the same probe, 2026-08-12. **Separate defect, separate lane — deliberately NOT bundled into
+the §CURTAIN_WALL_OPENING fix** (this lane's own gate exists because five changes landed in one day
+and no witness owned the broken predicate). It does **not** affect HHS, so it is not the reported bug.
+
+`openingGate` runs inside `computeSchedule`. `_twoTierRemap` + `_midairRepair` then rewrite the
+DISPLAY timeline the movie actually plays — and **break the guarantee**. Measured, `wallGrid` pool,
+raw → display:
+
+| building | rawEARLY | dispEARLY | worst (display) |
+|---|---|---|---|
+| LTU_AHouse | 0 (0.0%) | **366/1280 (28.6%)** | **974.0d** |
+| Terminal | 0 (0.0%) | **61/371 (16.4%)** | 28.1d |
+| JKR | 0 (0.0%) | **15/148 (10.1%)** | 11.7d |
+| Hospital | 0 (0.0%) | **14/565 (2.5%)** | **172.5d** |
+| HHS / Clinic / Duplex | 0 | 0 | 0.0d |
+
+4 of 7 buildings show doors on screen before their own host wall finishes, up to 974 days early.
+§HOSTED_BEFORE_HOST got a display-layer twin (`_midairRepair` reads `ScheduleGate.hostPairs`);
+§DOOR_WINDOW_HOST_WALL never did. **The likely fix is symmetric** — give the display repair the same
+opening/host-wall pass, reusing `openingScan`'s pool now that both grids exist. Re-measure with
+`probe_door_wall.js` (the `dispEARLY` column IS the acceptance number) before and after.
+
+**Also observed, unrelated and pre-existing (A/B-confirmed identical before this fix):** JKR reports
+`§SUPPORT_CYCLE cycles=4564` on a 8,985-element model — over half the model is Kahn-leftover. Not
+touched here; worth its own look given §TM_GEO_ORDER_CYCLES took Terminal 37,927→0.
