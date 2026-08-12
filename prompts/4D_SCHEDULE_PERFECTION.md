@@ -1456,7 +1456,20 @@ log line makes the pool auditable. `_GANTT_CACHE_VERSION` 12→13 + `sw.js` v100
 
 `§CURTAIN_WALL_OPENING cwGated=` 34 HHS / 8 Clinic / 5 Hospital / **0** Terminal, Duplex, JKR.
 `§DEQ_REPAIR shifted=` Terminal 44→44 (unchanged), HHS 2→32 (the newly-gated openings). A/B'd against
-the pre-fix `schedule_gate.js`, so "unchanged" is measured, not assumed.
+the pre-fix `schedule_gate.js`, so "unchanged" is measured, not assumed. `§SUPPORT_CYCLE` unchanged
+everywhere — JKR's alarming `cycles=4564` is PRE-EXISTING and byte-identical before/after (verified,
+not assumed); see the note at the end of the next section.
+
+**`gate_4d.sh` before/after: `pass=6 fail=0 missing=1` → `pass=7 fail=0 missing=1`.** All 6 witnesses
+identical verdicts; the 7th is `§CACHE_VERSION_GUARD` going `SKIP`→**`PASS gating_changed=32
+version_bumped=1`** (it only SKIPped in the baseline because that tree WAS `origin/main` with nothing
+to diff). `missing=1` is `witness_arch_area_weight`, absent from this revision — pre-existing, not
+this change. **§-number drift, one building, explained not waved through:** Clinic's 8 newly-gated
+openings shift its `§DAY_GAP` longest-empty-run *location* from 11%..22% to 88%..99% — the run
+LENGTH is unchanged (11% both), `spanD` is unchanged (278.5→278.5), and MEP Rough-in occupancy
+*improves* 88%→95%. Clinic simply has two empty runs of equal length and a small perturbation flips
+which one is reported as the max. Not a regression; recorded so the next reader does not re-derive it.
+Every other building's §-numbers are byte-identical.
 
 ## §DOOR_WINDOW_HOST_WALL_DISPLAY — OPEN, NOT FIXED: the display layer un-does `openingGate`
 Found by the same probe, 2026-08-12. **Separate defect, separate lane — deliberately NOT bundled into

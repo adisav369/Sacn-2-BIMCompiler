@@ -35,7 +35,15 @@ say ""
 # below only checks statically — and it had been throwing `ReferenceError: _zoneIndex is not defined`
 # from W-KOS-4 onward since #1313, its first four gates still passing, so nobody saw it die. Same
 # dead-witness shape as witness_midair_zero. Revived in bim-ootb #1323; green 12/12.
-for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host witness_kernel_ops_sched_version; do
+# witness_curtain_wall_opening added 2026-08-12 (§CURTAIN_WALL_OPENING, bim-ootb fix/hhs-door-host-wall):
+# it owns the predicate NO existing witness owned — not "is the wall pool respected" (openingGate was
+# always correct: rawEARLY 0.0% on all 7 buildings) but "is every opening that HAS an available host
+# actually gated against one, whatever class that host is". §DOOR_WINDOW_HOST_WALL's own witness
+# stayed green while 34 of HHS's 133 openings (25.6%) sat outside wallGrid entirely — ungated from
+# day 0 — because HHS's façade is a curtain wall and wallGrid is keyed on cls.indexOf('IfcWall')===0.
+# Verified to FAIL on the pre-fix tree (G-CWO-RAW HHS=30 early, worst 9.5d IfcDoor@IfcPlate) and pass
+# after, so it is a test that names the issue it proves rather than one that is merely green.
+for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host witness_kernel_ops_sched_version witness_curtain_wall_opening; do
   f="$VIEWER_DIR/tests/$w.js"
   if [ ! -f "$f" ]; then say "MISS  $w  (not in this revision)"; miss=$((miss+1)); continue; fi
   out=$(cd "$VIEWER_DIR/tests" && BLD_DIR="$BLD_DIR" timeout 900 node "$w.js" 2>&1)
@@ -55,6 +63,14 @@ say ""
 say "── §-numbers (compare against prompts/4D_SCHEDULE_PERFECTION.md; drift here is the finding) ──"
 VIEWER_DIR="$VIEWER_DIR" BLD_DIR="$BLD_DIR" timeout 1800 node scripts/probe_arch_start.js 2>&1 \
   | grep -E "§DAY_GAP |§DAY_GAP_PHASE_OCC|§TIER_SERIAL_BY_ZONE|§CREW_AUTOSCALE|§ARCH_AREA_WEIGHT classes|§HOSTED_BEFORE_HOST" \
+  | tee -a "$OUT"
+
+# §DOOR_WINDOW_HOST_WALL / §CURTAIN_WALL_OPENING shape numbers (2026-08-12). Separate probe because
+# it is the only one that reports per STOREY and splits the wallGrid pool from the curtain-wall pool
+# — the split that showed openingGate's PREDICATE was fine and its POOL was not. The dispEARLY column
+# is the live acceptance number for the still-OPEN §DOOR_WINDOW_HOST_WALL_DISPLAY thread.
+VIEWER_DIR="$VIEWER_DIR" BLD_DIR="$BLD_DIR" timeout 1800 node scripts/probe_door_wall.js 2>&1 \
+  | grep -E "§DW_COVER" \
   | tee -a "$OUT"
 
 # ── 3. §CACHE_VERSION_GUARD — catches the miss that has bitten 3 times in one day (2026-08-12):
