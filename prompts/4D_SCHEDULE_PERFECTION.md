@@ -1369,3 +1369,35 @@ check, not a witness:** if a commit's diff touches `schedule_gate.js` gating, `c
 call sites, `_twoTierRemap`/`_tier1Serialize`/`_midairRepair`, or `sequence_rules.json`, then
 `_GANTT_CACHE_VERSION` must also change in that same diff. Cheapest home is a `gate_4d.sh` step
 guarded on `VIEWER_DIR` being a git tree (it is skipped for the exported-revision runs).
+✅ Built same day: `§CACHE_VERSION_GUARD` in `scripts/gate_4d.sh` (bim-compiler). First version only
+diffed added function *declarations*, blind to a function being REWRITTEN in place — measured on
+its own first real customer (M1's crew-clock rewrite) reporting `gating_changed=0`, which would have
+waved a missing bump straight through. Widened: any non-comment added line in `schedule_gate.js`
+counts as a gating change (that whole file IS the gating engine).
+
+## §UNIVERSAL_HOST_BUFFER — NEXT DIRECTIVE, not yet built (2026-08-12, user's own proposal)
+User, after `openingGate`/`hostGate` were explained as two separate class-specific fixes for the
+same underlying shape of bug (ceiling not in any support pool, then a suspected wall-class gap on
+HHS L3): *"why can't there be an envelope route in the end to simply boolean isPhysicallyHosted()?
+... if it is false, then put in a buffer which dumps the stack once hosted."*
+
+**This is the right generalization, and `§MIDAIR_REPAIR` already proves the shape works** — it is a
+class-blind, pool-blind "has anything you touch appeared yet" repair pass, and it took floating
+elements from 5,561 to 0 across all 7 buildings. What it does NOT do is find the CORRECT host
+precisely — its bar is coarse (any contact counts), which is why `hostGate` (ceilings) and
+`openingGate` (walls) still had to be hand-built separately, one class-family at a time, each time a
+new "element X has no support pool" bug was found live.
+
+**The directive**: replace the growing set of class-specific gates with ONE generic
+`isPhysicallyHosted(el)` — geometric nearest-real-contact lookup across ALL classes/pools, no class
+whitelist on either side (mirrors what `hostGate`'s own host-inference and `openingGate`'s
+`wallGrid` lookup each already do narrowly) — and a buffer/queue per unresolved host: an element
+with `isPhysicallyHosted(el) === false` holds until its real host is placed, then releases together
+with everything else waiting on that same host. This retires the current pattern (discover one more
+ungated class → build one more gate → repeat) in favour of one mechanism that covers classes nobody
+has hit yet.
+
+⛔ **Sequencing, not scope**: do NOT start this while `fix/m1-crew-day-clock` and
+`fix/hhs-door-host-wall` are still in flight — both are actively rewriting the exact gate functions
+(`computeSchedule`, `place()`, `openingGate`/`hostGate`) this generalization would replace. Build it
+AFTER both land and merge to `main`, off the then-current gate code, not before.
