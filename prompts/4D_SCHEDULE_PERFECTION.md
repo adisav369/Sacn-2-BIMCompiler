@@ -44,6 +44,17 @@ Both were auto-merge armed at handover, not confirmed merged. `gh pr view 1317 -
 #1318 = §GANTT_CACHE_ERR stack logging (sw v1006). After they land, ask the user to re-bake and read
 the new `§GANTT_CACHE_ERR ... stack=` line — a live error was recovered-but-unlocated at handover.
 
+### 3b. WATCH: did today's merges actually fix what the user reported?
+Both #1317/#1318 were still OPEN (auto-merge armed, e2e running) at handover — nobody has yet seen
+their effect. Once live, confirm against the user's two reported symptoms, numerically:
+- *"ARCH still comes on too fast"* → #1317 §ARCH_AREA_WEIGHT. Expect Hospital
+  `IfcWallStandardCase` per-element install spread to go from 1x (flat) to ~9252x, class totals
+  within 5%. `witness_arch_area_weight.js` asserts both.
+- *"outlets and hanging elements appearing bit early"* → NOT fixed by anything merged today. This is
+  task 1. If #1317 changed `§HOSTED_BEFORE_HOST EARLY%` at all, say so — it would mean the two are
+  coupled, which nothing currently predicts.
+Report the before/after numbers, not an impression.
+
 ### 4. Standing gate for everything after.
 `scripts/gate_4d.sh` before AND after any 4D change; diff the two logs. It exists because five
 changes shipped 2026-08-12 each passed its own witness in isolation while a visible bug survived.
