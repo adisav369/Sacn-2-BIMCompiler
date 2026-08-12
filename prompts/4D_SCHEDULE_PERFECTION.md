@@ -96,13 +96,28 @@ at the end of this file. Do not re-measure any of it. Headlines:
 - **Stage bisect names the owner per phase:** MEP Final is COMPACT generatively (RAW 176%, win 121d)
   and the display remap stretches it 6.5x to 27%/784d — `_twoTierRemap` owns it. Architecture is
   ALREADY sparse in RAW (zone 9%) — `computeSchedule`'s support gate owns it, the remap only inherits.
-- ⛔ **BLOCKED: may `§TIER2_AFTER_TIER1` stop over-shifting?** It moves EVERY Tier-2 element in a zone
-  by `t1EndZ[z] - t2MinZ[z]` — the amount the EARLIEST one needs — so elements already past the
-  barrier are pushed further for no reason, and since each zone's shift differs the phase gets
-  SHEARED. A per-element clamp (`push only if it.s < t1EndZ[z]`) satisfies the barrier's own stated
-  contract exactly and moves strictly less, but it is NOT order-preserving within a zone (today's
-  uniform shift is, deliberately — see its header), so it needs `_midairRepair`/`witness_midair_zero`
-  to carry the ordering. That trade is a ruling, not a derivation. **Do not ship it unasked.**
+- ✅ **RULING GIVEN 2026-08-13, build it:** user authorized the trade explicitly — *"DONT ASK ME, JUST
+  FIX. U already know what i want."* Ship the per-element clamp (`push only if it.s < t1EndZ[z]`,
+  replacing the uniform `t1EndZ[z] - t2MinZ[z]` shift) in `_twoTierRemap`/`§TIER2_AFTER_TIER1`.
+  Non-order-preserving is accepted — wire the repair through `_midairRepair` (proven pattern, took
+  floating elements 5,561→0 earlier this lane) and extend `witness_midair_zero`/
+  `witness_tier_serial_display` to assert the repaired order holds, since it's no longer guaranteed
+  upfront. Expect MEP Final occupancy ~22%→~69% (measured on the clamp candidate already). Worktree
+  **already created**, clean, at `/tmp/wt-tier2-clamp` (bim-ootb, branch `fix/tier2-per-element-clamp`,
+  off `main@e0d6d4b`) — reuse it, do not create a second one. Standard verification applies
+  (`gate_4d.sh` before/after, `_GANTT_CACHE_VERSION`+`sw.js` bump in the same diff — this exact miss
+  has recurred 4+ times this lane, do not make it a 5th).
+- Architecture's own sparseness (RAW zone-mean 9%, `computeSchedule`'s support gate owns it, not the
+  remap) is a SEPARATE, still-unexplained problem — do not fold it into the TIER2 clamp fix above,
+  they are different mechanisms with different owners. Root-cause it fresh if picked up.
+
+### 7. Dangling-items review — standing instruction, user 2026-08-13: *"there are still always dangling
+items, let next session watch out and review."* Not a specific bug — a mandate to actively hunt for
+what today's velocity left unverified, the same way `§RULES_TABLE_SOURCE`, `§SERVED_BYTES`, the
+`witness_midair_zero`/`witness_kernel_ops_sched_version` dead-witness pattern, and the 5D rate-pack
+`max_crews` shallow-merge gap were each found ONLY by someone independently re-checking, not by any
+single task's own scope. Before or after task 6: re-run `gate_4d.sh` clean, diff every `§`-number
+against what this file records, and treat any drift as a finding to chase — not noise to explain away.
 
 **What is already done — do not redo, cite it:** §DAY_GAP lane resolved to zero (#1313 §ZONE_INDEX ·
 #1314 §TIER_SERIAL_BY_ZONE · #1315 §CREW_DEMAND/§HR_COST · #1317 §ARCH_AREA_WEIGHT); movie shadow
