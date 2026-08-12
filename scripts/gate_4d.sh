@@ -26,7 +26,11 @@ say "§GATE_4D viewer=$VIEWER_DIR buildings=$BLD_DIR  $(date -Is)"
 say ""
 
 # ── 1. Witnesses — each returns n/N; we keep only the verdict + any failing gate ───────────────
-for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_arch_area_weight witness_hosted_before_host; do
+# witness_midair_zero added 2026-08-12 (§DAY_GAP_TAIL): it owns _midairRepair — the pass that sets
+# ~46% of LTU's Superstructure straggler tail — and it had been throwing `ReferenceError: _zoneIndex
+# is not defined` since #1313, exiting before it measured a single building. Four PRs of this lane
+# shipped while it certified nothing, which is the exact failure this gate exists to catch.
+for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host; do
   f="$VIEWER_DIR/tests/$w.js"
   if [ ! -f "$f" ]; then say "MISS  $w  (not in this revision)"; miss=$((miss+1)); continue; fi
   out=$(cd "$VIEWER_DIR/tests" && BLD_DIR="$BLD_DIR" timeout 900 node "$w.js" 2>&1)

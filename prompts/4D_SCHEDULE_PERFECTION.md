@@ -33,12 +33,17 @@ barrier, and the named fix applies: **a hosted element inherits its HOST's zone/
 its own median-Z band.** Either way: promote `§HOSTED_BEFORE_HOST` from a probe line to a real
 witness that **asserts EARLY=0**, then fix until it passes. That witness is the deliverable.
 
-### 2. §DAY_GAP_TAIL — root cause still unfound.
-Dead run now sits at the film's END (Hospital 84–97%, LTU 94–99%). LTU: 313 structural members
-spanning 1386d past their phase's 95% mark, `IfcBeam@day1714` of a 1941d programme. **The
-geometry-outlier theory is DISPROVEN — do not re-walk it** (§DAY_GAP_PHASE_OCC). Next measurement is
-named there: for the tail elements, log WHICH support edge set their start
-(`_tierAuditRegate`/`_midairRepair`, both later-only — one bad edge drags an element and its window).
+### 2. §DAY_GAP_TAIL — ✅ DONE (measured). NO SCHEDULE FIX WARRANTED — stragglers are legitimate.
+Full result: **§DAY_GAP_TAIL_EDGE** section below. The named measurement was run
+(`scripts/probe_tail_edge.js`, instrumentation proven inert 0/122330). Headlines: **"one bad edge
+drags many" is DISPROVEN** (112 distinct drivers for 312 LTU stragglers); **Hospital's dead run is
+100% §TIER2_AFTER_TIER1**, i.e. lane item 2, ⛔ BLOCKED on a user ruling, not a bug; Clinic's tail
+is the documented §TIER_DAG_WINS wall-carried shape. One real defect (`_contactGraph`'s
+lower-bound-only carrier band) was found, implemented, measured and **REJECTED** — it buys 1.5% of
+tail for a 3–40× orphan blowup. **Do not re-walk any of the four; the numbers are recorded.**
+What shipped instead: `witness_midair_zero.js` had been **dead since #1313** (`ReferenceError:
+_zoneIndex`) and was judging the wrong one of two `_midairRepair` copies — both fixed, 38/0, now in
+`gate_4d.sh`.
 
 ### 3. Verify #1317 and #1318 actually landed, then re-check.
 Both were auto-merge armed at handover, not confirmed merged. `gh pr view 1317 --json state`.
@@ -1009,6 +1014,83 @@ future harness that consumes zoned items must carry the zone key or it is measur
 (Hospital 84–97%, LTU 94–99%) — `§DAY_GAP_TAIL` stragglers. Root cause unfound; the
 geometry-outlier theory is disproven above. Next measurement is named: for the tail elements, log
 WHICH support edge set their start (`_tierAuditRegate`/`_midairRepair`, both later-only).
+
+### §DAY_GAP_TAIL_EDGE — the named measurement, RUN. 2026-08-12. NO SCHEDULE FIX WARRANTED.
+
+The measurement above ("log WHICH support edge set their start") is done. Tool:
+`scripts/probe_tail_edge.js` — it does not re-implement a gate; it slices the SHIPPED
+`computeSchedule`/`_tier1Serialize`/`_tierAuditRegate`/`_twoTierRemap`/`_midairRepair` and patches
+attribution-only recording into their mutation points. `--selfcheck` proves the instrumentation is
+inert: **rawStartMismatch=0/122330 and pushPassMismatch=0/122330 on LTU** vs the unpatched modules.
+
+**Final mover of each straggler's start (tail = starts past its phase's 95% mark, §DAY_GAP_TAIL_WHO's
+own definition):**
+```
+LTU_AHouse  Superstructure  tail=312/6268 @1003.4d   MIDAIR 143(46%) · REGATE:bearing 139(45%) · T1SERIAL 30(10%)
+Clinic      Superstructure  tail=31/960   @82.2d     MIDAIR  28(90%) · RAW:crew 2(6%) · REGATE:bearing 1(3%)
+Hospital    MEP Rough-in    tail=1918/38362 @133.0d  TIER2SHIFT 1918(100%)
+```
+
+**1. "One bad edge drags many" — DISPROVEN.** LTU: **112 distinct driver elements for 312
+stragglers**; the single most recurrent driver accounts for 30 (9.6%). There is no small edge set to
+cut.
+
+**2. Hospital's dead run — the biggest one (13% of film, 84–97%) — is NOT an edge at all.** 100% of
+its tail is `_twoTierRemap`'s §TIER2_AFTER_TIER1 per-zone uniform shift: MEP waiting for its zone's
+Tier-1 to complete. That is the user-confirmed contract, and it is item 2 of this lane — **⛔ BLOCKED
+pending a user ruling, not a bug.** Nothing to fix here without that ruling.
+
+**3. Clinic's tail is legitimate.** Its `_midairRepair` drivers are Architecture-phase
+`IfcWallStandardCase` carrying Superstructure `IfcBeam` — the already-documented §TIER_DAG_WINS
+wall-carried shape (support order wins over backbone serialization). Real construction order.
+
+**4. One REAL defect found, MEASURED, and DELIBERATELY NOT FIXED — do not re-walk this.**
+`_contactGraph` / `_midairRepair`'s carrier clause is bounded on the LOWER side only:
+```
+_contactGraph:4484 / _midairRepair:4690   S.bz >= T.tz - GAP                        && S.tz > T.tz + EPS
+schedule_gate.js hangGate:259             S.base_z >= el.top_z - GAP && S.base_z <= el.top_z + GAP && ...
+time_machine.js _tierAuditRegate:4090     S.bz >= T.tz - GAP && S.bz <= T.tz + GAP  && ...
+```
+Two of the four implementations of this one relation carry the upper bound; the two written in
+#1303 do not (plus `witness_midair_zero.js`'s census, written in the same pass — so its
+"independent census" was independent CODE, not an independent predicate). Consequence: **anything
+XY-overlapping at ANY height above an element counts as the carrier it hangs from.** The worst LTU
+straggler is exactly this — `IfcBeam 29OqYXvmL1o9` (Superstructure, top z=11.05) took its **only**
+contact from `IfcFlowSegment 2befIFnbz0vO` (MEP Rough-in, base z=13.93 — **2.88 m clear above it,
+not touching**) and was pushed **day 119.5 → 1181.4 (+1062.0 d)** to wait for that pipe. Model-wide
+on LTU: 87 support-pool members gated on non-pool elements, 26,240 element-days of displacement.
+
+**Adding the upper bound was implemented and measured. It is REJECTED on its own numbers:**
+```
+LTU tail 1003.4d → 988.3d (−1.5%)   Hospital worst phase moves MEP Rough-in → Architecture @237.2d
+W-MZ-2 (midair==0)  still PASSES on all 7
+W-MZ-4 orphans      Terminal 7→531 · Hospital 35→1386 · Duplex 1→11 · HHS 36→119 · Clinic 27→421
+                    · LTU 865→2478 · JKR 1→32
+W-MZ-8 trade        HHS 11→12 · Clinic 356→357 · LTU 1100→1177 (worse on 3 of 7)
+```
+The unbounded band is **load-bearing compensation for crude AABB contact**: `_contactGraph` is
+pool-blind and has no §HANG_NEAREST fallback, so tightening it strands thousands of elements as
+orphans (touching nothing) — a 3–40× blowup — and worsens the auditFloating trade, to buy 1.5% of
+the tail. That is a design change with real regressions, not a narrow bug fix. Left alone, and the
+asymmetry is now commented at all three sites so nobody "fixes" it uninformed.
+
+**5. What DID ship (bim-ootb #NNNN, `fix/day-gap-tail`): `witness_midair_zero.js` was DEAD.**
+It has thrown `ReferenceError: _zoneIndex is not defined` and exited before measuring a single
+building **since #1313** — `_buildXrayElements` started calling `_zoneIndex()`/`_zoneOf()` and the
+witness's slice list was never updated. Four PRs of this lane shipped while the witness that owns
+`_midairRepair` certified nothing. Second latent defect in the same file: it sliced `_midairRepair`
+**#0 of 2**, and declaration hoisting means the browser runs **#1** — it was judging a copy that
+never executes (same class as this lane's own "the tier witness was silently testing nothing").
+Both fixed; now slices ship-truth and logs `§MIDAIR_SLICE`. **38/0 pass, every W-MZ-1 baseline
+identical to its documented value** (Terminal 161 · Hospital 165 · Duplex 19 · HHS 156 · Clinic 345
+· LTU 4605 · JKR 110) — a pure repair, zero numeric drift. Added to `scripts/gate_4d.sh` (1m43s).
+
+**Verdict: the §DAY_GAP_TAIL stragglers are legitimate, not a bug.** The tails are real elements at
+real positions (geometry theory disproven above), driven by 112 distinct edges, and the largest one
+is a user-confirmed contract that is already blocked on a ruling. There is no narrow schedule fix,
+and none was invented. The `_midairRepair` duplicate definition (`:4517` delegating, `:4660`
+inlined, last wins) remains a known low-priority defect — **the inlined copy is ship truth**; any
+future edit must touch both or delete one, and `witness_midair_zero.js` now pins which is which.
 
 **Order of work (do not reorder — each step de-risks the next):**
 1. `§ZONE_INDEX` — extract the ONE banding derivation + fallback chain + memo. Pure refactor,
