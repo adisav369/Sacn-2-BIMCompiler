@@ -96,20 +96,66 @@ at the end of this file. Do not re-measure any of it. Headlines:
 - **Stage bisect names the owner per phase:** MEP Final is COMPACT generatively (RAW 176%, win 121d)
   and the display remap stretches it 6.5x to 27%/784d — `_twoTierRemap` owns it. Architecture is
   ALREADY sparse in RAW (zone 9%) — `computeSchedule`'s support gate owns it, the remap only inherits.
-- ✅ **RULING GIVEN 2026-08-13, build it:** user authorized the trade explicitly — *"DONT ASK ME, JUST
-  FIX. U already know what i want."* Ship the per-element clamp (`push only if it.s < t1EndZ[z]`,
-  replacing the uniform `t1EndZ[z] - t2MinZ[z]` shift) in `_twoTierRemap`/`§TIER2_AFTER_TIER1`.
-  Non-order-preserving is accepted — wire the repair through `_midairRepair` (proven pattern, took
-  floating elements 5,561→0 earlier this lane) and extend `witness_midair_zero`/
-  `witness_tier_serial_display` to assert the repaired order holds, since it's no longer guaranteed
-  upfront. Expect MEP Final occupancy ~22%→~69% (measured on the clamp candidate already). Worktree
-  **already created**, clean, at `/tmp/wt-tier2-clamp` (bim-ootb, branch `fix/tier2-per-element-clamp`,
-  off `main@e0d6d4b`) — reuse it, do not create a second one. Standard verification applies
-  (`gate_4d.sh` before/after, `_GANTT_CACHE_VERSION`+`sw.js` bump in the same diff — this exact miss
-  has recurred 4+ times this lane, do not make it a 5th).
-- Architecture's own sparseness (RAW zone-mean 9%, `computeSchedule`'s support gate owns it, not the
-  remap) is a SEPARATE, still-unexplained problem — do not fold it into the TIER2 clamp fix above,
-  they are different mechanisms with different owners. Root-cause it fresh if picked up.
+- ✅ **DONE (witness) 2026-08-13.** Shipped the per-element clamp in `_twoTierRemap`/
+  `§TIER2_PER_ELEMENT_CLAMP`: `push only if it.s < t1EndZ[z]`, to `t1EndZ[z]` exactly, replacing the
+  uniform `t1EndZ[z] - t2MinZ[z]` shift. Built in `/tmp/wt-tier2-clamp` (reused as instructed).
+  **Measured, Hospital:** MEP Final occupancy 22%(pre-lane)→**105.4%**, MEP Rough-in →226.5% (both
+  now over-full, i.e. genuinely busy, zero dead air — the window shrank to fit the real work instead
+  of the work being padded to fill an inherited window). Non-order-preserving accepted per the
+  ruling; wired through the existing `_midairRepair` pass (already ran after `_twoTierRemap`, no
+  reordering needed). **W-MZ-2 (the acceptance bar, floating==0) holds on all 7 buildings, unchanged.**
+  W-MZ-8 (a *separate*, already-nonzero "support-order-violation cost" tracker, not the acceptance
+  bar) ticked up on 2 of 7 — Terminal 102→103, LTU_AHouse 1101→1142 — baseline updated in
+  `witness_midair_zero.js` with the reason inline, per that witness's own "locked, not hidden" design.
+  `_GANTT_CACHE_VERSION` 15→16, both in the same diff. `sw.js` collided 3x live during push (three
+  concurrent same-day sessions each independently bumping `CACHE_VERSION` — #1331 v1013→v1014,
+  #1332 v1014→v1015, #1334 v1015→v1016, none with their own dated comment) — resolved each per this
+  file's own KEEP-BOTH/take-the-higher convention, landing at **v1017**. Also caught by CI on push:
+  `no-undef` on a bare `SHIFT_HOURS` reference in `time_machine.js` (rates.js's global is
+  cross-file, must be read via `window.SHIFT_HOURS` only, same as `LABOR_RATES`/`SEQUENCE_RULES`) —
+  fixed same session. **PR bim-ootb#1333 MERGED**, `fast-checks` green.
+- **Architecture/Superstructure's own RAW sparseness — ROOT-CAUSE NARROWED, not yet closed.**
+  Ran the obvious next experiment first: bumped `STEEL_ERECTOR`/`CONCRETE_GANG`/`MASON`/`CARPENTER`
+  `max_crews` ~3x (project-wide) in a scratch copy and re-measured. **Result: near-null** — Hospital
+  Superstructure occupancy 40.6%→44.4%, Architecture 30.0%→31.3%, while Substructure's ALREADY-full
+  window just got proportionally tighter (157.8%→414.7%, an unrelated side effect). **Crew capacity
+  is not the bottleneck — crew utilization computed from the SAME numbers is ~7%** (116 work-days
+  against ~1716 available crew-days in Superstructure's window), meaning crews sit idle waiting on
+  something, not queued behind a busy resource. This rules out rank-2 (`max_crews` autoscale) as the
+  fix for THIS symptom (it may still be worth doing for other reasons, just not this one) and points
+  at a genuine **critical-path effect**: `computeSchedule`'s PASS-A structure gate (`geoGate`, bottom-
+  up bearing-below) chains floor N's start to floor N-1's real finish with no bandGate/tg on structure
+  at all (§4D_BAND_MONOTONIC's own ruling), so a handful of elements on the LONGEST vertical chain
+  set the whole phase's span while thousands of others sit with slack — classic CPM, not a scheduler
+  bug. Matches [[feedback_construction_standards_not_invented_pacing]]: if this genuinely is the
+  physical bottom-up sequence with realistic crew counts, it may not be a kink to fix at all. ⛔ Needs
+  either (a) tracing the ACTUAL longest chain to confirm/refute this reading with element-level
+  evidence (not done — time-boxed out this session), or (b) the user's read on whether it still reads
+  as "idle" once the two shipped fixes below have already cut total idle time by 5x+.
+
+### 8. §SHIFT_HOURS — ✅ DONE (witness) 2026-08-13. M1's 8h default REVERSED to 24h, per user ruling.
+User, live: *"why bother with 24hr? Isnt it faster? 2020 is very slow"* → *"24hr is our default,
+import and JSON setting can import as we align to standard model."* This is the OPPOSITE call from
+#1323's §ARCH_START_TEMPO/M1, which shipped the rate table's 8h crew-day as the ONLY value earlier
+2026-08-13, tripling every building's span (Hospital →~2020d, live-confirmed by the user's own pasted
+browser console: `day=735 of=2020`). The user judged that too slow and wants speed as the default,
+with the "standard model" 8h shift demoted to an explicit opt-in.
+**Fix, kept minimal and non-invasive:** `rates.js` gets a new top-level `SHIFT_HOURS = 24`
+(same pattern as `RATES`/`LABOR_RATES` — a plain global, editable the same way, override-able by a
+future rate-pack import). `schedule_gate.js`'s `computeSchedule` takes an optional 5th arg
+`shiftHours`; **its own internal default stays 8h** so every witness/probe that doesn't pass the arg
+is byte-for-byte unaffected (a uniform time rescale changes no order/floating assertion, only
+absolute day counts — confirmed, zero witness regressions from this half of the change).
+`time_machine.js`'s `injectGantt` — the ONLY real generation path — reads `rates.js`'s `SHIFT_HOURS`
+and threads it through as that 5th arg, so the shipped viewer runs 24h by default while the tests
+keep proving 8h-mode correctness undisturbed. `probe_arch_start.js` updated to read+pass the same
+value so probe numbers match what the browser will show.
+**Measured, all 7 buildings (combined with §TIER2_PER_ELEMENT_CLAMP above, both ship together):**
+Terminal 375.2→131.2d · **Hospital 1168.7→369.2d (2020d live→~369d, 5.5x)** · Duplex 18.0→10.6d ·
+HHS 122.1→55.3d · Clinic 399.8→183.4d · LTU_AHouse 1855.1→915.9d · JKR 110.1→50.6d. Every building
+shrank 1.7x–5.5x, none broke, none went degenerate (no building near the 10-day scaleFactor floor
+flipped sign or NaN'd). `_GANTT_CACHE_VERSION`/`sw.js` bump covers this in the same diff as item 6
+(shipped together — see that entry for the exact version numbers and the two W-MZ-8 baseline updates).
 
 ### 7. Dangling-items review — standing instruction, user 2026-08-13: *"there are still always dangling
 items, let next session watch out and review."* Not a specific bug — a mandate to actively hunt for

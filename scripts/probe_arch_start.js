@@ -124,10 +124,13 @@ function loadShipTables() {
     }
     return txt.slice(i, j + 1);
   };
+  // §SHIFT_HOURS (2026-08-13): a plain scalar, not brace/bracket-matched like the tables above.
+  const shiftM = txt.match(/var SHIFT_HOURS = (\d+(\.\d+)?);/);
+  const shiftHours = shiftM ? Number(shiftM[1]) : 24;
   return (new Function([blk('RATES', '{'), blk('SEQUENCE_RULES', '{'), blk('LABOR_RATES', '{'),
     blk('SEQUENCE_DEFAULT', '{'), blk('SEQUENCE_NAME_OVERRIDES', '[')].join(';\n') +
     ';\n return { RATES: RATES, SR: SEQUENCE_RULES, LR: LABOR_RATES,' +
-    ' SD: SEQUENCE_DEFAULT, NO: SEQUENCE_NAME_OVERRIDES };'))();
+    ' SD: SEQUENCE_DEFAULT, NO: SEQUENCE_NAME_OVERRIDES, SHIFT_HOURS: ' + shiftHours + ' };'))();
 }
 
 const BLD_DIR = process.env.BLD_DIR || path.join(HOME, 'bim-ootb', 'buildings');
@@ -252,7 +255,7 @@ function fmtExt(ext, base) {
     const quiet = console.log; console.log = () => {};
     let sched;
     t0 = now();
-    try { sched = ScheduleGate.computeSchedule(geoEls, 0, 1, maxCrews); } finally { console.log = quiet; }
+    try { sched = ScheduleGate.computeSchedule(geoEls, 0, 1, maxCrews, _ship.SHIFT_HOURS); } finally { console.log = quiet; }
     t.compute = now() - t0;
 
     const items = geoEls.map(e => ({ guid: e.guid, s: sched[e.guid].start, e: sched[e.guid].end,
