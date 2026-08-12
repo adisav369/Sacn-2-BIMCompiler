@@ -823,6 +823,74 @@ this repo — **reuse `§XRAY_CACHE_MEMO`'s pattern verbatim** (bim-ootb #1308):
 (`mismatch=0`) against the un-memoized derivation. That is the "efficiently cached for reuse thru
 out the building ops" ask, and it is the same lever as R7 — consolidate first, then add the consumer.
 
+### §DAY_GAP_TAIL — WORK-TO-ZERO PASS, 2026-08-12 ("proceed, resolve till zero")
+
+**1. §ZONE_INDEX — ✅ DONE (witness W-ZONE 5/5, bim-ootb PR #1313, sw v1000→v1001).**
+Both inline copies of the median-Z banding removed; one memoized index, fallback chain built.
+Equivalence: **267,274 elements across all 7 buildings, mismatch=0**, band order identical.
+Two corrections the witness forced on the spec above: `rel_contained_in_space` exists on **three**
+buildings (Terminal 2,181 · HHS_Office_Federated 88 · JKR 107), not one — the §ZONE_KEY GAP 2 text
+was written from a 4-building sample and is wrong; and **LTU_AHouse has 2 median-Z ties**, the exact
+condition under which the two former copies could have disagreed with each other. They agreed in
+practice; they were never guaranteed to.
+
+**2. §TIER_SERIAL_BY_ZONE — ⛔ BLOCKED: does the strictly-serial backbone guarantee become
+PER-ZONE instead of GLOBAL?** Not a code problem. Two separate user-confirmed contracts stand in
+the way and only a ruling can move them:
+- `W-TS-1` asserts *"Tier-1 strictly serial: `_twoTierRemap` reports tier1OverlapPairs=0 on every
+  building"* — zone-scoping makes the GLOBAL count non-zero **by design**, so the witness contract
+  itself has to be redefined, not merely re-run.
+- §TIER2_AFTER_TIER1 quotes the user's own same-day correction verbatim: *"separate unrelated
+  disciplines can run parallel THEREAFTER — after Tier 1 finishes, **not concurrent with it**."*
+  Zone-scoping that is a direct reversal of it.
+Weighing against: the measured benefit is programme length (0.53×–0.73×), and by this file's own
+simulation it does **not** fix the dead air — it makes it slightly worse on Hospital, Terminal and
+HHS. Reversing two confirmed contracts for a benefit that is not the user's stated complaint is not
+a call to make unasked. Physical safety is not the issue either way: `_ogSupportSweep` already gates
+every element individually against the real support DAG, and §TIER_SERIAL is a display grouping on
+top of it.
+
+**3. Window derivation — DIAGNOSED, AND IT IS NOT WHAT EITHER PRIOR THEORY SAID. UNBLOCKED.**
+Measured per phase: how many elements occupy the last half of that phase's own elapsed window, and
+by what point 95% of it has started (`§DAY_GAP_TAIL`).
+```
+Hospital  Supers: lastHalfOfWindow=13/2603 (0.5%)   95%startedBy=37%ofWindow
+          MEP Ro: lastHalfOfWindow=45/38362 (0.1%)  95%startedBy=43%ofWindow
+          Archit: lastHalfOfWindow=1137/17236(6.6%) 95%startedBy=52%ofWindow
+LTU       Supers: lastHalfOfWindow=62/6268 (1.0%)   95%startedBy=15%ofWindow
+          Archit: lastHalfOfWindow=54/6586 (0.8%)   95%startedBy=46%ofWindow
+Clinic    Substr: lastHalfOfWindow=2/99 (2.0%)      95%startedBy=28%ofWindow
+```
+**13 elements out of 2,603 occupy the entire last half of Hospital Superstructure's 475.7-day
+window.** 95% of the phase has started by 37% of it. That is the dead air, and it is a **thin
+straggler tail**, not the tier-serialization contract — which is why item 3 is workable while item 2
+is blocked. Naming them (`§DAY_GAP_TAIL_WHO`, worst phase per building):
+```
+LTU       Superstructure  tail=313 spanning 1386.3d past its 95% mark
+                          IfcBeam×117, IfcMember×109, IfcColumn×57, IfcPlate×25, IfcSlab×5
+                          latest: IfcBeam@day1714/bz10.8 of a 1941d programme
+Hospital  MEP Rough-in    tail=1918 spanning 320.8d · IfcPipeSegment×885, IfcPipeFitting×652, IfcValve×227
+Clinic    MEP Rough-in    tail=485 spanning 95.1d · IfcFlowFitting×245, IfcFlowSegment×232
+```
+**⚠ ROOT CAUSE NOT YET FOUND — and the obvious theory is DISPROVEN, recorded so nobody re-walks
+it.** The natural hypothesis was that these are geometry outliers (a bogus Z making an element
+permanently unsupported, hence pushed to the end). **It is false.** Hospital's entire model sits at
+`center_z` 159.8–203.2 (a site-elevation offset; p50=181.5, p99=196.0), so the straggler's
+`bz=195.9` is the TOP of the building, not bad data. LTU spans −45.6..17.1 (p50=8.1) and its
+straggler beams at `bz≈10.8` are likewise in-range. The tails are real elements at plausible
+positions. The remaining suspect is the push path itself — `_tierAuditRegate` / `_midairRepair`,
+both later-only — where **one** bad support edge can drag an element hundreds of days and take its
+phase window with it. That is the next measurement: for the named tail elements, log WHICH support
+edge set their start.
+
+**4. `max_crews` scaled to project size + JSON override — SPEC'D, not implemented.** Sourced and
+non-invented (`sequence_rules.json` already carries `crew_size`/`max_crews` per trade: HVAC 2/2 ·
+PLUMBER 2/2 · ELECTRICIAN 2/2 · STEEL_ERECTOR 4/3 · CONCRETE_GANG 6/3 · MASON 3/2 · CARPENTER 2/2 ·
+ROOFER 3/1 · FINISHER 2/2 · LABORER 1/1). It fixes the OVERLOADED half (MEP at 128–174% occupancy)
+and explicitly does **not** fill the empty structural windows. Deliberately sequenced last: it
+changes every phase's elapsed length, so landing it before item 3's root cause is found would move
+the very windows item 3 is trying to explain.
+
 **Order of work (do not reorder — each step de-risks the next):**
 1. `§ZONE_INDEX` — extract the ONE banding derivation + fallback chain + memo. Pure refactor,
    equivalence-gated, zero schedule change. Closes GAP 5 and GAP 1/2 in one place.

@@ -353,6 +353,58 @@ function fmtExt(ext, base) {
         '(work=' + x.w.toFixed(1) + 'd win=' + winD.toFixed(1) + 'd n=' + x.n + ')';
     }).join(' '));
 
+    // ── §DAY_GAP_TAIL — is a phase's empty window caused by a FEW straggler elements? ─────────
+    // Superstructure's Hospital window moved 306.6→486.0 between REMAP and REPAIR while its work
+    // content stayed 116d. If a phase's last half of elapsed time holds only a handful of elements,
+    // the window is being dragged by a thin tail, NOT by the tier-serialization contract — which
+    // matters enormously, because a tail is fixable without touching the user-confirmed strictly-
+    // serial guarantee, and the contract is not.
+    console.log('  §DAY_GAP_TAIL ' + bld + ' ' + Object.keys(occPh).sort((a, b) => {
+      const ia = PH_ORDER.indexOf(a), ib = PH_ORDER.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    }).map(ph => {
+      const set = items.filter(it => it.phase === ph);
+      if (!set.length) return null;
+      const s0 = Math.min.apply(null, set.map(i => i.s)), e1 = Math.max.apply(null, set.map(i => i.e));
+      const mid = s0 + (e1 - s0) / 2;
+      const late = set.filter(i => i.s >= mid).length;
+      // when did 95% of this phase's elements have started, as a % of its own window?
+      const ss = set.map(i => i.s).sort((a, b) => a - b);
+      const p95 = ss[Math.min(ss.length - 1, Math.floor(ss.length * 0.95))];
+      const p95pct = (e1 > s0) ? (100 * (p95 - s0) / (e1 - s0)) : 0;
+      return ph.slice(0, 6) + ': lastHalfOfWindow=' + late + '/' + set.length +
+        '(' + (100 * late / set.length).toFixed(1) + '%) 95%startedBy=' + p95pct.toFixed(0) + '%ofWindow';
+    }).filter(Boolean).join(' | '));
+
+    // ── §DAY_GAP_TAIL_WHO — name the stragglers, don't just count them ────────────────────────
+    // If ~13 of 2,603 elements drag a phase's window across 238 days, those 13 are either honestly
+    // late (a real dependency) or artefacts of a single bad support edge. Either way they are
+    // identifiable, and they are the cheapest thing in this whole study to act on. Reported for the
+    // worst offender phase per building: how far each straggler sits past the phase's 95% mark.
+    (() => {
+      let worst = null;
+      Object.keys(occPh).forEach(ph => {
+        const set = items.filter(it => it.phase === ph);
+        if (set.length < 50) return;
+        const s0 = Math.min.apply(null, set.map(i => i.s)), e1 = Math.max.apply(null, set.map(i => i.e));
+        const ss = set.map(i => i.s).sort((a, b) => a - b);
+        const p95 = ss[Math.floor(ss.length * 0.95)];
+        const tailDays = (e1 - p95) / D, tailN = set.filter(i => i.s > p95).length;
+        if (!worst || tailDays > worst.tailDays) worst = { ph, set, p95, e1, tailDays, tailN, s0 };
+      });
+      if (!worst) return;
+      const late = worst.set.filter(i => i.s > worst.p95)
+        .sort((a, b) => b.s - a.s).slice(0, 8);
+      const byCls = {};
+      worst.set.filter(i => i.s > worst.p95).forEach(i => { byCls[i.cls] = (byCls[i.cls] || 0) + 1; });
+      console.log('  §DAY_GAP_TAIL_WHO ' + bld + ' worstPhase="' + worst.ph + '" tail=' + worst.tailN +
+        ' elements spanning ' + worst.tailDays.toFixed(1) + 'd past its own 95% mark' +
+        ' | classes=' + Object.keys(byCls).sort((a, b) => byCls[b] - byCls[a])
+          .slice(0, 6).map(c => c + '×' + byCls[c]).join(',') +
+        ' | latest=' + late.slice(0, 4).map(i =>
+          i.cls + '@day' + ((i.s - base) / D).toFixed(0) + '/bz' + i.bz.toFixed(1)).join(' '));
+    })();
+
     // Focused readout over the dead run §DAY_GAP just found, plus the zero-start bands generally.
     const deadBands = [];
     for (let b = 0; b < NB; b++) if (hist[b] === 0) deadBands.push(b);
