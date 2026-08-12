@@ -15,7 +15,9 @@ terse replies · do not ask what is already in this file · ship what is spec'd 
 it · 5% error margin is acceptable · one numbered list, work it top to bottom, mark each `✅ DONE
 (witness)` or `⛔ BLOCKED: <the one question>` and MOVE ON. Do not stop to report "it's parked."
 
-### 1. §HOSTED_BEFORE_HOST — the reported bug. Hospital 52.3% early, worst 147.7d.
+### 1. §HOSTED_BEFORE_HOST — ✅ DONE (witness), bim-ootb #1319. Provenance: LONG-STANDING, not #1314.
+Full result + root cause + the two hazards it exposed: §HOSTED_BEFORE_HOST section below. Display
+EARLY 52.3%→0.0% (LTU 0.2%), witness_hosted_before_host 4/4, now in gate_4d.sh. Original brief kept:
 User saw it: *"electrical outlets and hanging elements appearing bit early."* Measured:
 `IfcLightFixture` starting up to 147.7 days before the `IfcCovering` it hangs on.
 ```
@@ -1136,3 +1138,42 @@ long-standing and #1314 only made it more visible. Do NOT assume it is a regress
 against a pre-#1313 export (`/tmp/vw`, see probe header) and compare EARLY% before blaming anything.
 **Fix candidate, unproven:** hosted elements inherit their HOST's schedule floor, not their own
 median-Z band's. `§HOSTED_BEFORE_HOST EARLY` is the number a real witness must assert at 0.
+
+#### ✅ DONE (witness) — bim-ootb #1319, 2026-08-12. Provenance settled, both layers fixed.
+**PROVENANCE: LONG-STANDING, not #1314.** Probe at `42539c9` (pre-#1313) vs `314185d`, EARLY%:
+Terminal 25.2→25.6 · Hospital 50.3→52.3 · Duplex 9.6→8.7 · HHS 17.7→17.8 · Clinic 23.2→24.1 ·
+LTU_AHouse 37.7→37.8 · JKR 5.7→5.9. **Max delta 2.0pp — the zone barrier exposed it, did not cause
+it.** Do not re-litigate this; the fix stands on its own merits.
+
+**ROOT CAUSE, one fact:** the host of essentially every offender is `IfcCovering` — a ceiling — and
+`IfcCovering` is in **NO support pool** (`structGrid` = seq<=4 + promoted slabs, `wallGrid` = walls).
+`geoGate`/`hangGate`/`wallGate`/`openingGate` each read one of those two, so a ceiling was invisible
+to every gate. And `sequence_rules.json` puts MEP Final at seq **9** and Finishes at seq **10** — so a
+lay-in fixture is scheduled before its own ceiling *by rule*, everywhere, not by accident.
+`hangGate`'s §HANG_NEAREST fallback cannot catch it either: it is scoped to BIG elements, and
+outlets/fixtures are exactly the small ones it leaves ungated.
+
+**FIXED IN BOTH LAYERS THAT OWN THE ORDER** — the generative fix alone was NOT enough:
+- `schedule_gate.js` `hostGate` + its DAG twin — hosted may not start before its host FINISHES.
+- `time_machine.js` `_twoTierRemap` — §TIER2_AFTER_TIER1's per-zone shift is order-preserving WITHIN
+  a zone but **not ACROSS** zones, and `_zoneOf` is the RAW storey, so a `"Level 3 Ceiling"` covering
+  and the `"Level 3"` fixture in it get different shifts and re-invert. Measured on the already-fixed
+  generative layer: JKR `gen=0 → remap=30`, HHS `gen=0 → remap=11`. **Any future display-layer shift
+  keyed on zone has this hazard — it is not specific to Tier 2.**
+- ⚠ ONE pairing, shared by gate + DAG + display (`ScheduleGate.hostPairs`). A placement-order grid and
+  an element-order index break Manhattan ties differently — that alone left **125 of LTU's 5,466**
+  past the gate. Do not re-split it.
+
+**RESULT (display timeline):** Terminal/Hospital/Duplex/HHS/Clinic/JKR all **0.0%**;
+LTU_AHouse **0.2%** (11/5466, attributed by the witness to `_midairRepair` pushing 11 coverings past
+what they host — inside the 5% margin). §DAY_GAP dead air SHRANK where it moved (Hospital 13→11%,
+Clinic 13→11%, Terminal 8→7%, LTU 3→2%); display programme +0..2.2%; §CREW_AUTOSCALE unchanged.
+Witness `viewer/tests/witness_hosted_before_host.js` (4/4) is now in `gate_4d.sh` — gate pass=4 fail=0.
+
+⛔ **FOUND IN PASSING, NOT FIXED (one-line, still open):** `viewer/tests/witness_midair_zero.js`
+dies with `ReferenceError: _zoneIndex is not defined` — it slices `_buildXrayElements` but not
+`_zoneIndex`/`_zoneIndexBuild`, which `_buildXrayElements` has required since #1313 landed. Its
+static gates (W-MZ-5/6a/6b) still pass, so it looks alive; the per-building census never runs.
+Found independently by a concurrent session the same day, which added it to `gate_4d.sh` — so the
+gate now SHOWS the breakage, but nothing has fixed the slice yet and no PR is open for it. The fix
+is the two `sliceFn` lines the probe and `witness_hosted_before_host.js` already carry.
