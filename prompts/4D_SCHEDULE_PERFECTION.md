@@ -1041,3 +1041,30 @@ user wants results that are already spec'd in full."*
   usefulness; gate at 5% and move on.
 - **Only stop for:** something genuinely destructive, or a fact that exists nowhere in the record
   and cannot be measured. Everything else: decide, do it, report the number.
+
+### §HOSTED_BEFORE_HOST — MEASURED. The bug the user sees, that no witness owned (2026-08-12)
+Answer to *"is the prompts/# going to do thorough specs / system check to see nothing is broken?"*
+— **not on its own. A prompts file is a record, not a mechanism.** Two gaps closed here:
+
+**1. `scripts/gate_4d.sh`** — ONE command running all four 4D witnesses plus the probe, printing a
+single pass/fail and the shape numbers. Five changes shipped 2026-08-12, each with its own witness,
+each green IN ISOLATION, and the user still hit a visible bug. Nothing ran them together. Run this
+before and after any 4D change and diff the logs.
+
+**2. The predicate nobody owned.** Every shipped witness checks BEARING support, class totals, or
+zone serialization. None asked what a viewer asks: *did a hosted element appear before the thing it
+hangs on?* Added as `§HOSTED_BEFORE_HOST` in the probe. First run:
+```
+Hospital  hosted=2877  hostMatched=2830  EARLY=1480 (52.3%)  worst=147.7d  IfcLightFixture@IfcCovering
+Clinic    hosted=2742  hostMatched=2737  EARLY=660  (24.1%)  worst=87.9d   IfcFlowTerminal@IfcCovering
+JKR       hosted=508   hostMatched=506   EARLY=30   (5.9%)   worst=29.8d   IfcAirTerminal@IfcCovering
+```
+**Half of Hospital's light fixtures/terminals appear before their ceiling, up to 147 days early.**
+Host is INFERRED (IFC ships no host link for most): nearest wall/slab/covering whose bbox brackets
+the hosted element's centre, coarse XY grid, O(n).
+
+⚠ **PROVENANCE NOT ESTABLISHED.** 52% is too large to be purely #1314's zone change; this is likely
+long-standing and #1314 only made it more visible. Do NOT assume it is a regression — run the probe
+against a pre-#1313 export (`/tmp/vw`, see probe header) and compare EARLY% before blaming anything.
+**Fix candidate, unproven:** hosted elements inherit their HOST's schedule floor, not their own
+median-Z band's. `§HOSTED_BEFORE_HOST EARLY` is the number a real witness must assert at 0.

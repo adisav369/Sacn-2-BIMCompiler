@@ -434,6 +434,55 @@ function fmtExt(ext, base) {
           i.cls + '@day' + ((i.s - base) / D).toFixed(0) + '/bz' + i.bz.toFixed(1)).join(' '));
     })();
 
+    // ── §HOSTED_BEFORE_HOST — the predicate NO witness owned, and the one the user actually sees ──
+    // User, live 2026-08-12: "electrical outlets and hanging elements appearing bit early." Every
+    // shipped witness checks BEARING support (does this sit on something), class totals, or zone
+    // serialization. None asks the question a viewer asks: did a HOSTED element appear before the
+    // thing it hangs on? That gap is exactly why five green witnesses coexisted with a visible bug.
+    //
+    // Host is inferred, not read from IFC (IFC ships no host link for most outlets): the nearest
+    // wall/slab whose bbox contains or touches the hosted element's centre. Generic — the hosted
+    // set is anything whose class is EA-priced and small, the host set is the M2 structural/arch
+    // classes. Reports the count and the worst offender; never gates here (this is the study
+    // probe), but the number is what a real witness should assert at 0.
+    (() => {
+      const HOSTED = /^(IfcOutlet|IfcLightFixture|IfcSwitchingDevice|IfcSensor|IfcAlarm|IfcFlowTerminal|IfcAirTerminal|IfcElectricAppliance|IfcFireSuppressionTerminal)$/;
+      const HOSTS  = /^(IfcWall|IfcWallStandardCase|IfcSlab|IfcRoof|IfcCovering|IfcCurtainWall)$/;
+      const hosted = items.filter(it => HOSTED.test(it.cls));
+      const hosts  = items.filter(it => HOSTS.test(it.cls));
+      if (!hosted.length || !hosts.length) {
+        console.log('  §HOSTED_BEFORE_HOST ' + bld + ' hosted=' + hosted.length + ' hosts=' + hosts.length + ' — nothing to check');
+        return;
+      }
+      // coarse XY grid so this stays O(n) on 122k elements
+      const CELL = 4, grid = {};
+      const cells = e => { const o = [];
+        for (let i = Math.floor(e.x0 / CELL); i <= Math.floor(e.x1 / CELL); i++)
+          for (let j = Math.floor(e.y0 / CELL); j <= Math.floor(e.y1 / CELL); j++) o.push(i + ',' + j);
+        return o; };
+      hosts.forEach(h => cells(h).forEach(c => (grid[c] || (grid[c] = [])).push(h)));
+      let early = 0, worstD = 0, worst = null, matched = 0;
+      hosted.forEach(e => {
+        const cx = (e.x0 + e.x1) / 2, cy = (e.y0 + e.y1) / 2, cz = (e.bz + e.tz) / 2;
+        const cand = grid[Math.floor(cx / CELL) + ',' + Math.floor(cy / CELL)];
+        if (!cand) return;
+        let best = null, bestD = Infinity;
+        for (const h of cand) {
+          if (cz < h.bz - 1 || cz > h.tz + 1) continue;            // not at this host's height
+          const d = Math.abs((h.x0 + h.x1) / 2 - cx) + Math.abs((h.y0 + h.y1) / 2 - cy);
+          if (d < bestD) { bestD = d; best = h; }
+        }
+        if (!best) return;
+        matched++;
+        const dDays = (best.s - e.s) / D;                           // >0 = hosted starts BEFORE host
+        if (dDays > 0) { early++; if (dDays > worstD) { worstD = dDays; worst = e.cls + '@' + best.cls; } }
+      });
+      console.log('  §HOSTED_BEFORE_HOST ' + bld + ' hosted=' + hosted.length + ' hostMatched=' + matched +
+        ' EARLY=' + early + ' (' + (matched ? (100 * early / matched).toFixed(1) : '0') + '%)' +
+        ' worst=' + worstD.toFixed(1) + 'd' + (worst ? ' ' + worst : '') +
+        ' — EARLY>0 means a hosted element appears before what it hangs on; a real witness should assert 0');
+    })();
+
     // Focused readout over the dead run §DAY_GAP just found, plus the zero-start bands generally.
     const deadBands = [];
     for (let b = 0; b < NB; b++) if (hist[b] === 0) deadBands.push(b);
