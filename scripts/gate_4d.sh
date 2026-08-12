@@ -52,6 +52,38 @@ VIEWER_DIR="$VIEWER_DIR" BLD_DIR="$BLD_DIR" timeout 1800 node scripts/probe_arch
   | grep -E "§DAY_GAP |§DAY_GAP_PHASE_OCC|§TIER_SERIAL_BY_ZONE|§CREW_AUTOSCALE|§ARCH_AREA_WEIGHT classes|§HOSTED_BEFORE_HOST" \
   | tee -a "$OUT"
 
+# ── 3. §CACHE_VERSION_GUARD — catches the miss that has bitten 3 times in one day (2026-08-12):
+# #1319 changed computeSchedule's gating without bumping _GANTT_CACHE_VERSION, and it happened
+# again on a second, independent lane the same day. No witness ever asserted the CONSTANT moved —
+# only the predicate it protects — so the miss was invisible to every prior gate run and only
+# surfaced as a user reporting an already-fixed bug as still live. Runs only when VIEWER_DIR is a
+# real git tree with an upstream to diff against; a plain /tmp export (no git history) skips it.
+say ""
+if git -C "$VIEWER_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  base=$(git -C "$VIEWER_DIR" merge-base HEAD origin/main 2>/dev/null || true)
+  if [ -n "$base" ] && [ "$base" != "$(git -C "$VIEWER_DIR" rev-parse HEAD)" ]; then
+    tm_diff=$(git -C "$VIEWER_DIR" diff "$base"...HEAD -- time_machine.js schedule_gate.js 2>/dev/null)
+    if [ -n "$tm_diff" ]; then
+      gating_touched=$(printf '%s\n' "$tm_diff" | grep -cE '^\+.*(function (computeSchedule|_twoTierRemap|_midairRepair|_tier1Serialize|_tierAuditRegate|bandGate|geoGate|hangGate|wallGate|openingGate|hostGate))')
+      version_touched=$(printf '%s\n' "$tm_diff" | grep -cE '^\+.*_GANTT_CACHE_VERSION\s*=')
+      if [ "$gating_touched" -gt 0 ] && [ "$version_touched" -eq 0 ]; then
+        say "FAIL  §CACHE_VERSION_GUARD  gating/remap function(s) changed vs origin/main but _GANTT_CACHE_VERSION was not bumped in the same diff — a building already materialized will keep replaying the OLD schedule forever, even after deploy + hard reload. Bump time_machine.js's _GANTT_CACHE_VERSION (and sw.js CACHE_VERSION) in this PR."
+        fail=$((fail+1))
+      else
+        say "PASS  §CACHE_VERSION_GUARD  gating_changed=$gating_touched version_bumped=$version_touched"
+        pass=$((pass+1))
+      fi
+    else
+      say "PASS  §CACHE_VERSION_GUARD  no diff vs origin/main in time_machine.js/schedule_gate.js"
+      pass=$((pass+1))
+    fi
+  else
+    say "SKIP  §CACHE_VERSION_GUARD  VIEWER_DIR is origin/main itself, nothing to diff"
+  fi
+else
+  say "SKIP  §CACHE_VERSION_GUARD  VIEWER_DIR is not a git tree (plain export) — cannot diff"
+fi
+
 say ""
 say "§GATE_4D_RESULT pass=$pass fail=$fail missing=$miss  log=$OUT"
 [ "$fail" -eq 0 ]
