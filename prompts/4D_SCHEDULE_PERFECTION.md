@@ -54,6 +54,368 @@ confirmation of which building/level the user meant. Per this project's own FUND
    — has `§LEVEL3_DOOR_CHECK` and `§HHS_STAIR_CHECK` wired in (env: `VIEWER_DIR`, `BLD_DIR`, `ONLY`).
    Extend it rather than writing a new probe from scratch.
 
+### 2026-08-13 SESSION 2 (same day, continued) — live-bake attempt made, machine restarting, resume here
+User ran a REAL live MaxQ bake in-browser and pasted the console. Findings, real but incomplete —
+none of this closes the item, it narrows the next step:
+
+- **NEW symptom, separate from the doors report:** "stairs on top level coming on first" — reported
+  against an OLDER already-downloaded movie (`~/Downloads/BIM_MaxQ_HHS_Office_Federated_*.mp4`, several
+  dated 2026-08-10→13), visible around **the 39s mark**. NOT yet cross-checked numerically — the node-
+  side `§HHS_STAIR_CHECK` (see item 4 above) was never actually RUN this session, only confirmed to
+  exist in the probe script. **Run it first thing next session**: `BLD_DIR=~/bim-ootb/buildings
+  ONLY=HHS_Office_Federated node bim-compiler/scripts/probe_midair_grounded_and_doors.js` and read the
+  printed stair start times.
+- **The live console capture was PARTIAL, not proof either way.** User cancelled the bake at
+  `§MAXQ_CANCEL` frame 59/976 (Alt+C toggle=cancel) — only 3.9s of a ~65s intended film
+  (`§MAXQ_CANCEL_PARTIAL stitching 59 frames`). Whatever the stairs bug is, this capture didn't run
+  long enough to show it either confirmed or absent.
+- **§CURTAIN_WALL_OPENING / §DOOR_WINDOW_HOST_WALL_DISPLAY are REAL and live** — confirmed via `git grep
+  origin/main` inside `~/bim-ootb/viewer/schedule_gate.js` (do NOT trust the local `~/bim-ootb` working
+  tree as canon right now — `git status --branch` shows it **55 commits BEHIND origin/main, 1 ahead,
+  and dirty** — uncommitted deletions incl. `.github/workflows/curate-release.yml`,
+  `buildings/patches/Clinic_extracted.db.sql` — needs investigation before any fetch/merge, don't
+  blindly fast-forward or reset it). Also confirmed: `bim-compiler/deploy/dev` is the WRONG tree to grep
+  for these tags — it doesn't have them; the real source is bim-ootb's `viewer/`. Don't repeat that
+  dead-end.
+- **Why the pasted console never showed those tags: they print at SCHEDULE-GENERATION time, not on
+  every movie bake.** If the 4D schedule was already generated/cached earlier in the browser session,
+  hitting Alt+C to bake just replays the cached schedule — no regeneration, so `§CURTAIN_WALL_OPENING`/
+  `§DOOR_WINDOW_HOST_WALL_DISPLAY` never reprint in that window. This is consistent with what was
+  pasted (all `§MAXQ_FRAME`/photoreal-still chatter, zero schedule diagnostics).
+- **Version of the tested build is UNCONFIRMED.** User asked "is this latest v?" — could not answer
+  from the pasted log (it starts mid-session, past any page-load version print) and I do not have a
+  confirmed live-viewer URL to check server-side (do not guess one). Next session: check DevTools →
+  Application → Service Workers directly, or scroll to the very top of a fresh console capture.
+- **Side finding, not this bug but worth a look sometime:** the pasted log shows `§STILL_REFINE` /
+  `§PHOTO_AO` / `§TRIPLANAR_PERF` / `§NIGHT_STILL_LIGHTS` (the PHOTOREAL_STILL_RENDER still-image
+  pipeline) firing and self-cancelling on EVERY single `§MAXQ_FRAME` during the movie bake
+  (`perFrameMs` regularly 1500-1900ms, much of it AO/triplanar/shadow-reassert work that immediately
+  cancels itself as "interaction"). That doc says these passes are meant to be "still-only fold — Alt+G
+  untouched." If they're really running full per-frame during MaxQ bakes too, that's wasted work on
+  every movie, independent of the stairs/doors question — not investigated, just noticed.
+
+**NEXT SESSION — START HERE (in order):**
+1. Run `§HHS_STAIR_CHECK` node-side (see above) — first real number on the stairs symptom. **It now
+   also discriminates the two code-level hypotheses named in SESSION 3 below** — log the promoted
+   stair's `seq`/`phase` and whether its GUID is in the orphan list, not just its start day.
+2. Reconcile `~/bim-ootb`'s divergence (55 behind / 1 ahead / dirty) before treating it as canon.
+3. Run a FULL, uncancelled live bake for HHS from a FRESH page load (forces schedule regeneration —
+   captures the generation-time diagnostics too), console captured start-to-finish, not partial.
+4. Cross-reference: does the top-level stair's node-side start time match what the movie shows at
+   ~39s, or is the node-side number clean while the render still shows it early (→ render-sync bug,
+   not scheduling — step 3 of the original playbook above, still unexplored)?
+5. Confirm which exact `~/Downloads` mp4 the user means, and confirm the tested build's version —
+   **check the mp4's file timestamp against `#1338`'s merge time (2026-08-13 13:23) first**; every
+   mp4 named so far is dated 2026-08-10→13, i.e. could predate the fix entirely (SESSION 3, lead C).
+
+### 2026-08-13 SESSION 3 (code archaeology only, per user instruction — no probe run, no live bake)
+User: mp4 results still show stairs appearing without support. Told explicitly not to test/check
+further this pass — find the cause by reading `git log`/diffs on `origin/main` (bim-ootb, 56 commits
+ahead of the local dirty checkout — read via `git show origin/main:<path>`, never the stale working
+tree) instead of computing/probing. Three candidate causes found, NOT ranked by test, only by code
+reading — `§HHS_STAIR_CHECK` (already built, see item 4 in the open item above) is what turns these
+into a verdict; none of them was run this pass.
+
+**A. `_promoteRoofLoadPath` is class-blind exactly where a TOP-LEVEL stair would trigger it — never
+previously checked in this direction.** `time_machine.js:3429` filters candidates by `el.cls ===
+'IfcSlab'` only — no stair/roof discriminator anywhere in the function, same class-blind shape this
+file already names for door/roof/stairs (§STRUCT_POOL_UNGATED, line ~274: "the generalized statement
+of the 'one class at a time' bugs") but that line was only ever checked for the "never gated" (seq=4,
+structure pool) direction. The promotion rule (`clauseA = el.base_z > wallMidheight` AND
+`!above.length`, `time_machine.js:3448-3455`) is: "sits above its wall-carriers' midheight, with no
+wall standing on top of it" — which is also the exact geometric signature of the TOPMOST flight of a
+stair (nothing above it, by definition of being the top run). If it fires, `seq` flips 4→8 and the
+element moves from `placeStruct` (gated only by `geoGate`) into `placeNonst`
+(`schedule_gate.js:738-753`), which adds `wallGate` — built for a roof DECK resting ON TOP of its
+carrying walls (`S.top_z` within `GAP`=0.5m of the promoted slab's `base_z`, `schedule_gate.js:513-
+526`) — a band relationship a stair flight is unlikely to ever satisfy, so `wallGate` silently
+contributes `baseMs` (no constraint) for it. **Not conclusively the cause on its own** — `geoGate`'s
+generic `below` clause (`schedule_gate.js:374`, `S.base_z < el.base_z - EPS` + overlap, pool-
+independent) should still catch a genuine structural support below regardless of promotion, PROVIDED
+that support is a `seq<=4`/promoted-slab pool member already placed in `grid` when this element is
+reached — so promotion alone degrades the *wall-carrier* check, not necessarily the *below* check.
+Needs the promoted stair's actual `seq` read off a real run to confirm this fires at all for HHS's
+flights, not asserted here.
+
+**B. The orphan population is untouched by today's fix, by explicit design — not previously connected
+to stairs.** §GROUNDED_OVERRIDE_FIX (#1338, `time_machine.js:4772-4788`) only un-exempts elements
+whose `contacts[i]` list is non-null (a real geometric match WAS found) but were wrongly skipped via
+`grounded[i]`. The `!list` path — genuinely no bearing/carrier/embedded match within `GAP`=0.5m
+(`schedule_gate.js:37-39`) — is untouched, and is explicitly, permanently exempt by design: "ORPHANS
+ARE REPORTED, NEVER MOVED... an extraction/authoring fact" (`time_machine.js:4728-4731`). HHS carries
+36 locked orphans (`ORPHAN_BASELINE.HHS_Office_Federated = 36`, `witness_midair_zero.js:163`) —
+**none has ever been identified by class**, because `§HHS_STAIR_CHECK` (the probe that would show
+this) was never actually run. A stair flight's sloped/diagonal bounding box is a plausible way to miss
+a landing's top within 0.5m (the 4 flights already found via `probe_named_element_times.js
+NAMEQ=Stair` DID register real contacts — day 8.5/49.7 — so this would have to be a stair not caught
+by that NAMEQ filter, or a genuinely different element).
+
+**C. Cheapest explanation, this project's own most-repeated landmine, not ruled out.** Every mp4 named
+in this thread so far (`~/Downloads/BIM_MaxQ_HHS_Office_Federated_*.mp4`) is dated 2026-08-10→13 —
+`#1338` (GROUNDED_OVERRIDE_FIX) merged 2026-08-13 13:23, and `#1333` (SHIFT_HOURS/TIER2_CLAMP) the
+same morning. Unless the specific mp4 the user means postdates 13:23 AND came from a FRESH page load
+(forces `kernel_ops` re-materialization per `_genVersion`/`_GANTT_CACHE_VERSION`, `_GANTT_CACHE_VERSION`
+now 17), it could be showing pre-fix behavior by construction, zero code wrong today. This file's own
+LANDMINES section already names this exact failure mode twice ("Two 'still broken' reports were stale
+caches"). Item 5 above (confirm the mp4's timestamp) is the cheap check that rules this in or out
+before touching any code.
+
+**Do not "fix" A or B speculatively — `§HHS_STAIR_CHECK` distinguishes all three in one run** (seq/
+phase of the flagged stair rules A in/out; orphan-list membership rules B in/out; a fresh-load re-bake
+rules C in/out). Fixing without that number risks the same "band-aid, not generalised" mistake this
+file's acceptance bar was written against.
+
+### 2026-08-13 SESSION 4 — HHS stair CONFIRMED (user-supplied evidence) + a second, separate report:
+### Hospital "lots of hanging MEP" — both diagnosed from real data (`probe_midair_census.js`), no
+### visual/screenshot check, per user instruction both times this session
+User supplied the discriminator SESSION 3 asked for without a new bake: *"see latest Downloads/ HHS
+mp4 at Day 50 the staircase is hanging as proof."* Then, separately: *"TimeMachine 4D generate for
+Hospital has lots of hanging MEP in the air. Thus again in this session, review gantt charts rather
+than doing visual check."* Both answered by running `viewer/tests/probe_midair_census.js` read-only
+against the real shipped DBs, on a fresh `origin/main` worktree (`b71771d` — `#1343`, includes
+`#1338`) — no browser, no bake, no screenshot; the log is the proof, per this file's own FUNDAMENTAL
+LAW. **One housekeeping note first:** the probe itself was found DEAD — same class of defect
+§DAY_GAP_TAIL found in `witness_midair_zero.js`/`witness_kernel_ops_sched_version.js` (#1321/#1324):
+`_buildXrayElements` calls `_zoneIndex()`/`_zoneOf()` (added by #1313) and this probe's slice list was
+never updated, so it has thrown `ReferenceError: _zoneIndex is not defined` and measured nothing since
+#1313 — a THIRD tool in this same lane silently dead the same way. Patched read-only in the throwaway
+worktree with the exact #1321 idiom (optional zone-helper slicing); **not committed, not shipped** —
+flagging it here so a future session fixes it for real rather than re-discovering it a fourth time.
+
+**HHS "Day 50 stairs" — CONFIRMED, and it is NOT a regression of §MIDAIR_REPAIR, it is the risk that
+fix's own header already named and deferred.** The probe measures the DISPLAY timeline **before**
+`_midairRepair` runs (it slices `_twoTierRemap` but not `_contactGraph`/`_midairRepair` — same
+"before" state §MIDAIR_REPAIR's original 2026-08-12 measurement used). Hit directly:
+```
+§MIDAIR_WORST HHS_Office_Federated IfcSlab seq=4 phase=Superstructure bz=5.85 start=28.2d
+  firstSupport=148.4d early=120.1d "Stair:Massiv - Stufen Naturstein:577000:1"
+```
+This is the SAME bz=5.85 flight §MIDAIR_REPAIR's 2026-08-12 pass already found and moved (day 9.6 →
+"49.7d" in that pass's numbers) — the absolute days differ from that old measurement because #1319/
+#1323/#1333/#1338 all changed the underlying schedule since, but the STRUCTURAL fact is identical:
+this element is real structure (`IfcSlab`, seq=4) whose nearest real contact does not become visible
+until **~120 days after** the un-repaired display would show it. `_midairRepair` (the shipped pass
+the movie actually uses) moves it later — to the contact's **APPEARANCE**, not its **FINISH** — by
+design, documented in `_midairRepair`'s own header as "the WEAKEST rule that closes the gap." That
+same header also names, measures, and explicitly defers the alternative: *"THE STRICTER END-BASED
+BAR... is measured and deliberately NOT enforced... Revisit only on a real report that a half-built
+support reads as floating"* (`time_machine.js:4598-4613`). **The user's Day-50 report is exactly that
+real report.** It is also independently counted, not invented: this session's probe shows HHS's
+un-repaired `strictBar_noFinishedContact=217` (elements whose earliest contact hasn't even FINISHED
+when they appear) and the shipped `_midairRepair`'s own `stats.strictResidual` line (never yet read
+this session, per the no-new-bake instruction) is the exact number that would confirm this stair is
+in that surviving population. **Do not re-attempt the GLOBAL end-based bar** — §MIDAIR_REPAIR's own
+header already measured and rejected it project-wide (Terminal: 700 moved, 624 still violating;
+"reaching it for real means serializing neighbours ... exactly what §4D_BAND_MONOTONIC rules out").
+The lever this report opens is a SCOPED one: apply the end-based (finish-time) bar only to the small
+`strictResidual` population a repair run already isolates, not to every element — untried, because
+this is the first live case that needed it.
+
+**Hospital "lots of hanging MEP" — CONFIRMED, and it is the permanently-exempt ORPHAN population,
+not a bug in any gate.** Orphans (`supporters === 0` — literally nothing anywhere in the model
+registers a bearing/carrier/embedded contact for this element, `GAP`=0.5m tolerance) are, by
+`_midairRepair`'s own explicit design, **never moved by any repair, at any tier** — "an
+extraction/authoring fact ... it hangs at every instant, including the last frame"
+(`time_machine.js:4728-4731`). Hospital carries 35 of them (`ORPHAN_BASELINE.Hospital = 35`, already
+LOCKED in `witness_midair_zero.js` — a known, counted, never-hidden number), but **no prior session
+ever broke that count down by class** — this is the first time it has been asked. Measured this
+session:
+```
+§ORPHAN_CLASSES Hospital IfcBuildingElementProxy:21 IfcPipeSegment:11 IfcLightFixture:1
+  IfcDistributionControlElement:1 IfcPipeFitting:1
+```
+14 of 35 (40%) are explicitly-MEP IFC classes (pipe segments/fittings, a light fixture, a distribution
+control element). The other 21 are `IfcBuildingElementProxy` — Hospital's own `§MIDAIR_WORST` output
+(the non-orphan, still-repairable population) shows what that class means IN THIS MODEL: *"M_Supply
+Diffuser_HEPA - Rectangular Face Roun..."* — an HVAC diffuser authored as a generic proxy, not an IFC
+MEP class. If the 21 orphaned proxies follow the same authoring pattern (plausible, not confirmed
+without opening each GUID), **the true MEP share of Hospital's 35 permanent orphans could be the
+large majority, not just the 14 explicitly-MEP-classed ones.** This is consistent with, and gives a
+name to, the same scope limit `§HANG_NEAREST` (#1278) already measured and left alone: that fix only
+rescues BIG elements (`bboxVol > BIG_ELEMENT_VOL`) hanging outside the standard band; the probe/repair
+layer (`_contactGraph` in `time_machine.js`) never received that rescue at all (only
+`schedule_gate.js hangGate` did — see the §DAY_GAP_TAIL entry above, "no §HANG_NEAREST fallback"), so
+ordinary-sized suspended MEP (pipes, diffusers, fixtures — none of them BIG) that hangs more than
+0.5m from its true structural carrier has **no rescue anywhere in the codebase, at either the
+generation or display layer.** Not a new mechanism to build blind — the concrete next step is
+`§HANG_NEAREST`'s own measured band (0.5–9.5m, Hospital ducts p50 1.22m) applied to `_contactGraph`
+the same way it was applied to `hangGate`, then re-run this same probe to see how many of the 35 (and
+the LTU/Clinic/Terminal/JKR/HHS/Duplex orphan counts alongside it) move from "permanent orphan" to
+"real, repairable contact." Untried — flag for the user's call before building it, since the last
+attempt to widen this exact relation (the upper-bound experiment, §DAY_GAP_TAIL above) was measured
+and rejected on its own numbers; this is a different, narrower widening (an existing rescue ported to
+a second call site, not a new threshold), but still needs the same measure-before-ship discipline.
+
+### 2026-08-13/14 SESSION 5 — both SESSION 4 levers BUILT and MEASURED. Both FAILED. Nothing shipped,
+### nothing committed — `git status`/`git diff` on the fix worktree are clean, matching origin/main
+### exactly. This is real information, not a stall: two concrete hypotheses are now closed, not open.
+User: *"find solution this session."* Built both levers named above, in a dedicated worktree
+(`fix/hangnearest-display-and-strict-residual` off `origin/main` `b71771d`), ran the REAL witness
+(`witness_midair_zero.js`, not the probe — the probe never runs `_midairRepair` at all, so it cannot
+prove or disprove either fix). Both failed on measurement, for two different, instructive reasons.
+
+**Lever 1 (Hospital MEP orphans) — `§HANG_NEAREST_DISPLAY`: ported hangGate's nearest-carrier-above
+rescue into `_contactGraph` (BOTH `_midairRepair` definitions — the standalone one `_midairAudit`/the
+dead copy call, AND the separately-inlined copy that actually ships per declaration hoisting; missing
+the second one was caught before it mattered, not after) plus the witness's own independent `census()`.
+Correct, safe, zero regressions (38/38 witness pass, W-MZ-2 stayed 0/0/0/0/0/0/0, no baseline moved)
+— and MEASURED TO DO NOTHING: `ORPHAN_BASELINE` was byte-identical before/after on all 7 buildings
+(Hospital still exactly 35). Suspecting the BIG_ELEMENT_VOL=1.556m³ gate was excluding Hospital's
+actual small pipes/fixtures, the gate was removed ENTIRELY (test-only, size-blind) and re-measured:
+**still byte-identical, zero orphans rescued anywhere, on any of the 7 buildings, size gate or not.**
+This is the real finding: Hospital's 35 orphans (and LTU's 865, Terminal's 7, etc.) don't merely hang
+too far from a real carrier for GAP/BIG-VOL tolerance — **they have NO XY-overlapping neighbour AT
+ALL, in any direction, at any distance, in this spatial index.** `_contactGraph`'s own `cands` list
+(every element sharing so much as one grid cell in XY) is empty for these elements. No nearest-carrier
+widening of any shape can rescue an element with zero candidates full stop — that is not a scheduling
+gate problem, it is a geometry/extraction fact: either these elements are genuinely spatially isolated
+from everything else in the model (a small floating diffuser mounted to something the extractor never
+captured), or their own bbox is degenerate. **Closes §HANG_NEAREST_DISPLAY as a dead end for the
+CURRENT 7 buildings** — do not re-attempt any variant of "widen the carrier search" for this specific
+report; it was tried in its most permissive possible form (no size limit, no band limit) and still
+found nothing. The real next step, if this is worth pursuing, is OUTSIDE this codebase's remit per
+PRIME RULE (EXTRACT OR COMPILE ONLY): pull the actual GUIDs for Hospital's 35 orphans (`census()`'s
+`orphanBy`/the probe's `§ORPHAN_CLASSES` already names the classes) and check the SOURCE IFC — do
+these elements have a real `IfcRelConnectsElements`/containment relationship the extractor dropped, or
+are they genuinely unconnected in the original model? That is a data question, not a schedule-code one.
+
+**Lever 2 (HHS Day-50 stair) — `§STRICT_RESIDUAL_RESCUE`: a single, non-iterated pass pushing the
+small `strictResidual` population (contact hasn't FINISHED when the element starts) to the earliest
+finish among its contacts, run once after the existing start-based fixpoint, in both `_midairRepair`
+copies.** MEASURED REGRESSION, caught immediately by the witness, not shipped: **W-MZ-2 — the
+acceptance bar itself, "zero elements appear before what they touch," the user's own words, the ONE
+invariant this whole lane exists to hold at zero — FAILED on all 7 buildings** (Terminal 47, Hospital
+66, Duplex 5, HHS 29, Clinic 89, LTU 1023, JKR 56; was 0/0/0/0/0/0/0 before). Root cause, read
+directly off the failure, not guessed: pushing element `i` later by Fix 2 can push it PAST some OTHER
+element `X` that has `i` as its own contact — `X`'s start was fine against `i`'s OLD (earlier) time,
+now `i` sits later than `X`, recreating exactly the start-based violation PASS 1's fixpoint had already
+eliminated. A single non-iterated pass cannot see this, because it runs strictly after PASS 1's
+fixpoint has already converged and never re-checks it. **This confirms, empirically, exactly what
+`_midairRepair`'s own header already warned about the GLOBAL version** ("the contacts move too, so the
+bar recedes as you chase it") — it turns out to apply to a SCOPED single pass too, not only a fully-
+iterated global one; scoping down the POPULATION doesn't fix the INTERACTION. The only way to make
+this lever safe is to re-run PASS 1's start-based fixpoint again after Lever 2's pass (bounded rounds,
+alternating), which is the exact "joint fixpoint" shape `_midairRepair`'s header ALSO already tried
+once (with a different second rule, `_tierAuditRegate`) and rejected for cost (4 rounds, 7,650 pushes,
+0.8s→14.8s, Hospital still not fully clean). Untried specifically: alternating PASS 1 with THIS
+end-based rescue (not `_tierAuditRegate`) — different pairing, might converge faster or cleaner since
+both rules are now scoped to the same `_contactGraph`, but that is a real, measured claim to make
+next, not an assumption to ship on. **Do not re-attempt a single-pass version of this lever** — it is
+now proven, not merely suspected, to break the acceptance bar.
+
+**Where this leaves the two user reports:** neither is fixed. Both are real, both are now understood
+at the code level far better than before this session (the exact mechanism, the exact reason two
+"obvious" scoped fixes don't work), and both have a named, concrete, NOT-yet-tried next step (extraction-
+level GUID check for Hospital; alternating PASS-1/end-based-rescue fixpoint for HHS) rather than a
+vague "investigate further." Per this file's own doctrine (§4D_BAND_MONOTONIC, §DAY_GAP_TAIL,
+§STRICT_RESIDUAL bar all being previously-measured-and-rejected shapes), shipping either lever anyway
+would have been exactly the "band-aid, not generalised" mistake the acceptance bar was written to
+prevent — a fix that either does nothing (Lever 1) or actively violates "zero items hanging" while
+claiming to fix a hanging report (Lever 2). Worktree removed, branch deleted, nothing committed.
+
+### 2026-08-14 SESSION 6 — §STAIR_FLIGHT_GRID_VISIBILITY: the HHS Day-50 landing's ACTUAL root cause,
+### found one level deeper than SESSION 4/5's framing, via direct code+data measurement, not a live bake
+User asked why the flagged HHS `577000` landing (bz=5.85) has "no siblings" and proposed a bottom-up
+walker-DAG rule ("a lower floor's stair must come from below"). Investigation (read-only SQL against
+the live-served `HHS_Office_Federated_extracted.db`, then a throwaway diagnostic slicing the real
+`computeSchedule`/`_twoTierRemap`/`_midairRepair` functions verbatim — not invented, not eyeballed)
+found: (1) the landing is real, not orphaned — it's the mid-landing of stair assembly `577000`,
+sandwiched geometrically between `IfcStairFlight :1` (z 3.39–7.01) and `:2` (z 5.9–7.48), confirmed by
+AABB overlap in all three axes; (2) **the bottom-up DAG rule the user described already exists in
+`schedule_gate.js` — `geoGate`/`structIdxGrid` — and `placeStruct` already calls it.** The actual gap is
+one level more precise than "stairs aren't gated": **`IfcStairFlight` is classed `seq=6` (routes through
+`placeNonst`, the full gate set, correctly gated itself) but `structIdxGrid`/`grid` — the ONE index
+`geoGate`/`hasBearingBelow`/the DAG edge-builder all read to find "what's below me" — only admits
+`seq<=4` (structure pool) or `isPromotedSlab` members (`schedule_gate.js:632,415`). A flight is real
+structure but is invisible AS SUPPORT to anything resting on it, because it's never inserted into
+either index.** The landing (seq=4, IS in the index) calls `geoGate`, scans an index that was never told
+its own flight exists, finds nothing, and schedules unconstrained.
+
+**Measured, throwaway script (`sliceFn`'d real functions verbatim, same idiom as
+`probe_named_element_times.js` — not committed):**
+```
+RAW (computeSchedule, pre-remap):  flight1 end=93.12d   landing start=28.22d   gap=-64.89d
+FINAL (post _twoTierRemap+_midairRepair, what the movie plays):
+                                    flight1 end=189.21d  landing start=148.36d gap=-40.85d
+```
+The SHIPPED `_midairRepair` (§MIDAIR_REPAIR, #1338/#1343 both already in this tree) is NOT blind here —
+`_contactGraph` is class-blind by design and correctly found BOTH flights as real geometric contacts,
+then pushed the landing to the EARLIEST one's appearance (flight2 remap-start=148.41d) per its own
+documented "weakest rule" design. The residual -40.85d gap survives because flight2 displays BEFORE
+flight1 post-`_twoTierRemap` (backwards from real build order — a separate remap-ordering artifact,
+**not investigated or fixed this pass, named here as a follow-on, not conflated with today's fix**).
+
+**Fix, one narrow predicate, two call sites — mirrors the ALREADY-TRUSTED `isPromotedSlab` pattern
+exactly (a `seq>4` class already admitted to `structIdxGrid`/`grid` as a real support source without
+becoming a structure-pool member for gate-ROUTING purposes):** add `e.cls === 'IfcStairFlight'` to the
+admission clause at `schedule_gate.js:632` (DAG edge-building index) and `:415` (runtime placement
+index). Does NOT touch `placeStruct`/`placeNonst` routing, `isPoolE`/`elPool` semantics, or any gate
+function body — flights keep going through the full `placeNonst` gate set unchanged; they only become
+visible to OTHERS as a legitimate bearing-below neighbour. Acyclic by the same argument the code already
+relies on for pool members (`edgeBelow` is a strict `base_z` inequality, so flight1≠flight2≠landing's
+three distinct base_z values admit no 2-cycle among them).
+
+**Why this differs from the two reverted widening attempts (§STRUCT_POOL_UNGATED):** those widened the
+STRUCTURE POOL itself (`restsOnGate` unconditional, or the roof carrier search) — broad, and broke real
+seq≤4 elements that legitimately have nothing below them (ground slabs), collapsing `witness_tier_serial
+_display.js`'s locked baselines on 5/7 buildings. This fix widens neither the pool nor any gate's
+routing — one unambiguous IFC class added to a support-visibility index, same shape already shipped and
+trusted for `isPromotedSlab`.
+
+**On the user's forward-precedence idea ("next level can't happen until its stairs are made"):** this
+fix is the narrow, already-proven-safe realization of that intuition — real elements that geometrically
+REST ON a stair flight (this landing, and by the same mechanism anything else bearing on a flight
+anywhere in the 7 buildings) will now correctly wait for it. It does **not** decide the broader claim
+("no work anywhere on the floor above until the stair exists") — that collides with the still-⛔-open
+temporary-works/shoring question (OPEN THREADS item 6b) and needs a user product call, not a scheduling
+inference, per this file's own no-invent discipline.
+
+**Witness plan (must hold before shipping):** `witness_tier_serial_display.js` clean on all 7 buildings
+(the exact locked detector that caught both prior widening attempts) + `witness_midair_zero.js`
+acceptance bar 0/0/0/0/0/0/0 or better + direct re-measurement of the HHS `577000` landing gap via the
+same throwaway diagnostic.
+
+**RESULTS — ✅ SHIPPED, bim-ootb `fix/hhs-stair-geogate` (2026-08-14):**
+- HHS `577000` landing, direct before/after: RAW (generative, pre-remap) gap went from **-64.89d to
+  +1.90d** (correctly gated). FINAL display gap (what the movie plays, post `_twoTierRemap` +
+  `_midairRepair`) went from **-40.85d to -0.11d** — essentially closed, matching `_midairRepair`'s own
+  documented "push to contact's appearance, not finish" design almost exactly.
+- **First cut caused a real regression, caught before shipping, not after:** making flights grid-
+  visible without ALSO marking them "pool" (`isPoolE`/`elPool`, the same status `isPromotedSlab` already
+  carries) let them receive `contained`/`carrier` edges from both directions — exactly what this file's
+  own acyclicity guarantee excludes for non-pool members. Full-HHS run: `§SUPPORT_CYCLE cycles=0→6721`
+  (98% of the building, sample = ordinary columns/floor slabs, nothing stair-specific). Fix: extend
+  `elPool`/`isPoolE` with `isStairFlight()` everywhere `isPromotedSlab()` already appears (geoGate,
+  hangGate, edge-building) — cycles back to 0, same building.
+- **Second cut also caused a regression, also caught before shipping:** mirroring the same admission
+  rule into `auditFloating`'s own `structGrid` (so the "judge" stays aligned with the "gate," per this
+  file's own stated architecture rule) made the witness newly detect a PRE-EXISTING, unrelated weakness
+  in `_twoTierRemap` (it reorders stair flights relative to each other — flight 2 can display before
+  flight 1 — a real bug, NOT fixed this pass, named below as a follow-on) that was previously invisible
+  simply because `auditFloating` never checked flights at all. `witness_tier_serial_display.js` W-TS-2
+  ("remap never breaks") FAILed on 6/7 buildings as a result. Reverted the `auditFloating` edit only
+  (a post-hoc audit function, no path into the real schedule or the real movie — `_contactGraph`/
+  `_midairRepair` are independently class-blind and unaffected by it either way) — W-TS-2 back to 0
+  FAILs everywhere, core scheduler fix untouched.
+- **Final witness state:** `witness_tier_serial_display.js` 57/0 (was 57/0 baseline) — 3 LOCKED count
+  baselines updated with reasons inline (`DAGWINS_BASELINE`: Hospital 256→257, LTU_AHouse 1019→1076,
+  JKR 205→227 — more real cross-phase dependencies now correctly forced, same accepted class as
+  `§GROUNDED_OVERRIDE_FIX`'s own baseline updates). `witness_midair_zero.js` 38/0 (was 32/0 baseline) —
+  **W-MZ-2/3/4/7 (the acceptance bar itself) unchanged/clean on every building** — only `W-MZ-8`
+  (`FLOAT_AFTER_BASELINE`, the strictResidual/"TRADE" observability counter, explicitly documented as
+  "deliberate and named, never silent," never a gate) moved: Terminal 141→136, Duplex 9→8, Clinic
+  420→407 (improved), Hospital 210→211, LTU_AHouse 1534→1561, JKR 348→358 (grew — more real
+  dependencies tracked), HHS unmoved at 31.
+- Three OTHER witnesses checked (`witness_tm_geo_order_cycles.js`, `witness_big_element_support_
+  coverage.js`, `witness_door_window_host_wall.js`) show failures/crashes — confirmed by stash/diff
+  **identical on unmodified origin/main**, i.e. pre-existing rot (the same `_zoneIndex is not defined`
+  class SESSION 4 already named for a third tool in this lane), not caused by this fix.
+- `_GANTT_CACHE_VERSION` 17→18, `sw.js` `CACHE_VERSION` v1023→v1024, both same commit.
+- **Follow-on, named not fixed:** `_twoTierRemap` (time_machine.js) is not support-DAG-aware for stair
+  flights — it can display flight 2 before flight 1 (backwards from real build order). `_midairRepair`
+  papers over this for the DISPLAY outcome (proven above), but the intermediate remap stage itself still
+  gets it wrong. Not investigated further this pass — flagged, not folded into this fix's scope.
+
 ## §GROUNDED_OVERRIDE_FIX — ✅ SHIPPED, bim-ootb PR #1338 (2026-08-13)
 User: *"THINGS STILL HANGING IN MID AIR"*, reported right after §TIER2_PER_ELEMENT_CLAMP/§SHIFT_HOURS
 (below) shipped. Investigation found a SEPARATE, PRE-EXISTING bug (not caused by that PR, not caused
