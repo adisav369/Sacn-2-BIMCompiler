@@ -6,164 +6,126 @@
 
 # ▶ NEXT SESSION — START HERE. THIS IS YOUR TASK LIST, NOT BACKGROUND READING.
 
-You are taking over a live lane with a **user-visible bug measured and unfixed**. Work it to zero.
-Do not re-survey the file first — the survey is done and recorded below. Read §WORKING_STYLE and
-§AGENT_DISPATCH (both near the end), then start at task 1.
+**One open item, real and unreproduced. Chase it with a live baking test, not more node-side probing
+— every node-side avenue below has been checked clean.**
 
-**Rules for this handover, from the user, non-negotiable:**
-terse replies · do not ask what is already in this file · ship what is spec'd rather than re-speccing
-it · 5% error margin is acceptable · one numbered list, work it top to bottom, mark each `✅ DONE
-(witness)` or `⛔ BLOCKED: <the one question>` and MOVE ON. Do not stop to report "it's parked."
+## ⛔ THE ONE OPEN ITEM — "3rd level hanging doors" (user report, 2026-08-13, verbatim: "Nope, the
+3rd level again.. with the hanging doors")
 
-### 1. §HOSTED_BEFORE_HOST — ✅ DONE (witness), bim-ootb #1319. Provenance: LONG-STANDING, not #1314.
-Full result + root cause + the two hazards it exposed: §HOSTED_BEFORE_HOST section below. Display
-EARLY 52.3%→0.0% (LTU 0.2%), witness_hosted_before_host 4/4, now in gate_4d.sh. Original brief kept:
-User saw it: *"electrical outlets and hanging elements appearing bit early."* Measured:
-`IfcLightFixture` starting up to 147.7 days before the `IfcCovering` it hangs on.
-```
-scripts/gate_4d.sh                       # baseline, all witnesses + probe, one pass/fail
-# provenance FIRST — do not assume it is a regression from #1314:
-mkdir -p /tmp/vw && cd ~/bim-ootb && for f in schedule_gate.js schedule_author.js time_machine.js rates.js; \
-  do git show 42539c9:viewer/$f > /tmp/vw/$f; done && mkdir -p /tmp/vw/rates && \
-  git show 42539c9:viewer/rates/sequence_rules.json > /tmp/vw/rates/
-VIEWER_DIR=/tmp/vw BLD_DIR=~/bim-ootb/buildings node scripts/probe_arch_start.js | grep HOSTED_BEFORE_HOST
-```
-If EARLY% is the same pre-#1313 → long-standing, fix it on its merits. If it jumped → #1314's zone
-barrier, and the named fix applies: **a hosted element inherits its HOST's zone/schedule floor, not
-its own median-Z band.** Either way: promote `§HOSTED_BEFORE_HOST` from a probe line to a real
-witness that **asserts EARLY=0**, then fix until it passes. That witness is the deliverable.
+**Context this landed in:** same session shipped two real fixes for the user's broader "still
+hanging in mid air" report — §GROUNDED_OVERRIDE_FIX (bim-ootb PR #1338, 1,105 previously-invisible
+floating elements across 7 buildings, see that section below) and, earlier the same day,
+§TIER2_PER_ELEMENT_CLAMP + §SHIFT_HOURS (PR #1333). After both were live, the user said "still
+hanging in mid air" once more, I asked what specifically, and got the doors report above — likely
+HHS (never confirmed — the user did not answer "is this HHS" before ending the session) and likely
+the SAME class of bug already once reported+fixed there (§CURTAIN_WALL_OPENING / #1323, "HHS
+Level-3 doors... worst 9.5d → 0/37, 0.0d").
 
-### 2. §DAY_GAP_TAIL — ✅ DONE (measured). NO SCHEDULE FIX WARRANTED — stragglers are legitimate.
-Full result: **§DAY_GAP_TAIL_EDGE** section below. The named measurement was run
-(`scripts/probe_tail_edge.js`, instrumentation proven inert 0/122330). Headlines: **"one bad edge
-drags many" is DISPROVEN** (112 distinct drivers for 312 LTU stragglers); **Hospital's dead run is
-100% §TIER2_AFTER_TIER1**, i.e. lane item 2, ⛔ BLOCKED on a user ruling, not a bug; Clinic's tail
-is the documented §TIER_DAG_WINS wall-carried shape. One real defect (`_contactGraph`'s
-lower-bound-only carrier band) was found, implemented, measured and **REJECTED** — it buys 1.5% of
-tail for a 3–40× orphan blowup. **Do not re-walk any of the four; the numbers are recorded.**
-What shipped instead: `witness_midair_zero.js` had been **dead since #1313** (`ReferenceError:
-_zoneIndex`) and was judging the wrong one of two `_midairRepair` copies — both fixed, 38/0, now in
-`gate_4d.sh`.
+**Checked, all clean — do NOT re-derive these, the numbers hold:**
+1. The shipped host-check itself (`ScheduleGate.openingPairs`/`openingBrackets` — real XY-bbox
+   overlap + Z-bracket, the EXACT relation `openingGate` enforces at generation time): 0% early on
+   gen/remap/display for HHS, checked BOTH at schedule_gate.js's 8h internal default AND at the
+   live 24h shift (`computeSchedule(..., 24)`), both AFTER §GROUNDED_OVERRIDE_FIX landed.
+   `viewer/tests/witness_curtain_wall_opening.js` — still 5/5 clean.
+2. §GROUNDED_OVERRIDE_FIX's own hidden-violation list for HHS: 15 elements, all `IfcMember`/
+   `IfcColumn` in the Superstructure phase — none are doors, windows, or curtain-wall parts.
+3. A LOOSE "any wall within 3m XY" proximity check DID flag HHS Level-3 doors (gaps 0.2–4.9d) — but
+   this is confirmed a false positive: it catches walls that merely happen to be nearby (corridor
+   walls, adjacent rooms), not the door's real host (which requires actual XY-bbox overlap, per
+   `openingBrackets`). Do not re-use this check as evidence; it was built and rejected same-session.
 
-### 3. Verify #1317 and #1318 actually landed, then re-check.
-Both were auto-merge armed at handover, not confirmed merged. `gh pr view 1317 --json state`.
-#1317 = §ARCH_AREA_WEIGHT (walls install by real area — the "ARCH too fast" fix, sw v1005).
-#1318 = §GANTT_CACHE_ERR stack logging (sw v1006). After they land, ask the user to re-bake and read
-the new `§GANTT_CACHE_ERR ... stack=` line — a live error was recovered-but-unlocated at handover.
+**What was NOT done, and is the actual next step:** everything above is a NODE-SIDE, generated-
+timeline re-derivation. None of it has looked at the REAL browser-rendered movie for HHS with fresh
+eyes — no live bake, no `§`-tagged log read from an actual `injectGantt()` run in the browser, no
+confirmation of which building/level the user meant. Per this project's own FUNDAMENTAL LAW
+(`CLAUDE.md`), the next session's job is NOT to eyeball a screenshot either — it is to:
+1. **Confirm the building.** Ask, or bake all buildings' Level-3-equivalent and check §-logs for
+   each — do not assume HHS from context alone (the user never confirmed).
+2. **Run a live bake** (`scripts/gate_4d.sh` won't show this — it never renders) and read the
+   `§DOOR_WINDOW_HOST_WALL_DISPLAY openFixed=` and `§CURTAIN_WALL_OPENING`-tagged console lines the
+   REAL `injectGantt()` call prints, not a node-side re-derivation of the same function.
+3. **If the numeric logs are clean but the user still sees it**, the gap is almost certainly NOT in
+   scheduling at all — check the RENDER side next: does `renderAtTime`'s frontier/reveal logic
+   correctly show a door's HOST WALL as "already built" the instant the door itself reveals, or is
+   there a one-frame/one-tick lag where the door pops in visibly ahead of its wall's own mesh update?
+   That would look exactly like "hanging" without any schedule number ever being wrong — a rendering-
+   sync bug, not a 4D-generation bug, and nothing in this file's toolset checks for it.
+4. **Reusable tool**, already built for this: `bim-compiler/scripts/probe_midair_grounded_and_doors.js`
+   — has `§LEVEL3_DOOR_CHECK` and `§HHS_STAIR_CHECK` wired in (env: `VIEWER_DIR`, `BLD_DIR`, `ONLY`).
+   Extend it rather than writing a new probe from scratch.
 
-### 3b. WATCH: did today's merges actually fix what the user reported?
-Both #1317/#1318 were still OPEN (auto-merge armed, e2e running) at handover — nobody has yet seen
-their effect. Once live, confirm against the user's two reported symptoms, numerically:
-- *"ARCH still comes on too fast"* → #1317 §ARCH_AREA_WEIGHT. Expect Hospital
-  `IfcWallStandardCase` per-element install spread to go from 1x (flat) to ~9252x, class totals
-  within 5%. `witness_arch_area_weight.js` asserts both.
-- *"outlets and hanging elements appearing bit early"* → NOT fixed by anything merged today. This is
-  task 1. If #1317 changed `§HOSTED_BEFORE_HOST EARLY%` at all, say so — it would mean the two are
-  coupled, which nothing currently predicts.
-Report the before/after numbers, not an impression.
+## §GROUNDED_OVERRIDE_FIX — ✅ SHIPPED, bim-ootb PR #1338 (2026-08-13)
+User: *"THINGS STILL HANGING IN MID AIR"*, reported right after §TIER2_PER_ELEMENT_CLAMP/§SHIFT_HOURS
+(below) shipped. Investigation found a SEPARATE, PRE-EXISTING bug (not caused by that PR, not caused
+by anything today) sitting in `_contactGraph`'s "grounded" classification since `_midairRepair` was
+first built (#1301).
 
-### 4. Standing gate for everything after.
-`scripts/gate_4d.sh` before AND after any 4D change; diff the two logs. It exists because five
-changes shipped 2026-08-12 each passed its own witness in isolation while a visible bug survived.
-Never trust a single green witness again.
+**The bug:** `grounded[i]` means "nothing shares my own exact XY footprint below me" — true for a
+genuine ground-floor slab, but ALSO true for any element whose real support/carrier simply doesn't
+overlap its own tight bbox (a column whose footing is a hair narrower, a beam one grid cell over).
+`_midairRepair` and `_midairAudit` (the 🔓→🔒 lock gate's own judge) both SKIPPED every grounded
+element outright — `if (!list2 || grounded[i]) continue` — so an element with a REAL, later-appearing
+contact was silently exempted from ever being checked. "Grounded" was overriding a detected violation
+instead of only covering the genuine "nothing to check" case (which stays `!list`, unchanged).
 
-### 5. §TIER1_HANDOFF — ✅ DONE (measured). NO SCHEDULE FIX WARRANTED; the cause was a stale cache.
-User: *"the ARCH is a gap after piling done. make things back to back as usual if so."* Measured, do
-not re-measure — full numbers in the §TIER1_HANDOFF section at the end of this file. Headlines: on
-current `main` there is **no piling→ARCH dead air on any building** (Hospital's 13.7d window carries
-1151 Superstructure starts at concurrency 4.36; Clinic/LTU/Duplex have no window at all, ARCH starts
-before the last footing ends). **#1314 §TIER_SERIAL_BY_ZONE CLOSED this gap ~21x** (Hospital 287.2d →
-13.7d, per-zone median 171.3d → 0.0d) — the user's insistence caused the fix, not the gap. What they
-were actually watching was the pre-#1313 schedule replaying out of IndexedDB because
-`_GANTT_CACHE_VERSION` sat at 11 through #1313/#1314/#1315/#1319; evicted by #1322 `6e1ca24` (v12,
-sw v1008). ⛔ still open: **nothing witnesses that bump** — three misses in one day. See the section.
+**Measured, all 7 buildings, before the fix** (`witness_midair_zero`'s "0 floating" was checking the
+wrong question for every one of these): Hospital 460, Terminal 236, LTU_AHouse 254, JKR 57, Clinic
+79, HHS 15, Duplex 4 — **1,105 elements total**, worst gaps 878.8d (LTU_AHouse) and 172.3d (Hospital).
 
-### 6. §PHASE_WINDOW_IDLE — measurement CORRECTED and root cause LOCATED. Fix ⛔ BLOCKED on one ruling.
-User: *"things are still rushed and not following its gantt bar length.. which gets idle the rest of
-it"* → *"the rush to build at onset leaving the rest idle is a bug"* → *"long timeline is OK, as long
-realistic but easy for user to edit the gantt chart."* Full numbers: **§PHASE_WINDOW_IDLE** section
-at the end of this file. Do not re-measure any of it. Headlines:
-- **Two probe bugs found first, both systemic, both fixed** (they invalidated a day of §-numbers):
-  `§RULES_TABLE_SOURCE` — every Node probe/witness read `rates/sequence_rules.json`, which
-  `viewer/rates.js:239` says in shipped source the viewer NEVER loads; and `§SERVED_BYTES` — the
-  local `buildings/*.db` is a newer re-extraction whose storey taxonomy differs from the OCI object
-  users fetch, worth 4.6% of totalDays on its own. Corrected Hospital span **2014.7d** vs live 2019.6
-  (0.24%); the old 1889.4 was wrong on both counts.
-- **The idle is INTERIOR and per-zone, not a trailing phase-bar overhang**, and it splits three ways
-  — one fix cannot cover them. Trim-the-bar-end helps MEP a lot, Architecture almost none, Finishes
-  not at all (Finishes' phase bar is 8% but its zone bars are 28% mean and up to 67% — that idle is
-  zone STAGGERING, and the honest fix there is to draw per-zone bars, not to trim).
-- **Stage bisect names the owner per phase:** MEP Final is COMPACT generatively (RAW 176%, win 121d)
-  and the display remap stretches it 6.5x to 27%/784d — `_twoTierRemap` owns it. Architecture is
-  ALREADY sparse in RAW (zone 9%) — `computeSchedule`'s support gate owns it, the remap only inherits.
-- ✅ **DONE (witness) 2026-08-13.** Shipped the per-element clamp in `_twoTierRemap`/
-  `§TIER2_PER_ELEMENT_CLAMP`: `push only if it.s < t1EndZ[z]`, to `t1EndZ[z]` exactly, replacing the
-  uniform `t1EndZ[z] - t2MinZ[z]` shift. Built in `/tmp/wt-tier2-clamp` (reused as instructed).
-  **Measured, Hospital:** MEP Final occupancy 22%(pre-lane)→**105.4%**, MEP Rough-in →226.5% (both
-  now over-full, i.e. genuinely busy, zero dead air — the window shrank to fit the real work instead
-  of the work being padded to fill an inherited window). Non-order-preserving accepted per the
-  ruling; wired through the existing `_midairRepair` pass (already ran after `_twoTierRemap`, no
-  reordering needed). **W-MZ-2 (the acceptance bar, floating==0) holds on all 7 buildings, unchanged.**
-  W-MZ-8 (a *separate*, already-nonzero "support-order-violation cost" tracker, not the acceptance
-  bar) ticked up on 2 of 7 — Terminal 102→103, LTU_AHouse 1101→1142 — baseline updated in
-  `witness_midair_zero.js` with the reason inline, per that witness's own "locked, not hidden" design.
-  `_GANTT_CACHE_VERSION` 15→16, both in the same diff. `sw.js` collided 3x live during push (three
-  concurrent same-day sessions each independently bumping `CACHE_VERSION` — #1331 v1013→v1014,
-  #1332 v1014→v1015, #1334 v1015→v1016, none with their own dated comment) — resolved each per this
-  file's own KEEP-BOTH/take-the-higher convention, landing at **v1017**. Also caught by CI on push:
-  `no-undef` on a bare `SHIFT_HOURS` reference in `time_machine.js` (rates.js's global is
-  cross-file, must be read via `window.SHIFT_HOURS` only, same as `LABOR_RATES`/`SEQUENCE_RULES`) —
-  fixed same session. **PR bim-ootb#1333 MERGED**, `fast-checks` green.
-- **Architecture/Superstructure's own RAW sparseness — ROOT-CAUSE NARROWED, not yet closed.**
-  Ran the obvious next experiment first: bumped `STEEL_ERECTOR`/`CONCRETE_GANG`/`MASON`/`CARPENTER`
-  `max_crews` ~3x (project-wide) in a scratch copy and re-measured. **Result: near-null** — Hospital
-  Superstructure occupancy 40.6%→44.4%, Architecture 30.0%→31.3%, while Substructure's ALREADY-full
-  window just got proportionally tighter (157.8%→414.7%, an unrelated side effect). **Crew capacity
-  is not the bottleneck — crew utilization computed from the SAME numbers is ~7%** (116 work-days
-  against ~1716 available crew-days in Superstructure's window), meaning crews sit idle waiting on
-  something, not queued behind a busy resource. This rules out rank-2 (`max_crews` autoscale) as the
-  fix for THIS symptom (it may still be worth doing for other reasons, just not this one) and points
-  at a genuine **critical-path effect**: `computeSchedule`'s PASS-A structure gate (`geoGate`, bottom-
-  up bearing-below) chains floor N's start to floor N-1's real finish with no bandGate/tg on structure
-  at all (§4D_BAND_MONOTONIC's own ruling), so a handful of elements on the LONGEST vertical chain
-  set the whole phase's span while thousands of others sit with slack — classic CPM, not a scheduler
-  bug. Matches [[feedback_construction_standards_not_invented_pacing]]: if this genuinely is the
-  physical bottom-up sequence with realistic crew counts, it may not be a kink to fix at all. ⛔ Needs
-  either (a) tracing the ACTUAL longest chain to confirm/refute this reading with element-level
-  evidence (not done — time-boxed out this session), or (b) the user's read on whether it still reads
-  as "idle" once the two shipped fixes below have already cut total idle time by 5x+.
+**Fix:** one condition dropped at three call sites (`_contactGraph`'s two consumers in
+`_midairRepair` — both the dead and shipping definitions — plus `_midairAudit`). `grounded[i]` no
+longer overrides a present contact list.
 
-### 8. §SHIFT_HOURS — ✅ DONE (witness) 2026-08-13. M1's 8h default REVERSED to 24h, per user ruling.
-User, live: *"why bother with 24hr? Isnt it faster? 2020 is very slow"* → *"24hr is our default,
-import and JSON setting can import as we align to standard model."* This is the OPPOSITE call from
-#1323's §ARCH_START_TEMPO/M1, which shipped the rate table's 8h crew-day as the ONLY value earlier
-2026-08-13, tripling every building's span (Hospital →~2020d, live-confirmed by the user's own pasted
-browser console: `day=735 of=2020`). The user judged that too slow and wants speed as the default,
-with the "standard model" 8h shift demoted to an explicit opt-in.
-**Fix, kept minimal and non-invasive:** `rates.js` gets a new top-level `SHIFT_HOURS = 24`
-(same pattern as `RATES`/`LABOR_RATES` — a plain global, editable the same way, override-able by a
-future rate-pack import). `schedule_gate.js`'s `computeSchedule` takes an optional 5th arg
-`shiftHours`; **its own internal default stays 8h** so every witness/probe that doesn't pass the arg
-is byte-for-byte unaffected (a uniform time rescale changes no order/floating assertion, only
-absolute day counts — confirmed, zero witness regressions from this half of the change).
-`time_machine.js`'s `injectGantt` — the ONLY real generation path — reads `rates.js`'s `SHIFT_HOURS`
-and threads it through as that 5th arg, so the shipped viewer runs 24h by default while the tests
-keep proving 8h-mode correctness undisturbed. `probe_arch_start.js` updated to read+pass the same
-value so probe numbers match what the browser will show.
-**Measured, all 7 buildings (combined with §TIER2_PER_ELEMENT_CLAMP above, both ship together):**
-Terminal 375.2→131.2d · **Hospital 1168.7→369.2d (2020d live→~369d, 5.5x)** · Duplex 18.0→10.6d ·
-HHS 122.1→55.3d · Clinic 399.8→183.4d · LTU_AHouse 1855.1→915.9d · JKR 110.1→50.6d. Every building
-shrank 1.7x–5.5x, none broke, none went degenerate (no building near the 10-day scaleFactor floor
-flipped sign or NaN'd). `_GANTT_CACHE_VERSION`/`sw.js` bump covers this in the same diff as item 6
-(shipped together — see that entry for the exact version numbers and the two W-MZ-8 baseline updates).
+**Verified:** W-MZ-2/3/4 (acceptance bar + monotonicity + orphan lock) unchanged, 0/0/locked on all 7
+— now checking 1,105 more real elements than before. `witness_tier_serial_display.js` 57/0 clean —
+the EXACT witness that broke twice before when this area was previously attacked (§STRUCT_POOL_UNGATED
+below names both prior regressions; this fix did not touch that surface, so neither recurred). W-MZ-8
+baseline updated with the reason inline (Terminal 103→141, Hospital 135→210, HHS 11→31, Clinic
+367→420, LTU_AHouse 1142→1534, JKR 348, Duplex unmoved at 9 — it has no grounded-hidden population).
+`_GANTT_CACHE_VERSION` 16→17, `sw.js` v1019→v1021 (collided live with #1337's independent same-day
+v1020 bump — took one past it, same `sw.js` KEEP-BOTH/take-the-higher convention as the PR above).
 
-### 7. Dangling-items review — standing instruction, user 2026-08-13: *"there are still always dangling
-items, let next session watch out and review."* Not a specific bug — a mandate to actively hunt for
-what today's velocity left unverified, the same way `§RULES_TABLE_SOURCE`, `§SERVED_BYTES`, the
-`witness_midair_zero`/`witness_kernel_ops_sched_version` dead-witness pattern, and the 5D rate-pack
-`max_crews` shallow-merge gap were each found ONLY by someone independently re-checking, not by any
-single task's own scope. Before or after task 6: re-run `gate_4d.sh` clean, diff every `§`-number
-against what this file records, and treat any drift as a finding to chase — not noise to explain away.
+**Not resolved by this fix — see ⛔ THE ONE OPEN ITEM at the top of this file.**
+
+## §TIER2_PER_ELEMENT_CLAMP + §SHIFT_HOURS — ✅ SHIPPED, bim-ootb PR #1333 (2026-08-13)
+Both fixed the same day, same PR, in response to *"solve this... you are the expert"* /
+*"chase till zero, as this is stubborn issue over weeks"*.
+
+**§SHIFT_HOURS** reverses #1323's §ARCH_START_TEMPO/M1, which shipped the rate table's 8h crew-day as
+the ONLY value earlier the same day, tripling every building's display span (Hospital →~2020d, user-
+confirmed live: `day=735 of=2020`). User ruling: *"why bother with 24hr? Isnt it faster? 2020 is very
+slow"* → *"24hr is our default, import and JSON setting can import as we align to standard model."*
+`rates.js` gets a top-level `SHIFT_HOURS = 24` (same pattern as `RATES`/`LABOR_RATES`);
+`schedule_gate.js`'s `computeSchedule` takes an optional 5th `shiftHours` arg (module's own internal
+default STAYS 8h, so every witness/probe that omits it is byte-for-byte unaffected); `injectGantt` —
+the real generation path — reads and threads it through.
+
+**§TIER2_PER_ELEMENT_CLAMP** replaces `_twoTierRemap`'s uniform per-zone Tier-2 shift (sized off the
+EARLIEST element in a zone, applied to every element in it — inflated MEP Final's compact 121-day
+generative package into a 784-day display window with zero added work) with a per-element clamp:
+push only if `it.s < t1EndZ[z]`, to exactly `t1EndZ[z]`. Non-order-preserving, accepted per the
+ruling; wired through the existing `_midairRepair` pass.
+
+**Measured, all 7 buildings, both fixes together:** Terminal 375.2→131.2d · **Hospital 1168.7→369.2d
+(2020d live→~369d, 5.5x)** · Duplex 18.0→10.6d · HHS 122.1→55.3d · Clinic 399.8→183.4d ·
+LTU_AHouse 1855.1→915.9d · JKR 110.1→50.6d. MEP Final occupancy 22%→105.4%, MEP Rough-in →226.5%
+(both now genuinely busy, zero dead-air window inflation). `gate_4d.sh` pass=7 fail=0 missing=1
+(pre-existing). `_GANTT_CACHE_VERSION` 15→16, `sw.js` v1013→v1017 (collided 3x live during push —
+three concurrent same-day sessions independently bumping `CACHE_VERSION`, #1331/#1332/#1334 — took
+one past the highest each time, per this file's own KEEP-BOTH/take-the-higher `sw.js` convention).
+CI also caught a `no-undef` on a bare `SHIFT_HOURS` reference (rates.js's global is cross-file, must
+read via `window.SHIFT_HOURS` only) — fixed same session.
+
+**Architecture/Superstructure's own RAW sparseness — ROOT-CAUSE NARROWED, not closed.** Crew-scaling
+(`max_crews` ~3x) tested and is a near-null (Hospital Superstructure occupancy 40.6%→44.4%) — crew
+utilization is only ~7%, so capacity is not the bottleneck. Points at a genuine **critical-path
+effect**: `computeSchedule`'s PASS-A structure gate (`geoGate`, bottom-up bearing-below) chains floor
+N's start to floor N-1's real finish with no bandGate/tg on structure at all (§4D_BAND_MONOTONIC's own
+ruling), so a handful of elements on the longest vertical chain set the whole phase's span while
+thousands of others sit with slack — classic CPM, not a scheduler bug. Matches
+[[feedback_construction_standards_not_invented_pacing]]. ⛔ Needs either tracing the actual longest
+chain with element-level evidence (not done), or the user's read on whether it still reads as "idle"
+now that total idle time is already down 5x+. Separate from, and lower priority than, the doors item.
 
 **What is already done — do not redo, cite it:** §DAY_GAP lane resolved to zero (#1313 §ZONE_INDEX ·
 #1314 §TIER_SERIAL_BY_ZONE · #1315 §CREW_DEMAND/§HR_COST · #1317 §ARCH_AREA_WEIGHT); movie shadow

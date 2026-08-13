@@ -4,6 +4,23 @@
 > ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-13 — 4D "hanging in mid air": 3 real fixes shipped, 1 elusive item handed off
+User: "solve this... you are the expert" → "chase till zero" → "THINGS STILL HANGING IN MID AIR" →
+"the 3rd level again.. with the hanging doors." Three bim-ootb PRs merged, all gate_4d.sh clean:
+- **#1333 §TIER2_PER_ELEMENT_CLAMP + §SHIFT_HOURS**: killed MEP dead-air (Hospital MEP Final
+  occupancy 22%→105.4%) and reverted M1's 8h/day default back to 24h per user ruling — Hospital
+  2020d live→369.2d, all 7 buildings shrank 1.7x–5.5x.
+- **#1338 §GROUNDED_OVERRIDE_FIX**: found and fixed a pre-existing (not caused by #1333) audit bug —
+  `_midairRepair`/`_midairAudit` let "grounded" (nothing below in an element's own tight footprint)
+  silently override 1,105 real floating violations across 7 buildings (worst gaps 878.8d LTU_AHouse,
+  172.3d Hospital) that `witness_midair_zero`'s "0 floating" had never actually checked.
+- Architecture/Superstructure's own low occupancy: crew-scaling tested, ruled out (only ~7% crew
+  utilization — not a capacity problem), points at a genuine critical-path effect, not yet traced.
+- **⛔ OPEN, handed to next session**: "3rd level hanging doors" (likely HHS) — the shipped door/
+  host-wall mechanism checks clean at both 8h and 24h shift, node-side. Full handoff with the exact
+  next steps (live bake + render-sync check, not more node-side probing) at the top of
+  `prompts/4D_SCHEDULE_PERFECTION.md`. New reusable probe: `scripts/probe_midair_grounded_and_doors.js`.
+
 ## Session 2026-08-12 — §MAIN_BUILDING_SHADOW SOLVED after 5 sessions stuck (bim-ootb PR #1302, MERGED)
 Main building + rooftop fixtures cast no shadow in a MaxQ bake while skyline props and Time Machine's
 Shadow mode both did. Root cause: `shadow.bias` is NORMALISED depth (`shadowCoord.z += shadowBias`
