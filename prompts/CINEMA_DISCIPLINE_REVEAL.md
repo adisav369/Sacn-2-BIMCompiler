@@ -846,3 +846,170 @@ grazing-angle Fresnel lets the genuinely-blue Preetham sky dominate `IfcBeam`/`I
 side, this one is trimmed to a pointer — §Findings 2026-08-14 (session 2) above is the complete,
 canonical record: same diagnosis, PLUS the shipped `envInt` fix, before/after re-measurement, and the
 PR #1356 regression check this section didn't have yet when it was written.
+
+## §CPE_DISCIPLINE_REVEAL_PULLOUT — 2026-08-14 (session 3), pull-out + repeated-lap restructure, bim-ootb PR #1362
+
+**Task, dispatched from bim-compiler:** the user iterated live on this feature's own shape across
+several turns of the dispatching session (not carried into this build agent's context — restated in
+full in the dispatch prompt). Net result: a genuine RESTRUCTURE of §Mechanism C above, replacing the
+there-and-back retrace round with a pull-out + a single repeated forward lap. §Mechanism C's own
+sections above (through the "Status" block) describe the SUPERSEDED shape — kept for the historical
+record, not to be resumed. This section is the current, shipped design.
+
+### The new shape, as dictated
+1. **No backward retrace at all.** Round 2 is simply the same path flown again, start to stop, same
+   forward direction as round 1 — not a there-and-back. User's own words: "There is no retrace
+   backwards... it is just resume as stick start to stop another round which we call 2nd round."
+2. **A pull-out beat between round 1's end and round 2's start.** At the moment the camera first
+   arrives at the last stick, a brief dolly-back move, then round 2 begins. Buildup's 100%-complete
+   moment moves to the END of this pull-out (not the instant of arrival, not way after) — the direct
+   fix for the bug the previous shape had: completion pinned exactly to arrival read as "way before"
+   the round finished, per the ▶ RESUME block at the top of this file.
+3. **During round 2:** unchanged from the old "ghost" phase — all non-ARC/STR disciplines shown
+   together, real IFC colours, room titles behave exactly as round 1 (no discipline-name override).
+4. **Only after round 2 ends:** the camera slows down (explicitly NOT a pause — "not pause but slows
+   down") while cycling each discipline 2s at a time (unchanged number), and during each slot the room
+   title UI element is replaced by the discipline's name. "Good touch" nice-to-have: show the
+   discipline's element quantity/cost alongside its name if a lookup exists cheaply.
+
+### Decisions made building this — flagged explicitly as author's calls, not user-dictated
+The dispatch prompt named these as open/ambiguous and asked for the smallest reasonable call, made
+visibly rather than silently:
+- **Pull-out duration: 1.5s**, matching the tail's own 2s/discipline granularity. **Pull-out distance
+  is DERIVED, not invented**: `CINEMA_REVEAL_PULLOUT_SEC(1.5) × CINEMA_PULLBACK_MPS(6.5) = 9.75m`,
+  reusing the existing closing-orbit pull-back speed constant per the dispatch's own instruction.
+  Witnessed exactly: `pull-out displacement === 9.75m` to float precision.
+- **Pull-out direction ("angle of attack"): the direction Beat 3 was actually travelling when it
+  reached the last stick** — a straight dolly-back opposite that direction, gaze held CONSTANT
+  through the whole pull-out (no gaze blend). Round 2 then begins with a clean CUT back to the first
+  stick (not a continuous camera move) — "resume as stick start" reads as a genuine restart, like a
+  loop, not a camera flight back to the beginning. Witnessed: the tP→tV seam is a real, walk-scale
+  position jump (~20m on the test building), the exact OPPOSITE of the old there-and-back's
+  continuity property at this seam — proof the retrace leg is genuinely gone, not just renamed.
+- **No ARC/STR visual override during the pull-out itself** — plain, solid, camera just retreats. It
+  is a transition beat belonging to neither round, same treatment the ORIGINAL Mechanism C gave its
+  own backward leg ("no visual override, matches the user's own description of the flow").
+- **The tail's slow-down is NOT a new camera motion.** The disc-parade tail is folded directly into
+  the EXISTING rise/turn-and-rise beat's own time budget (`_useSec.rise` grows by `tailSec`, driving a
+  larger `[tV,tR]` span) rather than becoming its own beat. `poseAt`'s Beat 4 branch is CODE-IDENTICAL
+  to before this restructure — same `_beat4Pose`/`_cinemaEaseFloored` formula, just stretched over
+  more seconds. Because the SAME pull-back distance now takes MORE time, average speed is measurably,
+  continuously lower for exactly as long as captions cycle (never literally frozen — satisfies "not
+  pause but slows down") and the beat naturally regains its normal pace approaching the real orbit
+  hand-off. This was the smallest change that satisfied "blend into it rather than inventing an
+  unrelated camera motion" literally — zero new pose code for the tail's motion.
+- **The final "all disciplines together" tail slot was KEPT, not dropped.** The dispatch prompt's own
+  instruction: only keep it if the user asked for it elsewhere in this file's existing content. They
+  did, repeatedly and without retraction — the ORIGIN ask ("cycling through each, then all together"),
+  the Mechanism B pacing quote ("final 2 secs is all DISC together before ARC/STR covers back"), and
+  Mechanism C's own flow §2c ("a final ~2s with all disciplines shown together... still standing
+  unless the user says otherwise"). `tailSec = 2×discs.length + 2` is unchanged from before.
+- **Caption text during the all-together slot: "All Disciplines"** — the dispatch prompt's caption ask
+  ("replaced by the discipline's name") was written for the per-discipline slots specifically; the
+  all-together slot wasn't separately addressed. Smallest reasonable extension rather than leaving the
+  caption blank while ARC/STR is hidden and everything is shown (which would read as an unexplained
+  gap right after several readable captions).
+- **Discipline label source: `A.PHASE_MAP`** (`config.js`), not a new label table. It already carries
+  friendly names for the common trades (`ELEC→'3-Electrical'`, `FP→'3-Fire Protection'`, ...) keyed by
+  the SAME discipline codes `A.DISC_COLORS`/`cpeRevealDiscsPresent` use — stripped of its leading
+  sort-order prefix (`'3-Electrical'→'Electrical'`). Degrades to the raw code for `SAN`/`VENT`/`HEAT`/
+  `VOID` (real `DISC_COLORS` codes `PHASE_MAP` has no entry for) — never a fabricated label. This is
+  exactly what `MEP_CLASH_REVEAL_MOVIE.md`'s own §Mechanism B section had already flagged as the right
+  place to look ("checked against the locale files... rather than hand-writing new labels") — checked
+  `A.PHASE_MAP` first per that note, found it sufficient, no locale-file change needed.
+- **Quantity/cost "good touch": element COUNT + a ROUGH cost estimate, not the full unit-aware BOQ
+  figure.** A real discipline-level qty/cost aggregation already exists — `boq_charts.html`'s own
+  `qto_cache` pipeline, which resolves quantity by UNIT (linear-M via bbox length for duct/pipe/cable,
+  area-M2 via bbox for slabs/walls, else count) before multiplying by `A.MATERIAL_COSTS`' rate. That
+  exact logic lives in a separate SQL.js-loaded page context, not the live viewer's `A.dbQuery`, and
+  porting its full unit-resolution (LINEAR_CLASSES/AREA_CLASSES bbox joins) would be real, separate
+  work — out of proportion to a "nice to have, include if reasonably cheap" ask. What shipped instead:
+  a new `A.cpeRevealDiscQtyCost(discs)` reusing the SAME `A.dbQuery`/`elements_meta` pattern
+  `cpe_room_title.js`'s `_storeyLadderForGroups` already uses, `GROUP BY discipline, ifc_class`,
+  summing `COUNT(*) × A.MATERIAL_COSTS[ifc_class].rate` per discipline — reuses the EXISTING rate
+  table verbatim (no new number invented), but is a rougher figure than the BOQ page's (treats every
+  element as one unit against its class's rate, not the real linear/area quantity). Labelled honestly
+  in the caption as "N elements, ~cost" rather than presented as a precise BOQ total. **Named follow-on,
+  not built:** porting `boq_charts.html`'s unit-aware qty resolution into this live-viewer path for an
+  exact figure, if the rough estimate proves unsatisfying in practice.
+
+### Two real bugs found and fixed BEFORE this ever shipped (witness-driven, not eyeballed)
+1. **Pull-out gaze anchored to the wrong signal.** First cut held the pull-out's gaze at the raw
+   `_beat3EndDir` (Beat 3's un-rate-limited final direction). The witness measured a **78.85° gap**
+   between that and the gaze ACTUALLY rendered on screen the instant before (`_gazeRateAt`'s
+   rate-limited signal) on `HHS_Office_Federated` — exactly the class of bug `§CPE_GAZE_CONSTANT_RATE`
+   and `_revealSeamDir` already exist to prevent elsewhere in this same file (the ORIGINAL Mechanism C
+   build hit the same mistake once, at a different seam, and fixed it the same way). Fixed by anchoring
+   to `_revealSeamDir(tO)` instead — re-measured at exactly `0.000°`.
+2. **A latent double-fold risk in the tail-into-rise fold.** The first cut mutated `_useSec.rise`
+   in place to fold the tail in. `plan.sec.rise` feeds `cinema_path_editor.js`'s `s.baseSec.rise`,
+   which `_buildOverride()` echoes straight back as the NEXT plan's `riseSec` override on every
+   replan within one editing session (band drag, checkbox toggle, etc., all while Reveal stays
+   checked) — so each round-trip would have folded the tail in AGAIN, growing the rise beat without
+   bound across repeated edits. Never shipped: caught while tracing the override round-trip, before
+   any bake. Fixed by keeping the fold entirely local to a new `_riseFolded` variable (used only for
+   `_shapeTotal`/`tR`) — `_useSec.rise`/`plan.sec.rise` now stay the TRUE unfolded pull-back budget
+   always, invariant to reveal state, safe to round-trip through the override channel any number of
+   times. Witnessed directly: `sec.rise` identical off vs. on, and identical across 3 repeated
+   round-trips through the same override object.
+
+### What actually got built
+- **New beat boundary `tP`** (pull-out's own end), inserted between the existing `tO` (round 1's walk
+  end) and `tV` (renamed in meaning: now round 2's own end, the real "STOP" per the spec, not the old
+  whole-round end). `plan.beats` gained `pullout: tP`. Guardrail 2 preserved exactly as before: reveal
+  off or no non-ARC/STR discipline present makes `tP===tV===tO` (zero-width, unreachable), so an
+  off/empty-building film stays byte-identical to before this feature ever existed.
+- **`_pullOutPose(w)`** — new pose function, dolly-back along `-_revealSeamDir(tO)`, gaze constant.
+- **`_revealPose(w)`** — simplified from the old there-and-back version (no more back-leg/tail
+  branches, no more `backW`/`fwdEndW` splitting): now purely round 2's forward lap, `_outPos(w)`
+  eased, travel-tangent gaze, with only an END seam blend into Beat 4's actual `e4=0` gaze (no start
+  blend — round 2 begins with a deliberate cut, blending gaze across a position cut would not read as
+  continuous motion anyway).
+- **`_buildupTopoutU`** (`cinema_maxq.js`) now returns `plan.beats.pullout` (tP) instead of
+  `plan.beats.out` (tO) when the reveal round is active — degrades to `.out` for an older cached plan
+  without a `pullout` field (DEGRADE, DON'T DISABLE, this lane's own established rule).
+- **`A.cpeRevealVisualAt(plan, tNorm)`** restructured into four zones instead of three: pull-out
+  (null), round 2 (`ghost`), the tail folded into `[tV,tR]`'s first `tailSec` seconds
+  (`tail-one`/`tail-all`, using the plan's own `reveal.riseSec`+`reveal.tailSec` to find the split),
+  rise-proper (null again).
+- **`A.cpeRevealCaptionAt(plan, tNorm)`** — new pure function, the discipline-name caption override.
+  Returns null everywhere except the tail's own slots, where the caller (bake or preview) swaps it in
+  for the normal room-title lookup and swaps back automatically once the tail ends (same null-fallback
+  mechanism in both call sites — no separate "restore" step needed). Wired into BOTH `cinema_maxq.js`'s
+  `_captureFrame` title-info line and `cpe_room_title.js`'s `A.roomTitleLiveTick` (extended with two
+  new optional trailing args, `plan`/`tNorm`, backward-compatible) — one pure function, two callers,
+  matching this whole lane's established "preview and bake read the same functions" discipline (this
+  project was bitten twice already by exactly this class of divergence, PR #1354's own fix).
+- **Room titles work even when the "room titles" checkbox is off but Reveal is on** (discovered while
+  wiring the preview call site — the two are separate checkboxes, and the disc-parade caption
+  shouldn't require room titles to also be enabled). Fixed a related staleness risk at the same time:
+  `roomTitleLiveStart` is now called whenever EITHER checkbox is on (with `totalSec=0` — an
+  effectively-empty timeline — when only Reveal is on), so a PRIOR run's real room-title segments can
+  never leak into a run where the user has since turned room titles off.
+- **`A.cpeRevealDiscLabel(d)`** and **`A.cpeRevealDiscQtyCost(discs)`** — new small helpers, see the
+  decisions section above for what they reuse and what they deliberately don't attempt.
+- **`A.cpeRevealDiscsPresent()`, `A.filterDiscs`, the full-hide visual mechanism** — entirely
+  unchanged, reused as-is from the original build.
+
+### Witnessed
+New witness `witness_cpe_reveal_pullout.js` (Puppeteer, real building —
+`HHS_Office_Federated_extracted.db`, the git-tracked fixture; `buildings/Duplex_extracted.db`, the
+ORIGINAL Mechanism C witness's fixture, is gitignored/OCI-only and wasn't present in the fresh
+worktree this build used, per this project's own worktree-hygiene rule against reusing the shared
+checkout): **51/51**, covering the Guardrail-2 off-path, all four beat boundaries and their real
+widths, the exact pull-out displacement/gaze-constancy proof, the deliberate tP→tV cut vs. the old
+seam's continuity, the tV→tR seam's UNCHANGED continuity, buildup topout timing (not "way before", not
+"way after"), the no-double-fold regression (3 repeated round-trips), all four visual zones, the
+caption swap-in/out at exactly the tail's own boundaries, the discipline-label/qty-cost helpers, and
+the preview-replan parity check (toggling Reveal alone widens the EDITOR'S OWN live plan, not just a
+freshly-built one). Regression-checked clean: `witness_cpe_reveal_panel.js` 7/7, `witness_cpe_room_title.js`
+11/11 — the checkbox wiring and the room-title pipeline are both untouched by this restructure.
+The superseded `witness_cpe_reveal_round.js` (tested `backSec`/`fwdSec`/a retrace leg that no longer
+exist) was removed rather than left permanently red.
+
+### Status
+BUILT, WITNESSED (51/51 new + regression-clean), bim-ootb branch `feat/cpe-reveal-pullout-restructure`,
+PR #1362. §Mechanism C above (through its own "Status" section) describes the SUPERSEDED there-and-back
+shape — do not resume it. Named follow-on, not built: the full unit-aware BOQ-accurate quantity/cost
+figure for the tail caption (see the decisions section above) — the rough count×rate estimate shipped
+instead is honestly labelled, not silently presented as precise.
