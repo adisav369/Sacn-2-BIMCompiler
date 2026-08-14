@@ -47,6 +47,14 @@ Open threads, all below in full detail:
    Post-close check (fresh `BIM_MaxQ_HHS_Office_Federated_1786669793870.mp4`, ffmpeg+numpy edge
    measurement, 2 independent building-footprint boundaries): edge width median 2.0px both, contrast
    24.5/27.7 median — consistent with the shipped-fix numbers above, nothing regressed.
+   **User noticed, same mp4: slab shadows still soft, wall shadows now strong.** Code-level
+   candidate (not yet witnessed): `_srFrag`'s edge-detect (`effects.js` ~3564-3579) uses a FIXED
+   `kernelPx=4` screen-space neighbor tap to find the shadow boundary — if the boundary's on-screen
+   footprint exceeds 4px it goes undetected and the mask never fires there. Walls are usually viewed
+   near face-on in these shots (narrow on-screen boundary, inside the kernel); slabs are horizontal
+   and often viewed at a raking/grazing angle (roof/soffit shots), which stretches the same
+   world-space boundary across more screen pixels — plausibly past the 4px radius. Fix candidate:
+   scale `kernelPx` by viewing-angle grazing factor instead of a fixed constant. Not dispatched.
 
 Closed this session, confirmed working live: §CAM_LIGHT (camera fill-light) and §SUN_ARC
 (noon→dusk sweep) — see their one-line status below, full story in the archive.
