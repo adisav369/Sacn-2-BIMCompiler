@@ -473,3 +473,239 @@ wholesale — do not resume them unprompted. Named, real follow-up if ever wante
 translucency for the ~80% of ARC/STR geometry that's batched/instanced (would need custom shader work
 or material cloning) — full hide was the user's own explicit choice over building that, not a
 placeholder awaiting it.
+
+## Findings 2026-08-14 — surface/material colour investigation (dispatched agent, §6 handoff)
+
+**Task:** answer why HHS_Office_Federated's cinema-reveal bake shows MEP as "metallic blue" instead of
+trade colours, and STR/stairs as "boring blue," per §6 above. Investigation only, per the handoff's own
+instruction — nothing built, nothing pushed.
+
+### Method — real numbers, not a guess
+Queried `buildings/HHS_Office_Federated_extracted.db` (`elements_meta` table) directly — the actual
+extracted DB this building's bake reads from — and traced `A._getMaterial`
+(`viewer/streaming.js:338-491`, read at `origin/main` via `git show`, since the shared `~/bim-ootb`
+checkout was dirty + stale this session, same caution the `▶ RESUME` block at the top of this file
+already flags) line by line, plus every `A.DISC_COLORS` consumer across the whole `viewer/` tree
+(`git grep DISC_COLORS origin/main -- viewer/`).
+
+### §6's three named things, resolved
+1. **`[[feedback_ifc_colors]]` "trust IFC colors" — checked, correctly implemented, NOT the bug.**
+   `_getMaterial` line 475: `if (!rgbaStr && stdMat) { ... }` — the `STD_MAT` class fallback strictly
+   only fires when `material_rgba` is NULL/empty. Confirmed real IFC colour is used as-is whenever
+   present. This part of the code is doing exactly what the doctrine requires.
+2. **`MEP_CLASH_REVEAL_MOVIE.md`'s open question — ANSWERED, definitively: `_getMaterial` NEVER reaches
+   `A.DISC_COLORS`.** Grepped every `DISC_COLORS` reference in `viewer/` (13 files: `city.js`,
+   `dlod_nav.js`, `export_5d.js`, `measure.js`, `navigate_find.js`, `panels.js`, `time_machine.js`,
+   `streaming.js:266`, plus standalone copies in `boq_charts.html`/`import.js`/`rates.js`/
+   `wizard_classify.js`). Every single one is a placeholder/highlight/nav-minimap/UI-swatch/BOQ-chart/
+   import-preview/wizard-preview consumer. `streaming.js:266` — the one hit inside `streaming.js`
+   itself — is `_drawBboxPlaceholders`, the wireframe LOADING placeholder shown before real geometry
+   streams in, not the real render. `_getMaterial` (the function that actually ships colour in a
+   recorded/baked frame) has zero references to `DISC_COLORS` anywhere in its 150-odd lines. Confirmed,
+   not assumed.
+3. **`docs/FeatureComparison.md:43`'s glass-blue rule — real, and NOT what's causing MEP/STR/stairs.**
+   Checked directly: `IfcCurtainWall`/`IfcWindow` STD_MAT entries are the only two genuinely blue-tinted
+   glass entries, and HHS's own curtain-wall glazing (438 `IfcPlate` elements, real populated
+   `material_rgba` = `0.502,0.502,1.000,0.250` — genuinely blue, 25% opaque) independently confirms this
+   convention is real and is being read correctly. This is a real, correct, unrelated contributor to the
+   overall "everything reads blue" impression in the shot — not a misfire, not MEP/STR's cause.
+
+### The real root cause — direct DB query, `elements_meta` in `HHS_Office_Federated_extracted.db`
+```
+discipline counts:      MEP=3399  ARC=1774  STR=1707
+MEP material_rgba:      NULL=3390 (99.7%)   has_rgba=9
+STR material_rgba:      NULL=0    (0%)      has_rgba=1707 (100%)
+```
+**MEP — root cause (b)+(c), a real, confirmed gap, NOT real IFC data:**
+Essentially every MEP element in HHS (3390/3399) has NULL `material_rgba`. Their `ifc_class` breakdown:
+`IfcFlowFitting`=1381, `IfcFlowSegment`=1284, `IfcFlowTerminal`=725 — exactly the "IFC2x3 generic-MEP
+convention (Clinic/LTU/**HHS**...)" `streaming.js` already names in its own comment at line ~457. All
+three land in `STD_MAT` (streaming.js:376-378):
+```
+IfcFlowSegment:  r:0.48 g:0.52 b:0.58  rough:0.40 metal:0.30
+IfcFlowFitting:  r:0.50 g:0.53 b:0.57  rough:0.40 metal:0.30
+IfcFlowTerminal: r:0.45 g:0.50 b:0.55  rough:0.40 metal:0.30
+```
+All three are blue-leaning (b>r), moderate-metal, low-roughness — glossy, cool-toned metal. Under this
+viewer's PBR pipeline (envMapIntensity 0.6 + ACES) this is exactly what reads on screen as "metallic
+blue." **This is effectively HHS's WHOLE MEP discipline** — confirmed by direct query, not eyeballed.
+It is a discipline-BLIND class fallback: `STD_MAT` is keyed only on `ifc_class`, and IFC2x3's generic
+`IfcFlow*` classes carry no trade information in the class name itself — so fire protection, plumbing,
+HVAC, all identically-classed elements get the identical flat blue-grey metal look regardless of
+`elements_meta.discipline` (FP/PLB/ACMV/etc.), even though that column is already populated and already
+selected in the same SQL row (`streaming.js:109,170,2067` all `SELECT ... m.discipline ...`).
+`A.DISC_COLORS` already has the variety the user wants (FP=`0xcc8844` brick/orange, ACMV=`0xcc4444`
+red, PLB=`0x8844cc` purple, HEAT=`0xff6644` red-orange) — it is simply never consulted here.
+
+**STR — root cause (a), genuinely real IFC-authored data, per doctrine correctly trusted, no code fix
+warranted:** 100% of STR elements (1707/1707) have real, populated `material_rgba`.
+`IfcMember` (1450 elements, `element_name` = "Rechteckiger Pfosten..." — German for curtain-wall
+mullion/post, "with cover profile") carries `material_rgba = 0.384,0.400,0.463` and
+`material_name = "≈ Purple"`. `IfcColumn` (257) carries `material_rgba = 0.937,0.969,0.969` and
+`material_name = "≈ White"`. The `≈` prefix is the exporting authoring tool's own generic
+approximate-colour naming for an unassigned/default material — not a deliberately chosen "structure =
+blue" trade convention by anyone — but it is genuinely real, populated data sitting in the source IFC.
+Per `[[feedback_ifc_colors]]`, this must NOT be overridden by any fix; the correct action is telling the
+user this is a fact about HHS's own source authoring, not a renderer bug.
+
+**Stairs — root cause (c), same fallback-bucket mechanism as MEP but a DIFFERENT class, not the stair
+tread itself:** `IfcStair` (12) + `IfcStairFlight` (8), all 20 elements NULL `material_rgba`, all
+discipline ARC. `STD_MAT[IfcStair]` = warm grey (`r:0.68 g:0.66 b:0.63`, metal:0.00) — NOT blue.
+`IfcStairFlight` has no `STD_MAT` entry at all → the generic default (`r=g=b=0.7`, metal:0.08) — also
+NOT blue. **The stair tread material is not the source of "boring blue."** The far more likely
+contributor: HHS's 14 `IfcRailing` elements (`element_name` = "Railing:Stahl (1) - Horizontal" — German
+for steel railing), both `material_name` AND `material_rgba` blank/NULL, landing in
+`STD_MAT[IfcRailing]` = `r:0.40 g:0.42 b:0.45, metal:0.55` — the single bluest-leaning, most reflective
+entry in the entire `STD_MAT` table. Stair railings are visually prominent, highly reflective, and
+directly adjacent to every stair a camera passes — the most plausible source of "stairs read blue,"
+same fallback-bucket mechanism as MEP, a different `ifc_class`.
+
+### Verdict, per §6's (a)-(d) options
+Not a single answer — genuinely a mix, confirmed with real numbers for each piece:
+- **MEP "metallic blue" = (b)+(c) combined, a real and fixable gap.** `A.DISC_COLORS` exists and already
+  has the trade variety wanted; `_getMaterial` never reaches it; HHS's actual MEP data (IFC2x3 generic
+  `IfcFlow*` classes, 99.7% NULL rgba) falls into a class-only, discipline-blind fallback bucket that
+  happens to be uniformly blue-grey metal for every trade alike.
+- **STR "boring blue" = (a), real data, no fix.** 100% populated, genuinely blue-leaning per the source
+  IFC's own generic material naming — this is a fact to tell the user, not a bug to patch.
+- **Stairs "boring blue" = (c), same mechanism as MEP, wrong element (railings, not treads).** The tread
+  fallback is already warm/neutral grey; the adjacent steel railings' fallback is the bluest, most
+  metallic entry in the whole table.
+- **A fourth, unprompted finding:** HHS's curtain-wall glazing (438 `IfcPlate`, real blue-translucent
+  data) reinforces the overall "everything reads blue" impression across the whole bake, independent of
+  MEP/STR — correct behaviour per the documented glass-blue rule, not a bug, just worth naming so the
+  next session doesn't re-attribute it to the MEP or STR mechanisms above.
+
+### Precise fix — named, NOT implemented (per this task's explicit scope)
+Thread `discipline` (already selected in every relevant SQL row, `streaming.js:109,170,2067`, column
+index 3 in the row array — see `_drawBboxPlaceholders`'s own `rows[i][3]` read at line 246 for the same
+pattern already in use elsewhere in this file) as a 4th argument:
+`A._getMaterial(rgbaStr, ifcClass, matVariant, discipline)`. Inside `_getMaterial`, for exactly the
+discipline-ambiguous IFC2x3 generic classes (`IfcFlowSegment`, `IfcFlowFitting`, `IfcFlowTerminal`,
+`IfcFlowController`, `IfcFlowMovingDevice`, `IfcFlowTreatmentDevice`, `IfcEnergyConversionDevice` — the
+ones whose `STD_MAT` entries currently share one flat "generic metal" look regardless of trade), when
+`!rgbaStr` (still real-IFC-colour-first, unchanged), tint the base colour toward
+`A.DISC_COLORS[discipline]` instead of the current flat blue-grey value — reusing DISC_COLORS' EXISTING
+12 hex values, inventing nothing new, exactly what `MEP_CLASH_REVEAL_MOVIE.md`'s own item 5 already
+specified. Does **not** touch classes with real material-specific `STD_MAT` data already (`IfcPipe`/
+`IfcDuct`/`IfcCableCarrier` in the IFC4 convention already look like pipe/duct) and does **not** touch
+anything with a real, non-null `material_rgba` (STR/glazing stay exactly as they are, per doctrine).
+Every `_getMaterial` call site (`streaming.js:1228,1281,1360,1482,1630,1652,1828`) already has the same
+row that supplies `rgba`/`ifcClass` — this is a threading change, not a new query.
+Separately flagged, not resolved: whether `IfcRailing` should also join this discipline-tint list, or
+get a distinct warmer/neutral-metal `STD_MAT` value instead (railings aren't really a "trade," so tinting
+them toward `DISC_COLORS[ARC]` — itself blue, `0x4488ff` — would not obviously fix "stairs read blue");
+needs its own small decision, not assumed here.
+
+### Note on `A.DISC_COLORS` itself
+Even if the fix above ships, `A.DISC_COLORS.STR = 0x44cccc` (teal/cyan) and `.ARC = 0x4488ff` (blue) are
+themselves cool-toned — the palette does NOT give a warm/grey/brownish option for structure by default.
+The user's ask for structure/stairs specifically ("brownish, grey-metallic") is not answered by wiring
+DISC_COLORS in; it would need either a different STR hex value in `config.js:43-48`, or (since STR's
+actual HHS colour is real IFC data anyway, per the verdict above) no code change at all — just user
+awareness. FP (`0xcc8844` brick/orange), ACMV (`0xcc4444` red), PLB (`0x8844cc` purple), and HEAT
+(`0xff6644` red-orange) already cover the "red/brick/orange" MEP variety the user asked for, unchanged.
+
+## Findings 2026-08-14b — Hospital beams/railings still read blue AFTER #1356 ships (real IFC albedo,
+## not a NULL-rgba case — a different, more fundamental mechanism than the finding above)
+
+**Task:** after `#1356` (MEP_DISC_TINT + `IfcRailing` STD_MAT recolor to warm grey) shipped, the user
+re-checked on Hospital and beams/railings still read blue. Hospital's `IfcBeam`/`IfcRailing` elements
+have REAL, populated, warm `material_rgba` (unlike HHS's NULL-rgba MEP case above) — so the STD_MAT
+NULL-fallback mechanism this whole §6 thread has been fixing so far cannot be the cause here. Worktree
+`/tmp/wt-hospital-blue-fix` (branch `fix/hospital-blue-color`), investigation only, clean tree, nothing
+built yet.
+
+**Method, per explicit user steering correction this session: lead from the formula/config tables and
+real PBR math, DB/live-pixel readback as confirmation only, not primary discovery.**
+
+### 1. The formula tables, read directly (not queried)
+- `viewer/streaming.js` `_getMaterial`, `STD_MAT.IfcBeam` = `{ rough: 0.35, metal: 0.65 }` (steel
+  I-beam), `STD_MAT.IfcRailing` = `{ rough: 0.35, metal: 0.55 }` (brushed-steel, already recolored
+  warm-grey by #1356 — the recolor only changed `r/g/b`, not `rough`/`metal`).
+- **The actual bug, found by reading the assignment logic, not a DB row:** `var stdMat = (ifcClass &&
+  STD_MAT[ifcClass]) ? STD_MAT[ifcClass] : null;` is keyed on `ifcClass` alone — no `rgbaStr` check.
+  Two lines later, the color assignment correctly gates on real-vs-fallback (`if (!rgbaStr && stdMat)
+  { r = stdMat.r; ... }` — trust-IFC-colors, doctrine honored). But roughness/metalness do NOT share
+  that gate: `opts.roughness = Math.max(0.08, _rough * 0.75); opts.metalness = stdMat ? stdMat.metal :
+  0.08;` — both keyed on `stdMat` truthy (i.e. class found in the table) alone. **A beam with 100% real,
+  correctly-populated, warm IFC albedo still gets forced into STD_MAT's metal=0.65/rough≈0.26 "steel
+  armor" PBR response**, because IFC extraction never carries physical metalness/roughness — those two
+  channels are ALWAYS class-table defaults, real color or not. This is an asymmetry in how the
+  "trust IFC colors" doctrine got implemented: honored for hue, silently not applicable to the two
+  channels that actually control how much of the final pixel is environment-reflection vs albedo.
+- `envMapIntensity = 0.6` (`streaming.js:547`, applied to `A._envMap` on every material with no
+  per-class exception — contrast the ground material's own `envMapIntensity: 0.15` for the SAME reason,
+  §S276b comment "subtle sky reflection," `scene.js:383` — precedent for lowering it per-class exists
+  already, just never applied to beam/railing).
+- Sky/env source (`scene.js`): Preetham `Sky.js` shader, `turbidity=4` (fairly clear), `rayleigh=2`
+  (Rayleigh/blue-sky scattering strength), `mieCoefficient=0.005` (low — little whitish haze, so blue
+  dominates most of the dome), `mieDirectionalG=0.8` (strong forward scattering — the warm/white halo
+  stays tightly concentrated around the sun disk, not spread across the sky). Default sun at
+  elevation 45°/azimuth 180° (`A.updateSky(45,180)`, `scene.js:289`). The code's OWN stated
+  approximation of this sky's color exists as a real constant, not eyeballed: the fog-color formula a
+  few lines above, `dayT=(elevation+10)/55` → at elevation 45°, `dayT=1` → `fogR=0.65, fogG=0.70,
+  fogB=0.73` (comment: "blend from dark (night) to light blue (day)") — B leads R by 0.08 (~12%), a
+  mild but deliberate, dev-authored blue bias baked into the same file that drives the env map.
+
+### 2. PBR math, computed from those numbers (glTF/three.js metallic-roughness model)
+`F0 = mix(0.04, albedo, metalness)`; Schlick: `F(θ) = F0 + (1-F0)(1-cosθ)^5` where θ is the
+view/normal grazing angle — at grazing incidence `(1-cosθ)^5 → 1`, so **`F(θ) → 1` for every channel
+regardless of F0**, i.e. any material becomes a near-mirror of the environment at its silhouette edges,
+independent of its own albedo hue. This is a geometric property of the Fresnel equation, not a rendering
+bug, and it applies to dielectrics too (baseline F0=0.04), just weaker.
+- **IfcBeam** (real albedo 0.920/0.900/0.850, metal=0.65): `F0 = 0.014 + 0.65·albedo` = (0.612, 0.599,
+  0.567) — near-normal incidence still leans warm (R−B = 0.045, ~8%), so a face viewed near head-on
+  should still read warm. Diffuse weight `(1−metal) = 0.35`.
+- **IfcRailing** (real albedo 0.741/0.733/0.725, metal=0.55): `F0 = 0.018 + 0.55·albedo` = (0.426,
+  0.421, 0.417) — spread of only 0.009 (<1%) even at normal incidence: this material's specular term
+  carries almost NO inherent hue of its own at any angle, so whatever the environment reflects shows
+  through nearly unfiltered. Railings are also geometrically the class most exposed to grazing/raking
+  view angles in a flythrough (thin, mostly seen edge-on) — compounding the effect on the very class
+  most likely to be visually prominent as a screen-space edge.
+- **Conclusion from the math alone, before any pixel readback:** grazing-angle Fresnel + a blue-leaning
+  env map (per §1) predicts a visible, angle-dependent blue shift on beam/railing SILHOUETTE pixels
+  specifically, layered on top of correctly-warm diffuse albedo elsewhere on the same surface — and this
+  mechanism is completely independent of whether `material_rgba` is NULL or real, because it enters
+  through `metal`/`rough`/`envMapIntensity`, none of which are gated on `rgbaStr` the way color is.
+
+### 3. Confirmation only — real headless pixel readback (already run this session, kept as the
+### final check per the corrected methodology, not the discovery method)
+`/tmp/claude-1000/.../scratchpad/measure_hospital_blue.js` — real production `A._getMaterial`, real
+Hospital DB (`~/bim-ootb/buildings/Hospital_extracted.db`, confirmed newer than the stale OCI copy),
+real ACES/PMREM pipeline, `renderer.readRenderTargetPixels` (no screenshot). Single-variable ablation on
+a beam SIDE face (front face saturated to white from direct light, uninformative):
+```
+BEAM_side_albedo_only  (no lighting model)              hue= 40°  (warm — matches real IFC cream)
+BEAM_side_no_envmap    (real metal .65/rough .26, no envMap) hue= 45°  (still warm)
+BEAM_side_production   (same material, envMap ON, 0.6)       hue=249°  (blue)
+BEAM_side_pmrem_probe  (white/metal=1, isolates env only)    RGB(70,70,93) hue=240° (the sky's own reflected color)
+RAIL_no_metal          (metal→0, envMap still ON)             hue=252°, light=0.68 (bright — diffuse-dominated)
+RAIL_production        (metal=.55, envMap ON)                 hue=248°, light=0.51 (darker — more specular-weighted)
+```
+envMap on/off is the ONLY variable between the 45°-warm and 249°-blue readings on the identical
+material — exactly what the Fresnel/grazing-angle math in §2 predicts, and orthogonal to the NULL-rgba
+mechanism already fixed in #1356. `RAIL_no_metal` still shows a (weaker, brighter) blue shift even at
+metal=0, matching the dielectric-baseline-F0=0.04 term in the same equation.
+
+### Verdict
+Confirmed, numbers-first: Hospital's "beams/railings still read blue" is a SEPARATE, more fundamental
+mechanism than the HHS MEP NULL-rgba STD_MAT fallback (#1356 already fixed that one). It fires on
+classes with 100% real, correctly-populated, warm IFC albedo, because `metal`/`rough` are assigned from
+`STD_MAT` unconditionally on `ifcClass` (no `!rgbaStr` gate, unlike the color assignment two lines
+above), and grazing-angle Fresnel reflectance genuinely approaches 100% environment-color regardless of
+albedo at silhouette/edge pixels — a real optical fact, not a bug in the Fresnel term itself.
+
+### Named fix candidates — NOT implemented (investigation-only scope, per this session's task)
+Two independent levers, neither touches the "trust IFC colors" rule for albedo:
+1. **Per-class `envMapIntensity` reduction** for `IfcBeam`/`IfcRailing` (and siblings sharing their
+   STD_MAT metal>0.3 bracket) — direct precedent already exists in this same file, the ground material's
+   `envMapIntensity: 0.15` vs the 0.6 default (`scene.js:383`, "subtle sky reflection"). Attenuates the
+   grazing-Fresnel contribution's brightness without touching metal/rough/albedo.
+2. **Lower `STD_MAT.IfcBeam`/`IfcRailing`'s `metal` value.** Raises F0's baseline toward the pure-
+   dielectric 0.04, shifting more energy weight to the diffuse `(1-metal)` term — does NOT eliminate the
+   grazing-Fresnel edge effect itself (that term saturates toward 1 regardless of F0, a geometric fact
+   of Schlick's equation), but raises the diffuse-dominated majority of each surface's visible pixels at
+   typical flythrough angles (only true silhouette pixels are extreme-grazing).
+Branch `fix/hospital-blue-color` (`/tmp/wt-hospital-blue-fix`) is currently a clean checkout with no
+code diff — this finding is written up, nothing shipped yet.
