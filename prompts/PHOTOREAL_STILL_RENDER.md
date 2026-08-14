@@ -10,7 +10,7 @@
 #   its commit/PR; full diagnostic narrative for closed items lives in the archive if ever needed.
 
 ## ▶ RESUME — START HERE
-Three open threads, all below in full detail:
+Open threads, all below in full detail:
 0. **§WEATHER_ADVANCED_MODE** — SPEC ONLY, no code. Opt-in bake-only weather (the Twinmotion/Lumion
    parity ask). Most of the machinery is already shipped; start at the Phase 1 overcast preset, not
    at clouds. Flagged against the schedule-accuracy-first ruling — a decision, not a queued task.
@@ -20,6 +20,31 @@ Three open threads, all below in full detail:
    Mechanism traced, no code bug found (unlike the sun-arc bug below), genuinely needs live
    evidence next. **User ruling 2026-08-11: not serious, nice-to-have only if free — don't burn a
    session on it.**
+3. **§PHOTO_AO_TUNING / §PHOTO_AO_SCALE / §PHOTO_AO_EDGE** — CLOSED 2026-08-13. The N8AO
+   ambient-occlusion fold went too dark → far bright/up close dark → no visible edge/corner shadow,
+   across 3 same-day rounds. Three fixes SHIPPED (bim-ootb PR #1331 flat retune + denoise bump,
+   #1334 screenSpaceRadius distance-scale fix, #1335 intensity 2→4) plus a real SW precache
+   staleness bug found+fixed along the way (PR #1332) and a related night-PointLight near-field
+   fix (#1336, decay 1.5→1.0). **Correction (2026-08-13): PR #1337 is NOT part of this chain** —
+   checked live via `gh pr view 1337`, it's `§GLOW_LENS_SOFT_EDGE`/`§GLOW_LENS_SHAPE_FIT` (fixture
+   glow quad softening in `effects.js`, merged 2026-08-12T19:48Z), unrelated to N8AO. Previously
+   miscited here as a 4th AO fix — fixed, don't re-cite it against AO work. **User confirmed live,
+   real bake MP4 (Clinic): "much better," and Alt+G+Night nav "amazing."**
+4. **§SUN_SHADOW_DROWNED — CLOSED 2026-08-14.** PR #1346 (mask/blend restore pass in
+   `_buildStillAO()`, samples `A.sun.shadow.map` directly, mirrors three.js's own `getShadow()`
+   chunk, restores AO-eroded contrast at the detected sun-shadow boundary only, denoise/AO tuning
+   fully untouched) — CONFIRMED MERGED (`gh pr view 1346`: `state: MERGED`, both CI checks passed).
+   Real-pixel witness: +18.7% contrast at the shadow edge, 40x scoped away from ordinary AO corners.
+   User's own live gut-check (fresh HHS_Office_Federated Alt+C bake, hard reset confirmed
+   `§SUN_SHADOW_RESTORE_INIT_OK` live): "not evident to be diff[erent] onset" at first, then later in
+   the same bake "strong shadows on walls and different surfaces.. this is good sign," closed with
+   "I am OK as this is as good as it can get but is good enough." Root cause: Alt+S/Alt+C's N8AO
+   denoise was bumped in PR #1331 for indoor noise; Alt+G's was never touched — the fix borrows
+   sharpness from the already-correct shadow map instead of touching denoise. Full diagnostic trail
+   (10 rounds of user corrections, 2 ruled-out hypotheses, the witness methodology, PR #1343's
+   insufficient partial fix that preceded #1346): archived in
+   `prompts/archive/PHOTOREAL_STILL_RENDER_SUN_SHADOW_DROWNED_2026-08-13_to_2026-08-14.md`.
+
 Closed this session, confirmed working live: §CAM_LIGHT (camera fill-light) and §SUN_ARC
 (noon→dusk sweep) — see their one-line status below, full story in the archive.
 
@@ -552,3 +577,145 @@ Shipped bim-ootb PR #1316, sw v1004. **Strength only** — PHOTO_SUN_COLOR, ambi
 exposure lift, fog, ground albedo, env-map boost, PHOTO_SUN_ELEVATION and both §SUN_ARC endpoints
 deliberately untouched, so the dusk LOOK is unchanged. Do not "re-tune" these three scales without
 re-checking the ratio against TM's 2.155 — the §MOVIE_SHADOW_TM log line exists for exactly that.
+
+---
+
+## §PHOTO_AO_TUNING — N8AO ambient-occlusion fold reads too dark/noisy during Alt+C bakes (2026-08-13) — TWO FIXES SHIPPED (bim-ootb PR #1331, #1334) + a real SW caching bug found+fixed (PR #1332), AWAITING USER VISUAL CONFIRM
+User report: "during alt-c we apply alt-s which puts in shadow noise (alt-G) but it is too dark and
+noise." Confirmed real and current on `bim-ootb` `origin/main` (@9d56919, clean worktree — the shared
+`/home/red1/bim-ootb` checkout was found dirty/behind mid-session, NOT used for this read):
+
+**Not the standalone Alt+G/GI composer** (`§GI_CINEMA_PRESET`, `effects_gi_poc.js`) — that one is
+already excluded from bakes by default, per this file's STATUS section. It's a separate integration:
+`effects.js` §PHOTO_AO (~line 3420-3465) builds its own `N8AOPass` inside the native composer, gated
+only by `STILL_AO_ENABLED = true` (unconditional, no user toggle), driven from `A.startStillRefine()`
+— the Alt+S entry point. `cinema_maxq.js`'s bake loop calls `A.startStillRefine()` on every captured
+frame (warm-up + per-frame, `:1136`/`:1296`) and genuinely `await`s the full 24-frame AO converge
+(`_waitFoldDone` polls `A._stillRefineBusy`, which `effects.js` only clears at `f >= STILL_AO_FRAMES`
+— confirmed by reading the clear site, not assumed) before capturing. So every baked frame gets the
+SAME converged AO quality as a manual Alt+S still, not a partial one — bar the rare `_unconverged`/
+`§MAXQ_FRAME_TIMEOUT` case (30s cap per frame; worth checking a bake's own log for a non-zero count,
+but not the routine explanation).
+
+**First-pass fix attempted then RETRACTED, on-the-record for the next session:** initially proposed
+retuning `STILL_AO_RADIUS`/`STILL_AO_INTENSITY` down. Wrong — missed the `§PHOTO_AO_TUNE` comment
+sitting right at the definition (`effects.js:3432`, 2026-07-16): this EXACT radius=8/intensity=6 was
+already real-GPU A/B tested at still quality (`PHOTO_AO_TUNE_r{8_i6,5_i4,3_i4,1p5_i3}_2026-07-16.png`)
+and deliberately KEPT — the earlier "broad mottle" verdict was measured over LIVE NAVIGATION (raw,
+unconverged single-frame AO), not the converged still/bake case, and smaller radii read as
+near-invisible at whole-building establishing distance. Reverting it now would undo a tested decision
+on no new evidence — exactly what this project's rules forbid. No code changed.
+
+**Two better-grounded hypotheses instead, both consistent with "fully converged AO, still reads bad
+in the film" and neither yet witnessed:**
+1. **Temporal AO flicker/noise, invisible to a single-still A/B by construction.** N8AO's accumulate
+   buffer resets on every camera/view-matrix change (confirmed, `effects_gi_poc.js` §GI_POC_GHOST_FIX
+   comment, same underlying library). Each Alt+C frame is a NEW pose → AO reconverges from a fresh
+   seed every time. Any one frame can individually match the 2026-07-16 still-quality look and still
+   differ, pixel-for-pixel, from its neighbours' independently-seeded convergence — reading as
+   shimmer/noise ACROSS the assembled movie, a failure mode a static PNG-vs-PNG A/B cannot show at
+   all. This is the better fit for "noise" specifically.
+2. **AO darkening compounds with §SUN_ARC's dusk sweep, a feature that postdates the AO A/B test.**
+   `§SUN_ARC` (shipped 2026-08-11, this file, above) sweeps every Alt+C film from 55° noon to 6° dusk.
+   AO darkening is multiplicative on scene radiance, so the identical AO curve reads far heavier on
+   the dim back half of a film than on whatever single lighting condition the 2026-07-16 AO A/B was
+   shot under — a joint condition (AO × dusk sweep) that was never re-validated together, because the
+   sweep didn't exist yet when the AO tuning was tested. Better fit for "too dark" specifically.
+
+**Not pursued further — superseded by a direct user ruling.** Both hypotheses above stayed open
+questions; before either got a witness, the user gave a direct live verdict instead: "Alt-G too
+dark... affecting Alt-S and movie." Per this project's own standing rule ("the look is the user's
+to judge"), a live user verdict on darkness supersedes the 2026-07-16 A/B test it's overriding —
+no synthetic re-proof needed before shipping, only a live round-trip to confirm after.
+
+**SHIPPED (2026-08-13), bim-ootb PR #1331, branch `fix/photo-ao-darkness`, commit `81c58e5`:**
+- `effects_gi_poc.js` (standalone Alt+G composer): `aoRadius` 8→4, `intensity` 6→2.
+- `effects.js` §PHOTO_AO (the Alt+S fold, same pass Alt+C's MaxQ bake runs every captured frame):
+  `STILL_AO_RADIUS` 8→4, `STILL_AO_INTENSITY` 6→2, `denoiseSamples` 4→8, `denoiseRadius` 6→12
+  (toward n8ao's own library defaults — free at bake/still quality, an offline accumulate, not a
+  real-time cost).
+- `sw.js` `CACHE_VERSION` v1013→v1014 (`effects.js` is in `PRECACHE_ASSETS`).
+
+**Verified live, real GPU (RTX 4060, headless Chrome, `Duplex_extracted.db`, sandbox-adjacent
+worktree, not the shared checkout):** both passes confirmed running the new values end-to-end, not
+just present in source — `§WITNESS_GI_CFG {"aoRadius":4,"intensity":2}`, `§PHOTO_AO start frames=24
+radius=4 intensity=2`, `§PHOTO_AO done frames=24 totalMs=396 avgRenderMs=3.3` (24/24 converged, no
+timeout, no page errors). **This proves the wiring, not the look** — merge/verify on the user's own
+next round trip (Alt+G, Alt+S, and one real Alt+C bake), same discipline as every other "shipped,
+not yet visually verified" entry in this file.
+
+The two temporal/dusk-sweep hypotheses above are NOT ruled out or disproven — they're just no
+longer blocking, since the fix path taken (lower the whole curve) helps both regardless of which
+mechanism dominates. If "too dark" persists after this ships, revisit hypothesis 2 (§SUN_ARC
+compounding) specifically, since intensity/radius alone don't touch it.
+
+**Real deploy bug found and fixed in between (bim-ootb PR #1332, `sw.js` `CACHE_VERSION`
+v1014→v1015):** user tested #1331 live minutes after merge and still saw the old
+`radius=8 intensity=6` in the console log. Origin/CDN was already serving the fixed file
+(confirmed via curl, `age: 2s`) — the staleness was 100% client-side. Root cause: the SW's
+`install` handler used `cache.add(url)`, which fetches through the BROWSER's own HTTP cache: these
+static assets serve `Cache-Control: max-age=600`, so a browser that loaded the old `effects.js`
+within the previous 10 minutes silently re-precached that same stale response into the NEW
+version's cache during install, even though `CACHE_VERSION` itself bumped correctly. This is a
+real, repo-wide bug affecting every future deploy of any precached file, not specific to this fix
+— switched to `fetch(url, {cache:'reload'})` + `cache.put()` to force a genuine network fetch on
+every precache install. **Practical lesson for verifying ANY future `bim-ootb` deploy:** don't
+trust `§BUILD_VERSION` alone as proof a specific file's content updated — cross-check the actual
+behavior/log line the change should produce, the way this session caught it.
+
+## §PHOTO_AO_SCALE — same day, user follow-up: "far off well lighted, up close dark" — SHIPPED (bim-ootb PR #1334), AWAITING USER VISUAL CONFIRM
+After #1331 deployed (past the PR #1332 caching bug above), user reported the flat retune didn't
+fix the real symptom: viewed from outside, the building interior reads bright at a distance and
+goes dark up close. **This is a distance-SCALE problem, not an overall-strength problem** — #1331
+only lowered the same flat curve, which doesn't touch it.
+
+**Root cause:** both N8AO integrations set `aoRadius` as a FIXED WORLD-SPACE distance (metres, was
+8 then 4). At `screenSpaceRadius` off (n8ao's default, never touched before), the shader samples a
+neighbour position at that literal metre offset regardless of how close the camera is — up close,
+a several-metre radius spans the ENTIRE visible wall (broad-area darkening, not contact shadow);
+far away (whole-building establishing shot), the same radius is a barely-visible sliver (why it was
+bumped from 1.5m to 8m in the first place, 2026-07-16, `§GI_POC_RADIUS_TEST`). No single metre
+value is correct at both distances — this was always structurally present, just not diagnosed
+until the user's distance-specific report.
+
+**Fix:** `screenSpaceRadius: true` (n8ao's own docs, fetched and read live via WebFetch, not
+guessed: "aoRadius represents the size... in pixels, recommended 16-64" in this mode, with
+`distanceFalloff` "0.2 in most cases" — this app had never set `distanceFalloff` at all before,
+leaving it at n8ao's library default of 1). `aoRadius` 4→**32 (pixels, not metres)**,
+`distanceFalloff` unset→**0.2**, in both `effects_gi_poc.js` (Alt+G) and `effects.js` §PHOTO_AO
+(Alt+S/Alt+C fold). `intensity` left at #1331's already-lowered 2 — orthogonal axis, not touched.
+The effective world-space radius now self-scales with camera distance, so AO should read a
+consistent size on screen whether the shot is a far exterior or a close interior.
+
+**Verified live, real GPU (RTX 4060, headless Chrome, `Duplex_extracted.db`, same
+sandbox-adjacent-worktree method as #1331):** both passes confirmed running
+`screenSpaceRadius=true distanceFalloff=0.2 aoRadius=32`, `§PHOTO_AO` converges cleanly (24/24,
+395ms, no timeout/errors). **Proves the wiring, not the look** — pixel radius (32) is a first-pass
+value within n8ao's documented 16-64 range, not independently tuned against this app's real
+geometry; verify live on the user's next round trip, specifically re-checking the far-vs-close
+symptom this targets, before calling §PHOTO_AO_TUNING fully closed.
+
+## §PHOTO_AO_EDGE — same day, 3rd round: darkness cleared, but "completely no edge corner shadow" — SHIPPED (bim-ootb PR #1335), AWAITING USER VISUAL CONFIRM
+User confirmed #1334 cleared the darkness (both flat and far-vs-close), then reported the AO effect
+had gone too far the OTHER way — no visible contact shadow at corners/edges at all. Asked directly
+"what was the measure before" — table for reference:
+
+| stage | radius | intensity | mode |
+|---|---|---|---|
+| original (since 2026-07-16) | 8m | 6 | world-space |
+| PR #1331 (1st retune — "too dark") | 4m | 2 | world-space |
+| PR #1334 (2nd retune — cleared, then "no shadow") | 32px | 2 | screen-space |
+| PR #1335 (this) | 32px | 4 | screen-space |
+
+**Cause:** `intensity` had been sitting at 2 (down from the original 6) since #1331 and was never
+revisited when #1334 changed the radius mechanism entirely (metres → self-scaling pixels) — once
+the broad-area over-darkening from the old mode was gone, 2 was too weak to read as any visible
+effect at all. **Fix:** one controlled step, intensity 2→4 (not back to 6) in both integrations.
+`aoRadius` (32px) deliberately left untouched — single-variable change, so the next round trip
+isolates whether intensity alone was the gap or whether radius also needs a nudge.
+
+**Verified live, real GPU, same method:** both passes confirmed running `intensity=4` (radius/mode
+unchanged from #1334), converges cleanly (24/24, 395ms, no errors). **Proves the wiring, not the
+look** — verify live: corner/edge contact shadow should now read as visible without reverting to
+the original over-dark look. If still too weak or too strong, the next lever is intensity again
+(not radius, until intensity is confirmed right) — keep changes single-variable per round.
