@@ -1,9 +1,13 @@
 # ⚠ DO NOT REMOVE
 ## ▶ RESUME 2026-08-14 (session end) — read this block first, it supersedes older status prose below
-Reveal (Mechanism C) is BUILT AND MERGED: panel #1349, geometry/timeline #1350, visuals #1352, and
-TWO real bug-fixes found from a live Hospital test — #1353 (buildup topout) and #1354 (preview never
-replans). **What's left for the next session is narrower now — mainly re-verification with fresh code
-and cache, plus one still-unconfirmed claim:**
+Reveal (Mechanism C) is BUILT AND MERGED: panel #1349, geometry/timeline #1350, visuals #1352, and TWO
+real bug-fixes found from live tests — #1353 (buildup topout) and #1354 (preview never replans). **BOTH
+FIXES CONFIRMED WORKING on a real building (HHS_Office_Federated) via a fresh Preview log the same
+day, independent of the Hospital run that originally found them:** `§CPE_BUILDUP_TOPOUT topoutU=0.333
+src=plan.beats.out (reveal round active)` now fires correctly right after `§CPE_REVEAL ON` (previously
+stuck at `src=plan.beats.rise`), and `[S200] §DISC_FILTER [MEP]` fires repeatedly through the scrub —
+the ARC/STR-hide is genuinely engaging during preview now. User confirmed directly: "Reveal preview POV
+timeline issue resolved, and preview does plays back the MEP." **What's left is narrower still:**
 
 0. **⚠ Process note, read before trusting `/home/red1/bim-ootb` as canon again:** mid-session, a
    "cursory examination" read directly from that shared checkout gave FALSE results — its `HEAD` was
@@ -14,37 +18,28 @@ and cache, plus one still-unconfirmed claim:**
    against that (or `git show origin/main:<path>`), never the shared checkout directly, until this
    project gets the same PreToolUse block bim-ootb's OTHER shared paths already have (see CLAUDE.md's
    own standing warning about this checkout).
-1. **SW cache-version — user confirmed likely ("yes perhaps i didnt clear right v?").** None of
-   #1349/#1350/#1352/#1353/#1354 bumped `viewer/sw.js`'s `CACHE_VERSION` (still `v1026`). Still worth a
-   hard-refresh/fresh-SW check before the next bake, though the two real bugs found and fixed below
-   (#1353, #1354) independently explain everything observed so far WITHOUT needing to invoke stale
-   cache at all — so this is a "do it anyway, cheap insurance" item, not a blocking prerequisite.
-2. **`§CPE_BUILDUP_TOPOUT`, FIXED AND MERGED (PR #1353).** Buildup was completing at `plan.beats.rise`
-   (orbit start, AFTER the whole round) instead of `plan.beats.out` (the stop stick, the round's own
-   start). Witnessed: buildup verified =1 exactly at round-start and through the tail.
-3. **Preview never replanned on Reveal toggle, FIXED AND MERGED (PR #1354) — this is what the user's
-   pasted preview console log actually diagnosed, end to end.** User: "Preview also do not go 2nd
-   round" / "the pov timeline numbering did double but the alt-c still remains not." Root cause: the
-   `#cpe-reveal` checkbox handler called `_markPreviewStale()` (bumps a counter) but never
-   `_replanFilm()` (the only thing that rebuilds `_state.plan`) — so Preview kept flying the
-   pre-toggle plan (reveal effectively inert) until an unrelated band-drag happened to trigger a
-   replan. This is confirmed directly in the user's own pasted log: `§CPE_BUILDUP_TOPOUT topoutU=0.848
-   src=plan.beats.rise` appears UNCHANGED immediately after `§CPE_REVEAL ON` fires — #1353's fix exists
-   and is correct, it just never got a plan with `reveal:true` to act on. **This also resolves the
-   session's earlier open worry about whether #1353 alone would explain the "282 stops way before full
-   round" bake report** — #1353 was never actually being exercised in preview at all until #1354 shipped,
-   so there was nothing more to find there once #1354 is verified live.
-4. **"Last stick rule" claim — still not independently confirmed, but no longer the leading suspect.**
-   User: "code did not obey the last stick rule." Given #1353+#1354 together explain every OTHER
-   symptom reported (incomplete buildup during the round, preview not showing it, duration numbers not
-   matching the visible camera path), this is most likely the SAME complaint restated in different
-   words, not a third, separate defect. Re-check only if it's still reported after a fresh bake with
-   #1353+#1354 live and cache cleared.
-5. **Next verification step, as the user already planned:** bake ONE fresh Hospital run (Alt+C, not
-   just Preview) with a cleared cache, and read the REAL `§CPE_BUILDUP_TOPOUT` / `§CPE_DAY_COUNTER` /
-   `§CINEMA_BEATS` / `§CPE_REVEAL_ROUND` log lines from THAT run — the pasted log this session was a
-   PREVIEW run (`§CPE_PREVIEW click...`), not a bake, and predates #1354, so it's already fully
-   explained above, not fresh evidence to re-diagnose.
+1. **CLOSED — SW cache-version was never the real blocker.** #1353+#1354 alone explain everything
+   observed, confirmed live on HHS without needing a cache-clear discussion. Still true that no PR in
+   this lane bumped `viewer/sw.js`'s `CACHE_VERSION` (still `v1026`) — harmless so far, but bump it on
+   the next real content change in this lane rather than relying on luck again.
+2. **CLOSED — `§CPE_BUILDUP_TOPOUT` (PR #1353) confirmed live on HHS**, not just witnessed synthetically.
+   `topoutU=0.333 src=plan.beats.out (reveal round active)` in the real preview log.
+3. **CLOSED — preview-replan (PR #1354) confirmed live on HHS.** `§DISC_FILTER [MEP]` firing repeatedly
+   during scrub is the real, user-visible proof the ARC/STR-hide engages in Preview now, not just in a
+   witness. User confirmed both the timeline-numbering issue and MEP playback directly.
+4. **"Last stick rule" claim — STILL not independently confirmed either way.** User: "code did not obey
+   the last stick rule." #1353+#1354 explain every OTHER symptom reported, and the HHS Preview
+   confirmation covers the same ground the "last stick" complaint was about (the round behaving
+   correctly relative to the stop stick) — but this was never tested as its own explicit claim. Treat as
+   very likely already resolved by #1353+#1354; only reopen if something stop-stick-specific is reported
+   again after a full bake.
+5. **Next verification step, as the user already planned:** bake ONE fresh run (Alt+C, not just
+   Preview) — HHS or Hospital — and read the REAL `§CPE_BUILDUP_TOPOUT` / `§CPE_DAY_COUNTER` /
+   `§CINEMA_BEATS` / `§CPE_REVEAL_ROUND` log lines from THAT run. Both pasted logs so far were Preview
+   runs (`§CPE_PREVIEW click...`), not bakes — Preview is now confirmed working end to end, but the
+   actual exported MP4 path (`cinema_maxq.js`'s frame loop, not `_previewFly`) has not been independently
+   re-confirmed since #1353/#1354 landed, even though it shares the same `cpeRevealApplyVisual`/
+   `buildupTopoutU` calls and should behave identically by construction.
 
 ## 6. Surface/material colouring — separate from Mechanism C, hand to its own agent investigation
 User, same mp4 review: MEP shows as "metallic blue" where it should read as standard piping/duct
