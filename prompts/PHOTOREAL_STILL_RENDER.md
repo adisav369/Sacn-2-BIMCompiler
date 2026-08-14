@@ -44,6 +44,9 @@ Open threads, all below in full detail:
    (10 rounds of user corrections, 2 ruled-out hypotheses, the witness methodology, PR #1343's
    insufficient partial fix that preceded #1346): archived in
    `prompts/archive/PHOTOREAL_STILL_RENDER_SUN_SHADOW_DROWNED_2026-08-13_to_2026-08-14.md`.
+   Post-close check (fresh `BIM_MaxQ_HHS_Office_Federated_1786669793870.mp4`, ffmpeg+numpy edge
+   measurement, 2 independent building-footprint boundaries): edge width median 2.0px both, contrast
+   24.5/27.7 median — consistent with the shipped-fix numbers above, nothing regressed.
 
 Closed this session, confirmed working live: §CAM_LIGHT (camera fill-light) and §SUN_ARC
 (noon→dusk sweep) — see their one-line status below, full story in the archive.
