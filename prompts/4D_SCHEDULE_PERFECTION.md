@@ -2339,3 +2339,78 @@ a perf session, `_GANTT_CACHE_VERSION` was bumped correctly by hand regardless) 
 for whoever touches `gate_4d.sh` next: extend `§GATE_GUARD_BODY`'s "any added non-comment line counts"
 treatment to `time_machine.js`'s gating functions (`_tierAuditRegate`, `_twoTierRemap`,
 `_midairRepair`, `_tier1Serialize`) the same way it already works for `schedule_gate.js`.
+
+## §GATE_GUARD_BODY_TM — SHIPPED (2026-08-14, this session, picking up the item named above)
+
+Built `scripts/tm_gating_body_diff.js`. `schedule_gate.js`'s fix treats ANY added non-comment line as
+a gating change because that whole file IS the gating engine — `time_machine.js` is not (it also holds
+camera/UI/other code), so the same file-wide rule would false-positive on every unrelated edit. This
+script locates the four gating functions' own bodies by brace-matching (same `sliceFn` technique
+`probe_tier_regate_worklist.js` uses) and only counts added non-comment lines inside those ranges.
+Wired into `gate_4d.sh` right after the existing `schedule_gate.js` body check.
+
+Verified both directions, not just the happy path:
+- **True positive** — real PR #1348 diff (`14c042b...d6647f4`, the `_tierAuditRegate` body rewrite):
+  old signature-only heuristic gives `gating_touched=0` (the exact false negative named above); this
+  script gives `88`. Full guard simulation: `gating_touched=88 version_touched=1` → correctly PASS
+  (would correctly FAIL if the version bump had been missed).
+- **False positive control** — commit `6e1ca24` (`§GANTT_CACHE_VERSION`, a pure version-bump/comment
+  edit that never touches a gating function's body): script gives `0`, confirming it does not fire on
+  unrelated `time_machine.js` edits.
+
+## §DAY37_HOSPITAL_HANGING — investigated, not fixed (2026-08-14)
+
+User flagged a live Time Machine screenshot: Hospital, Day 37 / Hour 16, "5035 placed" — teal
+(structure-coloured, `A.DISC_COLORS` in `viewer/config.js`) elements visibly floating with nothing
+built underneath them. User's own hypothesis: MEP parts got swept into Superstructure's (or another
+early) phase bucket, so they show up before their own Gantt bar. Checked directly against the real
+Hospital data (`scripts/probe_hospital_day37_hanging.js`, same slice-and-vm harness as
+`probe_arch_start.js`/`probe_tier_regate_worklist.js`, run against a clean `origin/main` export since
+the local `~/bim-ootb` checkout is dirty/diverged and not safe to read from):
+
+- **MEP classification is correct.** Every real MEP class present in Hospital (pipe, duct, cable tray,
+  fire suppression, light fixtures, switching devices — 41,987 elements) resolves to `MEP Rough-in` or
+  `MEP Final`, never Superstructure. The user's specific hypothesis does not hold.
+- **MEP timing is also correct in the numbers this script produces.** Earliest MEP element start,
+  whole building: day 123.8. Zero MEP elements are visible by day 37.67. This does not reproduce what
+  the user saw on screen.
+- **A real, different, floating-element bug WAS found and quantified** — steel structural members
+  (`IfcBeam`), not MEP: at Day 37.67, 161 of the highest-elevation Superstructure/Substructure elements
+  already visible have no bearing support (column/beam/wall/slab) also visible anywhere below them
+  within 3m — using the exact same `xyOverlap` + "below" predicate `_tierAuditRegate`'s own bearing
+  test uses, not an invented rule. Example: `IfcBeam "UB-Universal Beam:305x165x40UB:166457"`, Level 4,
+  visible from day 35.77, nearest visible support 9.55m below it. This is `_tierAuditRegate`'s
+  `seFor(T)` candidate search (`time_machine.js` ~line 4080) letting an element through without a real
+  physical support in the currently-visible set — likely the `§HANG_NEAREST` big-sink fallback being
+  too permissive. Same bug *class* as the still-open "3rd level hanging doors" item from an earlier
+  session, now reproduced with real guids on a different element type.
+- **Open, unresolved — this is the user's own closing read and it stands:** *"something wrong with
+  Time Machine."* The numbers this script computes (clean `origin/main` + `Hospital_meta.db`) do not
+  show MEP floating, but the user's live browser did show something floating that they read as MEP.
+  Two explanations, neither confirmed:
+  1. What's floating in the screenshot is not actually MEP by IFC class (it may be the STR beams
+     above, or another structural/covering class that reads as "MEP-shaped" — a duct/canopy/skylight
+     silhouette — without being one).
+  2. The live browser is running different data than what this script tested — a known gap on this
+     project (`probe_arch_start.js`'s own `§SERVED_BYTES` note: the OCI-served DB, a local
+     `_extracted.db`, and whatever a given browser has cached in IndexedDB can all disagree; storey
+     taxonomy alone moved Hospital's total span 4.6% in a prior measurement).
+  **Next step, not done this session:** get the exact element name/type from the live browser (click
+  one of the floating pieces) and/or confirm which DB vintage that browser session actually has
+  loaded, then re-run this probe against the matching data. Do not re-guess from a screenshot alone —
+  this project's own rule (`§-tagged log values, not screenshots, are proof`) applies here too.
+
+## §CPE_DISCIPLINE_REVEAL topout gap — named in passing, unrelated to §DAY37_HOSPITAL_HANGING
+
+While investigating the above, found (then ruled out as the cause of the Day-37 screenshot, since that
+screenshot is plain Time Machine scrubbing with no Alt+C/MaxQ bake in view) a real, separate,
+**unfixed** bug in `§CPE_DISCIPLINE_REVEAL` (`prompts/CINEMA_DISCIPLINE_REVEAL.md`, shipped 2026-08-14,
+bim-ootb PR #1349/#1350/#1352): `§CPE_BUILDUP_TOPOUT`'s completion boundary (`cinema_maxq.js:163-167`,
+buildup fraction reaches 1.0 only at `plan.beats.rise`) was never updated when the reveal round was
+inserted into the beat sequence (`effects.js:6844-6845`, order is `dive → spin → out(tO) →
+reveal(tV) → rise(tR)`, strictly `tO < tV < tR`). The entire reveal round plays before topout, while
+buildup is still climbing toward 100% — so during an actual Reveal bake (Alt+C, MaxQ, Reveal checkbox
+on), the building genuinely isn't finished yet and straggler elements can appear mid-air during the
+round, on top of whatever `§DAY37_HOSPITAL_HANGING`/`§HANG_NEAREST` produces. Fix shape (not applied):
+when reveal is on, topout boundary should be `plan.beats.out` instead of `plan.beats.rise`, so buildup
+is 100% before the reveal round starts; leave non-reveal bakes (topout at `rise`) untouched.

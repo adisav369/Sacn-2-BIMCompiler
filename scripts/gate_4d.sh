@@ -96,6 +96,17 @@ if git -C "$VIEWER_DIR" rev-parse --git-dir >/dev/null 2>&1; then
       sg_body=$(git -C "$VIEWER_DIR" diff "$base"...HEAD -- schedule_gate.js 2>/dev/null \
         | grep -E '^\+' | grep -vE '^\+\+\+' | grep -cvE '^\+[[:space:]]*(//|/\*|\*|$)')
       gating_touched=$((gating_touched + sg_body))
+      # §GATE_GUARD_BODY extension for time_machine.js (2026-08-14, prompts/4D_SCHEDULE_PERFECTION.md
+      # §TIER_REGATE_WORKLIST's named follow-up) — MEASURED on its real first customer: PR #1348
+      # rewrote _tierAuditRegate's entire 120-line body (signature untouched) and this guard reported
+      # gating_changed=0, same false-negative class §GATE_GUARD_BODY fixed for schedule_gate.js above.
+      # time_machine.js is NOT "every line is gating" like schedule_gate.js (it holds camera/UI/other
+      # code too), so instead of a file-wide any-added-line check, scripts/tm_gating_body_diff.js
+      # locates the gating functions' own bodies by brace-matching and only counts added non-comment
+      # lines inside those ranges — catches a body-only rewrite without flagging unrelated edits
+      # elsewhere in the file.
+      tm_body=$(node "$(dirname "$0")/tm_gating_body_diff.js" "$VIEWER_DIR" "$base" 2>/dev/null || echo 0)
+      gating_touched=$((gating_touched + tm_body))
       version_touched=$(printf '%s\n' "$tm_diff" | grep -cE '^\+.*_GANTT_CACHE_VERSION\s*=')
       if [ "$gating_touched" -gt 0 ] && [ "$version_touched" -eq 0 ]; then
         say "FAIL  §CACHE_VERSION_GUARD  gating/remap function(s) changed vs origin/main but _GANTT_CACHE_VERSION was not bumped in the same diff — a building already materialized will keep replaying the OLD schedule forever, even after deploy + hard reload. Bump time_machine.js's _GANTT_CACHE_VERSION (and sw.js CACHE_VERSION) in this PR."
