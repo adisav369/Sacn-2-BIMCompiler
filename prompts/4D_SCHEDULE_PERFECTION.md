@@ -2196,3 +2196,87 @@ derivation** — it must be asked, not assumed. Everything needed to decide is a
 Not proposed, deliberately: artificial pacing, spreading starts evenly (rejected as `§DAY_GAP_WIP`,
 and the phase-vs-zone split above shows why it would still be wrong), and any change to
 `schedule_author.js`'s authored WBS bars — those stay the user-editable product, untouched here.
+
+---
+
+# §TIER_REGATE_WORKLIST — the dedicated follow-up session SESSION 7 named (2026-08-14)
+
+Picking up SESSION 7's own closing item verbatim: *"`_tierAuditRegate`'s full-array-rescan fixpoint
+is the dominant cost of the ENTIRE 4D generation pipeline on large/complex buildings"* — 15,466ms of
+Terminal's 19,773ms total, ~78–90% of whole-building 4D-gen wall time, NAMED and MEASURED, NOT fixed
+last session (too large for a closing pass). Spec before code, per this file's own header.
+
+## Step 1 (SESSION 7's own item) — is the 14.8s alternating-fixpoint number the same cost as the fresh 15.5s figure? NO — checked, not the same phenomenon.
+
+No standalone log file for the 2026-08-13 `§STRICT_RESIDUAL_RESCUE` experiment exists on disk
+(searched `~/bim-ootb`, `~/.npm/_logs`, home tree — nothing named for it; the 4-rounds/7,650-pushes/
+0.8s→14.8s numbers live only as prose in this file, lines ~298–300 above). Reading that prose
+directly settles it without needing the log:
+- **Different mechanism.** The 14.8s figure is `_midairRepair`'s own header-documented ALTERNATING
+  joint fixpoint — PASS 1 (the start-based contact-graph repair) re-run in a loop against
+  `_tierAuditRegate` as a second rule, "4 rounds, 7,650 pushes" — a nested scheme that was **built,
+  measured, and REJECTED**, never shipped (the fix worktree's `git status`/`git diff` were clean
+  against `origin/main`, per SESSION 5's own note). SESSION 7's 15,466ms is `_tierAuditRegate` running
+  inside a **plain, single `_twoTierRemap` call** (≤6 bounded iterations, no alternation with
+  `_midairRepair` at all) — a cheaper, already-shipped code path.
+- **Different building.** The 14.8s number's own text says *"Hospital still not fully clean"* — it
+  was Hospital. SESSION 7's fresh per-building table (above) has Hospital's ENTIRE `_twoTierRemap` —
+  `_tier1Serialize` + all its internal `_tierAuditRegate` calls, both dry-run and iterated — costing
+  **2,624ms total**, two orders of magnitude below 14.8s. Terminal (where the 15,466ms figure comes
+  from) was never measured by the 2026-08-13 experiment at all.
+- **Verdict:** the 14.8s and 15.5s figures are coincidentally close in magnitude and share one
+  function name, nothing more. Not the same cost surfacing twice. No further reading of that
+  experiment is needed before starting the worklist rewrite below.
+
+## Step 2 — why the candidate set is static, and what that buys
+
+`_tierAuditRegate`'s `seFor(T)` (time_machine.js:4074-4115) decides, for a target `T`, which other
+elements `S` are its qualifying supports (bearing pool, else hang pool, else the `§HANG_NEAREST`
+big-sink fallback) and returns `max(S.e)` over that set. **Every branch condition is a function of
+STATIC geometry only** — `bz`, `tz`, `x0/x1/y0/y1`, `cls`, `seq` — never of `s`/`e`. Re-read line by
+line: the bearing test (`S.bz<T.bz-EPS && S.tz>=T.bz-GAP && xyOverlap`), the hang test (adds
+`S.bz`/`S.tz` vs `T.tz` band checks + the two antisymmetry exclusions, all static), and the
+nearest-band fallback (`nbA` = min static `S.bz` among static-XY-overlapping candidates above `T`,
+then the final candidate set is bounded by `nbA+GAP`, itself static) — **the SET of qualifying `S`
+for a given `T` never changes across sweeps, only the `S.e` values read from that fixed set do.**
+`structGrid`/`wallGrid` membership is likewise static (`e.seq`/`e.cls` only). This is true across
+ALL of `_twoTierRemap`'s calls into `_tierAuditRegate` too (the one `dryRun` call plus up to 6
+iterated calls) — geometry never changes within one `_twoTierRemap` invocation, so grids AND
+candidate sets can be built **once per `_twoTierRemap` call**, not up to 7 times as today.
+
+Today's loop is `for(sweeps<64){ items.forEach(fullRescan) }` — O(sweeps × n × grid-scan), rescanning
+every element's full candidate search every sweep even when nothing near it moved. The fix is a
+**worklist/dirty-queue**: precompute each `T`'s fixed candidate list once (`_tierAuditIndex`), invert
+it into `dependents[S.guid] = [T, …]` (who reads `S.e`), then only re-evaluate a `T` when one of its
+own candidates was just pushed. Cost becomes O(n) for the unavoidable first pass (every element must
+be checked once against its live neighbours) plus O(total pushes × candidates-per-push) after — no
+further full-array rescans.
+
+**Equivalence argument (must hold before this ships, verified empirically in Step 3, not merely
+argued here):** the system is exactly a longest-path relaxation over an acyclic graph — the code's
+own existing comments already invoke this for CONVERGENCE ("no cycle-chasing possible by
+construction… the fixpoint exists and monotone pushes reach it"). The same DAG-confluence property
+that guarantees convergence also guarantees the **fixpoint is unique regardless of processing
+order** — a worklist that keeps re-relaxing until quiescent reaches the identical final `s`/`e` per
+element as repeated full sweeps, just without redoing unaffected elements. Two details that must be
+preserved exactly, not just "close enough": (a) the `-1ms` tolerance (`T.s < se-1`) — a node that's
+already within 1ms of its constraint must NOT be re-pushed, matching today's exact predicate; (b)
+`exempt` guids are skipped as targets (never evaluated, never pushed) but STILL participate as
+candidates for others, unchanged from today.
+
+## Step 3 — verification plan before touching the shipped file
+
+1. New standalone probe (`bim-compiler/scripts/probe_tier_regate_worklist.js`, same slice-and-vm
+   pattern as `probe_arch_start.js`) builds real `items` for all 7 buildings via
+   `ScheduleGate.computeSchedule`, then runs OLD `_twoTierRemap` and a prototype worklist
+   `_twoTierRemap` on independent clones, and diffs **every guid's final `.s`/`.e`** — byte-identical
+   required, not just matching pass/fail counts (this file's own §DEQ_REPAIR precedent: "A/B'd
+   against the pre-fix code, so 'unchanged' is measured, not assumed").
+2. Wall-clock both paths per building, Terminal and LTU_AHouse are the ones that matter (48,428 and
+   122,330 elements, the two SESSION 7 measured as `_twoTierRemap`-dominated).
+3. Only once (1) is clean on all 7 buildings does the prototype move into `time_machine.js` proper —
+   same two call sites inside `_twoTierRemap`, `_GANTT_CACHE_VERSION`/`sw.js CACHE_VERSION` bumped
+   (this IS a gating-function rewrite, `§CACHE_VERSION_GUARD`'s own trigger condition).
+4. Full `gate_4d.sh` A/B (before/after), plus `witness_midair_zero.js` and
+   `witness_tier_serial_display.js` directly — these are the two witnesses this exact code area has
+   broken before (§STRUCT_POOL_UNGATED, cited above).
