@@ -2280,3 +2280,62 @@ candidates for others, unchanged from today.
 4. Full `gate_4d.sh` A/B (before/after), plus `witness_midair_zero.js` and
    `witness_tier_serial_display.js` directly — these are the two witnesses this exact code area has
    broken before (§STRUCT_POOL_UNGATED, cited above).
+
+## Step 4 — SHIPPED, bim-ootb PR #1348 (auto-merge armed), worktree `perf/tier-audit-regate-worklist`
+
+**Design deviation from Step 2, decided during implementation, not assumed:** the plan above shared
+one `_tierAuditIndex` across `_twoTierRemap`'s ~7 internal calls via an explicit param. Building that
+required a SECOND top-level function name (`_tierAuditIndex`), and this codebase's witnesses/probes
+slice `_tierAuditRegate` OUT of `time_machine.js` by function name into standalone vm contexts — a
+real, already-observed fragility class in this exact file (§PHASE_OVERLAP_SUPPORT_GUARD's own header
+names it: "re-indenting, rewording the log, or renaming variables would rot both"). **11+ files**
+slice `_tierAuditRegate` this way (grepped both repos: `witness_midair_zero.js`,
+`witness_tier_serial_display.js`, `witness_curtain_wall_opening.js`, `witness_hosted_before_host.js`,
+`witness_kernel_ops_sched_version.js`, plus 6 bim-ootb/bim-compiler probes) — adding a second sliced
+function name would have meant editing all of them in lockstep, forever, or silently breaking whichever
+one someone forgets. **Kept single-function instead:** the candidate-index build stayed a closure
+INSIDE `_tierAuditRegate` (matching the ORIGINAL code's own shape — `cellsOf`/`xyOverlap`/`seFor` were
+already local closures, not top-level helpers), cached on `_tierAuditRegate._cache` — a `WeakMap`
+keyed by the `items` array, hung off the function object itself. Any file that slices this ONE
+function by name still gets working caching, zero edits needed on that file's end. Measured this
+achieves the IDENTICAL speedup as the originally-planned shared-param version (verified via a
+throwaway A/B harness before committing to the design — self-contained/rebuild-every-call would have
+still been a real 2.6–3.6x win on Terminal/LTU_AHouse, but the WeakMap cache gets the full win with
+zero extra file-touching, so there was no reason to accept the smaller number).
+
+**Verification (all against the actual committed worktree, not a hand-copied prototype):**
+`scripts/probe_tier_regate_worklist.js` was rewritten to diff `git show <OLD_REF>:time_machine.js`
+against the real working-tree file directly (no hand-typed "new" source in the probe at all) —
+byte-identical `.s`/`.e` per guid, all 7 buildings, confirmed twice (pre- and post-commit runs, same
+result both times):
+
+| building | old ms | new ms | speedup |
+|---|---|---|---|
+| Terminal | 12,087 | 1,904 | **6.3x** |
+| LTU_AHouse | 35,828 | 4,365 | **8.2x** |
+| Hospital | 5,127 | 824 | 6.2x |
+| JKR | 813 | 145 | 5.6x |
+| HHS_Office_Federated | 402 | 92 | 4.4x |
+| Clinic | 525 | 156 | 3.4x |
+| Duplex | 42 | 9 | 4.7x |
+
+`witness_midair_zero.js` **38/0**, `witness_tier_serial_display.js` **57/0** — byte-identical to
+SESSION 7's post-fix baseline, zero behavioral drift. `gate_4d.sh` **pass=8 fail=0 missing=1**
+(`missing`=`witness_arch_area_weight`, pre-existing) matching the pre-change baseline exactly,
+`§CACHE_VERSION_GUARD PASS gating_changed=0 version_bumped=1` — bumped `_GANTT_CACHE_VERSION` 18→19
+and `sw.js` v1025→v1026 by hand per the project rule, since the algorithm changed even though output
+is provably identical.
+
+**Named, not fixed — a real gap in `§CACHE_VERSION_GUARD` itself, found by this PR triggering it:**
+`gating_changed=0` on a change that unquestionably touched the gating engine (`_tierAuditRegate`'s
+entire body was rewritten) is a FALSE NEGATIVE — the guard's heuristic for `time_machine.js` only
+counts ADDED lines containing a function's SIGNATURE (`function _tierAuditRegate(` etc.), and this
+change's signature lines are byte-identical text to before (only the body changed), so git diff shows
+no such added line. **This is the exact blind spot `§GATE_GUARD_BODY` already named and fixed for
+`schedule_gate.js`** ("declaration-line heuristic... blind to one being REWRITTEN... any NON-COMMENT
+added line there is a gating change by definition") — but that fix was scoped to `schedule_gate.js`
+only; `time_machine.js`'s half of the guard still has the same hole. Not fixed here (out of scope for
+a perf session, `_GANTT_CACHE_VERSION` was bumped correctly by hand regardless) — concrete next step
+for whoever touches `gate_4d.sh` next: extend `§GATE_GUARD_BODY`'s "any added non-comment line counts"
+treatment to `time_machine.js`'s gating functions (`_tierAuditRegate`, `_twoTierRemap`,
+`_midairRepair`, `_tier1Serialize`) the same way it already works for `schedule_gate.js`.
