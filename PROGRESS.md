@@ -1,8 +1,36 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ Over budget (200+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
+> ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
+
+## Session 2026-08-14 — HHS stair root-caused + fixed, closing perf/dead-code pass, both SHIPPED+MERGED
+Continuation of 2026-08-13's handed-off "3rd level hanging doors" item — chased the stairs half of it
+(doors half still open, see below). Two bim-ootb PRs merged, `witness_midair_zero.js` 38/0 and
+`witness_tier_serial_display.js` 57/0 clean throughout, full trail in `prompts/4D_SCHEDULE_PERFECTION.md`
+SESSION 6-7.
+- **#1345 §STAIR_FLIGHT_GRID_VISIBILITY**: root cause one level deeper than 2026-08-13 had it —
+  `IfcStairFlight` was never inserted into `schedule_gate.js`'s own support-visibility index
+  (`structIdxGrid`/`grid`), so anything resting on a stair flight (a landing, e.g. HHS's Day-50
+  report) found zero real support and scheduled unconstrained. Fixed with one narrow predicate
+  mirroring the already-shipped `isPromotedSlab` pattern. HHS landing FINAL display gap: -40.85d →
+  -0.11d. Two regressions caught and fixed BEFORE shipping (a DAG-cycle explosion from a pool-status
+  omission, and a false witness regression from over-widening `auditFloating`) — see the PR/prompts
+  file for the full self-correction trail.
+- **#1347 chore**: removed a 95-line dead duplicate `_midairRepair` (JS hoisting silently shadowed
+  it since 2026-08-12, already named as a known defect, never cleaned up) + de-duplicated a redundant
+  `geoGate`/`wallGate` double-scan in `placeNonst`. Both verified byte-identical (witness pass/fail
+  counts unchanged).
+- **⛔ Named, MEASURED, not fixed — real find, next session's target**: `_tierAuditRegate`'s
+  full-array-rescan fixpoint is the dominant cost of the WHOLE 4D generation pipeline on large
+  buildings — ~78-90% of Terminal's 19.8s total gen time (9 sweeps × full O(n) rescan each, 85% of
+  elements pushed), not element-count-driven (Hospital, more elements, remaps 7x faster). Needs a
+  worklist/dirty-queue rewrite + its own equivalence witness — too large for a closing pass. Full
+  numbers and concrete next steps in `prompts/4D_SCHEDULE_PERFECTION.md` SESSION 7.
+- **⛔ STILL OPEN, not touched this session**: the "hanging doors" half of 2026-08-13's original
+  report (only stairs were chased). Also: `_twoTierRemap` isn't support-DAG-aware for stair flights
+  (can display flight 2 before flight 1) — papered over by `_midairRepair` for the shipped movie, the
+  intermediate stage is still wrong. Both named, not folded into either PR above.
 
 ## Session 2026-08-13 — 4D "hanging in mid air": 3 real fixes shipped, 1 elusive item handed off
 User: "solve this... you are the expert" → "chase till zero" → "THINGS STILL HANGING IN MID AIR" →
