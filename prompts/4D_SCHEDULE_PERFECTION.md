@@ -416,6 +416,90 @@ same throwaway diagnostic.
   papers over this for the DISPLAY outcome (proven above), but the intermediate remap stage itself still
   gets it wrong. Not investigated further this pass — flagged, not folded into this fix's scope.
 
+### 2026-08-14 SESSION 7 — closing perf/dead-code review of the 4D gen pipeline (user: "review the 4D
+### gen to be efficient not stale code to improve its speed of execution"). Two safe fixes SHIPPED,
+### one big finding NAMED not fixed (too large/risky for a closing pass — needs its own session+spec).
+For the SEPARATE bake/render-pipeline resource-usage lane (MaxQ movie bake, CPE, TM activation — NOT
+this section's scope), the existing study already covers it: `prompts/CPE_4D_PERF_MEM_STUDY.md` +
+`prompts/CPE_4D_PERF_MEM_FINDINGS.md` (2026-08-12). R1/R2/R3/R5 shipped (bake staging churn, gantt
+chunk-yield, replan-lazy, TM warm/xray-memo); R6-R9 still open (memory/OPFS paging, 4-copy support-
+predicate consolidation, date-cursor consolidation, DLOD flip-storm). That study explicitly measured
+`_midairRepair`'s generation cost too (LTU 1,829ms) and ruled it "acceptable, not worth optimizing" —
+this session's findings below are different code (dead code + a real algorithmic bottleneck in
+`_twoTierRemap`/`_tierAuditRegate`, not `_midairRepair`), not a re-litigation of that ruling.
+
+**✅ FIXED 1 — dead duplicate `_midairRepair`, 95 lines of unreachable code (`time_machine.js`).**
+Two `function _midairRepair(items) {` declarations existed at the same module scope (old ~4589-4683,
+live ~4732+); JS hoisting means the LAST one silently wins — the first was provably unreachable (only
+one call site in the whole file, line ~5370, always resolves to the second). Already named as a known
+defect in this file's own 2026-08-12 §ARCH_START_TEMPO notes ("a DUPLICATE `_midairRepair`"), never
+cleaned up until now — and it was a REAL, present maintenance hazard, not just clutter: SESSION 6's
+own stair fix (above) had to explicitly patch BOTH copies to avoid silently fixing only the dead one.
+Confirmed no other duplicate top-level function declarations exist anywhere in `schedule_gate.js` or
+`time_machine.js` (grepped both files for the pattern). **Verified behavior-identical**:
+`witness_midair_zero.js` 38/0 and `witness_tier_serial_display.js` 57/0, both byte-for-byte the same
+pass/fail counts before and after removal (expected — the code was unreachable, so removing it cannot
+change behavior; this is why the check is "did anything change" not "did anything break").
+
+**✅ FIXED 2 — redundant `geoGate`/`wallGate` double-scan in `placeNonst` (`schedule_gate.js:745`).**
+`start = Math.max(geoGate(el), wallGate(el), hangGate(el), ...)` on the next line immediately
+recomputed `geoGate(el)` and `wallGate(el)` AGAIN, purely to check a `_bmGatedB` diagnostic-counter
+condition (§4D_BAND_MONOTONIC's own audit line). Both are pure, read-only functions over the grids
+built so far (verified by reading their bodies — no mutation), so every non-structure element in
+every building was paying for two full spatial-grid cell scans of each gate instead of one. Fixed by
+caching `gg`/`wg` locals and reusing them for the counter check — same values, half the grid work,
+zero behavior change (same two witnesses re-run clean: 38/0, 57/0).
+
+**⛔ NAMED, MEASURED, NOT FIXED — `_tierAuditRegate`'s full-array-rescan fixpoint is the dominant
+cost of the ENTIRE 4D generation pipeline on large/complex buildings, not `computeSchedule` and not
+`_midairRepair`.** Real wall-clock profile (`ScheduleGate.computeSchedule` → `_twoTierRemap` →
+`_midairRepair`, sliced verbatim, run per building):
+```
+building        n        computeSchedule  _twoTierRemap  _midairRepair  total
+Duplex          1,119    32ms             25ms           27ms           112ms
+HHS             6,839    172ms            439ms          103ms          784ms
+JKR             8,985    286ms            850ms          153ms          1,366ms
+Terminal        48,428   895ms            17,984ms       446ms          19,773ms
+Hospital        63,182   944ms            2,624ms        883ms          4,932ms
+Clinic          16,071   319ms            716ms          208ms          1,371ms
+LTU_AHouse      122,330  4,083ms          35,504ms       1,999ms        42,541ms
+```
+**Not driven by element count alone** — Hospital (63,182 elements) remaps in 2.6s; Terminal (48,428,
+*fewer*) takes 18s. Broke `_twoTierRemap` itself down (instrumented copy, per-sub-pass timing) on
+Terminal: `_tier1Serialize`=24ms, `_tier1Protrusion`=14ms, `_tier1Extents`=7ms, `hostPairs`=20ms,
+`openingPairs`=35ms — **`_tierAuditRegate`=15,466ms, ~99% of `_twoTierRemap`'s total and ~78-90% of
+the WHOLE 4D-generation wall time**, for one building. Root cause, read from `_tierAuditRegate`'s own
+code (`time_machine.js:4055-4150`): its repair loop is `for (sweeps<64) { items.forEach(fullRescan) }`
+— a full O(n) rescan of EVERY element, every sweep, checking each one's support via a fresh grid-cell
+scan, regardless of whether that element's answer could possibly have changed since the last sweep.
+Measured on Terminal: **9 sweeps, 41,402 of 48,428 elements pushed (85%)** — a genuinely deep
+dependency chain needing many rounds, each round paying for the full array again. LTU_AHouse's
+35.5s remap is consistent with the same mechanism at 2.5x the element count (not independently
+sweep-counted this pass — the mechanism is structural, not building-specific, so re-deriving it per
+building isn't needed to trust the shape).
+
+**Why this was NOT fixed this session:** the correct fix shape (a worklist/dirty-queue — only
+re-check elements whose OWN dependency actually moved last sweep, not every element every sweep) is a
+real algorithmic rewrite of core scheduling logic, not a mechanical dedup like the two fixes above.
+This exact function is already flagged fragile by this file's own history — `_midairRepair`'s header
+(above) documents an "alternating joint fixpoint... built and REJECTED on its own numbers (4 rounds,
+7,650 pushes, cost 0.8s→14.8s)" involving `_tierAuditRegate` as one of the two rules that "genuinely
+fight" when combined; that 14.8s figure is suspiciously close to this session's fresh 15.5s Terminal
+measurement of `_tierAuditRegate` ALONE, which may be the same cost surfacing two different ways, not
+a coincidence — worth checking first thing, not re-deriving. A worklist rewrite needs its own written
+spec + an equivalence witness (same final schedule, byte-identical to the full-rescan version, not
+just "converges") before it can ship, matching this project's own Spec-First discipline. **Concrete
+next step for a dedicated session:** (1) confirm/deny the 14.8s-vs-15.5s connection by reading the
+2026-08-12 experiment's own log if it still exists; (2) prototype a worklist version of
+`_tierAuditRegate`'s sweep loop off a dependency graph (`seFor(T)`'s own grid lookups already compute
+"what T depends on" — the missing piece is inverting that into "what depends on T" so only AFFECTED
+elements requeue after a push, not the whole array); (3) A/B witness on Terminal/LTU_AHouse
+specifically (the two buildings this actually matters for) for byte-identical final `.s`/`.e` per guid,
+not just matching pass/fail counts.
+
+**Witness state after both fixes:** `witness_midair_zero.js` 38/0, `witness_tier_serial_display.js`
+57/0 — same as SESSION 6's post-merge baseline, confirming zero behavioral drift from either change.
+
 ## §GROUNDED_OVERRIDE_FIX — ✅ SHIPPED, bim-ootb PR #1338 (2026-08-13)
 User: *"THINGS STILL HANGING IN MID AIR"*, reported right after §TIER2_PER_ELEMENT_CLAMP/§SHIFT_HOURS
 (below) shipped. Investigation found a SEPARATE, PRE-EXISTING bug (not caused by that PR, not caused
