@@ -606,106 +606,243 @@ actual HHS colour is real IFC data anyway, per the verdict above) no code change
 awareness. FP (`0xcc8844` brick/orange), ACMV (`0xcc4444` red), PLB (`0x8844cc` purple), and HEAT
 (`0xff6644` red-orange) already cover the "red/brick/orange" MEP variety the user asked for, unchanged.
 
-## Findings 2026-08-14b — Hospital beams/railings still read blue AFTER #1356 ships (real IFC albedo,
-## not a NULL-rgba case — a different, more fundamental mechanism than the finding above)
+## Findings 2026-08-14 (session 2) — Hospital blue-tint on real-colored beams/railings, bim-ootb PR #1361 MERGED
 
-**Task:** after `#1356` (MEP_DISC_TINT + `IfcRailing` STD_MAT recolor to warm grey) shipped, the user
-re-checked on Hospital and beams/railings still read blue. Hospital's `IfcBeam`/`IfcRailing` elements
-have REAL, populated, warm `material_rgba` (unlike HHS's NULL-rgba MEP case above) — so the STD_MAT
-NULL-fallback mechanism this whole §6 thread has been fixing so far cannot be the cause here. Worktree
-`/tmp/wt-hospital-blue-fix` (branch `fix/hospital-blue-color`), investigation only, clean tree, nothing
-built yet.
+**Task:** user watched a baked mp4 (Alt+C, Hospital building) and reported beams and stair
+railings/steps reading strongly, "horribly" blue. Explicit ask: "investigate proper and not offer
+pivot reasons" — real measurement required, screenshots/eyeballing banned as evidence per this
+project's own doctrine (`docs/TestArchitecture.md` §Browser Testing, archived at
+`docs/archive/TestArchitecture.md` in this repo). One theory (triplanar metal texture) was already
+disproven in a prior pass — not re-litigated here. This session's own first pass leaned on live-
+rendered-pixel measurement as the primary discovery tool; **corrected mid-session per explicit user
+methodology feedback** ("i rather u look at the formula table than at real DB cases because it is
+all abstract") to lead with the code's own formula/config tables and PBR math, with live rendering
+kept only as a final confirmation step. This section is written in that corrected order.
 
-**Method, per explicit user steering correction this session: lead from the formula/config tables and
-real PBR math, DB/live-pixel readback as confirmation only, not primary discovery.**
+### 1. Formula/config-table analysis (primary — read before the live numbers below)
 
-### 1. The formula tables, read directly (not queried)
-- `viewer/streaming.js` `_getMaterial`, `STD_MAT.IfcBeam` = `{ rough: 0.35, metal: 0.65 }` (steel
-  I-beam), `STD_MAT.IfcRailing` = `{ rough: 0.35, metal: 0.55 }` (brushed-steel, already recolored
-  warm-grey by #1356 — the recolor only changed `r/g/b`, not `rough`/`metal`).
-- **The actual bug, found by reading the assignment logic, not a DB row:** `var stdMat = (ifcClass &&
-  STD_MAT[ifcClass]) ? STD_MAT[ifcClass] : null;` is keyed on `ifcClass` alone — no `rgbaStr` check.
-  Two lines later, the color assignment correctly gates on real-vs-fallback (`if (!rgbaStr && stdMat)
-  { r = stdMat.r; ... }` — trust-IFC-colors, doctrine honored). But roughness/metalness do NOT share
-  that gate: `opts.roughness = Math.max(0.08, _rough * 0.75); opts.metalness = stdMat ? stdMat.metal :
-  0.08;` — both keyed on `stdMat` truthy (i.e. class found in the table) alone. **A beam with 100% real,
-  correctly-populated, warm IFC albedo still gets forced into STD_MAT's metal=0.65/rough≈0.26 "steel
-  armor" PBR response**, because IFC extraction never carries physical metalness/roughness — those two
-  channels are ALWAYS class-table defaults, real color or not. This is an asymmetry in how the
-  "trust IFC colors" doctrine got implemented: honored for hue, silently not applicable to the two
-  channels that actually control how much of the final pixel is environment-reflection vs albedo.
-- `envMapIntensity = 0.6` (`streaming.js:547`, applied to `A._envMap` on every material with no
-  per-class exception — contrast the ground material's own `envMapIntensity: 0.15` for the SAME reason,
-  §S276b comment "subtle sky reflection," `scene.js:383` — precedent for lowering it per-class exists
-  already, just never applied to beam/railing).
-- Sky/env source (`scene.js`): Preetham `Sky.js` shader, `turbidity=4` (fairly clear), `rayleigh=2`
-  (Rayleigh/blue-sky scattering strength), `mieCoefficient=0.005` (low — little whitish haze, so blue
-  dominates most of the dome), `mieDirectionalG=0.8` (strong forward scattering — the warm/white halo
-  stays tightly concentrated around the sun disk, not spread across the sky). Default sun at
-  elevation 45°/azimuth 180° (`A.updateSky(45,180)`, `scene.js:289`). The code's OWN stated
-  approximation of this sky's color exists as a real constant, not eyeballed: the fog-color formula a
-  few lines above, `dayT=(elevation+10)/55` → at elevation 45°, `dayT=1` → `fogR=0.65, fogG=0.70,
-  fogB=0.73` (comment: "blend from dark (night) to light blue (day)") — B leads R by 0.08 (~12%), a
-  mild but deliberate, dev-authored blue bias baked into the same file that drives the env map.
-
-### 2. PBR math, computed from those numbers (glTF/three.js metallic-roughness model)
-`F0 = mix(0.04, albedo, metalness)`; Schlick: `F(θ) = F0 + (1-F0)(1-cosθ)^5` where θ is the
-view/normal grazing angle — at grazing incidence `(1-cosθ)^5 → 1`, so **`F(θ) → 1` for every channel
-regardless of F0**, i.e. any material becomes a near-mirror of the environment at its silhouette edges,
-independent of its own albedo hue. This is a geometric property of the Fresnel equation, not a rendering
-bug, and it applies to dielectrics too (baseline F0=0.04), just weaker.
-- **IfcBeam** (real albedo 0.920/0.900/0.850, metal=0.65): `F0 = 0.014 + 0.65·albedo` = (0.612, 0.599,
-  0.567) — near-normal incidence still leans warm (R−B = 0.045, ~8%), so a face viewed near head-on
-  should still read warm. Diffuse weight `(1−metal) = 0.35`.
-- **IfcRailing** (real albedo 0.741/0.733/0.725, metal=0.55): `F0 = 0.018 + 0.55·albedo` = (0.426,
-  0.421, 0.417) — spread of only 0.009 (<1%) even at normal incidence: this material's specular term
-  carries almost NO inherent hue of its own at any angle, so whatever the environment reflects shows
-  through nearly unfiltered. Railings are also geometrically the class most exposed to grazing/raking
-  view angles in a flythrough (thin, mostly seen edge-on) — compounding the effect on the very class
-  most likely to be visually prominent as a screen-space edge.
-- **Conclusion from the math alone, before any pixel readback:** grazing-angle Fresnel + a blue-leaning
-  env map (per §1) predicts a visible, angle-dependent blue shift on beam/railing SILHOUETTE pixels
-  specifically, layered on top of correctly-warm diffuse albedo elsewhere on the same surface — and this
-  mechanism is completely independent of whether `material_rgba` is NULL or real, because it enters
-  through `metal`/`rough`/`envMapIntensity`, none of which are gated on `rgbaStr` the way color is.
-
-### 3. Confirmation only — real headless pixel readback (already run this session, kept as the
-### final check per the corrected methodology, not the discovery method)
-`/tmp/claude-1000/.../scratchpad/measure_hospital_blue.js` — real production `A._getMaterial`, real
-Hospital DB (`~/bim-ootb/buildings/Hospital_extracted.db`, confirmed newer than the stale OCI copy),
-real ACES/PMREM pipeline, `renderer.readRenderTargetPixels` (no screenshot). Single-variable ablation on
-a beam SIDE face (front face saturated to white from direct light, uninformative):
+**STD_MAT metalness table** (`viewer/streaming.js` `_getMaterial`, read at bim-ootb `origin/main`
+`b2d96dc`, which already includes PR #1356's `§MEP_DISC_TINT` fix from earlier this same session —
+not re-derived, cross-checked against the live file):
 ```
-BEAM_side_albedo_only  (no lighting model)              hue= 40°  (warm — matches real IFC cream)
-BEAM_side_no_envmap    (real metal .65/rough .26, no envMap) hue= 45°  (still warm)
-BEAM_side_production   (same material, envMap ON, 0.6)       hue=249°  (blue)
-BEAM_side_pmrem_probe  (white/metal=1, isolates env only)    RGB(70,70,93) hue=240° (the sky's own reflected color)
-RAIL_no_metal          (metal→0, envMap still ON)             hue=252°, light=0.68 (bright — diffuse-dominated)
-RAIL_production        (metal=.55, envMap ON)                 hue=248°, light=0.51 (darker — more specular-weighted)
+IfcBeam:     metal 0.65 rough 0.35   ← steel I-beam
+IfcMember:   metal 0.60 rough 0.40   ← steel section
+IfcPlate:    metal 0.70 rough 0.30   ← steel plate    (HIGHEST metal in the whole ~30-entry table)
+IfcRailing:  metal 0.55 rough 0.35   ← brushed steel
+——— next-highest reflective classes in the SAME table, for scale ———
+IfcTransportElement: metal 0.50   IfcPipe/PipeFitting/PipeSegment: metal 0.45
+IfcDuct/DuctFitting/DuctSegment: metal 0.40   IfcCableCarrier: metal 0.35
 ```
-envMap on/off is the ONLY variable between the 45°-warm and 249°-blue readings on the identical
-material — exactly what the Fresnel/grazing-angle math in §2 predicts, and orthogonal to the NULL-rgba
-mechanism already fixed in #1356. `RAIL_no_metal` still shows a (weaker, brighter) blue shift even at
-metal=0, matching the dielectric-baseline-F0=0.04 term in the same equation.
+These 4 classes (Beam/Member/Plate/Railing) are the 4 highest-metalness entries in the entire table —
+roughly 20-55% higher than every other reflective class. `opts.roughness = Math.max(0.08, stdMat.rough
+* 0.75)` (line ~554) tightens all 4 to an effective roughness of 0.225-0.30 — fairly glossy/mirror-like.
 
-### Verdict
-Confirmed, numbers-first: Hospital's "beams/railings still read blue" is a SEPARATE, more fundamental
-mechanism than the HHS MEP NULL-rgba STD_MAT fallback (#1356 already fixed that one). It fires on
-classes with 100% real, correctly-populated, warm IFC albedo, because `metal`/`rough` are assigned from
-`STD_MAT` unconditionally on `ifcClass` (no `!rgbaStr` gate, unlike the color assignment two lines
-above), and grazing-angle Fresnel reflectance genuinely approaches 100% environment-color regardless of
-albedo at silhouette/edge pixels — a real optical fact, not a bug in the Fresnel term itself.
+**envMapIntensity was a flat global constant, never varied per class** (`streaming.js` line 557,
+before this fix): `if (A._envMap) { opts.envMap = A._envMap; opts.envMapIntensity = 0.6; }` — applied
+identically to concrete, glass, every MEP class, and these 4 steel classes alike. Nothing in the
+formula table already discounted reflection strength for the classes carrying the highest metalness —
+the two levers (metal, envMapIntensity) multiply, so the highest-metal classes get proportionally the
+MOST envMap-reflection contribution while paying no compensating discount.
 
-### Named fix candidates — NOT implemented (investigation-only scope, per this session's task)
-Two independent levers, neither touches the "trust IFC colors" rule for albedo:
-1. **Per-class `envMapIntensity` reduction** for `IfcBeam`/`IfcRailing` (and siblings sharing their
-   STD_MAT metal>0.3 bracket) — direct precedent already exists in this same file, the ground material's
-   `envMapIntensity: 0.15` vs the 0.6 default (`scene.js:383`, "subtle sky reflection"). Attenuates the
-   grazing-Fresnel contribution's brightness without touching metal/rough/albedo.
-2. **Lower `STD_MAT.IfcBeam`/`IfcRailing`'s `metal` value.** Raises F0's baseline toward the pure-
-   dielectric 0.04, shifting more energy weight to the diffuse `(1-metal)` term — does NOT eliminate the
-   grazing-Fresnel edge effect itself (that term saturates toward 1 regardless of F0, a geometric fact
-   of Schlick's equation), but raises the diffuse-dominated majority of each surface's visible pixels at
-   typical flythrough angles (only true silhouette pixels are extreme-grazing).
-Branch `fix/hospital-blue-color` (`/tmp/wt-hospital-blue-fix`) is currently a clean checkout with no
-code diff — this finding is written up, nothing shipped yet.
+**`A.DISC_COLORS`** (`viewer/config.js:43-48`) — checked and ruled out as a factor here: `ARC:
+0x4488ff` (blue) and `STR: 0x44cccc` (teal) are themselves cool-toned, but `_getMaterial` never
+consults `DISC_COLORS` for Beam/Member/Plate/Railing (that tint path is scoped to
+`DISC_TINT_CLASSES = {IfcFlowSegment, IfcFlowFitting, IfcFlowTerminal}` only, PR #1356's territory) —
+irrelevant to this specific complaint, ruled out by reading the code, not by testing.
+
+**The sky itself — computed directly from the shader's own formula, not eyeballed.** `A.updateSky(45,
+180)` (`viewer/scene.js:289`, unconditional on init) configures `viewer/lib/Sky.js`'s Preetham/Nishita
+shader (`turbidity=4, rayleigh=2, mieCoefficient=0.005, mieDirectionalG=0.8`, `scene.js:206-209`) with
+the sun at elevation 45°/azimuth 180°. `rayleigh=2` is DOUBLE the shader's own built-in default (1,
+`Sky.js:75`) — a deliberate choice in this codebase that makes the sky MORE saturated-blue than the
+stock three.js demo. Rather than assume what that produces, the shader's exact GLSL math (vertex +
+fragment, `viewer/lib/Sky.js:89-311`) was ported line-for-line to plain JS and run with these exact
+constants (script: `analytic_sky_color.js`, no browser involved):
+```
+sunPosition (unit, elev=45 az=180): [0.0000, 0.7071, -0.7071]
+
+dir=zenith (straight up):
+  rawLinear=[3.235e-1, 1.043e+0, 2.850e+0]   ← B is 8.8x R in LINEAR light, pure Rayleigh-scattering physics
+  after ACESFilmic(exposure=0.45)+sRGB: [126,203,238]  hue=198.8°  sat=0.767  ← strongly saturated blue
+
+dir=horizon, anti-solar side (the reflection angle a level-camera sees off a VERTICAL member
+  — matches the railing/beam-web live-render geometry below):
+  rawLinear=[3.365e+0, 4.202e+0, 4.528e+0]
+  after ACES+sRGB: [241,244,245]  hue=195.0°  sat=0.167  ← paler but still a real, measurable blue
+
+dir=reflect-toward-sun (the geometry a TOP-FLANGE/upward-normal surface sees from a ~45°-elevated
+  camera — this direction is EXACTLY coincident with the sun position, cosTheta=1.000):
+  rawLinear=[1.368e+1, 2.669e+1, 4.340e+1]  → clips to [254,255,255] even after ACES's highlight
+  compression — analytically explains (not just empirically observes) why a top-flange/upward-facing
+  test angle blows out to pure white regardless of envMap or metalness settings; see §3 below.
+```
+This alone establishes, from the code's own configured constants (not a guess, not a screenshot):
+**the sky IS real, legitimately, strongly blue at zenith (sat=0.767) and still measurably blue even at
+grazing/horizon angles (sat=0.167) — this is real PBR physics from `rayleigh=2`, not a bug in the sky
+shader.** The question is only whether these 4 STD_MAT classes' unusually high metalness lets that
+real (legitimate) sky colour dominate over their own real, correctly-trusted IFC albedo underneath.
+
+**PBR reasoning from these two tables together:** in the metallic-roughness workflow, a surface's
+outgoing radiance splits between a diffuse term (weighted `(1-metalness) × albedo`) and a
+specular/IBL term (at high metalness, tinted BY the albedo and dominated by the envMap sample; at low
+metalness, achromatic `F0≈0.04` Fresnel reflectance still contributes, just not albedo-tinted). At
+metal=0.55-0.70 (vs 0.35-0.50 for every other reflective class) and a genuinely saturated blue envMap
+sample, these 4 classes are structurally the most exposed in the entire table to exactly this failure
+mode — high enough metalness for a strong specular/IBL contribution, but not touching a real-colour
+channel that doctrine (`[[feedback_ifc_colors]]`) already forbids overriding. This — not a re-guess,
+not a pivot — is why the formula tables alone already point at `metal`/`envMapIntensity` as the two
+levers to test, in that order, before touching anything else.
+
+### 2. Live-render confirmation (secondary — same production pipeline, used to validate §1's hypothesis)
+
+Loaded the REAL `viewer/viewer.html?db=...&bld=Hospital` in headless Chromium (playwright-core +
+SwiftShader, this repo's own `tests/playwright.config.js` infra) against the Hospital DB, and in-page
+constructed test surfaces via the REAL `A._getMaterial()` fed a LIVE `A.dbQuery()`-read real
+`material_rgba` (confirmed live, not assumed: `IfcBeam` cream `0.920,0.900,0.850` 1970/1970 populated;
+`IfcRailing` grey `0.741,0.733,0.725` 93/93 populated — this specific numeric check is the one
+DB-row-level lookup this investigation actually needed: confirming the NULL-vs-real gating condition
+that decides whether STD_MAT's fallback even applies, not exploratory DB mining), lit by the REAL
+`A.scene` lights + `A._envMap` (PMREM of the same Sky shader from §1), rendered by the REAL
+`A.renderer` (ACESFilmic, exposure 0.45, ColorManagement disabled — both untouched) to an offscreen
+`WebGLRenderTarget`, read back via `renderer.readRenderTargetPixels` — no screenshot, every value is a
+`§HOSPITAL_BLUE_MEASURE` log line. Script: `measure_hospital_blue.js`.
+
+⚠ **Note on `buildings/Hospital_extracted.db` versions, found while setting this up:** the
+OCI-hosted production copy (`objectstorage.../buildings/Hospital_extracted.db`, last-modified
+2026-06-05) is STALE — `IfcBeam` material_rgba is 100% NULL there (would fall into plain STD_MAT
+fallback, not this "real colour shifted by envMap" mechanism at all). The shared `~/bim-ootb` checkout's
+copy (2026-08-03, newer) has `IfcBeam` 100% populated real cream, matching this file's own earlier
+`§Findings 2026-08-14` background exactly, and is what the user's own session actually had loaded —
+used for all measurement here (copied read-only into the test worktree, gitignored, not committed).
+
+**'up' (top-flange, upward-normal) test geometry clipped to pure white — even with envMap OR
+metalness independently zeroed** (`BEAM_no_envmap`/`BEAM_no_metal` both `[255,255,255]`), which at
+first looked like a broken test. §1's analytic port explains it exactly: this camera/mesh geometry's
+reflection direction is coincident with the sun position (`cosTheta=1.000`), so it's hitting the
+DIRECT sun specular hotspot (DirectionalLight intensity 4.4), a real but DIFFERENT phenomenon
+(overexposure, not blue tint) from what this investigation is about — noted as a separate, unfixed,
+out-of-scope observation below, not silently discarded.
+
+**'side' (vertical member, level camera — a railing baluster or beam web) gave clean, informative
+numbers, BEFORE the fix (envMapIntensity=0.6 global):**
+```
+                     out_srgb            hue     sat    light   metal  rough  envMapIntensity
+BEAM_side_production [128,127,134]     248.6°   0.028   0.512   0.65   0.26   0.6
+BEAM_side_no_envmap  [111,110,107]      45.0°   0.018   0.427   0.65   0.26   0.6   (envMap removed)
+BEAM_side_no_metal   [190,188,189]     330.0°   0.015   0.741   0.00   0.26   0.6   (metal→0)
+BEAM_side_albedo_only[246,243,237]      40.0°   0.333   0.947   —      —      —     (pure albedo, no lights)
+BEAM_side_pmrem_probe [70, 70, 93]     240.0°   0.141   0.320   1.00   0.26   0.6   (white albedo, pure envMap)
+
+RAIL_production      [127,126,134]     247.5°   0.032   0.510   0.55   0.26   0.6
+RAIL_no_envmap        [113,112,111]     30.0°   0.009   0.439   0.55   0.26   0.6   (envMap removed)
+RAIL_no_metal          [172,171,176]    252.0°   0.031   0.680   0.00   0.26   0.6   (metal→0)
+RAIL_albedo_only       [223,222,221]     30.0°   0.030   0.871   —      —      —
+RAIL_pmrem_probe       [70, 70, 93]     240.0°   0.141   0.320   1.00   0.26   0.6
+```
+Confirms §1's hypothesis directly: `no_envmap` flips both classes OUT of blue (beam 248.6°→45.0°,
+rail 247.5°→30.0°) and collapses saturation (beam 0.028→0.018, rail 0.032→0.009) — envMap is the
+dominant lever, exactly as the formula tables predicted. `pmrem_probe` (white albedo, metal=1, same
+roughness) independently reproduces almost the SAME [70,70,93] hue=240°/sat=0.141 for both classes —
+direct confirmation that §1's "the sky itself is genuinely blue at this roughness/angle" finding is
+what's actually landing on screen, not an artifact of this specific base albedo.
+
+**One real nuance found, not assumed:** `metal→0` fixes the BEAM a lot (sat 0.028→0.015) but barely
+moves the RAILING (sat 0.032→0.031, essentially unchanged) — because the beam's bright cream albedo
+(0.92,0.90,0.85) gives the diffuse term, now at full strength, enough warm energy to outweigh the
+residual `F0=0.04` dielectric envMap reflection, while the railing's near-achromatic grey albedo
+(0.74,0.73,0.72) can't. Roughness was tested too (0.35→0.8, near max): only a small effect on either
+class (beam sat 0.028→0.024, rail 0.028→0.028 unchanged) — the sky is fairly uniform-hued across the
+practical roughness-blur range at this reflection angle, so blurring more doesn't desaturate it much.
+**This is why the fix below targets `envMapIntensity`, not `metalness` alone** — metalness helps
+unevenly depending on the underlying real albedo's brightness, but `envMapIntensity` scales the exact
+IBL term §1 identified directly, for both classes alike, regardless of their real colour.
+
+Fog ablation was attempted (`BEAM_side_fog_far400` vs `_nofog`, distance 400) and came back BIT-FOR-BIT
+IDENTICAL — a floating-point-precision artifact of this test harness's own isolation trick (mesh/camera
+offset 5×10^5 units from world origin to guarantee no interference from the real streamed building
+geometry, which breaks fog's camera-to-fragment distance math at that offset magnitude), not a real
+measurement of fog's contribution. Not re-attempted given the time-box — envMap+metal was already
+established as dominant and real, and typical interior walkthrough camera-to-beam distances are well
+under the range where this building's auto-scaled fog density (capped 0.004) would matter anyway.
+Hemisphere-light colour (`0xb0c4de`, real, checked: `viewer/scene.js:188`) was also ablated
+(`hemi_white`): a real but modest secondary contributor (sat 0.028→0.021, ~25% of the effect size
+`no_envmap` showed) — not touched by the fix, out of scope (a scene-global light colour, not a
+per-class STD_MAT lever, and too small a share of the effect to justify touching lighting).
+
+### 3. Fix — targeted, formula-table-grounded, real-colour untouched
+
+`viewer/streaming.js`: added an optional `envInt` field to the STD_MAT table, read only for the 4
+classes identified in §1, reusing the exact same per-class-lookup pattern `metal`/`rough` already use
+(zero new plumbing):
+```js
+IfcBeam:    { r:0.55, g:0.57, b:0.60, rough:0.35, metal:0.65, envInt: 0.18 },
+IfcMember:  { r:0.50, g:0.52, b:0.55, rough:0.40, metal:0.60, envInt: 0.18 },
+IfcPlate:   { r:0.48, g:0.50, b:0.53, rough:0.30, metal:0.70, envInt: 0.18 },
+IfcRailing: { r:0.50, g:0.49, b:0.47, rough:0.35, metal:0.55, envInt: 0.18 },
+...
+if (A._envMap) { opts.envMap = A._envMap;
+  opts.envMapIntensity = (stdMat && stdMat.envInt != null) ? stdMat.envInt : 0.6; }
+```
+0.6→0.18 chosen as a real cut (30% of the global default) rather than zeroing reflectivity outright —
+these classes should still read as recognizably metallic, just without the sky dominating their hue.
+Every other class (concrete, glass, other MEP, IfcStair, everything PR #1356 already fixed) keeps
+`envMapIntensity=0.6` exactly as before — this is a 4-class-scoped override, not a global change.
+**No real colour channel touched** — `r`/`g`/`b` in these 4 STD_MAT entries are UNUSED whenever real
+`material_rgba` is present (per `[[feedback_ifc_colors]]`, `_getMaterial`'s `!rgbaStr && stdMat` gate,
+unchanged) — Hospital's real cream beam/grey railing colours pass through exactly as extracted, only
+the reflection strength changed. ColorManagement/ACES/tonemapping/exposure: untouched, as instructed —
+§1+§2 together gave strong, real evidence pointing at `metal`×`envMapIntensity`, so there was never a
+need to reach for those.
+
+### 4. Re-measured after the fix — same live-render methodology, same pipeline
+
+```
+                     BEFORE (envInt=0.6)          AFTER (envInt=0.18)
+                     out_srgb    hue    sat        out_srgb    hue    sat      Δsat
+BEAM_side_production [128,127,134] 248.6° 0.028  → [117,115,116] 330.0° 0.009   -68%
+RAIL_production       [127,126,134] 247.5° 0.032  → [118,117,119] 270.0° 0.008   -75%
+```
+Both flip fully out of the blue hue band (was 247-249°) — beam lands at 330° (near-neutral/slightly
+warm) and railing at 270° but at sat=0.008 that hue angle is effectively noise (below both classes'
+own `no_envmap`-with-envMap-fully-removed reference: beam 0.018, rail 0.009 — railing's AFTER number,
+0.008, is now even LOWER-saturation than "envMap completely off"). Brightness (`light`) barely moved
+(beam 0.512→0.455, rail 0.510→0.463) — these classes still read as reflective, just no longer
+blue-dominated. `SANITY_WHITE`/`*_albedo_only` (unaffected control probes, don't touch envMapIntensity)
+came back bit-identical before/after — confirms the fix is scoped exactly as intended, nothing else
+moved. IfcMember/IfcPlate share the identical mechanism and STD_MAT structure (now `envInt:0.18` too)
+but were not independently live-probed (no representative real-rgba row pulled for them in this
+harness) — same fix, same expected effect, reasonable to extend without a separate probe given §1's
+mechanism is now understood analytically, not just observed for two classes.
+
+**Left open, honestly, not silently dropped:** the 'up'/top-flange direct-sun-specular clipping found
+in §2 (a real overexposure phenomenon, white not blue, driven by `DirectionalLight` intensity/position
+— a different subsystem this task was explicitly told not to touch without strong evidence) is
+UNFIXED — noted for a future pass if a real bake shows a beam actually washing out white at a
+near-mirror sun-reflection viewing angle, which is a narrow, specific camera geometry, not the general
+complaint this session addressed.
+
+### Regression check — PR #1356's MEP-tint fix (§6/`§MEP_DISC_TINT`)
+
+Re-ran that fix's own witness pattern (`§MEP_TINT_WITNESS`/here `§MEP_TINT_REGRESSION`) live against
+HHS_Office_Federated on this branch (which carries BOTH PR #1356 and this session's `envInt` change):
+`total_elements=3390`, `by_code` breakdown and `distinct_colour_codes=7` — bit-identical to PR #1356's
+own logged result. Expected and confirmed, not just diff-read: this fix only touches
+`IfcBeam`/`IfcMember`/`IfcPlate`/`IfcRailing`'s STD_MAT entries and the `envMapIntensity` line;
+`DISC_TINT_CLASSES`/`_mepNameHint` (PR #1356's own code, `IfcFlowSegment`/`Fitting`/`Terminal`) is a
+completely separate branch, untouched.
+
+### Status
+Investigated, fixed, measured before/after, regression-checked. bim-ootb branch
+`fix/hospital-blue-color`, commit `07fe29d`, PR #1361 — MERGED (auto-merge, squash), same session as
+PR #1356.
+
+## Findings 2026-08-14b — SUPERSEDED, folded into §Findings 2026-08-14 (session 2) above
+This section originally held a standalone diagnosis (formula-table + Fresnel/PBR math, same
+mechanism, same `measure_hospital_blue.js` measurement) written independently and slightly ahead of
+the fuller investigation above. Both reached the identical root cause
+(`metal`/`roughness`/`envMapIntensity` never gated on real-vs-NULL `rgbaStr` the way color is, so
+grazing-angle Fresnel lets the genuinely-blue Preetham sky dominate `IfcBeam`/`IfcMember`/`IfcPlate`/
+`IfcRailing`'s hue regardless of real albedo). Rather than keep two near-duplicate essays side by
+side, this one is trimmed to a pointer — §Findings 2026-08-14 (session 2) above is the complete,
+canonical record: same diagnosis, PLUS the shipped `envInt` fix, before/after re-measurement, and the
+PR #1356 regression check this section didn't have yet when it was written.
