@@ -2797,3 +2797,36 @@ ever has to repair anything — i.e. treat "1376 boilers/valves scheduled before
 `rates/sequence_rules.json`, or a missing dependency edge in `§ZONE_CPM`), not a display-timing bug.
 Both directions are real engineering, neither is a quick patch — this is the honest stopping point for
 this session, not a small residual to wave off.
+
+### Second attempt, same session, also ruled out with numbers — read before trying a third
+
+User: "chase till zero" / "FIX AND TEST" — tried running `_midairRepair` (the generative path's own
+ALREADY-PROVEN fixpoint, `witness_midair_zero.js`: residual=0 every building every run) as a repair
+pass AFTER `_ogSupportSweep`, on the CURRENT per-task-windowed placement (#1368) — different from
+#1364's attempt, which ran before #1368 existed, on a global-rescale timeline where the same call
+produced catastrophic maxShiftDays. Hypothesis: per-task windows are small (days), so the same
+pushes should now stay local.
+
+**Result: floating dropped 1510→116 (92%), but `maxShiftDays` stayed at ~112-307 days** — same
+order of magnitude as #1364's reverted bolt-on, same violation of "if it is not in that single
+source of truth, it does not happen, yet." The hypothesis that per-task windows would bound the
+pushes was WRONG: `_midairRepair`'s full-population contact graph finds REAL cross-task structural
+dependencies (an element in an early task genuinely needs a support in a MUCH later task — that's
+a real scheduling relationship the per-task window can't locally resolve), so its pushes can still
+jump across many tasks' worth of days. **Not shipped — reverted, nothing committed.**
+
+### What this rules out, cleanly, for the next session
+
+- Patching `_ogSupportSweep`'s pool (wider or narrower) cannot both (a) reach zero floating and
+  (b) keep every element inside its own task's window — two DIFFERENT repair strategies were tried
+  (narrow-then-widened §PROMOTED_CARRIER_POOL, and swapping in `_midairRepair` entirely) and both
+  either made floating worse or broke the Gantt-window constraint. This is not a tuning problem.
+- The 1510-floating / 97.87%-task-fidelity state (§GANTT_TASK_WINDOW_FIDELITY + §XRAY_STAGING_REMOVED,
+  currently shipped, #1368+#1372) is the best of the three measured trade-off points on this axis and
+  should NOT be walked back without a genuinely different mechanism, not a pool/repair-function swap.
+- **The real fix is upstream, in `materializeZones`/`schedule_author.js`'s own CPM task graph**: give
+  `IfcBuildingElementProxy`-classed real equipment (boilers, VAV valves — confirmed via DB query, not
+  staffage) a task whose window ALREADY accounts for its real physical dependencies, so the display
+  layer never has to repair anything across task boundaries after the fact. That needs someone to
+  read `schedule_author.js`'s zone/task-graph construction with this specific class in mind — not
+  attempted this session, named precisely so it doesn't need re-deriving.

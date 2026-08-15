@@ -4,6 +4,21 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (session close) — 4 real bugs shipped, 1 real gap named+bounded, not solved
+bim-ootb PRs #1364 (`_cap` shadowing crash), #1365 (revert #1364's scale-mismatched bolt-on),
+#1368 (§GANTT_TASK_WINDOW_FIDELITY — elements now placed within their own Gantt task's authored
+window, not a global rescale), #1372 (§XRAY_STAGING_REMOVED — nothing shows before its support
+finishes, ghosted or solid). All verified via real fresh-browser probes, not screenshots.
+**⛔ STILL OPEN, bounded not solved**: full-population audit (not just lighting) shows 1510/63415
+(2.4%) still float, mostly real MEP equipment (`IfcBuildingElementProxy` — boilers/valves, IFC
+export misclassification, confirmed via DB query). Two repair-layer fixes tried and BOTH ruled out
+with numbers this session (widening `_ogSupportSweep`'s pool: 1510→2233, worse; swapping in
+`_midairRepair`: 1510→116 but reintroduces ~100-300 day Gantt-window desync) — this is not a
+tuning problem, the fix has to move upstream into `materializeZones`'s own CPM task graph. Full
+trail + exact next-session pointer: `prompts/4D_SCHEDULE_PERFECTION.md` §HOSPITAL_LIGHTING_STILL_FLOATING.
+**Named, not started**: user flagged `time_machine.js` and siblings are 5000+ lines and should be
+consolidated/split — no work done on this yet, scope not sized.
+
 ## Session 2026-08-15 (continued) — §HOSPITAL_LIGHTING_STILL_FLOATING FOUND+FIXED+SHIPPED, bim-ootb PR #1364
 Real root cause, not the ones chased below: `injectGantt()` had a `var _cap` name collision — a
 crew-demand loop's local number silently clobbered the captured-native-schedule descriptor object of
