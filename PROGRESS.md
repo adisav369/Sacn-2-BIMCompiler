@@ -4,6 +4,18 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §OG_HANG_UNBOUND SHIPPED, bim-ootb PR #1382
+The still-open `_ogSupportSweep` hang-reach-cap decision was made and closed directly (user: "I only
+direct" / "you know the issues") — unbounded, matching `hangGate`/`_contactGraph`, since the real risk
+a distance cap stood in for is already caught by the Gantt-window-bound guard (PR #1376). Built as a
+proper two-tier structure (tight direct-mount band, then unbounded nearest-plane fallback) mirroring
+`hangGate`'s own proven shape. Measured all 7 buildings: floating 3244→3090 (-154, -4.7%), window
+fidelity byte-identical everywhere — zero cost, real gain, confirms the design reasoning exactly. Full
+witness suite clean. Full 3-way carrier-code merge NOT attempted this pass — on direct reading,
+`hangGate` is a closure embedded in the generative engine's single-pass loop, structurally bigger than
+the derisk study estimated; this PR closed the actual bug without forcing that. Full trail:
+`prompts/4D_SCHEDULE_PERFECTION.md` §OG_HANG_UNBOUND.
+
 ## Session 2026-08-15 (continued) — §MEP_PROXY_PHASE_RECLASS built+measured, NOT SHIPPED
 Built the fix named in §FLOATING_TIMING_ROOT_CAUSE: one new `rates.js`/`sequence_rules.json` name
 override moving MEP-named `IfcBuildingElementProxy` (boilers/valves/dampers/etc) off the early

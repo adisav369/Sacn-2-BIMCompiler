@@ -3702,3 +3702,60 @@ today's earlier §MIDAIR_REPAIR_CONTACTGRAPH_DEDUP (bim-ootb PR #1378) — `_mid
 same reason as above) — whoever picks this up next should land this one-line probe fix regardless of
 what happens with the reclassification itself, it's a real tooling gap, not tied to today's specific
 finding.
+
+## §OG_HANG_UNBOUND — SHIPPED (2026-08-15, bim-ootb PR #1382), the cap-reach decision made and closed
+
+User: "U cannot ask me those questions as i only direct" / "u know the issues" — the still-open
+`_ogSupportSweep` hang-reach-cap question from §CARRIER_DEDUP_DERISK_STUDY was decided directly, no
+question asked back. **Decision: unbounded**, matching `hangGate`/`_contactGraph`. Reasoning: the 9.5m
+cap (§OG_HANG_BAND) was only ever a proxy safety net against finding a bogus, too-far-in-time carrier.
+§OG_HANG_WINDOW_BOUND (PR #1376, already shipped) independently guards that exact risk — it refuses
+any push that would exit the target's own Gantt task window, by TIME not distance. With that guard
+live, the distance cap only hides real carriers.
+
+**Built as a proper two-tier structure, not a flat widen** — on reading `hangGate` in full
+(`schedule_gate.js:460-510`), it is itself two-tier: a tight ±0.5m direct-mount band, then (only if
+that finds nothing) an unbounded nearest-plane fallback. `_ogSupportSweep`'s hang branch had collapsed
+both into one flat band since §OG_HANG_BAND. Restored the same shape: tier 1 = ±GAP band (the ORIGINAL
+pre-§OG_HANG_BAND behavior), tier 2 = unbounded nearest-plane search (find the closest real carrier
+above, take the latest finish among carriers co-planar with it) — same two-step shape as `hangGate`'s
+own fallback, minus its BIG-only restriction (that exists there to bound cost on the full 48,904-
+element generative pass; this repair only ever runs on the much smaller floating population).
+
+**Measured, all 7 buildings, real baseline (unmodified main) vs this change:**
+```
+              floating before -> after   Δ
+Terminal      545 -> 436                 -109
+Hospital      643 -> 643                  0
+Duplex         38 ->  19                 -19
+HHS           143 -> 142                 -1
+Clinic        413 -> 413                  0
+LTU_AHouse   1325 -> 1302                -23
+JKR           137 -> 135                 -2
+TOTAL        3244 -> 3090                -154 (-4.7%)
+```
+**Window fidelity byte-identical on every building** — Terminal 99.10%, Hospital 99.97%, Duplex 97.23%,
+HHS 99.94%, Clinic 99.98%, LTU 99.94%, JKR 99.76%, unchanged to the decimal. Confirms the design
+reasoning exactly: the window-bound guard absorbs the risk, so a wider search can only find MORE real
+repairs, never a new violation — the opposite failure shape from every rejected lever earlier today.
+
+Two buildings (Hospital, Clinic) show zero change — the unbounded tier hasn't found anything new for
+them specifically; not investigated further this pass, a real but small residual question for later.
+
+Verified: `witness_midair_zero.js` 38/38, `witness_og_guard_bearing_bound.js` 9/9,
+`witness_gantt_og_grid_perf.js` 3/3 (including a brute-force O(n²) cross-check on Duplex matching the
+new two-tier logic exactly, 0 mismatches; Terminal perf 8.9s, faster than the 10.3s pre-change
+baseline, well under the 15s ceiling), `witness_class_fallback_blackbox.js` 8/8, `gate_4d.sh`
+pass=7/fail=0/missing=1 (pre-existing, unrelated). `_GANTT_CACHE_VERSION` 24→25, `sw.js`
+`CACHE_VERSION` v1035→v1036.
+
+**NOT part of this PR**: the full 3-way shared-scan-primitive merge (`hangGate`/`_contactGraph`/
+`_ogSupportSweep` sharing one implementation — the other half of §CARRIER_DEDUP_DERISK_STUDY's
+candidate #3). Reading `hangGate` directly revealed it's harder than the study characterized: it's a
+closure tightly embedded in `computeSchedule`'s single-pass placement loop (shared mutable grid/
+iteration state, returns a scalar latest-finish-time), while `_contactGraph`/`_ogSupportSweep` are
+standalone post-hoc full-population scans returning per-element contact lists — a bigger structural
+mismatch than "one shared primitive parameterized per site." This PR closes the actual behavioral gap
+(the unbounded-vs-capped divergence, the real bug) without forcing that harder, riskier file-spanning
+merge into the same change. Worktree `/tmp/wt-carrier-dedup-refactor`, branch
+`refactor/carrier-dedup-unbounded-hang`, left in place.
