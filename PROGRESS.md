@@ -4,6 +4,25 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §FLOATING_TIMING_ROOT_CAUSE: biggest lever found, not shipped
+User: "MEP in the gantt chart schedule is quite late, thus it does not arise when ARCH/STR is way
+advancing" — checked directly, user half right. Real MEP genuinely starts late (day 164-287) as
+expected. But the specific floating equipment (boilers/valves/etc) isn't on that track — it's tagged
+as a generic catch-all class and defaults to the SAME early slot as walls/doors (day 116). 56% of that
+catch-all population on Hospital (3,197/5,729) is real MEP wearing the wrong early time slot; **85%
+(712/834) of Hospital's still-floating equipment is exactly this mistagged population.** Fix named, not
+shipped: one more name-based reclassify entry in `viewer/rates.js` (same proven mechanism as 3 already-
+shipped entries there) — bigger than any repair-layer patch shipped today, fixes the scheduling at the
+source. Not yet measured on other 6 buildings, not implemented (Spec-First — read-only this pass). Full
+trail: `prompts/4D_SCHEDULE_PERFECTION.md` §FLOATING_TIMING_ROOT_CAUSE.
+
+## Session 2026-08-15 (continued) — §MIDAIR_REPAIR_CONTACTGRAPH_DEDUP SHIPPED, bim-ootb PR #1378
+Zero-risk step (a) from §CARRIER_DEDUP_DERISK_STUDY: `_midairRepair` had a byte-identical inlined
+duplicate of `_contactGraph`'s scan logic — replaced with a direct call. Verified byte-identical across
+all 7 buildings (`witness_midair_zero.js` 38/38, every field unchanged except wall-clock timing).
+`witness_og_guard_bearing_bound.js` 9/9, `witness_gantt_og_grid_perf.js` 3/3, `gate_4d.sh` pass=7/
+fail=0. No cache-version bump (internal-only change).
+
 ## Session 2026-08-15 (continued) — §CARRIER_DEDUP_DERISK_STUDY: candidate #3 confirmed real work
 User: "#3, can we study further to derisk it?" Found a 4th copy (`_midairRepair` has a byte-identical
 inline duplicate of `_contactGraph` — 100% accidental, zero-risk, ship alone first). The real 3-way

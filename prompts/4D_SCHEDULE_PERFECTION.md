@@ -3548,3 +3548,71 @@ genuinely zero-risk, ship first, alone; (b) the parameterized `hangGate`/`_ogSup
 `_contactGraph` shared-primitive refactor — real work, needs the accidental-vs-deliberate table above
 settled explicitly (in particular: should `_ogSupportSweep`'s hang reach be capped at all, given
 `hangGate`'s own fallback isn't?) before code, not decided inside the refactor.
+
+## §FLOATING_TIMING_ROOT_CAUSE — is it a late carrier or an early-scheduled element? (2026-08-15)
+
+User: **"Hanging from ceiling sounds good, but MEP in the gantt chart schedule is quite late, thus it
+does not arise when the ARCH/STR is way advancing."** Their point: if MEP genuinely runs late, a
+hanging fixture's real support should almost always already be built by the time the fixture is
+scheduled — so floating shouldn't happen much. Measured this directly, read-only, on Hospital's RAW
+generative schedule (`computeSchedule`'s own output, before any of today's repair/rescale/clamp
+patches touch it — the cleanest place to see the generator's own timing decisions).
+
+**The user's premise is TRUE for real MEP.** Mean scheduled start day by phase: Substructure 5,
+Superstructure 31, Architecture 116, **MEP Rough-in 164, MEP Final 287**, Finishes 322. Real,
+correctly-classified MEP (ducts, pipes, valves, cable trays — anything with its own exact IFC type)
+genuinely starts far later than structure and architecture, exactly as the user expects.
+
+**But the equipment causing the floating isn't running on the MEP track at all — it's stuck on the
+Architecture track.** All 5,729 `IfcBuildingElementProxy` elements on Hospital (boilers, VAV valves,
+solar panels, sinks — real equipment the IFC export gave no exact type, confirmed by DB query earlier
+this session) get `phase:'Architecture', sequence:5` from `viewer/rates.js`'s class-default table —
+the SAME early time slot as walls and doors (mean day 116), not MEP's day 164-287. Checked which of
+these proxies are genuinely MEP by name (the same name pattern `probe_proxy_carrier_classes.js`
+already used: boiler/valve/chiller/pump/vav/duct/pipe/etc.) — **3,197 of 5,729 (56%) are real MEP
+equipment wearing an Architecture time slot**, not a data artifact (the rest are mostly elevator cab/
+door parts, which genuinely belong with Architecture).
+
+**Of the 834 proxies still floating on Hospital's raw schedule, 712 (85%) are exactly this MEP-named
+population.** This is a real, previously untested angle — this session's earlier §OG_HANG_BAND probe
+(`probe_proxy_carrier_classes.js`) checked WHICH class of carrier a proxy geometrically touches and
+found most touch a real structural carrier (disproving "the carrier relationship is MEP-only"); it
+never checked WHEN that element itself gets scheduled relative to real MEP. Different question,
+answered here for the first time: yes, misclassification is real and large, but not in the way first
+guessed back then.
+
+**Why it still floats even though its carrier is usually NOT on a later track.** Checked the real
+physical carrier's own phase for all 834: only 13 (1.6%) sit in a genuinely later phase (MEP
+Rough-in) — the dominant carrier phase is Superstructure (601, 72%, nominally EARLIER) and
+Architecture (220, 26%, the SAME phase as the proxy). So this is not simply "the element jumped ahead
+of a later trade." **Architecture's own day range is huge — day 29 to day 234 (p10-p90)** — because
+each zone/storey gets its own local schedule, not one global block. A proxy can land on an early crew
+slot inside that spread while its own specific real support, even nominally the same or an earlier
+phase, is still sitting on a late crew slot inside ITS OWN spread. Real gaps confirm this isn't noise:
+median 2.9 days, 90th percentile 8.0 days, worst case 244 days (38.6% are same-day ties under 1 day,
+not counted as meaningful). **This is the same gap §CPM_GENERATOR_UPSTREAM_SPEC already named**: phase/
+seq buckets approximate real dependency but there is no actual element-to-element dependency edge, so
+two elements sharing a phase label are not guaranteed to be time-ordered correctly against each other.
+
+**A real, additive, small fix this reveals — not named in any section above:** add one more
+`SEQUENCE_NAME_OVERRIDES` entry in `viewer/rates.js`, same mechanism and same measured-not-guessed
+discipline as the three already-shipped entries in that file (`foundation_pile_misclassified_slab`,
+`slab_on_grade_substructure`, `furniture_generic_bucket`) — reclassify MEP-named
+`IfcBuildingElementProxy` elements to `phase:'MEP Rough-in', sequence:7`, matching where their
+correctly-typed siblings (`IfcValve`, `IfcEnergyConversionDevice`, `IfcFlowStorageDevice`, etc.)
+already land in the SAME file. This directly targets 712/834 (85%) of Hospital's floating proxies —
+the largest single lever found this session, bigger than any repair-layer patch shipped today, and it
+fixes the SCHEDULING itself rather than repairing its symptom after the fact.
+
+**What it would NOT fully close**: the remaining 122 non-MEP-named floating proxies (elevator parts,
+etc.), and the deeper mechanism (finding #2 above — no real element-level dependency edge within a
+phase) stays open regardless; §CPM_GENERATOR_UPSTREAM_SPEC's candidate #2 is still the complete fix
+for that. This is a real, standalone, worthwhile lever on its own — not measured yet against the OTHER 6
+buildings, and not yet checked for side effects (moving 3,197 elements to a later, busier MEP Rough-in
+crew slot changes crew-demand/duration for that phase — needs the same before/after discipline as
+every other change today: all 7 buildings, full witness suite, `_GANTT_CACHE_VERSION` bump, before
+shipping). Not implemented this pass — read-only measurement only, per this project's Spec-First rule.
+
+Scratch probe used (not committed, not part of the shipped `scripts/probe_*.js` set):
+`/tmp/claude-1000/-home-red1-bim-compiler/dbe950eb-c3c3-4584-8435-fa75736178ac/scratchpad/
+probe_mep_timing_root_cause.js` — reusable shape for whoever measures the other 6 buildings next.
