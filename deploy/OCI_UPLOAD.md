@@ -21,6 +21,14 @@
    - `.wasm` → `--content-type "application/wasm"`
    - `.css` → `--content-type "text/css"`
    **Omitting this breaks the viewer.** The browser's `X-Content-Type-Options: nosniff` header blocks scripts served as `application/octet-stream`.
+8. **Building DB/bin objects in `bim-ootb` are GZIP-COMPRESSED with `--content-encoding gzip`.**
+   (Discovered 2026-08-16: every existing `buildings/*.db`/`*.bin` object serves
+   `content-encoding: gzip`; browsers decompress transparently. A raw upload works but ~4x the
+   download — e.g. Hospital_geo.db 239MB raw vs 60MB gzipped.) Upload pattern:
+   `gzip -9 -k <file>` then `oci os object put ... --file <file>.gz --name buildings/<file>
+   --content-type application/octet-stream --content-encoding gzip`. Verify with
+   `curl -s --compressed <url> | md5sum` == md5 of the raw local file. A local backup of a
+   downloaded object is the gzip bytes — `zcat` it before sqlite3, or "file is not a database".
 
 ## Strategy
 

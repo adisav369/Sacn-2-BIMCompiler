@@ -54,6 +54,41 @@ visibly brighter triplanar surfaces (metal especially); AO/exposure tunings were
 against the crushed baseline and may want a revisit — user's call; (b) §SKY_SYNC_REGRESSION
 (sky-dome sun-disc vs shadow direction mismatch, revert #1381) still open, separate;
 (c) §HOSPITAL_META_DB_STALE regenerated split DBs still awaiting explicit user go to upload.
+**(b) and (c) both CLOSED later the same day — see §SKY_SUNPOS_INIT and §HOSPITAL_DATA_SHIPPED
+below.**
+
+### ✅ §SKY_SUNPOS_INIT — 2026-08-16 (same session, cont.): black-sky-on-Alt+S SOLVED — PR #1384 MERGED + LIVE
+User re-reported "sky is black again" after #1383 went live. Root cause found by code read +
+live repro, NOT the #1380 uniform-copy mistake: `scene.js updateSky()` gated its `sunPosition`
+uniform copy on `_sky.visible`, the init-time `updateSky(45,180)` runs while the sky is hidden
+(so the Sky shader kept its stock `(0,0,0)` sun vector), and since #1379 the non-dusk Alt+S
+shows the sky WITHOUT calling `updateSky` → first Alt+S of a fresh session = Preetham with a
+zero sun = fully black sky. **Live-reproduced numerically** (sky band 192/192 black px, uniform
+read back `[0,0,0]`) and **the #1381 equivalence question is answered**:
+`normalize(A.sun.position)` equals the `setFromSphericalCoords` direction to 1e-16 (sun.position
+is a pure direction ×5000, no offset/parent transform). Fix: uniform copy now unconditional
+(scene.js?v=56, sw v1038) — a uniform write on a hidden object is free, so `visible = true` is
+safe from any caller. Witness on fixed code: sky band 0/192 black, meanRGB [178,211,236].
+§SKY_SYNC_REGRESSION's "mismatch still open" thread is thereby CLOSED for the fresh-load case —
+the "stale sun-disc vs shadow" report was this same uninitialized/stale uniform.
+
+### ✅ §HOSPITAL_DATA_SHIPPED — 2026-08-16 (same session): stale split DEPLOYED to OCI + self-heal patch for cached users — DONE, VERIFIED
+User asked "so the meta dbs can be uploaded whole to OCI? LTU, Terminal too?" — answered + done:
+- **Hospital**: regenerated split (meta 23.3MB/geo 239MB/positions 1.5MB from `/tmp/split_test`)
+  uploaded to the `bim-ootb` bucket `buildings/` prefix. ⚠ **Bucket convention discovered: DB
+  objects are gzip-compressed with `content-encoding: gzip`** (old objects all were; a first raw
+  upload was redone gzipped). All 3 fetch-back verified: decompressed md5 == local raw md5.
+  Staleness re-confirmed on the actual served bytes first (old: IfcBeam 0/1970,
+  IfcPipeSegment 0/14452 etc.; new: 100%).
+- **LTU/Terminal need nothing**: LTU's split on the bucket is fresh (re-uploaded 2026-08-10);
+  Terminal audited fine 2026-08-15 (split newer than source).
+- **Cached users** (cachedFetch serves IDB blobs with NO revalidation — an OCI re-upload alone
+  never reaches them): colour backfill appended to `buildings/patches/Hospital_meta.db.sql`
+  (+ `viewer/buildings/patches/` mirror), shipped through `scripts/oci_patch_gate.js`
+  (PASS → UPLOAD_VERIFIED, verifier committed, manifest committed) — PR #1385 MERGED. One
+  guarded UPDATE: every previously-uncoloured element in 23 classes gets the single value the
+  new extraction assigned them all (`0.920,0.900,0.850,1.000` — one DISTINCT value, checked);
+  empty-rows-only guard = no-op on the new DB, never touches the 233 aggregate ghosts.
 
 **§RED_GREY_MYSTERY — 2026-08-15/16 (7th session, updated, session closed — handed to a fresh
 Fable session next.) ⚠ Historical record — its "GENUINELY STILL UNSOLVED" item and
