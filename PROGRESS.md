@@ -19,6 +19,18 @@ a bug — ruled OUT as a fix target, not attempted. Likely same root as the alre
 `§TIER2_AFTER_TIER1` dead-air item, now much more precisely characterized. Full trail:
 `prompts/4D_SCHEDULE_PERFECTION.md` §GANTT_WINDOW_FIDELITY_AND_SPREAD.
 
+## Session 2026-08-15 (continued) — §GANTT_GAP_CLAMP_SPREAD SHIPPED, bim-ootb PR #1377, MERGED
+User: "It is a simple spread it evenly" → "divide by it or shrink to it" → "trace to source, refactor
+if need be." 3 levers tried+rejected with numbers first (pure rank spread, multiplicative restretch —
+both broke real dependency margins ~same as the two earlier repair-layer dead ends). Shipped: clamp
+only gaps >500x a task's OWN median real gap, redistribute removed slack as an additive (never
+shrinking) pad — reduces to the identity when nothing needs clamping. Measured all 7: Hospital's
+reported task (120-day dead gap) now near-uniform; 4/7 buildings byte-identical window fidelity, JKR
+improved both axes, LTU traded a small fidelity cost (99.98%→99.94%) for a large spread gain, Terminal
+unchanged fidelity but worse spread shape (named, not chased further — needs a local not task-wide
+outlier detector). `_GANTT_CACHE_VERSION` 23→24. Full trail: `prompts/4D_SCHEDULE_PERFECTION.md`
+§GANTT_GAP_CLAMP_SPREAD.
+
 ## Session 2026-08-15 (session close) — 4 real bugs shipped, 1 real gap named+bounded, not solved
 bim-ootb PRs #1364 (`_cap` shadowing crash), #1365 (revert #1364's scale-mismatched bolt-on),
 #1368 (§GANTT_TASK_WINDOW_FIDELITY — elements now placed within their own Gantt task's authored

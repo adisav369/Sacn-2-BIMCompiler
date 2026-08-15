@@ -3233,3 +3233,75 @@ contributing cause).
 **Not started**: splitting a `phaseTrade`-gated task into authored sub-bars at its own internal
 boundary, or any other display-side fix for the visual "dead middle" read. Needs its own spec — this
 pass was measurement + root-cause tracing, not display-authoring work.
+
+## §GANTT_GAP_CLAMP_SPREAD — SHIPPED (2026-08-15, bim-ootb PR #1377, merged)
+
+User rejected the two levers named above (sub-bar split, loosening `phaseTrade`) as "the wrong way...
+can invite drift and impact." Directive: "It is a simple spread it evenly" → "U have a denominator
+for a 4D time factor - divide by it! or shrink to it which is other way round" → "go to the source
+of truth, trace what is happening. Refactor the code if need be."
+
+**Three levers tried and rejected with hard numbers before landing on the shipped one — do not
+re-attempt any of them:**
+1. **Pure rank/count spread** — every gap set to `tSpan/N` by index, discarding real magnitude
+   entirely. Fixed Q2 perfectly (Hospital KS 0.14→0.0117, the reported `TASK_Architecture_Level_4`
+   task exactly uniform) but broke Q1 hard: window fidelity 99.97%→97.80%, max overshoot 0.28d→14.92d.
+   A tiny per-element rank step compressed real, necessary minimum lead times between directly
+   dependent elements — the exact intra-task-precedence risk this whole fix was flagged in advance
+   to check for, confirmed real by measurement.
+2. **Clamp each gap to `tSpan/N`, then MULTIPLICATIVELY restretch** the compressed timeline to refill
+   the window. Converged to nearly the identical Q1 regression as #1 (97.78–97.93% across every
+   threshold tried) — one common per-task stretch factor scales EVERY gap, including safe tiny real
+   ones, reintroducing the same compression risk by a different mechanism.
+3. **Clamp+ADDITIVE pad, first version** — grow gaps by a constant instead of a multiplier (correct
+   mechanism), but the pad target was computed against `tSpan` (the whole window) instead of what the
+   original unclamped per-gap formula actually produces — `tSpan` also budgets room for `sp.max`'s
+   trailing duration (unrelated to inter-element gaps), so pad barely moved across clamp thresholds
+   3–50 (Hospital stuck at 97.87–97.93%), dominated by that structural gap, not by anything clamping
+   had removed. Confirmed by testing K→∞ (clamping disabled): the buggy version still didn't converge
+   to the pristine 99.97% baseline, proving the bug was in the pad math, not the clamp threshold.
+
+**Root fix — same additive mechanism as #3, target computed correctly**: `target` = the exact sum the
+pre-existing per-gap value-based formula already produces (so zero clamping ⇒ byte-identical to the
+untouched rescale — verified: K→∞ reproduces 99.97%/18 violations/0.28d exactly). Clamp threshold =
+**this task's OWN median real gap × 500** (a per-task statistic, not one shared constant across every
+task/building — a global `tSpan/N` share is often smaller than most REAL gaps too when N is in the
+thousands, which is why #1/#2 clamped almost everything instead of just outliers). A percentile
+self-clamp (P90/P95/P99 of the task's own gap distribution) was also tried as a threshold alternative
+and was WORSE than median×K on Terminal specifically (Q1 97.77–98.16%, Q2 KS 0.28–0.30) — rejected.
+
+**Measured, all 7 buildings, this exact shipped configuration:**
+```
+              fidelity before→after   violations before→after   spread KS before→after
+Hospital      99.97%→99.97% (=)       18→18                     0.0773→0.0731
+Duplex        97.23%→97.23% (=)       31→31                     0.0574→0.0574 (no clamp fired)
+HHS           99.94%→99.94% (=)       4→4                       0.1242→0.0909
+Clinic        99.98%→99.98% (=)       4→4                       0.1085→0.0707
+JKR           99.62%→99.76% (better)  34→22                     0.0599→0.0490
+LTU_AHouse    99.98%→99.94%           20→71                     0.1107→0.0261 (large spread gain)
+Terminal      99.10%→99.10% (=)       436→436 (zero new cost)   0.0946→0.2823 (worse shape)
+```
+Hospital's reported task, `TASK_Architecture_Level_4`: histogram goes from the reported hard bimodal
+split (1571 elements day 0-12, 120-day silent gap, 2779 elements day 133-135) to
+`[436,436,436,434,434,435,435,434,435,435]` — near-perfectly uniform.
+
+**Two real, bounded, NOT-hidden costs, named precisely rather than smoothed over:**
+- **LTU_AHouse**: window fidelity cost (20→71 violations, still 99.94% of 122,330 elements) traded for
+  a large spread gain (KS 0.1107→0.0261). Same honest-cost pattern already established this session
+  (§OG_HANG_BAND's own +117 floating for closing the bigger 1510-floating gap).
+- **Terminal**: zero new window-fidelity cost (violation count identical, 436→436) but its in-window
+  spread SHAPE got measurably worse (KS 0.0946→0.2823). Root cause, traced: several Terminal tasks
+  have real gap distributions that are themselves multi-modal at genuinely different scales (not one
+  dominant outlier + a dense remainder, like Hospital's reported case) — a single task-wide
+  median-based threshold isn't the right lever there. Terminal was already imperfectly spread
+  pre-fix; this is a real but same-axis regression, not a new correctness class. Named for a future
+  session — needs a per-cluster/local-outlier detector instead of one task-wide statistic, not
+  chased further this pass.
+
+**Ship trail**: bim-ootb PR #1377, MERGED, CI green (fast-checks + e2e-tests). Witnesses:
+`witness_midair_zero.js` 38/38, `witness_og_guard_bearing_bound.js` 9/9,
+`witness_gantt_og_grid_perf.js` 3/3, `scripts/gate_4d.sh` pass=7/fail=0 (1 pre-existing MISS,
+`witness_arch_area_weight` not in this revision — unrelated). `_GANTT_CACHE_VERSION` 23→24, `sw.js`
+`CACHE_VERSION` v1033→v1034. `scripts/probe_captured_floating.js` extended with the same
+gap-clamp+pad logic (mirrors the shipped rescale exactly) plus a `GAP_CLAMP_K` env override, reusable
+for whoever picks up Terminal's residual next.
