@@ -3394,6 +3394,12 @@ LTU excludes exactly the 13 junk rows on both paths — live §-log
 rows if a zero-ARC building ever took it. `_densPoints()` (aim-subject search) is still
 unfiltered — junk can still pitch GAZE down even though the path no longer sinks; separate,
 smaller, open.** Original diagnosis below, kept verbatim.
+**⛔ OPEN follow-up (user 2026-08-16: "need that first one to be used in the alt-c movie
+baking"):** code-confirmed the fence already governs Alt+C — cinema_maxq.js/cinema_path_editor.js
+build NO bbox of their own, the movie plan builder (effects.js ~5577) calls the fenced helper —
+but the LIVE witness on an actual LTU Alt+C plan build is still owed (assert §CINEMA_BBOX_FENCE
+fires at PLAN-build time + plan pivot/settle Y ≈ +3.6m). If a real bake still dives, suspect a
+SAVED/authored path recorded before the fix, and check the user's sw is v1042+ first.
 User report: "LTU seems to get some strewn objects far below surface that affects movie maker path
 going sub surface." Both halves verified with numbers, no code touched.
 

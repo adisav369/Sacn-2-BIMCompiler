@@ -11,6 +11,39 @@
 
 ## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
 
+### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout — start with #1, it's a live visual regression)
+1. **§GROUND_RECT_ARTIFACT — user: "alt-s seems to have a large rect cloud cover over it." A
+   §GROUND_DETAIL (#1388) regression, NOT yet attributed between its two candidate mechanisms,
+   both mine:** (a) the new paved normal map tiled at the diffuse's 780m/tile — concrete_floor_01
+   has rectangular slab joints, so its relief SHADING paints giant soft rectangles on the ground
+   (the diffuse always had the joints as colour; the nor map amplifies them through lighting —
+   best fit for a soft "cloud" read); (b) the 90m `floor()`-cell blotch (hard-edged tint squares,
+   `viewer/tools.js` `_installGroundShader`). **Attribution rig is trivial to rebuild** (the 8410
+   server was torn down at closeout): serve `~/bim-ootb/viewer` + a buildings dir with the
+   Hospital split, headless Alt+S, then A/B raw renders — `material.normalMap=null` toggle
+   isolates (a); the empty-`onBeforeCompile` trick (it REPLACES the ground patch — the same trap
+   documented in §TRINORM_LINEAR, used deliberately here) strips detail+blotch to isolate (b).
+   **Fix shape, pre-agreed:** give nor/rough their own fine repeat (~3m/tile ≈ diffuse repeat
+   ×256, matching the detail multiply — r184 supports per-map texture transforms) and replace the
+   90m floor-cells with smooth value noise at softer amplitude. Ship as tools.js?v=42, sw v1043.
+   Witness: long ground transect — large-scale (≥90m) luminance steps gone, fine detail variance
+   retained (reuse `witness_ground_detail*.js` pattern, scratchpad `aa515841-…`).
+2. **§LTU_SUBSURFACE_BBOX in Alt+C — user: "need that first one to be used in the alt-c movie
+   baking." Code-confirmed already wired** (grep proved cinema_maxq.js/cinema_path_editor.js
+   build NO bbox of their own; the movie plan builder effects.js:~5577 calls the fenced
+   `_buildingBBoxArc()`), **but the live witness on an actual LTU Alt+C plan build is still
+   owed**: trigger the movie plan headless on LTU, assert `§CINEMA_BBOX_FENCE excluded=13/…`
+   fires during PLAN build and the plan's pivot/settle Y ≈ +3.6m not −24. If it still dives, the
+   suspect is a SAVED/authored path predating the fix (waypoints stored with sunken Y), not the
+   bbox. Remind user their browser needs sw v1042+ (reload twice) before judging.
+3. **Alt+S memory hogging — user ask, not started.** Known signal: `§NIGHT_MEM_WITNESS
+   heapMB=1611.6` fired during Hospital Alt+S staging in this session's own probe logs. Measure
+   heap + `renderer.info.memory` (textures/geometries) + programs BEFORE staging, AFTER converge,
+   AFTER real exit (`stopStillRefine(true,false)` — a camera move does NOT un-stage, witnessed);
+   diff the three. Prior art: `prompts/VIEWER_MEMORY_LEAK.md` (§MEMLEAK_PMREM_DISPOSE, same bug
+   class); suspects: per-staging rebuilds of props (`§PHOTO_PROPS windowLights=4380`,
+   `§PHOTO_GLOW_SPRITE`), HDRI + N8AO + TAA accumulation buffers, 200 staged PLs.
+
 ### ✅ §TRINORM_LINEAR — 2026-08-16 (8th session): BOTH open Alt+S bugs SOLVED, one mechanism — PR #1383 MERGED + LIVE (fetched back from production: streaming.js carries 4.8763, sw v1037)
 **§ONGOING_TINT (bluish/darkish piping) and §RED_GREY_MYSTERY (red valve → literal black) were the
 same bug, and it was NOT degenerate normals, NOT a stale shader program, NOT data:** every

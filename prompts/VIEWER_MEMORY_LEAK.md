@@ -391,3 +391,15 @@ confirmations, one on the actual target building at the actual incident's light 
 question is narrower than at session start — not "is there a leak in AO/night/triplanar" (no), but
 "what causes the eventual crash/memory-pressure, given the tracked GPU/render counters stay flat through
 it" — and the IDB-frame-blob hypothesis is the most concrete, measurable next lead, not yet confirmed.
+
+## ⛔ §ALTS_MEM_HOG — user ask 2026-08-16 ("check alt-s mem hogging"), NOT STARTED
+Known signal from the same day's probe logs: `§NIGHT_MEM_WITNESS heapMB=1611.6` during Hospital
+Alt+S staging. Task: measure heap + `renderer.info.memory` (textures/geometries) + program count
+at three checkpoints — BEFORE staging, AFTER converge, AFTER real exit (`stopStillRefine(true,
+false)`; a camera move does NOT un-stage — §STILL_REFINE_RESTART only restarts accumulation,
+witnessed 2026-08-16) — and diff. Suspects: per-staging rebuilds (`§PHOTO_PROPS
+windowLights=4380`, `§PHOTO_GLOW_SPRITE`, sparkles), HDRI env map, N8AO + TAA accumulation
+buffers, the 200 staged night PLs (now at 0.5× intensity — §STAGED_PL_CUT — but intensity ≠
+memory). Same bug class as §MEMLEAK_PMREM_DISPOSE above: three.js never GC's GPU resources on
+its own — look for allocate-per-staging with no dispose-per-exit. Full task context:
+PHOTOREAL_STILL_RENDER.md ▶RESUME §OPEN TASKS item 3.
