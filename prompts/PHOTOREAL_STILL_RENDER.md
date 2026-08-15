@@ -72,6 +72,8 @@ safe from any caller. Witness on fixed code: sky band 0/192 black, meanRGB [178,
 §SKY_SYNC_REGRESSION's "mismatch still open" thread is thereby CLOSED for the fresh-load case —
 the "stale sun-disc vs shadow" report was this same uninitialized/stale uniform.
 
+### ✅ Same-day follow-ons (2026-08-16, all user-GO'd, all MERGED): #1386 §LTU_SUBSURFACE_BBOX (movie path no longer dives underground — full record in CINEMA_PATH_EDITOR.md), #1388 §GROUND_DETAIL (ground nor/rough maps + linear-mean-normalized detail multiply + anti-tiling blotch — user ask "ground surface material… not that realistic"), #1389 §STAGED_PL_CUT (night PLs halved during staging only, restores slab shadow play in bakes — full record in NIGHT_AND_FIXTURE_LIGHTING.md)
+
 ### ✅ §HOSPITAL_DATA_SHIPPED — 2026-08-16 (same session): stale split DEPLOYED to OCI + self-heal patch for cached users — DONE, VERIFIED
 User asked "so the meta dbs can be uploaded whole to OCI? LTU, Terminal too?" — answered + done:
 - **Hospital**: regenerated split (meta 23.3MB/geo 239MB/positions 1.5MB from `/tmp/split_test`)

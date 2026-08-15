@@ -910,3 +910,20 @@ So a fitting "pops" ~7.3× more in Night Mode than in a bake, at the same `NIGHT
 If the user wants the luminaires to READ in the film, the levers are a still-specific intensity or a
 lower staged fill — both are user calls with a history of "too bright" (intensity was cut
 8.0→6.5→4.5→2.5 across 2026-07/08), so nothing was changed here on our own authority.
+
+## §STAGED_PL_CUT — the "still-specific intensity" user call ARRIVED and SHIPPED (2026-08-16, bim-ootb PR #1389)
+The open question this file's §BAKE arithmetic ended on ("the levers are a still-specific intensity
+or a lower staged fill — both are user calls") was decided by the user 2026-08-16: staged lighting
+"too bright … reduce PLs or intensity. As it also wipe out the ground slab shadow play during
+alt-c movie baking." Shipped as `A._nightPLScale` (tools.js) — 0.5× on every night PL's intensity,
+set by `_applyPhotoStaging` BEFORE `toggleNightMode` builds the ~200 fixture lights, reset
+unconditionally at un-staging. **Nav Night Mode byte-identical** (the 8.0→…→2.0 tuning history
+stays untouched). Two placement traps found by the witness, recorded so nobody re-trips them:
+(1) the §NIGHT_STILL_LIGHTS boost branch does NOT fire on the Hospital staging path (gate needs
+`A._nightLights` populated before it runs) — hooks placed only there silently do nothing;
+(2) a camera move never un-stages (it only restarts accumulation, §STILL_REFINE_RESTART) — teardown
+hooks must sit in `_removePhotoStaging`/`stopStillRefine`, and witnesses must exit via
+`stopStillRefine(true,false)`, not by moving the camera. Witness numbers: staged scale=0.5, night-PL
+intensity sum exactly halved (400→200, photo-prop lights untouched), exit restores plScale=1.0,
+nav budget 30 intact. Related same-day context: §TRINORM_LINEAR (PHOTOREAL_STILL_RENDER.md) made
+all triplanar surfaces brighter, which is likely why "too bright" resurfaced now.

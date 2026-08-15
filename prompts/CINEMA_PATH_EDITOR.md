@@ -3384,7 +3384,16 @@ first ~10s of film / before some small fraction of the topout window, fading bac
 linear after — bounding the onset burst without reopening "two mechanisms compete for the whole film"
 that §CPE_BUILDUP_EVEN_TEMPO was written to end. Not started — proposal only, pending confirmation.
 
-## §LTU_SUBSURFACE_BBOX — movie path dives underground on LTU_AHouse (2026-08-16) — ROOT CAUSE MAPPED file:line, FIX NAMED, NOT BUILT (awaiting go — protected lane)
+## §LTU_SUBSURFACE_BBOX — movie path dives underground on LTU_AHouse (2026-08-16) — ✅ SHIPPED same day, PR bim-ootb#1386 MERGED (user GO)
+**Fix shipped exactly as named below: `_bboxZFenced()` shared by both helpers, rows outside
+`p01 ± 0.25·(p99−p01)` excluded (whole row), skipped for n<100/degenerate span, effects.js?v=19,
+sw v1039. Acceptance witness held: Hospital ARC+IFC and Terminal ARC BIT-IDENTICAL (excluded=0);
+LTU excludes exactly the 13 junk rows on both paths — live §-log
+`§CINEMA_BBOX_FENCE excluded=13/125698 rawZ=[-45.55,17.14] fencedZ=[-3.19,17.14]`, ARC pivot
+−23.90 → +3.64 m. Known accepted edge: Terminal's (unused) IFC-fallback would trim 239 deep-MEP
+rows if a zero-ARC building ever took it. `_densPoints()` (aim-subject search) is still
+unfiltered — junk can still pitch GAZE down even though the path no longer sinks; separate,
+smaller, open.** Original diagnosis below, kept verbatim.
 User report: "LTU seems to get some strewn objects far below surface that affects movie maker path
 going sub surface." Both halves verified with numbers, no code touched.
 
