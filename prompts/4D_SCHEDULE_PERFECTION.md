@@ -2752,3 +2752,48 @@ further here.
 
 Full commit trail: bim-ootb PRs #1364 (reverted logic kept, shadowing fix kept), #1365 (revert),
 #1368 (task-window fidelity), #1372 (staging removal).
+
+## §HOSPITAL_LIGHTING_STILL_FLOATING — full-population audit after all 4 shipped fixes, one real gap
+## STILL OPEN, one dead end ruled out with a number (2026-08-15, user: "study so i do not return again")
+
+Ran a comprehensive audit against the FULL shipped state (#1364/#1368/#1372 combined) — every class,
+not just lighting/electrical (this session's earlier checks were all scoped to
+IfcLightFixture/IfcElectricAppliance/IfcSwitchingDevice, 1523 elements; Hospital has 63,415):
+
+**§AUDIT_FLOATING total=1510/63415 (2.4%), orphans=1, grounded=527, ok=60654.** Dominated by
+**IfcBuildingElementProxy=1376** — confirmed via direct DB query NOT staffage: real MEP equipment
+(`Water-Tube Boiler - 879-6153 kW`, `VAV8:PValve200`, etc.) that the IFC export classified as a
+generic proxy class, no exact IFC match. This is the actual "MEP hanging in mid air" population, an
+order of magnitude bigger than the lighting/electrical set this whole chase was scoped to. Smaller
+real counts across IfcWall/IfcColumn/IfcMember/IfcBeam/IfcPipeFitting/IfcDuctFitting too — genuinely
+structural and MEP classes, not a data artifact.
+
+**Root cause, confirmed by code + one clean experiment**: `_ogSupportSweep`'s carrier pool
+(`§PROMOTED_CARRIER_POOL`, 2026-08-11) is `seq<=4 ∪ promoted slabs` — real equipment resting on
+non-structural hosts (ductwork, equipment pads, non-promoted slabs, cable trays) has NO candidate
+carrier in that pool at all, so the repair never even sees it.
+
+**Tried: widen the pool to the full non-wall population** (mirroring `_contactGraph`'s
+already-shipped fix for the SAME class of gap, §GROUNDED_OVERRIDE_FIX/#1338) — the obvious next
+move now that §XRAY_STAGING_REMOVED deleted the only thing the pool's "stay aligned with
+auditFloating" constraint was ever protecting (a visibility ghost, gone). **Measured result: WORSE,
+not better — floating rose 1510 → 2233**, including newly-broken lighting (0→195) and electrical
+(0→211) that were clean before. Reverted, not shipped. Mechanism: `_ogSupportSweep` is a
+bounded ~2-sweep greedy repair, not a fixpoint solver — a denser candidate pool finds more real
+dependencies, and satisfying one by pushing an element later can break a DIFFERENT element that was
+relying on the old timing, with no further sweep to catch the new violation. This is the exact
+trade-off this codebase already named and rejected once before, on a sibling function
+(`_midairRepair`'s joint fixpoint attempt: "4 rounds, 7650 pushes, still 140 on Hospital,
+0.8s→14.8s" — see `§STRUCT_POOL_UNGATED` in `witness_midair_zero.js`'s own header). Confirmed here
+it holds for `_ogSupportSweep` too, empirically, not just by analogy.
+
+**⛔ REAL FIX NOT YET BUILT — named precisely, so no future session re-discovers this from
+scratch:** a bounded greedy repair pass cannot close this gap without a real fixpoint solver (already
+measured too slow the one time it was tried — 0.8s→14.8s on Hospital alone) OR the fix has to move
+upstream to the SCHEDULE AUTHORING itself (`materializeZones`'s own CPM task graph, `schedule_author.js`)
+so a task's own start/finish already accounts for its real physical dependents before the display layer
+ever has to repair anything — i.e. treat "1376 boilers/valves scheduled before their real host" as a
+`materializeZones` sequencing bug (wrong `IfcBuildingElementProxy` → phase/sequence classification in
+`rates/sequence_rules.json`, or a missing dependency edge in `§ZONE_CPM`), not a display-timing bug.
+Both directions are real engineering, neither is a quick patch — this is the honest stopping point for
+this session, not a small residual to wave off.
