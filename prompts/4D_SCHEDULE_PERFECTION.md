@@ -39,6 +39,14 @@ here.**
 **Residual floating after all 6 fixes: 3090 elements across 7 buildings** (down from the session's
 starting full-population baseline of ~4339). This number is the primary "chase to zero" target.
 
+**⟶ UPDATED 2026-08-16: 3090 → 656 (-78.8%), §CROSSTASK_JUDGE_PARITY SHIPPED (bim-ootb PR #1387)**
+— window-bounded judge-parity repair after `_ogSupportSweep`; window fidelity byte-identical on all
+7 buildings. Closes open items 3 (IfcFooting — Hospital's 458 all repaired, zero in the final
+byClass) and largely 4 (Hospital 643→39, Clinic 413→72 — both moved hard this time). The remaining
+656 are ALL WINDOW_BLOCKED cross-task authoring conflicts — item 1 (§CPM_GENERATOR_UPSTREAM_SPEC)
+is now the ONLY remaining lever, cleanly isolated. See §CROSSTASK_JUDGE_PARITY (spec + results) at
+the end of this file.
+
 ## What's still open — in the order worth chasing next, each with a pointer to its full section
 
 1. **§CPM_GENERATOR_UPSTREAM_SPEC candidate #2 — NOT built, the actual structural fix.** Root cause
@@ -3847,3 +3855,103 @@ mismatch than "one shared primitive parameterized per site." This PR closes the 
 (the unbounded-vs-capped divergence, the real bug) without forcing that harder, riskier file-spanning
 merge into the same change. Worktree `/tmp/wt-carrier-dedup-refactor`, branch
 `refactor/carrier-dedup-unbounded-hang`, left in place.
+
+## §CROSSTASK_JUDGE_PARITY — SPEC (2026-08-16, session start — user go: "Do solve the gantt chart
+## items not constructed in order, hanging in mid air, not following as TimeMachine needle")
+
+**Target**: the 3090 residual captured-path floating (the chase-to-zero metric), via the item-1
+structural direction (§CPM_GENERATOR_UPSTREAM_SPEC candidate #2 territory) — but measured-first,
+smallest-safe-lever-first, per this file's own repeated lesson (three levers correctly reasoned at one
+layer, wrong through the full pipeline).
+
+**Root-cause frame (from code read, not guessed)**: the judge (`_contactGraph`/`floatingCensus`) is
+class-blind and pool-blind; the repair (`_ogSupportSweep`) pushes only past a NARROW carrier pool
+(seq<=4 ∪ promoted slabs, walls for promoted slabs) and refuses window-exiting hang pushes. So three
+distinct populations can never be repaired and sit in the 3090 forever:
+ (a) elements whose only real contacts are OUTSIDE the repair pool (fitting on a proxy, tread on a
+     stringer — the exact §MIDAIR_REPAIR (a)-population, but on the captured path);
+ (b) window-refused hang repairs (honest floating today);
+ (c) grounded seq<=4 carriers (IfcFooting) whose every contact merely STANDS ON THEM — the judge's
+     carrier-above clause is geometrically identical for "S stands on T" and "T hangs from S", so a
+     footing correctly built FIRST is counted floating. Census-artifact hypothesis, to be verified.
+
+**Step 1 — residual decomposition probe (read-only, extend `probe_captured_floating.js`, do not
+rewrite)**: classify every post-repair floating element on all 7 buildings along two axes:
+ - reachability: first-contact start + own dur fits own task window (REACHABLE) vs not
+   (WINDOW_BLOCKED) vs element already out of window (ALREADY_OUT);
+ - role: GROUND_CARRIER (grounded && seq<=4 && ALL contacts stand on top: S.bz >= T.tz - GAP) vs rest;
+ - pool: first contact's class inside vs outside `_ogSupportSweep`'s carrier pool.
+
+**Step 2 — EXP4, window-bounded judge-parity pass (probe-side experiment before any shipped code)**:
+after `_ogSupportSweep`, fixpoint-sweep the EXACT judge rule, window-bounded: for each floating T
+(first-contact start `first` > T.s+1), push T.s -> first (dur preserved) ONLY if resulting T.e <= its
+own task window end; never push elements already out-of-window further out. Monotone-later pushes,
+bounded sweeps, terminates. This is §MIDAIR_REPAIR's already-blessed weakest rule ("an element may not
+appear before the first element it physically touches appears") ported to the captured path WITH the
+§OG_HANG_WINDOW_BOUND discipline the 2026-08-13 rejected swap lacked (that swap's failure was
+exactly window-crossing desync; the window clamp removes that failure mode by construction).
+
+**Accept criteria (all 7 buildings, full pipeline, §-logs saved and read)**: total floating strictly
+down; window fidelity per building unchanged-or-better (guaranteed by the clamp, verify anyway);
+maxShiftDays sane (no 100-300d class); no orphan/grounded count change (judge untouched). Ship =
+`time_machine.js` insertion after `_ogSupportSweep(_allScheduled, _cap.win)` + witnesses + cache
+bumps. The (c) footing/census-role question is NOT decided in this pass — measured and reported only;
+weakening the judge needs its own explicit decision.
+
+## §CROSSTASK_JUDGE_PARITY — BUILT + MEASURED + SHIPPED (2026-08-16, bim-ootb PR #1387)
+
+Executed exactly per the SPEC above, same session. Worktree `/tmp/wt-crosstask-repair`, branch
+`fix/gantt-crosstask-judge-parity`.
+
+**Step 1 — residual decomposition, measured (probe extension, all 7 buildings, logs in this
+session's scratchpad `cjp_*.log`):** the 3090 splits as REACHABLE 2437 / WINDOW_BLOCKED 653 /
+ALREADY_OUT 0. groundCarrier (grounded seq<=4 carriers whose every contact merely stands on them —
+the role-blind carrier-above clause) = 966 total, dominated by Hospital's 458 IfcFooting exactly as
+item 3 predicted — they are REACHABLE, not census artifacts needing a judge change (the generative
+path's own §GROUNDED_OVERRIDE_FIX doctrine already treats them as pushable, so parity pushes them
+too — no judge weakening, question CLOSED without a rule change). First-contact pool: 1777 in-pool /
+1313 out-of-pool — confirming the pool-mismatch hypothesis as a real driver (LTU: 951/1302 floating
+had an out-of-pool first contact).
+
+**Step 2 — `_cjpJudgeParity` shipped** (`time_machine.js`, called immediately after
+`_ogSupportSweep(_allScheduled, _cap.win)`): §MIDAIR_REPAIR's weakest rule (push to first-contact
+START, monotone-later, fixpoint ≤16 sweeps) with the §OG_HANG_WINDOW_BOUND clamp — push lands only
+if the whole span stays inside the element's OWN task window; already-out elements never pushed
+further; refused pushes stay honestly floating. Probe's §EXP4 now SLICES THE SHIPPED FUNCTION
+(no fourth copy — §CARRIER_DEDUP_DERISK_STUDY's drift lesson applied).
+
+**Measured, all 7 buildings, shipped slice, full captured pipeline:**
+```
+              floating before -> after     Δ
+Terminal      436 -> 201                  -235
+Hospital      643 ->  39                  -604
+Duplex         19 ->   7                  -12
+HHS           142 ->  36                  -106
+Clinic        413 ->  72                  -341
+LTU_AHouse   1302 -> 230                  -1072
+JKR           135 ->  71                  -64
+TOTAL        3090 -> 656                  -2434 (-78.8%)
+```
+**Window fidelity byte-identical on every building** (Terminal 99.10, Hospital 99.97, Duplex 97.23,
+HHS 99.94, Clinic 99.98, LTU 99.94, JKR 99.76 — in/out counts unchanged to the element).
+Orphans/grounded counts untouched on every building — the judge itself was never modified.
+maxShiftDays largest: LTU 244.4, Hospital 193.4 — large but ALWAYS inside the element's own task
+window by construction (wide Substructure windows), so the 100-300d failure of the rejected
+2026-08-13 unbounded swap (window-CROSSING desync) is structurally impossible here.
+
+**Witnesses:** NEW `witness_crosstask_judge_parity.js` 17/17 (W-CJP-1 wiring, W-CJP-2 strict
+reduction, W-CJP-3 window safety both as moved-element invariant and in/out-count identity,
+W-CJP-4 monotone, W-CJP-5 judge untouched, W-CJP-6 synthetic non-vacuousness + honest-residual).
+`witness_midair_zero.js` 38/0, `witness_og_guard_bearing_bound.js` 9/9,
+`witness_gantt_og_grid_perf.js` 3/3 (Terminal 9958ms < 15s ceiling),
+`witness_class_fallback_blackbox.js` 8/8, `gate_4d.sh` pass=7 fail=0 missing=1 (pre-existing
+witness_arch_area_weight MISS, unrelated). `_GANTT_CACHE_VERSION` 25→26, `sw.js` v1038→v1039,
+`viewer.html` time_machine ?v=67→68. One-time cost of the pass at injectGantt: LTU (largest, 122k elements) ms=2366, Duplex ms=26 — contact-graph build dominates. Also landed: the probe's §MIDAIR_REPAIR_CONTACTGRAPH_DEDUP
+slice fix (from /tmp/wt-mep-reclass, was uncommitted) + the §CJP decomposition instrumentation.
+
+**Residual 656 = WINDOW_BLOCKED (653) + fixpoint stragglers (3)** — every one is a real cross-task
+authoring conflict (the dependent's own task window closes before its first contact even starts).
+That is exactly §CPM_GENERATOR_UPSTREAM_SPEC candidate #1/#2 territory (task grouping/window
+authoring), now cleanly isolated: the repair layer is DONE — no further repair-side lever exists
+that doesn't fabricate dates outside the single source of truth. Next lever for the chase-to-zero
+is upstream window authoring, nothing else.
