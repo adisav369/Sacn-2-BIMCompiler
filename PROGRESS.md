@@ -9,15 +9,28 @@ bim-ootb PRs #1364 (`_cap` shadowing crash), #1365 (revert #1364's scale-mismatc
 #1368 (§GANTT_TASK_WINDOW_FIDELITY — elements now placed within their own Gantt task's authored
 window, not a global rescale), #1372 (§XRAY_STAGING_REMOVED — nothing shows before its support
 finishes, ghosted or solid). All verified via real fresh-browser probes, not screenshots.
-**⛔ STILL OPEN, bounded not solved**: full-population audit (not just lighting) shows 1510/63415
-(2.4%) still float, mostly real MEP equipment (`IfcBuildingElementProxy` — boilers/valves, IFC
-export misclassification, confirmed via DB query). Two repair-layer fixes tried and BOTH ruled out
-with numbers this session (widening `_ogSupportSweep`'s pool: 1510→2233, worse; swapping in
-`_midairRepair`: 1510→116 but reintroduces ~100-300 day Gantt-window desync) — this is not a
-tuning problem, the fix has to move upstream into `materializeZones`'s own CPM task graph. Full
-trail + exact next-session pointer: `prompts/4D_SCHEDULE_PERFECTION.md` §HOSPITAL_LIGHTING_STILL_FLOATING.
-**Named, not started**: user flagged `time_machine.js` and siblings are 5000+ lines and should be
-consolidated/split — no work done on this yet, scope not sized.
+**§OG_HANG_BAND — FOUND, FIXED, SHIPPED (bim-ootb PR #1375):** the 1510-float root cause was
+`_ogSupportSweep`'s hang-repair reusing the 0.5m bearing tolerance as its search radius, far tighter
+than what the judge already accepts as real (measured real gaps: p50=2.00m, 812/821 within 9.5m —
+reused the already-cited `§HANG_NEAREST` band, not a new guess). Widened to 9.5m. All 7 buildings:
+4339→3063 floating (-29%), Hospital 1581→611 (-61%), proxy class 1012→55 (-95%). The earlier
+"reclassify IfcBuildingElementProxy's phase" hypothesis (previous entry below) was checked against
+real geometry and DISPROVEN first (only 9/5729 touch MEP-only carriers). A 3rd repair-layer lever
+(fixpoint repair before window computation) was also tried and ruled out (1581→2406, worse).
+Residual 3063 named, dominant class now `IfcFooting` (unmoved, different relation, unexplored).
+`_GANTT_CACHE_VERSION` 21→22, `sw.js` v1031→v1032. Full trail: `prompts/4D_SCHEDULE_PERFECTION.md`
+§OG_HANG_BAND.
+**Scoped then SHIPPED** (2026-08-15): `prompts/4D_SCHEDULE_PERFECTION.md` §TIME_MACHINE_CONSOLIDATION_SPEC
+scoped the 9,016-line file (158 commits, 7 separable concerns). §SCHEDULE_CLASSIFY_DEDUP implemented
+the recommended first step — bim-ootb PR #1374 (OPEN): collapsed `time_machine.js`'s 2 duplicate
+`matchRule`/`matchNameOverride` closures into one shared pair delegating to `schedule_author.js`'s
+canonical, already-exported versions. Narrower than the spec's literal "new file, ~150-250 lines"
+ask — `assignStoreyByZ`/`getInstallSecs` turned out NOT to be real 3-way duplicates on closer read
+(already shared/delegating) — so zero edits to `schedule_author.js`, no conflict surface against the
+parallel floating-MEP PR. Verified zero behavior change: `witness_class_fallback_blackbox.js`
+rewritten, 321,509 elements/8 buildings/0 disagreements; 5 other slice-based witnesses updated,
+numbers byte-identical to `main`; `scripts/gate_4d.sh` pass=7 fail=0. Full concern-based split
+(LARGE, 17+ files) still deferred until this file's churn settles.
 
 ## Session 2026-08-15 (continued) — §HOSPITAL_LIGHTING_STILL_FLOATING FOUND+FIXED+SHIPPED, bim-ootb PR #1364
 Real root cause, not the ones chased below: `injectGantt()` had a `var _cap` name collision — a
@@ -163,7 +176,7 @@ with the storey-aggregate precondition measured safe. Full record + 2 new ⛔ (L
 = different class, needs a user decision; Modeller has NO compose port, 7 DBs) —
 `prompts/4D_SCHEDULE_PERFECTION.md` §NOGEO_COMPOSE (2026-08-10 second-session section).
 
-## Session 2026-08-10 — CPE walk ctrl-drag exit SHIPPED; Viewer prompts audit + 4D consolidation plan (not yet executed)
+## Session 2026-08-10 — CPE walk ctrl-drag exit SHIPPED; Viewer prompts audit + 4D consolidation plan (SHIPPED — see 2026-08-15 correction below)
 §CPE_WALK_CTRL_DRAG_EXIT (bim-ootb PR #1261, MERGED+LIVE): Ctrl-held-drag during POV walk mode was
 exiting walk unexpectedly — OrbitControls stayed live on the same canvas and threw `setPointerCapture`
 InvalidStateError under pointer lock; Ctrl+drag's context-menu path forced an unplanned Pointer-Lock
@@ -172,11 +185,13 @@ release. Fixed by disabling `A.controls` + suppressing `contextmenu` for the wal
 Separately: wrote `prompts/VIEWER_PROMPTS_LANE_OVERLAP_AUDIT.md` (survey of all Viewer-space prompt
 files for cross-lane file collisions — notes only, no fixes; headline finding was that the survey's
 own OPEN/CLOSED status labels were unreliable, 2 of 3 spot-checked were already stale). Then planned
-(NOT implemented — no code written, no worktree opened) a `time_machine.js` promotion-classifier
-consolidation + Modeller ghost-compose port, full plan written to
-`prompts/4D_SCHEDULE_PERFECTION.md` §`▶ NEXT SESSION` (2026-08-10) — read that section before
-resuming, it includes a load-bearing self-correction (the consolidation does NOT fix
-`§TM_GEO_ORDER_CYCLES`, only closes a duplication/DRY item + protects the lock-integrity gate).
+a `time_machine.js` promotion-classifier consolidation + Modeller ghost-compose port (full plan
+archived in `prompts/archive/4D_SCHEDULE_PERFECTION_full_history_2026-08-03_to_2026-08-12.md`).
+**[CORRECTED 2026-08-15 — this line was stale]: the promotion-classifier dedup shipped**, PR #1272
+(2026-08-10) + PR #1347 (`_midairRepair` dead-dup removal), both MERGED. It only ever closed a
+duplication/DRY item, never `§TM_GEO_ORDER_CYCLES`. The separate, much bigger 2026-08-15
+"consolidate/split 5000+ lines" ask is a different scope and is still open — see that session's line
+above (§TIME_MACHINE_CONSOLIDATION_SPEC).
 
 ## Session 2026-08-08 — §27 (Viewer perf/crash) chased to ZERO, 2 PRs SHIPPED+MERGED+LIVE
 User-priority WORK-TO-ZERO item from `FLY_TOUR_DLOD_SCALE.md` §27 (overrode Watchdog's "stop here").

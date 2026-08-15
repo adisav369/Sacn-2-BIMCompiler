@@ -2830,3 +2830,282 @@ jump across many tasks' worth of days. **Not shipped — reverted, nothing commi
   layer never has to repair anything across task boundaries after the fact. That needs someone to
   read `schedule_author.js`'s zone/task-graph construction with this specific class in mind — not
   attempted this session, named precisely so it doesn't need re-deriving.
+
+## §OG_HANG_BAND — the real driver found, MEASURED, FIXED, SHIPPED (2026-08-15, bim-ootb PR #1375)
+
+Third repair-layer attempt this session, tried AFTER the two ruled out above — but this one closes
+most of the gap, not another dead end. **The upstream-classification hypothesis above (reclassify
+`IfcBuildingElementProxy`'s phase/sequence) was checked against real geometry FIRST, per this
+project's measure-don't-guess rule, and DISPROVEN before any code was touched**: a fresh probe
+(`bim-ootb/scripts/probe_proxy_carrier_classes.js`, node-side, real `_contactGraph` over
+`_buildScheduleElements`' real bboxes) found only 9/5729 Hospital proxies touch an MEP-only carrier —
+4,244 touch BOTH structural and MEP carriers, 1,455 touch structural-only. The proxies overwhelmingly
+already sit on real seq≤4 structural carriers (slabs, beams) — a phase/sequence reclass would not
+have moved the needle, because the carrier discipline was never the mismatch.
+
+**Root cause, found by tracing one real floating GUID end to end** (`bim-ootb/scripts/
+probe_captured_floating.js`, a full node-side reproduction of the CAPTURED-path pipeline —
+`_buildScheduleElements` → `computeSchedule` → `deriveZones` → §GANTT_TASK_WINDOW_FIDELITY per-task
+rescale → `_ogSupportSweep` → `_contactGraph` census, every step sliced verbatim from the shipped
+files, no DOM): `_ogSupportSweep`'s hang/carrier-above repair (the branch that fires when an element
+has no bearing-below support, e.g. a ceiling-hung or embedded fixture) reused `_ogGAP=0.5m` — the
+tolerance meant for near-zero PHYSICAL touching gaps (bearing) — as its Z-band SEARCH RADIUS for
+hang too. But `_contactGraph` (the judge `_midairAudit`/the 🔓→🔒 lock gate reads) has NO such
+restriction on the hang relation — by design, already measured and deliberately kept unbounded once
+before (§DAY_GAP_TAIL, LTU beam/flowSegment case) because `_contactGraph` is "pool-blind... crude
+AABB contact" and bounding IT strands elements as unrepairable orphans (a 3–40× blowup, measured and
+rejected on its own numbers back then). So the JUDGE correctly accepts real hang carriers several
+metres away (a ceiling-mounted fixture's true structural support sits up through a void), but the
+REPAIR could only reach 0.5m — anything genuinely real but farther was invisible to
+`_ogSupportSweep`, hence floating no matter how many sweeps ran.
+
+**Measured the real distances before touching anything** (821 still-floating Hospital
+`IfcBuildingElementProxy`, hang-classified): p25=1.05m p50=2.00m p90=3.75m max=10.62m, 812/821 (99%)
+within 9.5m — **the exact same band this codebase already measured and cited once before for the
+identical relation** (`§HANG_NEAREST`, "0.5–9.5m, Hospital ducts p50 1.22m"). Reused that constant,
+not re-guessed a new one.
+
+**The fix**: widen ONLY `_ogSupportSweep`'s hang-detection Z-band (query radius + accept-test) from
+`_ogGAP` (0.5m) to a new `_ogHangGap` (9.5m) — bearing stays untouched at 0.5m, unrelated physics.
+Same doctrine already used repeatedly in this exact function (§4D_LAYER_TRUTH, §GROUNDED_OVERRIDE_FIX,
+§OG_BEARING_BOUND — "guard and judge must share one physics"), just not yet applied to this specific
+asymmetry. Critically **not the same lever as the already-rejected judge-side bound**: that one
+NARROWED what `_contactGraph` accepts (created orphans). This WIDENS what `_ogSupportSweep` can find
+and repair — it can only ever fix MORE of what the judge already calls real, so it cannot create a
+single new orphan by construction. Confirmed: `_contactGraph`'s own orphan/grounded counts are
+byte-identical before/after on every building (Hospital orphans=35/grounded=811 unchanged).
+
+**Measured, all 7 buildings, captured-path floating (post-repair, `_ogSupportSweep` on the per-task-
+rescaled schedule — the same pipeline §AUDIT_FLOATING above measured 1510 against):**
+```
+              before  after   Δ        maxShiftDays before→after
+Terminal      570     435    -135      1.4 → 39.2
+Hospital      1581    611    -970      1.0 → 36.7   (the reported building, -61%)
+Duplex        34      15     -19       1.3 → 2.0
+HHS           198     139    -59       10.6 → 22.5
+Clinic        431     401    -30       0.5 → 26.0
+LTU_AHouse    1341    1319   -22       40.6 → 99.1
+JKR           184     143    -41       1.1 → 16.9
+TOTAL         4339    3063   -1276 (-29.4%)
+```
+Hospital's `IfcBuildingElementProxy` specifically: 1012→55 (-95%). `maxShiftDays` grew (more real
+pushes now succeed) but stays well under the 100–307d range that made both prior repair-layer
+attempts unacceptable — worst case is LTU at 99.1d, every other building under 40d, and this is a
+push count/day figure only, not a Gantt-window-crossing desync (`_ogSupportSweep` still only pushes
+LATER within the same bounded local search, no cross-zone fixpoint jump).
+
+**Two other levers tried THIS session, ruled out with hard numbers, before landing on the above —
+do not re-attempt either without new information:**
+1. Repair BEFORE the per-task window is computed (run `_midairRepair`, the proven generative-path
+   fixpoint, on the RAW schedule before `deriveZones`, so the window is built FROM corrected times
+   instead of desynced from them after). Hypothesis: no display/Gantt desync is possible if the
+   window comes after the fix. **Measured result: WORSE, not better — Hospital 1581→2406.** A
+   handful of large pushes on the raw timeline distort that zone's own min/max span (one pushed
+   element can stretch a zone's raw range by hundreds of days), which then distorts the per-task
+   proportional rescale for the WHOLE zone, not just the pushed elements — creating new violations
+   elsewhere. `totalDays` barely moved (delta=-8), so the distortion is local-but-severe, not global.
+2. The `IfcBuildingElementProxy` phase/sequence reclassification named in the section above this one
+   — disproven by direct measurement before any code was written (see the carrier-class probe above).
+
+**Ship trail**: bim-ootb PR #1375. `_GANTT_CACHE_VERSION` 21→22, `sw.js` v1031→v1032.
+`witness_gantt_og_grid_perf.js`'s O(n²) brute-force reference updated to match (was hardcoded to the
+old 0.5m band). Witnesses: `witness_midair_zero.js` 38/0 (generative path, untouched — confirms no
+cross-path regression), `witness_og_guard_bearing_bound.js` 9/9, `witness_gantt_og_grid_perf.js` 3/3,
+`scripts/gate_4d.sh` 7/7 (1 pre-existing MISS, unrelated). `witness_gantt_lock_integrity.js`/
+`witness_big_element_support_coverage.js`/`witness_door_window_host_wall.js` have pre-existing
+failures (dead `_zoneIndex` slice, unrelated `openingGate` gap) — verified byte-identical on
+unmodified `main` before concluding they're not caused by this change.
+
+**⛔ Residual, real, NOT this session's scope — 3063/63415+... still float across the 7 buildings
+after this fix.** Dominant remaining class on Hospital: `IfcFooting` (458, completely unmoved by this
+fix — a footing is Substructure/seq1, normally a CARRIER not a dependent, so its floating is a
+DIFFERENT relation than the hang-band gap this session closed; likely bearing-side, unexplored). Also
+unexplored: whether the residual on LTU_AHouse (1341→1319, only -1.6%, the smallest relative
+improvement of the 7) has its own dominant driver worth a separate probe pass. Reusable tooling for
+whoever picks this up: `bim-ootb/scripts/probe_captured_floating.js` (the full captured-path
+reproduction — extend its `floatingCensus`/edge-check sections rather than rewriting) and
+`probe_proxy_carrier_classes.js` (pure-geometry carrier-class breakdown, no schedule needed).
+
+**Not started**: consolidating `time_machine.js` and siblings (5000+ lines) — separate task, not part
+of this floating-count chase (see `PROGRESS.md`).
+
+## §TIME_MACHINE_CONSOLIDATION_SPEC — scoping only, no code, awaiting user go (2026-08-15)
+
+User flagged `time_machine.js` + siblings (5000+ lines) should be "consolidated/split" — no target
+shape given. This is a SPEC, not an implementation. No code touched, no worktree opened.
+
+**Prior art check — the 2026-08-10 plan is NOT the same ask, and it already shipped.** The archived
+`▶ NEXT SESSION — PLANNED, NOT STARTED (2026-08-10)` section
+(`prompts/archive/4D_SCHEDULE_PERFECTION_full_history_2026-08-03_to_2026-08-12.md:2901`) planned a
+narrow dedup — extract `_promoteRoofLoadPath()`, one ~40-line function duplicated in two call sites
+— explicitly self-corrected in its own text to NOT be a structural split ("will NOT move
+cycles=/floating="). **That already shipped**: PR #1272 (2026-08-10, MERGED) did exactly this, and a
+second, separate dedup — `chore(4d): remove dead duplicate _midairRepair` — shipped later as PR
+#1347 (`14c042b`). **`PROGRESS.md`'s "no work done on this yet" line is stale for the 2026-08-10 plan
+specifically** — flag for correction, but the *new* 2026-08-15 ask ("5000+ lines... consolidated/
+split") is a much bigger, different scope than either shipped dedup, so it's still correctly "not
+started" for what the user is actually asking now.
+
+**Current state.** `viewer/time_machine.js` is **9,016 lines** today (`main` @ `832dc1d`) — grown
+from ~3,900 lines at the 2026-08-10 plan's time, i.e. **more than doubled since the last dedup**,
+across **158 commits** touching this one file. Siblings by direct require-graph: `schedule_author.js`
+(1,619 lines) and `schedule_gate.js` (1,080 lines) are required BY `time_machine.js` and vice versa;
+17 other viewer files (`cinema_maxq.js`, `scene.js`, `dlod_nav.js`, `cpe_walk.js`, `tour.js`, `sw.js`,
+etc.) require `time_machine.js` directly, and 13 files require `schedule_author.js`/`schedule_gate.js`
+— real coupling, not a hypothetical blast radius.
+
+**What's actually inside `time_machine.js` today** (by function-cluster, not guessed — read via
+full-file function grep): it is one god-object bolting together at least 7 separable concerns:
+1. **Particle FX** (spark/dust, ~703-1138) — camera-effect cosmetics, zero schedule logic.
+2. **Scene/playback orchestration** (~20-700, ~2600-2713, ~3158-3412) — op-log → scene chain, DLOD
+   box sync, play/pause/scrub.
+3. **`renderAtTime()`** (~1193-2095, **~900 lines, one function**) — the per-frame reveal/frontier/
+   highlight logic; also owns outline/highlight/sun-cycle helpers (~2167-2558).
+4. **Classification/promotion** (~3412-3722, ~4960-5608 inside `injectGantt`) — `_promoteRoofLoadPath`
+   (already deduped, #1272), `_buildXrayElements`'s own `matchNameOverride`/`matchRule`/
+   `assignStoreyByZ`, and a **second, currently-live, un-deduped copy of the same three functions plus
+   `getInstallSecs`** inside `injectGantt()` (~4960-5074).
+5. **Repair/tier passes** (~3962-4786) — `_tierAuditRegate`, `_ogSupportSweep`, `_twoTierRemap`,
+   `_contactGraph`/`_midairAudit`/`_midairRepair` — the exact functions the parallel floating-MEP fork
+   is working with THIS session, in `/tmp/wt-materializezones-proxy` (not touched here).
+6. **Gantt UI** (~5608-5608, ~5892-7822, **the single largest cluster, ~2,200+ lines**) — task index,
+   variance/EVM (5D cost), drag/resize wiring, dashboard, S-curve, mini-Gantt drawing.
+7. **Lifecycle** (~7822-9016) — cache, activate/deactivate/init, jump/refold.
+
+**Real, current, three-way duplication found (not the already-fixed #1272 one):**
+`matchRule`/`matchNameOverride`/`assignStoreyByZ` exist independently in THREE places —
+`schedule_author.js:17/36/299` (canonical, generative path), `time_machine.js`'s `_buildXrayElements()`
+(~3651-3722, ghost/x-ray display path), and `time_machine.js`'s `injectGantt()` (~4960-5074, captured-
+schedule display path) — plus `getInstallSecs` duplicated between the latter two. **This is directly
+relevant to the parallel floating-MEP fix**: if that fork changes `IfcBuildingElementProxy`
+classification in `schedule_author.js` only, both `time_machine.js` copies keep the OLD classification
+for the x-ray-ghost and captured-schedule display paths — a real silent-divergence risk, same shape as
+the one #1272's PR description called out as "not just cosmetics."
+
+**Candidate shapes:**
+
+1. **RECOMMENDED FIRST — extract the classification trio+`getInstallSecs` into one shared module**
+   (e.g. `viewer/schedule_classify.js`), used by `schedule_author.js` and both `time_machine.js` call
+   sites. **Small**: ~150-250 lines moved, 3 call sites updated, mirrors the exact pattern of the two
+   already-shipped, already-successful dedups (#1272, #1347) in this same file. Directly closes the
+   silent-divergence risk named above. Risk: low — this codebase's witness convention
+   (`viewer/tests/witness_tm_geo_order_cycles.js` and siblings) `slice`s named functions out of the
+   source file by string/line range into a `vm` sandbox (see the archived plan, "Slice
+   `_promoteRoofLoadPath` + `_buildXrayElements`") — moving a sliced function to a new file requires
+   updating that witness's slice target, not just the call site; #1272 already did this once
+   successfully, so it's a known, walked path, not a new risk.
+
+2. **Full concern-based split** (7 modules mirroring the clusters above — `schedule_render.js`,
+   `schedule_repair.js`, `gantt_ui.js`, etc.): what "consolidated/split" most literally means for a
+   9,016-line file. **Large**: touches 17+ dependent files' require paths, and EVERY existing witness
+   that slices a function out of `time_machine.js` by name/line (multiple — this is this codebase's
+   standard 4D-witness pattern) needs its slice target updated or it silently tests stale code.
+   Highest-value cluster to split first would be #6 (Gantt UI, ~2,200+ lines, mostly self-contained
+   drawing/wiring code with the least cross-talk into scheduling logic) — but even that alone is a
+   multi-day, multi-PR effort given the file's churn rate.
+
+3. **No split — dedupe only, defer structural split indefinitely.** Lowest risk, matches this lane's
+   actual track record (2 successful small dedups, 0 attempted big splits, 158 commits of ongoing
+   churn on this exact file). Leaves the "5000+ lines, hard to navigate" complaint unaddressed as a
+   file-size number, but every dedup so far has been the thing that turned out to matter (removed a
+   real correctness risk, not just cosmetics).
+
+**Recommendation (for the user to bless, not decided here): do #1 now, defer #2.** #1 is small,
+directly de-risks the parallel floating-MEP work happening this exact session, and matches the two
+precedents this lane already proved out. #2 is real but should NOT start while `time_machine.js` is
+under this much concurrent churn (158 commits and counting, including this session's own
+`materializeZones` fork) — a structural split started now would rebase-conflict against the very work
+still landing in the file it's splitting. Sequence #2 (if wanted at all) after this lane's churn rate
+drops, as its own dedicated session with a real go-ahead on which of the 7 clusters to start with.
+
+**What consolidation would NOT fix — say this before anyone mistakes "split" for "solved":**
+- The still-open `§TM_GEO_ORDER_CYCLES` bug (`schedule_gate.js`'s DAG, unrelated file).
+- The 1,510/63,415 floating-MEP gap this session's parallel fork is chasing (repair-pass functions
+  would move file, not change behavior, under either candidate).
+- The unexplained `staged=0` (fresh sandbox) vs `staged=415` (user's live console) nondeterminism
+  named 2026-08-15 under `§XRAY_STAGING_REMOVED` — likely iteration-order-dependent, structurally
+  invisible either way a split is done.
+- `renderAtTime()`'s own ~900-line single-function size (cluster #3) — none of the 3 candidates above
+  touch it; it would need its own follow-up if "one function is too big" is also part of what the user
+  means by "consolidated."
+
+**Sizing: candidate #1 = SMALL (hours, 1 PR, low risk, 2 direct precedents). Candidate #2 = LARGE
+(needs its own multi-session plan, blast radius across 17+ files + every function-slicing witness,
+should not start during this lane's current churn window).**
+
+## §SCHEDULE_CLASSIFY_DEDUP — candidate #1 IMPLEMENTED+SHIPPED, bim-ootb PR #1374 (2026-08-15)
+
+User approved candidate #1 above ("Implement candidate #1 now"). Implemented, but **narrower than
+the spec's literal ask** — worth reading before assuming the spec's "3-way duplication, move
+~150-250 lines into a new `schedule_classify.js`" framing is still accurate for anything else in
+this file:
+
+**What the spec got right**: `matchNameOverride`/`matchRule` — real, live, byte-identical
+algorithm duplicated in 3 places (`schedule_author.js:17/36` canonical, `_buildXrayElements`
+~3651-3722, `injectGantt` ~4960-5074). This is the piece that closed a genuine silent-divergence
+risk.
+
+**What a closer read found the spec got wrong, before any code was written**: `assignStoreyByZ`
+and `getInstallSecs` are NOT real 3-way duplicates.
+- `assignStoreyByZ`: `_buildXrayElements` and `injectGantt` ALREADY both delegate to the shared
+  `_zoneIndex()` (consolidated 2026-08-12, `§ZONE_INDEX`) — only `schedule_author.js` has its own
+  separate implementation, and that's BY DESIGN (it's Node/DOM-free, computes storey-median-Z from
+  its own fresh query rather than a browser-side cached index `_zoneIndex()` depends on). Forcing
+  these together would risk a real behavior change (different data snapshot/filter), not a safe
+  dedup — left alone.
+- `getInstallSecs`: `injectGantt`'s copy already delegates to `window.ScheduleAuthor._installSecs`
+  (the real canonical function, `§TM_DURATION_SYNC`, already wired 2026-08-04) — only its small
+  wrapper (frag/lin lookup + a fallback-if-ScheduleAuthor-not-loaded branch) is separate, and that's
+  legitimately per-call-site since `_buildXrayElements` never computes `installSecs` at all (doesn't
+  need it — x-ray/support-check path only). Nothing to move.
+
+**What shipped**: ONE shared pair, `_classifyNameOverride(cls, name, nameOverrides)` /
+`_classifyRule(cls, name, rules, dflt, nameOverrides)`, added at module scope in `time_machine.js`
+(next to `_promoteRoofLoadPath`, same "one shared function, two call sites" pattern that function
+already established). Both delegate to `window.ScheduleAuthor.matchNameOverride`/`matchRule` when
+loaded (always true past initial page load in production), with the old inline algorithm kept only
+as a fallback — same convention this file already uses for `_installSecs`. `_buildXrayElements`'s
+and `injectGantt`'s local `matchNameOverride(cls,name)`/`matchRule(cls,name)` wrappers keep their
+exact names/signatures, bodies now one line each. **Zero edits to `schedule_author.js`** — it was
+already the canonical, already-exported source; nothing there needed to move. This also means zero
+merge-conflict surface against the parallel `materializeZones`/`IfcBuildingElementProxy` fix
+landing separately this same session (see `§HOSPITAL_LIGHTING_STILL_FLOATING` above) — a real
+benefit the spec's "new file" framing didn't anticipate.
+
+**Verified, not asserted**: `witness_class_fallback_blackbox.js` rewritten — it used to slice TWO
+independent closures out of `time_machine.js` and compare all 3 copies pairwise; now slices the ONE
+shared pair and runs it twice (once with a real `window.ScheduleAuthor` present — the delegating
+path production always takes — once without, to keep the fallback path honest too), both compared
+against `schedule_author.js`'s own direct call. **321,509 elements across all 8 shipped buildings,
+0 disagreements, 0 silent-fallback hits** (`BLD_DIR=~/bim-ootb/buildings BLDS=Hospital,Terminal,
+LTU_AHouse,Duplex,Clinic,HHS_Office_Federated,JKR,TermRooms node witness_class_fallback_blackbox.js`).
+
+**5 other witnesses slice `_buildXrayElements` out of `time_machine.js` by name and broke**
+(`ReferenceError: _classifyRule is not defined`) until their slice list was updated the same way
+PR #1272 already did once for `_promoteRoofLoadPath` — `witness_midair_zero.js` (38/38, matches
+`main`'s 38/0 exactly), `witness_kernel_ops_sched_version.js` (12/12, matches),
+`witness_tier_serial_display.js` (57/57, matches), `witness_curtain_wall_opening.js` (5/5,
+byte-identical viaCurtainWall/noHostAtAll/gen/remap/display counts vs `main`),
+`witness_hosted_before_host.js` (4/4, byte-identical G-HOST-MATCH counts vs `main`). All numbers
+diffed against a fresh unmodified `main` run, not just "still green" — genuinely zero behavior
+change, not merely zero regression-witness-triggered.
+
+**While sweeping for slice-based witnesses, found 6 unrelated PRE-EXISTING dead ones** — fail
+identically on unmodified `main` (not touched, not caused by this PR):
+`witness_tm_geo_order_cycles.js`, `probe_bars_vs_ops.js`, `probe_midair_census.js`,
+`probe_named_element_times.js`, `witness_big_element_support_coverage.js`,
+`witness_gantt_lock_integrity.js` — all throw `ReferenceError: _zoneIndex is not defined`, the
+exact same class of gap `§DAY_GAP_TAIL` (2026-08-12) already found and fixed in
+`witness_midair_zero.js`/`witness_kernel_ops_sched_version.js` but never swept across the rest of
+this file's siblings. Named here so it isn't rediscovered from scratch — NOT fixed this PR (out of
+scope for a classify-dedup), a real standing debt for whoever next touches this cluster.
+
+**No `_GANTT_CACHE_VERSION` bump** — `computeSchedule`'s gating and the display remap are
+unchanged, which is the whole point of a pure refactor; the witness numbers above are the proof,
+not an assumption.
+
+`scripts/gate_4d.sh`: `pass=7 fail=0 missing=1` (the 1 missing, `witness_arch_area_weight.js`, is
+absent from `main` too — pre-existing, unrelated). PR: bim-ootb #1374.
+
+**Deferred, unchanged from the spec above**: candidate #2 (full 7-concern split, LARGE) — still
+not started, still recommended to wait until this file's churn settles.
