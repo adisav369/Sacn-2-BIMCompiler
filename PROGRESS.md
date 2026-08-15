@@ -4,6 +4,21 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §GANTT_WINDOW_FIDELITY_AND_SPREAD: real regression found+fixed
+User: "correlating exactly to TM Gantt timeline? spread evenly within each bar?" Q1: re-measured
+§OG_HANG_BAND (#1375) per building (not just Hospital) — clean on 5/7, but real on LTU_AHouse
+(window violations 16→526, overshoot up to **79.1 days**) and Duplex (52→199, sub-day). Root cause:
+`_ogSupportSweep` had no task-window awareness at all. **Fixed, bim-ootb PR #1376, MERGED**: the
+hang-repair (not bearing) now refuses a push that would exit the target's own Gantt task window —
+element stays honestly floating instead. Measured all 7: +117 floating (3063→3180, +3.8%) for max
+overshoot everywhere dropping to ≤0.78d (was up to 79d). `_GANTT_CACHE_VERSION` 22→23. Q2: traced
+"not spread evenly" to one exact mechanism (Hospital TASK_Architecture_Level_4: 4350 elements split
+1571@day0-12 / 0@day13-132 / 2779@day133-135) — `phaseTrade[storey][seq]` cross-discipline trade
+gate in `schedule_gate.js`, confirmed DELIBERATE documented design (§4D_BAND_MONOTONIC header), not
+a bug — ruled OUT as a fix target, not attempted. Likely same root as the already-named
+`§TIER2_AFTER_TIER1` dead-air item, now much more precisely characterized. Full trail:
+`prompts/4D_SCHEDULE_PERFECTION.md` §GANTT_WINDOW_FIDELITY_AND_SPREAD.
+
 ## Session 2026-08-15 (session close) — 4 real bugs shipped, 1 real gap named+bounded, not solved
 bim-ootb PRs #1364 (`_cap` shadowing crash), #1365 (revert #1364's scale-mismatched bolt-on),
 #1368 (§GANTT_TASK_WINDOW_FIDELITY — elements now placed within their own Gantt task's authored

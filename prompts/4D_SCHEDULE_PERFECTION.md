@@ -3109,3 +3109,127 @@ absent from `main` too — pre-existing, unrelated). PR: bim-ootb #1374.
 
 **Deferred, unchanged from the spec above**: candidate #2 (full 7-concern split, LARGE) — still
 not started, still recommended to wait until this file's churn settles.
+
+## §GANTT_WINDOW_FIDELITY_AND_SPREAD — post-#1375 re-measurement, real regression found+fixed (2026-08-15)
+
+User, after §OG_HANG_BAND (#1375) shipped: **"Are they correlating exactly to TM Gantt chart
+timeline? and spread evenly within each bar?"** — then **"these are the two main issues to chase for
+days."** Standing multi-day item. This session: got real numbers for both, found and shipped one real
+fix (bim-ootb PR #1376), and ruled a second candidate lever OUT as intentional design, not a bug.
+
+### Q1 — window-fidelity correlation, re-measured per building, not assumed
+
+§GANTT_TASK_WINDOW_FIDELITY (#1368) measured 97.87% (62063/63415) on Hospital at ship time. Extended
+`bim-ootb/scripts/probe_captured_floating.js` with a direct in-window/out-of-window census (checking
+BOTH the post-repair `s` and `e` against the element's own task's `[schedule_start, schedule_finish]`)
+plus an overshoot-magnitude measurement, and ran it on all 7 buildings, before AND after §OG_HANG_BAND
+(#1375), using an isolated `git worktree` at each commit for a true apples-to-apples A/B (not the
+historical 97.87% figure, which predates #1372/#1375 and isn't directly comparable).
+
+**Finding: §OG_HANG_BAND is CLEAN on 5/7 buildings (byte-identical violator sets, e.g. Hospital's 18
+out-of-window elements — all pre-existing IfcBeam/IfcSlab bearing cases — unchanged count AND unchanged
+byClass breakdown before/after), but REAL on two:**
+
+| Building | fidelity before→after #1375 | violations before→after | max overshoot before→after |
+|---|---|---|---|
+| Hospital | 99.97%→99.97% | 18→18 (identical) | 0.28d→0.28d |
+| Terminal | 98.79%→98.79% | 585→585 | 32.95d→32.95d (unchanged by #1375 itself) |
+| Clinic | 99.98%→99.98% | 3→3 | 0.07d→0.07d |
+| **Duplex** | **95.35%→82.22%** | **52→199** | 0.92d→1.06d (small magnitude) |
+| **LTU_AHouse** | **99.99%→99.57%** | **16→526** | **0.78d→79.07d** |
+| HHS | (not isolated pre/post; measured 88.97% post-#1375) | 754 | 4.45d |
+| JKR | (not isolated pre/post; measured 94.36% post-#1375) | 507 | 12.43d |
+
+LTU's 79-day overshoot is the same magnitude that sank the two ALREADY-rejected repair strategies
+earlier this session (widened `_ogSupportSweep` pool → worse floating; `_midairRepair` swap → 100-300d
+desync) — a real regression, not noise, even though it never showed up on Hospital (the building all of
+#1375's own ship-time measurement was scoped to).
+
+**Root cause, traced to source, not guessed**: `_ogSupportSweep` never received any per-task window
+information at all — it only ever saw `T.s`/`T.e` and pushed unconditionally when a real carrier's
+finish exceeded the target's start. §OG_HANG_BAND's widened 9.5m hang radius can now find a real carrier
+far enough away — in TIME, not just space — that the honest push lands the target outside its own
+authored Gantt window. The ORIGINAL 0.5m bearing push never did this on any measured building (pool is
+narrower, findable carriers are always close by construction).
+
+**Fix, bim-ootb PR #1376, MERGED**: `_ogSupportSweep(_allScheduled, taskWin)` now takes `materializeZones`'
+per-task window (`_cap.win` at the real call site) and, for the HANG branch only (bearing untouched),
+refuses to push a target past its own task's `schedule_finish`. When the real carrier is outside the
+window, the element stays honestly floating — literal application of the user's own rule ("if it is not
+in that single source of truth, it does not happen, yet") — rather than landing on a fabricated,
+window-compliant date that isn't the real dependency.
+
+**Measured, all 7 buildings, before → after the #1376 fix:**
+```
+floating        435→491(Terminal) 611→611(Hospital) 15→41(Duplex) 139→145(HHS)
+                401→401(Clinic) 1319→1337(LTU) 143→154(JKR)   [+117/3180 total, +3.8%]
+max overshoot   32.95→0.44(Terminal) 0.28→0.28(Hospital) 1.06→0.25(Duplex)
+(days)          4.45→0.01(HHS) 0.07→0.07(Clinic) 79.07→0.78(LTU) 12.43→0.42(JKR)
+fidelity        98.79→99.10%(Terminal) unchanged(Hospital) 82.22→97.23%(Duplex)
+                88.97→99.94%(HHS) unchanged(Clinic) 99.57→99.99%(LTU) 94.36→99.62%(JKR)
+```
+Small, honest floating cost (+117, still visible/reported, never hidden) for eliminating every
+multi-day Gantt desync across all 7 buildings — worst case drops from 79.1 days to 0.78 days. This is
+the mirror image of the two originally-rejected repair strategies (they traded MORE floating-fixed for
+worse desync); this fix trades a SMALL amount of floating back for eliminating the desync, consistent
+with every prior ruling in this lane.
+
+Witnesses: `witness_midair_zero.js` 38/38 (generative path untouched), `witness_og_guard_bearing_bound.js`
+9/9 and `witness_gantt_og_grid_perf.js` 3/3 (both updated for the new `taskWin` sandbox param — the exact
+slice-witness maintenance their own header comment warns any signature change requires),
+`scripts/gate_4d.sh` 7/7. `_GANTT_CACHE_VERSION` 22→23, `sw.js` v1032→v1033.
+
+### Q2 — "spread evenly within each bar?" Traced to source, ruled OUT as a bug (intentional design)
+
+Built a fresh per-task normalized-position measurement (`(displayS - w.s)/(w.e - w.s)`, in [0,1]) —
+never measured before. Aggregate Hospital result: **NOT uniform** — KS-vs-uniform=0.14 (n=63164, a large,
+real deviation), histogram U-shaped (19-22% in each of the outer two of ten buckets, 5-8% in the middle
+eight). Same shape before AND after #1375/#1376 — this is not caused by either fix.
+
+**Traced to one concrete task, `TASK_Architecture_Level_4` (Hospital, n=4350)**: histogram is a hard
+bimodal split — **1571 elements start day 0-12, ZERO start day 13-132 (a genuine 120-day silent gap),
+2779 start day 133-135.** Confirmed this exists in the RAW `computeSchedule` output (pre-rescale,
+pre-repair) — not an artifact of the per-task rescale or `_ogSupportSweep`. The split is exactly
+class-clean: the day-0-12 cluster is 100% `IfcWall`/`WallStandardCase`/`Door`/`Stair`/`Railing`/
+`BuildingElementProxy` (seq 5-6); the day-133-135 cluster is 100% `IfcMember`/`IfcPlate` (seq=7, likely
+curtain-wall framing — same base_z range as the walls, 180.9-185.8m, so NOT a height-band effect).
+
+**Root cause, read directly in `schedule_gate.js`'s `placeNonst`** (lines 745-763): `phaseTrade[ph][seq]`
+where `ph = collapsePhase(el.storey)` — a trade-order gate keyed by STOREY ONLY, deliberately ignoring
+`el.phase`. A seq=7 element waits for the LATEST finish of any seq<7 element **at the same storey,
+across every discipline** (Architecture, MEP Rough-in, everything) — so Level-4's curtain-wall
+members/plates wait not just for Level-4's own walls (finished by day 12) but for Level-4's MEP
+rough-in and every other seq≤6 trade at that storey too, which on Hospital runs until ~day 133.
+
+**This is documented, deliberate design, not a bug** — `schedule_gate.js:303-321`, the `§4D_BAND_MONOTONIC`
+header, explicitly discusses this exact mechanism by name (`phaseTrade[ph][seq]`) and its own history:
+a 2026-05-30 swap already removed a cruder band gate for floating beams over unfinished columns, which
+in exchange "gave up floor-by-floor progression entirely... the user watched exactly that" — the
+CURRENT `phaseTrade` behavior (storey-scoped, cross-discipline) is the settled, re-litigated compromise,
+paired with the separate `bandTrade`/`§4D_BAND_MONOTONIC` mechanism for the cross-FLOOR constraint.
+Loosening `phaseTrade` to be phase-scoped (i.e., let Architecture's seq=7 wait only on Architecture's
+own seq≤6, ignoring MEP) is a plausible-sounding lever that was **NOT attempted** — it directly
+contradicts this documented ruling and risks reproducing the exact regression band-monotonic was built
+to fix. Given this project's own track record this session (two OTHER plausible-sounding levers already
+tried and rejected with hard numbers), this one was named precisely and left alone rather than tested
+blind against a function multiple other named witnesses (`§4D_WALLS_BEFORE_ROOF`, `§DEQ_V1`,
+`§HOSTED_BEFORE_HOST`) depend on.
+
+**Practical read**: a Gantt BAR spanning a real dependency-gated gap (early rough trades + a genuine
+multi-week wait + late finish trades) is not visually distinguishable from a bug — the rectangle just
+looks "empty in the middle." If the user wants the MOVIE/GANTT pacing to read as continuously busy
+rather than accept this honest gap, the correct lever is almost certainly a DISPLAY-authoring one: split
+a task into sub-bars at its own internal `phaseTrade` boundary (so the gap becomes a visible inter-task
+transition, matching what it actually is) — NOT changing the underlying trade-sequencing gate. This is
+very likely the SAME mechanism behind the already-named, still-open `§TIER2_AFTER_TIER1` "Zone
+Tier1→Tier2 handoff dead-air" item (`project_cpm_4d_generator_lane.md` in memory: "Hospital's biggest
+dead run, 11% of film, zero starts... no lever proven yet, needs new engineering") — this session's
+finding gives it a MUCH more precise mechanism and a concrete worked example (exact GUIDs, exact days,
+exact classes) than existed before, but does not itself close it. Reusable tooling for whoever picks
+this up: `bim-ootb/scripts/probe_zone_edges.js` (zone/edge/class dump for a named phase+storey) and
+`probe_task_collision.js` (confirms zone→task id mapping is 1:1, no collisions — ruled out as a
+contributing cause).
+
+**Not started**: splitting a `phaseTrade`-gated task into authored sub-bars at its own internal
+boundary, or any other display-side fix for the visual "dead middle" read. Needs its own spec — this
+pass was measurement + root-cause tracing, not display-authoring work.
