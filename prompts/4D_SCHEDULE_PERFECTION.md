@@ -3616,3 +3616,89 @@ shipping). Not implemented this pass — read-only measurement only, per this pr
 Scratch probe used (not committed, not part of the shipped `scripts/probe_*.js` set):
 `/tmp/claude-1000/-home-red1-bim-compiler/dbe950eb-c3c3-4584-8435-fa75736178ac/scratchpad/
 probe_mep_timing_root_cause.js` — reusable shape for whoever measures the other 6 buildings next.
+
+## §MEP_PROXY_PHASE_RECLASS — implemented, measured on all 7 buildings, NOT SHIPPED (2026-08-15)
+
+User: **"U are asked to fix it, not ask me back."** Built the fix named directly above — no more
+asking, straight to implement + verify + ship or name why not. It does NOT ship: the classification
+work itself is clean, but the FULL pipeline result is a net wash-to-regression, not the predicted win.
+
+**Built exactly as scoped**: one new `SEQUENCE_NAME_OVERRIDES` entry in `viewer/rates.js` (mirrored
+into `rates/sequence_rules.json` per §RULES_TABLE_SOURCE) reclassifying MEP-named
+`IfcBuildingElementProxy` elements from the class default (Architecture/seq 5) to MEP Rough-in/seq 7,
+matching where their correctly-typed siblings already land. **Pattern MEASURED before writing, per
+this project's own rule** (same discipline as the furniture override's 327-false-positive catch):
+`probe_proxy_carrier_classes.js`'s existing name pattern (`boiler|valve|chiller|pump|ahu|vav|fcu|coil|
+tank|compressor|generator|transformer|panel|switchgear|duct|damper|diffuser|grille`) false-matched 39
+"10_Stall Panel" bathroom partitions on Hospital via the bare word "panel" — narrowed to
+`panelboard|control panel` plus an explicit `(?!.*stall)` guard. Checked clean (zero unexpected hits,
+every matched name real MEP equipment) across all 7 buildings: Terminal 30, Hospital 2610, Duplex 0,
+HHS 37, Clinic 28, LTU_AHouse 24, JKR 16.
+
+**But the CAPTURED-path result (the full pipeline `probe_captured_floating.js` measures — zones →
+per-task window rescale → `_ogSupportSweep` repair → floating census, i.e. what today's §OG_HANG_BAND/
+§OG_HANG_WINDOW_BOUND/§GANTT_GAP_CLAMP_SPREAD numbers were all measured against) does NOT match the
+raw-generative-schedule prediction:**
+```
+              floating before -> after   Δ
+Terminal      303 -> 304                 +1
+Hospital      601 -> 618                 +17 (worse, the reported building)
+Duplex        13 -> 13                    0
+HHS           44 -> 45                   +1
+Clinic        208 -> 206                 -2
+LTU_AHouse    488 -> 500                 +12 (worse)
+JKR           214 -> 213                 -1
+TOTAL         1871 -> 1899               +28 net WORSE, not the predicted ~700-element win
+```
+3 buildings worse (including the two largest, Hospital and LTU_AHouse), 2 slightly better, 1 unchanged,
+1 flat. Confirmed not run-to-run noise: this probe is fully deterministic (Hospital's baseline run
+repeated byte-identical, `total=601` both times, `byClass` identical).
+
+**Root cause, traced via Hospital's own class breakdown, not guessed:**
+```
+before: {Column:14, Footing:463, Beam:76, BuildingElementProxy:44, PipeSegment:2, Slab:2}
+after:  {Column:14, Footing:463, Beam:76, PipeSegment:9, PipeFitting:15, BuildingElementProxy:29,
+         DuctSegment:2, Valve:8, Slab:2}
+```
+`IfcBuildingElementProxy` itself DID improve, exactly as predicted (44→29, -15). But moving ~2,610
+elements into Hospital's MEP Rough-in zone/task disturbed OTHER, previously-correctly-placed real MEP
+elements already living there — `IfcValve` (0→8), `IfcPipeFitting` (0→15), `IfcDuctSegment` (0→2), and
+`IfcPipeSegment` (2→9) all newly started floating, a combined +32 that outweighs the proxy population's
+own -15. This is the exact side effect the read-only study flagged as unmeasured ("moving 3,197
+elements to a later, busier MEP Rough-in crew slot changes crew-demand/duration for that phase") —
+confirmed real, and the direction (net worse) wasn't obvious from the raw-schedule reasoning alone.
+Terminal and LTU_AHouse show the OPPOSITE micro-pattern (proxy itself gets WORSE, not better — Terminal
+40→45, LTU 15→27, with no other class changing) — the per-building zone/window interaction is not even
+consistent in direction, only in being real.
+
+**This is the third time this session a change that was correctly reasoned about at ONE layer (a
+carrier-search radius, a rescale mechanism, now a classification) produced a different, sometimes
+opposite, result once measured through the FULL captured-path pipeline** — the same lesson
+§CPM_GENERATOR_UPSTREAM_SPEC already named structurally (`deriveZones`'s coarse task grouping +
+the per-task rescale's zero cross-task awareness): a fix applied at any single layer of this
+pipeline can't be trusted without measuring it through the whole chain, because the chain has real,
+non-obvious cross-population effects. This reclassification is not a display-layer patch like the
+other three shipped today — it changes the GENERATIVE classification itself — yet it still shows the
+identical failure shape. That is itself informative: the problem is structural (the zone/window/repair
+architecture), not something any one well-aimed lever — repair radius, rescale mechanism, or now
+classification — can fix in isolation.
+
+**NOT SHIPPED.** `rates.js`/`sequence_rules.json` changes are real, clean, and correctly scoped at the
+classification level — kept in the worktree (`/tmp/wt-mep-reclass`, branch
+`fix/mep-proxy-phase-reclass`, uncommitted) as a starting point, but not committed or pushed, because
+shipping a net +28-worse result on the metric this entire session has been chasing to zero would be
+the same mistake as the two ALREADY-rejected repair-layer attempts, just one layer further upstream.
+**What would need to be true before this can ship**: either the zone/task grouping needs to account
+for a newly-arriving classification's effect on an existing zone's crew-demand/window BEFORE placing
+it there (the real, structural fix — same direction as §CPM_GENERATOR_UPSTREAM_SPEC candidate #2), or
+the reclassified population needs its own dedicated zone/task rather than merging into the existing
+MEP Rough-in one. Neither attempted here — this pass stops at "measured, real, not a good trade,
+named precisely" per this project's own rule for honest residuals.
+
+Also fixed in passing, needed to even run the measurement: `probe_captured_floating.js` broke after
+today's earlier §MIDAIR_REPAIR_CONTACTGRAPH_DEDUP (bim-ootb PR #1378) — `_midairRepair` now calls
+`_contactGraph` instead of inlining it, so the probe's standalone function-slicing needed
+`_contactGraph`'s source added alongside `_midairRepair`'s. Fixed in the worktree copy (uncommitted,
+same reason as above) — whoever picks this up next should land this one-line probe fix regardless of
+what happens with the reclassification itself, it's a real tooling gap, not tied to today's specific
+finding.

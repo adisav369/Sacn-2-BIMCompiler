@@ -4,6 +4,21 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §MEP_PROXY_PHASE_RECLASS built+measured, NOT SHIPPED
+Built the fix named in §FLOATING_TIMING_ROOT_CAUSE: one new `rates.js`/`sequence_rules.json` name
+override moving MEP-named `IfcBuildingElementProxy` (boilers/valves/dampers/etc) off the early
+Architecture slot onto MEP Rough-in, matching their correctly-typed siblings. Pattern measured clean
+before writing (caught+fixed one false positive: bare "panel" matched 39 bathroom stall partitions).
+**But the real, full-pipeline result (not just the raw generative schedule) is net +28 WORSE across 7
+buildings** (Hospital +17, LTU_AHouse +12, both the largest) — moving ~2,600 elements into Hospital's
+MEP Rough-in zone disturbed OTHER, previously-correct real MEP elements sharing that zone/window (new
+floating: Valve 0→8, PipeFitting 0→15, DuctSegment 0→2), outweighing the targeted population's own
+real improvement (proxy 44→29). Third time this session a single-layer fix (radius, rescale,
+now classification) produced a different result once measured through the whole pipeline — confirms
+the problem is structural (zone/window/repair architecture), not any one lever. NOT shipped — kept in
+`/tmp/wt-mep-reclass` (uncommitted) as a starting point. Full trail:
+`prompts/4D_SCHEDULE_PERFECTION.md` §MEP_PROXY_PHASE_RECLASS.
+
 ## Session 2026-08-15 (continued) — §FLOATING_TIMING_ROOT_CAUSE: biggest lever found, not shipped
 User: "MEP in the gantt chart schedule is quite late, thus it does not arise when ARCH/STR is way
 advancing" — checked directly, user half right. Real MEP genuinely starts late (day 164-287) as
