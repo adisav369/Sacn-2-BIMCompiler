@@ -4,6 +4,19 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §VIEWER_MEMORY_LEAK reopened → narrowed, render pipeline cleared
+Reopened after a live 83%-system-memory event mid-Hospital-bake (tab killed before a reading could be
+taken). Full static code trace of the entire MaxQ per-frame lifecycle (`cinema_maxq.js` frame loop,
+`effects.js` staging/AO/triplanar/night-lights start+teardown, `scene.js` updateSky/PMREM) — every
+allocation either fires once per bake behind a correct guard, is memoized+disposed properly, or is
+dead-code no-op (`_setTriplanarActive` does nothing now). Confirmed empirically on the real target
+building at the real incident's config: Hospital, night lights raised to 198-200, 2 completed bake
+frames — `renderer.info.memory` dead flat throughout (793s). **Verdict: not a rendering-pipeline
+leak.** Narrows the open question to why memory pressure builds despite flat tracked GPU counters —
+named IndexedDB frame-blob accumulation (nothing frees captured-frame blobs until the whole bake
+finishes) as the concrete next lead, not yet measured. bim-compiler `b6c4bb391`. Full trail:
+`prompts/VIEWER_MEMORY_LEAK.md`.
+
 ## Session 2026-08-15 (continued) — §OG_HANG_UNBOUND SHIPPED, bim-ootb PR #1382
 The still-open `_ogSupportSweep` hang-reach-cap decision was made and closed directly (user: "I only
 direct" / "you know the issues") — unbounded, matching `hangGate`/`_contactGraph`, since the real risk
