@@ -4,6 +4,20 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §CARRIER_DEDUP_DERISK_STUDY: candidate #3 confirmed real work
+User: "#3, can we study further to derisk it?" Found a 4th copy (`_midairRepair` has a byte-identical
+inline duplicate of `_contactGraph` — 100% accidental, zero-risk, ship alone first). The real 3-way
+divergence (`hangGate`/`_contactGraph`/`_ogSupportSweep`) is bigger than the known hang-band number:
+3 different predicate SHAPES, `hangGate`'s own "0.5-9.5m" fallback is actually UNBOUNDED (today's
+§OG_HANG_BAND fix didn't match it, it introduced a 4th new capped behavior), and eligibility is
+inverted (hangGate=BIG-only, _ogSupportSweep=no restriction). **Verdict: naive one-behavior merge
+confirmed unsafe, same risk class as candidate #2** — real correctness decisions on 2 axes hide inside
+it. A parameterized refactor (3 explicit configs, each verified against its own baseline) stays
+low-risk but is real work. Recommend: ship the zero-risk `_midairRepair` dedup alone first; the
+parameterized 3-way refactor needs one open question settled by the user first (should
+`_ogSupportSweep`'s hang reach be capped at all, given `hangGate`'s own fallback isn't?). Full study:
+`prompts/4D_SCHEDULE_PERFECTION.md` §CARRIER_DEDUP_DERISK_STUDY.
+
 ## Session 2026-08-15 (continued) — §CPM_GENERATOR_UPSTREAM_SPEC, scoping only, awaiting user go
 User: "why not fix it to sustain any constraints expected in general of a gantt schedule?" — i.e. why
 patch the display/repair layer instead of the generator. Root cause traced: `computeSchedule` is

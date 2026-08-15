@@ -3419,3 +3419,132 @@ split (separate axis — file organization, not schedule correctness) and Termin
 shape (§GANTT_GAP_CLAMP_SPREAD's named, not-chased regression) — a generator-level fix changes WHERE
 the pacing information comes from, not Terminal's specific multi-modal-gap shape, which would still
 need its own per-cluster analysis regardless of which candidate above gets picked.
+
+## §CARRIER_DEDUP_DERISK_STUDY — read-only analysis, no code (2026-08-15)
+
+User: "#3, can we study further to derisk it?" Read all three implementations in full
+(`schedule_gate.js`'s `hangGate` :460-510, `time_machine.js`'s `_contactGraph` :4615-4653 and
+`_ogSupportSweep` :4216-4385) plus a fourth site the original scoping missed. Verdict up front: **the
+divergence is real and bigger than "one number drifted" — a naive one-behavior merge is confirmed
+unsafe, same risk class as candidate #2. A parameterized refactor is still low-risk, but the
+parameterization has to encode three genuinely different predicate SHAPES, not just one bound value.**
+
+### New, zero-risk finding first: a FOURTH copy, not three
+
+`_midairRepair` (`time_machine.js:4722-4761`) contains a **byte-identical inlined duplicate** of
+`_contactGraph`'s entire grid-build + contact-scan + grounded computation — same `cellsOf`, same grid
+loop, same three-clause bearing/hang/embedded OR-predicate, same `grounded[i] = (lowest < T.bz - GAP) ?
+0 : 1` line, differing only in writing to `stats.grounded`/`stats.orphans` instead of local
+`groundedN`/`orphans`. This is accidental duplication, not a design choice — no comment anywhere
+justifies re-deriving what `_contactGraph(items)` already returns. **Zero-risk to fix**: replace the
+inline block with a call to `_contactGraph(items)`, verify `witness_midair_zero.js`'s `moved`/
+`residual`/`orphans` counts stay byte-identical (they must, since the replaced code is character-for-
+character the same predicate). Do this regardless of what happens with the 3-way question below — it's
+the same shape as §SCHEDULE_CLASSIFY_DEDUP (PR #1374) with even less ambiguity (no divergence to reconcile
+at all, unlike the classification trio which needed the 2-of-4 scope-down).
+
+### The three-way divergence, precisely characterized (not just the known hang-band value)
+
+All three share the same XY-overlap predicate — confirmed byte-identical: `schedule_gate.js:171`
+`overlap()`, `_ogXY` (`time_machine.js:4277`), and `_contactGraph`'s inline check are the exact same
+four-clause AABB test, word for word. The overlap test is not drifted. The Z-axis logic is where they
+diverge, in THREE separate ways, not one:
+
+1. **Predicate SHAPE differs, not just the bound.** `_contactGraph`'s hang clause
+   (`S.bz >= T.tz - GAP && S.tz > T.tz + EPS`) is genuinely **one-sided-unbounded** — no upper cap on
+   how far above S can sit, by design (§DAY_GAP_TAIL). `hangGate`'s PRIMARY test
+   (`S.base_z >= el.top_z-GAP && S.base_z <= el.top_z+GAP...`) is a **tight two-sided band** (±0.5m,
+   direct-mount only). `_ogSupportSweep`'s hang branch uses ANOTHER two-sided band, but **9.5m wide**
+   (`_ogHangGap=9.5`, added today by §OG_HANG_BAND). Three different shapes, not one shared shape at
+   three different widths.
+
+2. **`hangGate`'s extended-reach fallback (§HANG_NEAREST, lines 481-508) is itself UNBOUNDED, not
+   0.5-9.5m as the comment's own framing implies.** The code finds the NEAREST overlapping candidate
+   above with `S.base_z > el.top_z + GAP && S.base_z < nb` — no upper distance cap anywhere in that
+   loop. The "0.5-9.5m" figure in the §HANG_NEAREST comment (and reused today to size
+   `_ogSupportSweep`'s `_ogHangGap`) is a MEASURED empirical range of where real carriers were found on
+   shipped buildings, not an enforced search-radius parameter of `hangGate` itself. **This means
+   today's §OG_HANG_BAND fix did not actually make `_ogSupportSweep` match `hangGate`'s behavior** — it
+   introduced a third, new, explicitly-capped 9.5m behavior that exists nowhere else. A real carrier
+   more than 9.5m away — one `hangGate` (unbounded fallback) and `_contactGraph` (unbounded judge)
+   would both accept — is still unreachable by `_ogSupportSweep`'s repair. This is very likely a real
+   piece of the 3063/3180 residual floating count named in §OG_HANG_BAND's own "not this session's
+   scope" note, not just `IfcFooting`'s separate bearing-side gap.
+
+3. **Eligibility restriction differs in the opposite direction.** `hangGate`'s fallback only fires for
+   BIG elements (`bboxVol(el) > BIG_ELEMENT_VOL = 1.556m³`), non-pool, non-wall — deliberately, per its
+   own comment ("widening ALL sinks would re-gate 48,904 elements... a Part-2-scale reorder, not this
+   seam close"). `_ogSupportSweep`'s hang branch has **no size restriction at all** — every non-bearing
+   seq>4 element is eligible. So relative to `hangGate`, `_ogSupportSweep` is simultaneously MORE
+   permissive on eligibility (no BIG-only gate) and LESS permissive on reach (hard 9.5m cap vs
+   unbounded). Neither is a superset or subset of the other.
+
+### Deliberate vs accidental, per difference
+
+- `_contactGraph` unbounded — **deliberate, documented, load-bearing** (§DAY_GAP_TAIL: bounding it
+  caused a 3-40x orphan blowup, measured and rejected). Must never be capped by any unification.
+- `hangGate`'s BIG-only fallback restriction — **deliberate, documented** (the 48,904-element Part-2
+  note). Must be preserved as an explicit, still-BIG-only config for that call site.
+- `hangGate`'s fallback being unbounded vs `_ogSupportSweep`'s hard 9.5m cap — **accidental, or at best
+  an unexamined choice.** Today's fix cited hangGate's band as the reference and landed on a different
+  number. Not a documented decision either way — worth a real conversation, not a silent pick, before
+  any unification bakes one of the two in as canonical.
+- `_ogSupportSweep`'s hang branch skipping the BIG-only gate — **no comment addresses this at all**,
+  reads as unexamined rather than deliberate. Could be intentional (repair pass wants to close more
+  gaps than the generator bothers gating) but nobody wrote that down.
+- `_ogSupportSweep`'s two-tier bearing envelope logic (§OG_BEARING_BOUND) has no equivalent in
+  `hangGate` — a fourth asymmetry, on the bearing axis rather than hang, not analyzed further here
+  (out of scope for the hang-band question specifically).
+- `_midairRepair`'s inline `_contactGraph` duplicate — **100% accidental**, plain unDRY code.
+
+### Unification shape, and a concrete "what breaks if done naively" example
+
+Confirms the parent session's proposed shape is necessary, not optional: one shared low-level scan
+primitive (grid-build, XY-overlap, Z-relation test) parameterized per call site —
+`{hangMode: 'unbounded'|'band'|'nearest-unbounded', hangBand, bigOnly, bigVol, bearingTiered}` — with
+`_contactGraph` passing `{hangMode:'unbounded'}`, `hangGate` passing
+`{hangMode:'band', hangBand:0.5}` for its primary test plus a SEPARATE
+`{hangMode:'nearest-unbounded', bigOnly:true, bigVol:1.556}` call for its fallback, and
+`_ogSupportSweep` passing `{hangMode:'band', hangBand:9.5, bigOnly:false, bearingTiered:true}`. This is
+a refactor (shared scan code, three still-distinct configs), not a behavioral unification.
+
+**Concrete break scenario for the naive version** (one shared behavior, not parameterized): take
+today's shipped `_ogSupportSweep` config (9.5m band, all elements eligible) as the "unified" default and
+apply it everywhere. `hangGate`'s generative path would then ALSO cap at 9.5m instead of its current
+unbounded nearest-search — for any BIG element whose real carrier sits beyond 9.5m (a valid case:
+`hangGate`'s own fallback exists precisely because SOME real carriers sit further than the direct-mount
+band), the generative schedule would now compute a gate time using a WRONG, closer, non-real carrier
+instead of the true one identified via unbounded search — a correctness regression in the GENERATIVE
+path, not just the captured-path repair this session has been chasing. Conversely, if the "unified"
+choice went the other way (adopt `hangGate`'s BIG-only restriction everywhere), `_ogSupportSweep` would
+stop repairing small non-BIG floating elements it currently fixes — directly regressing today's
+§OG_HANG_BAND numbers (Hospital's `IfcBuildingElementProxy` fix, 1012→55, almost certainly includes
+small elements). Either naive choice breaks a currently-working population; there is no single
+"correct" shared value to pick without the parameterization.
+
+### Verification plan, per call site not cross-site
+
+"Byte-identical" must be checked against each function's OWN pre-refactor baseline, never against the
+other two (their outputs are supposed to differ — that's the whole point of the config split):
+`hangGate` — identical `computeSchedule` output across all 7 buildings, byte-for-byte (it's a pure
+function of geometry + config, so this is checkable directly). `_contactGraph` — orphans/grounded counts
+unchanged per building (Hospital orphans=35/grounded=811, the baseline already cited this session).
+`_ogSupportSweep` — `pushed` count and floating totals unchanged per building (Hospital 611, the
+§OG_HANG_WINDOW_BOUND-era baseline). `_midairRepair`'s dedup (the zero-risk fourth-copy fix) —
+`witness_midair_zero.js`'s per-building `moved`/`residual`/`orphans` numbers unchanged. Full suite:
+`witness_midair_zero.js`, `witness_og_guard_bearing_bound.js`, `witness_gantt_og_grid_perf.js`,
+`scripts/gate_4d.sh`, plus re-running `probe_captured_floating.js`/`probe_proxy_carrier_classes.js` for
+the floating-count/carrier-class numbers already established as this session's baselines.
+
+### Revised risk verdict
+
+**Confirmed, not just suspected: candidate #3 done naively (one shared behavior) is in candidate #2's
+risk class** — real correctness decisions hide inside it on at least two axes (hang search shape/reach,
+BIG-only eligibility), not one. Done as a parameterized refactor with each site's current behavior kept
+explicit and verified byte-identical against itself, it stays low-risk — but it is real, careful work on
+three distinct configs, not a mechanical extraction like §SCHEDULE_CLASSIFY_DEDUP. **Recommend splitting
+#3 into two separately-shippable steps**: (a) the `_midairRepair`/`_contactGraph` fourth-copy dedup —
+genuinely zero-risk, ship first, alone; (b) the parameterized `hangGate`/`_ogSupportSweep`/
+`_contactGraph` shared-primitive refactor — real work, needs the accidental-vs-deliberate table above
+settled explicitly (in particular: should `_ogSupportSweep`'s hang reach be capped at all, given
+`hangGate`'s own fallback isn't?) before code, not decided inside the refactor.
