@@ -9,8 +9,629 @@
 #   evergreen spec + the still-OPEN threads only. Closed/shipped work is a one-line pointer with
 #   its commit/PR; full diagnostic narrative for closed items lives in the archive if ever needed.
 
-## ▶ RESUME — START HERE
-Open threads, all below in full detail:
+## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
+
+### ✅ §TRINORM_LINEAR — 2026-08-16 (8th session): BOTH open Alt+S bugs SOLVED, one mechanism — PR #1383 MERGED + LIVE (fetched back from production: streaming.js carries 4.8763, sw v1037)
+**§ONGOING_TINT (bluish/darkish piping) and §RED_GREY_MYSTERY (red valve → literal black) were the
+same bug, and it was NOT degenerate normals, NOT a stale shader program, NOT data:** every
+triplanar `normFactorRGB` (and the scalar before it) was derived from the JPG's **sRGB byte
+means**, but the shader multiply runs in **linear** light (textures are `SRGBColorSpace` —
+GPU-decoded before `texture2D` returns). Under-normalized 2.0–2.4×, so the "centred at 1.0"
+product actually centred at 0.42–0.53, and the contrast line `(x-1.0)*boost+1.0` clamps every
+texel below `1-1/boost` to **literal zero**:
+- metal (boost 1.9): 41.4% of texels → multiply-by-0 → the valve's pure-black pixels (719/1681
+  grid samples); surviving mean multiply `[0.000, 0.011, 0.071]` — blue-dominant near-black =
+  "bluish tint … greyer piping gets similar dark treatment" verbatim. Applies to ALL metal
+  classes (Beam/Member/Plate/Railing/Pipe*/Duct*/CableCarrier*/Flow*), which is why it was
+  widespread, colour-independent, and Alt+S-only (`uTriActive` gates staging).
+- concrete/plaster: uniform ×0.467 / ×0.53 multiply — the systemic "Alt+S too dark" backdrop.
+**Fix (PR #1383, branch `fix/trinorm-linear-space`, streaming.js?v=62, sw v1037):**
+`normFactorRGB` = inverse LINEAR mean — concrete 2.0755, plaster [1.9428, 1.9262, 2.0172],
+metal [4.8763, 4.0250, 3.3988]. Multiply centres at 1.000/channel, 0.00% texels clamp to zero,
+contrastBoost unchanged. Witness: isolated valve, raw single-frame render, black 719→**0**,
+meanRGB [119,79,66] vs triplanar-off reference [117,80,66] (brightness restored, only grain
+remains). Offline texture-histogram + live uniform-variant probes in scratchpad
+`aa515841-…/scratchpad/` (`probe_noop_recompile.js`, `probe_stale_uniform_diff.js`,
+`probe_contrast_crush_confirm.js`, `witness_trinorm_fix.js`, `*.log`). Scene-wide A/B at the
+default far view (raw render, 16k-sample grid): black 22→1, meanLum 124→126 — no regression,
+the big deltas are close-up on metal surfaces as expected.
+**How the prior sessions' probes all lied — two traps, record permanently:**
+1. **Every shader-checkpoint probe REPLACED `mat.onBeforeCompile`** — which is where the
+   triplanar patch lives — so every "clean" checkpoint was testing a triplanar-stripped shader.
+   The "unresolved contradiction" (all stages clean, full shader black) was exactly this. Never
+   assign `onBeforeCompile` on a material that already has one without composing the original.
+2. **The `uTriActive=0` rule-out was silently undone** by the material's own per-frame
+   `onBeforeRender` self-heal (re-asserts from `A._stillRefineActive` — §TRIPLANAR_RECOMPILE_FIX).
+   Toggle `A._stillRefineActive` itself, or the toggle never survives to the render.
+**Consequences for earlier verdicts:** the §RED_GREY_MYSTERY "root cause = degenerate vertex
+normals" verdict below is **SUPERSEDED — wrong**. The 24 zero-magnitude normals are a real data
+quirk but sit on zero-area triangles (rasterize nothing) — consistent with the repair changing
+zero pixels. `A._repairDegenerateNormals` stays disabled; no longer a suspect for anything
+user-visible. The earlier `length(normal)` "NaN spread" reading was a probe artifact (curved-mesh
+interpolated `vNormal` length, not NaN).
+**Still open after this:** (a) user visual confirm of Alt+S on live once #1383 deploys — expect
+visibly brighter triplanar surfaces (metal especially); AO/exposure tunings were calibrated
+against the crushed baseline and may want a revisit — user's call; (b) §SKY_SYNC_REGRESSION
+(sky-dome sun-disc vs shadow direction mismatch, revert #1381) still open, separate;
+(c) §HOSPITAL_META_DB_STALE regenerated split DBs still awaiting explicit user go to upload.
+
+**§RED_GREY_MYSTERY — 2026-08-15/16 (7th session, updated, session closed — handed to a fresh
+Fable session next.) ⚠ Historical record — its "GENUINELY STILL UNSOLVED" item and
+degenerate-normal verdict are resolved/superseded by §TRINORM_LINEAR above.**
+
+### Shipped this session — MERGED to `main`, LIVE on production (`red1oon.github.io/bim-ootb`)
+PR #1379 (TAA fix + sun separation), #1380 (follow-up same day — point-light restore, see below),
+#1381 (revert — see §SKY_SYNC_REGRESSION below). All merged, all live.
+1. **§STILL_REFINE_JITTER_MISMATCH — TAA smoothing was silently half-broken, now fixed and live.**
+   `viewer/lib/TAARenderPass.js` used a 32-entry jitter table while the still-refine loop only ran
+   16 accumulate frames — a "converged" still was a 50/50 blend of 16 real jittered samples + 1
+   plain unjittered hold-frame. Fixed: matching 16-entry table, zero extra cost.
+2. **§PHOTO_SUN_SEPARATION — Alt+S no longer force-overrides the sun position, now live.** Was:
+   unconditional reset to a fixed 6°-elevation dusk + reddish sky drama + forced night-mode amber
+   glow, every press, regardless of real time-of-day. Now: sun position/sky-drama/warm-tint default
+   OFF (plain daylight); old package still reachable via `APP._photoDuskMood = true` for A/B,
+   not deleted. Alt+C's movie noon→dusk sun arc is a fully separate code path — confirmed
+   untouched, never touch `PHOTO_SUN_ELEVATION`/`_AZIMUTH` constants themselves, only the call site.
+3. **Point-light fixture illumination restored (PR #1380), now live.** Removing the whole
+   night-mode force-toggle (item 2) also silently removed ~200 supplementary point lights it loads
+   as a side effect — REAL illumination, not mood; beam/railing (`envInt:0` by an earlier,
+   unrelated fix, so zero sky-reflection by design) leaned on them for visible sheen and went
+   flat/dark without them. Fixed: night-mode's point-light toggle now fires UNCONDITIONALLY every
+   Alt+S (and its intensity/exposure override, which just restores the real pre-toggle daytime
+   values — not mood either); ONLY the warm-tint COLOUR override stays dusk-mood-gated.
+4. **§SKY_SYNC_REGRESSION — shipped broken, reverted same session, DO NOT retry blind.** Attempted
+   to fix a real sky/shadow-direction mismatch (sky dome showing a stale sun-disc position vs
+   where shadows actually fall) by copying `A.sun.position` (normalized) into the Sky shader's
+   `sunPosition` uniform whenever the sky is made visible. **Shipped without live verification —
+   broke the sky entirely (rendered fully black in production), because this app's reflections are
+   sampled FROM the sky as the env map, so it also killed reflections everywhere, not just on the
+   originally-reported element.** Reverted (PR #1381) back to the known-good
+   `if (A._sky) { A._sky.visible = true; }` only. **The mismatch is still real and still open** —
+   re-derive the fix properly next time: `scene.js`'s own `updateSky()` builds the sky uniform via
+   `setFromSphericalCoords(1, phi, theta)`, NOT by normalizing `A.sun.position` — check whether
+   `A.sun.position` carries anything beyond a pure direction (offset, non-uniform scale via a
+   parent transform, etc.) before assuming `.normalize()` is equivalent, and test live (screenshot
+   or — per this project's own rule — better yet a numeric colour/luminance read of the sky
+   pixels) BEFORE merging, not after a user reports it broken.
+5. **§ONGOING_TINT — user's last observation this session, NOT resolved. IS a rendering bug, not
+   a data/colour issue. §HOSPITAL_META_DB_STALE is NOT the cause of this — settled, don't
+   re-litigate it here.** §HOSPITAL_META_DB_STALE (further below in this file) is a real, separate,
+   smaller, already-scoped issue about MISSING colour data — it is unrelated to this symptom and
+   was already proposed and rejected once this session as an explanation; do not re-propose it for
+   §ONGOING_TINT without genuinely new evidence. After all 4 fixes above: "bluish tint still there
+   though darker, but the greyer piping gets similar dark treatment. Thus it is just replacing the
+   too bluish with another similar set of too darkish." **A grey element going BLACK is not
+   explained by any colour-data gap — grey is a legitimate, valid RGB value; something in
+   RENDERING has to actively zero it out.** That is the exact same failure shape as
+   §RED_GREY_MYSTERY's already-found root cause on the one red valve (degenerate/zero-length
+   vertex normals → `normalize(vec3(0))` → NaN → literal `[0,0,0]`, independent of the element's
+   real base colour — proven on THAT element by the diffuseColor probe reading 100% healthy while
+   the final pixel was still black). **This session's disabled normal-repair scan already measured
+   how widespread the same raw defect is across this ONE building, unprompted by this specific
+   complaint** — worth re-reading directly: `meshesScanned=4368 meshesAffected=1552
+   degenTotal=72077` (from the `§NORMAL_REPAIR` log line, `A._repairDegenerateNormals` in
+   `streaming.js`, currently commented out at its call site). 1,552 of 4,368 meshes in Hospital
+   carry at least one degenerate normal — more than a third. That is a very plausible explanation
+   for "greyer piping gets similar dark treatment" being a WIDESPREAD pattern, not one isolated
+   valve. **Next session: do NOT chase a data/DB theory for this — pick up exactly where
+   §GENUINELY STILL UNSOLVED (below) left off** on the one confirmed element, since the repair
+   itself was verified to change ZERO rendered pixels there (the real mechanism is still not
+   found, only the data-level symptom), then check whether the SAME "recompile clears it" lead
+   generalizes to grey piping elements too.
+1. **§STILL_REFINE_JITTER_MISMATCH — TAA smoothing was silently half-broken, now fixed.**
+   `viewer/lib/TAARenderPass.js:35` used a 32-entry jitter table (`_JitterVectors[5]`) while
+   `effects.js`'s still-refine loop only ever ran 16 accumulate frames — a "converged" still was
+   actually a 50/50 blend of (16 real jittered samples) + (1 plain unjittered hold-frame), which is
+   why edges looked jagged on EVERY object, not just the broken one. Fixed: switched to the
+   matching 16-entry table (`_JitterVectors[4]`), zero extra render cost. Verified:
+   `taaAccumulateIndex=16` converges cleanly.
+2. **§PHOTO_SUN_SEPARATION — Alt+S no longer force-overrides the sun.** User: "Sun should be a
+   separation of concern" + "too dark contrasting unrealistic ... too cartoonish." Alt+S used to
+   unconditionally reset the sun to a fixed 6°-elevation dusk (`PHOTO_SUN_ELEVATION`/`_AZIMUTH`,
+   still used by the Alt+C movie sun-arc — untouched), boost the sky toward reddish drama
+   (turbidity/rayleigh/mie), and force night-mode's amber glow on — all regardless of whatever real
+   time-of-day was already active. **New default: none of that happens** — sun/sky/night-mode stay
+   exactly as they already are (plain daylight, if that's what's active). **Old behavior still
+   reachable, not deleted** — user explicitly asked to compare, not lose it: set
+   `APP._photoDuskMood = true` before pressing Alt+S to get the full old dusk package back
+   (sun position + sky drama + night-glow + warm-evening tint), leave unset/false for the new
+   default. Verified live both ways (sun position unchanged by default, forced-different with the
+   flag, shadows confirmed still enabled+casting either way — user's explicit "don't break that").
+
+### GENUINELY STILL UNSOLVED — next session starts HERE, do not re-derive from scratch
+**A real element (Hospital `IfcValve` guid `0HuLVU0hf5gxwY8y9yDvc0`, isolated with zero possible
+neighbour occlusion — including same-BatchedMesh slots via `setVisibleAt`, not just other meshes)
+still renders literal `[0,0,0]` on ~43% of its own pixels under Alt+S.** This session ruled out,
+by direct raw-single-frame-render test (NOT the TAA-accumulated composite, which was found to mask
+real differences — always test with `A.renderer.render(A.scene, A.camera)` directly, never
+`A._composer.render()` for a differential "does toggling X change anything" test):
+- AO, shadow-restore blend, sun shadow map (incl. bias), triplanar, env reflection, batch-neighbour
+  occlusion, backface culling (`mat.side` is already `DoubleSide`), vertex colours (none exist on
+  this material — no `color` attribute at all), material maps (none — no map/aoMap/alphaMap/
+  normalMap/roughnessMap/metalnessMap), opacity/alphaTest/transparency (all default/off).
+- **Geometry-data normals**: found 24 genuinely zero-magnitude vertex normals on this element's own
+  mesh (raw CPU-side buffer read, real in-range positions, not padding) — built and verified a
+  repair (`A._repairDegenerateNormals` in `streaming.js`, currently commented out/disabled at its
+  call site): recompute-from-triangle first, nearest-valid-neighbour-by-position fallback when the
+  vertex's own triangles are ALL zero-area (confirmed the actual case here — every one of the 24 sits
+  on a degenerate triangle, so simple per-face recompute alone doesn't reach them). **The repair is
+  confirmed 100% effective at the DATA level** (read back live: 0 degenerate vertices remain, at
+  every checkpoint across the full staging sequence — streaming-complete, post-isolation,
+  mid-staging, fully-converged, all confirmed clean in one unbroken test) **but changes ZERO
+  rendered pixels**, tried 3 different GPU-upload-forcing strategies (`needsUpdate=true`, swap in a
+  genuinely new `BufferAttribute` object, `renderer.properties.remove(geom)` to drop cached GPU
+  state) — none moved the black-pixel count at all. **This means the 24 raw-degenerate vertices are
+  NOT the (or not the sole) cause of the visible black — that causal link, assumed earlier this
+  session from a correlated but not confirmed in-shader `length(normal)` probe, does not hold up.**
+- **Stage-by-stage shader probe, real finding, most valuable lead for next session**: patched
+  `mat.onBeforeCompile` with early-`return` checkpoints at successive points in the ACTUAL compiled
+  shader (not a synthetic isolated fragment) and re-rendered raw each time. Every single checkpoint
+  came back **100% clean (zero black pixels)**: `diffuseColor.rgb` right after `#include
+  <color_fragment>` (pre-lighting), `length(normal)` right after `#include
+  <normal_fragment_maps>` (post-repair — was NOT clean pre-repair, matches expectation),
+  `reflectedLight.directDiffuse + indirectDiffuse` right after `#include <lights_fragment_end>`,
+  `outgoingLight` right after `#include <opaque_fragment>` (post envmap/specular combine),
+  and the fully-tonemapped+colorspace-converted `gl_FragColor.rgb` right before `#include
+  <fog_fragment>`. Fog itself was also directly ruled out (`material.fog = false` + forced
+  recompile — same black count as fog-on, 721 both times). **Every stage tested individually is
+  clean, yet the FULL unmodified shader (no early-return patches) still outputs black at those
+  exact pixels.** This is an unresolved contradiction — most likely explanation not yet tested:
+  something about the shader RECOMPILE each probe triggers (`mat.needsUpdate = true`) inadvertently
+  fixes or sidesteps the real bug as a side effect (e.g. a stale/mismatched compiled-program cache
+  for this exact material+light-count combination, separate from anything in the GLSL source
+  itself) — test THIS directly next: patch a checkpoint that changes NOTHING (a true no-op
+  replace-with-itself) and confirm whether the mere act of forcing recompile alone clears the black,
+  independent of which checkpoint/probe content is used. If recompiling alone fixes it, the real bug
+  is a stale compiled shader program (e.g. from a light-count change after initial compile — this
+  scene ends up with up to 47 `PointLight`s active during staging) never getting recompiled for this
+  specific material through the normal path, not anything in the source data or GLSL logic.
+- Test infra: `verify_site2` (port 8403, `python3 -m http.server 8403` from
+  `/tmp/claude-1000/-home-red1-bim-compiler/2a545224-.../scratchpad/verify_site2`, symlinked to
+  `/tmp/wt-triplanar-metal-cast/viewer`) — restart the server if the port's not listening
+  (`ps aux | grep 8403`). Every probe script referenced above lives in this session's scratchpad
+  (`8929c17e-...../scratchpad/probe_*.js`, `witness_*.js`) — reuse the pattern (isolate via
+  `setVisibleAt`, raw `A.renderer.render()` per differential test, `A.startStillRefine()` +
+  `_stillRefineBusy===false` wait for the real converged case) rather than rebuilding from scratch.
+- User's standing instruction, unchanged: "if u say near black, that is rejected" — this must
+  resolve to a real, understood, FIXED mechanism or a clearly-still-open item, never a write-off.
+
+The findings below (§1-4) are from earlier sessions the same day and are unrelated to this open
+item — already fixed/parked, do not re-open.**
+
+### Fixed / verified earlier this session (real evidence, not assumed)
+1. **Reflection tuning (envInt) — DONE, LIVE, verified on `origin/main`.** 27 STD_MAT classes
+   exempted from Alt+S's ×3 reflection boost, beam/railing at `envInt:0`, 25 others at `0.05`.
+   `streaming.js?v=61`, `sw.js` `v1031`+. This was correct and complete for what it targeted
+   (sky-reflection strength) — it was never able to fix the other two bugs below, which are a
+   different layer (base colour data, and a separate texture-multiply effect).
+2. **§HOSPITAL_META_DB_STALE (data bug) — fix built + verified LOCALLY, NOT DEPLOYED.**
+   `Hospital_meta.db`/`Hospital_geo.db` (the split files the live viewer actually streams) are
+   dated 2026-06-04/05 — 2 months older than the current combined source, which already has real
+   colour for classes the split copy is missing (confirmed class-by-class: `IfcBeam` 0/1970 in the
+   stale split vs 1970/1970 in the current combined source; same pattern for `IfcPipeSegment`,
+   `IfcDuctSegment/Fitting`, `IfcFireSuppressionTerminal` — all 0% in the stale split, 100% in the
+   current source). Regenerated via the existing `scripts/split_db.sh` into `/tmp/split_test/`
+   (Hospital_meta.db/geo.db/positions.bin) — confirmed live: the same beam's
+   `mesh.material.color` goes from wrong `8c9199` (STD_MAT's grey fallback) to correct `ebe6d9`
+   (matches the real `0.920,0.900,0.850`). **Not yet uploaded to the live OCI bucket — needs an
+   explicit go-ahead before touching production, per this project's PRIME RULE. User has not yet
+   said go.** Audited other split buildings the same way: Terminal is fine (its split is newer
+   than its source); Clinic's split file is old by date but its actual colour coverage checked out
+   complete for the classes inspected; HHS_Office_Federated doesn't use split mode locally.
+3. **§TRIPLANAR_METAL_CAST (a second, separate code bug, Alt+S-only) — fix built, NOT committed,
+   NOT deployed.** The triplanar system (Layer 3, "8 distinct triplanar materials" — that phrase
+   traced to a real 2026-07-15 witness count, archived in
+   `prompts/archive/PHOTOREAL_STILL_RENDER_full_history_2026-07-15_to_2026-08-11.md` line 236, not
+   a designed 8-material system) multiplies a real photographed texture onto every metal/
+   concrete/plaster-class element's colour, Alt+S/Alt+G only. Measured the 3 actual texture files
+   directly: concrete is exactly grayscale (no bug possible), plaster is ~2% off (negligible), but
+   **`metal_color_1k.jpg` has a real, systematic per-channel cast** (mean RGB `0.4901, 0.5353,
+   0.5784` — B 18% above R) that the old scalar `normFactor` (a single brightness number) never
+   corrected, and the metal group's contrast-boost (1.9×, the strongest of the 3 groups) then
+   amplified that cast — dulling/cooling ANY colour under it (real or STD_MAT fallback alike) only
+   during staging. **Fix:** replaced the scalar `normFactor` with a per-channel `normFactorRGB`
+   (measured inverse means: metal `[2.0406, 1.8679, 1.7290]`) so the multiply is a true identity
+   `(1,1,1)` on average for any colour, only real grain survives. Built in worktree
+   `/tmp/wt-triplanar-metal-cast` (branch `fix/triplanar-metal-color-cast`, off `origin/main`
+   `77f8234`) — 3 files touched in `viewer/streaming.js`: the `_TRI_CONCRETE`/`_TRI_PLASTER`/
+   `_TRI_METAL` definitions, the `_triNorm` construction (now a `THREE.Vector3`), and the shader's
+   `uniform float uTriNorm` → `uniform vec3 uTriNorm`. **Verified two ways:** (a) live uniform
+   read post-fix, no pixel sampling: `uTriNorm = [2.0406, 1.8679, 1.729]`, exact match, no NaN, no
+   shader compile error (`gl.getError()==0`); (b) real pixel test, the beam, both with its correct
+   real cream colour AND with the grey STD_MAT fallback, wide non-crevice pose, 717 confirmed
+   on-target samples each: Alt+S comes out hue 0-5° (warm/neutral) in BOTH cases — no longer
+   bluish either way. **NOT yet committed, NOT a PR, NOT deployed — user's explicit instruction
+   this session: "I rather u do not fix that [extraction] script" (item 4 below) but this
+   triplanar fix was explicitly confirmed wanted ("the red is confirmed then fix the alt-s
+   effect... the grey is also confirmed fallback then treat similar not bluish") — this one IS
+   meant to ship, just hasn't been committed/PR'd/deployed yet.**
+4. **Extraction-script gap — found, root-caused, EXPLICITLY PARKED, do not touch without new
+   instruction.** `DAGCompiler/python/extractIFCtoDB.py`'s `get_colour_for_element()` (the actual
+   function that builds a building's combined source DB from its real IFC — confirmed this is the
+   one, not `tools/extract.py` which builds a different Rosetta-reference DB) only reads colour via
+   direct per-instance geometry styling (`IfcStyledItem`/`StyledByItem` on the geometry itself) —
+   it never reads colour via material ASSOCIATION (`IfcRelAssociatesMaterial` → the material's own
+   defined render colour), which is how Revit typically colours structural elements ("this beam's
+   material is Steel, Steel has a colour"). Real numbers, multiple buildings, not just Hospital:
+   | building | class | has colour / total |
+   |---|---|---|
+   | Hospital | IfcBeam | 0 / 1,970 |
+   | Terminal | IfcBeam | 432 / 432 |
+   | Terminal | IfcColumn | 122 / 158 |
+   | Terminal | IfcMember | 312 / 442 |
+   | LTU_AHouse | IfcBeam | 819 / 1,144 |
+   | LTU_AHouse | IfcColumn | 1,365 / 1,785 |
+   | LTU_AHouse | IfcMember | 2,283 / 2,349 |
+
+   Hospital is total (0%) because its source IFC apparently has zero redundant per-instance
+   styling for these classes; Terminal/LTU are partial (70-97%) because their exports happen to
+   carry some redundant styling the buggy function can still pick up. **User's explicit ruling
+   this session: do NOT fix this now** ("I rather u do not fix that script as i fear it is
+   pivoting and drifting") — parked, not touched, not re-opened without new instruction. If ever
+   revisited: fixing means re-running full IFC extraction (the function takes a live `ifcopenshell`
+   element, not a `.db` row) against the ORIGINAL source IFC — not a `.db`-side patch — and a
+   partial "colour-only" re-run mode vs a full geometry re-extraction was never confirmed to exist,
+   check before assuming either is cheap.
+
+### §RED_GREY_MYSTERY — ROOT CAUSE FOUND 2026-08-15 (5th session same day), FIX NOT YET WRITTEN
+**Both named candidate causes from the prior session (stale AO depth-prime, AO/shadow-restore
+per-pixel bug) are RULED OUT by direct test — the real mechanism is a THIRD thing, deeper than
+either guess: a genuine geometry-data defect (zero-magnitude vertex normals) on this specific
+element's own mesh, unmasked by staging's lower light levels.** Full chase, in order, each step
+empirically tested (not guessed) on `verify_site2` (fixed data + fixed triplanar code, port 8403,
+worktree `/tmp/wt-triplanar-metal-cast`) — reuse the same 8 probe scripts in
+`/tmp/claude-1000/-home-red1-bim-compiler/8929c17e-.../scratchpad/probe_*.js` if this needs
+re-verifying rather than re-deriving:
+
+1. **Methodology hole found in the PRIOR session's own isolation test**, before ever reaching the
+   two named candidates: `witness_isolated_red.js` hides every other scene *mesh* but the target
+   (`0HuLVU0hf5gxwY8y9yDvc0`, an `IfcValve`) is drawn by a `BatchedMesh` (id 3365) holding **92
+   elements in one shared buffer** — hiding "every other mesh" left all 91 neighbours in the SAME
+   batch fully visible and able to occlude/shadow the target. `mesh.setVisibleAt()` was never
+   called. Fixed with true single-slot isolation (`setVisibleAt(i, false)` for all 91 others) —
+   **made no measurable difference** (729→729 black px), so this hole didn't change the verdict,
+   but it means the original "zero possible neighbour occlusion" claim was never actually true and
+   should not be trusted at face value again without checking `setVisibleAt` support first.
+2. **Both prior-session candidate causes are wrong.** Toggling `A._sunShadowRestoreEnabled`,
+   `A._stillAOAdapter.enabled`, and `A.sun.castShadow` (+ a 20× bias diagnostic) all independently
+   made **zero difference** to the black-pixel count, once tested correctly (see next point) — N8AO,
+   the shadow-restore blend, and the sun shadow map are all innocent.
+3. **Real methodology trap hit mid-session, worth recording for next time**: the very first round
+   of "toggle X, call `A._composer.render()` once more, resample" tests all came back suspiciously
+   *identical* — including swapping the element's material for flat-white `MeshBasicMaterial`,
+   which should have looked nothing like the real material but read the exact same RGB. Cause:
+   `A._composer.render()` after `startStillRefine()` has converged doesn't give a fresh single-sample
+   frame — TAA's `accumulate=true` buffer is 16-deep, so one more call only blends ~1/17 of a new
+   sample into 16/17 of old history. Every "no difference" conclusion from that first round was
+   **unverified, not disproven**. Fix: bypass the accumulator entirely — raw `A.renderer.render(A.scene,
+   A.camera)` — for every differential test from that point on. (This also cleanly excludes AO and
+   the shadow-restore blend from raw-render results *by construction*, since both are composer-only
+   passes — independently reconfirming point 2 for those two.)
+4. **Redone properly (raw render, single frame, no accumulation): sun shadow off, triplanar off
+   (`uTriActive=0`), and `envMapIntensity=0` — still zero difference** (725/725/727 black px,
+   baseline 725). Batch-neighbour occlusion, AO, shadow-restore, sun shadow, triplanar, and env
+   reflection are now ALL independently ruled out by direct measurement, not inference.
+5. **Unlit `MeshBasicMaterial` swap via raw render (the first *reliable* version of that test):
+   ZERO black pixels, full coverage.** This proves the geometry itself has no gaps/holes at this
+   camera pose — rules out mesh completeness and (combined with `mat.side` already being
+   `THREE.DoubleSide`, confirmed live, not `FrontSide`) rules out backface culling too.
+6. **Direct in-shader probe of `diffuseColor.rgb` right after `#include <color_fragment>`
+   (pre-lighting): ZERO black pixels.** The base albedo (no `map`, no `aoMap`, no vertex-colour
+   attribute — confirmed, `geometry.attributes` is only `position`+`normal`) is completely healthy
+   everywhere. The defect is proven to live specifically in the **lighting stage**, which is the
+   one stage that depends on the surface normal.
+7. **Direct in-shader probe of `length(normal)` right after `#include <normal_fragment_maps>`**
+   (the same `normal` variable `lights_physical_fragment` uses, confirmed from the actual
+   `three.module.min.js` chunk source — no normal/bump map on this material, so `_maps` is a
+   no-op and `normal` at this point is exactly `normalize(vNormal) * faceDirection` from
+   `normal_fragment_begin`, which is mathematically guaranteed to be unit length unless the
+   source is degenerate): **734/1681 sampled pixels read a clean ~1.0 length; the other 947 read a
+   scattered, non-clustered spread from ~0.39 to ~0.95** — not a physically real distribution for a
+   post-`normalize()` vector (floating-point noise would cluster near 1.0, not spread continuously
+   down to 0.39). Consistent with `normalize(vec3(0))` → NaN at some vertices, then NaN propagating
+   through interpolation and getting written to the 8-bit framebuffer as an inconsistent small value
+   per pixel (undefined-but-typically-low GLSL→u8 NaN conversion behaviour), not a genuine geometric
+   normal length.
+8. **Confirmed directly in the raw geometry buffer (CPU-side, no shader involved):** this element's
+   own `BatchedMesh` slot (`getGeometryRangeAt(48)` → `vertexStart=64168, vertexCount=37880`,
+   bounding sphere radius 0.51 — matches the valve's real size, so this is genuinely this element's
+   own dense ~16,420-triangle mesh, not shared/padding data) contains **24 vertices with a raw
+   `normal` attribute magnitude near zero** — real mesh data, not inert padding (checked: their
+   `position` values are small, in-range local coordinates on the valve's actual surface, e.g.
+   `[0.143, -0.387, 0.178]`, not origin/garbage). That's 24 of the 51 total degenerate-normal
+   vertices found across the *entire 92-element batch* concentrated on this ONE valve instance —
+   this specific element's tessellation is unusually bad, not a universal per-vertex background
+   noise rate.
+**Verdict:** this is a **real, previously-undiagnosed 4th bug** — a geometry-generation defect
+(zero-magnitude vertex normals on specific curved/detailed elements, at least this valve) that
+produces literal `[0,0,0]` fragments through ordinary NaN propagation in standard PBR lighting.
+It is NOT caused by AO, shadow, triplanar, envMap, or batch-neighbour occlusion (all independently
+disproven above), and it is NOT "near black is just how ambient light works" — per the user's
+standing instruction ("if u say near black, that is rejected"), this is not being written off:
+it's a confirmed, mechanistically-understood defect with a named data location, just not yet
+patched. It surfaces specifically under Alt+S staging (not plain nav) because staging's much lower
+overall light level (`toneMappingExposure` 0.3825 vs nav's 0.45, dusk sun at 6° elevation) is
+what pushes the NaN-corrupted fragments' *effective* darkness over the threshold where a viewer
+would notice — plain nav's brighter, higher-exposure lighting was very likely masking the exact
+same defect as an unremarkable slightly-dim patch, not a genuine absence of the bug.
+**Not yet done, next session or on go-ahead:**
+- No fix has been written. The likely fix shape (NOT yet verified/built): detect
+  near-zero-magnitude normals at geometry-load time (either in the extraction pipeline,
+  `DAGCompiler/python/extractIFCtoDB.py`, or as a viewer-side self-heal on the `normal`
+  BufferAttribute after streaming) and replace them with a recomputed face normal (cross-product of
+  the triangle's edge vectors) instead of the degenerate stored value — needs its own witness
+  before shipping, not assumed correct from this diagnosis alone.
+- Only ONE element (`0HuLVU0hf5gxwY8y9yDvc0`) was chased to full root cause. Whether other
+  elements/buildings carry the same defect at a rate that matters for the ORIGINAL "red/grey dark/
+  bluish" user complaint (as opposed to being a rare, easy-to-miss edge case) is unmeasured — the
+  extraction-script gap (item 4, above, explicitly parked) is a separate, already-understood issue
+  and should not be conflated with this one.
+
+### Test infrastructure left running/available, reuse don't rebuild
+**⚠ RETIRED 2026-08-16 (post-§TRINORM_LINEAR):** verify_site2 (8403) server stopped and
+`/tmp/wt-triplanar-metal-cast` pruned (branch fully pushed+merged, clean) — the mystery they
+existed for is solved. Still standing: `/tmp/wt-sandbox` (8399). This session's probes/witnesses
++ logs: scratchpad `aa515841-…/scratchpad/`. Historical list below kept for the probe-script
+pattern references only.
+- `/tmp/wt-sandbox` (port 8399) — standing sandbox, STALE Hospital data, unfixed code — baseline/
+  regression reference.
+- `/tmp/split_test/` — regenerated Hospital_meta.db/geo.db/positions.bin, correct colour data,
+  not yet uploaded anywhere.
+- `/tmp/wt-triplanar-metal-cast` (git worktree, branch `fix/triplanar-metal-color-cast`) — the
+  triplanar per-channel fix, uncommitted.
+- Scratchpad `verify_site/` (port 8402, fixed data + unfixed code), `verify_site2/` (port 8403,
+  fixed data + fixed code), `verify_site3/` (port 8404, stale data + fixed code) — the 2×2 combos
+  used to isolate which fix caused which effect. `witness_isolated_red.js` there is the
+  hide-everything-else isolation harness — reuse it for the mystery above, don't rebuild it.
+
+### Methodology lessons, hard-won this session — apply immediately, don't re-learn
+- **Never call `A.renderer.render()` yourself to "sample" after Alt+S has already converged** —
+  that bypasses the composer's real AO/TAA output and silently re-renders a plainer frame than
+  what's actually on screen. Read the canvas exactly as the app's own internal loop left it
+  (no extra render call) for any post-convergence sample.
+- **An automated "pick the camera offset with the most raycast hits" pose-selector is biased
+  toward bad poses** — close-up/crevice angles maximize on-screen coverage (more hits) but also
+  maximize AO/shadow crushing. Don't reuse that heuristic without capping minimum distance or
+  checking the result isn't degenerate.
+- **Isolating a target by hiding everything else removes occlusion ambiguity but may introduce ITS
+  OWN artifact** (see candidate cause 1 above) — don't trust an isolated-element result at face
+  value without checking whether AO/depth state was correctly re-primed for the new (empty)
+  scene.
+- **`mesh.material.color.getHexString()` (a direct property read) is far more reliable than pixel
+  sampling for verifying base colour assignment** — reach for it first; pixel sampling is only
+  needed to check what LIGHTING does to that colour, and even then a large flat surface (a beam)
+  samples far more reliably than a small, tightly-packed element (a coupling/valve).
+
+## §HOSPITAL_META_DB_STALE — supersede notice
+The block below (§HOSPITAL_META_DB_STALE, originally written earlier the same day) is now folded
+into the numbered list above — kept in place for its full diagnostic detail (DB timestamps, exact
+queries) rather than duplicated, but its resume-first status is superseded by the block above.
+
+**§HOSPITAL_META_DB_STALE — REAL ROOT CAUSE FOUND 2026-08-15 (3rd session same day, user: "That
+red metal even up close does not look red at all. Bluish railings and beams still there.") — THIS
+is why the envInt/reflection work below never fully closed the complaint. Read this block FIRST,
+before the reflection-tuning history below — that work was real and correct but was fixing a
+SECOND, smaller effect on top of this larger, primary one.**
+
+- **Root cause, proven not guessed:** `buildings/Hospital_meta.db` + `Hospital_geo.db` (the
+  split-DB pair the live viewer actually streams from — confirmed via `§CACHE_WRITE_OK
+  Hospital_meta.db` in a real session log, even when the URL param requests
+  `Hospital_extracted.db`, the split-detect logic silently prefers meta+geo when present) are
+  **dated 2026-06-04/05 on disk** (`ls -la --time-style=full-iso`). `Hospital_extracted.db` —
+  the single combined source DB — is dated **2026-08-03**, almost 2 months NEWER. The split was
+  never regenerated after whatever pass added/fixed real `material_rgba` values in the extracted
+  DB. Direct query, stale `Hospital_meta.db` on disk: **56,751 of 63,415 elements (89.5%) have
+  `material_rgba IS NULL`, including 1,970/1,970 IfcBeam (100%) and most IfcRailing.** The CURRENT
+  `Hospital_extracted.db` has real, correct, warm-cream colour (`0.920,0.900,0.850`) for every one
+  of them — confirmed via direct `sqlite3` query against the file, not the app.
+- **This is why beam/railing never actually looked right despite the envInt=0 fix below:** with
+  `rgbaStr` null, `streaming.js`'s `_getMaterial()` correctly (and separately, not a bug) falls
+  back to the class default `STD_MAT.IfcBeam = { r:0.55, g:0.57, b:0.60, ... }` — a **cool
+  blue-grey "generic steel" placeholder**, `b` slightly the dominant channel — that IS the blue the
+  user kept seeing. The envInt work fixed the SKY-REFLECTION contribution correctly; it was never
+  able to fix the BASE ALBEDO because the base albedo data itself never reached the deployed file.
+  Live-confirmed the material itself, not just the DB: real GPU witness against a real beam
+  (`3PPIAPsErEhBLQrdgjAPap`, `meshId=626, instanceIndex=2`) on the stale meta.db —
+  `mesh.material.color.getHexString()` = `8c9199` = `[140,145,153]`, an EXACT match for
+  `STD_MAT.IfcBeam` converted to 0-255 — proof positive it's the null-fallback, not a rounding or
+  reflection artefact.
+- **Fix regenerated and verified locally, NOT yet deployed (needs explicit go-ahead — this
+  touches the live OCI bucket, `PRIME RULE` production boundary):**
+  `scripts/split_db.sh` (bim-compiler, already existed, does the right thing — `.clone` + drop
+  geometry tables, no rewrite of `elements_meta`) re-run against the current
+  `Hospital_extracted.db` in an isolated `/tmp` copy. Regenerated `Hospital_meta.db`: **63,917/
+  64,150 elements (99.6%) now have real `material_rgba`**, all 1,970 IfcBeam included, confirmed
+  `0.920,0.900,0.850` intact. Live GPU witness against the REGENERATED files (served from an
+  isolated scratch dir, shared `~/bim-ootb` checkout untouched — the auto-mode classifier
+  correctly blocked writing into that shared tree, worked around by staging in
+  `scratchpad/verify_site/` instead, symlinking `viewer/` read-only): same beam,
+  `mesh.material.color.getHexString()` now `ebe6d9` = `[235,230,217]` — **exact match to the true
+  DB colour.** Root cause fixed at the data level, verified by rendering, not assumed.
+- **Residual, small, EXPECTED effect, not a bug — don't re-chase:** even with the correct warm
+  base colour, the SAME beam's actual rendered pixel in ambient-only shadow (no direct sun, this
+  session's now-familiar camera-below-looking-up pose) still reads mildly cool
+  (`[94,101,113]`, B the highest channel) — because the scene's native `THREE.HemisphereLight` sky
+  colour is genuinely `0xb0c4de` (light steel-blue) and this surface has no direct sun on it. This
+  is the SAME class of effect as §PHOTO_METAL_BLUE_TINT's ambient-only-shadow finding below,
+  correctly proportioned, real physics, not a data bug — the difference now is the base colour
+  UNDER that shadow tint is correct cream, not a wrong cool-grey to begin with.
+- **Not yet done, real next steps if this is picked up again:**
+  1. **Deploy the regenerated `Hospital_meta.db`/`Hospital_geo.db`/`Hospital_positions.bin` to the
+     live OCI bucket** (`deploy/OCI_UPLOAD.md` §RULES — remember `--content-type` on every object)
+     — this is the actual fix reaching the user; everything above is proven but inert until this
+     ships. Regenerated files currently sitting in `/tmp/split_test/` (this machine only, not
+     committed — per the DB-changes doctrine, these are never git/LFS).
+  2. **Audit every OTHER split-mode building for the same staleness** (`Terminal`,
+     `HHS_Office_Federated`, `Clinic`, any building shipping a `_meta.db`+`_geo.db` pair) — compare
+     `_extracted.db` mtime vs `_meta.db`/`_geo.db` mtime, re-split any that are behind. Not checked
+     this session, Hospital was the only one investigated (it's what the user was actually
+     looking at).
+  3. **The general-rule question (user asked directly, "why can't all this be as a general
+     rule?"): make staleness structurally impossible, not a thing to remember.** Concrete options,
+     not yet built or decided: (a) a pre-deploy check that fails loudly if `_meta.db`/`_geo.db` are
+     older than their source `_extracted.db`; (b) fold `split_db.sh` as a mandatory last step of
+     whatever pipeline writes/patches `_extracted.db`'s `material_rgba`, so a split file can
+     structurally never exist without its source's latest data; (c) drop the split optimization
+     for the metadata table specifically (keep geometry split, since that's the actual size win)
+     so `material_rgba` always comes from a single always-current source. Worth deciding, not
+     invented/chosen here.
+
+## §PHOTO_METAL_BLUE_TINT — reflection-only history, real and shipped, but NOT the full story (see block above)
+**§PHOTO_METAL_BLUE_TINT — MOSTLY CLOSED 2026-08-15, resume here first if the user reports ANY more
+"still blue/bluish/dark" complaint on beams/railings/pipes/ducts/MEP devices.** Session chased a
+single root cause across 5 shipped PRs (#1367, #1369, #1371, #1370, #1373) on bim-ootb — do NOT
+re-diagnose from scratch, read this block first.
+
+- **Root cause (confirmed, code-grounded):** metal/glossy materials reflect the scene's sky
+  environment map (physically real — same as any polished surface reflecting its surroundings), and
+  a SEPARATE Alt+S/Alt+G-only pass (`_reassertPhotoMatBoost`, effects.js) blindly multiplied that
+  reflection strength x3 (+ tightened roughness x0.4) on every metal/glossy material with zero
+  awareness of a per-class tuning (`STD_MAT[...].envInt`, streaming.js) that already existed to fight
+  this exact effect on 4 classes. Non-null (real, authored) IFC colors were NEVER touched — verified
+  repeatedly, `if (!rgbaStr && stdMat)` gates all hue changes; only the REFLECTION STRENGTH (a
+  physical/rendering setting) is shared per-class regardless of null status, which is correct
+  (a red-painted beam and a grey one reflect light identically in reality).
+- **Current shipped state, VERIFIED BY READING `origin/main`'s RAW FILE CONTENT directly (not just
+  `gh pr view` merge status — see the landmine below on why that matters):**
+  - 27 STD_MAT classes (all structural-steel + MEP: beam/member/plate/pipe*/duct*/cablecarrier/
+    flow*/valve/alarm/fireSuppressionTerminal/lightFixture/sanitaryTerminal/airTerminal/
+    energyConversionDevice/electricAppliance/buildingElementProxy/transportElement) are now
+    `_photoEnvExempt` — the Alt+S/Alt+G triple-boost pass skips them entirely.
+  - `IfcBeam` and `IfcRailing` specifically: `envInt: 0` (zero sky reflection, pure albedo) — direct
+    user request ("get rid of those railings and overhead beams from been recolorized").
+  - The other 25: `envInt: 0.05` (was 0.6 uncapped → 0.18 → 0.05, three successive tightening passes
+    this session, each user-driven: "still blue" → cut further → cut further again).
+  - `viewer.html`: `streaming.js?v=61`. `sw.js`: `CACHE_VERSION = 'v1031'`.
+  - Glass (`IfcCurtainWall`, `IfcWindow`) deliberately left alone — full reflectivity there is the
+    wanted glint effect (§PHOTO_HOTSPOT), never reported as a problem.
+- **Real numeric test, not a screenshot (this session's own GPU witness, Hospital, real streamed
+  geometry, real Alt+S convergence, camera at a real beam's exact DB-recorded position, Level 4):**
+  709 non-metal sample pixels R=96.1 G=88.1 B=89.0 (blue LOWER than red/green); 191 metal sample
+  pixels R=119.1 G=116.7 B=117.4 (blue essentially neutral, -0.5). **Caveat: this test ran BEFORE the
+  final #1373 fix (beam/railing→0, +13 recovered MEP classes) was confirmed on `main`** — it's real
+  evidence the mechanism works, not a post-#1373 re-verification. Re-run it first if picking this back
+  up, using the SAME method (raycast-grid + `gl.readPixels`, bucket by real `material.metalness`, not
+  visual inspection) before touching any more code.
+- **HARD LESSON, apply to every future PR here or anywhere else on this project:**
+  `gh pr merge --auto --squash` can lock the squash content to whatever the branch HEAD was when
+  checks passed — pushing MORE commits to that same branch afterward does NOT reliably get included,
+  even though `git push` succeeds and the branch shows the commits. This bit this session TWICE: PR
+  #1371's second commit (13 MEP classes + a version bump) silently never landed despite being pushed
+  and the PR showing MERGED — only caught because the user kept reporting the exact symptom that
+  commit was supposed to fix, and only proven by reading `origin/main:viewer/streaming.js` directly
+  (`git show origin/main:<path>`), not by trusting `gh pr view --json state,mergedAt`. **Going
+  forward: push ALL intended commits to a branch BEFORE enabling `--auto`, and after any merge,
+  verify by reading the actual file content on `origin/main`, never just the merge/PR state.**
+- **Ambient/hemi fill — RE-INVESTIGATED 2026-08-15 (second session same day), verdict CHANGED from
+  "not yet coded" to "measured, understood, NOT a color bug, decision needed before any fix":**
+  the entry below this one (as originally written) guessed the cause was `PHOTO_HEMI_SKY_COLOR`'s
+  cool-violet HUE (a photo-staging-only tint). **That guess is now falsified by a real numeric
+  witness** (raycast-grid + `gl.readPixels`, same convention as the reflection witness above,
+  GPU `ANGLE (NVIDIA RTX 4060)`), and the true mechanism is broader and simpler:
+  - **Target: a real Victaulic Grooved Coupling, Hospital Level 5, guid
+    `0HuLVU0hf5gxwY8y9yDwsP`, confirmed non-null real IFC color `0.843,0.137,0.102` (hex `d7231a`,
+    255-scale `[215,35,26]`, true luminance 72.6).** Confirmed via `mesh.material.color` read
+    directly off the live `THREE.InstancedMesh` (not the DB) that the material IS exactly this
+    color — the color pipeline is NOT the bug, ruled out first.
+  - **This happens in PLAIN NAV, before any Alt+S/photo staging runs at all** — so it is not a
+    dusk-mode-only issue. Camera posed realistically (looking up at the ceiling-mounted fitting
+    from ~1.2m below, the way a person actually sees it, not a straight-down macro shot — a
+    straight-down pose was tried first and hit a specular hotspot artifact instead, a dead end
+    worth skipping next time). 127 confirmed on-target pixels (guid-matched via raycast, not
+    guessed): rendered median RGB `[77,13,12]`, luminance **26.5 — 36.5% of the true 72.6.**
+  - **Control sample, same session: a nearby neutral/light-grey Victaulic Elbow on the SAME pipe
+    run** (guid `0HuLVU0hf5gxwY8y9yDwsQ`, same camera offset, same method, 181 confirmed pixels):
+    real material colour (read from the live mesh, not the DB — a separate, uninvestigated
+    discrepancy exists between this element's DB `material_rgba` `0.920,0.900,0.850` and its
+    rendered material `9499a1`/`[148,153,161]`, not chased further this session, flagged below)
+    luminance 152.5 → rendered luminance 63.5, **41.6% of true.**
+  - **Verdict: the red joint's 36.5% and the grey elbow's 41.6% are the same ballpark — this is
+    UNIFORM ambient-only shading, not a red-specific or colour-specific darkening.** This renderer
+    has no bounce/GI; a surface with no direct sun on it is lit by ambient+hemi fill alone, and at
+    native (non-photo) intensity that fill leaves ~37-42% of true albedo luminance, for ANY colour.
+    The reason a RED joint specifically reads as "gone black" while a grey one still reads as "a
+    visible dim grey" is arithmetic, not a bug: red's OWN true luminance is already low (72.6, vs a
+    near-white's 200+) because luminance is G-dominated (`Y=0.2126R+0.7152G+0.0722B`) and a
+    saturated red has almost no G. The same proportional cut that leaves grey at a legible 63.5
+    pushes red down to 26.5 — indistinguishable from black to a viewer, even though nothing
+    singled red out.
+  - **What this means for a fix, and why none was applied this session:** the earlier hypothesis
+    ("ambient/hemi COLOR is the next lever") is retired — it's INTENSITY/no-GI, not hue. A global
+    ambient/hemi intensity boost is the obvious lever, but §MOVIE_SHADOW_TM and
+    §PHOTO_CONTRAST_DIALBACK elsewhere in this file are a direct prior instance of exactly that
+    lever being tried and REVERTED because it flattened shadow/spotlight contrast — re-pulling it
+    without a narrower, colour-legibility-only mechanism (e.g. a small shadow-side luminance floor
+    scoped to real/non-null saturated colours only, leaving the global fill and shadow contrast
+    untouched) risks re-breaking what that revert fixed. **This is a real product decision (accept
+    physically-correct-but-perceptually-black shadow rendering, vs. spend a narrow fix on
+    legibility) — not something to invent unilaterally.** Not yet asked/decided as of this entry.
+  - **Loose thread, not chased:** the grey elbow's rendered material (`9499a1`) doesn't match its
+    own DB `material_rgba` (`0.920,0.900,0.850`) at all — that element streams via the `BatchedMesh`
+    path (bucketed by `[storey,disc,rgba]`), and the mismatch wasn't root-caused this session (ruled
+    out one candidate: the "§S260d near-white taming ×0.92" rule doesn't apply here, `b=0.850` is
+    not `>0.85`). Separate from the red-joint investigation above; flagging so it isn't lost.
+  - Witness scripts (not committed, scratchpad only):
+    `witness_indoor_red_darkening_v3.js` + `witness_reference_grey_v2.js`, both against the standing
+    `/tmp/wt-sandbox` (localhost:8399) — reusable if this is picked up again, same GUIDs/offsets.
+  - **Follow-up same session, user pushback ("it's a bright area, why completely not red — investigate
+    harder"): three more real tests, one dead-end honestly retracted.**
+    1. **Colour-assignment audit, 6 more real red elements, both code paths:** every one checked —
+      `IfcPipeFitting` Tee/Coupling variants (InstancedMesh) and `IfcValve`/
+      `IfcDistributionControlElement` (BatchedMesh, guids `0HuLVU0hf5gxwY8y9yDvc0/vcG`,
+      `2NvWEO1Wb9Jwl21EQJp70a`) — every single one has the CORRECT material colour
+      (`d7231a`/`ff0000` matching their real DB `material_rgba` exactly). **No red-colour-assignment
+      bug exists on either streaming path.** (The one mismatched element found earlier, the grey
+      Elbow rendering `9499a1` instead of its true cream `0.920,0.900,0.850`, does NOT generalize to
+      reds — still an open, unexplained, separate loose thread, not chased further.)
+    2. **Dead end, tried and RETRACTED — do not re-chase:** added a synthetic `new
+      THREE.PointLight(0xffffff, 100000, 0, 1)` right next to the same red coupling and re-rendered —
+      ZERO pixel change, even at absurd intensity, even on a plain (non-instanced) `THREE.Mesh`
+      (the ground plane), even after forcing `material.needsUpdate`/`A.markDirty()`/a second render
+      call. `renderer.info.programs.length` DID increase (16→21, proving a shader recompile for the
+      new light count genuinely happened) yet the pixel still didn't move — looked at first like a
+      real "point lights don't illuminate this scene" engine bug. **Falsified by the next test below
+      — this was a test-harness artifact (most likely a camera/target-positioning mismatch in the
+      ad-hoc probe, never root-caused further since a working alternative existed), not a real bug.
+      Do not report "point lights don't work" from this project's own history — it's wrong.**
+    3. **Decisive real-mechanism test: `A.toggleNightMode()`** (the actual shipped fixture-glow
+      code path, not a synthetic light — `§NIGHT_MODE on fixtures=1286 ... glowMats=8`,
+      `nightLights=30` real point lights added) **on the SAME red coupling, same camera pose:
+      luminance 26.5 → 81.9 (3.1x), RGB `[77,13,12]`→`[174,58,47]`, staying clearly red/warm-toned
+      throughout.** Proves the shipped lighting mechanism works correctly end-to-end on this exact
+      element — a real nearby light source DOES correctly restore visible red brightness. This is
+      why the point-light dead-end above was retracted rather than reported.
+    - **Net effect on the earlier verdict: unchanged, now on firmer ground.** The material and the
+      real lighting mechanism both check out correct. What remains is exactly what the first pass
+      found: ordinary ambient-only shadow (no direct sun, no nearby active light) reads at ~37-42%
+      of true luminance for ANY colour, and saturated red's low baseline luminance means that
+      ordinary dimming crosses into "looks black" territory sooner than it would for other colours.
+      If the user's "bright area" report was Alt+S/G dusk mode or plain daylight nav with NO nearby
+      active light source on that specific element, this is that same, already-measured effect —
+      not a new bug. If a future report is pinned to a moment where a real nearby light IS on (night
+      mode, fixture glow, camera fill-light) and the element still doesn't recover, THAT would be a
+      genuinely new lead worth its own witness — not yet observed this session.
+  - **No true indoor/outdoor occlusion for the env-map reflection** — every material's `envMap` is the
+    SAME global sky capture regardless of whether that surface can actually see the sky (an indoor
+    pipe "reflects" the exterior sky through the walls). This session mitigated it by crushing
+    reflection intensity near-zero on the affected classes rather than fixing the underlying
+    architecture (no per-element or per-pixel occlusion test feeds the env map). Cheap enough for now
+    that this may never need real fixing, but it's the honest root cause if intensity tuning alone
+    ever stops being enough.
+- **Explicitly ruled out / do NOT revisit:** Hospital's pipe/duct classes are ~100% real (non-null)
+  IFC color, mostly a generic Revit default (`0.920,0.900,0.850`, confirmed via direct DB query,
+  36,331 elements share this exact value) — proposed treating that default as equivalent-to-null so it
+  could get real trade colors like HHS's null elements do; **user ruling: "NO CHANGE!!!" — Hospital's
+  extracted data is not to be touched, full stop, this door is closed.**
+- **Colour-swap system (separate from the reflection bug above, unaffected by any of this session's
+  fixes, already correct going in) — for when a piece has genuinely NO IFC colour:** name-match first
+  (`A._mepNameHint`, streaming.js) — duct→grey, sprinkler/groove/coupling/victaulic→orange (FP),
+  diffuser/grille/exhaust→red (ACMV), dwv/sanitary→magenta (SAN), pipe→purple (PLB), light/sconce/
+  lamp→yellow (ELEC); falls back to the discipline column (`A.DISC_COLORS`) if no name match — HHS's
+  unlabelled MEP is flat `"MEP"` discipline → green; only truly unclassifiable pieces (no name match,
+  no discipline) land on the flat blue-grey `STD_MAT` default. Real, non-null colours are NEVER
+  touched by any of this — confirmed and reconfirmed multiple times this session.
+
+Other open threads, all below in full detail:
 0. **§WEATHER_ADVANCED_MODE** — SPEC ONLY, no code. Opt-in bake-only weather (the Twinmotion/Lumion
    parity ask). Most of the machinery is already shipped; start at the Phase 1 overcast preset, not
    at clouds. Flagged against the schedule-accuracy-first ruling — a decision, not a queued task.
@@ -30,31 +651,205 @@ Open threads, all below in full detail:
    glow quad softening in `effects.js`, merged 2026-08-12T19:48Z), unrelated to N8AO. Previously
    miscited here as a 4th AO fix — fixed, don't re-cite it against AO work. **User confirmed live,
    real bake MP4 (Clinic): "much better," and Alt+G+Night nav "amazing."**
-4. **§SUN_SHADOW_DROWNED — CLOSED 2026-08-14.** PR #1346 (mask/blend restore pass in
-   `_buildStillAO()`, samples `A.sun.shadow.map` directly, mirrors three.js's own `getShadow()`
-   chunk, restores AO-eroded contrast at the detected sun-shadow boundary only, denoise/AO tuning
-   fully untouched) — CONFIRMED MERGED (`gh pr view 1346`: `state: MERGED`, both CI checks passed).
-   Real-pixel witness: +18.7% contrast at the shadow edge, 40x scoped away from ordinary AO corners.
-   User's own live gut-check (fresh HHS_Office_Federated Alt+C bake, hard reset confirmed
-   `§SUN_SHADOW_RESTORE_INIT_OK` live): "not evident to be diff[erent] onset" at first, then later in
-   the same bake "strong shadows on walls and different surfaces.. this is good sign," closed with
-   "I am OK as this is as good as it can get but is good enough." Root cause: Alt+S/Alt+C's N8AO
-   denoise was bumped in PR #1331 for indoor noise; Alt+G's was never touched — the fix borrows
+4. **§SUN_SHADOW_DROWNED — shipped part CLOSED 2026-08-14 (PR #1346, MERGED, confirmed via
+   `gh pr view 1346`). The slab/wall asymmetry it left behind reopened same day as
+   §SUN_SHADOW_GRAZE_SCALE — also CLOSED 2026-08-14/15 (PR #1363, MERGED).** PR #1346 itself:
+   mask/blend restore pass in `_buildStillAO()`, samples `A.sun.shadow.map` directly, mirrors
+   three.js's own `getShadow()` chunk, restores AO-eroded contrast at the detected sun-shadow
+   boundary only, denoise/AO tuning fully untouched. (§SUN_SHADOW_GRAZE_SCALE below: pixel-proof
+   found the fix's shader logic sound but no measurable synthetic-pose effect — closed anyway on
+   the user's own live-bake read, "shadows are sharp enough," same as #1346's own closure pattern.)
+   Real-pixel witness: +18.7% contrast at the shadow edge, 40x scoped away from
+   ordinary AO corners. User's own live gut-check (fresh HHS_Office_Federated Alt+C bake, hard reset
+   confirmed `§SUN_SHADOW_RESTORE_INIT_OK` live): "not evident to be diff[erent] onset" at first,
+   then later in the same bake "strong shadows on walls and different surfaces.. this is good sign,"
+   closed with "I am OK as this is as good as it can get but is good enough." Root cause: Alt+S/Alt+C's
+   N8AO denoise was bumped in PR #1331 for indoor noise; Alt+G's was never touched — the fix borrows
    sharpness from the already-correct shadow map instead of touching denoise. Full diagnostic trail
    (10 rounds of user corrections, 2 ruled-out hypotheses, the witness methodology, PR #1343's
    insufficient partial fix that preceded #1346): archived in
    `prompts/archive/PHOTOREAL_STILL_RENDER_SUN_SHADOW_DROWNED_2026-08-13_to_2026-08-14.md`.
-   Post-close check (fresh `BIM_MaxQ_HHS_Office_Federated_1786669793870.mp4`, ffmpeg+numpy edge
-   measurement, 2 independent building-footprint boundaries): edge width median 2.0px both, contrast
-   24.5/27.7 median — consistent with the shipped-fix numbers above, nothing regressed.
-   **User noticed, same mp4: slab shadows still soft, wall shadows now strong.** Code-level
-   candidate (not yet witnessed): `_srFrag`'s edge-detect (`effects.js` ~3564-3579) uses a FIXED
-   `kernelPx=4` screen-space neighbor tap to find the shadow boundary — if the boundary's on-screen
-   footprint exceeds 4px it goes undetected and the mask never fires there. Walls are usually viewed
-   near face-on in these shots (narrow on-screen boundary, inside the kernel); slabs are horizontal
-   and often viewed at a raking/grazing angle (roof/soffit shots), which stretches the same
-   world-space boundary across more screen pixels — plausibly past the 4px radius. Fix candidate:
-   scale `kernelPx` by viewing-angle grazing factor instead of a fixed constant. Not dispatched.
+
+   **§SUN_SHADOW_GRAZE_SCALE — CLOSED 2026-08-15, bim-ootb PR #1363 MERGED (auto-merge armed
+   2026-08-14, confirmed via `gh pr view 1363`).** User kept seeing "slab shadows still soft, wall
+   shadows now strong" across multiple fresh bakes after #1346 shipped (HHS_Office_Federated AND
+   Hospital). This thread traced why, built a fix, verified it COMPILES/RUNS clean, then a first
+   pixel-proof attempt was RETRACTED as an N8AO-noise artifact (null-control proved it), and a
+   corrected zero-noise methodology was built and run to a decisive answer: the fix's shader logic
+   is verified sound (its kScale widening genuinely engages at grazing incidence, reaching ~91% of
+   its cap at real shadow-boundary pixels) but produced ZERO measurable image difference on every
+   SYNTHETIC pose/elevation tested this session (Hospital, tour-path pose, both grazing elev=6 and
+   normal elev=40) — root-caused to the mask being mathematically binary per pixel, so a wider
+   kernel only matters where erosion exceeds the base 4px reach, and no such case was found in the
+   tested scenes. Full trail in the entry below (search `Corrected methodology BUILT and RUN`).
+   **Closed anyway** on a REAL Hospital MaxQ bake (`BIM_MaxQ_Hospital_1786724035476.mp4`, landed
+   2026-08-15) — user's own live read: "shadows are sharp enough. Previous was too soft. U may
+   close." Same closure pattern as #1346 itself (a real bake's visual read outweighing a synthetic
+   witness that couldn't reproduce the exact erosion case). Committed
+   `408efb0` on `fix/sun-shadow-kernel-graze`, merged onto `origin/main`@`2b86a47` first (12 commits,
+   clean fast-forward, no conflicts) before pushing.
+
+   - **Mechanism, code-grounded (not the earlier camera-angle guess, which had unresolved direction
+     ambiguity — superseded):** `_srFrag`'s edge-detect (`effects.js` ~3564-3579, confirmed still at
+     that location on `origin/main`) uses a FIXED `kernelPx=4` screen-space neighbor tap with no
+     angle-awareness. The live console log's own `§PHOTO_SHADOW_BIAS worldBias=…m … grazeElev=6`
+     and `§PHOTO_SUN_SHADOW_REACH elevation=6.0 … shadowReach=413` lines (pasted by the user
+     mid-session, from a real Hospital bake) show the codebase ALREADY compensates shadow BIAS for
+     grazing sun elevation elsewhere (`_reassertPhotoShadowCoverage`) — the restore kernel has no
+     equivalent. At low sun elevation, light hits a horizontal GROUND/slab at near-grazing incidence
+     (inherently wide/bias-eroded boundary) but hits a sun-facing WALL at near-normal incidence
+     (tight boundary) — same sun, same frame, opposite effect depending on surface orientation. A
+     flat `kernelPx=4` was implicitly tuned against the wall case.
+   - **Real numeric baseline, obtained from the user's own just-landed bake, current SHIPPED code
+     (no fix applied yet)** — `~/Downloads/BIM_MaxQ_Hospital_1786691108809.mp4`, frame `h_010.png`
+     (Day 412/412, low/grazing sun elevation, extracted via `ffmpeg -sseof -6`), same
+     ffmpeg+numpy FWHM methodology as the #1346 witness (script rewritten this session at
+     `/tmp/wt-sun-shadow-kernel-graze/measure_shadow_edge.py`, per-row max-gradient FWHM + 8px
+     plateau contrast):
+     | surface | rows/cols | edge width | edge contrast |
+     |---|---|---|---|
+     | wall (shaded facade split, rows 370-480, x 600-780) | n=110 | median 2.0px, mean 2.23, std 0.48 | mean **103.4** |
+     | ground (plaza shadow, rows 650-850, x 600-1500) | n=191 | median 2.0px, mean 2.83, std **1.32** | mean **40.1** |
+
+     Width is close on both (the scan partly locks onto rock/material edges on the ground — a real
+     limitation of this method, don't over-read the width column). **Contrast is 2.5× weaker on the
+     ground** and far noisier (std 1.32 vs 0.48) — this is the real signature. Reframes the fix
+     target: a too-narrow `kernelPx` doesn't uniformly blur the ground boundary, it makes the 8-tap
+     mask fire PARTIALLY (some taps cross the boundary, some don't → `edge` comes back as a weak
+     fraction, not 0 or 1) → `mix(aoColor, sharpColor, edge*strength)` only partially restores → a
+     low-contrast wash, not a wide blur. A wider grazing-angle kernel should make more/all taps
+     cross the real boundary → `edge≈1` → full restore.
+   - **Fix built, real-GPU compile/run VERIFIED, pixel-effect NOT yet verified:** worktree
+     `/tmp/wt-sun-shadow-kernel-graze` (fresh off `origin/main`@`f5db8f9`, branch
+     `fix/sun-shadow-kernel-graze`, **uncommitted working-tree diff, not yet a commit or PR** — the
+     diff is sitting there, `git diff -- viewer/effects.js` shows it). Adds a per-PIXEL adaptive
+     `kScale` to `_srFrag`: reconstructs a screen-space surface normal via `dFdx`/`dFdy` of the
+     depth-reconstructed world position (no extra G-buffer needed), takes
+     `NdotL = abs(dot(normal, sunDir))`, and widens `kernelPx` by `clamp(1/NdotL, 1, kernelMaxScale)`
+     (`kernelMaxScale=4.0`). Per-pixel (not per-frame/per-elevation) on purpose — a wall and a slab
+     can both be in frame at the same sun elevation with very different local incidence. Needed
+     `extensions: { derivatives: true }` on the `THREE.ShaderMaterial` (WebGL1-mode GLSL under this
+     renderer's default — `dFdx`/`dFdy` don't work without it). `sunDir` uniform recomputed every
+     frame from `A.sun.position - A.sun.target.position` (the arc moves the sun every capture).
+     Real-hardware-GL witness (`witness/harness.js`-style `playwright-core` launch,
+     `--use-angle=gl`, NOT swiftshader — puppeteer+swiftshader was tried first and was too slow to
+     even finish one 16-sample TAA accumulate in a reasonable smoke-test window, a dead end worth
+     skipping next time) at
+     `/tmp/wt-sun-shadow-kernel-graze/witness_sun_shadow_graze_scale.js`: PASS on
+     `ANGLE (NVIDIA GeForce RTX 4060 Laptop GPU…)` — `SUN_SHADOW_RESTORE_INIT_OK kernelPx=4
+     strength=1 kernelMaxScale=4` fired, `STILL_REFINE done`/`PHOTO_AO done` both completed, **zero
+     shader/compile errors, zero page errors**. This only proves it doesn't crash — it does NOT
+     prove it improves the contrast numbers above.
+   - **A LAN dev server may still be up** from this session at `http://10.253.10.188:8400` (bind
+     `0.0.0.0`, `python3 -m http.server` in the worktree above, Hospital + HHS_Office_Federated DBs
+     symlinked into `viewer/buildings/` and `buildings/`) — check with `curl -sI
+     http://localhost:8400/viewer/viewer.html` before assuming it's alive; restart if not
+     (`cd /tmp/wt-sun-shadow-kernel-graze && python3 -m http.server 8400 --bind 0.0.0.0 &`).
+   - **Pixel-proof attempted 2026-08-14, RETRACTED same session — the first "real" result was a
+     measurement artifact, not a fix effect. Caught before it shipped; recording the trap so it is
+     not re-walked.** Method: single converged Hospital still, real MaxQ tour path pose
+     (`A.cinemaPathPlan(24).poseAt(0.8)` — reuses the SAME camera formula the real film flies, not a
+     hand-rolled bbox pose; two bbox-derived poses were tried first and failed for instructive reasons
+     kept below), sun elevation=6 (`A._sunArcStep(1.0)`, matches baseline `grazeElev=6`), toggled
+     `A._shadowRestoreMat.uniforms.kernelMaxScale.value` between 4.0 (fix) and 1.0 (old flat-kernel,
+     byte-identical to pre-fix shipped code) across successive `A._composer.render()` calls on the
+     same frozen camera — the same single-build-A/B pattern that worked for #1346. First pass found a
+     small, correctly-directioned-looking signal (grazing surfaces ~11% more affected than wall-like
+     ones, classified via `THREE.Raycaster` NdotL against the real scene). **A null-control killed
+     it:** rerunning with NO real toggle at all (kernelMaxScale set to the SAME 4.0 both times)
+     produced the identical magnitude (grazing meanAbsLumDelta 1.39 vs the "real" run's 1.40;
+     normal-incidence 1.29 vs 1.26) — proving the whole signal was render-call-order noise, not the
+     uniform being changed. Root cause: `_composer.render()` re-invokes `n8.render()` (N8AOPass)
+     every call, and N8AO's own internal dither/jitter state advances per call regardless of camera
+     or uniforms — #1346's own witness never hit this because its effect (+18.7%) was far above this
+     noise floor; this fix's effect, whatever it is, is not. Doubling `kernelMaxScale` (4→8) and
+     doubling `strength` (1→2) were also tried against this same flawed methodology and *also* showed
+     no movement — **that result is equally untrustworthy, not evidence either lever is saturated.**
+   - **Corrected methodology BUILT and RUN (2026-08-14, same session) — clean, zero-noise, and
+     decisive: kernelMaxScale/strength measurably do NOTHING on this test scene, but a direct shader-
+     level check shows the mechanism itself is working correctly. This is a real, evidenced result,
+     not another false start — read in full before touching this fix again.** Built
+     `witness_graze_scale_frozen.js`: one `_composer.render()` call to freeze
+     `A._shadowRestoreMat.uniforms` (tAO/tSharp/tDepth/tShadowMap/shadowMatrix now hold one frame's
+     static content, `n8.render()` never called again), then a manual full-screen quad
+     (`A.renderer.render(quadScene, quadCam)`) reusing that SAME material for each sample — verified
+     visually (`quad_only_render.png`) that this draws the real composited scene, not a blank/garbage
+     buffer. **Sanity is now perfect, not just small:** reconverge (ON→ON) sumAbsDiff=0 EXACTLY,
+     null-control (same value twice) sumAbsDiff=0 EXACTLY — the noise from the render-loop method is
+     fully eliminated. **Result: kernelMaxScale 1→4, 1→8, and strength 1→2 each produced
+     `meanAbsDiff=0` across the WHOLE frame** (Hospital, tour-path pose `poseAt(0.8)`), tested at BOTH
+     grazing elevation=6 (`_sunArcStep(1.0)`) AND non-grazing elevation~40 (`_sunArcStep(0.3)`) — same
+     zero result at both, ruling out "wrong elevation" as the explanation.
+   - **Why zero, root-caused via direct shader inspection, not guessed:** built
+     `probe_mask_visualize.js`, a shader clone of `_srFrag`'s edge-detect that outputs `sC` (raw
+     shadow term) and `edge` (the restore mask) as pixel colour instead of the final blend, sharing
+     the SAME frozen uniforms. Confirmed `canRestore`'s preconditions are all true this frame
+     (`sunCastShadow/hasShadowMap/sunShadowRestoreEnabled` all true) and the mask genuinely fires:
+     `edgeMax=255`, 52,620/1.44M pixels (3.7%) have `edge>10` — real shadow boundaries ARE present
+     and ARE being detected. Extended the probe to also output `kScale/kernelMaxScale` as a channel:
+     at those firing pixels, **`kScale` averages 91% of its max (0.25-1.0 range, mean 0.91)** — the
+     per-pixel grazing-incidence widening genuinely engages and reaches near its 4x cap, exactly as
+     designed. **So why does widening the search radius change nothing?** `edge` is built from
+     `max(abs(sC - shadowAt(tap)))` across 8 taps, and both `sC` and every `shadowAt(tap)` are hard
+     `step()` outputs — strictly 0.0 or 1.0, never a fraction. `edge` is therefore mathematically
+     BINARY at the pixel level: the instant ANY one tap disagrees with the center, `edge=1`, full
+     restore, regardless of how many taps agree. **This falsifies the original fix rationale written
+     earlier in this section** ("the 8-tap mask fires PARTIALLY... a weak fraction, not 0 or 1") — that
+     was written from the symptom (weak plateau contrast in a real bake) before the shader math was
+     read this closely; the mechanism cannot produce a partial per-pixel value at all. What a wider
+     kernel actually changes is SPATIAL: which pixels register `edge=1` in the first place (a pixel
+     5-14px from a true boundary that a narrow 4px kernel can't reach, but a widened one can). On
+     THIS scene, at the pixels where `edge` already fires, it already fires at kernelPx=4 (the
+     un-widened base) — there is no ring of "boundary within 14px but not within 4px" pixels for the
+     widening to newly catch, so nothing changes when the cap is raised.
+   - **Honest bottom line: the fix's own logic is verified sound (kScale computes correctly, engages
+     at grazing incidence, is not a no-op in the shader), but this session found ZERO scene/pose where
+     it produces a measurable image difference** — meaning there is still no positive evidence it
+     helps the user's original complaint (soft floor-slab shadows in a real bake), only evidence it
+     doesn't break anything and isn't dead code. The gap is most likely POSE-SPECIFIC: the real
+     baseline (`ground` contrast 40.1 vs `wall` 103.4, §above) came from an actual user-recorded
+     MaxQ Cinema MP4 (Hospital Day 412/412), not a synthetic headless pose — the erosion band that
+     baseline shows must be wider than 4px SOMEWHERE in that real bake, or the ground/wall contrast
+     gap wouldn't exist pre-fix. This session's synthetic tour-path pose (`poseAt(0.8)`, same
+     building) apparently never crosses a boundary that wide, at either elevation tried. **Next step,
+     if this is picked up again: stop hand-deriving poses and instead run this fixed build through an
+     ACTUAL MaxQ Cinema bake (or get the user to run one) and re-apply the SAME ffmpeg+`
+     measure_shadow_edge.py` methodology used for the pre-fix baseline** — that is how the baseline
+     numbers were obtained and is the only way confirmed so far to reproduce the real symptom; more
+     headless bbox/tour-pose engineering has diminishing returns after this session's three failed
+     framings (§below) plus this one's zero-signal result.
+   - **Two bbox-pose attempts that FAILED before the tour-path pose worked, don't repeat them:**
+     (a) `dist=span*1.3` from centroid (the "establishing shot" distance) put the building far enough
+     away that a fixed `kernelPx=4` screen-space kernel already covers a huge world-space footprint,
+     saturating the shader's `edge` mask to ~binary regardless of `kScale` — measured deltaPct=0, a
+     zoom artifact, not a real null result. (b) `dist=span*0.75` from centroid put the camera INSIDE
+     the campus bbox (a large, irregular multi-wing footprint — "0.75x the diagonal span from
+     centroid" is not reliably outside an elongated shape), producing clipped/backface-visible
+     wireframe-looking artifacts that were briefly mistaken for a streaming/DLOD placeholder issue
+     (it wasn't — `§CONTRACT_CHECK streamed=63182 orphans=0` had already fired well before this pose
+     was tried). The fix that actually worked: stop hand-deriving a pose from the bbox at all, call
+     `A.cinemaPathPlan(24)` and use `plan.poseAt(0.8)` — the same formula the real MaxQ film flies —
+     screen-verified via a cheap pre-AO screenshot before committing to a full 24-frame AO converge.
+   - **Ruled out this session, don't re-chase these:** (a) plain camera-viewing-angle-only
+     explanation (ambiguous which direction it cuts — superseded by the light-incidence-angle
+     explanation above, which is unambiguous); (b) TAA history / N8AO depth-dirty state carrying
+     over between consecutive MaxQ-loop stills — read `viewer/lib/TAARenderPass.js` and
+     `effects.js`'s `_startStillAOPhase`/`_stillAODepthDirty` directly, both correctly reset every
+     still, not the bug; (c) the per-frame `§STILL_REFINE cancelled (interaction)` / `§PHOTO_AO off`
+     lines the user sees in EVERY MaxQ frame's log — read `cinema_maxq.js`'s actual loop order,
+     this is normal `§MAXQ_STAGE_KEEP` teardown that fires AFTER `_captureFrame()` already grabbed
+     that frame's pixels, not a bug that discards the shadow before capture; (d) user's "sunlight
+     passing through not-yet-appeared 4D structure" hypothesis — checked against a real live log's
+     `§SHADOW_FRONTIER_AT_CAPTURE`/`§PHOTO_SHADOW_FRUSTUM_COVERAGE` lines, `castShadowFalse=0` and
+     `outsideFrustum=0` throughout the portion checked, force-reassert was actively catching/fixing
+     drift every frame — no evidence of it being the cause, though the "last bit" (near-complete
+     structure) of a run was never actually reached in the checked log, so this isn't fully closed
+     either, just not supported by what was checked; (e) a full-video 4D construction-tour MP4 (not
+     a single frozen still) IS valid evidence for this bug — `cinema_maxq.js` calls
+     `A.startStillRefine()` on every captured frame of a MaxQ Cinema run, not just a dedicated Alt+S
+     still, so the whole shadow-restore pipeline runs on every frame of a tour bake too; (f) dark
+     blobs with bright specular highlights on the ground in some frames are rock/crater DECAL
+     geometry, not shadows — don't re-measure those as shadow edges.
 
 Closed this session, confirmed working live: §CAM_LIGHT (camera fill-light) and §SUN_ARC
 (noon→dusk sweep) — see their one-line status below, full story in the archive.
