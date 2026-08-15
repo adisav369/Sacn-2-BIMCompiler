@@ -4,7 +4,95 @@
 
 ---
 
-# ▶ NEXT SESSION — START HERE. THIS IS YOUR TASK LIST, NOT BACKGROUND READING.
+# ▶ CURRENT STATE — 2026-08-15 session close. START HERE. Supersedes the "▶ NEXT SESSION" block
+# immediately below (that block is 2026-08-13, now stale — kept for its still-relevant "3rd level
+# hanging doors" thread, see the note at the end of this block, not as the active task list).
+
+**For a fresh reviewer (this file is being handed to a second model for deep review): this project's
+Prime Directive is EXTRACT/COMPUTE, NEVER INVENT — every number in this file traces to a real
+extracted DB value or a witness/probe run, not a guess. Read `CLAUDE.md`'s Walker Doctrine +
+FUNDAMENTAL LAW sections first (numeric proof only, never screenshots) before evaluating any claim
+here.**
+
+## What shipped 2026-08-15 (6 bim-ootb PRs, all merged, all measured on real data across 7 buildings)
+
+1. **§SCHEDULE_CLASSIFY_DEDUP (PR #1374)** — collapsed 2 duplicate classification functions in
+   `time_machine.js` into one delegate to `schedule_author.js`'s canonical versions. Zero behavior
+   change (321,509 elements/8 buildings, 0 disagreements).
+2. **§OG_HANG_BAND (PR #1375)** — widened the captured-path repair's hang-search radius 0.5m→9.5m
+   (real carriers for ceiling-mounted equipment sit several metres away). Hospital floating -61%.
+3. **§OG_HANG_WINDOW_BOUND (PR #1376)** — the wider search could push an element past its own Gantt
+   task's authored finish date on 2/7 buildings (LTU_AHouse up to 79.1 days). Fixed: the repair now
+   refuses any push that exits the element's own task window — stays honestly floating instead.
+4. **§GANTT_GAP_CLAMP_SPREAD (PR #1377)** — elements were clustering at the two ends of a Gantt bar
+   with a dead gap in the middle (a real 120-day cross-discipline wait, not a bug). Spread them evenly
+   across the bar via additive gap-padding, clamped per-task at that task's own median gap × 500 —
+   fidelity unchanged on 4/7 buildings, small honest cost on 1, better on 1.
+5. **§MIDAIR_REPAIR_CONTACTGRAPH_DEDUP (PR #1378)** — `_midairRepair` had a byte-identical inlined
+   duplicate of `_contactGraph`'s scan logic. Zero-risk dedupe, verified byte-identical.
+6. **§OG_HANG_UNBOUND (PR #1382)** — the 9.5m cap from #1375 was itself redundant once #1376's
+   window-bound guard existed (that guard already catches a bad match, by time not distance). Made
+   the hang search unbounded, matching the generator's own equivalent logic. Floating -154 (-4.7%)
+   across 7 buildings, **zero cost to window fidelity, byte-identical to the decimal on every
+   building** — confirms the design reasoning was correct.
+
+**Residual floating after all 6 fixes: 3090 elements across 7 buildings** (down from the session's
+starting full-population baseline of ~4339). This number is the primary "chase to zero" target.
+
+## What's still open — in the order worth chasing next, each with a pointer to its full section
+
+1. **§CPM_GENERATOR_UPSTREAM_SPEC candidate #2 — NOT built, the actual structural fix.** Root cause
+   traced this session: `computeSchedule` (the generator) is already correct; compliance is lost in
+   `deriveZones`'s coarse `(phase,storey)` task grouping and the per-task rescale's zero cross-task
+   awareness. This is the fix that would make BOTH the residual floating AND item 2 below actually
+   safe to ship — search `§CPM_GENERATOR_UPSTREAM_SPEC` for the full trace and blast radius (24 files).
+2. **§MEP_PROXY_PHASE_RECLASS — built, measured, net WORSE, NOT shipped.** 85% of Hospital's floating
+   equipment is MEP wearing the wrong (too-early) time slot by classification mistake — the fix for
+   THAT is a one-line `rates.js` reclassify entry, already written and sitting uncommitted in
+   `/tmp/wt-mep-reclass` — but shipping it as-is makes total floating net +28 WORSE (it displaces
+   other, previously-correct MEP elements sharing the same zone). Needs item 1 above before it can
+   ship safely. Search `§MEP_PROXY_PHASE_RECLASS` and `§FLOATING_TIMING_ROOT_CAUSE`.
+3. **`IfcFooting` — 458 elements, Hospital's single largest remaining floating class, unexplored.**
+   Completely untouched by every hang-band fix this session because a footing is normally a CARRIER
+   (Substructure/seq1), not a dependent — its floating is a DIFFERENT relation (likely bearing-side,
+   not hang-side). No probe has looked at this specifically yet. Search `§OG_HANG_BAND`'s residual
+   note.
+4. **Two buildings (Hospital, Clinic) got ZERO improvement from §OG_HANG_UNBOUND** — the unbounded
+   tier found nothing new for them specifically, unlike the other 5. Not investigated. Search
+   `§OG_HANG_UNBOUND`.
+5. **`§CARRIER_DEDUP_DERISK_STUDY`'s 3-way shared-primitive merge — NOT attempted, deliberately.**
+   `hangGate` turned out to be a closure embedded in the generator's single-pass placement loop
+   (shared mutable state), structurally bigger than "one shared primitive" — a real, harder refactor
+   than first scoped. The actual behavioral bug (item in §OG_HANG_UNBOUND above) is already fixed
+   without it; this is now pure code-quality cleanup, not a correctness lever.
+6. **Terminal's Gantt-bar spread SHAPE got measurably worse under §GANTT_GAP_CLAMP_SPREAD** (zero
+   fidelity cost, but KS-uniformity 0.09→0.28) — several of its tasks have real gaps at genuinely
+   different scales that one task-wide median threshold can't handle. Needs a per-cluster/local-
+   outlier detector, not a bigger constant. Search `§GANTT_GAP_CLAMP_SPREAD`.
+7. **§TIER2_AFTER_TIER1 / zone dead-air — now has a precise mechanism, still not fixed.** The
+   `phaseTrade[storey][seq]` cross-discipline trade gate creates genuine multi-week gaps inside a
+   single Gantt bar (worked example: Hospital's Architecture/Level-4, 1571 elements day 0-12, a real
+   120-day wait, 2779 elements day 133-135) — confirmed deliberate design, not a bug. The honest
+   display-side fix (split the task into authored sub-bars at its own internal `phaseTrade` boundary,
+   so the gap reads as a real inter-task transition instead of "empty bar") is named but not built.
+   Search `§GANTT_WINDOW_FIDELITY_AND_SPREAD` Q2.
+8. **§XRAY_STAGING_REMOVED's nondeterminism — unexplained.** Identical `_GANTT_CACHE_VERSION` produced
+   `staged=0` on 5 consecutive fresh sandbox runs but `staged=415` in the user's own live console.
+   Likely object/map iteration-order-dependent somewhere in `_ogSupportSweep`/`materializeZones`/the
+   `_cap` overlay. Not chased.
+9. **§TIME_MACHINE_CONSOLIDATION_SPEC candidate #2 (full 7-way structural split of the 9,016-line
+   `time_machine.js`) — deferred**, not a correctness item, needs its own dedicated session once this
+   file's churn rate (158+ commits, several more today) settles.
+10. **The "3rd level hanging doors" report (2026-08-13, below) was never explicitly re-verified as
+    closed by name** — it's very likely subsumed by the general floating-element work since
+    (§GROUNDED_OVERRIDE_FIX, §OG_HANG_BAND, §OG_HANG_UNBOUND all touch the same symptom class), but
+    nobody has re-run a live bake against that specific original report to confirm. Worth a direct
+    check before assuming it's fixed.
+
+---
+
+# ▶ SUPERSEDED — 2026-08-13 "NEXT SESSION" block, kept for the still-unverified doors thread only
+# (see item 10 above). Do not treat anything below this line as the current task list.
 
 **One open item, real and unreproduced. Chase it with a live baking test, not more node-side probing
 — every node-side avenue below has been checked clean.**
