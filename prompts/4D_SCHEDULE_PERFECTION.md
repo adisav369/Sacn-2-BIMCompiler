@@ -3955,3 +3955,69 @@ That is exactly §CPM_GENERATOR_UPSTREAM_SPEC candidate #1/#2 territory (task gr
 authoring), now cleanly isolated: the repair layer is DONE — no further repair-side lever exists
 that doesn't fabricate dates outside the single source of truth. Next lever for the chase-to-zero
 is upstream window authoring, nothing else.
+
+## §CHASE_TO_ZERO_WINDOW_AUTHORING — SPEC (2026-08-16, user go: "Chase till zero, while Time
+## Machine Gantt Chart needle move truthfully all categories in their respective bars")
+
+**Constraint set, restated precisely:** floating -> 0 AND window fidelity never degrades ("all
+categories in their respective bars" = an element appears only while the needle is inside its own
+task's bar). §CROSSTASK_JUDGE_PARITY closed every repair-side lever; the 656 residual is 100%
+WINDOW_BLOCKED — the dependent's own authored window closes before its first contact even starts.
+By the user's own single-source-of-truth ruling, the display may NOT push an element outside its
+bar — so the only lawful zero is to fix the BARS: authoring must produce windows that already
+account for cross-task physical dependencies. This is §CPM_GENERATOR_UPSTREAM_SPEC territory,
+entered with measurement, not conviction — EXP3 (repair-raw-then-re-derive) already measured WORSE
+once (Hospital 1581→2406) via zone-span distortion of the rescale, so nothing ships without the
+full-pipeline numbers on all 7 buildings.
+
+**Candidates to measure probe-side (EXP5 family), full pipeline (rescale -> _ogSupportSweep ->
+_cjpJudgeParity -> census), before any shipped-code decision:**
+ - EXP5_DIAG: for every WINDOW_BLOCKED element, the minimal end-extension its task needs
+   (first-contact display start + own dur - w.e), per task, per building — is the ask days or
+   months? How many tasks are touched?
+ - EXP5a — minimal window-END extension fixpoint: extend only the affected tasks' authored ends by
+   exactly the measured need (day-rounded), re-run the WHOLE pipeline (extension changes that
+   task's own rescale — the third-lever lesson), iterate <=5. Bars stretch only where a real
+   dependency demands it; elements stay in their own (now-honest) bars.
+ - EXP5b — EXP3 revisited WITH the parity pass: repair the RAW schedule first (_midairRepair),
+   derive zones/windows FROM repaired times, then the full shipped pipeline including
+   _cjpJudgeParity. EXP3's old failure may be absorbed by the parity layer; measured, not assumed.
+**Accept criteria:** floating 0 (or the honest irreducible floor: orphans excluded by definition);
+window fidelity per building >= current (Terminal 99.10 ... Clinic 99.98); spread KS not
+meaningfully worse; totalDays growth bounded and reported; bar extensions reported per task.
+Ship shape if EXP5a wins: authoring-side (schedule_author.js materializeZones window construction)
+so the tasks table — the single source of truth — carries the dependency-consistent windows, and
+the §GANTT_SCHEDULE_STALE self-heal re-materializes non-captured, non-baselined schedules
+automatically. Captured/imported or baselined Gantts are NEVER rewritten — for them WINDOW_BLOCKED
+stays an honest, reported extraction fact.
+
+### §CHASE_TO_ZERO_WINDOW_AUTHORING — EXP5 MEASURED, BOTH CANDIDATES REJECTED FLEET-WIDE (2026-08-16)
+
+All 7 buildings, full pipeline, logs `z_*.log` in session scratchpad; probe EXP5 committed+pushed on
+branch `fix/gantt-window-authoring-zero` (worktree `/tmp/wt-chase-zero`, still standing).
+
+```
+           EXP4 base | EXP5a floating/outWin      | EXP5b floating/outWin   (baseline outWin)
+Terminal   201       | 46 / 3427  FIDELITY WRECK  | 54 / 492   worse        (436)
+Hospital   39        | 24 / 530   FIDELITY WRECK  | 137 / 1875 WRECK        (18)
+Duplex     7         | 2 / 45     worse           | 3 / 10     BETTER       (31)
+HHS        36        | 1 / 9      slightly worse  | 15 / 6     ~same        (4)
+Clinic     72        | 35 / 12    worse           | 94 / 5     floating up  (4)
+LTU        230       | 0 / 71     CONVERGED CLEAN | 13 / 121   worse        (71)
+JKR        71        | 34 / 832   FIDELITY WRECK  | 84 / 980   WRECK        (22)
+```
+**Verdict: neither ships as-is.** EXP5a (end-extension fixpoint) reaches literal zero on LTU with
+byte-identical fidelity — but the SAME lever destroys Terminal/Hospital/JKR fidelity (rescale
+stretches the whole task into the extended window, scattering previously-in-window elements). EXP5b
+(windows from repaired raw times) is EXP3's old zone-span distortion again — parity does NOT absorb
+it (Hospital 39→137). §EXP5_DIAG kills the one-mechanism hope: blocked gaps are sub-day on Duplex,
+~11d p50 on Hospital, 246d p50 on LTU — different tasks need different treatment.
+
+**Named next lever (not built): DECOUPLE extension from stretch.** EXP5a's failure is not the
+extension — it is that `durFactor = tSpan/lsSpan` re-spreads ALL elements into the extended window.
+The fix shape: extend the AUTHORED end (bar covers the real dependency wait) but rescale against the
+PRE-extension span (elements keep today's placement; only the parity pass uses the extra room). One
+window in the tasks table, rescale keyed to the zone envelope carried alongside (authoring writes
+both, e.g. task duration vs zone_span fields — needs a schema/authoring design pass). LTU's clean
+convergence + the small sub-day tail elsewhere say this decoupled variant is the first thing to
+measure next session (EXP5e), before any per-building special-casing.
