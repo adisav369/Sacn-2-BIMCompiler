@@ -7,7 +7,9 @@ ships in the sibling viewer repo). Read the log after every run.
 
 ## ⚠ REOPENED 2026-08-15 — PR #1360's 3 leads shipped+verified 2026-08-14, but a NEW unmeasured 83%-mem
 ## event happened live 2026-08-15 (see bottom section) — do not assume this lane is fully closed until
-## that's resolved one way or the other
+## that's resolved one way or the other. Same-day follow-up attempted a headless repro (see
+## "Follow-up 2026-08-15 (same day)" near the bottom) — genuinely inconclusive, real signal found
+## (AO code is NOT the Lead #1 leak pattern) but the repro itself never got past bake frame 0.
 
 ## Trigger
 User reported Chrome memory growth over time while running the viewer, no exact repro named. Investigated
@@ -176,3 +178,71 @@ cycles sky/lighting/staging/AO state every frame in a tight loop, so any future 
 fastest there via `renderer.info.memory`, not in casual navigation. The open item above is exactly this
 kind of test surfacing something real — whether it's a new leak or just genuine heavy-scene footprint is
 the open question, not whether the test was worth running.
+
+## Follow-up 2026-08-15 (same day) — headless repro attempted, partial/inconclusive, real signal found
+
+**Setup:** `/tmp/wt-sandbox` worktree recreated at `origin/main` (`3de6b49`, includes PR #1363's
+sun-shadow-graze fix), Hospital DB symlinked, static server on `:8399`. 3 headless Puppeteer runs against
+`viewer.html?db=buildings/Hospital_extracted.db`, each driving `window.APP.startMaxQualityOrbit(...)`
+directly (the real Alt+C entry point, `viewer/cinema_maxq.js` `start()`), polling
+`renderer.info.memory` + `_matCache`/`meshCache`/`_nightLights` sizes via CDP every 4-5s. Same instrument
+class as the original PR #1360 investigation, just live-polled instead of a fixed iteration count.
+
+**Run 1** (swiftshader, viewport 1280x800, `frames:40`): streaming alone took ~336s and accounted for
+essentially all the growth seen (`textures` 275→2573, `meshCacheKeys` 3905→20609+) — this is legitimate
+first-time content load for a 63K+-element building, not a leak (matches Lead #2's own methodology: cache
+population on first view is expected). `§MAXQ_START` fired at ~346s. From there, `textures`/`geometries`
+held flat at **2737/2801** for the ~154s further observed before the headless browser session died
+(`TargetCloseError: Session closed`) — no `§MAXQ_FRAME` ever completed (frame 0's AO/TAA still-refine
+phase alone outlasted the observation window).
+
+**Run 2** (GPU-backed headless — `--enable-gpu --use-angle=gl`, matching the user's real hardware path
+instead of software rendering): crashed within seconds of launch. **This sandbox has no working
+off-screen GPU context for headless Chrome** — swiftshader is the only viable headless path here, so a
+byte-for-byte repro of the user's real (GPU-backed, foreground) crash is not possible via this harness.
+Per [[feedback_no_interactive_chrome_tool]] the user's real foreground Chrome is off-limits for automated
+driving, so there is currently no available path to a fully faithful automated repro.
+
+**Run 3** (swiftshader, viewport shrunk to 640x400 to cut AO/denoise cost, ~28min budget): streaming
+settled ~154s in, `§MAXQ_START frames=10 fps=15 path=cinema` confirmed fired. `textures`/`geometries`
+then held **exactly flat at 2737/2801 for over 18 straight minutes** (329 samples, elapsedMs 346k→1409k)
+— same plateau value as Run 1, independently, on a different viewport — before the same
+`Session closed` disconnect. Again zero `§MAXQ_FRAME` completions. `nightLights` stayed 0 the entire run
+in both attempts — `§NIGHT_STILL_LIGHTS` never fired, meaning staging's night-light-boost path (one of
+the two named suspects below) was **never actually exercised** by either repro attempt. That's a real gap,
+not a negative result on that suspect.
+
+**Source check — AO is NOT the Lead #1 leak pattern:** read `effects.js` `_buildStillAO()`/
+`_ensureStillAO()` (~3444-3735). `N8AOPass`, `aoScratchRT` (the `THREE.WebGLRenderTarget` at line 3598),
+and `shadowRestoreMat`/`shadowRestoreQuad` are all built **exactly once per page session** — memoized
+behind `_stillAOPromise`, reused across every AO phase via `ao.adapter.enabled` toggling and
+`ao.pass.firstFrame()` accumulation resets, never reallocated per call. This is the opposite shape of
+Lead #1's PMREM bug (fresh `WebGLRenderTarget` every call, old one orphaned) — ruled out as written today.
+
+**Honest verdict — inconclusive, not closed either way:**
+- **Against a Lead#1-class leak:** `renderer.info.memory` showed zero growth signature across 18-23min of
+  real AO/TAA/triplanar work in two independent runs (different viewports), and the AO source itself
+  doesn't have the reallocate-without-dispose shape. This is real evidence, not nothing.
+- **Not a full answer:** neither run ever completed a single `§MAXQ_FRAME` (frame 0 alone outlasted both
+  attempts), so the specific question the resume block asked — does memory climb *across* repeated frames
+  the way Lead #1 did — was never actually tested. The real incident reached frame ~249/1728; this
+  sandbox's software-rendering path couldn't reach frame 1 in ~40min combined.
+- **The crash itself is unexplained by the tracked counters** — textures/geometries were dead flat right
+  up to disconnect in both runs, and `dmesg`/`free -h` showed no host-level OOM or memory pressure either
+  during or after (system sat at 11Gi/29Gi used post-crash). Two live, unconfirmed hypotheses, neither
+  ruled in or out: (a) something outside three.js's tracked Texture/Geometry accounting is the real
+  consumer (raw pixel readback, JS heap churn from the AO RAF loop, browser-internal buffers) — would need
+  JS-heap or `ps -o rss=` process-level instrumentation, which this run didn't capture; (b) Chrome's own
+  hang-detection self-terminating the renderer under a long synchronous software-rendered RAF loop,
+  unrelated to any app leak — plausible given headless+swiftshader is inherently much slower than the
+  user's real GPU, but also unconfirmed.
+
+**Next session, if picked up again:**
+1. Add `ps -o rss= -p <chromePID>` polling alongside `renderer.info.memory` — the one instrument gap this
+   run exposed (app counters can stay flat while something else grows).
+2. Check why `§NIGHT_STILL_LIGHTS` never fired in a from-scratch load — if it needs a prior manual
+   night-mode interaction to populate `A._nightLights`, that's a real repro gap for testing that suspect.
+3. A byte-for-byte repro needs real GPU-backed rendering (this sandbox can't do headless GPU, and the
+   user's real Chrome is off-limits to automation) — no clean automated path exists right now; may need to
+   accept live-session `§MEM_CHECK` capture (user pastes the console line, as was attempted and missed
+   2026-08-15) as the only faithful instrument until that gap is resolved.
