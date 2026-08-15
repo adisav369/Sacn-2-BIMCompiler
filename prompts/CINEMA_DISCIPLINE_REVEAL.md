@@ -1013,3 +1013,48 @@ PR #1362. §Mechanism C above (through its own "Status" section) describes the S
 shape — do not resume it. Named follow-on, not built: the full unit-aware BOQ-accurate quantity/cost
 figure for the tail caption (see the decisions section above) — the rough count×rate estimate shipped
 instead is honestly labelled, not silently presented as precise.
+
+## Findings 2026-08-15 — live Hospital bake review, v1029 confirmed loaded, 2 real items open
+
+User watched a real Alt+C Hospital bake running the actual merged code (`§BUILD_VERSION v1029` in the
+boot log — confirmed this is post-#1362, not stale; the log also showed the new `pullout`/`round2`/`tail`
+beat names live in `§CINEMA_BEATS`, not the old `reveal`/`rise` terms). Verdict: "not bad," two real
+gaps named. Discussed only, NOT fixed, per explicit instruction this session.
+
+### 1. The Round-1→Round-2 hard cut reads as a jarring sudden switch, not smooth
+Confirms the exact ambiguity the build agent itself flagged and left as its own (undictated) call:
+"your 'resume' wording could mean either [smooth or a hard cut] — this picked the cut." Live observation
+now settles it — the cut needs to not be sudden. NOT decided or built: candidate directions only —
+(a) a quick crossfade/dissolve across the cut, (b) replace the teleport with a fast eased fly-back
+covering the same displacement, (c) a brief motion-blur snap. Different cost/complexity per option;
+needs a real decision before anyone builds it, not a default pick.
+
+### 2. Still reads blue, no reds — root cause identified, NOT the same bug as before, NOT fixed
+PR #1361's `envInt` fix only covers 4 classes: `IfcBeam`/`IfcMember`/`IfcPlate`/`IfcRailing`. It never
+touched the MEP-adjacent classes that carry the SAME grazing-Fresnel-vs-flat-`envMapIntensity=0.6`
+mechanism §Findings-session-2 above proved mathematically: `IfcPipe`/`IfcPipeFitting`/`IfcPipeSegment`
+(metal=0.45), `IfcDuct`/`DuctFitting`/`DuctSegment` (metal=0.40), `IfcCableCarrier` (metal=0.35) — all
+still flat at 0.6, all still moderately reflective, all still theoretically exposed to the same
+grazing-angle blue-mirroring §Findings-session-2 §2 derived from Schlick's equation.
+
+**The direct hit, real data, not a guess:** Hospital's ONE genuinely-red real-IFC-data element is
+`IfcPipeFitting` under discipline FP — 1298 elements, real `material_rgba = 0.843,0.137,0.102` (a real,
+saturated red — presumably sprinkler/fire-line pipe fittings). It sits exactly in this untreated
+metal-bracket. Very likely getting the same grazing-edge blue wash the beam/railing had before #1361 —
+just never measured or fixed for this specific class.
+
+**Separately, confirmed as a non-issue, not a bug:** PR #1356 (`§MEP_DISC_TINT`, the family-name-based
+MEP colour classifier) is a complete no-op on Hospital. `DISC_TINT_CLASSES` only matches the IFC2x3
+generic classes (`IfcFlowSegment`/`Fitting`/`Terminal`) HHS exports with. Hospital's MEP uses different,
+specific IFC4-style classes (`IfcDuctSegment`, `IfcPipeSegment`, `IfcFireSuppressionTerminal`, etc.) that
+never match `DISC_TINT_CLASSES` — so #1356's logic never runs on Hospital at all, and never could have
+added the "brick red and other colours" variety the user originally asked for on THIS building. Whatever
+colour Hospital's MEP shows is 100% real IFC data, unmodified — the only lever available here is the
+envMapIntensity fix above, not the name-classifier.
+
+**Named fix candidate, NOT built:** extend #1361's `envInt` override (or an equivalent, possibly lower
+for these since their metalness is already lower than Beam/Railing were) to
+`IfcPipe`/`IfcPipeFitting`/`IfcPipeSegment`/`IfcDuct`/`IfcDuctFitting`/`IfcDuctSegment`/`IfcCableCarrier`.
+Should be measured the same way #1361 was (real headless pixel readback, before/after, on Hospital's real
+`IfcPipeFitting` red data specifically) before shipping — do not assume the same 0.18 value transfers
+without checking, these classes start at lower metalness than Beam/Railing did.
