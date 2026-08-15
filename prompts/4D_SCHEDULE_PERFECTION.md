@@ -4021,3 +4021,46 @@ window in the tasks table, rescale keyed to the zone envelope carried alongside 
 both, e.g. task duration vs zone_span fields — needs a schema/authoring design pass). LTU's clean
 convergence + the small sub-day tail elsewhere say this decoupled variant is the first thing to
 measure next session (EXP5e), before any per-building special-casing.
+
+### §CHASE_TO_ZERO_WINDOW_AUTHORING — RESOLVED VIA §ZONE_DISPLAY_AUTHORING (2026-08-16, bim-ootb PR #1390)
+
+**The user's live Hospital log invalidated every prior probe model** — the probe fed the captured
+rescale from computeSchedule's RAW times, but the browser feeds it kernel_ops timestamps carrying
+the TWO-TIER DISPLAY timeline (§TIER_SERIAL 420d vs raw-window 334d on Hospital). Live tell:
+browser §PHASE_OVERLAP_SUPPORT_GUARD pushed=4117 vs the raw-fed probe's 1152. Rebuilt the probe on
+witness_midair_zero's display-timeline slice recipe (§EXP6 = browser-faithful today): REAL fleet
+floating was **2741** (LTU 1617, Hospital 664) with 15,420 out-of-window — far worse than the
+raw-fed model's 656/113. The user's "still lots of floating" was right; the probe was wrong. Also
+answered from the same log: the "aborted" bake was a manual cancel of a 49-min ETA
+(§MAXQ_START_REVISED 777→2230 frames × perFrameMs=1320 of per-frame §STILL_REFINE+§PHOTO_AO churn —
+mp4 stops at frame ~105; separate lane, not chased here).
+
+**EXP5 family verdicts (all measured, full pipeline):** EXP5a (bar-end extension fixpoint) —
+rejected, extension chases its own rescale stretch, fidelity wrecked on 3 buildings (though LTU
+converged to literal 0 — the hint that led onward). EXP5b (windows from midair-repaired RAW) —
+rejected, EXP3's distortion persists under parity (Hospital 39→137 in the old model). EXP7 (windows
+from the FULL display timeline) — floating 664→79 on Hospital but §EXP7 showed _ogSupportSweep
+pushing 24,573 elements (1781 out of their bars): the sweep enforces the STRICT end-bar that
+§MIDAIR_REPAIR's header deliberately does NOT enforce on the display timeline. EXP8 (display
+windows + NO sweep + parity only) — the winner: fleet floating 2741→265 (-90%), out-of-window
+15420→113 (-99.3%). Clinic is the one mixed cell (60→91 floating, all honest WINDOW_BLOCKED, its
+fidelity improves 8→4) — named follow-up.
+
+**Shipped (§ZONE_DISPLAY_AUTHORING):** materializeZones opts.displayRemap ← time_machine's new
+_tmDisplayRemap (wraps the SAME _twoTierRemap+_midairRepair the kernel_ops path runs — one physics);
+schedules.display_authored flag (guarded ALTER, named-column INSERTs); captured overlay skips
+_ogSupportSweep iff display_authored=1 (imported/legacy keep it), _cjpJudgeParity always runs and
+now logs floating=/windowBlocked= (live census — every session reports its own truth from now on);
+inline rescale extracted as named _capWindowRescale (sliceable, kills future copies). All 3
+materializeZones call sites wired. _GANTT_CACHE_VERSION 26→27, sw v1042, time_machine ?v=69,
+schedule_author ?v=13. NEW witness_zone_display_authoring.js 14/14; full suite + gate_4d green
+(same pre-existing MISS).
+
+**Chase state after this ship: 265 fleet-wide (browser-faithful model), every one an honest
+WINDOW_BLOCKED cross-task authoring conflict or fixpoint straggler. Next levers, in order:**
+1. Clinic's +31 regression — why does display-window authoring strand MORE weak-bar floating there.
+2. The remaining 265: mostly small per-building counts (27/63/3/11/91/43/27) — per-task decomposition
+   via §CJP_DECOMP on the EXP8 pipeline, then either coverage rounding (floor/ceil day edges) or a
+   per-task minimal end-nudge (NOT the rejected EXP5a global fixpoint — one bounded pass, measured).
+3. Verify LIVE: user reloads (sw v1042), regenerates Hospital — §CROSSTASK_JUDGE_PARITY line now
+   prints floating=N windowBlocked=M; compare against §EXP8's 63.
