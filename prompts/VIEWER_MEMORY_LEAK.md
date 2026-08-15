@@ -5,11 +5,15 @@
 in `bim-compiler` per this project's cross-repo convention (findings/prompts land here even when the fix
 ships in the sibling viewer repo). Read the log after every run.
 
-## ⚠ REOPENED 2026-08-15 — PR #1360's 3 leads shipped+verified 2026-08-14, but a NEW unmeasured 83%-mem
-## event happened live 2026-08-15 (see bottom section) — do not assume this lane is fully closed until
-## that's resolved one way or the other. Same-day follow-up attempted a headless repro (see
-## "Follow-up 2026-08-15 (same day)" near the bottom) — genuinely inconclusive, real signal found
-## (AO code is NOT the Lead #1 leak pattern) but the repro itself never got past bake frame 0.
+## ⚠ REOPENED 2026-08-15, NARROWED SAME DAY — PR #1360's 3 leads shipped+verified 2026-08-14, then a
+## NEW unmeasured 83%-mem event happened live 2026-08-15. Same-day work converged on: the render
+## pipeline is CLEAR of any Lead#1-class leak (full static code trace, §"Deep code trace 2026-08-15",
+## + empirical confirmation on the real target building — Hospital, real 198-200 night-light count,
+## 2 completed bake frames — §"Confirmatory Hospital run 2026-08-15" — `renderer.info.memory` never
+## climbs). Still open: the eventual crash/memory-pressure is unexplained by any tracked GPU/render
+## counter; most concrete remaining lead is IndexedDB frame-blob accumulation during a long bake
+## (named, not yet measured — see that section's "Next session"). Not a rendering-pipeline bug anymore
+## — if this recurs, look at IDB/storage growth, not AO/night/triplanar disposal again.
 
 ## Trigger
 User reported Chrome memory growth over time while running the viewer, no exact repro named. Investigated
@@ -246,3 +250,144 @@ Lead #1's PMREM bug (fresh `WebGLRenderTarget` every call, old one orphaned) —
    user's real Chrome is off-limits to automation) — no clean automated path exists right now; may need to
    accept live-session `§MEM_CHECK` capture (user pastes the console line, as was attempted and missed
    2026-08-15) as the only faithful instrument until that gap is resolved.
+
+**⚠ SUPERSEDED FINDING (see "Deep code trace" below):** the "frame 0 never completes" behavior described
+above turned out to be a harness bug, not an app issue — `startMaxQualityOrbit()` was called without
+`editor: false`, which opens an interactive Cinema Path Editor UI (`§CPE_LOCKS released for editing`,
+`cinema_maxq.js:1049-1052`) and `await`s a user closing it. Nothing in headless ever does, so the bake sat
+parked indefinitely — that's what both runs' "flat memory for 18-23min then crash" actually was, not a
+leak signature or a real crash investigation. `ps -o rss=` polling was added and used below to real effect
+once this was fixed. Left the mistaken run data above rather than deleting it — the AO-source finding
+(memoized, not reallocated) that came out of it is still correct and still cited below.
+
+## Deep code trace 2026-08-15 (same day, third pass) — full per-frame lifecycle read, no leak found in
+## the render pipeline; real candidate named outside `renderer.info.memory`'s visibility
+
+**Trigger for this pass:** user correction — testing was thrashing between configs (viewport size, GPU vs
+swiftshader, RSS polling) without first reading the code, which is exactly why the harness bug above (missing
+`editor: false`) went undiagnosed for 3 runs. Switched to a full static trace of every allocate/dispose in
+the bake's per-frame path before running anything else.
+
+**Harness fix confirmed empirically first:** with `editor: false, preview: false` added, a 6-frame Duplex
+bake completed end-to-end (`§MAXQ_DONE`) in 78s. `renderer.info.memory`: textures 123→145, geometries
+90→143 — but ALL of that growth landed during frame 0's one-time setup (AO pass init, 15 triplanar
+materials, shadow-restore RT); frames 1-5 were flat (143→145 textures over 5 more frames, 143→143
+geometries). No per-frame climb once past first-time setup — the opposite of Lead #1's signature.
+
+**Then traced every create/dispose in the full per-frame path by reading the source, not by more testing:**
+- `cinema_maxq.js` per-frame loop (~1246-1465): `A.stopStillRefine(true, true)` then `A.startStillRefine()`
+  every iteration — `keepStaging=true` is the second arg both times, by design (`§MAXQ_STAGE_KEEP`).
+- `effects.js` `_applyPhotoStaging()` (3121-3313, called from `startStillRefine` every frame): has an
+  early-return guard (`if (_photoStagingOn) { ...skip...; return; }`, line 3137) — with `keepStaging=true`
+  never clearing `_photoStagingOn`, this means the ENTIRE staging setup (ground/puddles/HDRI/sky/
+  `A.updateSky()`/CAM_LIGHT) runs exactly ONCE per bake (frame 0), not every frame, despite an older code
+  comment nearby (`§SUN_ARC_STOMP_FIX`) that reads as if it re-runs every frame — the comment describes the
+  bug that motivated a fix, not current behavior; the guard is what's live. Verified by reading the guard,
+  not by trusting the comment.
+- `scene.js` `A.updateSky()`/`_setEnvMap()` (194-330): the one non-staging per-frame caller is
+  `_sunArcStep()` (called every frame per `cinema_maxq.js:1327`). Its PMREM regen path is triple-gated: (1)
+  `_pmrem.fromScene()` only fires inside a `!A._envMapThrottle` 2000ms-throttle callback, (2) that callback
+  itself no-ops (`§ENVMAP_STOMP_GUARD`) whenever `A._envMapHdriActive` is true — which staging sets once at
+  frame 0 and never clears — so the PMREM branch effectively never fires again during a bake, and (3) even
+  when it does fire, `_setEnvMap()` disposes the previous render target unconditionally before assigning
+  the new one (this is PR #1360's Lead #1 fix, living in the shared helper, not per-caller — so it protects
+  every caller uniformly, not just the ones audited in that PR).
+- `effects.js` `_setTriplanarActive()` (136-138): as currently written, this is a **no-op stub** —
+  `function _setTriplanarActive(active) { return (A._triplanarMaterials || []).length; }`. It ignores its
+  `active` argument entirely; `A._triplanarMaterials` is populated once during streaming
+  (`streaming.js:735-736`), not per-frame. Not a leak — genuinely nothing to leak, it's dead code as an
+  on/off toggle (kept only for its count, used in the `§TRIPLANAR_PERF` log line).
+- `tools.js` `A._nightUpdateLights()` (1453-1567, called every frame both raising to still-budget and
+  lowering back to nav-budget): a proper memoized diff — `A._nightLightByPos` Map keyed by stable fixture
+  position reference, reuses existing `PointLight`s (just updates intensity) for fixtures still wanted, and
+  for ones no longer wanted: `A.scene.remove(light)` + shadow-map dispose + `light.dispose()` +
+  `Map.delete()`. Complete disposal chain, no dangling refs. (`§NIGHT_LIGHT_CHURN_FIX`, 2026-08-08 —
+  already fixed a *different* problem, whole-set rebuild thrash, but the fix happens to also be exactly the
+  right shape to prevent a leak here.)
+- `effects.js` `_buildStillAO()`/`_ensureStillAO()` (already found in the prior pass, re-confirmed): N8AOPass
+  + `aoScratchRT` + shadow-restore material/quad are memoized behind a single `_stillAOPromise`, built once
+  per session, reused every AO phase via enable/disable + accumulation reset. Not reallocated per frame.
+
+**Verdict on the render pipeline: clean.** Every per-frame-called path that allocates anything either (a)
+only actually allocates once per bake behind a correct guard, (b) is memoized and reused with proper
+dispose-on-eviction, or (c) is a no-op. No Lead#1-class (allocate-without-dispose) bug found anywhere in
+this trace, and unlike the earlier inconclusive attempts, this was a full static read, not a probe that
+timed out before reaching a conclusion.
+
+**The real candidate, found by asking "what's invisible to `renderer.info.memory`" instead of re-testing
+the same instrument:** `renderer.info.memory` only tracks three.js-owned WebGL textures/geometries. Two
+things in the bake pipeline live entirely outside that:
+1. **`cinema_maxq.js` `_captureFrame()` → `_idbPut()`** (line ~689-703, called every frame in the main
+   loop): each frame is rasterized to a `<canvas>`, converted to a `webp` Blob at quality 0.92, and written
+   to IndexedDB. **Nothing frees these until the whole bake finishes and the frames are read back for
+   stitching** — by design, since the stitch step needs every frame. On a 1728-frame Hospital bake (the
+   real incident's scale), that's 1728 blobs' worth of image data accumulating for the ENTIRE bake
+   duration, growing linearly with frame count, and completely invisible to the metric both the original
+   #1360 investigation and this session's headless attempts were watching.
+2. **`_stitchMp4()`** (line 718-817, post-bake only): every encoded H.264 chunk is pushed into one `chunks`
+   array (line 756) and held until the final `MP4Mux.mux()` call — `ImageBitmap`/`VideoFrame` objects ARE
+   correctly `.close()`d immediately after each use (lines 781, 784 — this part is clean, textbook
+   WebCodecs hygiene), but the encoded output itself accumulates for the whole video. Rough scale check:
+   Hospital's likely canvas size × 15fps × the code's own bitrate formula (`ew*eh*fps*0.2`, clamped
+   2-50Mbps) over 1728 frames (115s of footage) lands around tens of MB, not gigabytes — probably not
+   the dominant driver on its own, but real and same blind spot. This phase also only runs at the END of
+   the bake, so it can't explain a mid-bake (frame 249) event on its own — item 1 is the stronger candidate
+   for that.
+
+**Not yet measured, not yet claimed as confirmed** — this is a code-grounded hypothesis, not a proven
+cause. Neither is a "leak" in the disposal-bug sense (nothing here is unreachable-but-retained; it's
+deliberately referenced, working-as-coded accumulation) — it's a real, uncapped, growing-with-bake-length
+memory cost the code was never designed to bound, which is a different (and arguably more actionable)
+finding than "there's a bug to fix": the fix, if wanted, would be a product/architecture decision (stream
+frames to the encoder incrementally instead of buffering all of them, or cap/warn on bake length) not a
+one-line dispose fix.
+
+**Next session, concrete verification (measure, don't re-probe blind):**
+1. During a real (or headless, now that the harness works) bake, poll `navigator.storage.estimate()` or
+   count/sum blob sizes in the bake's IndexedDB store at intervals — if usage climbs roughly linearly with
+   frame count matching image-size × frames-so-far, that confirms candidate 1 quantitatively.
+2. Cross-check against `ps -o rss= -p <chromePID>` (added to the harness this session) sampled the same
+   way — IDB writes may be process-memory-resident before Chrome flushes to disk, which would show up in
+   RSS even though it's invisible in `renderer.info.memory`.
+3. If confirmed, the fix is a design change, not a bugfix: e.g. feed the encoder incrementally per-frame
+   during the bake (already have `VideoEncoder`/`_stitchMp4`'s machinery, just needs restructuring so
+   encoding happens inline in the capture loop instead of after it, dropping the need to hold all raw
+   frames in IDB at once) — a real scoping decision, not something to implement speculatively here.
+
+## Confirmatory Hospital run 2026-08-15 (same day, with the harness fix) — real target building, real
+## night-light count, converges the "does it climb across frames" question
+
+With `editor: false` fixed, ran the actual target building (`Hospital_extracted.db`, the real incident's
+building) at the real incident's configuration — night lights raised to **198-200** (matches the original
+report's "raised to 200 lights" exactly), AO+triplanar (48 materials) all active, swiftshader headless,
+640x400 viewport, `frames: 15`.
+
+**Result:** 2 full bake frames completed cleanly (`§MAXQ_FRAME i=0/15 elapsedMs=127433`,
+`i=1/15 elapsedMs=344094` — ~127s and ~172s per frame respectively, consistent with the code's own
+documented real-hardware figure of 1.6-1.8s/frame scaled up ~70-100x for swiftshader software rendering),
+then a 3rd frame's cook ran for another ~450s before the browser disconnected unprompted at
+`totalElapsedMs=793383` (13.2min), short of my 45min budget — not a timeout.
+
+**`renderer.info.memory` across all of it: `textures=2758 geometries=2842`, dead flat, from right after
+frame 0's one-time setup cost through the entire rest of the run** — both completed frames and the long
+stretch into the 3rd. `matCacheKeys`/`meshCacheKeys` flat too (94/20609). This is the same flat signature
+seen on Duplex, now confirmed on the real building with the real night-light count, across multiple
+completed real bake frames (not just "stuck before frame 0" like the pre-fix runs) — **this directly
+answers the resume block's original question: no, `renderer.info.memory` does not climb across repeated
+real frames.** Interesting secondary data point: `rendererRssKB` (summed real Chrome renderer-process RSS)
+actually *dropped* partway through (~5.2M → ~2.3M KB) alongside `rendererProcs` dropping 8→4 — the opposite
+of a leak signature; looks like Chrome itself released/consolidated subprocess memory, not grew it.
+
+**The disconnect itself is still unexplained by any tracked metric** (same as the earlier flawed runs, but
+this time it happened AFTER real completed work, not while parked in a UI). Two live candidates, still
+unconfirmed: the IDB-blob-accumulation hypothesis above (2 completed frames' worth of webp blobs alone
+is small, so this alone doesn't obviously explain a 13-min disconnect — would need more frames to test at
+scale), or an environment-specific swiftshare/headless fragility unrelated to the app (same caveat as
+before — this sandbox cannot do headless-GPU, so a byte-for-byte match to the user's real crash isn't
+available here regardless).
+
+**Converged verdict for this session:** the render pipeline is clean (code trace + 2 independent empirical
+confirmations, one on the actual target building at the actual incident's light count). The remaining open
+question is narrower than at session start — not "is there a leak in AO/night/triplanar" (no), but
+"what causes the eventual crash/memory-pressure, given the tracked GPU/render counters stay flat through
+it" — and the IDB-frame-blob hypothesis is the most concrete, measurable next lead, not yet confirmed.
