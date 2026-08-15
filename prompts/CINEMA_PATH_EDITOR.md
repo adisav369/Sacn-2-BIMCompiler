@@ -3383,3 +3383,34 @@ toward the ALREADY-PRESENT (flag-gated, currently unused) element-paced formula 
 first ~10s of film / before some small fraction of the topout window, fading back to pure calendar-
 linear after — bounding the onset burst without reopening "two mechanisms compete for the whole film"
 that §CPE_BUILDUP_EVEN_TEMPO was written to end. Not started — proposal only, pending confirmation.
+
+## §LTU_SUBSURFACE_BBOX — movie path dives underground on LTU_AHouse (2026-08-16) — ROOT CAUSE MAPPED file:line, FIX NAMED, NOT BUILT (awaiting go — protected lane)
+User report: "LTU seems to get some strewn objects far below surface that affects movie maker path
+going sub surface." Both halves verified with numbers, no code touched.
+
+**Data half (measured on the served Aug-10 LTU split, `LTU_AHouse_meta.db`):** 125,698 elements sit
+at z ∈ [0, 17.1]; **17 junk outliers** below −1 m: 13 `IfcColumn` at −5.6 → −45.6 m assigned to
+VÅNING 1/3 (above-ground storeys — export garbage, not a basement) + 4 borderline `IfcBeam` at
+−2.0/−3.2 m. p01 of the whole distribution = 0.0.
+
+**Code half (Explore-verified, all file:line on origin/main):** the exterior act hangs off ONE raw
+SQL aggregate — `_buildingBBoxArc()` `effects.js:580-588` (`MIN/MAX(center_z)`, discipline='ARC') /
+`_buildingBBoxIfc()` fallback `:568-573` — no trim, no percentile, and `§GROUND_Y`/`_calcGroundY`
+is NEVER consulted by the cinema path. The ARC filter is no shield: `tools/extract.py:404` defaults
+unmapped classes to ARC. Load-bearing line: `effects.js:5571-5577` `pivot.y = zMin + 0.35·(zMax−zMin)`
+→ with zMin=−45.6 the orbit pivot drops from ≈+5.95 to ≈−23.7 m (a 29.6 m sink of the whole orbit
+AND its look-at). Consequences: Beat 5's flat-tilt portions (`CINEMA_FLAT_TILT_DEG=0`, `:7159-7165`,
+`:7072`) put camera Y EXACTLY at pivot.y → a full arc ~24 m under the L1 slab; Beat 4's rise
+(`:7397-7399`) descends into the ground right after the walk-out; the no-room fallback settle
+(`:5664-5674`) can land the dive/spin at −43.9 m. Beat 3 (walk stretch) stays honest — its Y comes
+from door/room `center_z` + eye height. `_densPoints()` (`:6278-6287`) is also unfiltered — the
+junk cluster can additionally pitch the §CPE_AIM_DEPTH gaze downward. Contrast prior art done
+right: `tour.js:451-462` storey Z from doors-only MIN — junk proxies can't move it.
+
+**Named fix (NOT built — CPE is a protected lane, [[feedback_cpe_protect_canvas_altc_from_drift]]):**
+robust z-fence inside the two bbox helpers ONLY (query layer, not choreography): compute p01/p99 of
+`center_z`, reject rows below `p01 − 0.25·(p99−p01)` before MIN/MAX. Acceptance witness: healthy
+buildings (Hospital/Terminal) produce a BIT-IDENTICAL plan (no element below the fence → raw min
+unchanged); LTU pivot returns above ground (fence ≈ −4.3 → zMin −3.2 → pivot ≈ +3.9 m). The 17 DB
+rows themselves stay untouched (EXTRACT-only; presentation-layer exclusion per
+[[feedback_prime_rule_scope_presentation_layer]]).
