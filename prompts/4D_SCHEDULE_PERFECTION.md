@@ -2704,3 +2704,51 @@ exact-match (same crash signature in the user's own console, same symptom class 
 floating — same building), and the fix is shipped and measured clean. If floating is still seen after
 this PR lands and a fresh bake, the next differentiator is pulling real GUIDs from that NEW bake and
 diffing against this section's now-clean baseline — not re-deriving anything above.
+
+## §HOSPITAL_LIGHTING_STILL_FLOATING — continued, same day, 3 more real bugs found+fixed+shipped
+
+PR #1364 (above) made things measurably WORSE on the user's own rebake — root-caused and reverted
+same session (bim-ootb PR #1365): #1364's `_midairRepair` safety-net bolt-on is scale-mismatched
+(tuned for the multi-year generative timeline, bolted onto the captured schedule's compressed
+window) — measured `maxShiftDays=117.7` on a ~334-day window, desyncing the movie from its own
+Gantt-authored dates. Reverted; `_ogSupportSweep` (pre-existing, unmodified) stayed as the only
+repair on that path.
+
+**§GANTT_TASK_WINDOW_FIDELITY — bim-ootb PR #1368, SHIPPED.** User: "why is it not tied to the Gantt
+Chart timeline... if it is not in that single source of truth, it does not happen, yet." Re-read the
+`_cap` overlay precisely: `_cap.win[tid]` (each task's own authored `schedule_start`/`schedule_finish`)
+was fetched but NEVER used to place elements — every element's date came from ONE global affine
+rescale of the old generative timestamps across the WHOLE covered span, with no mechanical tie to its
+own task's window. A deliberate 2026-08-11 trade-off (§TIER_SERIAL Option A), reopened per direct
+instruction: each element now rescaled WITHIN its own task's window only. Measured: 97.87% of
+elements (62063/63415) now sit inside their own task's authored dates (up from zero guarantee); 0/1523
+lighting floating, unchanged. Residual 2.13%: `_ogSupportSweep`'s own physics push can still overshoot
+a task's finish for a real structural reason — smaller, localized, honest — named, not patched
+further. `_GANTT_CACHE_VERSION` 20→21.
+
+**§XRAY_STAGING_REMOVED — bim-ootb PR #1372, SHIPPED.** User: "on Day 5 of Hospital, hanging MEP
+elements started hanging in mid air" → "remove that staging stage!!!" Traced `renderAtTime()` itself
+(never audited before this session) rather than continuing to patch the schedule layer. Found
+`§Z_STACK_XRAY_STAGING` (2026-08-03): a placed-but-not-yet-fully-supported element was shown as a
+translucent ghost instead of solid, by design — itself a real element appearing before its support
+finishes. Worse, the ghost gate only ever covered `obj.isMesh` — BatchedMesh/InstancedMesh (where MEP
+overwhelmingly renders, given per-band counts of 4000-7000+) had NO gate at all and showed that
+population fully SOLID. Removed the ghost, added the same one gate (`cursorMs < _tmXraySolidifyTs[g]`
+→ not visible, full stop) to all three visibility branches. Strictly conservative — can only remove
+previously-granted visibility, never add any. Verified via real fresh-browser probe: 5 cursor points
+swept across the full timeline, every visible guid cross-checked against the solidify map — 0
+violations. `witness_midair_zero.js` 8/8 unchanged (different function, not touched by that witness).
+
+**Real, separate, NOT-yet-explained finding surfaced along the way**: the schedule computation shows
+run-to-run nondeterminism in exactly how many elements land in the "staged" (support-not-finished)
+population under the IDENTICAL `_GANTT_CACHE_VERSION` — observed `staged=0` on 5 consecutive fresh
+sandbox runs, but the user's own live console (same v21) showed `staged=415`. Since kernel_ops caches
+by genVersion, a session that computed once and landed on a bad count is stuck with it until the
+version bumps again — never recomputes on its own. §XRAY_STAGING_REMOVED protects against the VISIBLE
+symptom of this regardless (the gate rebuilds every activation), but the underlying nondeterminism
+itself (likely object/map iteration order somewhere in `_ogSupportSweep`, `materializeZones`, or the
+`_cap` overlay's per-task loop) is unexplained and unfixed — ⛔ named for a future session, not chased
+further here.
+
+Full commit trail: bim-ootb PRs #1364 (reverted logic kept, shadowing fix kept), #1365 (revert),
+#1368 (task-window fidelity), #1372 (staging removal).
