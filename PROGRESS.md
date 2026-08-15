@@ -4,6 +4,22 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §CPM_GENERATOR_UPSTREAM_SPEC, scoping only, awaiting user go
+User: "why not fix it to sustain any constraints expected in general of a gantt schedule?" — i.e. why
+patch the display/repair layer instead of the generator. Root cause traced: `computeSchedule` is
+already a real, compliant CPM engine (real support-DAG + real labor-rate pacing) — compliance is lost
+in two LATER steps that discard its output: `deriveZones` groups elements into tasks by
+`(phase, storey)` only (throws away the finer trade-precedence structure, the real source of Q2's
+clustering), and §GANTT_TASK_WINDOW_FIDELITY's rescale repositions each task independently with zero
+cross-task awareness (scrambles the generator's already-correct ordering, which `_ogSupportSweep` then
+has to repair). New finding: `_ogSupportSweep`/`_contactGraph`/`hangGate` are 3 independent
+reimplementations of "what is my real carrier" — already measurably drifted once (`hangGate`'s
+0.5–9.5m band shipped 2026-08-11, `_ogSupportSweep`'s copy was still 0.5m until today). 24 files
+reference this area (blast radius). Recommended: dedupe the 3 carrier copies first (proven pattern,
+PR #1374), then fix the rescale's per-task independence. A 3rd candidate (regroup tasks by real
+precedence) resembles an already-rejected lever — flagged, not assumed OK. Full spec:
+`prompts/4D_SCHEDULE_PERFECTION.md` §CPM_GENERATOR_UPSTREAM_SPEC.
+
 ## Session 2026-08-15 (continued) — §GANTT_WINDOW_FIDELITY_AND_SPREAD: real regression found+fixed
 User: "correlating exactly to TM Gantt timeline? spread evenly within each bar?" Q1: re-measured
 §OG_HANG_BAND (#1375) per building (not just Hospital) — clean on 5/7, but real on LTU_AHouse

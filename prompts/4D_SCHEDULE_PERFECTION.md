@@ -3305,3 +3305,117 @@ split (1571 elements day 0-12, 120-day silent gap, 2779 elements day 133-135) to
 `CACHE_VERSION` v1033→v1034. `scripts/probe_captured_floating.js` extended with the same
 gap-clamp+pad logic (mirrors the shipped rescale exactly) plus a `GAP_CLAMP_K` env override, reusable
 for whoever picks up Terminal's residual next.
+
+## §CPM_GENERATOR_UPSTREAM_SPEC — scoping only, no code, awaiting user go (2026-08-15)
+
+User, after the three patches above shipped: **"The 4D Schedule is our own generated scripting. Why
+not fix it to sustain any constraints expected in general of a gantt schedule?"** — i.e. why does the
+GENERATOR not just produce something already-compliant, instead of three bolt-on repairs. This is a
+SPEC, read-only, no code touched, no worktree opened.
+
+### The actual root cause, traced to source, not guessed
+
+`computeSchedule` (`schedule_gate.js:273`) is ALREADY a real, mostly-compliant CPM engine — it is
+**not** the thing missing constraints. It already has: real geometric support-DAG placement (`geoGate`/
+`hangGate`/`wallGate`, including a real-carrier hang band already widened to 0.5–9.5m by §HANG_NEAREST
+back on **2026-08-11** — four days before today's §OG_HANG_BAND had to re-discover the identical band
+for a DIFFERENT copy of this logic, see below) and real labor-rate-driven per-element pacing
+(`_installSecs`, `schedule_author.js:62` — every element's `installSecs` comes from `LABOR_RATES`
+productivity × real length/area, already shipped, already used by `place()`'s serial crew-slot
+placement). The raw output of `computeSchedule` is a single, globally-consistent, dependency-ordered,
+realistically-paced timeline. **Compliance is not lost in generation — it is lost in two subsequent
+display-authoring steps that both throw away information `computeSchedule` already computed:**
+
+1. **`deriveZones` (`schedule_gate.js:1012`) rolls elements into Gantt TASKS keyed by `(phase, storey)`
+   only** — `zid = (e.phase||'_UNPHASED') + '||' + storey`. A zone's `seq` field keeps only the
+   MINIMUM seq present (`if (e.seq < z.seq) z.seq = e.seq`), purely for zone-to-zone edge ordering —
+   the finer `phaseTrade[storey][seq]` precedence structure `computeSchedule` used internally (the
+   thing §GANTT_WINDOW_FIDELITY_AND_SPREAD traced Hospital's bimodal `TASK_Architecture_Level_4` gap
+   to) is discarded the moment elements get grouped into this one bar. **This is the actual source of
+   Q2's clustering** — not a display bug, a grouping-granularity bug: the task boundary is coarser
+   than the real precedence graph.
+2. **§GANTT_TASK_WINDOW_FIDELITY's rescale (`time_machine.js:5642-5682`, PR #1368) then repositions
+   every element INDEPENDENTLY per task** — grouped strictly by `item.task`, zero cross-task
+   information. The code's OWN comment already names the consequence: *"a structural dependency that
+   crosses two tasks with overlapping/conflicting authored windows can still show a real violation...
+   pointing at the task AUTHORING."* `computeSchedule`'s real global ordering is correct; this
+   independent per-task rescale is what can scramble it when a real carrier lives in a different task
+   than its dependent — which is exactly what `_ogSupportSweep` then has to repair after the fact.
+   **All three patches shipped today (§OG_HANG_BAND, §OG_HANG_WINDOW_BOUND, §GANTT_GAP_CLAMP_SPREAD)
+   live entirely inside this one repair-and-rescale mechanism**, patching symptoms of step 2's
+   information loss — none of them touch `computeSchedule`, `deriveZones`, or `materializeZones`.
+
+**A third, previously unnamed finding**: `_ogSupportSweep`/`_contactGraph` (`time_machine.js:4216`/
+`:4615`, the CAPTURED-path repair+judge) is explicitly, by its own header comment, *"the SAME
+role-blind support predicate this file already uses for the generative path"* — i.e. a SEPARATE,
+independently-maintained reimplementation of `hangGate`'s support logic, not shared code. Measured
+drift between the two copies, real and dated: `hangGate`'s 0.5–9.5m hang band shipped 2026-08-11
+(§HANG_NEAREST); `_ogSupportSweep`'s equivalent band was still 0.5m until today, 2026-08-15 — **four
+days of silent divergence between two copies of the same physics**, caught only because this session
+happened to chase the floating-count symptom hard enough to trace it. There are now at minimum THREE
+independent implementations of "what is my real carrier": `hangGate` (generative), `_contactGraph`
+(judge, deliberately unbounded), `_ogSupportSweep` (captured-path repair, just patched to match). This
+is the same class of risk `§SCHEDULE_CLASSIFY_DEDUP` (earlier today, PR #1374) closed for the
+classification trio — support-relation logic has the identical shape and has NOT been deduped.
+
+### Blast radius, counted not guessed
+
+**24 files** (`viewer/tests/*.js` + `scripts/probe_*.js`) directly reference
+`materializeZones`/`deriveZones`/`computeSchedule`/`_ogSupportSweep`/`_cap.win`/`GANTT_TASK_WINDOW` —
+every one is a potential baseline that would need re-deriving (not just diffing) under any change to
+the generator's actual placement/grouping logic, the same discipline `§GANTT_GAP_CLAMP_SPREAD` already
+required for the 4 witnesses its own smaller rescale change touched. A grouping-key or rescale-mechanism
+change is a bigger version of the exact same maintenance burden already paid three times today, times
+roughly 6x the file count.
+
+**Risk relative to the three ALREADY-REJECTED bigger levers this session** (reclassifying
+`IfcBuildingElementProxy`'s phase — disproven by direct measurement, the proxies already sit on real
+structural carriers; loosening `phaseTrade` — avoided, prior history of "gave up floor-by-floor
+progression entirely" when tried in this direction; swapping `_midairRepair` in as the primary
+captured-path repair — caused a 100–300 day desync): a real generator-level fix is **structurally
+different from all three**, not a bigger version of the same lever. None of those three touched
+`deriveZones`'s grouping key or the rescale's per-task independence — they either changed a
+classification input, loosened an existing gate, or swapped which repair function ran. A generator fix
+changes what a "task" even IS, which is why it needs its own spec rather than being tried inline.
+
+### Candidate scopes
+
+1. **SMALLEST — fix `deriveZones`'s grouping key so a real internal `phaseTrade` break becomes a real
+   task boundary automatically**, e.g. key zones by `(phase, storey, seqBand)` where `seqBand` is
+   derived from the SAME `phaseTrade[storey][seq]` structure PASS B already computes, instead of
+   `(phase, storey)` alone. **This is the same idea as the "split into sub-bars" lever the user already
+   rejected once** ("the wrong way... can invite drift and impact") — the difference is this would be
+   the GENERATOR's own grouping rule recognizing its own internal structure (so a genuinely separate
+   trade cluster becomes a genuinely separate task, the way a real P6/MSP schedule would have two
+   activities, not one with a hole in it), not a display-side bolt-on split layered after the fact. Given
+   the prior rejection, this needs the user's explicit re-read before any code — flagging it precisely
+   rather than assuming the earlier "no" still applies to a different mechanism achieving a related
+   result.
+2. **MEDIUM — make the rescale solve WITH cross-task context instead of independently per task**, so
+   `computeSchedule`'s already-correct global ordering survives task authoring instead of needing
+   `_ogSupportSweep` to repair what the rescale broke. This is the fix that directly targets the
+   documented root cause (item 2 above) without changing what a "task" is. Would likely shrink or
+   eliminate the need for §OG_HANG_WINDOW_BOUND's clamp (PR #1376) — the violations it guards against
+   would no longer be created by the rescale in the first place.
+3. **LARGEST — dedupe the three independent support-carrier implementations into one shared module**
+   (mirroring `§SCHEDULE_CLASSIFY_DEDUP`'s already-proven pattern for the classification trio), so
+   `hangGate`/`_contactGraph`/`_ogSupportSweep` read one physics definition instead of three
+   independently-maintained copies that have already measurably drifted once. Fixes the ROOT CAUSE of
+   why §OG_HANG_BAND was needed at all (a copy silently falling behind), not just today's instance of
+   it — but is the biggest lift of the three: touches the generative path (`schedule_gate.js`) AND both
+   captured-path functions, the largest share of the 24-file blast radius.
+
+**Recommendation (for the user to bless, not decided here): #3 first, then #2.** #3 has the cleanest
+precedent (this exact session already proved the dedupe pattern works, PR #1374, small and
+zero-regression) and directly prevents this session's whole chase from recurring — the next drift
+between the three carrier copies is now a "when," not an "if," given it already happened once measured
+in four days. #2 is the structural fix for the rescale's independence bug specifically and is a natural
+follow-on once there is one shared support definition to rescale against. #1 is deferred pending the
+user's explicit re-read, since it resembles an already-rejected lever closely enough that assuming
+consent would be wrong.
+
+**What none of these candidates fix**: the still-open `§TIME_MACHINE_CONSOLIDATION_SPEC` structural
+split (separate axis — file organization, not schedule correctness) and Terminal's own residual spread
+shape (§GANTT_GAP_CLAMP_SPREAD's named, not-chased regression) — a generator-level fix changes WHERE
+the pacing information comes from, not Terminal's specific multi-modal-gap shape, which would still
+need its own per-cluster analysis regardless of which candidate above gets picked.
