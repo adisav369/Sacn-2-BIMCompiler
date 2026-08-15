@@ -4,6 +4,33 @@
 > ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
 > needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-15 (continued) — §HOSPITAL_LIGHTING_STILL_FLOATING FOUND+FIXED+SHIPPED, bim-ootb PR #1364
+Real root cause, not the ones chased below: `injectGantt()` had a `var _cap` name collision — a
+crew-demand loop's local number silently clobbered the captured-native-schedule descriptor object of
+the same name, crashing that overlay's application on EVERY run (caught+swallowed by injectGantt's
+own `.catch`, confirmed live in the user's own v1029 production console, same crash signature).
+Fixing it exposed a second real gap: `_ogSupportSweep` (the captured path's own repair) has a
+narrower carrier pool than `_contactGraph`'s (#1338-broadened) — 11/1523 lighting/electrical elements
+floated the FIRST time that path ever actually ran. Closed by running `_midairRepair` as a final pass
+after it. Re-measured 0/1523 floating, real fresh-browser probe, twice. `_GANTT_CACHE_VERSION` 19→20.
+Full trail: `prompts/4D_SCHEDULE_PERFECTION.md` §HOSPITAL_LIGHTING_STILL_FLOATING.
+
+## Session 2026-08-15 — Gantt/canvas desync + Gantt self-heal SHIPPED; Hospital lighting still floats, unexplained
+Chased "Gantt Chart not followed" (user's own smoking-gun read of a live mp4) to two real, separate
+bugs, both fixed+merged: **#1355 §GANTT_SHIFT_HOURS_DESYNC** (Gantt bars authored at 8h/day while
+canvas plays 24h/day, measured 2.93x gap, matches the ratio exactly) + **#1359 §GANTT_SCHEDULE_STALE**
+(the authored Gantt had no version-based self-heal at all, unlike kernel_ops — `schedules.gen_version`
+now mirrors `_GANTT_CACHE_VERSION`, 6 safety cases verified incl. baselined/captured schedules never
+touched). Also found+fixed the local `~/bim-ootb` checkout was 75 commits stale (sw.js v939 vs v1029)
+— resynced. Full trail: `prompts/4D_SCHEDULE_PERFECTION.md` §GANTT_SHIFT_HOURS_DESYNC/§GANTT_SCHEDULE_
+STALE/§HOSPITAL_LIGHTING_STILL_FLOATING.
+- **⛔ OPEN, real bake evidence, all obvious causes ruled out with hard numbers:** post-fix, a live
+  MaxQ bake on Hospital still shows ~100+ lighting/electrical fixtures floating. Measured directly:
+  schedule math is provably correct for this whole class (1522/1523 zero violations), render path
+  is a clean pass-through (no separate bug), pace/staleness/topout all fixed. Next session: check
+  whether the LIVE session's own `kernel_ops` is stale (`§KERNEL_OPS_SCHED_VERSION stale` in console)
+  before chasing anything new — if fresh, pull the exact floating GUID and diff element-by-element.
+
 ## Session 2026-08-14 — HHS stair root-caused + fixed, closing perf/dead-code pass, both SHIPPED+MERGED
 Continuation of 2026-08-13's handed-off "3rd level hanging doors" item — chased the stairs half of it
 (doors half still open, see below). Two bim-ootb PRs merged, `witness_midair_zero.js` 38/0 and

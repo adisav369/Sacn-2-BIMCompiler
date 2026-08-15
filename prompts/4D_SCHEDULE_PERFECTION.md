@@ -2400,6 +2400,20 @@ the local `~/bim-ootb` checkout is dirty/diverged and not safe to read from):
   loaded, then re-run this probe against the matching data. Do not re-guess from a screenshot alone —
   this project's own rule (`§-tagged log values, not screenshots, are proof`) applies here too.
 
+**Follow-up, same day — real smoking gun found and fixed: §GANTT_SCHEDULE_STALE.** User pushed back
+hard on chasing per-building data theories ("Gantt Chart clearly has not touched MEP thus investigate
+that, irrespective of building") after a live mp4 showed the Gantt needle never reaching any MEP row
+while canvas showed MEP built. Correct call — the mechanism is architectural, not data: `kernel_ops`
+(canvas) self-heals via `_genVersion`/`_GANTT_CACHE_VERSION` whenever the scheduling code changes;
+the authored Gantt (`schedules`/`tasks`/`task_elements`) had **no equivalent** —
+`activeSchedule(db)` only ever checked "does a dated schedule exist," so once materialized a
+building's Gantt panel was frozen forever, regardless of how many gate/remap fixes (including
+§GANTT_SHIFT_HOURS_DESYNC itself, same day) landed since. Needle position and canvas had no reason
+to agree. Fixed — bim-ootb PR #1359, `schedules.gen_version` mirrors `_GANTT_CACHE_VERSION`,
+`activeSchedule` reports `stale`/`hasBaseline`/`safeToRegen`, `buildTaskIndex()` re-materializes in
+place when safe. Captured/imported and baselined schedules are never touched (6 cases verified
+against real Hospital data). Full writeup: §GANTT_SCHEDULE_STALE below.
+
 ## §CPE_DISCIPLINE_REVEAL topout gap — named in passing, unrelated to §DAY37_HOSPITAL_HANGING
 
 While investigating the above, found (then ruled out as the cause of the Day-37 screenshot, since that
@@ -2414,3 +2428,279 @@ on), the building genuinely isn't finished yet and straggler elements can appear
 round, on top of whatever `§DAY37_HOSPITAL_HANGING`/`§HANG_NEAREST` produces. Fix shape (not applied):
 when reveal is on, topout boundary should be `plan.beats.out` instead of `plan.beats.rise`, so buildup
 is 100% before the reveal round starts; leave non-reveal bakes (topout at `rise`) untouched.
+
+## §GANTT_SHIFT_HOURS_DESYNC — ✅ SHIPPED, bim-ootb PR #1355 (2026-08-14, auto-merge armed)
+
+User, live screenshot (Hospital, Day 37/Hr16, "5035 placed"): clicked a floating teal element,
+confirmed it IS a real MEP element — ruling out §DAY37_HOSPITAL_HANGING's "look-alike steel beam"
+theory. User's own read: *"Gantt Chart is NOT followed"* — canvas placement disagreeing with the
+Gantt bars' own displayed dates, not a geometry/support-gate question.
+
+**Root cause, found by reading the real code (not the doc's own prior theories) and confirmed
+numerically, not guessed:** `materializeZones()` (`schedule_author.js:352`, the function that
+authors the Gantt bars the user sees) called `SG.computeSchedule(elements, 0, 1, maxCrews)` —
+**omitting the 5th `shiftHours` argument**, silently taking `computeSchedule`'s own internal 8h/day
+default. The REAL canvas movie (`time_machine.js:5302`, `injectGantt`'s generation path) explicitly
+threads `rates.js SHIFT_HOURS` (default 24, per §SHIFT_HOURS/#1333, 2026-08-13 ruling "24hr is our
+default") as that same 5th argument. **Gantt bars were being authored at 1/3 the pace the canvas
+actually plays at** — so any element schedules 3x sooner on canvas (in calendar days) than the same
+element's own Gantt bar shows it starting. This exactly matches "canvas ahead of what the Gantt
+displays," independent of any geometry/bearing gate — confirmed as a SEPARATE mechanism from
+§DAY37_HOSPITAL_HANGING's orphan/hangGate findings (both real, this is the one that matches what the
+user actually pointed at).
+
+**Fix — one call site forwards the arg, two real UI entry points now pass it:**
+- `schedule_author.js` `materializeZones`: `computeSchedule(elements, 0, 1, maxCrews, opts.shiftHours)`.
+  `opts.shiftHours` undefined ⇒ behavior UNCHANGED (still 8h) — every witness/probe that never passes
+  it stays byte-identical, same "witnesses unaffected" convention §SHIFT_HOURS already established.
+- `time_machine.js` `_materializeNativeSchedule` + `generateGanttSchedule` (the two real product call
+  sites that generate what the user's Gantt panel shows): both now pass `shiftHours:
+  (window.SHIFT_HOURS > 0 ? window.SHIFT_HOURS : 24)`, matching `injectGantt`'s own convention exactly.
+
+**Measured, Hospital_extracted.db, same data, before/after** (`materializeZones` task span):
+old call (8h default, the bug) = 88 days (Jan1→Mar31, 9 tasks); fixed call (24h) = 30 days
+(Jan1→Jan31, 9 tasks) — **2.93x, matching the 24h/8h ratio exactly.** Gantt-bar pace now matches
+canvas pace 1:1.
+
+**Verified no regression** — 6 witnesses touching `materializeZones` (the only real consumer of this
+code path): `witness_zone_cpm.js` 11/0, `witness_zone_cpm_duplex.js` (pre-existing scratch-path
+error, unrelated to this change), `witness_gantt_bar_identity.js` 6/0, `witness_boq_charts_real_
+schedule.js` 91/0, `witness_geo_support_leak.js` 0 fail, `witness_gantt_edit_constraints.js` 18/0.
+None of these pass `opts.shiftHours`, so all stayed on the unchanged 8h path — confirms the fix is
+additive, not a behavior change for anything that doesn't opt in.
+
+**Not fixed by this — a separate, already-answered question the user also raised, "spread evenly
+instead of bunched at start":** this is NOT the same bug and must not be conflated with it. This
+exact ask was already tried and killed by measurement — see `§DAY_GAP_WIP` above (2026-08-12):
+occupancy is already 88–146% of every building's span (no surplus window to spread into), the real
+cause is DURATION not placement (elements are 16–32-minute point events), and artificial re-timing
+for viewing polish is explicitly against `feedback_schedule_accuracy_over_movie_polish`. The actual
+fix for "bunched, rest idle" — quantity-derived real durations (`§LABOR_QUANTITY_WEIGHT`/
+`§HEAVY_MEMBER_SPEED_LIMIT`) plus `§TIER2_PER_ELEMENT_CLAMP` (#1333, MEP Final occupancy 22%→105%)
+— is **already shipped on `main`**, confirmed firing live in this session's own witness output.
+
+**Open, not resolved by this fix:** an ALREADY-MATERIALIZED building (a schedule authored before
+this PR merged) will not self-heal — `schedules`/`tasks`/`task_elements` are the user-editable
+PRODUCT by design and are never auto-regenerated (unlike `kernel_ops`, which has
+`_GANTT_CACHE_VERSION` for exactly this). If the user's live Hospital session still shows bunching
+after this ships, it is very likely displaying a pre-fix-materialized schedule and needs an explicit
+regenerate, not further code changes — check that before assuming a new bug.
+
+**Landmine hit while shipping:** PR #1355's own `sw.js` CACHE_VERSION bump was pushed AFTER the PR
+had already squash-merged (this project's own documented "late push orphans the commit" landmine,
+previously observed on PR #138) — v1027 never reached `main` via #1355. Re-landed standalone as
+PR #1357, off fresh `origin/main`, confirmed merged 2026-08-14T12:07:59Z. Also noticed in passing,
+not fixed (out of this lane's scope): the concurrent #1356 (§MEP_DISC_TINT) ALSO shipped without
+bumping `sw.js` — same lapse, different session.
+
+**2026-08-14, same day, user rebaked after IndexedDB clear (both #1355 and #1357 confirmed merged
+first) — hanging MEP still visible.** This is real signal, not a stale-cache artifact: it confirms
+§GANTT_SHIFT_HOURS_DESYNC and the hanging-MEP symptom are two SEPARATE bugs, exactly as this file
+already split them. The pace fix corrects the Gantt bar's clock to match canvas; it does not touch
+WHICH elements get placed early. Persisting after a clean rebake points back to
+`§DAY37_HOSPITAL_HANGING`'s SESSION 4/5 finding: Hospital's hanging MEP is the orphan population
+(zero XY-overlapping neighbour anywhere in the spatial index) — SESSION 5 already exhausted every
+schedule-gate widening variant against this exact population and rescued zero, on any building.
+**Not re-attempted here, per that session's own "do not re-attempt" ruling.** Next real step, still
+the one named there and not yet done: pull the specific floating element's GUID from the live
+browser and check the SOURCE IFC for a dropped relationship — a data question, not a scheduling one.
+
+## §GANTT_SCHEDULE_STALE — ✅ SHIPPED, bim-ootb PR #1359 (2026-08-14, auto-merge armed)
+
+Real code-level cause of "the Gantt bar hasn't been touched but canvas shows it built" — found by
+following the user's own instruction to stop chasing per-building data and treat the rendered Gantt
+itself as the proof (they were right to push on this).
+
+**The gap:** `viewer/time_machine.js`'s `kernel_ops` (what canvas actually draws from) self-heals
+whenever the scheduling code changes — stamped with `_genVersion`, compared against the live
+`_GANTT_CACHE_VERSION` constant, re-materialized on mismatch. The authored Gantt
+(`schedules`/`tasks`/`task_elements`, written by `schedule_author.js`'s `materializeZones`/
+`materializeDefault`) had **no equivalent whatsoever**. `activeSchedule(db)` — the ONLY gate any
+caller uses to decide "should I re-author this" — checked exactly one thing: does a dated schedule
+already exist. Once materialized, a building's Gantt was frozen **forever**, regardless of how many
+scheduling-code changes landed afterward (crew caps, MEP classification fixes, §MIDAIR_REPAIR,
+§GROUNDED_OVERRIDE_FIX, §TIER2_PER_ELEMENT_CLAMP, and same-day §GANTT_SHIFT_HOURS_DESYNC). A
+session's Gantt panel could be showing a schedule authored weeks ago under completely different
+code while canvas kept rendering current, correct placements — the needle position and the canvas
+had structurally no reason to ever agree.
+
+**Fix:**
+- `schedule_author.js`: new `_ensureSchedulesGenVersion(db)` (ALTER-safe, mirrors `_ensureWideTasks`'s
+  existing widen-in-place idiom) adds a `gen_version INTEGER` column to `schedules`. `materializeZones`/
+  `materializeDefault` now stamp `opts.genVersion` into that column on every materialize.
+- `activeSchedule(db, opts)` gains an optional `opts.currentGenVersion`. Reports `pick.stale`
+  (non-captured AND (`genVersion` missing OR older than current)), `pick.hasBaseline` (queries
+  `task_baseline` for that schedule_id), and `pick.safeToRegen` (`stale && !hasBaseline`). Omitting
+  `opts` entirely leaves `stale`/`safeToRegen` false always — fully backward compatible, every
+  existing caller (wizard, witnesses) unaffected.
+- `time_machine.js`'s `buildTaskIndex()` — the ONE real choke point every Gantt-drawer redraw funnels
+  through (memoized per building, so this runs once per activation, not per frame) — now passes
+  `_GANTT_CACHE_VERSION` into `activeSchedule`, and when `safeToRegen` is true, re-materializes in
+  place (same real-UI opts shape as `_materializeNativeSchedule`/`generateGanttSchedule`, including
+  the just-fixed `SHIFT_HOURS`) BEFORE building the task index shown to the user. The two other real
+  materialize call sites now stamp `genVersion: _GANTT_CACHE_VERSION` too, so freshly-authored
+  schedules start correctly versioned.
+
+**Safety — captured/imported and user-committed schedules are never touched.** `pick.captured`
+(an imported Bonsai/Revit schedule) forces `stale=false` unconditionally, same invariant this file
+already enforced elsewhere. `pick.hasBaseline` (⚑ Set Baseline already exists as this project's own
+"user has committed to this schedule as their real plan" signal) forces `safeToRegen=false` even
+while stale — a baselined schedule is the user's edited product and is never silently discarded.
+
+**Verified, 6 direct cases against real Hospital data** (not asserted, run):
+```
+§V2_NO_OPTS       stale=false safeToRegen=false genVersion=null   (opts omitted — old behavior exactly)
+§V3_STALE_CHECK   stale=true  hasBaseline=false  safeToRegen=true (unstamped, checked at v19)
+§V4_AFTER_BASELINE stale=true hasBaseline=true   safeToRegen=false (⚑ Set Baseline called — now protected)
+§V5_STAMPED       genVersion=19 stale@v19=false stale@v20=true safeToRegen@v20=true (round-trips both directions)
+§V6_CAPTURED      captured=true stale=false safeToRegen=false (huge version gap, still never touched)
+```
+Witnesses unchanged: `witness_zone_cpm.js` 11/0, `witness_gantt_bar_identity.js` 6/0,
+`witness_boq_charts_real_schedule.js` 91/0, `witness_geo_support_leak.js` 0 fail,
+`witness_gantt_edit_constraints.js` 18/0. `sw.js` `CACHE_VERSION` v1027→v1028, bumped in the SAME
+commit this time (learned from #1355/#1357's orphaned-bump landmine earlier this session).
+
+**Known residual limit, named not hidden:** a user who drags/resizes/links Gantt bars WITHOUT ever
+clicking ⚑ Set Baseline has no persisted "edited" signal this mechanism can see — such an edit could
+still be silently regenerated on a future stale check. This is narrower than the bug it replaces (a
+Gantt that NEVER updates, ever) but is not zero risk. Follow-on, not built: a proper per-edit dirty
+flag set by `moveTask`/`resizeTask`/`moveTaskCascade`/`shiftSchedule`/`shiftTasks`, checked the same
+way `hasBaseline` is now.
+
+**Not yet confirmed:** whether this closes the ORIGINAL user report (Hospital MEP visible before its
+Gantt bar). This fix addresses a real, generically-provable architecture gap the live mp4 evidence
+pointed at directly — but the specific screenshot/mp4 element was never GUID-identified, so whether
+IT was a stale-schedule case, an orphan (§DAY37_HOSPITAL_HANGING), or something else is still open.
+Next step unchanged: watch the same building after this PR lands and `_GANTT_CACHE_VERSION`-driven
+regeneration has had a chance to fire (§GANTT_SCHEDULE_STALE_REGEN in the console confirms it ran).
+
+## §HOSPITAL_LIGHTING_STILL_FLOATING — session close 2026-08-15, real bake, symptom still live
+
+User confirmed a completed Alt+C MaxQ bake on Hospital, on the current build (`§BUILD_VERSION
+v1029`, both #1355/#1359 confirmed live), still shows lighting/electrical fixtures hanging —
+"quite all lighting/electrical outlets, at least a hundred." Everything checkable today with hard
+numbers came back clean, which makes this genuinely puzzling, not unexplored:
+
+- **Not the pace desync, not Gantt staleness, not reveal-round topout** — all three real, all fixed
+  today (#1355, #1359, and a fourth already fixed same-day by a concurrent session, #1362), all
+  confirmed live at v1029.
+- **Not the schedule math.** Measured directly against fresh Hospital data on current `main`:
+  Hospital's full `IfcLightFixture`+`IfcElectricAppliance`+`IfcSwitchingDevice` population is 1523
+  elements. Only 1 is an orphan. Of the 1522 with real contacts, **zero** appear before their earliest
+  contact's own appearance, post-`_twoTierRemap`+`_midairRepair` (the exact pipeline the movie runs).
+  The computed schedule is provably correct for this entire class.
+- **Not a separate render-path bug.** Read `renderAtTime` (time_machine.js:1193) directly: it is a
+  pure pass-through of `op.start_ts`/`op.end_ts` vs cursor, no independent host-check logic to be
+  buggy — ordering is already baked into those timestamps by `_midairRepair`. Confirmed the Alt+C/
+  MaxQ bake calls this SAME function via `tmSetCursor`, not a separate reveal path.
+
+**⛔ OPEN — the one concrete, not-yet-checked differentiator:** whether the user's own live session's
+`kernel_ops` is itself stale (materialized before a relevant fix, never re-derived) — every other
+lever assumes fresh data and fresh data is proven clean. The test: does `§KERNEL_OPS_SCHED_VERSION
+stale genVersion=...` appear anywhere in that session's console during activation? Not yet answered.
+If it's ABSENT (kernel_ops confirmed fresh) and the symptom still reproduces, every currently-known
+mechanism will have been exhausted — next session's job is then to pull the exact GUID(s) of floating
+fixtures from that live session (not a screenshot) and diff them against this session's own probe
+(`/tmp/probe_lighting/probe_lighting_electrical.js` — not committed, rebuild from this section's
+method if needed) element-by-element, since "the aggregate math is clean" and "this one specific
+element is wrong" are not mutually exclusive.
+
+## §HOSPITAL_LIGHTING_STILL_FLOATING — continued 2026-08-15 (later same day): fresh full-pipeline
+proven clean; a real, separate, previously-unknown bug found and ruled OUT as the cause
+
+User pointed at the LATEST bake (`~/Downloads/BIM_MaxQ_Hospital_1786735068789.mp4`, 03:17) showing
+floating MEP around 15s in. Two things done, both with hard numbers, no screenshots:
+
+**1. The one differentiator named above, escalated from "node witness" to the REAL browser pipeline.**
+`witness_midair_zero.js` re-run on current `main` (two commits newer than the session that wrote the
+item above) — still 8/8 PASS, Hospital floating=0. That is the sliced-function node re-implementation,
+already known clean. What had NOT been done: the ACTUAL browser wiring, fresh context (zero IndexedDB,
+structurally cannot be stale), driven through `window.tmActivateForBake()` — the exact verb
+`cinema_maxq.js`'s MaxQ bake calls — then reading the REAL `kernel_ops` table the movie plays from
+(not a recomputation). Script: `/tmp/wt-sandbox` + Playwright headless Chrome (real GL, not
+SwiftShader), `/tmp/.../probe_hospital_lighting_live.js` (not committed — scratch). Result, 3 runs:
+**`kernelOpsRows=63415 genVersion=19 lightPopulation=1523 floating=0`** — zero IfcLightFixture/
+IfcElectricAppliance/IfcSwitchingDevice appears before its first real contact, on the actual
+production code path, not a re-implementation. `_GANTT_CACHE_VERSION` history also checked
+(`git log -G`): every fix that could move kernel_ops timing (#1333, #1338, #1345, #1348) DID bump it
+to the current 19; #1355/#1359 correctly did not (they touch the authored-Gantt/display-hours layer,
+not kernel_ops generation). The self-heal chain (already witnessed 6/6 in
+`witness_kernel_ops_sched_version.js`) has no known gap.
+
+**2. A real bug found while tracing this, then RULED OUT as the cause — reported because it's real,
+not because it explains the symptom.** Traced whether the MaxQ bake takes some OTHER ordering path
+than plain `renderAtTime` cursor-sweep — it doesn't (mode D / `tmOrderByCameraPath` was already
+replaced by `tmFollowTimeline()`, §CPE_BUILDUP_FOLLOW_TM, which writes nothing and plays `_ops`
+unmodified). But `tmFollowTimeline()` has a SECOND branch: when `tasks` carries real dated leaf rows
+(`ss.source === 'captured'`), `injectGantt()`'s own `_cap` overlay (time_machine.js:4938) is supposed
+to rescale every covered element into its task's real window, repaired by a SEPARATE support-sweep
+(`_ogSupportSweep`, :~4198) whose carrier pool (`e.seq<=4 ∪ promoted-slab ∪ IfcWall`) is narrower than
+`_contactGraph`'s (full population, broadened by #1338/§GROUNDED_OVERRIDE_FIX) — a real asymmetry
+that looked, on code-reading alone, like exactly the right shape for "MEP/lighting float on a
+non-structural host the narrow pool can't see." Since `_materializeNativeSchedule()` now runs
+UNCONDITIONALLY on every cold open (:7948, `§GANTT_SINGLE_LOAD`), this path is not rare — it should
+fire on every session. Tested it directly (not just read the code): it crashes, every time, before
+`_ogSupportSweep` ever runs. **Root cause: a `var _cap` name collision in the SAME function scope.**
+`injectGantt()`'s per-trade crew-utilisation loop (:5270, `§CREW_DEMAND`) declares
+`var _cap = _crews * projectDays;` — a plain number — inside a `for...in`, and JS `var` is
+function-scoped, not block-scoped, so this silently clobbers the captured-schedule descriptor object
+the SAME function declared earlier at :4938 under the identical name. By the time the `_cap` overlay
+runs (:5494, `if (_cap) {`), `_cap` is a number; `_cap.guidTask[g]` (:5502) throws
+`TypeError: Cannot read properties of undefined (reading '<guid>')` on the first covered row. Caught
+by `injectGantt`'s own outer `.catch` (§GANTT_CACHE_ERR) — and because the clean generative/
+`_midairRepair`-repaired kernel_ops rows were already committed to the DB earlier in the SAME
+function (before the crash point), the fallback silently re-reads what's already there and the film
+plays the clean generative timeline anyway. Confirmed via stack trace (temporary instrumentation in
+`/tmp/wt-sandbox`, reverted after — no production file touched):
+`at injectGantt (time_machine.js:5501:27)`, `at time_machine.js:5502:46` (`_cap.guidTask[g]`).
+**Net effect: the captured/native-IFC-schedule overlay (T3, §3.1) has been fully dead code, always
+throwing, since the crew-demand block was added — but this accidentally means it can never be the
+source of the reported floating either, since `_ogSupportSweep`'s weaker pool never gets a chance to
+run.** Real bug, real fix (`s/var _cap = _crews \* projectDays/var _capacityCd = .../`, trivial,
+one-line, zero behavior change to anything currently working since the block was already a no-op) —
+NOT YET SHIPPED, flagged for the user rather than pushed autonomously since fixing it will, for the
+first time, make the captured-schedule path actually reachable on every building, which is new
+observable behavior nobody has tested.
+
+**✅ FOUND, FIXED, SHIPPED — bim-ootb PR #1364 (auto-merge armed), branch
+`fix/injectgantt-cap-shadow`, same session, continued after the write-up above.** User pasted their
+OWN live production console (v1029, `red1oon.github.io/bim-ootb`) mid-investigation — it carried the
+EXACT `§GANTT_CACHE_ERR Cannot read properties of undefined (reading '<guid>')` crash this section
+had just found in the sandbox, confirming it live, not sandbox-only. Root cause, tracked to source:
+
+- **The crash**: `injectGantt()`'s per-trade `§CREW_DEMAND` loop declared `var _cap = _crews *
+  projectDays` — a plain number — inside the SAME function scope as the captured-native-IFC-schedule
+  descriptor object also named `_cap` (declared far earlier in the same function). `var` is
+  function-scoped, not block-scoped, so this silently clobbered it on every run. By the time the
+  captured overlay tried `_cap.guidTask[g]`, `_cap` was a number → threw on the first covered guid →
+  caught by injectGantt's own outer `.catch` → fell back to whatever was already in `kernel_ops`
+  (the clean generative timeline, already committed earlier in the same call). **Net effect: the
+  captured/native-IFC-schedule overlay has never once successfully executed since this crew-demand
+  code was added** — which is WHY every check in this section's own investigation came back clean:
+  nothing was ever exercising that code path. Fixed with a rename (`_capacityCd`).
+- **The real gap that fix exposed**: once un-shadowed, `_ogSupportSweep` (the captured path's OWN
+  repair pass) has a carrier pool deliberately matched to `auditFloating`'s older, narrower physics
+  (structure ∪ promoted slabs ∪ walls — NOT `_contactGraph`'s full-population pool from
+  §GROUNDED_OVERRIDE_FIX/#1338). Measured the FIRST time this branch ever actually ran, live, on
+  Hospital: **11 of 1523** IfcLightFixture/IfcElectricAppliance/IfcSwitchingDevice elements floated —
+  the exact symptom class this whole section chased. Rather than widen `_ogSupportSweep` itself (its
+  header documents a deliberate "one physics" invariant with `auditFloating`/`_buildXraySupportCache`
+  that a downstream witness — §XRAY_EDGES staged=0 — depends on), closed the gap the same way the
+  generative path already guarantees zero-floating: run the already-witnessed, full-population
+  `_midairRepair` as one more pass after `_ogSupportSweep`. Re-measured: **0/1523 floating**,
+  confirmed on 2 separate real fresh-browser runs (Playwright, real GL, zero IndexedDB cache,
+  `§GANTT_SOURCE captured tasks=35 covered=63415 pct=100`).
+- `_GANTT_CACHE_VERSION` 19→20 so every already-cached session (including the user's own, whose
+  kernel_ops was frozen at whatever the crash-fallback left) regenerates once under the fixed code.
+- Verified no regression: `witness_midair_zero.js` 18/18, `witness_kernel_ops_sched_version.js` 9/9
+  real checks, `witness_og_guard_bearing_bound.js` 9/9, `witness_gantt_og_grid_perf.js` 3/3 — all
+  unchanged (the one witness failure seen, `witness_gantt_native_generate.js`, reproduces identically
+  on unmodified `main` — pre-existing, unrelated).
+
+**Whether this was THE cause of the specific mp4 the user pointed at (15s onward,
+`BIM_MaxQ_Hospital_1786735068789.mp4`) is not separately confirmed frame-by-frame** — that would need
+GUID-level extraction from that specific historical bake, which wasn't logged. But the mechanism is
+exact-match (same crash signature in the user's own console, same symptom class — MEP/lighting
+floating — same building), and the fix is shipped and measured clean. If floating is still seen after
+this PR lands and a fresh bake, the next differentiator is pulling real GUIDs from that NEW bake and
+diffing against this section's now-clean baseline — not re-deriving anything above.
