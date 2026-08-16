@@ -597,3 +597,134 @@ for durations + §SUPPORT_CHECK's raw audit; its TIMES stop being the bound).
 
 **Hospital S3 band54 artifact (1 violation, n=116):** hold until after S6 — resource pacing
 reshapes the tail; re-measure then rather than patching a number that is about to move.
+
+---
+
+# §CURRENT PICTURE — 2026-08-16 evening, live reproduction, for the next Fable session
+
+**One-paragraph state of the world:** S0-S5 are merged and proven (floating=0/7 held, live-deployed,
+v1048/gantt-v30 confirmed serving). None of that work has yet fixed what the user actually sees,
+because the ACTUAL fix for the loudest symptom — S6 — is fully diagnosed and spec'd but **not built**.
+Today's live session (user reopened Terminal after the S1-S5 deploy) reproduced all three symptoms
+the user originally reported, unchanged, plus surfaced two mechanisms not previously named in this
+file. This section is the handoff: what's proven, what's diagnosed-not-built, what's newly found,
+and the order to attack it in. No code was changed investigating any of this — read-only.
+
+**Show-stopper check: none.** Nothing here breaks the floating=0 invariant or any locked witness.
+Every item below is either an already-spec'd, ready-to-execute fix (S6) or a hypothesis with a named
+first verification step (S7, S8) — not a design unknown. This is executable, not a "back to the
+drawing board" situation.
+
+**Symptom → cause map (live-confirmed 2026-08-16 evening):**
+| User-reported symptom | Cause | Status |
+|---|---|---|
+| "Bars all stacked up, not spread out, same as before" | Crew capacity (E5) enforced at RAW times only, never re-checked once CPM precedence displaces 10,950 Roof-Level elements to day ~130 — tail builds at effective infinite crew capacity (§S2_REVIEW_VERDICT above) | **Diagnosed + spec'd (S6). Not built — this is why the symptom is unchanged.** |
+| "Elements come on and then disappear" during playback | Candidate: `§XRAY_EDGES staged=2698/48428` (5.6%) — elements whose support carrier finishes after their own reveal, held in an xray/ghost state | **Candidate only — visual mechanism and baseline not yet confirmed (S8).** |
+| "Gantt chart cannot be edited well, bars disappear when pulled" | Candidate: `_retimeSpan`'s affine clamp collapsing Tukey-outlier elements' duration toward zero when a now-narrower (S2) bar is dragged/resized | **Candidate only — not yet measured (S7).** |
+| "Likely v has not bumped" | Ruled out | `§CACHE_PUT key=gantt:v30` confirmed live in the same session — current code IS running. Not a cache/deploy issue. |
+
+## Finding A — `§XRAY_EDGES staged=2698/48428`, candidate for the playback disappear symptom
+
+Live log, Terminal, today: `§XRAY_EDGES n=46141 ms=685.1 staged=2698/48428` — elements whose last
+support carrier finishes AFTER their own reveal, held in the `_tm_xrayStaged` ghost/xray state
+(`viewer/time_machine.js`, `prompts/GANTT_ACCURACY.md §Z_STACK_XRAY_STAGING`, witness
+`witness_zstack_xray_staging.js`). The code carries its own named invariant at two points
+(`time_machine.js:4300`, `:4336`): *"guard and judge MUST stay one physics or §XRAY_EDGES staged>0
+comes back"* / *"keeps §XRAY_EDGES staged=0 (the 2026-08-07 alignment invariant)."* Live measurement
+today violates that invariant at 5.6%.
+
+**This is NOT automatically an S1-S5 regression.** `OG_SWEEP_SKIP` (`time_machine.js:6053-6062`,
+shipped in PR #1399, predates this lane) deliberately SKIPS the strict end-bar repair sweep that used
+to drive staged toward 0, in favor of bar fidelity — an already-measured, deliberate tradeoff on
+Hospital (code comment: *"keeping the sweep = 1781 elements pushed OUT of their own bars (97.2%
+fidelity); skipping it = 31 out (99.95%), floating 79→63"*). Elevated staged count may be the accepted
+cost of that earlier, separate decision, not something S1/S2 broke.
+
+**Two things nobody has checked yet:**
+1. No pre-S1 Terminal staged-count baseline exists. Unknown whether 2698 is worse than before this
+   lane (in scope here) or unchanged/pre-existing (a separate, older ticket — name it, do not
+   scope-creep into fixing it under this lane without saying so).
+2. Nobody has read what `_tm_xrayStaged=true` actually renders as (opacity/wireframe toggle around
+   `time_machine.js:2274-2285`, `_xrayCacheMemo`/solidify logic ~3857-3934) — it may just look like a
+   persistent ghost (odd, not flickering), in which case it's NOT the cause of "appear then
+   disappear" and the real cause is still unfound.
+
+## Finding B — Gantt bar drag/resize makes elements disappear (candidate: `_retimeSpan` clamp)
+
+**This exact symptom class was reported and fixed before.** 2026-08-07, user report quoted verbatim
+in the code: *"foundation piling nor others does not come onto canvas anymore, though i dragged to
+certain bars passing."* Fixed via `_tmResyncAfterRetime()` (`time_machine.js:6979-6983`), which
+resyncs three derived caches after every retime commit (the incremental-reveal event index, `_ops`
+sort order, the xray solidify cache) — without it, "the canvas plays the OLD times" (the fix's own
+comment). **Confirmed live-read today: this call is still correctly wired** —
+`commitGanttDrag` → `retimeTaskElements` → `_tmResyncAfterRetime()` (`time_machine.js:7055-7059`) is
+intact. This is not a simple regression of that 2026-08-07 fix being removed.
+
+**New hypothesis, tied directly to this lane's own S2 change.** `_retimeSpan()`
+(`time_machine.js:6933-6941`) affinely remaps an element's op time from a task bar's OLD window
+`[oS,oE]` to its NEW one `[nS,nE]` after a drag/resize, and HARD-CLAMPS any element whose true time
+falls outside `[oS,oE]` to the new window's edge (`if (s<nS) s=nS; if (e>nE) e=nE;`, then
+`if (e<=s) e=min(nE,s+60000)` — a 60-second floor). S2 (`§ZONE_WINDOW_DAGWINS_CLIP`'s Tukey-fence
+successor, PR #1402) made bars deliberately NARROWER than before, and by M2's own doctrine pushes
+MORE elements outside their task's own bar window as "genuine dag-wins outliers... never hidden"
+(Terminal alone: clamped=1186 outliers fleet-wide per S2's own PR numbers). When a now-narrower bar
+with a larger outside-window population gets dragged, `_retimeSpan`'s clamp can collapse many of
+those outliers' duration toward the 60-second floor — squashing them to a near-instant at one edge of
+the new window. During TM playback that would read as the bar's content flashing or vanishing rather
+than persisting — exactly the reported symptom.
+
+**Not yet measured — this is a hypothesis with a named first step, not a confirmed cause.**
+
+## §S7 — Gantt bar-edit outlier collapse (NEW stage — investigate, then fix if confirmed)
+
+*Step 1 — measure, don't assume:* add a `§-log` to `retimeTaskElements` (`time_machine.js:6943`)
+counting, per drag/resize commit: how many of `bar.guids` have `op.start_ts`/`op.end_ts` outside the
+task's OLD `[oS,oE]` before the retime (i.e., are that task's Tukey outliers), and what duration
+(`e-s`) `_retimeSpan` gives each one afterward. Reproduce live on Terminal: drag/resize one of the
+Roof-Level Superstructure tasks (large known outlier population, per S2's PR #1402 numbers) and read
+the log.
+*Acceptance:*
+1. Confirm or refute with real numbers whether a drag collapses outlier elements to near-zero
+   duration (≤ a few minutes) in proportion to the outside-window population.
+2. If confirmed: fix `_retimeSpan` (or its caller) so an outside-window element gets a uniform
+   delta-shift — the SAME doctrine M2 already established for authoring ("never squeeze a straggler
+   back in") — instead of a proportional rescale that can crush it toward a boundary. Re-measure the
+   same drag: zero near-zero-duration collapses outside an intentional resize.
+3. Fleet regression: floating 0/7, `§CPM_GATE_CHECK` 0/7 unchanged — this stage only touches the EDIT
+   path, never the solve.
+4. Live UI verification per this project's standing rule (§-log first, browser second, never
+   eyeball-only — `feedback_whitebox_not_playwright`/`feedback_log_not_visual_proof`): drag a real bar
+   in the live viewer, confirm via the new log line that previously-outside-window elements kept a
+   sane duration — not just that the drag "looked fine."
+5. If refuted (outlier collapse isn't what's happening): report the actual `§-log` numbers and keep
+   looking — do not close S7 on "couldn't reproduce," the user's report is real and specific.
+
+## §S8 — xray-staged regression check (NEW stage — investigate only, may turn out out-of-scope)
+
+*Investigate:*
+1. Read what `_tm_xrayStaged=true` actually renders as (opacity/wireframe toggle, ~`time_machine.js`
+   lines 2274-2285 and the solidify logic ~3857-3934) — state definitively whether it can make a
+   mesh disappear/reappear, or only ghosts it persistently.
+2. Get a pre-S1 Terminal staged-count baseline (checkout the commit before PR #1401, or run the same
+   session's `?cpm4d=0` legacy-engine escape hatch as an A/B) and compare to today's live 2698/48428.
+*Acceptance:* a plain factual answer, not a fix attempt — is 2698 elevated by this lane's changes (in
+scope here, chase it) or unchanged/pre-existing (name it as a separate, older item; do not fold a fix
+for it into this lane without a fresh spec section saying so).
+
+## Recommended order for the next session
+
+1. **S6 first** — already fully spec'd (§S2_REVIEW_VERDICT above), addresses the single loudest and
+   most-repeated symptom (the stacked/haphazard bars), and is the most mature of the three remaining
+   items. Same Sonnet-dispatchable shape as S1-S5, with the one addition already named: post the
+   before/after stagger dumps for review BEFORE merge, since this is the first stage to touch the
+   solve's semantics.
+2. **S7 next** — concrete hypothesis, a named file/line/function, likely fast to confirm or refute,
+   and directly blocks the Gantt chart's usability as an editing surface (a distinct capability from
+   playback).
+3. **S8 last** — least understood of the three; may turn out to be pre-existing/out-of-scope once the
+   baseline comparison runs. Do the investigation before deciding whether it needs a fix at all.
+
+**Chase to zero means:** S6 executed and re-measured against its own acceptance bar, S7's hypothesis
+confirmed-or-refuted with real numbers and fixed if confirmed, S8's factual question answered. Only
+then does "same old symptoms" get retested against a live rebuild — report a fresh
+`probe_gantt_stagger.js` dump on Terminal at that point, not before.
