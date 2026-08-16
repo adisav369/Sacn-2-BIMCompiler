@@ -546,3 +546,54 @@ scope to resolve unilaterally:**
    exact outcome as correct when the target isn't reachable without touching locked behavior; the
    three dominant remaining costs (write loop, `materializeZones`' own first computation, an
    unresolved ~4s pre-`activate()` gap) are named with numbers for whoever picks this up next.
+
+
+---
+
+# §S2_REVIEW_VERDICT (2026-08-16 evening, Fable review checkpoint — the call the ⛔ asked for)
+
+**Verified first:** the closing report's claims re-checked independently on merged main — fleet
+display-path floating 0/7 with `otherOut=0` everywhere (own probe run), Terminal stagger dump
+reproduces the compression exactly (`TASK_Superstructure_05… s=149 e=151 n=10,355`), live site
+serving v1048. The report was accurate, including its own misses.
+
+**Verdict: NEITHER of the two offered readings. The compression is not physics-true and not an E4
+edge bug — it is the RESOURCE-MODEL GAP the original redesign explicitly deferred**
+(`4D_SCHEDULE_ARCHITECTURE_REDESIGN.md §WHAT_STAYS`: crew-leveling runs BEFORE precedence and feeds
+E5 lower bounds; making the solve resource-aware was named "a second research project"). The
+arithmetic is decisive: E5 bounds were computed at RAW times (roof population crew-paced across
+~13 days, 34-47). Once precedence gates displace those 10,950 elements to day ~130, NOTHING
+re-enforces "Terminal has 3 STEEL_ERECTOR crews" at the new date — so the tail builds at effectively
+infinite crew capacity, 10,950 elements starting inside 0.4 days. S3's monotone-band evidence shows
+the ORDER is right; order says nothing about RATE. A schedule can be perfectly ordered and still
+require a thousand phantom crews — that is exactly what the tail is.
+
+**S6 — resource-aware forward pass (the bounded fix, NOT full RCPSP):** embed the EXISTING greedy
+crew-slot allocator (same pools, same `max_crews`, same claim-earliest-slot logic as
+`computeSchedule`) into the CPM topological pass: process ready components from a priority queue
+keyed (earliest precedence-feasible time, bz, guid — deterministic); when finalizing an element,
+its start = max(precedence bound, earliest slot of its resource pool ≥ that bound), then advance
+the claimed crew cursor by its real duration. Standard serial schedule-generation scheme; delays
+only, so every edge (all lower bounds) stays satisfied — floating-0 by construction is preserved,
+no fixpoint, O((V+E)·log V). Plumbing note: the seam's `_twItems` / the hook's items must carry
+`resource` (they currently don't — small addition at both call sites, same shape as `guid`).
+E5-as-lower-bound becomes redundant once slots are claimed in-pass (keep reading `computeSchedule`
+for durations + §SUPPORT_CHECK's raw audit; its TIMES stop being the bound).
+*Acceptance (all derived, none tuned):*
+1. **New judge — crew feasibility at DISPLAY times:** per resource, at no point does the count of
+   concurrently-running elements exceed `max_crews` (tolerance: the day-rounding quantum). Today
+   this is massively violated at Terminal's tail; it must go to 0. Add as
+   `§CREW_FEASIBILITY` in the fleet probes — this is the invariant the compression broke.
+2. Terminal roof-population spread ≥ its own crew-arithmetic floor (Σ installSecs ÷ (crews ×
+   shift) — computed from the data in the probe, not assumed).
+3. Fleet floating 0/7, `§CPM_GATE_CHECK` 0, S3 layer metric violations not worse.
+4. Stagger: S2's unmet bar re-tested — no task with n≥1,000 in a bar <2 days; the equi-start
+   cluster (currently 20/72 same-day) must break up. Makespan will GROW (honest crew pacing);
+   record it, do not cap it.
+5. Same dispatch rules as §DISPATCH; this is Sonnet-suitable with one addition: post the before/
+   after Terminal + Hospital stagger dumps and the §CREW_FEASIBILITY numbers in the PR body for
+   the review checkpoint BEFORE merging (this stage touches the solve's semantics, the first time
+   any stage does).
+
+**Hospital S3 band54 artifact (1 violation, n=116):** hold until after S6 — resource pacing
+reshapes the tail; re-measure then rather than patching a number that is about to move.
