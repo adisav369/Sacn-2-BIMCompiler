@@ -1421,9 +1421,10 @@ final one. `§STOREY_ORDER_REPORT` at each stage:
 **Clinic's raw schedule is perfectly ordered and the remap breaks it.** Hospital is starker still:
 raw has `Level 1` starting day **13**; after the remap it starts day **195** — the ground floor
 moved 182 days later, which is the fleet's worst inversion and the thing that was being chased as
-"Hospital lighting float". And the remap does not just reorder, it **collapses whole bands to
-zero-width windows**: Clinic's `Level 1` goes from day 36→50 to **106→106**, `Level 2` from 80→89 to
-**94→94**. A whole floor's electrical and plumbing installed in a single day, months after its walls.
+"Hospital lighting float". ⚠ Those table numbers are **p10 and p50** of start day, not min/max
+(corrected in §S13.7) — so Clinic's `Level 1` going from 36→50 to **106→106** does not mean a
+zero-width band; it means **≥40% of that band's 4,677 elements land on one start day**, months
+after their walls. Still a real defect, stated accurately.
 
 So the correct causal split for the Clinic bake report is:
 1. the storey ladder separates one physical floor into two bands (28-53 days, engine-side, §S13.2)
@@ -1442,33 +1443,80 @@ contains* — a zero-width window for 4,677 elements is the symptom to reproduce
 anything is changed. Do NOT patch the storey ladder to compensate; that is the per-symptom patching
 this lane's §S10 note already warned against.
 
+
+## §S13.7 ROOT CAUSE LOCALISED — `_twoTierRemap` scrambles MEP, and the ground floor hardest;
+## the generative schedule is bottom-up correct
+§S13.6 named the remap but could not say *what* it broke, because `§STOREY_ORDER_REPORT` takes its
+p50 over ALL of a storey's elements: a storey that is 58% MEP and one that is mostly structure are
+compared on different things, so a global phase ordering alone makes the MEP-heavy storey look late
+and registers as an "inversion" with nothing out of order. **That confound had to be removed before
+any conclusion was safe** — and removing it changed the answer, so the phase-mix hypothesis was worth
+testing rather than assuming. New env-gated dump `STOREY_PHASE_TABLE=1` in
+`scripts/probe_captured_floating.js` (bim-ootb PR #1420) runs the same p50-by-storey table WITHIN
+each phase, on raw and post-remap starts, in one run.
+
+**Hospital — p50 start day per storey, bottom to top:**
+
+| phase | RAW (`computeSchedule`) | POST_REMAP (`_twoTierRemap`) |
+|---|---|---|
+| Substructure | 0/0 | 0/0 |
+| **Superstructure** | **0/7 viol** — 13, 20, 27, 35, 171, 175, 177, 178 | **0/7** — 23, 25, 28, 39, 171, 176, 177, 178 |
+| **MEP Rough-in** | **0/6, worst 0d** — 51, 87, 128, 204, 258, 292, 298 | **1/6, worst 180d** — **L1 348**, 168, 182, 313, 375, 418, 418 |
+| Architecture | 1/7, 109d — 14, 29, 105, 183, 240, 288, 179, 298 | 3/7, 165d — **L1 195**, 30, 106, 311, 374, 299, 182, 417 |
+| MEP Final | 0/4, 0d | 1/4, 41d |
+| Finishes | 1/4, 12d | 2/4, 12d |
+
+**Clinic, same signature:** MEP Rough-in `RAW 0/5 worst 0d → POST_REMAP 2/5 worst 86d` (Level 1
+47→106, Second Floor 100→197); Superstructure and Substructure 0 violations on **both** sides.
+
+**Conclusion, two buildings, phase-isolated:** the generative schedule is bottom-up correct for every
+structural phase. `_twoTierRemap` leaves structure untouched and scrambles **MEP**, hitting the
+**ground floor hardest** — Hospital Level 1 MEP rough-in p50 **51 → 348 (+297 days)** while Level 2
+goes 87→168 and Level 3 128→182. That is "hanging MEPs" and "Hospital lighting float" with a number
+on it, and it is a SECOND live-side cap, distinct from the corrupted-DB cap §S10/§S11 fixed — this
+one survives a clean DB.
+
+**Where the fix goes, and why it was not made here.** `_twoTierRemap`'s Tier-2 barrier builds
+`t1EndZ[z]` = the LATEST end of ANY Tier-1 element in zone z, then clamps every Tier-2 element in
+that zone to start no earlier than it. A zone whose Tier-1 has one long straggler therefore pushes
+ALL of that zone's MEP behind it — and the ground floor, which carries Substructure + Superstructure
++ Architecture in its zone, has the longest Tier-1 tail of any storey. That is consistent with every
+number above, but it is a hypothesis about the mechanism, not yet a measured one. The function also
+carries several explicit prior user rulings (§TIER2_AFTER_TIER1, §TIER_SERIAL_BY_ZONE,
+§TIER2_PER_ELEMENT_CLAMP — the last one recorded as "DONT ASK ME, JUST FIX"), so changing it blind at
+the end of a long session is exactly how a deliberate behaviour gets undone. **Next bounded task:**
+confirm the straggler mechanism against `t1EndZ` per zone, then fix, with the table above as the
+pass/fail gate — Superstructure must stay 0/7 and MEP Rough-in must return to 0/6.
+
 ---
 
 # 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
-**S1-S13. Split-pair transform corruption CLOSED fleet-wide and now DETECTABLE rather than
-hand-found: `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417)
-report `audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the
-served OCI bytes, live. Clinic's bake item ANSWERED — "missing ground slabs" was FALSE (the 2,939m²
-slab-on-grade is there and already Substructure/seq1; the old note counted only the Superstructure
-bucket) and "hanging MEPs" is 9/16,071.
+**S1-S13. Two things closed and one root cause localised.**
 
-**THE HEADLINE, and the next thing to work: the Gantt task-window REMAP breaks an order the engine
-got right (§S13.6).** Clinic's raw `computeSchedule` output is 0/6 storey-order violations; after the
-remap it is 2/6 with an 86-day inversion. Hospital's `Level 1` starts day **13** raw and day **195**
-after the remap — that 182-day shove is the fleet's worst inversion and is what "Hospital lighting
-float" has really been. The remap also collapses whole bands to ZERO-WIDTH windows (Clinic `Level 1`
-36→50 becomes 106→106; 4,677 elements in one day, months after their walls). Dig here first:
-`time_machine.js` `materializeZones → per-task window → §GANTT_TASK_WINDOW_FIDELITY` rescale
-(injectGantt `_cap` overlay ~5527-5563, reproduced in `scripts/probe_captured_floating.js`).
-Reproduce and explain a window narrower than the raw span of its own elements BEFORE changing
-anything — do not compensate in the storey ladder.
+CLOSED: split-pair transform corruption, fleet-wide and now DETECTABLE rather than hand-found —
+`scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417) report
+`audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the served OCI
+bytes, live. CLOSED: Clinic's bake item — "missing ground slabs" was FALSE (the 2,939m²
+slab-on-grade is there and already Substructure/seq1; the old note counted only the Superstructure
+bucket) and "hanging MEPs" is 9/16,071 floating.
+
+**NEXT TASK, fully localised (§S13.7, PR #1420): `_twoTierRemap` scrambles MEP while leaving
+structure untouched.** Per-phase, per-storey p50 start on Hospital: Superstructure 0/7 violations
+RAW and 0/7 after the remap; MEP Rough-in 0/6 worst 0d RAW → 1/6 worst 180d after, with Level 1
+going 51 → 348 (+297 days) while Level 2 goes 87 → 168. Clinic reproduces it (MEP Rough-in 0/5 → 2/5,
+86d). The generative schedule is bottom-up correct; the display remap is the second live-side cap and
+it survives a clean DB. Suspected mechanism, NOT yet measured: the Tier-2 barrier clamps every
+Tier-2 element in a zone to `t1EndZ[z]` = the latest end of ANY Tier-1 element there, so one long
+Tier-1 straggler pushes that whole floor's MEP behind it — and the ground floor has the longest
+Tier-1 tail (Sub + Super + Arch all in its zone). Confirm that first, then fix; gate =
+`STOREY_PHASE_TABLE=1` (Superstructure stays 0/7, MEP Rough-in returns to 0/6). Do NOT compensate in
+the storey ladder, and read the §TIER2_* rulings in `_twoTierRemap` before touching it.
 
 Also open: (1) ⛔ needs a go — storey-band merge is INFERENCE with today's data; recommended fix is
 extraction-side (carry `elements_meta.building` through the split into meta.db; extract
-`IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. It is a real second-order effect
-(28-53 days engine-side on Clinic, LTU medians coinciding at 0.00m) but no longer the prime suspect.
-(2) `normalize_storey.py` invents 5 storeys on Terminal against its own "never invents a level"
-docstring (673 elements); fix measured, does NOT improve the schedule (97d/260 floating vs 95d/256)
-— reported not shipped, §S13.4. (3) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), now a
-standing audit column. (4) S8 playback-flicker stays PARKED per §PRIORITY.
-Start by reading §S13.6 then §S13, §S12; every harness is named in-file.**
+`IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. Real but second-order (28-53 days
+engine-side on Clinic; LTU medians coinciding at 0.00m). (2) `normalize_storey.py` invents 5 storeys
+on Terminal against its own "never invents a level" docstring (673 elements); fix measured, does NOT
+improve the schedule — reported not shipped, §S13.4. (3) Terminal's 6 bbox-SIZE mismatches vs
+extracted (≤0.129m), now a standing audit column. (4) S8 playback-flicker stays PARKED per §PRIORITY.
+Read §S13.7 → §S13 → §S12; every harness is named in-file.**
