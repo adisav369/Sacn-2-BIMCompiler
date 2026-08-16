@@ -1054,12 +1054,203 @@ on a fresh branch as the rule requires.)
 
 ---
 
-# 🏁 RESUME (one-liner for a fresh session) — 2026-08-16 close
-**S1-S10 all SHIPPED+LIVE (bim-ootb #1400-#1414; Terminal live-verified: groundwork-first playback,
-crew-feasible spread, drag-safe editor). Open items, in priority order: (1) ⛔ LTU_AHouse_meta.db
-transform corruption (33,528 rows, ≤291m — needs a REGENERATED meta+geo pair from one extraction,
-NOT a snap; see §S10_RESULTS fleet audit); (2) Clinic engine-side bake symptoms ("missing ground
-slabs" — only 12 Superstructure IfcSlab exist, min z=2.06; "hanging MEPs" — 9,738/16,071 MEP;
-measure first, §S10_RESULTS last para); (3) Hospital lighting-float ⛔ (older item — split-pair
-corruption now RULED OUT as its cause); (4) S8 playback-flicker stays PARKED per §PRIORITY. Start
-by reading §S10_RESULTS + §S9_RESULTS; all harnesses/diag patterns are named in-file.**
+# §S11 — LTU_AHouse_meta.db TRANSFORM REPAIR (open item (1) of the §S10 close) — SPEC
+# 2026-08-17. Supersedes §S10_RESULTS' "needs a regenerated meta+geo pair, NOT a snap" —
+# that prescription rested on a premise this session MEASURED FALSE.
+
+## §S11.0 The retracted premise (why the item was held, and why it no longer is)
+§S10_RESULTS held LTU because "meshes are baked at meta positions; a 291m snap tears bboxes off
+drawn geometry." **Measured false.** `LTU_AHouse_geo.db.base_geometries` vertices are
+LOCAL-CENTRED: over 400 sampled elements, 400/400 have their mesh centroid nearer the origin than
+their transform centre (samples: transform (76.43,35.97,5.47), mesh x[−0.09,0.09] y[−0.10,0.12]
+z[−0.10,0.10]). `viewer/streaming.js` places each cached mesh at `element_transforms`'
+(cx,cy,cz) — so the drawn mesh FOLLOWS the transform. Repairing a transform moves mesh and bbox
+together; nothing tears. geo.db is datum-independent and needs **no** regeneration.
+
+## §S11.1 The defect, measured (same class as Terminal, 16x the rows)
+Same 125,698 guids on both sides (`meta.guid` = `extracted.guid` minus `T0_LTU_AHouse_`), same
+geometry (122,328/122,330 identical `geometry_hash`; **bbox sizes identical on all 125,698, max
+diff 0.000**), same rotations (0 rows differ). Only `center_x/y/z` diverge, per-element, with no
+cluster structure (VÅN group: 2,504 distinct 1m-residual clusters over 5,725 elements).
+Median rigid offset meta−extracted = **(−388.685560, −87.610001, 0.000000)**; **33,528 rows
+(26.7%) deviate >0.05m (ScheduleGate.EPS)** from it — matching §S10_RESULTS' count exactly.
+
+**What the corruption actually did — the structural sub-models collapsed toward z=0.** 3,105 rows
+sit at `center_z` EXACTLY 0 in meta (1,785 IfcMember, 558 IfcColumn, 439 IfcSlab, 240 proxies,
+49 IfcFooting); 0 rows do in extracted, and all 3,105 are non-zero there. Per-storey z bands
+(p10/p50/p90), meta vs extracted:
+
+| storey | n | META | EXTRACTED |
+|---|---|---|---|
+| VÅN 4 | 3392 | 0.00 / **0.00** / 15.29 | 12.74 / **13.73** / 15.77 |
+| VÅN 3 | 658 | 0.00 / 9.30 / 9.82 | 9.58 / 10.65 / 11.70 |
+| VÅN 2 | 803 | 0.00 / 6.00 / 9.20 | 7.10 / 7.60 / 9.16 |
+| VÅN 1 | 853 | 0.00 / 2.70 / 5.63 | 2.15 / 4.39 / 5.70 |
+| TAKPLAN | 279 | 0.00 / 13.35 / 16.03 | 7.16 / 14.10 / 16.10 |
+| Ref. | 297 | 0.00 / 1.16 / 2.40 | 1.89 / 3.88 / 4.11 |
+| VÅNING 1–4 | 6014 | bands 1.4–2.5m too low, spread 2.2x | tight, monotonic |
+| Plan 1–4 (MEP/arch, 105,253) | — | **identical to extracted** | **identical** |
+
+Half the top structural floor (VÅN 4) lies on the ground plane in the live DB. That is the live
+symptom class the whole lane kept chasing.
+
+## §S11.2 Truth = extracted, proven twice, the second time from INSIDE meta.db
+1. **Federation co-location.** In extracted every sub-model shares one envelope
+   (x[385,520] y[69,152], z sane). In meta they scatter — VÅNING to z −45.6, TAKPLAN smeared
+   250m in −y.
+2. **meta.db contradicts itself — the decisive witness.** `LTU_AHouse_meta.db` carries a
+   populated `elements_rtree` (125,698 rows, keyed on `elements_meta.id`). Its box centres agree
+   with **extracted + modal offset for 125,698/125,698 rows (100.0%)**, and with meta's own
+   `element_transforms` for only 92,174 (73.3%). On the corrupted subset (33,517 rows) it is
+   33,467 extracted-side vs 50 meta-side (those 50 are 0.05–0.10m borderline, i.e. within EPS of
+   both). **The r-tree was built before the corruption; `element_transforms` was mangled after.**
+   The pre-corruption values are therefore already present, in-file.
+
+## §S11.3 The fix — patch channel (Terminal's convention), sourced from meta.db's own r-tree
+`buildings/patches/LTU_AHouse_meta.db.sql` + the shipped `A._applyPendingPatch` loader (DB policy:
+patch AND loader, never a binary push). **Source of truth for the SET values = meta.db's own
+`elements_rtree` centres**, not 33,528 literal UPDATEs from extracted:
+- 3 statements instead of 33,528 (~1KB instead of ~4MB). LTU meta.db is 52MB and the patch is
+  re-applied on EVERY load (`_applyPendingPatch` + a full `pdb.export()`); a 4MB / 67-chunk parse
+  on the fleet's heaviest building is a real per-open regression the r-tree form avoids entirely.
+- Self-contained: no `extracted.db` reference at load time.
+- Idempotent by construction: the repair set is computed as "rows whose transform disagrees with
+  their own r-tree box by >EPS"; after one apply that set is empty, so a re-apply is a no-op.
+- Rows already within EPS of their r-tree box keep their exact double values (no float32 churn).
+
+```sql
+CREATE TEMP TABLE _s11_fix AS SELECT m.guid AS guid,
+  (r.minX+r.maxX)/2.0 AS cx, (r.minY+r.maxY)/2.0 AS cy, (r.minZ+r.maxZ)/2.0 AS cz
+  FROM elements_meta m JOIN elements_rtree r ON r.id=m.id
+  JOIN element_transforms t ON t.guid=m.guid
+  WHERE abs((r.minX+r.maxX)/2.0-t.center_x)>0.05 OR abs((r.minY+r.maxY)/2.0-t.center_y)>0.05
+     OR abs((r.minZ+r.maxZ)/2.0-t.center_z)>0.05;
+UPDATE element_transforms SET
+  center_x=(SELECT cx FROM _s11_fix f WHERE f.guid=element_transforms.guid),
+  center_y=(SELECT cy FROM _s11_fix f WHERE f.guid=element_transforms.guid),
+  center_z=(SELECT cz FROM _s11_fix f WHERE f.guid=element_transforms.guid)
+ WHERE guid IN (SELECT guid FROM _s11_fix);
+DROP TABLE _s11_fix;
+```
+r-tree coordinates are float32 rounded outward, so a recovered centre carries ≤~1.5e-5 m error at
+this building's 500m extent — 3,300x below EPS, and verified against extracted-truth (below), not
+assumed.
+
+**Also in scope: `LTU_AHouse_positions.bin`** — regenerated from the repaired transforms and
+re-uploaded to OCI (a derived binary, OCI channel per DB policy). It was generated from the
+corrupted meta (its mean matches meta's to 3 decimals), so today it draws 33,528 placeholder
+bboxes in the wrong place during load and sets `A.modelOffset` 1.85m off. Load-phase only —
+secondary to the transform patch, but same root cause and cheap.
+
+**NOT in scope:** `LTU_AHouse_geo.db` (datum-independent, §S11.0); the storey name soup
+("Plan N" vs "VÅN N" vs "VÅNING N" across three federated sources — a separate naming item, it is
+not what moved the geometry).
+
+## §S11.4 Acceptance — the live world must BECOME the probe world
+Measured baseline (`_buildScheduleElements` + `ScheduleGate`, real bundled sql-wasm):
+
+| world | els | §GROUNDWORK_SLAB n | levels | Substructure | Superstructure |
+|---|---|---|---|---|---|
+| extracted (probe truth) | 122,330 | **39** | VÅNING 1, TAKPLAN, Ref., VÅN 1 | **277** | **6,443** |
+| meta as shipped (live) | 122,330 | **16** | VÅNING 2, VÅNING 1, TAKPLAN | 254 | 6,466 |
+
+- **W-S11-A** patched meta reproduces extracted's numbers exactly: n=39, Substructure 277,
+  Superstructure 6,443, same level set.
+- **W-S11-B** post-patch `element_transforms` vs extracted+modal-offset: 0 rows deviate >EPS
+  (all 125,698 checked, not a spot sample).
+- **W-S11-C** the 3,105 exact-z=0 rows are gone (0 rows at `center_z`=0).
+- **W-S11-D** idempotence: a second apply updates 0 rows and leaves W-S11-A/B unchanged.
+- **W-S11-E** the patch runs on the REAL bundled `modeller/lib/sql-wasm.wasm` (the §PATCH_CHUNK
+  lesson: a Node-only sql.js run does not catch this project's wasm limits).
+- Gate + upload through `scripts/oci_patch_gate.js` against the SERVED bytes, per OCI_UPLOAD.md
+  §RULES — same channel as §S10's close.
+
+---
+
+# §S11_RESULTS — 2026-08-17, ✅ SHIPPED + GATE-VERIFIED + LIVE (bim-ootb PR #1416).
+# The fleet's last split-pair corruption is closed.
+
+**Patch:** `buildings/patches/LTU_AHouse_meta.db.sql` (2,273 bytes, 4 statements) + the shipped
+`_applyPendingPatch` loader. Generator `scripts/gen_ltu_meta_patch.js`, verifier
+`scripts/verify_ltu_meta_transform_repair.js`, sidecar generator `scripts/gen_positions_bin.js`.
+`§S11_PATCH_GEN rows=33524 maxDev=291.50m corruptVsExtracted=33528 rtreeAgreesExtracted=125698/125698
+zExactZero=3105 modal=(-388.685560,-87.610001,-0.000000)`.
+
+**Apply cost, real bundled wasm:** `§S11_APPLY statements=4 chunks=1 zExactZero 3105->0 ms=851`
+on the 52MB DB. One trap paid for in measurement: the `CREATE TEMP TABLE ... AS SELECT` form has no
+index, so the UPDATE's three correlated lookups degrade to 33,524² scans and **do not finish in 2
+minutes**; the explicit `guid TEXT PRIMARY KEY` staging table is 0.46s under sqlite3. Keep the key.
+
+**Acceptance (`§S11_VERIFY_SUMMARY fail=0 PASS`, both apply passes, run by `oci_patch_gate.js`
+against the SERVED bytes):**
+
+| check | before | after | target |
+|---|---|---|---|
+| els | 122,330 | 122,330 | 122,330 |
+| §GROUNDWORK_SLAB n | 16 | **40** | 40 |
+| levels | VÅNING 2, VÅNING 1, TAKPLAN | **Ref., TAKPLAN, VÅN 1, VÅNING 1** | = extracted |
+| Substructure | 254 | **278** | 278 |
+| Superstructure | 6,466 | **6,442** | 6,442 |
+| rows disagreeing with own r-tree | 33,524 | **0** | 0 |
+| `center_z` == 0 | 3,105 | **0** | 0 |
+
+- **W-S11-A MET** — and stronger than the table: element-by-element the repaired live world and the
+  probe world agree on **122,329 / 122,330**. §S11.4 predicted an exact match; the one difference is
+  a measured TIE, not residual corruption. IfcSlab `3LVgKVMh948xjeRWVK7bTI`'s edge and wall
+  `2xhtnumnv7W9eDx5TQISpw`'s face are FLUSH at x≈77.905 (zero-area contact). extracted.db stores
+  float32-rounded coordinates → boxes overlap by 3.0e-5m → wall counts as a bearing → slab blocked.
+  The restored doubles miss by 2.5e-6m → no bearing → slab joins groundwork. `schedule_gate`'s
+  `overlap()` is a strict inequality, so a coincident-plane tie goes to whichever side's rounding
+  lands first. The verifier therefore asserts the repaired numbers (40/278/6442), with the delta
+  written down in its header, rather than extracted's (39/277/6443).
+- **W-S11-B AMENDED BY MEASUREMENT, not met as written.** Rows deviating >EPS from extracted+offset:
+  **33,528 → 49**; max residual **291.50m → 0.05003m**. The 49 are exactly the rows whose source
+  deviation is *precisely* 0.050000 — the strict `>` in the selection leaves them, and their residual
+  is that same 0.05 plus ~2e-5 of float32 noise. Not tuned away: EPS is defined as the tolerance
+  below which no schedule predicate can change, so a row sitting exactly on it provably cannot flip
+  one, and the 122,329/122,330 classification agreement above was measured WITH those 49 unrepaired.
+  Widening the selection to `>=` would clear the count but would be tuning for the report.
+- **W-S11-C / D / E MET** — 3,105 → 0 z-zero rows; a second apply updates 0 rows and reproduces every
+  verdict; all of it on the real bundled `modeller/lib/sql-wasm.wasm`, never a Node-only sql.js.
+
+**Gate + upload:** `§GATE_ENGINE` clean, 0 behind origin/main; `§GATE_SERVED_DB` etag `a56b54e7…`,
+content-md5 `ehexrutkbRiI…`, gzip; gate downloaded and gunzipped the served DB itself, applied the
+patch, ran the verifier → `§GATE_VERDICT PASS` → `§GATE_UPLOADED size=2273 type=application/sql
+md5=rzYhhu3ndeS0Xbu/EanuiA==` → `§GATE_VERDICT UPLOAD_VERIFIED`. Fetch-back md5 matches. Manifest
+committed on the SAME branch this time (the §S10 close had to note a never-reuse violation; nothing
+was squash-merged yet here, so no fresh branch was needed).
+
+**Sidecar:** `LTU_AHouse_positions.bin` regenerated from the repaired DB and re-uploaded (gzip +
+`content-encoding: gzip`, OCI_UPLOAD.md §RULES 8; fetch-back md5 `3d5b21ab…` == local). It had been
+built from the corrupted DB — proven, not assumed: running the new generator against the UNPATCHED
+DB reproduces the shipped sidecar **byte-for-byte** (md5 `2926f9b4…`, which is also what the bucket
+was serving). Mean moves (57.455, 23.337, 7.754) → (59.309, 24.205, 8.115), i.e. 33,524 load-phase
+placeholder bboxes were being drawn wrong and `A.modelOffset` was 1.85m off. Previous served bytes
+backed up to `buildings/_backup_ltu_june_2026-08-10/LTU_AHouse_positions.bin.gz-served-2026-08-17`
+— **note the pre-existing `.gz-served` file in that directory is an older (June) snapshot, md5
+`6e9285f4…`, NOT what was serving.**
+
+**Retracted premise, for the record.** §S10_RESULTS held this item with "needs a REGENERATED
+meta+geo pair from one extraction, NOT a snap — meshes are baked at meta positions, a 291m snap
+tears bboxes off drawn geometry." That is false, and it cost the item a whole session of being
+⛔-parked: `geo.db`'s `base_geometries` vertices are LOCAL-CENTRED (400/400 sampled) and
+`streaming.js` positions each mesh from `element_transforms`, so mesh and bbox move together.
+`geo.db` was never involved. Generalise: before parking a DB repair on a mesh-alignment fear,
+decode a handful of geometry blobs and check whether they are local or world — it is a 20-line probe.
+
+**Fleet state after this lane:** Terminal repaired (§S10), LTU repaired (§S11), Clinic + Hospital
+pairs geometrically identical to extracted. **No known split-pair transform corruption remains.**
+
+---
+
+# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
+**S1-S11 all SHIPPED+LIVE (bim-ootb #1400-#1414 + #1416; Terminal AND LTU live-repaired,
+gate-verified against the served bytes). Split-pair transform corruption is CLOSED fleet-wide —
+Terminal §S10, LTU §S11, Clinic/Hospital already clean. Open items, in priority order:
+(1) Clinic engine-side bake symptoms ("missing ground slabs" — only 12 Superstructure IfcSlab
+exist, min z=2.06, gw=6, so the ground plate may genuinely not exist as IfcSlab there; "hanging
+MEPs" — 9,738/16,071 elements are MEP; measure first, §S10_RESULTS last para); (2) Hospital
+lighting-float ⛔ (older item — split-pair corruption RULED OUT as its cause); (3) LTU storey name
+soup ("Plan N" / "VÅN N" / "VÅNING N" from three federated sources — cosmetic + the §S9 storeyViol
+residual, NOT what moved the geometry, §S11.3); (4) S8 playback-flicker stays PARKED per §PRIORITY.
+Start by reading §S11_RESULTS + §S10_RESULTS; all harnesses/diag patterns are named in-file.**
