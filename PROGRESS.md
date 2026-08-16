@@ -4,6 +4,13 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 evening (Fable) — 4D Gantt lane S6+S7 SHIPPED (bim-ootb #1406, #1408): stack hell + editor corruption fixed
+S6 §S6_CREW_PASS: crew-aware CPM forward pass — §CREW_FEASIBILITY 6/7 buildings violating → 0/7;
+Terminal roof 10,950 elements 0.5d→11.1d spread; stagger big-task-thin-bars 4→0 (Terminal), 8→0
+(Hospital); live v1049/gantt-v31 verified. S7 §S7_OUTLIER_DELTA: drag collapsed 437 + INVERTED 217
+outlier ops per gesture → 0/0, sw v1051. S8 parked (user ruling). Full trail:
+`prompts/4D_GANTT_TM_REFACTOR.md` §S6_RESULTS/§S7_RESULTS.
+
 ## Session 2026-08-16 (Sonnet) — Alt+S/photo lane's 3 OPEN TASKS all CLOSED: bim-ootb PRs #1391/#1393 merged
 §ALTS_MEM_HOG: real Alt+S exit only hid the photo-prop tree (~30 lights, skyline meshes, sparkle
 sprites), never disposed it — 42 leftover scene objects + textures/geometries/programs never back

@@ -818,3 +818,37 @@ The verdict comment itself could not be posted to GitHub (permission classifier 
 `gh pr comment`) — this section is the canonical record of it.
 
 PR: https://github.com/red1oon/bim-ootb/pull/1406 — MERGED 2026-08-16T12:18Z, auto-merge squash.
+
+# §S7_RESULTS — 2026-08-16 evening, ✅ CONFIRMED + FIXED, bim-ootb PR #1408 (same Fable session,
+# worktree /tmp/wt-gantt-s7, branch fix/gantt-s7-retime-outliers — run AFTER S6 merged, per §PRIORITY)
+
+**Step 1, measured (not assumed) — hypothesis CONFIRMED, worse than hypothesized.** Real
+`commitGanttDrag` in the real headless viewer (new `__tmGanttDrag`/`__tmGanttWindows` test hooks,
+`__tmZoneProbe` convention; NOTE `__tmGanttBars` was already taken — drawGanttMini's rect debug
+export clobbers it after the drawer opens, cost one probe iteration to find), Terminal
+`TASK_Superstructure_06_ROOF_LEVEL` n=11,004 post-S6:
+```
+move +5d:     §RETIME_OUTLIER_AUDIT outsideOldWindow=440 collapsed60s=437 inverted=217 outlierDurMs=[-13113849,185810]
+resizeR -30%: §RETIME_OUTLIER_AUDIT outsideOldWindow=440 collapsed60s=437 inverted=217 outlierDurMs=[-8014019,113551]
+```
+`_retimeSpan`'s affine map assumes containment; the 440 M2 Tukey outliers riding outside the drawn
+bar get extrapolated-then-clamped — 437 crushed to the 60s floor and **217 INVERTED (end before
+start, to −3.6h): corrupted kernel_ops that cannot render** — the user's "bars disappear when
+pulled", mechanically.
+
+**Fix — §S7_OUTLIER_DELTA** (`_retimeSpan`, containment test `opS < oS-1 || opE > oE+1`): an
+outside-window op gets the window's uniform START delta (nS−oS) with TRUE duration preserved —
+move shifts it with the task, resizeR leaves it untouched (delta 0). Never-squeeze-a-straggler,
+edit-side. Insiders keep byte-identical affine behavior. Re-measured same drags: **collapsed 0,
+inverted 0, durations [106s..180s]** (real install durations), both gestures.
+
+**Regressions:** witness_gantt_edit_undo 9/0 + witness_gantt_edit_lock 5/0 (assertions untouched);
+gate_4d pass=8 fail=0 missing=1 (same MISS); probe_cpm_display_path 7/7 PASS (edit path only, the
+solve untouched). §RETIME_OUTLIER_AUDIT ships in `retimeTaskElements` (whitebox);
+`scripts/probe_gantt_drag_outliers.js` is the repeatable harness. sw.js v1050 (gantt cache stays
+v31 — generation unchanged, edit path only).
+
+PR: https://github.com/red1oon/bim-ootb/pull/1408 (auto-merge squash armed 2026-08-16T12:54Z).
+
+# §S8 — PARKED per §PRIORITY (user ruling: "Not worried about small flicker issue"). Not picked up
+# this pass; investigation steps remain above as the marker for if/when it's revisited.
