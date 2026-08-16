@@ -11,6 +11,51 @@
 
 ## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
 
+### ✅ §MIRROR_ROOM_PROBE — SHIPPED 2026-08-16, PR bim-ootb#1407 (auto-merge armed)
+User: "what does it take for mirrors to truly reflect... try the single room-representative probe
+first" (asked after diagnosing a "jagged pipe surface" + "whitewashed" scene — see the
+`§TRIPLANAR_CONTRAST`/`PHOTO_ENVMAP_BOOST=3.0` diagnosis in this session's chat, not yet acted on
+below). Every glossy/metal material only ever reflected the static sky/HDRI env map — no local
+scene reflection existed anywhere. Shipped: one `CubeCamera` capture at a representative interior
+point (reuses `_cinemaPathPlan`'s own "35% up from the lowest point" pivot heuristic), used as
+`envMap` for the existing `isGlossy` material set instead of the sky. Verified live on Clinic
+(17,279 elements, real building the user was looking at — its console log is in this session's
+chat): probe builds, ≥1 glossy material picks up the room-probe texture.
+**A per-element "real mirror" boost was attempted and DROPPED, not shipped**: Clinic's real
+`IfcFlowTerminal "M_Mirror:Mirror 600mm x 900mm"` elements (22 of them, user pasted a live pick
+of one) render via the BATCHED mesh path — confirmed from the user's own console log
+(`§BATCHED_PICK batchId=2`) — and `A._matCache` (what this whole boost/envmap system reads) only
+covers instanced/merged-tracked elements. A batched element's material never gets a
+`color|class|discipline` key in `_matCache` at all, so a per-element mirror boost has nothing to
+attach to regardless of how the guid lookup is written (traced through `A.guidMap` →
+`_batchMeta`/`_instanceGuids`/`findMeshByGuid` — batched elements use a SEPARATE identity system).
+Fixing that needs a batched-mesh-aware boost path — a bigger, separate task, named here not built.
+**Also found: Terminal (48,428 elements) has ZERO `_matCache` entries at all**, before and after
+staging — almost certainly its DLOD (`A._useDlodPath`) rendering path bypasses the whole STD_MAT/
+`_matCache` material system universally, not just for batched outliers. Means Alt+S's entire
+material-boost/triplanar/envmap/room-probe layer may be a no-op on DLOD-path buildings — not
+chased further this session (Clinic, the building actually in question, is unaffected — its
+piping-equivalent classes, `IfcFlowSegment`/`IfcFlowFitting` under the IFC2x3 generic-MEP
+convention, ARE in `_matCache` normally), but worth a dedicated session if Alt+S quality on large
+buildings (Terminal/Hospital/LTU) is ever specifically checked.
+**Real bug found+fixed in the same pass**: dispose+rebuild every Alt+S cycle leaked +1
+texture/cycle, compounding (measured C1/C2/C3 exit deltas: 25, 1, 1 — same bug CLASS as
+§ALTS_MEM_HOG above, found via the identical bisection discipline). A bare isolated
+build+dispose loop OUTSIDE the real staging pipeline did NOT reproduce it — leak was specific to
+disposing the RT while real materials still referenced its texture (most likely a stray render
+between reset-envmap and dispose triggers a phantom re-upload three.js then never tracks). Fixed:
+build the probe ONCE, keep it alive, reuse across cycles (only disposed on a real building
+switch) — same "created once, reused" discipline this file already uses for `A._camLight`.
+Re-verified: 3 full cycles, texture/geometry/program counts flat every exit.
+**Still open, not yet started**: the "jagged pipe" / "whitewashed" diagnosis from earlier this
+session — `contrastBoost=1.9` (metal group, highest of 3) at `tileMeters=0.6` (finest tile) is the
+likely source of the pipe's "jagged" streak read (texture-space contrast, not geometric aliasing
+— TAA correctly doesn't touch it); `PHOTO_ENVMAP_BOOST=3.0` (glossy envMapIntensity multiplier,
+tuned pre-§TRINORM_LINEAR when metal read near-black) is the likely "whitewash" source now that
+metal's real darkness bug is already fixed. User said "try the room probe first" — this ships
+that; the contrastBoost/envMapBoost retune is the natural next step if the room probe alone isn't
+enough (not yet judged live).
+
 ### ✅ ALL 3 ITEMS CLOSED 2026-08-16 (were: OPEN TASKS from the prior closeout) — see PR links in each
 1. ✅ **§GROUND_RECT_ARTIFACT — CLOSED 2026-08-16, user: "the rect shadow cloud is gone. False
    alarm."** Original report: "alt-s seems to have a large rect cloud cover over it," suspected as
