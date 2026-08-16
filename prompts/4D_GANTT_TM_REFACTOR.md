@@ -920,3 +920,17 @@ group; milestone edges point strictly forward in group key).
    ELEMENT_PLACE op starts before the groundwork slabs' last end (tolerance 1d) — the user-visible
    symptom, as a number.
 6. sw.js bump; PR with before/after numbers; dated results section here.
+
+## §S9 AMENDMENT 1 (same evening, measured before any further code) — grade beams are groundwork too
+Slab-only reclassification MEASURED INSUFFICIENT: Terminal's plate bears on GRADE BEAMS (IfcBeam
+bz≈14m, classified Superstructure — classic pile→grade-beam→plate substructure). Consequences,
+both measured: (1) 49/50 reclassified plate slabs became STRAGGLERS (a grade beam in their physics
+ancestry carries a later group key), so M(GROUND FLOOR LEVEL, Substructure) had memberIn=2 and the
+E3 gate stayed vacuous — beams-before-day-2 unchanged at 16; (2) the early-playback window on
+main is a free-for-all (first 5 days of a 100-day schedule: 93 Architecture walls, 165 MEP pipe
+pieces, 84 frame beams at band 7, 55 upper-deck slabs, 25 IfcLightFixture) — empty milestones from
+straggler cascades, not a solve bug. M5 v2: the groundwork set is the FIXPOINT over classes
+{IfcSlab, IfcBeam} at the lowest Superstructure band — an element joins when every bearing-below
+contact is Substructure OR already in the set (grade beams join first: they bear on piles only;
+the plate joins next: it bears on piles + grade beams). Columns/walls excluded by class; frame
+beams excluded by band. Same two extracted terms, zero new constants.
