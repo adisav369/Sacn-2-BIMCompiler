@@ -711,20 +711,39 @@ the log.
 scope here, chase it) or unchanged/pre-existing (name it as a separate, older item; do not fold a fix
 for it into this lane without a fresh spec section saying so).
 
+## §PRIORITY — standing user ruling (2026-08-16 evening, verbatim): *"Not worried about small flicker
+issue. Main glaring is stack hell, not spread out, editor failure, 4D out of sequence... get some
+underlying prerequisite fundamental foundation laid down first."*
+
+**S6 is a PREREQUISITE, not just first-in-line — this is a real dependency, not a priority call.**
+S6 changes what every task bar looks like: today's 0.4-day stacked-tail shape becomes a properly
+crew-paced spread across days once S6 lands. S7's hypothesis (bar-drag collapsing outlier elements)
+is measured against TODAY's compressed bar shape — the outlier population per task, and how badly
+`_retimeSpan`'s clamp crushes them, both change once S6 reshapes the bars underneath it. Testing or
+fixing S7 before S6 risks re-doing that measurement against a shape that's about to move. **Build and
+land S6 first, THEN re-run S7's investigation against the post-S6 bars** — not because S6 is more
+important, but because S7's own numbers aren't stable until S6 lands.
+
+**S8 (playback flicker) is explicitly DEPRIORITIZED by the user — do not spend a session on it
+unless separately asked.** It was never confirmed as a real bug (candidate mechanism only, per
+Finding A above) and the user has explicitly said it's not the concern. Leave the investigation steps
+above as a marker for if/when it's revisited; do not pick it up proactively.
+
 ## Recommended order for the next session
 
-1. **S6 first** — already fully spec'd (§S2_REVIEW_VERDICT above), addresses the single loudest and
-   most-repeated symptom (the stacked/haphazard bars), and is the most mature of the three remaining
-   items. Same Sonnet-dispatchable shape as S1-S5, with the one addition already named: post the
-   before/after stagger dumps for review BEFORE merge, since this is the first stage to touch the
-   solve's semantics.
-2. **S7 next** — concrete hypothesis, a named file/line/function, likely fast to confirm or refute,
-   and directly blocks the Gantt chart's usability as an editing surface (a distinct capability from
-   playback).
-3. **S8 last** — least understood of the three; may turn out to be pre-existing/out-of-scope once the
-   baseline comparison runs. Do the investigation before deciding whether it needs a fix at all.
+1. **S6 (the foundation) — build it.** Already fully spec'd (§S2_REVIEW_VERDICT above): fold the
+   existing crew-slot allocator into the CPM forward pass so precedence-delayed work gets re-paced by
+   real crew capacity, not left to land simultaneously. Same Sonnet-dispatchable shape as S1-S5, with
+   the one addition already named: post the before/after stagger dumps for review BEFORE merge, since
+   this is the first stage to touch the solve's semantics. This is the fix for "stack hell, not
+   spread out" AND "4D out of sequence" (S3 already showed band ORDER is correct — S6 fixes the RATE).
+2. **S7, re-run against post-S6 bars.** Confirm-or-refute the `_retimeSpan` clamp hypothesis with the
+   NEW (spread-out) bar shapes, not today's compressed ones — the numbers from a pre-S6 measurement
+   would be stale the moment S6 merges. This is the fix for "editor failure."
+3. **S8 — hold, not in this pass.** Per the user's explicit ruling above.
 
-**Chase to zero means:** S6 executed and re-measured against its own acceptance bar, S7's hypothesis
-confirmed-or-refuted with real numbers and fixed if confirmed, S8's factual question answered. Only
-then does "same old symptoms" get retested against a live rebuild — report a fresh
-`probe_gantt_stagger.js` dump on Terminal at that point, not before.
+**Chase to zero means (revised scope):** S6 executed and re-measured against its own acceptance bar
+(including a fresh `probe_gantt_stagger.js` dump on Terminal showing the stack broken up), THEN S7's
+hypothesis confirmed-or-refuted against the post-S6 bar shapes and fixed if confirmed. S8 stays
+parked. Report the fresh stagger dump once S6 lands — that's the first point "same old symptoms" can
+honestly be retested.
