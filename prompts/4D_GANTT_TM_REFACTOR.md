@@ -852,3 +852,20 @@ PR: https://github.com/red1oon/bim-ootb/pull/1408 (auto-merge squash armed 2026-
 
 # §S8 — PARKED per §PRIORITY (user ruling: "Not worried about small flicker issue"). Not picked up
 # this pass; investigation steps remain above as the marker for if/when it's revisited.
+
+---
+
+# 🏁 LANE STATUS — 2026-08-16 evening close (Fable session)
+
+S6 ✅ MERGED+LIVE (#1406, sw v1049/gantt v31 → superseded by later bumps, code verified serving) ·
+S7 ✅ MERGED+LIVE (#1408, merged 13:18Z after a sw.js sync-merge with #1407 §MIRROR_ROOM_PROBE —
+conflict resolved per the standing rule, both notes kept, version advanced to v1051; live site
+verified serving v1051 with §S7_OUTLIER_DELTA/§RETIME_OUTLIER_AUDIT present) · S8 ⛔ PARKED (user
+ruling in §PRIORITY). Chase-to-zero per the revised scope is COMPLETE: S6 re-measured against its
+own acceptance bar (fresh Terminal stagger dump: thin-big-bars 4→0, same-start 20/72→9/72, tail
+cluster gone), S7 confirmed with real numbers and fixed (437 collapses + 217 inversions per
+gesture → 0/0). The user's three named symptoms: "stack hell" → fixed (S6); "editor failure" →
+fixed (S7); "small flicker" → parked at user's own direction (S8). Next session picking this lane
+up: re-test "same old symptoms" against the LIVE rebuild with the user in the loop — the numeric
+groundwork is all in §S6_RESULTS/§S7_RESULTS above. Worktrees wt-gantt-s6/wt-gantt-s7 pruned
+(merged+clean); probe harness scripts/probe_gantt_drag_outliers.js is committed for reuse.
