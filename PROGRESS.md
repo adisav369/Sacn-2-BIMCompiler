@@ -4,6 +4,16 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Sonnet) — Alt+S/photo lane's 3 OPEN TASKS all CLOSED: bim-ootb PRs #1391/#1393 merged
+§ALTS_MEM_HOG: real Alt+S exit only hid the photo-prop tree (~30 lights, skyline meshes, sparkle
+sprites), never disposed it — 42 leftover scene objects + textures/geometries/programs never back
+to baseline. Fixed (`_disposePhotoProps()` on real exit); verified flat across 2 repeat cycles
+(PR #1391). §GROUND_RECT_ARTIFACT: user called false alarm before attribution finished; redirected
+to §GROUND_EARTH_DEFAULT — Alt+S/Alt+C bake ground texture 'paved'→'earth', Shadow-cycle reordered
+to lead with 'earth' (PR #1393). LTU Alt+C bbox fence: witnessed live on a real plan build —
+`§CINEMA_BBOX_FENCE excluded=13/9712` fires, no saved/authored path, dive settles just above real
+floor (not the pre-fix -24 dive) — no code change needed. Full trail: `prompts/PHOTOREAL_STILL_RENDER.md`.
+
 ## Session 2026-08-16 (Sonnet dispatch) — Gantt-shape refactor S1-S5 CLOSED: bim-ootb PRs #1401-#1405, floating 0/7 held throughout, S2 Terminal bar-shape ⛔ open question + S4 10s target not reached (both reported, not silently dropped) — full evidence in `prompts/4D_GANTT_TM_REFACTOR.md`.
 
 ## Session 2026-08-16 (Fable, continued) — Gantt-shape refactor SPEC'D OUT: prompts/4D_GANTT_TM_REFACTOR.md

@@ -392,14 +392,19 @@ question is narrower than at session start — not "is there a leak in AO/night/
 "what causes the eventual crash/memory-pressure, given the tracked GPU/render counters stay flat through
 it" — and the IDB-frame-blob hypothesis is the most concrete, measurable next lead, not yet confirmed.
 
-## ⛔ §ALTS_MEM_HOG — user ask 2026-08-16 ("check alt-s mem hogging"), NOT STARTED
-Known signal from the same day's probe logs: `§NIGHT_MEM_WITNESS heapMB=1611.6` during Hospital
-Alt+S staging. Task: measure heap + `renderer.info.memory` (textures/geometries) + program count
-at three checkpoints — BEFORE staging, AFTER converge, AFTER real exit (`stopStillRefine(true,
-false)`; a camera move does NOT un-stage — §STILL_REFINE_RESTART only restarts accumulation,
-witnessed 2026-08-16) — and diff. Suspects: per-staging rebuilds (`§PHOTO_PROPS
-windowLights=4380`, `§PHOTO_GLOW_SPRITE`, sparkles), HDRI env map, N8AO + TAA accumulation
-buffers, the 200 staged night PLs (now at 0.5× intensity — §STAGED_PL_CUT — but intensity ≠
-memory). Same bug class as §MEMLEAK_PMREM_DISPOSE above: three.js never GC's GPU resources on
-its own — look for allocate-per-staging with no dispose-per-exit. Full task context:
-PHOTOREAL_STILL_RENDER.md ▶RESUME §OPEN TASKS item 3.
+## ✅ §ALTS_MEM_HOG — DONE (witness) 2026-08-16, PR bim-ootb#1391 (auto-merge armed)
+Same bug class as §MEMLEAK_PMREM_DISPOSE above, confirmed: `_teardownPhotoStaging()`
+(viewer/effects.js) called `_showPhotoProps(false)`, which only toggled `.visible=false` on the
+photo-prop lights/skyline (and did nothing at all for the window-glint sparkles) — never disposed
+anything. The whole photo-prop tree (~30 PointLights, 40 skyline-box meshes, 1 sparkle Points
+cloud, ~24 glint sprites) survived every real Alt+S exit, freed only on a building switch. Headless
+measured (HHS_Office_Federated, swiftshader — Hospital's real 200-PL/63,917-element scale wasn't
+reachable in this sandbox within a practical time budget, same documented headless-GPU caveat as
+the rest of this file; leak mechanism is building-size-independent): before fix, a single
+startStillRefine→stopStillRefine(true,false) cycle left 42 scene objects + 22 textures + 52
+geometries + 36 programs above the pre-staging baseline; after fix, 0 leftover objects and
+geometries/programs both return fully to baseline. 2 cycles back-to-back post-fix: cycle-2-exit
+vs cycle-1-exit delta = 0 on every `renderer.info` counter — no per-cycle growth, the leak is
+closed (remaining one-time cost is legitimate singleton HDRI/N8AO lazy-init). Fix: call
+`_disposePhotoProps()` on real exit instead of the hide-only `_showPhotoProps(false)`. Full
+write-up: PHOTOREAL_STILL_RENDER.md ▶RESUME §OPEN TASKS item 3.

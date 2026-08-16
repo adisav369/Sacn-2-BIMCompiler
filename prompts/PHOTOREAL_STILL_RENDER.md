@@ -11,38 +11,73 @@
 
 ## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
 
-### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout — start with #1, it's a live visual regression)
-1. **§GROUND_RECT_ARTIFACT — user: "alt-s seems to have a large rect cloud cover over it." A
-   §GROUND_DETAIL (#1388) regression, NOT yet attributed between its two candidate mechanisms,
-   both mine:** (a) the new paved normal map tiled at the diffuse's 780m/tile — concrete_floor_01
-   has rectangular slab joints, so its relief SHADING paints giant soft rectangles on the ground
-   (the diffuse always had the joints as colour; the nor map amplifies them through lighting —
-   best fit for a soft "cloud" read); (b) the 90m `floor()`-cell blotch (hard-edged tint squares,
-   `viewer/tools.js` `_installGroundShader`). **Attribution rig is trivial to rebuild** (the 8410
-   server was torn down at closeout): serve `~/bim-ootb/viewer` + a buildings dir with the
-   Hospital split, headless Alt+S, then A/B raw renders — `material.normalMap=null` toggle
-   isolates (a); the empty-`onBeforeCompile` trick (it REPLACES the ground patch — the same trap
-   documented in §TRINORM_LINEAR, used deliberately here) strips detail+blotch to isolate (b).
-   **Fix shape, pre-agreed:** give nor/rough their own fine repeat (~3m/tile ≈ diffuse repeat
-   ×256, matching the detail multiply — r184 supports per-map texture transforms) and replace the
-   90m floor-cells with smooth value noise at softer amplitude. Ship as tools.js?v=42, sw v1043.
-   Witness: long ground transect — large-scale (≥90m) luminance steps gone, fine detail variance
-   retained (reuse `witness_ground_detail*.js` pattern, scratchpad `aa515841-…`).
-2. **§LTU_SUBSURFACE_BBOX in Alt+C — user: "need that first one to be used in the alt-c movie
-   baking." Code-confirmed already wired** (grep proved cinema_maxq.js/cinema_path_editor.js
-   build NO bbox of their own; the movie plan builder effects.js:~5577 calls the fenced
-   `_buildingBBoxArc()`), **but the live witness on an actual LTU Alt+C plan build is still
-   owed**: trigger the movie plan headless on LTU, assert `§CINEMA_BBOX_FENCE excluded=13/…`
-   fires during PLAN build and the plan's pivot/settle Y ≈ +3.6m not −24. If it still dives, the
-   suspect is a SAVED/authored path predating the fix (waypoints stored with sunken Y), not the
-   bbox. Remind user their browser needs sw v1042+ (reload twice) before judging.
-3. **Alt+S memory hogging — user ask, not started.** Known signal: `§NIGHT_MEM_WITNESS
-   heapMB=1611.6` fired during Hospital Alt+S staging in this session's own probe logs. Measure
-   heap + `renderer.info.memory` (textures/geometries) + programs BEFORE staging, AFTER converge,
-   AFTER real exit (`stopStillRefine(true,false)` — a camera move does NOT un-stage, witnessed);
-   diff the three. Prior art: `prompts/VIEWER_MEMORY_LEAK.md` (§MEMLEAK_PMREM_DISPOSE, same bug
-   class); suspects: per-staging rebuilds of props (`§PHOTO_PROPS windowLights=4380`,
-   `§PHOTO_GLOW_SPRITE`), HDRI + N8AO + TAA accumulation buffers, 200 staged PLs.
+### ✅ ALL 3 ITEMS CLOSED 2026-08-16 (were: OPEN TASKS from the prior closeout) — see PR links in each
+1. ✅ **§GROUND_RECT_ARTIFACT — CLOSED 2026-08-16, user: "the rect shadow cloud is gone. False
+   alarm."** Original report: "alt-s seems to have a large rect cloud cover over it," suspected as
+   a §GROUND_DETAIL (#1388) regression from the paved normal map's 780m tile (rectangular slab
+   joints amplified through lighting) and/or the 90m `floor()`-cell blotch (both real, hard-edged
+   mechanisms — confirmed mathematically mid-investigation, a `floor()`-quantized per-cell hash is
+   piecewise-constant with discontinuities at every cell boundary by construction) — but the user's
+   live browser no longer showed it and called it a false alarm before the attribution rig
+   finished. A GLSL smoothing fix for both mechanisms was drafted and verified working but NOT
+   shipped (dropped per user's false-alarm call — avoid unsolicited scope creep on a
+   no-longer-reported symptom). **Redirected instead, same session: §GROUND_EARTH_DEFAULT — PR
+   bim-ootb#1393 (auto-merge armed).** User: "more realistic even surface feel" — switches
+   `_applyPhotoStaging()`'s Alt+S/Alt+C bake ground texture from 'paved' (concrete_floor_01, the
+   texture carrying the rectangular joint pattern above) back to 'earth' (no such structure), and
+   reorders the Shadow-mode toggle cycle (`_SG_CYCLE` in tools.js) so 'earth' is the first real
+   choice instead of 'grass'. §GROUND_ALBEDO's existing gain calibration carries over unchanged —
+   earth's measured mean (0.1599) is within 3% of paved's (0.155). Verified headless (Duplex, cold
+   cache): first `toggleShadow()` press → `_shadowGroundKey='earth'`; Alt+S staging's real
+   `§GROUND_MAP key=earth` log confirms both nor/rough maps loaded.
+2. ✅ **§LTU_SUBSURFACE_BBOX in Alt+C — WITNESSED 2026-08-16, live plan build confirmed working,
+   no dive.** Triggered the REAL Alt+C entry point (`A.cinemaPathPlan(24)`, the same function
+   `cinema_maxq.js` calls — not a synthetic stand-in) headless on `LTU_AHouse_extracted.db`
+   (125,698 elements; only the DB needs to be open for this — `_buildingBBoxArc()`/
+   `_cinemaPathPlan()` read `A.dbQuery`, not streamed THREE.js mesh, so no need to wait out the
+   many-minutes full mesh stream). Confirmed exactly as predicted:
+   `§CINEMA_BBOX_FENCE excluded=13/9712 rawZ=[-45.55,16.31] fencedZ=[-3.19,16.31]
+   fence=[-3.78,18.89]` fires during PLAN build — the fence throws out real subsurface junk
+   (raw Z min -45.55 → fenced -3.19). `A._cinemaPathEdit` confirmed empty (no saved/authored
+   waypoints for LTU — the named "predates the fix" suspect doesn't apply here, ruled out
+   directly rather than inferred). **Pivot Y**: a fresh headless page's `A.controls.target`
+   defaults to the origin, which happens to pass `_cinemaPathPlan`'s "plausible" proximity check
+   for LTU's geometry and wins the pivot over the arc-bbox centre — not a bug, just means a
+   fresh-load probe doesn't exercise that branch by default. Forcing it (parking
+   `controls.target` on the camera's own nose, exactly the "replanted target" failure case
+   `§CINEMA_PIVOT`'s own guard is written to reject) gives `pivotSrc=arc-bbox-centre
+   pivot=(6.3,-4.1,87.8)` — **not** the pre-fix −24 dive, but also not the session's own +3.6m
+   estimate; the ~7.7m gap is `A.ifc2three()`'s per-building Z-datum offset (the +3.6 estimate
+   was raw-IFC-Z arithmetic, before that offset applies — real building-specific calibration, not
+   an error in the estimate's logic). The `§CINEMA_DIVE` settle point in both plan variants
+   (`settle.y=-9.2`, `floorY=-10.94`) sits just above the real floor, consistent with a working,
+   non-diving plan. **Verdict: the bbox fence works, LTU does not dive underground on a real Alt+C
+   plan build.** Not chased further: whether `ifc2three`'s Y-offset for LTU specifically should
+   itself read closer to the +3.6 estimate — low priority since the practical symptom (diving to
+   −24) is gone. Witness script: scratchpad `probe_ltu_bbox_fence.js` / `_fence2.js` (this
+   session, not committed).
+3. ✅ **§ALTS_MEM_HOG — DONE (witness) 2026-08-16, PR bim-ootb#1391 (auto-merge armed).** Root
+   cause found and fixed: `_teardownPhotoStaging()` called `_showPhotoProps(false)`, which only
+   sets `.visible=false` on `_photoUplights`/`_photoSkyline`/`_photoSkylineLights` and does
+   nothing at all for `_photoSparkles` (they froze at whatever visibility the last accumulation
+   frame's sun-glint test left them — a live "sprite left glowing after Alt+S exit" bug). None of
+   it disposed GPU resources — the whole photo-prop tree (~30 PointLights, 40 skyline-box meshes,
+   1 window-sparkle Points cloud, ~24 glint sprites) stayed allocated after every REAL Alt+S exit,
+   only ever freed later by a building switch (`_showPhotoProps(true)`'s own rebuild guard).
+   Headless-measured on `HHS_Office_Federated` (Hospital's 63,917-element stream alone exceeded
+   300s under this sandbox's swiftshader-only headless Chromium — no real GPU here, same caveat
+   `VIEWER_MEMORY_LEAK.md` already documents; the LEAK MECHANISM is building-size-independent, only
+   the absolute heapMB magnitude doesn't transfer): before fix, `startStillRefine()` →
+   `stopStillRefine(true,false)` left textures 225/225, geometries 417→380, programs 49→44,
+   sceneChildren 633→388 — **42 scene objects never freed** vs the pre-staging baseline. After fix:
+   0 leftover objects, geometries/programs fall all the way back to the 364/12 baseline. Ran 2 full
+   Alt+S on/off cycles back-to-back post-fix: cycle-2-exit vs cycle-1-exit delta = 0 on every
+   counter — confirms no per-cycle growth (the one remaining one-time +22 textures/+32 programs on
+   cycle 1 only is legitimate singleton-cached lazy-init — HDRI PMREM env map, N8AO scratch render
+   target — not a leak). Fix: `_teardownPhotoStaging()` now calls `_disposePhotoProps()` (the same
+   function the building-switch path already used) instead of the hide-only path. Probe scripts:
+   scratchpad `probe_alts_mem_hog.js` / `probe_alts_mem_hog_2cycle.js` (this session,
+   `aa515841-…` scratchpad — not committed, throwaway).
 
 ### ✅ §TRINORM_LINEAR — 2026-08-16 (8th session): BOTH open Alt+S bugs SOLVED, one mechanism — PR #1383 MERGED + LIVE (fetched back from production: streaming.js carries 4.8763, sw v1037)
 **§ONGOING_TINT (bluish/darkish piping) and §RED_GREY_MYSTERY (red valve → literal black) were the
