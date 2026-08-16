@@ -1038,3 +1038,16 @@ follow-up, do not snap it with this generator without answering the mesh-alignme
 Superstructure IfcSlab total, min slab z=2.06, gw=6: the ground plate may genuinely not exist as
 IfcSlab there; "hanging MEPs" — 9,738/16,071 elements are MEP) — engine-side investigation, its
 own bounded item, not a split-pair issue.
+
+## §S10 GATE CLOSE (same night) — patch on the REAL live channel, gate-verified
+Live users fetch DBs (and therefore patches — `_applyPendingPatch` resolves relative to the DB
+URL) from OCI bucket `bim-ootb`, not GH Pages. Shipped per OCI_UPLOAD.md §RULES 6 through
+`oci_patch_gate.js`: engine snapshot clean@origin/main, gate downloaded the SERVED
+Terminal_meta.db bytes itself (gzip, etag 7e11d0f3…), applied the patch, ran the committed
+verifier (`scripts/verify_terminal_meta_transform_repair.js`, PR #1413) → `§S10_VERIFY_SUMMARY
+fail=0 PASS` (spot rows at truth+offset, §GROUNDWORK_SLAB 233) → `§GATE_VERDICT
+UPLOAD_VERIFIED` (413,659 bytes, md5 8qGSMwBSRHc1INvSL7k/PA==). Provenance manifest committed
+(PR #1414). Next user reload of Terminal gets the repaired schedule — GH Pages + OCI both
+serving. (Process note: PR #1413 was pushed onto the already-squash-merged #1412 branch —
+against the standing never-reuse rule; it squashed cleanly this time, but the manifest PR went
+on a fresh branch as the rule requires.)
