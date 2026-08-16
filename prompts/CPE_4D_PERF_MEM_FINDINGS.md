@@ -209,6 +209,15 @@ vintage. Fix belongs WITH the revalidation work: either re-extract with the `bui
 code-side single-building fallback when centres=0), or revalidation will hand every returning user a
 building that never streams.
 
+**✅ R6 fully done as of 2026-08-17, both halves — see `CPE_4D_PERF_MEM_STUDY.md` §RESUME for the
+current record, not re-derived here to avoid duplicating a moving log.** (b) the blocker above was
+fixed by an earlier, separately-motivated PR (bim-ootb#1328, `§SINGLE_BLD_FALLBACK` in
+`streaming.js`) that this file never got updated to reflect. (a) cache revalidation itself shipped
+bim-ootb#1418 — `A.cachedFetch` now HEAD-compares ETag/Content-Length on every cache hit before
+trusting it, fails open on any uncertainty. (b) THEN (a)'s original blocking order is why this
+took two sessions apart — (a) alone, before (b), would have handed every returning LTU user a
+freshly-revalidated but completely unstreamable building.
+
 ### R7 — One support predicate + one x-ray element build (consolidation with a perf edge)
 **Before-numbers:** the repo's own register `witness_wall_carrier_scope_all_copies.js:1-22`
 documents **4 independently-written copies** of "does T rest on S" (schedule_gate.js
