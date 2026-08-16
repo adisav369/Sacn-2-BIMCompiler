@@ -4,6 +4,20 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Fable) — §CPM_SPEC stages 1-3 BUILT+MEASURED: fleet floating 0/7 (bim-ootb PR #1396)
+The redesign session `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` called for. Spec-first (§CPM_SPEC
+appended), then side-by-side `viewer/cpm_schedule.js` + `scripts/probe_cpm_schedule.js` — one
+dependency DAG (support/host/discipline/storey edges + crew lower bound), one Kahn pass over the
+SCC condensation. §CPM_STRAGGLER_MEMBERSHIP (dag-wins stragglers never feed gate milestones) makes
+hammock cycles impossible by construction — measured cycleDrops 0 on all 7. **Floating 0 on ALL 7
+buildings incl. 0 structural** (raw 21–1,401 each; shipped pipeline's residual 133 fleet-wide);
+§CPM_GATE_CHECK 0; §CPM_PARITY exact; storey order improves-or-matches RAW everywhere (JKR 9→2,
+Terminal 7→3, LTU 10→4, Hospital 1→0), residuals decomposed to federated storey-ladders (no
+federation column in extracted DBs — named data limit) + straggler medians. Terminal wall-clock
+387ms vs 1,467ms for ONE `_tierAuditRegate` call. Stage 4 (retiring the 11 passes) PROPOSED only —
+§STAGE4_RETIREMENT_PROPOSAL, wire-in order + open question (zone authoring seam) written. Full
+trail: `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` §CPM_STAGE13_RESULTS.
+
 ## Session 2026-08-16 — §STOREY_ORDER_REPORT chase: thread 2 SHIPPED (bim-ootb#1395), thread 1 rejected
 Two-thread session on `prompts/4D_SCHEDULE_PERFECTION.md`'s handoff. **Thread 1 (storey-by-storey
 build order):** root-caused to `_twoTierRemap`'s `_tier1Serialize` uniform per-zone shift; a

@@ -263,7 +263,140 @@ every one of those was rejected specifically because it was measured broadly BEF
 
 ---
 
-# §OPEN_QUESTIONS — for the session that picks this up, not resolved here
+# §CPM_SPEC — the side-by-side module (2026-08-16, Fable session, spec-first per §GUARDRAILS)
+
+**Deliverable (stages 1–3 of §EXECUTION_PLAN):** `viewer/cpm_schedule.js` (UMD, node+browser, same
+loading shape as `schedule_gate.js`) + `scripts/probe_cpm_schedule.js` (fleet harness, reuses
+`probe_captured_floating.js`'s DB/rates/element loading verbatim). Replaces NOTHING yet.
+
+## Nodes
+- One node per scheduled element (guid). Duration = crew-leveled duration from `computeSchedule`
+  (§WHAT_STAYS — crew-leveling untouched, runs first).
+- Synthetic milestone nodes (dur=0), hammock pattern: per (level, phase) completion where needed by
+  E3/E4 below. Level = `ScheduleGate.collapsePhase(storey)`; level ORDER = real mean `base_z` of the
+  level's own elements (extracted, never invented — same math as `storeyOrderReport`).
+
+## Edges (every edge traces to a real geometry query or an already-shipped named rule)
+- **E1 support (physics), start-to-start:** for EVERY element with a non-null `_contactGraph`
+  contacts list (grounded or not — §GROUNDED_OVERRIDE_FIX precedent), ONE designated-support edge
+  S→T meaning `ES(T) ≥ ES(S)`. The judge (`floatingCensus`) requires `min over ALL contacts ≤ s`;
+  the designated support is a member of that contact set, so judge-zero holds by construction.
+  Designation is deterministic, preferring the physically-primary relation: bearing-below first
+  (highest `tz` = nearest below), else embedded (smallest `|S.bz − T.bz|`), else carrier-above
+  (lowest `bz` = nearest above); final tie-break guid. Start-to-start (not finish-to-start) because
+  that is the judge's own shipped contract ("may not APPEAR before the first element it touches
+  APPEARS" — starts compared, `_midairAudit`).
+- **E2 host/opening, finish-to-start:** `ScheduleGate.hostPairs` + `openingPairs` (the one shared
+  definition, already right) — `ES(T) ≥ EF(host)`, matching the shipped push-to-host-END semantics
+  of §HOSTED_BEFORE_HOST / §DOOR_WINDOW_HOST_WALL_DISPLAY.
+- **E3 discipline hammocks, per level:** Tier-1 chain milestones (Substructure→Superstructure→
+  Architecture, `_TIER1_ORDER`) — phase k's elements' finishes → M(level,k) → phase k+1's elements'
+  starts; plus M_T1complete(level) (all Tier-1 finishes at that level) → every Tier-2 element's
+  start at that level. This IS §TIER2_AFTER_TIER1's per-element clamp contract — safe here because
+  there is no downstream pass reading `t1EndZ` to disturb (the +81% failure mode was pass-ordering,
+  not the clamp itself).
+- **E4 storey hammocks, per phase (THE MISSING EDGE):** M(phase P, level k) completion → every
+  element of (P, level k+1)'s start, levels in real base_z order. Skipped for elements with no
+  storey.
+- **E5 crew lower bound, per-element** (§OPEN_QUESTIONS 2 DECIDED: per-element, not per-zone — the
+  weakest bound that preserves per-element crew-contention visibility; a per-zone bound would
+  re-create exactly the block-shift distortion the §TIER1_PER_ELEMENT_CLAMP experiment measured):
+  `ES(T) ≥ computeSchedule(T).start` as a virtual-source bound, no explicit edges.
+
+## Solve
+Kahn topological order; `ES(T) = max(E5 bound, max over in-edges)`; `EF = ES + dur`. **Cycle policy
+(§TIER_DAG_WINS doctrine — physics beats phase tidiness):** if Kahn stalls, drop hammock (E3/E4)
+edges among the stalled set first, log `§CPM_CYCLE_BREAK` counts by edge type; if still stalled
+(pure-physics cycle, e.g. Clinic's parapet/roof loop), drop support in-edges of the lowest-`bz`
+stalled node iteratively, logged. Deterministic, no fixpoint, no sweep cap.
+
+## Windows
+DERIVED ONLY: task window = `[min(ES), max(EF)]` over the (phase, level) group, after solve
+(§THE_PATTERN point 3). No authored window, no rescale, nothing to round-trip.
+
+## Acceptance (stage 2, numeric, per §EXECUTION_PLAN 5)
+- `floatingCensus` on CPM output, all 7 buildings: **0 structural (footing/column/beam/slab)
+  floating; total midair confined to cycle-break population, target 0.** Orphans unchanged
+  (extraction fact, not schedulable).
+- `storeyOrderReport` at LEVEL granularity: **violations = 0 on all 7.**
+- Graph sanity: node/edge counts per building logged vs `_contactGraph` population counts.
+- Makespan + per-phase extents logged vs shipped display for drift visibility (not a pass bar).
+
+## Wall-clock (stage 3)
+Time CPM build+solve vs the probe's existing repair chain (`applyGapClampRescale` +
+`_ogSupportSweep` + `_cjpJudgeParity` + `_midairRepair`) on the same items, same node process, all
+7 buildings — prediction: CPM linear-time, faster.
+
+---
+
+# §CPM_STAGE13_RESULTS — stages 1–3 BUILT + MEASURED (2026-08-16, Fable session, bim-ootb PR #1396)
+
+**Deliverables live on branch `feat/cpm-4d-schedule` (PR #1396, auto-merge armed):**
+`viewer/cpm_schedule.js` + `scripts/probe_cpm_schedule.js`. Side-by-side only — zero shipped-code
+changes. Logs: session scratchpad `cpm/fleet3.log` (full §-trail; re-runnable any time via
+`node scripts/probe_cpm_schedule.js`).
+
+## The headline number
+**Floating = 0 on ALL 7 buildings** (judge = the same `_contactGraph`/`floatingCensus` math, run as
+an independent sliced copy, §CPM_PARITY exact). RAW crew-leveled baseline per building: Duplex 21,
+Clinic 428, HHS 193, JKR 184, Hospital 1,401, Terminal 558, LTU 1,336. The shipped 11-pass pipeline's
+best-ever residual is 133 fleet-wide; the CPM pass leaves **0, including 0 structural** — the doc's
+non-negotiable target, hit on the first fleet measurement. `§CPM_GATE_CHECK` (every non-dropped edge
+honoured by the solver, asserted independently) = 0 on all 7. A beam before its footing is now
+structurally impossible, as §THE_PATTERN predicted.
+
+## What it took beyond the spec (one addition, precedented)
+**§CPM_STRAGGLER_MEMBERSHIP** — the naive spec graph (all elements feed their group milestone) fused
+into one giant SCC per building (hanging elements' E1 edges point down-level; the hammock lattice
+points up; everything became mutually reachable and the first cycle-break attempt dropped ~90% of
+all hammock edges). Fix: one maxAncestor-(level,phase)-key propagation over the physics-only
+condensation; an element whose physics ancestry reaches a LATER group than its own is a dag-wins
+straggler (the shipped `_exempt`/`_t1Straggler` population, expressed as graph construction) — it
+never FEEDS its gate milestone, still RECEIVES every gate. Result: hammock cycles impossible by
+construction — measured cycleDrops = 0 on all 7 (only pure-physics SCCs remain, contracted to a
+shared start, which the judge's own start-vs-start test accepts with equality; fsViolInScc 0–127,
+counted). Stragglers: Duplex 315/1119 → LTU 45,638/122,330 — counted, never hidden.
+
+## Storey order (the user's live symptom)
+Strict per-level p50 report (`§CPM_STOREY_LEVEL`, same math as §STOREY_ORDER_REPORT): CPM improves
+or matches the RAW baseline on ALL 7 — Duplex 0→0, Clinic 0→1, HHS 0→0, JKR 9→2, Hospital 1→0,
+Terminal 7→3, LTU 10→4. The residual 10 inversions across 4 buildings DECOMPOSE (straggler % now in
+`§CPM_STOREY_PHASE` detail): (a) **federated storey-ladder pairs** — Terminal's Kedai/Jalan/Tanah
+blocks, LTU's VÅNING-vs-VÅN-vs-Plan-vs-Storey Swedish sub-model ladders, JKR's "00 Ground Level"/"00
+Ground Floor"/"01 Ground Floor Level" triplets — separate ladders sharing a z-range that
+`collapsePhase` z-sorts into one global order; the extracted DBs carry NO federation column
+(`elements_meta.building` is single-valued, checked LTU), so per-sub-model chaining cannot be
+EXTRACTED — same status as orphans: a data limit, named, not a scheduling bug; (b) **straggler-
+dominated medians** — every violating group pair is 50–100% stragglers (physics-forced-late
+population, §TIER_DAG_WINS doctrine: counted, never hidden). Zero violations survive that aren't one
+of these two classes.
+
+## Wall-clock (stage 3 prediction: confirmed where it matters)
+CPM total (contact graph + build + solve): Duplex 23ms, Clinic 166ms, HHS 96ms, JKR 99ms, Hospital
+662ms, Terminal 387ms, LTU 1,123ms. Comparator = ONE `_tierAuditRegate` call (the documented 78–90%
+of Terminal's whole 4D-gen wall time; `_twoTierRemap` calls it up to 7×): Terminal 387ms vs 1,467ms
+(**3.8× faster than a single call of the one pass**, i.e. ~26× vs its 7-call reality, before
+counting the other 7 passes CPM replaces). Smaller buildings: same order of magnitude either way
+(both <200ms) — the win scales with exactly the buildings that hurt today.
+
+## §STAGE4_RETIREMENT_PROPOSAL — NOT executed (per §EXECUTION_PLAN 4, propose first)
+Wire order, each its own PR, full witness suite after each: (1) feed CPM output into the display
+path behind a flag, A/B the §-logs; (2) retire `_ogSupportSweep` + `_cjpJudgeParity` +
+`_midairRepair` (fully subsumed by E1 — judge-zero by construction); (3) retire `_tier1Serialize` +
+`_tierAuditRegate` + §TIER2_AFTER_TIER1 + §HOSTED_BEFORE_HOST + §DOOR_WINDOW_HOST_WALL (subsumed by
+E2/E3 + gates); (4) derive Gantt windows from CPM times, retiring `_capWindowRescale`/
+`applyGapClampRescale`/`§CJP_DAY_ROUNDING_TOL`; (5) `_contactGraph` consumers collapse onto
+`CpmSchedule.contactGraph` (parity already asserted). Baseline updates need the written-justification
+discipline §CJP_DAY_ROUNDING_TOL used. Open before (1): where CPM times enter `materializeZones`'
+zone/task authoring — the display path consumes zones, not raw element times.
+
+---
+
+# §OPEN_QUESTIONS — status after §CPM_STAGE13_RESULTS (2026-08-16): 1 MEASURED (combined graph ≤
+# ~360k edges + ~66k membership edges on LTU's 122,330 elements, build 287ms — fine), 2 DECIDED
+# (per-element, see §CPM_SPEC E5), 3 PARTLY MOOT (E1 uses the unbounded contact graph directly, so
+# §OG_HANG_BAND/§OG_HANG_UNBOUND die with their pass; §HOSTED_BEFORE_HOST's IfcCovering pool rides
+# hostPairs unchanged; §XRAY_WALL_SCOPE lives in `_buildXraySupportCache` — audit at stage-4 step 5).
 
 1. **Edge granularity at scale.** LTU_AHouse has 122,330 elements. Per-element discipline/storey summary
    edges (hammock links, point 1 above) keep the graph small; per-element PHYSICAL contact edges already
