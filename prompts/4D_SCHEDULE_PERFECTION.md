@@ -4264,7 +4264,18 @@ resolved by this fix alone (91→9) — no longer needs separate investigation.
 
 ## ▶ NEXT SESSION START HERE (2026-08-16 session close) — supersedes every "next lever" note above
 
-**Two independent threads, both measured this session, in different states:**
+**⚠ A separate, higher-priority thread now supersedes both threads below for whoever picks this up
+next: `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` (written 2026-08-16, same close, user: "take a
+step back... what structural design pattern... solve it once and for all").** Both threads below are
+tactical patches on top of an architecture this new file diagnoses as the actual root cause (eleven
+independent repair passes, five of them re-deriving "what supports what" separately, none sharing one
+dependency graph — exactly why the storey-order fix this session broke floating elsewhere while
+provably moving less). If the redesign work starts, these two threads are likely SUPERSEDED, not
+merged with — a correct CPM/single-DAG scheduler makes both of them structurally unnecessary rather
+than fixed. Read that file first and decide which track this session is actually on before continuing
+either thread below.
+
+**Two independent tactical threads, both measured this session, in different states:**
 
 1. **Floating chase (thread 2) — ACTIVE, on a clean population now.** Fleet floating is **133** (was
    265 at session start), shipped and live (bim-ootb PR #1395, `_CJP_DAY_TOL`). Re-run
