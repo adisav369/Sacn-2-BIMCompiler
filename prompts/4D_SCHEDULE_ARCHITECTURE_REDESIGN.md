@@ -436,6 +436,13 @@ generative run (the seam recomputes `computeSchedule`+`§GEO_ORDER` then discard
 only `_sched` feeds the §SUPPORT_CHECK audit). Heap +~390MB during activation on a 63k model.
 A perf pass on activation is the natural next lane item, distinct from correctness.
 
+## ➡ HANDOFF (2026-08-16 evening): the bar-shape/level-semantics refactor is SPUN OUT to
+## `prompts/4D_GANTT_TM_REFACTOR.md` — measured diagnosis (Terminal: 49/72 tasks as equi-shaped
+## 1-2-day bars at day 149-150; E4 chains 22 non-stacked federated pseudo-levels; bars =
+## non-straggler slivers on wall-carried buildings), the M1-M4 model, staged plan with numeric
+## acceptance, and Sonnet dispatch rules live THERE. This file stays the engine's architecture
+## record; the retirement proposal below remains open behind that lane.
+
 ## §STAGE4_RETIREMENT_PROPOSAL — steps 2-5 still propose-first (step 1 SHIPPED above)
 Wire order, each its own PR, full witness suite after each: (1) ✅ SHIPPED #1398 (§CPM_DISPLAY
 above); (2) retire `_ogSupportSweep` + `_cjpJudgeParity` +

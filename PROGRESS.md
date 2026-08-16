@@ -4,6 +4,16 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Fable, continued) — Gantt-shape refactor SPEC'D OUT: prompts/4D_GANTT_TM_REFACTOR.md
+User (Terminal preview): "still not uniform layer by layer… not properly staggered… many stacked up
+equi-shaped." Measured via new headless stagger probe (bim-ootb PR #1400, scripts/probe_gantt_stagger.js):
+49/72 Terminal tasks = identical 1-2-day bars at day 149-150 (Superstructure_05: 10,355 elems/1 day);
+cause 1 = E4 chains 22 non-stacked federated pseudo-levels (Kedai gates the main hall), cause 2 = bars
+are non-straggler slivers on wall-carried buildings (14,129 stragglers = the mass). Verdict REFACTOR
+not rewrite (floating-0 engine + one-truth locked); full spec with M1 (3m-band E4), M2 (Tukey robust-
+envelope bars), M3 (layer-by-layer as monotone band-median metric), M4 (activation ≤10s), staged
+S0-S5 with numeric bars + Sonnet dispatch rules → `prompts/4D_GANTT_TM_REFACTOR.md`. S0 done (#1400).
+
 ## Session 2026-08-16 (Fable, continued) — §ZONE_WINDOW_DAGWINS_CLIP: readable bars + epoch fix (bim-ootb PR #1399)
 User post-#1398: "mem eats, hangs a bit, schedule looks gibberish." Reproduced headlessly (Hospital):
 all 35 task bars full-project-width — min/max windows smeared by 11,215 dag-wins stragglers. Fixed:
