@@ -1328,11 +1328,12 @@ levels that must not overlap. Clinic, measured:
 | Second Floor | 7.48 | 4.57 | 8.11 | 1,708 | HVAC 793, Architectural 751, Structural 386 |
 
 The vocabularies are **provenance-disjoint, not guessed**: Architectural/Structural/HVAC say
-"First Floor"/"Second Floor"; Electrical/Plumbing say "Level 1"/"Level 2". Consequence in the
-schedule: `First Floor` runs day 23→121 while `Level 1` — the *same floor's* electrical and plumbing
-— runs day 106→106. **An 83-day split of one storey**, which in playback is exactly "walls appear
-without their services, services appear later in mid-air". `§STOREY_ORDER_REPORT violations=1/6,
-worstInversionDays=49`.
+"First Floor"/"Second Floor"; Electrical/Plumbing say "Level 1"/"Level 2". Engine-side (`RAW`,
+straight out of `computeSchedule`) that already separates one floor into two windows: `First Floor`
+day 8→67 vs `Level 1` day 36→50 (**28 days**), and `Second Floor` 27→99 vs `Level 2` 80→89
+(**53 days**). ⚠ **See §S13.6 — the ladder is only PART of it, and not the larger part.** The
+83-day figure this section originally quoted came from the FINAL table and mixed in a second,
+bigger effect that had not been measured yet.
 
 **New tool: `scripts/audit_storey_ladder.js`** (bim-ootb) prints this ladder per building and flags
 adjacent bands whose interquartile z ranges intersect, saying whether their source models are
@@ -1405,25 +1406,69 @@ parentage into `spatial_structure` for every building. Then band merging becomes
 a heuristic, and Clinic is fixed by data that already exists today. The solver-side merge stays
 unwritten until then.
 
+
+## §S13.6 ⚠ CORRECTION + the bigger finding: the Gantt task-window REMAP, not the ladder, is the
+## dominant order-breaker — and the engine's raw schedule is fine
+Measured after §S13.2 was written, by reading the probe's own per-stage tables instead of only its
+final one. `§STOREY_ORDER_REPORT` at each stage:
+
+| building | RAW (computeSchedule output) | POST_REMAP (Gantt task-window overlay) |
+|---|---|---|
+| Clinic | **0/6 violations, 0 days** | 2/6, 86d |
+| Hospital | 1/7, 233d (an END inversion only — starts are monotonic 13<29<37<41<46<46<47<48) | 2/7, 236d |
+| Terminal | 7/21, 113d | 10/21, 97d |
+
+**Clinic's raw schedule is perfectly ordered and the remap breaks it.** Hospital is starker still:
+raw has `Level 1` starting day **13**; after the remap it starts day **195** — the ground floor
+moved 182 days later, which is the fleet's worst inversion and the thing that was being chased as
+"Hospital lighting float". And the remap does not just reorder, it **collapses whole bands to
+zero-width windows**: Clinic's `Level 1` goes from day 36→50 to **106→106**, `Level 2` from 80→89 to
+**94→94**. A whole floor's electrical and plumbing installed in a single day, months after its walls.
+
+So the correct causal split for the Clinic bake report is:
+1. the storey ladder separates one physical floor into two bands (28-53 days, engine-side, §S13.2)
+2. **the task-window remap then places one of those bands as a zero-width window ~50-70 days later**
+— and (2) is the larger, more visible effect, and it was not previously named anywhere in this lane.
+
+This also reframes the lane's standing "engine-done, live-capped" pattern: §S9/§S10 chased the live
+cap to a corrupted DB (correctly — that was real and is fixed). This is a SECOND cap, in the overlay
+rather than the data, and it is the one that survives a clean DB.
+
+**Next dig, precisely stated:** in `time_machine.js`, the path
+`materializeZones → per-task window → §GANTT_TASK_WINDOW_FIDELITY per-element rescale` (injectGantt
+`_cap` overlay, ~5527-5563, reproduced verbatim in `scripts/probe_captured_floating.js`). The
+question to answer first is *why a task window can be narrower than the raw span of the elements it
+contains* — a zero-width window for 4,677 elements is the symptom to reproduce and explain before
+anything is changed. Do NOT patch the storey ladder to compensate; that is the per-symptom patching
+this lane's §S10 note already warned against.
+
 ---
 
 # 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
-**S1-S13. Split-pair transform corruption CLOSED fleet-wide and now DETECTABLE, not hand-found:
-`scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417) report
-`audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the served OCI
-bytes and live. Clinic's bake item is ANSWERED, not fixed-by-luck — "missing ground slabs" was FALSE
-(the 2,939m² slab-on-grade is there and already Substructure/seq1; the old note counted only the
-Superstructure bucket) and "hanging MEPs" is 9/16,071. The real cause, measured, is the STOREY LADDER:
-one physical floor carrying two names becomes two schedule bands, splitting Clinic's first floor by 83
-days (`scripts/audit_storey_ladder.js`, §S13). Open, in priority order:
-(1) ⛔ BLOCKED, needs a go — band-merge is INFERENCE with today's data; the recommended fix is
-extraction-side (carry `elements_meta.building` through the split into meta.db, and extract
-`IfcBuildingStorey.Elevation` + IfcBuilding parentage into `spatial_structure`), see §S13.5;
-(2) Hospital's 2/7 storey-order violations + worst-in-fleet 174d inversion — its ladder is CLEAN
-(0 overlaps), so the cause is NOT naming and is NOT yet identified: this is the next real dig;
-(3) `normalize_storey.py` invents 5 storeys on Terminal against its own "never invents a level"
-docstring (673 elements) — fix measured, does NOT improve the schedule (97d/260 floating vs 95d/256),
-so it is reported not shipped, §S13.4;
-(4) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), now a standing audit column;
-(5) S8 playback-flicker stays PARKED per §PRIORITY.
-Start by reading §S13 + §S12; every harness is named in-file and runs from a bim-ootb worktree.**
+**S1-S13. Split-pair transform corruption CLOSED fleet-wide and now DETECTABLE rather than
+hand-found: `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417)
+report `audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the
+served OCI bytes, live. Clinic's bake item ANSWERED — "missing ground slabs" was FALSE (the 2,939m²
+slab-on-grade is there and already Substructure/seq1; the old note counted only the Superstructure
+bucket) and "hanging MEPs" is 9/16,071.
+
+**THE HEADLINE, and the next thing to work: the Gantt task-window REMAP breaks an order the engine
+got right (§S13.6).** Clinic's raw `computeSchedule` output is 0/6 storey-order violations; after the
+remap it is 2/6 with an 86-day inversion. Hospital's `Level 1` starts day **13** raw and day **195**
+after the remap — that 182-day shove is the fleet's worst inversion and is what "Hospital lighting
+float" has really been. The remap also collapses whole bands to ZERO-WIDTH windows (Clinic `Level 1`
+36→50 becomes 106→106; 4,677 elements in one day, months after their walls). Dig here first:
+`time_machine.js` `materializeZones → per-task window → §GANTT_TASK_WINDOW_FIDELITY` rescale
+(injectGantt `_cap` overlay ~5527-5563, reproduced in `scripts/probe_captured_floating.js`).
+Reproduce and explain a window narrower than the raw span of its own elements BEFORE changing
+anything — do not compensate in the storey ladder.
+
+Also open: (1) ⛔ needs a go — storey-band merge is INFERENCE with today's data; recommended fix is
+extraction-side (carry `elements_meta.building` through the split into meta.db; extract
+`IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. It is a real second-order effect
+(28-53 days engine-side on Clinic, LTU medians coinciding at 0.00m) but no longer the prime suspect.
+(2) `normalize_storey.py` invents 5 storeys on Terminal against its own "never invents a level"
+docstring (673 elements); fix measured, does NOT improve the schedule (97d/260 floating vs 95d/256)
+— reported not shipped, §S13.4. (3) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), now a
+standing audit column. (4) S8 playback-flicker stays PARKED per §PRIORITY.
+Start by reading §S13.6 then §S13, §S12; every harness is named in-file.**
