@@ -4094,3 +4094,54 @@ Two open threads for the next session, in order:
 Live verification pending from the user: reload (sw v1043) → open Hospital → read
 `§CROSSTASK_JUDGE_PARITY ... floating=N windowBlocked=M` (predicted ≈63) — first session-log census
 since the line shipped in PR #1390.
+
+## §STOREY_ORDER_REPORT MEASURED (2026-08-16, next session) — corruption localized to `_twoTierRemap`
+
+Thread 1 of the handoff above, chased per its own named cheap-first-measurement: extended
+`probe_captured_floating.js` with a reusable `storeyOrderReport()` helper (bim-ootb PR #1392,
+diagnostic-only, no production code touched, auto-merge queued) — storeys ordered by REAL mean
+`base_z` (never invented), p10/p50 start-day per storey, a monotonicity check across that real
+elevation order. Run at 5 pipeline stages so the corrupting stage is directly locatable:
+**RAW → POST_REMAP (`_twoTierRemap`) → DISPLAY (post `_midairRepair`) → PRE_PARITY (post
+window-authoring+rescale) → FINAL (post `_cjpJudgeParity`)**.
+
+**Fleet result — `_twoTierRemap` is the corrupting stage in every building measured** (collapsed-Level
+granularity, `violations/pairs` — a p50 that goes backward vs the storey below it):
+
+| Building | RAW | POST_REMAP | DISPLAY | PRE_PARITY | FINAL |
+|---|---|---|---|---|---|
+| Clinic | **0/6** (clean) | 2/6 (+86d) | 2/6 | 1/6 (-53d) | 1/6 |
+| Hospital | 1/7 (tail only, 233d) | 3/7 (258d) | 3/7 | 3/7 (74d) | 3/7 |
+| Terminal | 7/21 (106d) | 10/21 (99d) | 12/21 | 12/21 (95d) | 12/21 |
+| LTU_AHouse | 10/17 (610d, messy building) | 9/17 (633d) | 8/17 | 9/17 (343d) | 9/17 |
+
+Clinic is the cleanest signal: RAW is a **perfect 0 violations** — §4D_BAND_MONOTONIC's ladder genuinely
+holds in the generative schedule. `_twoTierRemap` alone introduces the break (0→2). Window-authoring,
+rescale, and `_cjpJudgeParity` (the stages the original 4 suspects (a)/(b) named) leave the violation
+COUNT flat-to-improving on 3/4 buildings — they are not the primary cause. Suspect (d) (RAW ladder) is
+mostly cleared too — RAW holds well on the simple towers (Clinic, Hospital-except-tail), only LTU's
+already-irregular multi-level layout is messy at RAW itself.
+
+**Mechanism, traced to individual elements on Hospital** (`§STOREY_ORDER_L1_DIAG`/`§STOREY_ORDER_L1_BYPHASE`):
+Level 1's median start balloons from day 52 (RAW) to day 342 (post-remap), vaulting past every storey
+above it. Cause: `_tier1Serialize` applies a **uniform per-zone shift** to Level 1's own Architecture
+phase (+178d flat, all 1781 items) because Level 1's own Superstructure phase doesn't finish early
+enough in the RAW schedule to satisfy the "ARCH/STR out of the way first, same floor" contract
+(§TIER2_AFTER_TIER1's own documented rule — this part is working as designed). That shifted Architecture
+end then becomes `t1EndZ['Level 1']`, and `§TIER2_PER_ELEMENT_CLAMP` clamps EVERY Tier-2 element in that
+zone to start no earlier than it — which lands on **5145 of Level 1's 8693 elements (59%, mostly MEP
+Rough-in)**, pushed +290–304d flat. MEP Rough-in dominates Level 1's population, so it drags the whole
+storey's median past Levels 2–6.
+
+**So the real question is one level deeper than any of the 4 original suspects: why does Level 1's OWN
+Superstructure phase straggle late enough (relative to its own Architecture package's original start) to
+trigger the Tier1Serialize shift in the first place?** That's a generative-schedule / crew-allocation
+question inside `schedule_gate.js`'s `computeSchedule` (are Superstructure crews resource-shared across
+ALL storeys such that Level 1's own structural package doesn't finish first even though it's the ground
+floor?) — NOT a display-layer patch, and not attempted this session: it needs its own per-storey
+Superstructure-completion-vs-crew-cap measurement before any fix, per Spec-First. Named as the next lever.
+
+**Not yet touched:** thread 2 (the remaining 265, Clinic's +31) — still open, see the "next levers" list
+above this block. The two threads may or may not share a fix; this session's measurement says the storey
+thread's root is upstream in `_twoTierRemap`/`computeSchedule`, not in the window-authoring/parity layer
+thread 2 lives in — treat them as separate until a shared cause is actually measured, not assumed.
