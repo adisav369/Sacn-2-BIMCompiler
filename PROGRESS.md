@@ -1,8 +1,23 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ Over budget (330+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed (each
-> needs a still-open-vs-DONE check by a session that owns its context before compressing).
+> ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
+> (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
+
+## Session 2026-08-16 — §STOREY_ORDER_REPORT chase: thread 2 SHIPPED (bim-ootb#1395), thread 1 rejected
+Two-thread session on `prompts/4D_SCHEDULE_PERFECTION.md`'s handoff. **Thread 1 (storey-by-storey
+build order):** root-caused to `_twoTierRemap`'s `_tier1Serialize` uniform per-zone shift; a
+precedented per-element-clamp fix (mirroring `§TIER2_PER_ELEMENT_CLAMP`) was built, measured fleet-wide,
+and REJECTED — floating regressed +81% on 3/4 buildings tested for a partial storey-order win. Reverted,
+nothing shipped, next lever named (a third mechanism, not yet found). **Thread 2 (remaining 265
+floating):** new `§CJP_DECOMP_EXP8` probe instrumentation found 90% of Clinic's residual (the "+31
+anomaly") was sub-day rounding noise against `_cjpJudgeParity`'s zero-tolerance window-edge check.
+Fixed with a 1-day tolerance bounded to the window's own rounding quantum — MEASURED fleet-wide, zero
+regressions: floating 265→133 (-49.8%), Duplex+HHS closed to 0, Clinic's anomaly resolved (91→9).
+Witness updated (30/30+20/20 pass). Shipped bim-ootb PR #1395 (merged). Next lever: per-task minimal
+end-nudge on the now-cleaner 133 (genuine undersized-window population, Hospital's Superstructure-per-
+level the clear example) — NOT the rejected EXP5a global fixpoint, one bounded pass, measured. Full
+trail: `prompts/4D_SCHEDULE_PERFECTION.md` §TIER1_PER_ELEMENT_CLAMP EXP + §CJP_DAY_ROUNDING_TOL.
 
 ## Session 2026-08-15 (continued) — §VIEWER_MEMORY_LEAK reopened → narrowed, render pipeline cleared
 Reopened after a live 83%-system-memory event mid-Hospital-bake (tab killed before a reading could be

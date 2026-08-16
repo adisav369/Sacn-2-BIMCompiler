@@ -4261,3 +4261,30 @@ the actual `§CPM_GENERATOR_UPSTREAM_SPEC`-territory problem the original handof
 minimal end-nudge (bounded single pass, not the rejected EXP5a global fixpoint) is still the next lever,
 now on a much smaller, cleaner population with the rounding noise gone. Clinic's "+31 anomaly" is
 resolved by this fix alone (91→9) — no longer needs separate investigation.
+
+## ▶ NEXT SESSION START HERE (2026-08-16 session close) — supersedes every "next lever" note above
+
+**Two independent threads, both measured this session, in different states:**
+
+1. **Floating chase (thread 2) — ACTIVE, on a clean population now.** Fleet floating is **133** (was
+   265 at session start), shipped and live (bim-ootb PR #1395, `_CJP_DAY_TOL`). Re-run
+   `probe_captured_floating.js` per building (`ONLY=<Building>_extracted node scripts/probe_captured_floating.js`,
+   read `§EXP8_FINAL` + the new `§CJP_DECOMP_EXP8_TASK` lines) to get the current per-task breakdown —
+   it is now overwhelmingly genuine WINDOW_BLOCKED (multi-day gaps, not rounding noise). Hospital's
+   `TASK_Superstructure_Level_2/3/7A/6` (51 of Hospital's 51 residual) is the cleanest worked example:
+   avgGapDays 2.6–52.4 against 5–16-day windows — the window is objectively too narrow for the real
+   dependency chain inside it. Next lever named twice now, not yet built: a per-task minimal END-NUDGE,
+   ONE bounded pass (extend a blocked task's own window by exactly its measured gap, re-measure, stop —
+   NOT the rejected EXP5a global fixpoint that iterates until convergence and wrecks fidelity elsewhere).
+   Measure fleet-wide before trusting it, same rigor as every fix this session.
+2. **Storey-order thread — PARKED, needs a genuinely new idea.** Both cheap candidate mechanisms are now
+   measured and rejected (uniform shift = the original bug; per-element clamp = tried this session,
+   fleet floating +81%). The `§STOREY_ORDER_REPORT`-vs-stage instrumentation in `probe_captured_floating.js`
+   (`storeyOrderReport()`, RAW/POST_REMAP/DISPLAY/PRE_PARITY/FINAL) is still live and reusable for
+   measuring any future candidate — use it before proposing one. Root convergence point if anyone solves
+   this: `_tier1Serialize` in `viewer/time_machine.js` (~line 4006, now with the 2026-08-16 per-element-
+   clamp comment trail explaining why the obvious fix failed) is where any real fix has to land.
+
+**Do NOT re-walk this file's "next levers" prose above this block searching for what's still open — this
+block is the single current answer.** Everything above it (§CHASE_TO_ZERO_WINDOW_AUTHORING's EXP1-8,
+§TIER1_PER_ELEMENT_CLAMP EXP, §CJP_DAY_ROUNDING_TOL) is settled history, not an active task list.
