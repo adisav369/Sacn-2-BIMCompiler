@@ -1051,3 +1051,15 @@ UPLOAD_VERIFIED` (413,659 bytes, md5 8qGSMwBSRHc1INvSL7k/PA==). Provenance manif
 serving. (Process note: PR #1413 was pushed onto the already-squash-merged #1412 branch —
 against the standing never-reuse rule; it squashed cleanly this time, but the manifest PR went
 on a fresh branch as the rule requires.)
+
+---
+
+# 🏁 RESUME (one-liner for a fresh session) — 2026-08-16 close
+**S1-S10 all SHIPPED+LIVE (bim-ootb #1400-#1414; Terminal live-verified: groundwork-first playback,
+crew-feasible spread, drag-safe editor). Open items, in priority order: (1) ⛔ LTU_AHouse_meta.db
+transform corruption (33,528 rows, ≤291m — needs a REGENERATED meta+geo pair from one extraction,
+NOT a snap; see §S10_RESULTS fleet audit); (2) Clinic engine-side bake symptoms ("missing ground
+slabs" — only 12 Superstructure IfcSlab exist, min z=2.06; "hanging MEPs" — 9,738/16,071 MEP;
+measure first, §S10_RESULTS last para); (3) Hospital lighting-float ⛔ (older item — split-pair
+corruption now RULED OUT as its cause); (4) S8 playback-flicker stays PARKED per §PRIORITY. Start
+by reading §S10_RESULTS + §S9_RESULTS; all harnesses/diag patterns are named in-file.**
