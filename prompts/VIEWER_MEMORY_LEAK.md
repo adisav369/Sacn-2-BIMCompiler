@@ -408,3 +408,11 @@ vs cycle-1-exit delta = 0 on every `renderer.info` counter — no per-cycle grow
 closed (remaining one-time cost is legitimate singleton HDRI/N8AO lazy-init). Fix: call
 `_disposePhotoProps()` on real exit instead of the hide-only `_showPhotoProps(false)`. Full
 write-up: PHOTOREAL_STILL_RENDER.md ▶RESUME §OPEN TASKS item 3.
+
+**Rechecked 2026-08-16 (same day, later), user ask "check again if the latest code changes hog
+back mem again":** re-ran the identical 2-cycle probe against current `main` (`b3e9da4`, includes
+the whole Gantt-shape-refactor lane merged after the fix, bim-ootb PRs #1395-#1405) — numbers
+byte-identical to the immediate post-fix verification: baseline 364 geometries/12 programs/388
+scene objects, cycle-1 exit 380/44/388, cycle-2-exit vs cycle-1-exit delta = 0 on every counter.
+`_disposePhotoProps()` call confirmed still present in `_teardownPhotoStaging()`. No regression —
+nothing shipped since touched the photo-staging teardown path.
