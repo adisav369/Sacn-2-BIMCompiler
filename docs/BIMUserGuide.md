@@ -464,6 +464,9 @@ Two small behaviours keep this honest: planting re-shapes the flight around the 
   the yellow tube* where the cut belongs before pressing — marking from a wide exterior view lands on
   whichever part of the flight happens to pass closest to your eye. **whole film** clears the window.
 - **build the model as the camera flies** — the construction reveal. See the 4D note below.
+- **room titles** — a name card appears as the camera enters each room, sourced from the room's own
+  friendly name, never invented.
+- **Reveal** — cycles every discipline in the model past the camera in turn. See below.
 - **saved** — plans you stored for this building, with **open** and **delete**. Choosing one and pressing
   **open** replaces the path you are editing; the line under it says how many bands, how many hose pulls,
   the clip window and when it was saved.
@@ -497,6 +500,31 @@ workflow is to **preview the Time Machine first** — its Gantt is in the Inspec
 your **mark in / mark out** against what the programme actually shows.
 
 [Watch the film](https://youtu.be/sUTscAgnQMc) this feature produced on a real building.
+
+#### Discipline Reveal — walk it twice, once dressed, once bare
+
+Tick **Reveal** (beside **room titles**) and the film grows a second act after the normal walk-out
+ends, before the closing orbit:
+
+1. **A brief pull-out** from the spot the walk just ended on — the camera eases back a short distance,
+   still looking the way it was looking, a beat to mark that the walk itself is done.
+2. **A fast retrace back to where the walk began** — the camera flies back along the exact same route
+   it just walked, at a quicker pace than the walk itself, easing in and out so the motion reads as
+   one continuous flight, never a jump cut.
+3. **The same walk, a second time, with the architecture hidden.** Walls, slabs and structure fade out
+   of the shot for this lap only, so every other discipline present in the model — mechanical,
+   electrical, fire protection, plumbing, whatever the building actually has — shows through at once,
+   exactly where it really sits.
+4. **A parade, one discipline at a time.** Each discipline present takes its own short turn alone on
+   screen, named on the title card in place of the room name, smallest-average-element disciplines
+   first and MEP last — MEP's own ducts and pipework tend to be large and easy to spot even briefly, so
+   it doesn't need the early slot the finer trades do. Each hand-off holds both the outgoing and
+   incoming discipline on screen together for a moment rather than swapping instantly, before **All
+   Disciplines** together closes the parade.
+
+Every distance and duration in this second act is derived from the same real geometry the rest of the
+film uses — the pull-out, the retrace and the walk are each priced by a real speed times a real
+measured length, never a fixed number tuned to look right on one building.
 
 #### Sun, sky and shadow while the film records
 

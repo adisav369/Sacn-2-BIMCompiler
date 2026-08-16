@@ -6,6 +6,15 @@ A running log of shipped, user-visible changes across the Modeller, Viewer, ERP/
 module. Internal engineering work (kernel hardening, data-model migrations, CI fixes) isn't listed here —
 only things you'd actually notice using the app. See each app's guide for full how-to detail.
 
+## 2026-08-16
+
+**BIM Viewer**
+- **Discipline Reveal** in the Film-Maker (**Alt+C**) now flies smoothly back to the start of the
+  walk instead of cutting there instantly, orders its discipline-by-discipline parade smallest
+  elements first with MEP last, and cross-blends briefly between each discipline instead of
+  swapping instantly. See
+  **[Discipline Reveal — walk it twice, once dressed, once bare](BIMUserGuide.md#discipline-reveal--walk-it-twice-once-dressed-once-bare)**.
+
 ## 2026-08-12
 
 **BIM Viewer**
