@@ -4203,3 +4203,61 @@ window-authoring layer (materializeZones) to account for the same per-element cl
 matching against, not just the display timeline. Storey-order thread parked here — not zero, but the two
 cheap candidate fixes (uniform shift as-is, or the naive per-element clamp) are both now measured and
 both rejected. A real fix needs a THIRD mechanism, not yet named.
+
+## §CJP_DAY_ROUNDING_TOL SHIPPED (2026-08-16, same session, user: "tackle the Thread 2") — fleet floating 265 → 133 (-49.8%)
+
+**Built the named next step: per-task decomposition via a new `§CJP_DECOMP_EXP8` probe instrumentation**
+(distinct from the older `§CJP_DECOMP` block, which runs on the superseded EXP1 raw-fed pipeline, not
+EXP8) — for each still-floating element on the FINAL (post-`_cjpJudgeParity`) EXP8 overlay, names its
+task, that task's window, and the exact gap (days by which pushing it to its real first-contact would
+overrun the window's authored end).
+
+**Finding: most of the "remaining 265" was never a real task-authoring conflict — it was sub-day rounding
+noise.** A task window's end is already rounded to a whole day (`materializeZones`:
+`Math.round((z.end-minStart)/86400000)`), but `_cjpJudgeParity`'s `WINDOW_BLOCKED` check compared that
+rounded boundary against an element's exact-millisecond real end with ZERO tolerance. Clinic — the
+"+31 anomaly" building — was the extreme case: **90% of its 91 residual (82 elements) had `avgGapDays`
+under 1**, dominated by one group of 38 `IfcFooting`s (`TASK_Substructure_First_Floor`, avgGapDays=0.1,
+maxGapDays=0.1) sitting on a 4-day window. Hospital was mixed: 5 near-zero-gap elements alongside a real
+genuinely-undersized-window population (`TASK_Superstructure_Level_2`: n=19, avgGapDays=52.4 on an
+11-day window — correctly still WINDOW_BLOCKED, not touched by this fix).
+
+**Fix (`viewer/time_machine.js` `_cjpJudgeParity`):** allow a push whose result lands within ONE DAY past
+the window's rounded end (`_CJP_DAY_TOL`) — the window's own rounding quantum, not an invented fudge
+factor. Applied to both the push-eligibility check and the live-census `windowBlocked` label for
+consistency. Genuinely undersized windows (gaps of many days) are completely unaffected.
+
+**MEASURED fleet-wide (`probe_captured_floating.js` §EXP8_FINAL, all 7 buildings), zero regressions
+anywhere:**
+
+| Building | Before | After | Δ |
+|---|---|---|---|
+| Terminal | 27 | 18 | -9 |
+| Hospital | 63 | 51 | -12 |
+| Duplex | 3 | **0** | -3 (closed) |
+| HHS_Office_Federated | 11 | **0** | -11 (closed) |
+| Clinic | 91 | 9 | -82 |
+| LTU_AHouse | 43 | 30 | -13 |
+| JKR | 27 | 25 | -2 |
+| **Total** | **265** | **133** | **-132 (-49.8%)** |
+
+Best single fix of the whole chase-to-zero campaign so far by raw count, and the first with a completely
+clean fleet result (every building improved, two closed outright).
+
+**Trade-off, explicitly bounded and tested:** a pushed element can now land up to a day past its window's
+exact edge (previously required to land byte-inside). This is NOT the same risk class as the 2026-08-13
+unbounded `_midairRepair` swap that was REJECTED for 100-300d desync — it's bounded by construction to
+the window's own rounding granularity. `viewer/tests/witness_crosstask_judge_parity.js` W-CJP-3's old
+"in/out-window counts byte-identical" claim was updated to a bounded-desync claim (never more than 1 day
+past window, asserted per-element) — same "not order-preserving, safety net still runs after" pattern
+`§TIER2_PER_ELEMENT_CLAMP` already established elsewhere in this file. New synthetic W-CJP-6 cases test
+the boundary directly (0.5d overrun IS pushed and lands exactly on the real gap, never more; 3d overrun
+stays honestly WINDOW_BLOCKED). 30/30 + 20/20 assertions pass across Duplex/HHS/Clinic/Hospital/Terminal/
+JKR. Shipped: bim-ootb PR #1395.
+
+**Not yet closed:** 133 elements remain, now overwhelmingly the GENUINE case (real multi-day gaps against
+real undersized windows — Hospital's Superstructure-per-level population is the clearest example). That's
+the actual `§CPM_GENERATOR_UPSTREAM_SPEC`-territory problem the original handoff named — a per-task
+minimal end-nudge (bounded single pass, not the rejected EXP5a global fixpoint) is still the next lever,
+now on a much smaller, cleaner population with the rounding noise gone. Clinic's "+31 anomaly" is
+resolved by this fix alone (91→9) — no longer needs separate investigation.
