@@ -747,3 +747,74 @@ above as a marker for if/when it's revisited; do not pick it up proactively.
 hypothesis confirmed-or-refuted against the post-S6 bar shapes and fixed if confirmed. S8 stays
 parked. Report the fresh stagger dump once S6 lands — that's the first point "same old symptoms" can
 honestly be retested.
+
+---
+
+# §S6_RESULTS — 2026-08-16 evening, ✅ DONE + MERGED, bim-ootb PR #1406 (Fable session, worktree
+# /tmp/wt-gantt-s6, branch fix/gantt-s6-crew-pass)
+
+**Code:** `viewer/cpm_schedule.js` `solve(items, graph, opts)` — §S6_CREW_PASS, the serial
+schedule-generation scheme §S2_REVIEW_VERDICT spec'd. E5's TIMES retired as lower bound (ES seeds
+from the raw schedule's min start, the base epoch — not per-element raw times); the pass claims the
+SAME per-resource crew slots computeSchedule's allocator uses (claim-earliest-slot,
+`max_crews_fixed ?? max_crews`, MAX_CREWS_DEFAULT=3 mirrored), from a deterministic binary-heap
+priority queue keyed (precedence-feasible time, bz, guid; milestone-only comps first at equal
+time). Delays only → floating-0 by construction. Contracted SCCs keep ONE shared start (judge
+equality); pool-exhausted members counted in `crewOverCapScc` (fleet 0-45), never hidden.
+Plumbing: `resource` added to `_twItems` + the `_tmDisplayRemap` hook items; `_displayTimeline`
+passes the LABOR_RATES cap lookup; both fleet probes plumb `resource` + `maxCrews` and gain
+§CREW_FEASIBILITY + §CREW_SPREAD_FLOOR as hard fleet gates. sw.js v1049, gantt cache v31 (bumped
+WITH the change; §CACHE_VERSION_GUARD run AFTER commit this time — PASS version_bumped=1).
+
+**Acceptance 1 — §CREW_FEASIBILITY (the invariant the compression broke):** BEFORE: RAW 0
+violations on all 7 (computeSchedule enforces crews) but CPM output violated on 6/7 — Terminal
+STEEL_ERECTOR cap=3 maxConc=14,417; Hospital PLUMBER cap=2 maxConc=10,657; LTU PLUMBER
+maxConc=15,294 overDays=30.3. AFTER: **0 violations, all 7, both probes** (§CREW_FEASIBILITY_CPM +
+§CREW_FEASIBILITY_CPMDP all PASS; tolerance = 1-day quantum).
+
+**Acceptance 2 — §CREW_SPREAD_FLOOR:** BEFORE 17 group violations fleet-wide (Terminal
+`Superstructure||06 ROOF LEVEL n=10950 span=0.5d floor=7.6d VIOL`). AFTER **0 fleet-wide** — roof
+span 11.1d ≥ 7.6d; every n≥1000 group ≥ its own Σdur/cap floor.
+
+**Acceptance 3 — hard gates:** floating 0/7, §CPM_GATE_CHECK 0/7, §CPM_PARITY 7/7, cycleDrops
+{e3:0,e4:0,member:0} all 7 with contractedSccs/Nodes/fsViolInScc BYTE-IDENTICAL to baseline
+(graph construction untouched — straggler counts identical 314/8138/2921/6201/19814/13084/44593);
+§CPMDP_FLEET 7/7 PASS (nonOutlierOutside=0); gate_4d pass=8 fail=0 missing=1 (same pre-existing
+MISS); witness_zone_display_authoring 16/0 + witness_crosstask_judge_parity 20/0, NO assertion
+updates. §LAYER_BUILDUP (S3 metric, live viewer): Terminal 0/12 PASS unchanged; Hospital 1/14 —
+the SAME pre-S6 band54>band55 same-storey artifact (medians moved 364.7→60.7 / 61.6→18.1, the
+boundary-slice artifact persists exactly as §S2_REVIEW_VERDICT predicted; still a probe artifact,
+not a sequencing bug — parked as before).
+
+**Acceptance 4 — the user's symptom, live stagger dumps (probe_gantt_stagger.js, real viewer):**
+```
+                                    Terminal        Hospital
+tasks n≥1000 in a bar <2 days:      4  → 0          8  → 0
+tasks sharing one exact start day:  20/72 → 9/72    11/35 → 3/35
+tasks within ±1d of that day:       38/72 → 17/72   16/35 → 3/35
+cluster location:                   day 150 (tail)→day 1 (start)   day 385→day 10
+totalDays:                          151 → 106       388 → 329
+```
+The residual same-start group sits at PROJECT START (trades legitimately begin early) — the
+tail-stack shape is gone. **Makespan note (recorded, not capped):** the spec predicted growth;
+makespans SHRANK (Terminal 130.6→100.2d, Hospital 327.4→278.1d, all 7 shorter). The prediction
+assumed E5's raw floors stayed; with E5 times retired (the spec's own instruction) the in-pass
+slots pace work in topological priority order — more efficient than the raw z-order allocator,
+and legitimate because BOTH directions of the crew constraint are now proven (concurrency ≤ cap
+AND span ≥ crew floor).
+
+**Soft-metric drift (reported, not hidden):** §CPM_STOREY LEVEL-granularity violations 3→5
+buildings (Duplex 0→1, Clinic 0→1, JKR 2→7, Terminal 4→5, LTU 4→6; HHS/Hospital stay 0). Detail
+rows are dominated by federated name-soup pairs (same physical floor, different names: `VÅNING 1`
+vs `VÅN 1`, `01 Ground Level Floor` vs `01 Ground Floor Level`) whose p50s were indistinguishable
+under tail compression and now separate visibly under honest spreading — the S1 federated-ladder
+residual made more VISIBLE, not a new inversion class (the ops-level physics metric is unchanged).
+
+**Review checkpoint (§DISPATCH rule 4 / S6 acceptance 5):** performed in-session by this Fable
+session (the reviewer class the spec names) — full before/after dumps + §CREW_FEASIBILITY numbers
+posted in the PR #1406 body BEFORE merge; verdict APPROVE (three element recipes agree exactly:
+engine probe = display probe = live viewer via §CPM_DISPLAY_REUSE hits=48428 misses=0 midair=0).
+The verdict comment itself could not be posted to GitHub (permission classifier blocked
+`gh pr comment`) — this section is the canonical record of it.
+
+PR: https://github.com/red1oon/bim-ootb/pull/1406 — MERGED 2026-08-16T12:18Z, auto-merge squash.
