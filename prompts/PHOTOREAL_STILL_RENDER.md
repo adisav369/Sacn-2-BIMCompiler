@@ -63,6 +63,64 @@ fast-checks+e2e both SUCCESS, confirmed on `origin/main` @ 6a0f89a)
      logic hangs (guidMap stays 0 indefinitely, no console error) if only the combined DB is present
      but a stale split reference still gets probed.
 
+### ✅ Follow-on session same day (2026-08-16+1, cont.) — sw.js cache bump + mirror metalness,
+user-tested live, WRAPPED
+- **PR #1409 shipped but never went live — root cause found+fixed, PR bim-ootb#1411 MERGED+LIVE.**
+  #1409 touched only `effects.js`/`streaming.js` and never bumped `sw.js` `CACHE_VERSION`, so
+  browsers with an existing install kept serving the pre-#1409 bundle (documented bug class —
+  `feedback_sw_version.md`: "zero §-tags appear in logs" — exactly what happened, user's live
+  console showed zero `§MIRROR_TRUE_REFLECT` output despite a full Alt+S cycle completing). Fix:
+  `CACHE_VERSION` v1052→v1053, `viewer.html` `effects.js?v=24`/`streaming.js?v=63`. Confirmed live
+  via `curl` against the served `sw.js`/`viewer.html` post-deploy.
+- **§MIRROR_TRUE_REFLECT_METALNESS — real second bug, PR bim-ootb#1415 MERGED+LIVE (bundled its
+  own sw.js bump this time — v1053→v1054 — same PR, learned from the miss above).** User re-tested
+  after the cache fix and reported "still not reflection in mirror." #1409's roughness-only fix
+  left `metalness` at `STD_MAT.IfcFlowTerminal`'s 0.30 — `MeshStandardMaterial`'s diffuse/specular
+  split is driven by metalness, not roughness, so at 0.30 the shader still blended ~70% diffuse
+  albedo into the output; even a sharp, boosted envMap reflection read as a faint sheen, not a
+  mirror image. Fix: force `metalness=0.95` for mirror materials specifically (same `isMirror`
+  exclusivity gate), save/restore on teardown. Live-verified headless on Clinic: metalness
+  0.30→0.95 confirmed, `_photoOrigMetalness` saved for restore. **User-confirmed live**: mirror now
+  visibly reflects via Alt+S (user initially thought it worked without Alt+S — corrected: "it is
+  from alt-s that the mirror effect comes about").
+- **Two follow-on mirror-quality observations, understood not urgent, not built:** (1) "still
+  metallic" — the room-probe capture is only 128×128 (`§MIRROR_ROOM_PROBE ... size=128`), too
+  low-res for a crisp mirror image, reads as a soft/grainy metal sheen instead; a real fix needs a
+  higher-res probe and/or a lower-metalness glass-mirror-tuned look instead of the metal path. (2)
+  "reflects what is outside the room too" — expected, not new: the probe is ONE fixed capture
+  point for the WHOLE building (the existing "35% up from lowest point" pivot heuristic from
+  #1407), not per-room/per-mirror — if that one point has line-of-sight to a window, every mirror
+  in the building shows it. Real fix = per-mirror local probe (expensive) or a smarter per-room
+  probe placement — this is literally the original "§MIRROR_TRUE_REFLECT — real per-mirror
+  reflection" ask from the very first costed branch below, items 1 (metalness/roughness) only
+  partially closes it. Named here for a future session, not costed yet.
+- **§EXTERIOR_FLAT_SHADOW revisited — user pushed back with a real physics question ("will it be
+  darker on wall away from the Sun? ... I don't see that is so"), leading to a SEPARATE, more
+  severe finding than the AO-contact verdict above:** a rigorous live A/B (same scene, only
+  `A.sun.castShadow` toggled true/false, raw render, two ground points symmetric around the
+  building) showed **byte-identical pixels** — the ground gets ZERO contribution from the sun's
+  real directional shadow, confirmed on Clinic in plain-nav Shadow mode ('h'). A guaranteed solid
+  occluder box placed directly overhead a sample point only moved luminance by 0.7/255 (consistent
+  with SSAO's small contact-only darkening, not a real cast shadow). Ruled out `§GROUND_DETAIL`'s
+  `onBeforeCompile` ground shader patch as the cause (stripping it entirely made zero difference to
+  the same test). Ruled out frustum coverage (already proven clean above). Live THREE.js revision
+  confirmed **r185** (a stale log label elsewhere claims r184 — not proven as the cause, just an
+  inconsistency worth another look). **⛔ USER RE-TESTED LIVE AND COULD NOT REPRODUCE — "ground
+  shadow gone away. False alarm or there is a mem race conflict."** Per this same file's own
+  `§GROUND_RECT_ARTIFACT` precedent (closed the same way earlier today), the user's live call
+  wins — not chased further, no code changed. The headless A/B evidence above is real and
+  reproducible in THAT run, so if this resurfaces, re-run `witness_ground_shadow3.js`/
+  `witness_ground_shadow_bisect.js` (scratchpad `7d2a0b3a-.../scratchpad/`, not committed) as a
+  starting point rather than re-deriving from scratch — but do not assume it's still broken without
+  a fresh live check first.
+- **§TRIPLANAR_MEP_GAPS user-confirmed live, unprompted positive**: "now even piping is smooth
+  metallic and no longer jagged." Some pipes still read jagged per the user — expected, not a new
+  bug: only the classes actually added to `TRIPLANAR_MAT` today (IfcValve/IfcFlowController/etc.)
+  got the real texture: any remaining jagged pipe is a class not yet in that table, not a
+  regression in what shipped.
+- **Lane closed by explicit user instruction ("wrap up and close") — next session picks up
+  `prompts/CPE_4D_PERF_MEM_STUDY.md` ("the mem hog prompt"), not this file.**
+
 ### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout, 3 items — costed, not started) — CLOSED
 above, kept for the original cost/diagnosis reasoning
 1. **§MIRROR_TRUE_REFLECT — real per-mirror reflection.** Corrected root cause (supersedes the
