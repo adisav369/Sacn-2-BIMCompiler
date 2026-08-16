@@ -4,6 +4,17 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Fable, continued) — §CPM_DISPLAY SHIPPED: live viewer floating 0/48,428 (bim-ootb PR #1398)
+User previewed Terminal, still saw danglings (shipped pipeline's §CJP floating=259 live), ruled
+"resolve till zero" + "gantt needle is the truth". Stage-4 step 1 wired CPM into the watched path:
+one shared `_displayTimeline` for both consumers, §CPM_DISPLAY_ONE_TRUTH one-shot reuse (killed a
+THIRD two-schedules instance: two element recipes, 151d vs 121d makespans), §ZONE_ENVELOPE_DAYS
+floor/ceil windows, §CAP_RESCALE_IDENTITY affine-not-respace (the rescale alone manufactured 4,712
+violations from a 0-floating input — measured). Verified: node probe 0/7 buildings final floating;
+LIVE headless Terminal §CROSSTASK floating=0/48,428 (was 259); gate_4d 7/7; W-ZDA 16/16 (+W-ZDA-6);
+W-MZ 39/39. `?cpm4d=0` reverts. Cache v28/sw v1046. Retirement steps 2-5 still propose-first.
+Full trail: `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` §CPM_DISPLAY.
+
 ## Session 2026-08-16 (Fable) — §CPM_SPEC stages 1-3 BUILT+MEASURED: fleet floating 0/7 (bim-ootb PR #1396)
 The redesign session `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` called for. Spec-first (§CPM_SPEC
 appended), then side-by-side `viewer/cpm_schedule.js` + `scripts/probe_cpm_schedule.js` — one

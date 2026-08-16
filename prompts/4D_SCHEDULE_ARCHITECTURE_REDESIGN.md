@@ -379,16 +379,46 @@ of Terminal's whole 4D-gen wall time; `_twoTierRemap` calls it up to 7×): Termi
 counting the other 7 passes CPM replaces). Smaller buildings: same order of magnitude either way
 (both <200ms) — the win scales with exactly the buildings that hurt today.
 
-## §STAGE4_RETIREMENT_PROPOSAL — NOT executed (per §EXECUTION_PLAN 4, propose first)
-Wire order, each its own PR, full witness suite after each: (1) feed CPM output into the display
-path behind a flag, A/B the §-logs; (2) retire `_ogSupportSweep` + `_cjpJudgeParity` +
+## §CPM_DISPLAY — STAGE 4 STEP 1 SHIPPED (2026-08-16, same day, bim-ootb PR #1398; user go:
+## "of course u have to go resolve till zero" + "gantt chart progress needle is the truth")
+The CPM engine now AUTHORS the display timeline the user watches. Verified at three layers, all
+§-numbers: (a) node display-path probe (`probe_cpm_display_path.js`, the full captured chain
+windows→rescale→judge-parity→census): **final floating 0 on all 7 buildings**, window fidelity
+97.97–100%; (b) LIVE headless viewer, Terminal, Time Machine on: **§CROSSTASK_JUDGE_PARITY
+floating=0/48,428** (was 259 live that morning), §CPM_DISPLAY midair=0, 72/72 tasks affine
+reSpaced=0; (c) `gate_4d.sh` 7/7, witness_zone_display_authoring 16/16 (new W-ZDA-6),
+witness_midair_zero 39/39. Three structural findings the wiring itself surfaced, each fixed the
+architecture-true way, all measured:
+1. **The rescale was the manufacturer.** Handing the _cap overlay a 0-floating CPM timeline, the
+   gap-clamp re-spacing alone created 4,712 violations on Terminal — §THE_PATTERN point 3
+   confirmed live. Fix: §CAP_RESCALE_IDENTITY — an identity task (window duration == its own
+   envelope within the 2-day floor/ceil quantum) is affine-rebased shape-exact, never re-spaced;
+   a planner-resized bar still rescales (Gantt edits keep reaching the movie).
+2. **Windows must be envelopes, not roundings.** §ZONE_ENVELOPE_DAYS: display-authored windows are
+   floor(start)/ceil(end) of their own times — the needle BOUNDS appearance, no sub-day protrusion.
+3. **A THIRD two-schedules instance found and killed:** the two display-timeline consumers
+   (kernel_ops seam vs materializeZones hook) build elements through different recipes
+   (time_machine's vs schedule_author's) — measured live: same 48,428 elements, makespans 151.2d vs
+   121.2d, 36/72 windows mismatched, floating 9. Fix: §CPM_DISPLAY_ONE_TRUTH — whichever consumer
+   computes first is THE schedule; the partner call of the same generation cycle consumes it
+   one-shot (a rates/shift edit is never served stale). Unifying the two element recipes outright is
+   named below as retirement work, not patched here.
+`?cpm4d=0` reverts to the legacy chain (kept intact). `_GANTT_CACHE_VERSION` 27→28, sw.js v1046.
+Pre-existing main failures untouched: witness_door_window_host_wall W-DWH-1b,
+witness_big_element_support_coverage crash (both fail identically on clean origin/main).
+
+## §STAGE4_RETIREMENT_PROPOSAL — steps 2-5 still propose-first (step 1 SHIPPED above)
+Wire order, each its own PR, full witness suite after each: (1) ✅ SHIPPED #1398 (§CPM_DISPLAY
+above); (2) retire `_ogSupportSweep` + `_cjpJudgeParity` +
 `_midairRepair` (fully subsumed by E1 — judge-zero by construction); (3) retire `_tier1Serialize` +
 `_tierAuditRegate` + §TIER2_AFTER_TIER1 + §HOSTED_BEFORE_HOST + §DOOR_WINDOW_HOST_WALL (subsumed by
 E2/E3 + gates); (4) derive Gantt windows from CPM times, retiring `_capWindowRescale`/
 `applyGapClampRescale`/`§CJP_DAY_ROUNDING_TOL`; (5) `_contactGraph` consumers collapse onto
 `CpmSchedule.contactGraph` (parity already asserted). Baseline updates need the written-justification
-discipline §CJP_DAY_ROUNDING_TOL used. Open before (1): where CPM times enter `materializeZones`'
-zone/task authoring — the display path consumes zones, not raw element times.
+discipline §CJP_DAY_ROUNDING_TOL used. The step-1 open question (where CPM times enter zone authoring) is RESOLVED by
+§CPM_DISPLAY_ONE_TRUTH; new named retirement item: unify the TWO element-building recipes
+(time_machine's inline build vs schedule_author._buildScheduleElements) into one shared function —
+the one-shot reuse papers over their skew correctly but the second recipe is still dead weight.
 
 ---
 
