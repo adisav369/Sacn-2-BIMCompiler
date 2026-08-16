@@ -945,3 +945,52 @@ if it is a structure-pool element (the module's own bearing definition: seq≤4,
 slab, stair flight) that is neither Substructure nor already in the set. A slab on masonry walls
 stays a deck (walls block); under-slab services never block. Zero new constants — the pool
 predicate is computeSchedule's own.
+
+---
+
+# §S9_RESULTS — 2026-08-16 late, ✅ ENGINE-SIDE DONE + MERGED (bim-ootb PR #1410), ⛔ LIVE-SIDE
+# CAPPED BY A MEASURED RECIPE/DATA DIVERGENCE (the real headline — read §S10 below)
+
+**Code (PR #1410):** `ScheduleGate.groundworkSlabs(els)` — M5 v6 after three measured traps:
+v3 structure-pool-only disqualifiers (905 under-slab MEP pairs are contacts, not bearings);
+v4 ground band keyed on candidate classes (3 stray column bases one band below the plate voided
+everything); v5 per-class ground reference (grade beams base a band below the plate); v6
+datum-invariant continuous 3m window instead of bin equality (same building: 233 members on raw
+z-datum, 29 on the viewer's rebased one — floor(z/3) bins are datum-sensitive). Applied by BOTH
+element recipes (§GROUNDWORK_SLAB log each); E3's existing phase chain does the ordering, zero
+solver changes. sw v1052, gantt cache v32.
+
+**Engine-side acceptance (extracted-DB recipe — the fleet probes' world): MET.**
+Terminal frame beams <2d: 16→0 (earliest 4.7d); plate+grade beams (220) Substructure, p90 end
+2.1d ≤ min Superstructure start (+1d tol); early window now piles→plate→columns→frame (was:
+93 walls, 165 MEP, 84 b7 frame beams, 25 light fixtures inside day 5). Fleet: floating 0/7,
+§CPM_GATE_CHECK 0/7, §CREW_FEASIBILITY 0/7, §CPMDP 7/7, gate_4d 8/0/1-miss + guard PASS, ZDA
+16/0 + CJP 20/0 untouched, §LAYER_BUILDUP Terminal 0/12 / Hospital 1/14 unchanged; storeyViol
+unchanged except LTU 6→7 (name-soup residual). Clinic/LTU/Hospital/Duplex frame-beams-<2d all 0
+except Duplex 7/8 (whole-project makespan 8d — scale, not disorder).
+
+**⛔ LIVE-side: only 29/233 members reclassify in the real viewer, and the live early window
+barely moves.** Both live recipes agree with each other (n=29 both — the reclass wiring is
+correct and one-truth) but disagree with the probe world. Measured deltas, same building
+(Terminal), same DB file on disk: live has 125 MORE Superstructure slabs, 60 Architecture/seq8
+slabs vs 0, a different z-frame (piles at −15 vs disk transforms min −1.0), and the plate's
+bearing profile differs wholesale (live: 386 beam + 479 slab + 251 wall + 75 column blocking
+pairs; engine: ~60 total). Ruled out: rates.js vs sequence_rules.json (landmine
+project_rates_json_viewer_never_fetched — rates.js IS the browser truth), the Terminal self-heal
+patch (writes room tables only), and uniform datum shift (v6 is shift-invariant). This is the
+SAME "third recipe" divergence §S1's own results note flagged (live stragglers 11,215 vs probe
+13,084, "recipe-of-origin, not a bug — not chased") — now measured at classification level,
+where it caps every engine fix's visible effect.
+
+# §S10 — LIVE ELEMENT-TRUTH PARITY (NEW ⛔ follow-up lane, the prerequisite under everything)
+The probes measure `_buildScheduleElements` on `buildings/*_extracted.db`. The live viewer
+schedules something ELSE (different z-frame, different class/phase mix — mechanism not yet
+pinned: split meta/geo DB pair, in-memory mutation, or a third table source). Until the live
+element set IS the probe element set, every green fleet number under-delivers on screen — this
+lane's S1-S9 all shipped probe-proven work while the user kept seeing "same old symptoms" in
+bakes; §S9 finally measured why. User's Clinic bake report (2026-08-16 late: "missing ground
+slabs and still hanging MEPs") is the same class. First steps for the next session: (1) in the
+live viewer, dump `__tmScheduleDebug.elements` z/class/phase histograms vs the same from
+_buildScheduleElements on the disk DB — identify the exact table/step where they fork; (2) name
+which side is truth (extraction output vs whatever live mutates); (3) only then re-run §S9's live
+acceptance. Do NOT patch around it per-symptom — that is the 11-pass history repeating.

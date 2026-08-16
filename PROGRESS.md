@@ -13,6 +13,13 @@ MovingDevice/etc — reads as "selective" on piping, ~30-45min), §EXTERIOR_FLAT
 investigated — AO-by-design vs real shadow-frustum gap, needs a live check first). Full detail:
 `prompts/PHOTOREAL_STILL_RENDER.md` ▶RESUME §OPEN TASKS.
 
+## Session 2026-08-16 late (Fable, same session) — §S9 GROUNDWORK_SLAB shipped (#1410); §S10 live-parity gap MEASURED
+Ground plate + grade beams now classify Substructure (fixpoint, datum-invariant): Terminal frame
+beams <2d 16→0 engine-side, early window = piles→plate→columns→frame. Fleet 0/7 all hard gates.
+⛔ HEADLINE: live viewer schedules a DIFFERENT element set than the probes (29/233 reclass live;
+125 slab classification deltas, different z-frame) — §S10 in 4D_GANTT_TM_REFACTOR.md is the
+prerequisite lane; explains bakes still showing old symptoms (user's Clinic report incl).
+
 ## Session 2026-08-16 evening (Fable) — 4D Gantt lane S6+S7 SHIPPED (bim-ootb #1406, #1408): stack hell + editor corruption fixed
 S6 §S6_CREW_PASS: crew-aware CPM forward pass — §CREW_FEASIBILITY 6/7 buildings violating → 0/7;
 Terminal roof 10,950 elements 0.5d→11.1d spread; stagger big-task-thin-bars 4→0 (Terminal), 8→0
