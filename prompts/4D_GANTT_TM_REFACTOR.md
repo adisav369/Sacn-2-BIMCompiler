@@ -869,3 +869,54 @@ fixed (S7); "small flicker" → parked at user's own direction (S8). Next sessio
 up: re-test "same old symptoms" against the LIVE rebuild with the user in the loop — the numeric
 groundwork is all in §S6_RESULTS/§S7_RESULTS above. Worktrees wt-gantt-s6/wt-gantt-s7 pruned
 (merged+clean); probe harness scripts/probe_gantt_drag_outliers.js is committed for reuse.
+
+---
+
+# §S9_GROUND_SLAB_FIRST — NEW stage (2026-08-16 late, user live report: "still do not see the ground
+# slabs proceeding first before the beams all round") — SPEC (written before code, per Spec-First)
+
+**Symptom, measured (diag scripts, session scratchpad — engine-side S6 solve, Terminal):** 16/432
+beams start before day 2, ALL at `GROUND FLOOR LEVEL`. The ground plate (50 IfcSlab at band 4)
+is classified `Superstructure` seq 4 — the DECK-slab rule (slabs after beams, correct for upper
+floors, wrong for slab-on-grade). Two mechanisms combine: (1) `GROUND FLOOR LEVEL` has NO
+Substructure group (Terminal's piles live under other pseudo-level names), so E3's
+Substructure→Superstructure gate does not exist at that level; (2) E1 is deliberately SS
+(start-start), so a beam may start the moment its column STARTS — nothing orders "plate done
+before steel starts" unless the phase chain does it. Floating=0 throughout — this is a
+CLASSIFICATION gap, not a physics/solve bug. This was the original §WHY_ELUSIVE acceptance quote
+("even the simple ground slabs are not done before the beams and walls") — the CPM redesign fixed
+the resting-on-support half; the groundwork-phase half was never classified.
+
+**M5 — a GROUNDWORK SLAB is Substructure, detected from the data (no new constants):** an IfcSlab
+currently classified Superstructure is reclassified `phase='Substructure'` iff BOTH:
+1. It has NO bearing-below contact (the judge's own predicate: `S.bz < slab.bz − EPS && S.tz ≥
+   slab.bz − GAP`, XY-overlap) whose phase ≠ Substructure — i.e. it bears on grade, piles, or
+   footings only, never on Superstructure framing (that is what makes a DECK a deck).
+2. Its 3m z-band (`floor(bz/3)`, the shipped §GANTT quantum) is the building's LOWEST band
+   containing any Superstructure element — "ground" extracted per building, no assumed datum.
+`seq`/`resource` unchanged (CONCRETE_GANG already). Fleet census of this exact predicate:
+Terminal 50 (all `GROUND FLOOR LEVEL|b4` — the plate, surgically), LTU ~31 (band-0 slabs;
+condition 2 exists precisely to exclude LTU's TAKPLAN/upper-band noise measured at 14), all other
+5 buildings 0. Blast radius is small and named.
+
+**Implementation (one shared definition, both recipes):** helper in `schedule_gate.js` (same
+shared-pure-function status as `hostPairs` — "the one shared definition" doctrine), called by BOTH
+element recipes (`schedule_author._buildScheduleElements` + time_machine's inline builder) so zone
+authoring, task bars, milestones, and the movie stay ONE truth; logs `§GROUNDWORK_SLAB n=… levels=…`
+in both. E3 then does the rest with zero solver changes: M(L, Substructure) ← ground slabs → FS →
+every Superstructure element at L. E4 chains piles' bands below it. No cycle by construction
+(groundwork slabs' physics ancestry is Substructure-only, so they are never stragglers of their new
+group; milestone edges point strictly forward in group key).
+
+*Acceptance:*
+1. Terminal engine probe: beams starting < day 2 → 0; ground-plate p90 END ≤ min Superstructure
+   start at `GROUND FLOOR LEVEL` (tolerance 1d, the rounding quantum).
+2. Fleet hard gates unchanged: floating 0/7, §CPM_GATE_CHECK 0/7, §CREW_FEASIBILITY 0/7,
+   §CREW_SPREAD_FLOOR 0, §CPMDP 7/7, gate_4d, witnesses untouched-green.
+3. §LAYER_BUILDUP (live, Terminal + Hospital): not worse (Terminal 0, Hospital 1 band54 artifact).
+4. §CPM_STOREY_PHASE / storeyViol: record before/after; not materially worse (the S1 name-soup
+   residual may move — report, don't hide).
+5. Live Terminal kernel_ops: within `GROUND FLOOR LEVEL`'s collapsed level, no IfcBeam/IfcColumn
+   ELEMENT_PLACE op starts before the groundwork slabs' last end (tolerance 1d) — the user-visible
+   symptom, as a number.
+6. sw.js bump; PR with before/after numbers; dated results section here.
