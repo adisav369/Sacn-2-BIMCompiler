@@ -407,6 +407,35 @@ architecture-true way, all measured:
 Pre-existing main failures untouched: witness_door_window_host_wall W-DWH-1b,
 witness_big_element_support_coverage crash (both fail identically on clean origin/main).
 
+## §ZONE_WINDOW_DAGWINS_CLIP — the readability follow-through (2026-08-16, same day, bim-ootb PR
+## #1399; user live report post-#1398: "eating up lots of mem resources, hangs a bit, and the
+## schedule looks gibberish")
+Reproduced headlessly on Hospital (real viewer, TM on) before touching anything: every task bar ran
+2026-08-16→2027-09-07 — the derived min/max windows were smeared by each group's dag-wins
+stragglers (11,215/63,415). Three fixes, all measured, live cascade now
+Substructure Aug 16-18 → Superstructure Aug 17-23 → Architecture Aug 22-Oct 17…:
+1. **§ZONE_WINDOW_DAGWINS_CLIP** — window authoring clamps straggler times into their group's
+   non-straggler envelope (`_tier1Extents` precedent: `_t1Straggler` was always excluded from
+   extents). Ops keep true physics times; stragglers ride outside their bar (fleet-wide 166–17,774
+   per building, logged as stragglerOutside; the bar for non-stragglers is 0 outside, asserted).
+2. **§CAP_RESCALE_SKIP** — display-authored windows are VIEWS; the load-path rescale is skipped
+   outright. Both softer attempts measured and rejected first: gap-clamp re-spacing manufactured
+   4,712 violations from a 0-floating timeline; a rigid per-task shift still broke 537 cross-task
+   pairs (34 unrepairable: stragglers sit outside their window, §CJP is window-bound). Bar edits
+   are unaffected — the Gantt edit machinery mutates element times directly.
+3. **§CPM_DISPLAY_EPOCH** — the one-truth reuse rigid-shifts the cached timeline onto the
+   requester's epoch (measured live: epochShiftDays=20672.7 — hook computes at epoch 0, seam at
+   `_cap.base`; uncovered ops were landing in 1970. Latent in #1398, surfaced by reading, fixed).
+Also: `§GANTT injected` now prints the real ops anchor (was the serial-clock cosmetic
+`start=2/22/2023, 1271 days` on a 388-day schedule). Verified: fleet probe 7/7 (floating 0,
+nonStragglerOutside 0), gate_4d 7/7, W-ZDA 16/16 (W-ZDA-6 rewired to judge the OPS timeline, not
+the window view), W-MZ 39/39. `_GANTT_CACHE_VERSION` 29, sw v1047.
+**Still open from the report (named, not fixed):** TM activation ≈20s on Hospital-63k — 7.2s is the
+pre-existing chunked kernel_ops write (`§WRITE_LOOP_TIMING rows=63415 ms=7190`), plus the double
+generative run (the seam recomputes `computeSchedule`+`§GEO_ORDER` then discards them on reuse —
+only `_sched` feeds the §SUPPORT_CHECK audit). Heap +~390MB during activation on a 63k model.
+A perf pass on activation is the natural next lane item, distinct from correctness.
+
 ## §STAGE4_RETIREMENT_PROPOSAL — steps 2-5 still propose-first (step 1 SHIPPED above)
 Wire order, each its own PR, full witness suite after each: (1) ✅ SHIPPED #1398 (§CPM_DISPLAY
 above); (2) retire `_ogSupportSweep` + `_cjpJudgeParity` +

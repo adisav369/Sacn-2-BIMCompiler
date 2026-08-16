@@ -4,6 +4,18 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Fable, continued) — §ZONE_WINDOW_DAGWINS_CLIP: readable bars + epoch fix (bim-ootb PR #1399)
+User post-#1398: "mem eats, hangs a bit, schedule looks gibberish." Reproduced headlessly (Hospital):
+all 35 task bars full-project-width — min/max windows smeared by 11,215 dag-wins stragglers. Fixed:
+straggler times clamped into group envelope for WINDOW AUTHORING only (ops keep physics truth,
+stragglers ride outside bars — §TIER_DAG_WINS counted-never-hidden); §CAP_RESCALE_SKIP (display-
+authored windows never re-spaced — gap-clamp made 4,712 violations, rigid shift 537, both measured+
+rejected); §CPM_DISPLAY_EPOCH reuse rigid-shift (uncovered ops were landing in 1970 —
+epochShiftDays=20672.7 live). Live cascade now Substructure Aug16-18→Super Aug17-23→Arch Aug22-Oct17.
+Fleet probe 7/7, gate_4d 7/7, W-ZDA 16/16, W-MZ 39/39. Cache v29/sw v1047. ⛔ named not fixed:
+20s TM activation (7.2s kernel_ops write loop, double generative run), +~390MB heap during it.
+Full trail: `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` §ZONE_WINDOW_DAGWINS_CLIP.
+
 ## Session 2026-08-16 (Fable, continued) — §CPM_DISPLAY SHIPPED: live viewer floating 0/48,428 (bim-ootb PR #1398)
 User previewed Terminal, still saw danglings (shipped pipeline's §CJP floating=259 live), ruled
 "resolve till zero" + "gantt needle is the truth". Stage-4 step 1 wired CPM into the watched path:
