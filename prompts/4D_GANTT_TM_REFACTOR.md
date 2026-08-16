@@ -1243,14 +1243,187 @@ pairs geometrically identical to extracted. **No known split-pair transform corr
 
 ---
 
+# §S12 — "IS THIS APPLICABLE TO ANY BUILDING?" — the generalisation pass. ✅ SHIPPED (PR #1417)
+# 2026-08-17. Honest answer to the question as asked: **it was not.**
+
+§S10 and §S11 each found and fixed the split-pair transform corruption BY HAND, with
+building-specific scripts (`gen_terminal_meta_patch.js`, `gen_ltu_meta_patch.js`) carrying hardcoded
+names, prefixes, offsets and spot constants. Nothing would have caught the third occurrence. Both
+halves are now generic:
+
+- **`scripts/audit_split_pairs.js`** — detector over every `<B>_meta.db` + `<B>_extracted.db` pair.
+  Derives per building what the two hand investigations hardcoded: federation guid prefix, datum
+  offset, deviating-row count/max, bbox and rotation mismatches, the z-collapse signature, whether
+  meta carries an `elements_rtree` usable as a pre-corruption witness, and **whether geo.db's meshes
+  are local-centred** — the §S10 premise that was believed rather than measured, now a column (all
+  four buildings: 100% local). Applies the pending patch first, exactly as `_applyPendingPatch` does,
+  so CLEAN means clean as the user sees it; `--raw` asks about the shipped bytes. Exit 1 on any
+  corrupt pair. Three constraints paid for in measurement: forks per building (one wasm heap cannot
+  hold two — geo.db is 115-249MB, sql.js has no paging); streams geo blobs through the sqlite3 CLI;
+  applies patches through the shipped statement-aware chunker (Hospital's 9,467 statements OOM a
+  single `db.run` — §PATCH_CHUNK, reproduced).
+- **`scripts/gen_meta_transform_patch.js`** — one generic generator, replaces both old ones. Picks
+  the form from the data: **r-tree form** (4 set-based statements, ~2.5KB *regardless of row count*)
+  when meta's rtree agrees with extracted on ≥99% of rows, **per-row UPDATEs** otherwise. LTU takes
+  the first (125,698/125,698 witness → 40,805 rows in 2.5KB), Terminal the second (no rtree → 3,300).
+
+**The near-miss worth remembering:** `buildings/patches/Terminal_meta.db.sql` is **multi-owner** —
+1,116 lines of compiled-room content with the §S10 transform block appended. The first run of the
+generic generator wrote the file wholesale and would have deleted the Room lens data. The generator
+now owns exactly one delimited block and preserves every other line; pre-marker §S10/§S11 blocks are
+migrated on first run. Verified by outcome: old vs new patch on fresh copies leaves
+`spatial_structure` (79 rows) and `rel_contained_in_space` (1,009) identical.
+
+**Threshold tightened to EPS/2** — 49 LTU rows are displaced by exactly 0.050000, so the strict
+`> EPS` left them and the audit could never go green. Classification unchanged on both buildings
+(LTU 40/278/6442, Terminal 233), so it is a margin, not a behaviour change. Both patches regenerated,
+gate-verified against the served bytes, uploaded (`§GATE_VERDICT UPLOAD_VERIFIED` ×2);
+`LTU_AHouse_positions.bin` rebuilt to match. Fleet result:
+
+```
+§PAIR_AUDIT Clinic     CLEAN  deviating>0.05=0
+§PAIR_AUDIT Hospital   CLEAN  deviating>0.05=0
+§PAIR_AUDIT LTU_AHouse CLEAN  deviating>0.05=0  rtreeVsExtracted=125698/125698
+§PAIR_AUDIT Terminal   CLEAN  deviating>0.05=0  bboxMismatch=6 (max 0.129)
+§PAIR_AUDIT_SUMMARY audited=4 corrupt=0 PASS
+```
+Named residual: Terminal has 6 elements whose bbox **size** differs from extracted by ≤0.129m —
+sizes, not positions, out of scope for a transform patch, now a standing audit column.
+Not CI-wired: the audit needs the gitignored DB binaries, so it stays a local/pre-deploy gate.
+
+---
+
+# §S13 — CLINIC BAKE + THE STOREY LADDER. Follow-up (2) ANSWERED (its premise was wrong),
+# and the real fleet-wide cause MEASURED. 2026-08-17.
+
+## §S13.1 The Clinic claims, re-measured — one was false, one was ~0.06%
+§S10_RESULTS parked Clinic as "engine-side bake symptoms: missing ground slabs (only 12
+Superstructure IfcSlab, min z=2.06, so the ground plate may genuinely not exist as IfcSlab there);
+hanging MEPs (9,738/16,071 are MEP)". Both re-measured on the live DB:
+
+- **"Missing ground slabs" is FALSE.** Clinic has a ground plate and the engine already classifies it
+  correctly. Four slabs named `Floor:150mm Slab on Grade` / `Exterior Slab on Grade` sit at base_z
+  −1.37, −1.15, −0.15, −0.15 (the main one **2,939 m²**), and all four come out
+  `phase=Substructure, seq=1` — as do all 96 `IfcFooting`. The "min slab z=2.06" in the old note is
+  the min of the *Superstructure-classified* slabs only (12 of them: 3 stair pans at 2.06 and the
+  decks/roofs at 4.47-9.25). Counting one bucket and concluding the element does not exist was the
+  error; nothing is missing.
+- **"Hanging MEPs" is 9 elements, not a class of failure.** `probe_captured_floating.js` on
+  `Clinic_meta`: `§EXP8_FINAL floating=9/16071`, of which MEP is 3 `IfcFlowSegment` + 1
+  `IfcFlowFitting`. Out of 9,738 MEP elements that is 0.04%.
+- Clinic's split pair is byte-clean (§S12 audit), so none of this is the §S10/§S11 defect.
+
+## §S13.2 What the bake symptom actually is — the storey ladder splits one floor in two
+`ScheduleGate.deriveBandRanks` groups elements by storey NAME and ranks the groups by median
+`base_z`. When one physical floor carries two names, it becomes two adjacent ranks and everything
+downstream (§4D_BAND_MONOTONIC, §PHASE_OVERLAP_SUPPORT_GUARD, zone CPM, the movie) treats them as
+levels that must not overlap. Clinic, measured:
+
+| storey | med base_z | q1 | q3 | n | source models (`elements_meta.building`) |
+|---|---|---|---|---|---|
+| TOF Footing | −0.52 | −0.55 | −0.32 | 1,676 | Plumbing 1476, Structural 197 |
+| **Level 1** | 0.34 | −0.32 | 2.86 | 3,728 | **Plumbing 3713, Electrical 168** |
+| **First Floor** | 2.93 | 0.00 | 3.85 | 2,343 | **Architectural 1154, HVAC 1050, Structural 463** |
+| **Level 2** | 3.21 | 3.06 | 4.76 | 1,410 | **Plumbing 1396, Electrical 123** |
+| Second Floor | 7.48 | 4.57 | 8.11 | 1,708 | HVAC 793, Architectural 751, Structural 386 |
+
+The vocabularies are **provenance-disjoint, not guessed**: Architectural/Structural/HVAC say
+"First Floor"/"Second Floor"; Electrical/Plumbing say "Level 1"/"Level 2". Consequence in the
+schedule: `First Floor` runs day 23→121 while `Level 1` — the *same floor's* electrical and plumbing
+— runs day 106→106. **An 83-day split of one storey**, which in playback is exactly "walls appear
+without their services, services appear later in mid-air". `§STOREY_ORDER_REPORT violations=1/6,
+worstInversionDays=49`.
+
+**New tool: `scripts/audit_storey_ladder.js`** (bim-ootb) prints this ladder per building and flags
+adjacent bands whose interquartile z ranges intersect, saying whether their source models are
+disjoint. It DETECTS ONLY — see §S13.4 for why it must not merge.
+
+## §S13.3 Fleet ladder measurements
+| building | storeys | overlapping pairs | storey-order violations | worst inversion | floating |
+|---|---|---|---|---|---|
+| Clinic | 8 | 3 (2 provenance-disjoint) | 1/6 | 49d | 9/16,071 |
+| Hospital | 9 | **0** | 2/7 | 174d | 60/63,182 |
+| Terminal | 23 | 11 | 12/21 | 95d | 256/48,428 |
+| LTU_AHouse | 19 | 12 | (probe exceeds the run window) | — | — |
+
+- **Hospital's ladder is clean** (Level 1…7A, ~5m apart, no overlaps) yet it still has 2/7 violations
+  and the worst inversion in the fleet at 174 days. **Its cause is therefore NOT the ladder and is
+  not yet identified** — this supersedes any assumption that storey naming explains every inversion.
+- **LTU has three vocabularies whose medians coincide exactly**: VÅN 3 ≡ VÅNING 3 (median gap
+  **0.00m**), VÅNING 2 ≡ VÅN 2 (**0.00m**), VÅNING 4 ≈ Storey 3 (0.09m). This is follow-up (3) from
+  the §S11 close, now measured: it is the same defect as Clinic's.
+- **Terminal carries two languages for the same building** — GROUND FLOOR LEVEL@0.6 / Aras Tanah@3.0,
+  02 FIRST FLOOR LEVEL@7.6 / Aras 01@10.9, 03 SECOND FLOOR@12.7 / Aras 02@15.0 — interleaved with a
+  systematic ~2.5-3.3m offset. Nothing in the DB says which pairs are one floor.
+
+## §S13.4 A real defect found in `normalize_storey.py` — and MEASURED not to be the schedule driver
+`scripts/normalize_storey.py` (bim-compiler) strips Revit reference-plane qualifiers so
+"Level 2 Ceiling" → "Level 2", and its docstring states **"Never invents a level."** On Terminal it
+does: `Ceiling Level 01/02/03/04` and `Ceiling Level Kedai` → `Level 01/02/03/04`, `Level Kedai` —
+**673 elements given five storey names that do not exist in that building** (Terminal's real storeys
+are `Aras NN` / `NN … FLOOR LEVEL`). They land as extra ladder rungs sitting right on the real ones
+(Level 02@10.90 vs Aras 01@10.96 — 0.06m apart). Hospital is unaffected because there the stripped
+name ("Level 3") *is* a real storey.
+
+Candidate fix, consistent with the script's own precedent (a bare "Ceiling" already becomes
+"Unknown"): after stripping, if the result is not already a storey present in that DB, map to
+`Unknown` rather than create it. **Measured on Terminal before proposing it:**
+
+| metric | as shipped | phantom rungs → Unknown |
+|---|---|---|
+| ladder ranks | 22 | 17 |
+| storey-order violations | 12/21 | 9/16 (ratio 0.571 → 0.563) |
+| worst inversion | 95d | **97d** |
+| floating | 256/48,428 | **260/48,428** |
+
+**It removes the phantom rungs and does not improve the schedule** — two metrics get marginally
+worse. So the ladder pollution is real (and does pollute the Find Storey lens with five fake
+storeys) but it is NOT what drives Terminal's inversions. Reported, not shipped: changing a
+deterministic shipped script and re-patching a production DB to make two numbers slightly worse is
+the user's call, not a session's.
+
+## §S13.5 ⛔ BLOCKED — the one question, and why it was not answered by guessing
+**Should two storey names be merged into one schedule band when nothing in the data says they are the
+same floor — or should extraction start carrying the signal that would settle it?**
+
+Merging is what would fix Clinic, LTU and probably Terminal. The rules that would do it (median-z
+proximity, IQR overlap, chained grouping under a derived floor quantum) are all **inference**, and
+this project's Prime Rule is EXTRACT OR COMPILE ONLY. What the DBs actually carry was checked, not
+assumed:
+- `elements_meta.building` settles **Clinic** (provenance-disjoint vocabularies) — but it is present
+  only in `<B>_extracted.db`; **the split DROPS it, so `<B>_meta.db`, the DB the live viewer
+  schedules from, cannot see it.** LTU and Terminal each have a single `building` value, so it
+  settles nothing there.
+- `spatial_structure` carries the real IFC hierarchy (IfcBuilding parentage) **only in LTU** (9
+  IfcBuilding, 38 IfcBuildingStorey, `rel_aggregates` 751). Clinic/Terminal/Hospital have 3/6/7
+  COMPILED rows from the room compiler and no parentage.
+- No shipped DB carries `IfcBuildingStorey.Elevation`.
+
+**Recommendation (needs a go, not a guess):** fix it extraction-side, not solver-side — carry
+`building` through the split into `meta.db`, and extract `IfcBuildingStorey.Elevation` + IfcBuilding
+parentage into `spatial_structure` for every building. Then band merging becomes a lookup instead of
+a heuristic, and Clinic is fixed by data that already exists today. The solver-side merge stays
+unwritten until then.
+
+---
+
 # 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
-**S1-S11 all SHIPPED+LIVE (bim-ootb #1400-#1414 + #1416; Terminal AND LTU live-repaired,
-gate-verified against the served bytes). Split-pair transform corruption is CLOSED fleet-wide —
-Terminal §S10, LTU §S11, Clinic/Hospital already clean. Open items, in priority order:
-(1) Clinic engine-side bake symptoms ("missing ground slabs" — only 12 Superstructure IfcSlab
-exist, min z=2.06, gw=6, so the ground plate may genuinely not exist as IfcSlab there; "hanging
-MEPs" — 9,738/16,071 elements are MEP; measure first, §S10_RESULTS last para); (2) Hospital
-lighting-float ⛔ (older item — split-pair corruption RULED OUT as its cause); (3) LTU storey name
-soup ("Plan N" / "VÅN N" / "VÅNING N" from three federated sources — cosmetic + the §S9 storeyViol
-residual, NOT what moved the geometry, §S11.3); (4) S8 playback-flicker stays PARKED per §PRIORITY.
-Start by reading §S11_RESULTS + §S10_RESULTS; all harnesses/diag patterns are named in-file.**
+**S1-S13. Split-pair transform corruption CLOSED fleet-wide and now DETECTABLE, not hand-found:
+`scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417) report
+`audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the served OCI
+bytes and live. Clinic's bake item is ANSWERED, not fixed-by-luck — "missing ground slabs" was FALSE
+(the 2,939m² slab-on-grade is there and already Substructure/seq1; the old note counted only the
+Superstructure bucket) and "hanging MEPs" is 9/16,071. The real cause, measured, is the STOREY LADDER:
+one physical floor carrying two names becomes two schedule bands, splitting Clinic's first floor by 83
+days (`scripts/audit_storey_ladder.js`, §S13). Open, in priority order:
+(1) ⛔ BLOCKED, needs a go — band-merge is INFERENCE with today's data; the recommended fix is
+extraction-side (carry `elements_meta.building` through the split into meta.db, and extract
+`IfcBuildingStorey.Elevation` + IfcBuilding parentage into `spatial_structure`), see §S13.5;
+(2) Hospital's 2/7 storey-order violations + worst-in-fleet 174d inversion — its ladder is CLEAN
+(0 overlaps), so the cause is NOT naming and is NOT yet identified: this is the next real dig;
+(3) `normalize_storey.py` invents 5 storeys on Terminal against its own "never invents a level"
+docstring (673 elements) — fix measured, does NOT improve the schedule (97d/260 floating vs 95d/256),
+so it is reported not shipped, §S13.4;
+(4) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), now a standing audit column;
+(5) S8 playback-flicker stays PARKED per §PRIORITY.
+Start by reading §S13 + §S12; every harness is named in-file and runs from a bim-ootb worktree.**
