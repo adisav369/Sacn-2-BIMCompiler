@@ -11,6 +11,49 @@
 
 ## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
 
+### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout, 3 items — costed, not started)
+1. **§MIRROR_TRUE_REFLECT — real per-mirror reflection.** Corrected root cause (supersedes the
+   "batched elements bypass `A._matCache`" theory in the §MIRROR_ROOM_PROBE section below, which
+   was wrong — traced further, `A._getMaterial()` runs uniformly across batched/instanced/merged
+   paths and DOES populate `_matCache` for all of them). The REAL reason Clinic's real
+   `IfcFlowTerminal "M_Mirror"` elements get nothing: `STD_MAT.IfcFlowTerminal` carries
+   `envInt: 0.05` (`viewer/streaming.js` ~line 421) — the SAME fixed-low-reflection override
+   applied to pipes/ducts by §HOSPITAL_BLUE_TINT/§PIPE_DUCT_BLUE_TINT to kill a blue-sky-tint bug.
+   That sets `mat.userData._photoEnvExempt = true`, which is `_reassertPhotoMatBoost`'s very FIRST
+   early-return guard — skips envMapIntensity boost, roughness scale, AND the room-probe
+   eligibility flag entirely, for the whole class, mirrors swept up in a fix meant for pipes.
+   **Cost, not yet determined which case applies (check first, ~15-30 min, same methodology as
+   the already-documented §PHOTO_EMBER_EXCLUSIVE lesson):** if the mirror's real IFC colour
+   already lands it in its OWN exclusive `_matCache` key (not shared with other `IfcFlowTerminal`
+   fixtures like diffusers/grilles) — **~1-2h**: exclude mirror-named elements from the exemption
+   (name-keyword query, same proven vocabulary pattern as `§PHOTO_EMBER`'s `EMBER_WORDS`), force
+   near-zero roughness + the room-probe texture, verify live. If the material IS shared with
+   other non-mirror fixtures — **~2-3h**: needs a per-element material split/clone for just the
+   mirror sub-set (can't touch the shared key without boosting the fixtures sharing it too).
+2. **§TRIPLANAR_MEP_GAPS — texture-grain amplifier reads "selective" on piping.** User: "i notice
+   it replaces selectively in some piping but not exactly similar next to it." Found via code
+   read (NOT yet visually confirmed against the user's actual observation — do that first):
+   `TRIPLANAR_MAT` (`viewer/streaming.js` ~line 518) covers `IfcPipeSegment/Fitting`,
+   `IfcDuctSegment/Fitting`, `IfcCableCarrier*`, and the generic-MEP `IfcFlowSegment/Fitting/
+   Terminal` — but NOT `IfcFlowController`, `IfcFlowMovingDevice`, `IfcFlowInstrument`,
+   `IfcFlowStorageDevice` (valves, dampers, pumps, gauges) — real MEP runs mix these in among
+   segments/fittings, so an uncovered fitting sitting between two textured pipe segments on the
+   SAME run would render flat/plain right next to heavily-streaked neighbours — exactly the
+   symptom described. **Cost: ~30-45 min** — add the missing classes to `TRIPLANAR_MAT`'s metal
+   group (a few lines, same convention as the existing entries), verify live that they pick up
+   the grain and the "selective" look is gone.
+3. **§EXTERIOR_FLAT_SHADOW — surfaces away from any wall don't darken.** User: "the surface of
+   building away from wall does not get darker shadow effect." NOT INVESTIGATED yet — two
+   candidate readings, need a live check to tell which: (a) N8AO by design only darkens contact/
+   crease areas (near-adjacent geometry) — a broad open exterior wall far from any corner
+   legitimately stays bright under AO, nothing to occlude against, this would be EXPECTED
+   behaviour, not a bug; (b) real self-shadowing (the sun's own shadow map, `A.sun.shadow`) isn't
+   reaching/covering distant exterior surfaces — a real gap, possibly a frustum-coverage issue
+   (this file already has instrumentation for exactly this — `§PHOTO_SHADOW_FRUSTUM_COVERAGE`
+   logs an `outsideFrustum` count; check it on the building/surface in question). Cost not
+   estimated — investigation first (~20-30 min to tell (a) from (b) live), then cost depends on
+   which.
+
 ### ✅ §MIRROR_ROOM_PROBE — SHIPPED 2026-08-16, PR bim-ootb#1407 (auto-merge armed)
 User: "what does it take for mirrors to truly reflect... try the single room-representative probe
 first" (asked after diagnosing a "jagged pipe surface" + "whitewashed" scene — see the

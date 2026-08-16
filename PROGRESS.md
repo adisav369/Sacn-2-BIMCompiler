@@ -4,6 +4,15 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Sonnet, continued) — §MIRROR_ROOM_PROBE SHIPPED (bim-ootb#1407); 3 costed items queued for next session
+Alt+S glossy/metal materials now reflect a real one-time room-capture instead of only the static
+sky (PR #1407, merged). 3 follow-ups found+costed, not started: §MIRROR_TRUE_REFLECT (real per-
+mirror reflection, mirrors wrongly swept into the pipe/duct sky-tint exemption, ~1-3h depending on
+material exclusivity), §TRIPLANAR_MEP_GAPS (grain texture missing on IfcFlowController/
+MovingDevice/etc — reads as "selective" on piping, ~30-45min), §EXTERIOR_FLAT_SHADOW (not
+investigated — AO-by-design vs real shadow-frustum gap, needs a live check first). Full detail:
+`prompts/PHOTOREAL_STILL_RENDER.md` ▶RESUME §OPEN TASKS.
+
 ## Session 2026-08-16 evening (Fable) — 4D Gantt lane S6+S7 SHIPPED (bim-ootb #1406, #1408): stack hell + editor corruption fixed
 S6 §S6_CREW_PASS: crew-aware CPM forward pass — §CREW_FEASIBILITY 6/7 buildings violating → 0/7;
 Terminal roof 10,950 elements 0.5d→11.1d spread; stagger big-task-thin-bars 4→0 (Terminal), 8→0
