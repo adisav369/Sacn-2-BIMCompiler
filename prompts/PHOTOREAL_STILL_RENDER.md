@@ -11,7 +11,60 @@
 
 ## ▶ RESUME — START HERE (supersedes the §HOSPITAL_META_DB_STALE block below — read this first)
 
-### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout, 3 items — costed, not started)
+### ✅ ALL 3 QUEUED FOLLOW-ONS CLOSED 2026-08-16+1 — PR bim-ootb#1409 MERGED+LIVE (CI green,
+fast-checks+e2e both SUCCESS, confirmed on `origin/main` @ 6a0f89a)
+1. ✅ **§MIRROR_TRUE_REFLECT — SHIPPED.** Confirmed case (a) from the costed branch below: Clinic's
+   22 `M_Mirror` elements carry `material_rgba` 0.843,0.843,0.843,1.000 — a direct DB query showed
+   it's not shared with any other `IfcFlowTerminal` fixture in the building, so streaming.js's
+   rgba+class `_matCache` key already makes the mirror material genuinely exclusive. Fix: a
+   name-keyword DB lookup (same pattern as `§PHOTO_EMBER`'s `EMBER_WORDS`, cached per building) that
+   bypasses `_photoEnvExempt` for mirror-only materials, forces near-zero roughness (0.03 vs the
+   metal path's `roughness*0.4`), and lets `_reassertPhotoMatBoost` mark it room-probe-eligible.
+   **Live-verified headless on Clinic**: mirror material roughness 0.03, envMapIntensity boosted
+   0.05→0.15, `envMap` swapped to the real room-probe capture (not the sky) — while a control
+   grab-bar material (same class, different rgba) stayed fully untouched (`_photoBoosted=false`,
+   still exempt), proving the fix doesn't leak into other `IfcFlowTerminal` fixtures.
+2. ✅ **§TRIPLANAR_MEP_GAPS — SHIPPED.** Added the 4 named classes
+   (`IfcFlowController`/`IfcFlowMovingDevice`/`IfcFlowInstrument`/`IfcFlowStorageDevice`) to
+   `TRIPLANAR_MAT`'s metal group, **plus `IfcValve`** — a real gap the original diagnosis missed,
+   found by cross-checking every `STD_MAT` class with `metal>0.3` (the table's own documented rule)
+   against `TRIPLANAR_MAT`'s keys; `IfcValve` had 111 live elements on Terminal and none on any
+   triplanar entry, silently falling back to a fake procedural-grain perturbation instead of the
+   real photo texture. **Live-verified headless on Terminal** (a different, larger building than
+   the original diagnosis): both `IfcValve` and `IfcFlowController` materials now compile with the
+   real `uTriNorm` triplanar shader (`§TRIPLANAR_INIT class=IfcValve` / `class=IfcFlowController`
+   fired, `onBeforeCompile` contains `uTriNorm`) instead of the flat/fake-grain fallback.
+3. ✅ **§EXTERIOR_FLAT_SHADOW — INVESTIGATED, VERDICT = candidate (a), no code change.** Two
+   numeric checks settle (a) vs (b):
+   - **Shadow-frustum coverage is NOT the gap, on either building tested.** Clinic:
+     `outsideFrustum=0` (of 565 casters), `texelPerM=10.3` (~9.7cm/texel). Terminal (much bigger —
+     28MB source, ~3x Clinic's element count): `outsideFrustum=0` (of 577 casters),
+     `texelPerM=11.3` (~8.9cm/texel), shadow-camera frustum `env=182m` — sized to the FULL building
+     envelope by `_enablePhotoShadows()`'s own `_env` computation, not a local/partial box. Both
+     buildings: fine resolution, zero geometry clipped from the shadow camera's view.
+   - **N8AO is architecturally contact/crease-only, confirmed from its own config, not assumed.**
+     `STILL_AO_RADIUS = 32` (`effects.js` — pixels, `screenSpaceRadius` mode) means N8AO can only
+     ever sample and darken pixels within 32 SCREEN pixels of a depth discontinuity (a corner,
+     crease, or contact point) — this is the fundamental limit of every screen-space AO technique,
+     not a bug in this codebase's tuning. A broad, flat exterior wall panel far from any corner has
+     no nearby depth-different geometry within that radius, so it legitimately reads AO≈1.0
+     (no darkening) — exactly candidate (a)'s prediction from the costed branch below.
+   - **Verdict: this is EXPECTED N8AO behaviour, not a fixable gap** — no code change made. If the
+     user wants broad-surface darkening away from creases (not contact-AO), that needs a genuinely
+     different mechanism (e.g. a stronger sun-vs-fill light ratio so orientation-based N·L falloff
+     reads more dramatically, or a distance-based fake ambient-occlusion pass) — named here as a
+     possible future ask, not built, since the diagnosed item itself doesn't call for it.
+   - Witness scripts (this session, not committed): scratchpad `witness_mirror_true_reflect.js`,
+     `witness_triplanar_mep_gaps.js`, `witness_exterior_flat_shadow.js` — headless Chrome 147 needs
+     `--use-angle=swiftshader --enable-unsafe-swiftshader` (not the older `--use-gl=swiftshader`,
+     which now fails WebGL context creation outright — "GL_VENDOR = Disabled" — worth recording,
+     cost real time this session). Terminal specifically needs its split trio symlinked
+     (`Terminal_meta.db`/`_geo.db`/`_positions.bin`, not just `_extracted.db`) — the split-detect
+     logic hangs (guidMap stays 0 indefinitely, no console error) if only the combined DB is present
+     but a stale split reference still gets probed.
+
+### ⛔ OPEN TASKS FOR NEXT SESSION (2026-08-16 closeout, 3 items — costed, not started) — CLOSED
+above, kept for the original cost/diagnosis reasoning
 1. **§MIRROR_TRUE_REFLECT — real per-mirror reflection.** Corrected root cause (supersedes the
    "batched elements bypass `A._matCache`" theory in the §MIRROR_ROOM_PROBE section below, which
    was wrong — traced further, `A._getMaterial()` runs uniformly across batched/instanced/merged
