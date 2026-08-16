@@ -13,6 +13,13 @@ MovingDevice/etc — reads as "selective" on piping, ~30-45min), §EXTERIOR_FLAT
 investigated — AO-by-design vs real shadow-frustum gap, needs a live check first). Full detail:
 `prompts/PHOTOREAL_STILL_RENDER.md` ▶RESUME §OPEN TASKS.
 
+## Session 2026-08-16 night (Fable, same session) — §S10 ROOT CAUSE: live ran on corrupted Terminal_meta.db transforms; PATCHED (#1412)
+§DB_SPLIT_DETECT redirects live to meta/geo pairs; Terminal_meta had 2,074 per-element-corrupted
+transforms (walls 11.3m off) — capped every engine fix on screen. Self-heal patch ships the repair;
+live-verified: groundwork n=233 both recipes, first-5-days = piles→plate→grade beams→columns,
+§LAYER_BUILDUP 0/12. LTU same corruption ×16 worse (33,528 rows, 291m) — HELD for pair regeneration.
+Hospital/Clinic pairs clean. Trail: prompts/4D_GANTT_TM_REFACTOR.md §S10_RESULTS.
+
 ## Session 2026-08-16 late (Fable, same session) — §S9 GROUNDWORK_SLAB shipped (#1410); §S10 live-parity gap MEASURED
 Ground plate + grade beams now classify Substructure (fixpoint, datum-invariant): Terminal frame
 beams <2d 16→0 engine-side, early window = piles→plate→columns→frame. Fleet 0/7 all hard gates.

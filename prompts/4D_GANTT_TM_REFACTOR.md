@@ -994,3 +994,47 @@ live viewer, dump `__tmScheduleDebug.elements` z/class/phase histograms vs the s
 _buildScheduleElements on the disk DB — identify the exact table/step where they fork; (2) name
 which side is truth (extraction output vs whatever live mutates); (3) only then re-run §S9's live
 acceptance. Do NOT patch around it per-symptom — that is the 11-pass history repeating.
+
+---
+
+# §S10_RESULTS — 2026-08-16 night, ✅ FORK PINNED + TERMINAL REPAIRED (bim-ootb PR #1412), the
+# lane's true root cause found
+
+**The fork:** `streaming.js §DB_SPLIT_DETECT` silently redirects any `X_extracted.db` URL to the
+`X_meta.db`+`X_geo.db` split pair when both exist — live Terminal/Clinic/Hospital/LTU run on
+meta.db; every fleet probe measures extracted.db. NOT different extractions: Terminal's two DBs
+hold the SAME 48,428 elements (extracted guid = `T0_Terminal_` + meta guid — the "zero shared
+GUIDs" first read was the federation prefix), same classes/bboxes. The REAL defect:
+**Terminal_meta.db's element_transforms carry a per-element-corrupted rebase** — modal rigid
+offset (−545.6, −51.2, −14.7) from extracted-truth, but 2,074 rows deviate >EPS (walls to 11.3m).
+Proven consequence chain: a wall standing ON the plate in truth sits 0.9m BELOW it live → 251
+false bearing pairs on the plate → §S9 capped at 29/233 live → engine fixes under-delivered on
+screen for the whole lane. Translation-invariance of groundworkSlabs verified explicitly (233
+under a rigid shift) — only the corrupted tail flips relations.
+
+**Fix (PR #1412):** self-heal patch (`buildings/patches/Terminal_meta.db.sql` + the shipped
+`_applyPendingPatch` loader — the DB-policy channel): 2,074 deviant rows snap to extracted-truth
++ modal offset; meta datum kept (geo meshes/positions.bin stay paired); absolute values →
+idempotent; generator committed (`scripts/gen_terminal_meta_patch.js`). Threshold =
+ScheduleGate.EPS, no invented constants.
+
+**Live verification (real viewer, real loader):** §GROUNDWORK_SLAB n=233 BOTH recipes (was 29);
+first-5-days kernel_ops = piles 223 → plate 203 → grade beams 19 → columns 49 (free-for-all of
+walls 60 / MEP 300+ / doors 47 / windows 42 / light fixtures 33 GONE); §LAYER_BUILDUP 0/12 PASS;
+Gantt gains TASK_Substructure_GROUND_FLOOR_LEVEL s=0 e=4 n=440 (was piles-only 236);
+overlapDaysSum 1569→428. **The user's "ground slabs first before the beams all round" is now
+true in the live pipeline, measured, not eyeballed.**
+
+**Fleet split-pair audit:** Clinic meta ≡ extracted (guid-for-guid, dz=0 — its bake symptoms are
+engine-side, separate); Hospital meta geometry ≡ (dz=0 × 63,182; only the intentional
+oci_normalize storey edits, 11,954 rows — its lighting-float ⛔ is a DIFFERENT cause, now with
+one suspect eliminated); **LTU meta: SAME corruption, WORSE — 33,528 rows >EPS, deviations to
+291m — HELD**: that scale means a differently-arranged model snapshot, snapping would tear
+bboxes/schedule away from the drawn meshes; the right fix is a regenerated meta+geo pair from ONE
+extraction (split_db.sh exists; geo needs the mesh-bearing source). ⛔ LTU repair = named
+follow-up, do not snap it with this generator without answering the mesh-alignment question.
+
+**Also parked from this pass:** Clinic bake symptoms ("missing ground slabs" — Clinic has only 12
+Superstructure IfcSlab total, min slab z=2.06, gw=6: the ground plate may genuinely not exist as
+IfcSlab there; "hanging MEPs" — 9,738/16,071 elements are MEP) — engine-side investigation, its
+own bounded item, not a split-pair issue.
