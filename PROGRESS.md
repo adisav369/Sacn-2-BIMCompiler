@@ -4,6 +4,8 @@
 > ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## Session 2026-08-16 (Sonnet dispatch) — Gantt-shape refactor S1-S5 CLOSED: bim-ootb PRs #1401-#1405, floating 0/7 held throughout, S2 Terminal bar-shape ⛔ open question + S4 10s target not reached (both reported, not silently dropped) — full evidence in `prompts/4D_GANTT_TM_REFACTOR.md`.
+
 ## Session 2026-08-16 (Fable, continued) — Gantt-shape refactor SPEC'D OUT: prompts/4D_GANTT_TM_REFACTOR.md
 User (Terminal preview): "still not uniform layer by layer… not properly staggered… many stacked up
 equi-shaped." Measured via new headless stagger probe (bim-ootb PR #1400, scripts/probe_gantt_stagger.js):

@@ -418,6 +418,17 @@ Substructure Aug 16-18 → Superstructure Aug 17-23 → Architecture Aug 22-Oct 
    non-straggler envelope (`_tier1Extents` precedent: `_t1Straggler` was always excluded from
    extents). Ops keep true physics times; stragglers ride outside their bar (fleet-wide 166–17,774
    per building, logged as stragglerOutside; the bar for non-stragglers is 0 outside, asserted).
+   **⛔ RETIRED 2026-08-16 (bim-compiler `prompts/4D_GANTT_TM_REFACTOR.md` §STAGES S2, bim-ootb PR
+   #1402) — this min/max-over-non-stragglers FORMULA is superseded, the `§ZONE_WINDOW_DAGWINS_CLIP`
+   § TAG stays (kept on the successor code, per that spec's own M2 instruction).** Terminal's
+   "stragglers = the mass" failure mode (§DIAGNOSIS in the refactor doc: 14,129/48,428 elements
+   classified stragglers, a bar drawn from the remaining 3% sliver) is what forced the replacement:
+   a Tukey-fenced robust envelope (Q1−1.5·IQR..Q3+1.5·IQR over ALL group members' true times,
+   clamped to actual min/max) computed in `_tmDisplayRemap`, classification-free — no
+   straggler/non-straggler split at all. Right on both Hospital-shaped (late-tail) and
+   Terminal-shaped (straggler-mass) buildings by construction, where this fixed classification
+   undercounted/overcounted depending on shape. See the refactor doc's dated 2026-08-16 §S2 section
+   for full before/after numbers.
 2. **§CAP_RESCALE_SKIP** — display-authored windows are VIEWS; the load-path rescale is skipped
    outright. Both softer attempts measured and rejected first: gap-clamp re-spacing manufactured
    4,712 violations from a 0-floating timeline; a rigid per-task shift still broke 537 cross-task
@@ -435,6 +446,15 @@ pre-existing chunked kernel_ops write (`§WRITE_LOOP_TIMING rows=63415 ms=7190`)
 generative run (the seam recomputes `computeSchedule`+`§GEO_ORDER` then discards them on reuse —
 only `_sched` feeds the §SUPPORT_CHECK audit). Heap +~390MB during activation on a 63k model.
 A perf pass on activation is the natural next lane item, distinct from correctness.
+**UPDATE 2026-08-16 (`4D_GANTT_TM_REFACTOR.md` §STAGES S4, bim-ootb PR #1404):** the double
+generative run was fixed (`§S4_RAW_SCHEDULE_REUSE`, ~1.5s saved) — but the FULL activation cost was
+finally measured end-to-end (previously only estimated) and the write loop turned out to be one of
+several comparably-sized costs, not the whole story: `materializeZones`' own first-time computation
+(~4.3s, necessary, not dead work) and an unresolved ~4s gap outside `time_machine.js` entirely were
+found too. Measured floor after the one authorized fix: ~20.8-23.2s. **Target 10s NOT reached** —
+the remaining dominant costs all require touching locked behavior (kernel_ops write mechanics,
+`computeSchedule` internals) or code outside this module not yet root-caused. Full breakdown in the
+refactor doc's dated §S4 section. Heap has not been re-measured since #1399.
 
 ## ➡ HANDOFF (2026-08-16 evening): the bar-shape/level-semantics refactor is SPUN OUT to
 ## `prompts/4D_GANTT_TM_REFACTOR.md` — measured diagnosis (Terminal: 49/72 tasks as equi-shaped

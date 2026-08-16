@@ -395,3 +395,154 @@ surface here) — S3's own acceptance line names BOTH buildings at 0 violations,
 honestly-reported partial miss (1/2 buildings clean), not a stage failure requiring a full halt.
 
 PR: https://github.com/red1oon/bim-ootb/pull/1403 (auto-merge squash armed 2026-08-16).
+
+## S4 — 2026-08-16 — ⛔ MEASURED FLOOR REPORTED, target NOT reached, stopped per spec's own
+## fallback clause, bim-ootb PR #1404 (auto-merge squash armed)
+
+**Code:** `viewer/time_machine.js` — added `_rawScheduleRemember`, a NEW additive one-shot cache
+(same discipline as the existing `_displayTimeline._last`) populated at the top of `_tmDisplayRemap`
+from the `schedule` parameter (materializeZones' own already-computed raw schedule) and consumed
+once in `injectGantt` (≥99.9% guid-coverage check, byte-identical fallback on any miss) to skip
+`injectGantt`'s own second, redundant `ScheduleGate.computeSchedule` call. Also added extensive
+additive `performance.now()` timing brackets (no behavior change) across the whole activation path,
+in both `time_machine.js` and `scripts/probe_gantt_stagger.js` (forwards the timing/activation §
+lines to stdout — previously pushed to an internal array and never printed, a real gap fixed along
+the way).
+
+**Full measured breakdown, Hospital-63k, cold open, live headless viewer (6 total runs):**
+```
+pre-activate() setup (unaccounted, outside the instrumented span): ~3.7-4.6s
+materializeZones native-schedule materialization (cold-open FIRST computation): ~4.0-4.6s
+injectGantt elemQuery:                                              ~0.85-1.0s
+injectGantt computeSchedule (SECOND, REDUNDANT call, pre-fix):       ~1.5-1.6s  <- FIXED
+displayTimeline (CPM one-truth reuse processing):                   ~0.9-1.1s
+insertLoop (initial bulk INSERT of kernel_ops rows, unchunked):      ~1.0-1.4s
+supportCheck (auditFloating — real _sched consumer):                 ~0.5-0.7s
+capBranchPreWrite (SELECT-back all rows + JSON.parse + rescale):     ~1.6-1.7s
+capBranchWrite (_writeScheduledChunked — the chunked UPDATE loop):   ~7.0-7.8s  <- LARGEST cost
+loadOps (re-read all rows post-write):                                ~0.7-0.8s
+xrayCache (_tmRebuildXrayCache, runs every activation):               ~1.0-1.2s
+misc (computeDays/renderAtTime/etc):                                  ~0.1s
+```
+
+**The fix (M4's own explicit instruction: "run [§SUPPORT_CHECK] from the hook's already-computed
+raw schedule"):** confirmed every `_sched[guid]` dereference inside `injectGantt` (`_twItems` seed,
+`auditFloating`, `§ROOF_GATE`'s `_rgLateVsWalls`, plus the `__tmScheduleDebug` inspection var) reads
+only `.start`/`.end`, matching `ScheduleGate.computeSchedule`'s own exact per-guid return shape
+(`schedule_gate.js:420`) — safe to source from a cache. Verified the reused values are safe for
+their actual consumers even without an epoch/scale rebase: `auditFloating`/`§ROOF_GATE` are pure
+RELATIVE-order tests (`sc.start < se - 1`), invariant to materializeZones' `baseMs=0`/`scaleFactor=1`
+vs injectGantt's own real anchor/scale (a uniform shift or uniform positive scale never changes
+which element is earlier) — and the one ABSOLUTE-value consumer (`_twItems`'s seed) is fully
+overwritten by the already-correctly-epoch-shifted `_displayTimeline` reuse before anything
+user-visible is produced. Empirically confirmed, not just reasoned:
+```
+bash scripts/gate_4d.sh (bim-compiler) → §GATE_4D_RESULT pass=7 fail=0 missing=1
+  IDENTICAL to S1/S2/S3's baseline — witness_midair_zero (the floating=0 gate) 39/39 unchanged,
+  witness_kernel_ops_sched_version 12/12 unchanged
+§S4_RAW_SCHEDULE_REUSE hits=63415 misses=0 — confirmed firing on Hospital
+```
+
+**⛔ MEASURED RESULT: 10s target NOT reached.** Activation floor **~20.8-23.2s** (down from
+~24.5-25.3s baseline across 4 pre-fix runs — a real ~3-4s / ~12-15% saving, confirmed by the
+`§S4_RAW_SCHEDULE_REUSE` cache-hit log and the `computeSchedule` phase delta dropping from
+~1.5-1.6s to ~0.3-0.5s). The three dominant remaining costs (write loop ~7.5s,
+`materializeZones`' own NECESSARY first-time computation ~4.3s — not dead work, someone has to
+compute the schedule once — and an unresolved ~4s pre-`activate()` gap outside this module, not yet
+root-caused) would all require touching locked/borderline-locked behavior (kernel_ops write
+mechanics, `computeSchedule`'s own internals, or code outside `time_machine.js`/`schedule_author.js`
+not yet identified) to cut further — outside `§DISPATCH` rule 3's authorized scope ("Do not touch:
+crew-leveling internals... kernel_ops schema. S4 may reorganize CALLS around them, not their
+bodies"). Per `§STAGES` S4's own explicit fallback — *"If ≤10s is not reachable without touching
+locked behavior, report the measured floor and stop"* — stopping here. This is the ONE instance in
+this lane where the spec itself names "stop and report the floor" as success criteria, so this ⛔ is
+the CORRECT/expected outcome for this stage, not an open question like S2's.
+
+PR: https://github.com/red1oon/bim-ootb/pull/1404 (auto-merge squash armed 2026-08-16).
+
+## S5 — 2026-08-16 — ✅ DONE, bim-ootb PR #1405 (auto-merge squash armed)
+
+**Code:** `_GANTT_CACHE_VERSION` 29→30, `sw.js` `CACHE_VERSION` v1047→v1048 — catch-up bump for
+S1/S2/S4's schedule-generation-behavior changes (a process gap this session found: `gate_4d.sh`'s
+own `§CACHE_VERSION_GUARD` was run BEFORE each stage's commit, against working-tree-only diffs its
+git-diff-based check cannot see, so it never actually fired against this lane's own changes despite
+running green every time — noted here so a future dispatch doesn't repeat the same ordering
+mistake: commit FIRST, then run gate_4d.sh, if the guard's own signal matters for that stage).
+
+**All 4 witnesses S5 names, green, no assertion updates needed:**
+```
+witness_zone_display_authoring: §ZDA_WITNESS_SUMMARY pass=16 fail=0
+witness_crosstask_judge_parity: §CJP_WITNESS_SUMMARY pass=20 fail=0
+witness_midair_zero:            §MIDAIR_ZERO_SUMMARY pass=39 fail=0  (via gate_4d.sh)
+witness_tier_serial_display:    §TIER_SERIAL_SUMMARY pass=57 fail=0  (via gate_4d.sh)
+```
+None of M1/M2/M3's metric-meaning changes broke a locked witness baseline — every one of these
+passed cleanly against the SAME assertions shipped before this lane started.
+
+**`gate_4d.sh`, run AFTER commit this time (properly exercises `§CACHE_VERSION_GUARD` for the
+first time in this lane):**
+```
+§GATE_4D_RESULT pass=8 fail=0 missing=1
+§CACHE_VERSION_GUARD PASS gating_changed=0 version_bumped=1
+```
+(the 1 MISS — `witness_arch_area_weight` — confirmed pre-existing/unrelated in every prior stage)
+
+**Final fleet confirmation — no new regressions vs S1-S4's own documented numbers:**
+```
+probe_cpm_schedule.js:     floating=0/7, structural=0/7 on ALL 7 (storeyViol fails=3 is the
+                            already-documented S1 federated-ladder residual, byte-identical)
+probe_cpm_display_path.js: §CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS
+```
+
+**Live-deploy verification — genuine, not just curl.** Curled the live GitHub Pages payload
+(`https://red1oon.github.io/bim-ootb/`) and confirmed S1/S2/S4's own code strings present
+(`bandRank`/`bandOfLevel` in `cpm_schedule.js`, `_rawScheduleRemember`/`§S4_RAW_SCHEDULE_REUSE` in
+`time_machine.js`). Went further: ran a REAL headless browser session against the deployed
+`viewer.html` with a real Hospital DB (mixed-content Chrome flags to let the HTTPS page fetch a
+local dev DB server):
+```
+[live] §CPM_RUN n=63415 ... stragglers=11215 ... makespanDays=388.4
+[live] §ZONE_WINDOW_DAGWINS_CLIP clamped=6230 (Tukey-fenced group envelope, classification-free...)
+[live] §S4_RAW_SCHEDULE_REUSE hits=63415 misses=0 — skipped a second computeSchedule call
+[live] §TIME_MACHINE ON — 63415 ops, 74 days, project: 1/1/1970 → 1/24/1971
+LIVE_TM_ACTIVATED=true
+```
+All 3 stages' § log signatures confirmed live and functioning end-to-end on the real deployed site,
+not just in a local worktree. (`§TM_OPS_CHECK` epoch showing 1970 is an artifact of this ad hoc
+verification script's minimal page context, not a real bug — the standard probes anchor correctly.)
+All 4 prior PRs (#1401-#1404) confirmed to have triggered successful `deploy-pages.yml` runs.
+
+**Docs closeout:**
+- `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md`: `§ZONE_WINDOW_DAGWINS_CLIP`'s original formula description
+  marked ⛔ RETIRED, pointing to S2's Tukey-fence successor (tag kept, formula changed, per M2's own
+  instruction). The "TM activation ≈20s, not fixed" note updated with S4's measured outcome.
+- `PROGRESS.md`: one-liner added.
+- This file: this dated §S5 section.
+
+PR: https://github.com/red1oon/bim-ootb/pull/1405 (auto-merge squash armed 2026-08-16).
+
+---
+
+# §LANE SUMMARY — all 5 stages closed 2026-08-16 (Sonnet dispatch session)
+
+| Stage | Status | PR | Key result |
+|---|---|---|---|
+| S0 | ✅ | #1400 | Harness baseline (done before this session) |
+| S1 | ✅ | #1401 | Band-rank E4/stragglers — floating 0/7 held; mixed on soft metrics (Terminal stragglers rose 9,678→13,084, traced to a legitimate dag-wins exposure, not a bug) |
+| S2 | ✅ code / ⛔ open Q | #1402 | Tukey-fence robust-envelope bars — hard bar (nonOutlierOutside=0) held 7/7; Terminal's "equi-shape cluster gone" criterion NOT met, root-caused to the CPM solve's own precedence structure (LOCKED core), flagged for the spec's own S2 review checkpoint |
+| S3 | ✅ Terminal / ⛔ Hospital 1 | #1403 | M3 layer-buildup metric — Terminal 0 violations (also evidence FOR S2's "physics-true" reading); Hospital 1 violation, root-caused to a same-storey band-boundary probe artifact |
+| S4 | ⛔ floor reported (expected outcome) | #1404 | Raw-schedule-reuse — real ~3-4s saved; measured floor ~21-23s, 10s target not reached, stopped per the spec's own explicit fallback clause |
+| S5 | ✅ | #1405 | Cache version catch-up, all named witnesses green, live-deploy verified on the real deployed site |
+
+**Hard gates held on every single stage, no exceptions:** floating 0/7, `§CPM_GATE_CHECK` 0/7, zero
+new cycle classes, zero locked-witness-baseline surprises, zero invented constants. **Two genuine
+open items remain, both reported (not silently dropped), both outside this dispatch's authorized
+scope to resolve unilaterally:**
+1. **S2's ⛔ BLOCKED question** (Terminal/Hospital upper-level compression — physics-true or an
+   over-aggressive graph edge? — needs the Fable/Opus/user "eyeball-confirm" `§DISPATCH` rule 4
+   names) — S3's Terminal result (0 layer-buildup violations) is new evidence leaning toward
+   "physics-true," but the question is still open for that review.
+2. **S4's measured floor** (~21-23s vs the 10s target) — the spec's own fallback clause names this
+   exact outcome as correct when the target isn't reachable without touching locked behavior; the
+   three dominant remaining costs (write loop, `materializeZones`' own first computation, an
+   unresolved ~4s pre-`activate()` gap) are named with numbers for whoever picks this up next.
