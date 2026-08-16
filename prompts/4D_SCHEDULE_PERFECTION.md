@@ -4064,3 +4064,33 @@ WINDOW_BLOCKED cross-task authoring conflict or fixpoint straggler. Next levers,
    per-task minimal end-nudge (NOT the rejected EXP5a global fixpoint — one bounded pass, measured).
 3. Verify LIVE: user reloads (sw v1042), regenerates Hospital — §CROSSTASK_JUDGE_PARITY line now
    prints floating=N windowBlocked=M; compare against §EXP8's 63.
+
+## ⛔ §STOREY_ORDER_REPORT — user report at session close (2026-08-16), NOT investigated. NEXT SESSION START HERE
+
+User, closing the §ZONE_DISPLAY_AUTHORING session (verbatim): **"will put the prompt to a new
+session to chase remaining 265. I noticed the storey by storey build up is not adhered to."**
+
+Two open threads for the next session, in order:
+1. **Storey-by-storey adherence** — corroborating evidence already exists: the aborted-bake frame at
+   Day 17/387 showed a "Level 4 ≈ Hall/Corridor" gaze caption with L4 slabs visible while lower
+   storeys were barely started. Suspects, most-likely first, none verified:
+   (a) `_cjpJudgeParity` is storey-blind — its window-bounded pushes (maxShiftDays 47-193d) can move
+       a LOWER-storey element later than upper-storey ones inside wide task windows;
+   (b) §GANTT_GAP_CLAMP_SPREAD redistributes elements evenly inside each (phase,storey) bar, and
+       bars for different storeys of the same phase OVERLAP — even a correct per-bar spread can
+       interleave storeys in wall-clock time;
+   (c) the two-tier DISPLAY timeline itself (now also the window-authoring source via
+       §ZONE_DISPLAY_AUTHORING) — §TIER2_PER_ELEMENT_CLAMP is documented non-order-preserving;
+   (d) §4D_BAND_MONOTONIC gates the RAW schedule per phase — check whether its ladder survives the
+       display remap + overlay at all (a §-probe: per-storey p10/p50 start days on the FINAL overlay
+       times, EXP8 pipeline, is the cheap first measurement — extend probe_captured_floating.js).
+   The FUNDAMENTAL LAW applies: prove/disprove with per-storey start-time series from the probe (and
+   the live §CROSSTASK_JUDGE_PARITY census line), never from the movie visually.
+2. **The remaining 265** (§EXP8 fleet: Terminal 27, Hospital 63, Duplex 3, HHS 11, Clinic 91, LTU 43,
+   JKR 27 — all honest WINDOW_BLOCKED) + Clinic's +31 anomaly — see the "next levers" list at the end
+   of §CHASE_TO_ZERO_WINDOW_AUTHORING directly above. A storey-aware constraint inside
+   `_cjpJudgeParity`/the window authoring may solve threads 1 AND 2 together — measure before building.
+
+Live verification pending from the user: reload (sw v1043) → open Hospital → read
+`§CROSSTASK_JUDGE_PARITY ... floating=N windowBlocked=M` (predicted ≈63) — first session-log census
+since the line shipped in PR #1390.
