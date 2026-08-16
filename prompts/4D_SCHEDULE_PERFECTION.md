@@ -4145,3 +4145,61 @@ Superstructure-completion-vs-crew-cap measurement before any fix, per Spec-First
 above this block. The two threads may or may not share a fix; this session's measurement says the storey
 thread's root is upstream in `_twoTierRemap`/`computeSchedule`, not in the window-authoring/parity layer
 thread 2 lives in — treat them as separate until a shared cause is actually measured, not assumed.
+
+## §TIER1_PER_ELEMENT_CLAMP EXP — MEASURED, REJECTED fleet-wide (2026-08-16, same session, user: "proceed to implement fixes")
+
+**Root-cause dig, one level deeper than the named next lever above.** Hospital zone "Level 1" RAW
+per-phase extents (`§STOREY_ORDER_ROOT_DIAG_L1_RAW`, pre-remap): Superstructure `n=274 [0..168]d`,
+Architecture `n=1781 [0..164]d` — **the two run almost fully CONCURRENT in the generative schedule**,
+not staggered. So "Level 1's Superstructure straggles" was the wrong framing: the RAW/generative layer
+never promised "structure fully done before architecture starts, same floor" — that's `_tier1Serialize`'s
+own job to enforce, and it does so with a **uniform per-phase-group shift**: the entire Architecture
+population in a zone gets pushed by ONE delta, sized off the group's EARLIEST element vs the previous
+phase's latest — so all 1781 Level-1 Architecture elements got shoved +178d even though most never
+actually overlapped Superstructure. That inflated push then cascades through `§TIER2_AFTER_TIER1`'s
+`t1EndZ` clamp onto 59% of the zone's Tier-2 population, which is the mechanism already written up above.
+
+**Precedented fix candidate:** `§TIER2_PER_ELEMENT_CLAMP` (2026-08-13) already replaced exactly this
+uniform-shift pattern with a per-element clamp one boundary over (Architecture→Tier2). Applying the same
+pattern to `_tier1Serialize` itself (Superstructure→Architecture, per (zone,phase) group: only clamp an
+element to `prevEnd` if it starts before it, `prevEnd` recomputed from the actually-clamped items rather
+than the old shift-inflated estimate) is a small, contained, mechanically-faithful mirror of a change this
+codebase already shipped and trusts. Implemented in `/tmp/wt-sandbox` (bim-ootb), syntax-checked, W-TS
+witness NOT run (rejected before that step — see below).
+
+**MEASURED on 4 buildings via `probe_captured_floating.js` (§EXP8_FINAL, the shipped pipeline) — fleet
+floating went UP, not down:**
+
+| Building | floating BEFORE | floating AFTER | Δ | storey violations BEFORE→AFTER (FINAL_LEVEL) |
+|---|---|---|---|---|
+| Hospital | 63 | **48** (better) | -15 | 3/7 → 2/7, worst 74d→60d |
+| Clinic | 91 | **175** | **+84** | 1/6 → 3/6 (worst 49d→13d) |
+| Terminal | 27 | **55** | **+28** | 12/21 → 10/21 |
+| LTU_AHouse | 43 | **128** | **+85** | 9/17 → 9/17 (unchanged) |
+| **measured-4 total** | 224 | **406** | **+182 (+81%)** | mixed, no clean win |
+
+Only Hospital improved on both axes. Clinic and LTU regressed floating hard for near-zero or zero
+storey-order benefit; Terminal regressed floating for a modest storey improvement. Net over the 4
+buildings measured: floating nearly DOUBLED. **REJECTED — same verdict class as EXP5a/EXP5b above
+("fidelity wrecked on 3 buildings" even where one building looked great).** The floating-count chase is
+this campaign's primary metric; a fix that helps storey-order at that cost is a net loss, not a trade
+worth taking without a narrower mechanism. Reverted in the worktree, nothing shipped, `_tier1Serialize`
+in `viewer/time_machine.js` is untouched at HEAD.
+
+**Why it likely backfires:** the per-element clamp is *individually* smaller than the uniform shift (by
+construction, per §TIER2_PER_ELEMENT_CLAMP's own precedent), but it makes `prevEnd` DATA-DEPENDENT on
+which specific elements happen to sit near the front of each phase group — on Clinic/Terminal/LTU this
+apparently lands MORE elements just past their own Tier-2 window edge (see the outWindow jump — Clinic
+4→149, Hospital 31→0 the one exception) than the uniform shift did, i.e. it trades "some elements pushed
+too far" for "more elements pushed just far enough to miss their window," which `_cjpJudgeParity` then
+counts as floating. Not verified further this session (would need a per-window outWindow decomposition
+per building, same rigor as the fleet table above) — named as a footnote for whoever picks this back up,
+not a claim.
+
+**Next lever, revised:** a per-element clamp isn't automatically safer just because it moves less — the
+WINDOW an element lands in matters as much as how far it moved. Any future attempt at this boundary needs
+to measure inWindow/outWindow per building BEFORE trusting the floating number, and probably needs the
+window-authoring layer (materializeZones) to account for the same per-element clamp behavior it's now
+matching against, not just the display timeline. Storey-order thread parked here — not zero, but the two
+cheap candidate fixes (uniform shift as-is, or the naive per-element clamp) are both now measured and
+both rejected. A real fix needs a THIRD mechanism, not yet named.
