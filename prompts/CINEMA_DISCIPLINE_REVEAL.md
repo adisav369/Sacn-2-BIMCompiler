@@ -1058,3 +1058,134 @@ for these since their metalness is already lower than Beam/Railing were) to
 Should be measured the same way #1361 was (real headless pixel readback, before/after, on Hospital's real
 `IfcPipeFitting` red data specifically) before shipping — do not assume the same 0.18 value transfers
 without checking, these classes start at lower metalness than Beam/Railing did.
+
+## §CPE_DISCIPLINE_REVEAL_FLYBACK + §CPE_DISCIPLINE_REVEAL_ORDER — 2026-08-16, resolves the two
+## open items named in the 2026-08-15 Findings section above (not fixed there, decided here)
+
+User re-raised item 1 from 2026-08-15 ("cuts to it abruptly instead of smoothly") and added two new
+asks. Two decisions needed real user input (per that section's own "needs a real decision before
+anyone builds it" rule) and were asked directly:
+- **Seam fix — "Fast eased fly-back" chosen** over crossfade/dissolve or motion-blur-snap: replace
+  the pull-out→round-2 teleport with an actual camera flight covering the same displacement, eased
+  in/out, over a short duration.
+- **Discipline sort metric — "Average element bbox size, ascending" chosen** over element count.
+  Extraction check (read-only agent, confirmed against real schema, not assumed): `elements_meta`
+  has NO dimension column at all — `A.cpeRevealDiscQtyCost`'s existing `count` was always a proxy,
+  never a real size. `element_transforms.bbox_x/bbox_y/bbox_z` (always present, part of the standard
+  10-table extraction schema, guid-joined to `elements_meta`) is the real per-element geometry.
+  `qto_cache` was checked and REJECTED as a source: it's a lazy/optional write-back cache (not
+  guaranteed to exist for an arbitrary loaded building) and its `qty` column mixes units (M/M2/EA/KG
+  across ifc_classes), not dimensionally comparable across disciplines without normalizing first.
+
+### 1. Fly-back — smooths the tP→tV seam (2026-08-15 item 1)
+New sub-beat inserted between pull-out (`tO..tP`) and round 2's forward lap (now `tF..tV` instead of
+the old `tP..tV`) — `tP..tF`. Duration `totalLen / CINEMA_PULLBACK_MPS` (reused constant — the
+file's own "flying, not walking" rate, already used for the pull-out's own distance and the
+rise/pull-back beat — not a new speed invented). This is real added time (e.g. ~7.7s on a 50m walk,
+vs. round 2's own ~21.7s at the normal `CINEMA_WALK_MPS` pace) — "fast" relative to the walk it
+mirrors, not instant.
+
+**Path, not a straight line.** Retraces the SAME `_outPos(f)` curve the walk itself already
+validated as collision-free, backward (`f: 1→0`), rather than a straight-line cut between the
+pull-out's end point and the first stick — a straight line between two points on a bent corridor
+risks clipping through walls at any turn, exactly the class of bug this file's `_revealSeamDir`/
+`§CPE_GAZE_CONSTANT_RATE` machinery already exists to prevent elsewhere. This is the SAME backward-
+retrace the original (pre-#1362) Mechanism C used, just compressed to `CINEMA_PULLBACK_MPS` pace
+instead of the walk's own `CINEMA_WALK_MPS` (that original retrace ran at walk pace and DOUBLED the
+film's length — the exact cost #1362 removed it to avoid; this fly-back reintroduces the safety of
+retracing the path without reintroducing that cost).
+
+**Seams, reusing this file's own existing idiom** (`_dirBlend`/`_cinemaSmoothstep`/
+`CPE_REVEAL_SEAM_FRAC`, the same pattern `_revealPose`'s own ending blend already uses — no new
+blending math): position blends from the pull-out's actual final (off-path, retreated) point onto
+the path's `f=1` point over the fly-back's first `CPE_REVEAL_SEAM_FRAC` width, then retraces
+`_outPos(1-e)` for the remainder. Gaze holds at the pull-out's own "angle of attack" direction
+(`_revealSeamDir(tO)` — same constant-gaze choice pull-out already made) through the position blend,
+then blends into the forward travel tangent at `f=0` (`_revealTravelDir(0,1)`) over the FINAL
+`CPE_REVEAL_SEAM_FRAC` width, so round 2's own opening gaze picks up with zero kink — same contract
+`_revealPose`'s end seam already keeps at the Beat 4 handoff.
+
+**Cross-file duplication, same precedent as the pull-out's own `1.5` literal:**
+`cinema_path_editor.js`'s `_naturalDuration()` estimate (client-side seconds guess that sizes the
+bake's frame count) must grow its `revealSec` estimate by `len / 6.5` (the same `CINEMA_PULLBACK_MPS`
+value, duplicated as a literal — `effects.js` stays the one authoritative source, this is an
+estimate only, exact seconds are always computed there at plan-build time).
+
+### 2. Discipline order — smallest granularity first, MEP forced last, "All Disciplines" unchanged
+`A.cpeRevealDiscsPresent()` currently returns `Object.keys(counts)` — insertion order from scene
+traversal, not a deliberate ordering. Add a sort, in that one function (shared by both
+`effects.js`'s plan builder and `cinema_path_editor.js`'s duration estimate — one implementation,
+per this function's own existing header comment):
+
+```sql
+SELECT m.discipline, AVG(t.bbox_x * t.bbox_y * t.bbox_z)
+FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+WHERE m.discipline IN (...) AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
+GROUP BY m.discipline
+```
+
+Sort ascending by that average volume — smallest-average-element disciplines (finest granularity)
+reveal FIRST, while the viewer's attention is freshest. The literal `MEP` discipline code (a real,
+separate code in `A.DISC_COLORS`/`A.PHASE_MAP` alongside `ELEC`/`FP`/`ACMV`/`PLB`/`HVAC`/`SAN`/
+`VENT`) is forced to the LAST position regardless of its measured size — user's own framing,
+2026-08-16: MEP reads as "most easily sighted" (its ducts/pipes/cable-trays are large and obvious
+even glimpsed briefly), so it doesn't need the early slot the way small/fine disciplines do. Degrade
+path if `A.dbQuery` is unavailable or the query fails: fall back to the original unordered list —
+DEGRADE, DON'T DISABLE, same rule `cpeRevealDiscQtyCost` already follows one function above it.
+
+**"All Disciplines" stays the very last slot, unchanged (user confirmed 2026-08-16: "of course All
+Disciplines the very last").** That combined view is `cpeRevealVisualAt`'s existing `idx >= n`
+fallback (`phase: 'tail-all'`) — it is NOT a member of the sorted `discs` array, so no code path
+needs to change for this; it already always plays after every individual discipline slot, MEP
+included. This item is a confirmation, not a build task.
+
+### 3. Fade between each discipline in the tail parade
+Real architecture constraint found (not assumed): `A.filterDiscs`/`A._applyDiscVisibility` (the
+ONLY filtering mechanism in this app, per that function's own header comment) is a pure boolean
+`obj.visible = true/false` toggle across all three mesh representations (plain `Mesh`,
+`InstancedMesh`, `BatchedMesh`). There is no per-element opacity channel in this pipeline today —
+`InstancedMesh`/`BatchedMesh` share ONE material across every instance in the batch, so animating
+`material.opacity` would fade the WHOLE batch (including elements outside the current tail slot),
+not just the discipline entering/leaving. A true per-element alpha crossfade is real, separate work
+(a vertex-color alpha channel or per-instance attribute — not present in the current schema), named
+here as an explicit follow-on, NOT built in this pass.
+
+**What ships instead — an overlap window, the closest honest approximation `filterDiscs` can give
+without that engineering:** at each `tail-one` boundary, the outgoing and incoming discipline are
+BOTH kept visible together (`A.filterDiscs([outgoing, incoming])`) for a short window (candidate:
+~0.4s, mirroring this file's other short-beat granularities) before dropping to just the incoming
+discipline. This softens the hard swap into a brief overlap rather than an instant cut, using only
+the existing visibility mechanism — it is not a literal opacity dissolve, and is documented as such
+here so it is never mistaken for one later.
+
+### Status
+BUILT, WITNESSED 2026-08-16, bim-ootb branch `feat/cpe-reveal-flyback-order` (worktree
+`/tmp/wt-reveal-smooth`, off fresh `origin/main` `81d2ecd`). `effects.js?v=20->21`,
+`cinema_path_editor.js?v=14->15`, `sw.js` CACHE_VERSION v1043->v1044, `EFFECTS_V` v20->v21.
+
+All three items implemented as specced: new `_flyBackPose`/`tF` beat boundary (position/gaze-
+continuous both sides, replacing the teleport), `A.cpeRevealDiscsPresent`'s ascending-AVG(bbox
+volume) sort with MEP forced last (query against `element_transforms`, DEGRADE-not-DISABLE if
+`A.dbQuery` unavailable), and the `CPE_REVEAL_FADE_SEC` overlap window in `A.cpeRevealVisualAt`'s
+tail-one branch (`visDiscs` widens for 0.4s at each boundary, `discs` — the caption identity —
+always names the incoming discipline only).
+
+`witness_cpe_reveal_pullout.js` extended (not a new file): 60/60 PASS, including the OLD "tP -> tV
+is a real CUT" assertion REPLACED with its opposite (both new seams now continuous, position < 5cm
+and gaze < 2deg on the real fixture) — this is the direct regression proof the 2026-08-15 "abrupt,
+not smooth" report is fixed. Regression-clean: `witness_cpe_reveal_panel.js` 7/7,
+`witness_cpe_room_title.js` 11/11.
+
+**Honest fixture gap, not fixed here:** the git-tracked fixture (`HHS_Office_Federated_extracted.db`
+— the same one the original pull-out witness chose, `Duplex`/`Hospital` are OCI-distributed and
+gitignored, not pulled into this worktree per the project's own worktree-hygiene rule) has only ONE
+non-ARC/STR discipline (`MEP`, 3399 elements — real DB fact, checked directly, not assumed). The
+sort comparator and the fade's overlap window are only exercised end-to-end against a single-
+discipline building here; both correctly no-op/degrade on it (verified — the sort skips its own
+query+log when `discs.length <= 1`, the witness gates those specific assertions the same way rather
+than asserting a false positive). The MEP-forced-last placement and the 2-discipline overlap window
+are proven correct by construction (comparator logic reviewed, tested against the one real
+discipline present) but not by a real multi-discipline bake. Follow-on, not blocking: re-run
+`witness_cpe_reveal_pullout.js` against `Hospital_extracted.db` (or any OCI-fetched multi-discipline
+building) once one is available in a worktree, to get the `§CPE_REVEAL_DISC_ORDER` log line and the
+2-discipline `visDiscs` overlap exercised against real data instead of a single-discipline fixture.
