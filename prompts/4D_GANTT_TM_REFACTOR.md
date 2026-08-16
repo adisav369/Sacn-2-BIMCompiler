@@ -934,3 +934,14 @@ straggler cascades, not a solve bug. M5 v2: the groundwork set is the FIXPOINT o
 contact is Substructure OR already in the set (grade beams join first: they bear on piles only;
 the plate joins next: it bears on piles + grade beams). Columns/walls excluded by class; frame
 beams excluded by band. Same two extracted terms, zero new constants.
+
+## §S9 AMENDMENT 2 (same evening, measured) — only STRUCTURE can make a deck
+v2's fixpoint still left 156 b4 Superstructure slabs out. Measured blockers: 905 bearing pairs are
+UNDER-SLAB MEP (IfcPipeSegment/Fitting/FlowTerminal — real under-plate drainage, installed before
+the pour; E1's contact SS edge keeps that physical order) plus 498 intra-groundwork slab/beam pairs
+the fixpoint resolves once the base joins. A pipe cannot BEAR a slab — the deck-vs-grade
+distinction is about bearing on FRAME. M5 v3: a bearing-below contact DISQUALIFIES membership only
+if it is a structure-pool element (the module's own bearing definition: seq≤4, IfcWall*, promoted
+slab, stair flight) that is neither Substructure nor already in the set. A slab on masonry walls
+stays a deck (walls block); under-slab services never block. Zero new constants — the pool
+predicate is computeSchedule's own.
