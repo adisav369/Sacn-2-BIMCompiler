@@ -1953,3 +1953,91 @@ Named §S5/§S18 witness set also re-run directly: `witness_zone_display_authori
 
 PR: bim-ootb #1425 (`fix/gantt-s19b-e5-resolve`) — MERGED 2026-08-17T05:34:51Z (auto-merge squash,
 fast-checks + e2e-tests both SUCCESS).
+
+---
+
+# §S20 — finish the dead-pipeline retirement. GO GIVEN (2026-08-17, user: "proceed"). Redesign
+# FIRST, delete SECOND — do not combine, do not skip the redesign to force a faster deletion.
+
+§S19_RESULTS Part A found the real blocker: 4 of `gate_4d.sh`'s 8 witnesses measure the dead
+pipeline DIRECTLY as their test subject, not just reference it. Their compact table (above) is this
+stage's own scope map — read it before starting, do not re-derive it.
+
+**Part A — redesign, not delete.** Three witnesses whose underlying QUESTION still matters, rebuilt
+against the live CPM path instead of the legacy repair:
+- `witness_midair_zero.js` — question: "does anything appear before what it touches." New baselines
+  against `_displayTimeline`'s CPM success path (`§CPM_DISPLAY on`, same reachability-proof discipline
+  as §S14.0 — print it, don't assume it). `witness_zone_display_authoring.js`'s existing W-ZDA-6
+  ("CPM display timeline has 0 midair through the shipped hook") may already BE this witness's real
+  answer — check whether redesigning `witness_midair_zero.js` is actually a duplicate of W-ZDA-6
+  before building a second copy of the same check.
+- `witness_hosted_before_host.js`, `witness_curtain_wall_opening.js` — same treatment, own domain
+  questions (host/opening ordering), rebuilt against the CPM path's own output.
+Also: `witness_tier_serial_display.js` has NO salvageable subject (100% about `_twoTierRemap`) —
+delete the file outright, remove it from `gate_4d.sh`'s loop and the §S5-named set. Fix
+`witness_zone_display_authoring.js`'s 4-line unused-slice list (mechanical, no redesign needed).
+*Acceptance:* redesigned witnesses assert something real and CURRENTLY PASSING against the live path
+(not just "doesn't crash") — report their new pass numbers. `gate_4d.sh` pass count may change (one
+witness deleted) — record and explain the new count, don't just note it moved. Fleet floating 0/7
+unaffected (this stage touches tests, not the engine).
+
+**Part B — delete, only after Part A's PRs are merged and gate_4d.sh is green on the redesigned
+suite.** Remove `_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/`_tierAuditRegate` from
+`time_machine.js` (exact extents already brace-matched in §S19_RESULTS: 4006-4025, 4086-4201,
+4717-4871, 5032-5116 — reverify, line numbers shift once Part A lands). Retire the now-broken,
+ungated consumers named in §S19_RESULTS's compact table: `probe_captured_floating.js` EXP3+EXP5+EXP6
+(the whole block, not just `STOREY_PHASE_TABLE` — the original brief undersold this), `probe_bars_vs_ops.js`,
+`probe_named_element_times.js`. Fix `witness_gantt_lock_integrity.js`'s conditional-slice landmine
+(its G-LI-2 fixture setup slices `_midairRepair` whenever it detects `_midairAudit` in source — update
+the condition or its fixture path, it's not gated so this can't block CI but leaving it broken is not
+"finished"). Decide `?cpm4d=0`'s fate now that its fallback target is gone: keep a minimal explicit
+error/no-op, or retire the flag — state which.
+*Acceptance:* same regression bar as every prior stage — floating 0/7, `gate_4d.sh` green, no
+witness needing an unpredicted change beyond what Part A already redesigned, live-deploy verified.
+Report net lines removed.
+
+**STOP-AND-REPORT if:** Part A's redesign can't produce a real, currently-passing assertion (report
+what's missing, don't ship a witness that always passes trivially); anything in Part B breaks a
+witness not already named above. Worktree/PR per part, verify merged before the next part.
+
+---
+
+# §S21 — extend §S18's storey-elevation/parentage fix to Terminal, Hospital, LTU. GO GIVEN
+# (2026-08-17, user: "proceed"). One building at a time — do not combine into one PR.
+
+§S18 fixed Clinic by extending its extractor (`extractIFC2DB.js`) to read real
+`IfcBuildingStorey.Elevation` + `IfcBuilding` parentage (extract-only, per `§PATHS NOT TO TAKE` #7 —
+never infer). Terminal/Hospital/LTU use a DIFFERENT production pipeline
+(`DAGCompiler/python/extractIFCtoDB.py` + `extract_merge_disciplines.py`), already read this
+session, with the SAME class of gap already found and named: no `.Elevation` read anywhere in the
+file, plus a `buildings[0]` blind-assignment bug for storey parentage instead of a real
+`IfcRelAggregates` walk. This is not new investigation — it's executing a known fix on a second
+codebase, same shape as §S18's Part B.
+
+**Per building, do the §S18 sequence:** fix `extractIFCtoDB.py` to (1) read `IfcBuildingStorey.
+Elevation` into `spatial_structure`, (2) replace the `buildings[0]` blind assignment with a real
+`IfcRelAggregates`/`.Decomposes` walk for `IfcBuilding`→`IfcBuildingStorey` parentage. Re-run
+extraction, regenerate the split (`split_db.sh`), gate-verify the regenerated DBs against the
+currently-SERVED OCI bytes before upload (§S10/§S18 pattern — MD5-verify byte-identical on every
+column that should be unchanged; only `spatial_structure` + whatever downstream columns depend on it
+should differ). Confirm the viewer's `deriveStoreyMergeMap` (already generic and fleet-wide per
+§S18, proven to no-op safely on unregenerated data) picks up the new data without further code
+changes — if it needs a change, that's new scope, stop and report rather than improvise it.
+
+*Acceptance, per building, same metrics §S18 measured on Clinic:* `spatial_structure` gains real
+Elevation + parentage rows (compare shape to LTU's own reference numbers — LTU is not being
+regenerated here, but its 9 IfcBuilding/38 IfcBuildingStorey/751 rel_aggregates shape is still the
+target quality bar). Currently-0 metrics on ANY building must not regress (fleet-wide `floating`,
+`§CREW_FEASIBILITY`, `§LAYER_BUILDUP` — check all 7, not just the building being touched). Same-start
+cluster and task-count should shrink the same direction §S18 measured on Clinic if the merge is real
+— report the actual before/after numbers, don't force a target. If a building's cluster/task-count
+doesn't move, that's a valid, reportable outcome (§S15 already found some of this is legitimate
+parallelism, not a ladder defect) — don't manufacture movement.
+
+**STOP-AND-REPORT if:** `extractIFCtoDB.py`'s actual structure differs from what §S18 described
+(re-verify by reading, don't trust the prior session's summary blind); a regeneration doesn't
+byte-match served bytes on unrelated columns; any currently-0 metric regresses anywhere in the
+fleet. Worktree/PR per building, verify merged before the next one. Read `§PATHS NOT TO TAKE`
+(especially #7, no inference) and `§PATHS NOT TO TAKE` #0 (don't call a value "corrupt" without
+self-contradiction or source-verification — this stage is pure extraction/addition, not a
+corruption claim, so #0 shouldn't come up, but if it does, stop and report rather than assume).
