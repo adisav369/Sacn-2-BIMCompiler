@@ -1716,3 +1716,45 @@ a data-provenance go/no-go), which is the ONE thing left that could still produc
 complaint anywhere in the live fleet. If a bake still looks wrong despite this checklist being green,
 §S14.0's own conclusion applies: look at what the movie RENDERS from the schedule next, not the
 schedule — the schedule itself is measured clean.
+
+---
+
+# §S19 — delete the dead legacy pipeline; resolve E5. GO GIVEN (2026-08-17, Fable simplification
+# review, user: "proceed"). Two small, independently-verifiable cleanups — do not combine into one PR.
+
+**Why now:** an independent review of this whole file found the single highest-leverage remaining
+issue is process, not design — `_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/`_tierAuditRegate`/
+`_ogSupportSweep`/`_cjpJudgeParity` (the pre-CPM 11-pass repair chain) is fully bypassed on the live
+path (`_CPM_DISPLAY` defaults true, `§CAP_RESCALE_SKIP`) but was never physically removed — only
+guarded against. That single loose end caused THREE separate incidents in this lane already
+(`§PATHS NOT TO TAKE` #1; `§S13.7`'s near-shipped fix to unreachable code; `§S17`'s full 8-probe
+audit). `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md §STAGE4_RETIREMENT_PROPOSAL` already names this as the
+next step, marked propose-first — this IS that proposal's go-ahead.
+
+**Part A — delete the dead pipeline.** Remove `_twoTierRemap`, `_midairRepair`, and any function ONLY
+reachable through them (confirm via the same reachability method §S14.0 used — grep every call site,
+trace whether it's live-default-reachable, do not assume). Do NOT remove anything `_CPM_DISPLAY`'s
+success path calls, and do NOT touch `cpm_schedule.js`. If `?cpm4d=0` (the legacy A/B escape hatch,
+`§LOCKED`) is still needed as a lever, either keep ONE minimal fallback path or explicitly retire the
+flag too — state which and why, don't leave a flag pointing at nothing. Check `probe_captured_floating.js`'s
+`STOREY_PHASE_TABLE` mode (already carries a retraction warning per §S17) — deleting its target
+function means that mode itself becomes dead; retire it in the SAME PR, don't leave a probe calling a
+function that no longer exists.
+*Acceptance:* fleet floating 0/7 unchanged, all named witnesses green (same set §S5/§S18 checked),
+`gate_4d.sh` pass count unchanged, live-deploy verified (curl + a real headless run showing
+`§CPM_DISPLAY on`), net lines removed reported.
+
+**Part B — resolve E5.** `§S2_REVIEW_VERDICT`'s own S6 spec states E5-as-lower-bound "becomes
+redundant once slots are claimed in-pass" but `§S6_RESULTS` never reports it removed or repurposed.
+Read `cpm_schedule.js`'s E5 construction, confirm whether it's now dead weight (S6's crew-slot
+allocator already enforces the same bound in-pass) or still doing real work (e.g. a safety floor for
+some edge case S6 didn't cover). If dead: remove it, same reachability-proof discipline as Part A. If
+still live: say exactly what it still bounds that S6 doesn't, with a measured example — do not leave
+it unexplained either way.
+*Acceptance:* same floating=0/witness/gate_4d regression bar as Part A.
+
+**STOP-AND-REPORT if:** floating>0 anywhere; a witness needs an unpredicted assertion change; a
+function thought dead turns out to have a live call site (report it, don't force the deletion). Same
+worktree/PR-per-part, verify-merged-before-next-part discipline as every prior stage. Sonnet-dispatchable —
+both parts are mechanical once reachability is confirmed, which is the same proven method §S14.0
+already used successfully.
