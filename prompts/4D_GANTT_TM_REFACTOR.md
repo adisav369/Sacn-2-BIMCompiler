@@ -1543,6 +1543,156 @@ discipline as every prior stage. Sonnet-dispatchable: Part A is fully mechanical
 regenerate, verify) once step 1 is checked. Part B needs one real read of unfamiliar extraction code
 before it's numeric — do that read first, then it's the same shape as everything else in this file.
 
+# §S18_RESULTS — 2026-08-17, Part A STOP-AND-REPORT (corrected premise, no regen), Part B ✅ SHIPPED
+# + GATE-VERIFIED + LIVE (bim-compiler PR #83, bim-ootb PR #1424, both merged)
+
+## Part A — verified against SERVED OCI bytes, and it is NOT a stale-split fix
+This section's own premise ("split_db.sh already carries `building` through, Part A is just a
+stale-artifact regen") was checked against the actually-served `Clinic_extracted.db`/`Clinic_meta.db`
+(OCI `bim-ootb` bucket, not a local copy) and turned out **half right, half wrong, in a way that
+changes the fix**:
+- **Confirmed true:** `scripts/split_db.sh`'s `.clone` does carry `elements_meta.building` through
+  unmodified. Running the CURRENT script against the CURRENTLY-served `Clinic_extracted.db` reproduces
+  the served `Clinic_meta.db` byte-for-byte on every OTHER column (0 mismatches on `ifc_class`,
+  `element_name`, `storey`, `discipline`, `material_name`, `material_rgba` across all 16,114 rows).
+- **The one column that differs, `building`, is NOT a stale artifact — restoring it would be a live
+  regression.** Served `Clinic_extracted.db` has 5 distinct per-discipline-file values
+  (`Clinic_Architectural_IFC2x3`, `..._Electrical_IFC2x3`, `..._HVAC_IFC2x3`, `..._Plumbing_IFC2x3`,
+  `..._Structural_IFC2x3`); served `Clinic_meta.db` collapses all 16,114 rows to a single `"Clinic"`.
+  That collapse is a **deliberate, already-shipped, already-regression-tested fix** — commit
+  `8e44c4156` (2026-05-18, "Clinic building-name fix... viewer was only auto-streaming nearest
+  'building' (ACMV)"), guarded ever since by `tests/whitebox_regression.js`'s `clinic_single_building`
+  test (`reason: ok ? '' : '${buildings.length} building names instead of 1 — viewer streams only one
+  at a time'`). `viewer/streaming.js` groups by `elements_meta.building`, picks the geographically
+  NEAREST value, and streams ONLY that one — 5 values means 4/5 of Clinic's disciplines silently never
+  load. Regenerating `Clinic_meta.db` from the current `extracted.db` via the current `split_db.sh`,
+  as this section originally prescribed, would have shipped that exact regression back into
+  production. Caught before any upload, not after.
+- **The provenance signal §S13.2/§S13.5 actually needed already exists, safely, in a DIFFERENT column
+  that was never touched by the May fix: `elements_meta.discipline`.** Queried directly against the
+  served `Clinic_meta.db`: `ACMV|3704 ARC|1984 ELEC|2118 MEP|102 PLB|6585 STR|1621` — cross-tabbed
+  against §S13.2's disjoint-vocabulary storeys, e.g. `storey='Level 1'`: `ELEC=15, PLB=3713` (n=3,728,
+  exact match to §S13.2's n and its `Plumbing 3713`); `storey='TOF Footing'`: `PLB=1476, STR=197` (exact
+  match to §S13.2's `Plumbing 1476, Structural 197`). `discipline` is not read by `streaming.js`'s
+  building-selection logic at all — using it costs nothing.
+- **Verdict: Part A needed NO DB regeneration and NO upload.** `§13.5`'s "the split DROPS it, so
+  `<B>_meta.db` ... cannot see it" claim is corrected — the split does not drop `building`, but
+  `building` itself is the wrong column to use for this purpose, by design, since May. `discipline` is
+  the correct, already-live, already-safe signal — this is what Part B's merge (below) actually
+  consumes for Clinic.
+
+## Part B — extractor found, fixed, shipped; Clinic proven end-to-end; Terminal/Hospital/LTU's OWN
+## regeneration is the honest remainder, not attempted this pass
+**Extractor located** (grep `spatial_structure` INSERT statements across `tools/*.py`, `build/*.js`,
+Java sources, then traced Clinic's ACTUAL build script): three code paths write `spatial_structure`
+today — `tools/extract.py`/`DAGCompiler/python/extractIFCtoDB.py` (real IFC parse, used by
+`onboard_ifc.sh`'s canonical pipeline and by `extract_merge_disciplines.py`'s discipline-merge
+default), and `scripts/compile_rooms.py` (the "room compiler" — pure SQL/geometry flood-fill off
+already-extracted bboxes, no IFC file, no `.Elevation`, no `IfcRelAggregates`, storey `parent_guid`
+hardcoded `None`). **Clinic's actual production script, `scripts/extract_clinic.sh`, uses NEITHER of
+those** — it calls a fourth extractor, `scripts/extractIFC2DB.js` (Node/web-ifc), and that extractor
+**never wrote `spatial_structure` at all**. Its own merge step (`extract_clinic.sh` step 2) only
+carried `elements_meta`/`element_transforms`/`element_instances`/`component_geometries` across the
+5-discipline merge — `spatial_structure` was never in scope. That is why served Clinic showed exactly
+the "3 COMPILED rows" shape §S13.5 named: 100% `compile_rooms.py` fallback, nothing from real
+extraction, because real extraction never produced anything to carry.
+
+**Fix, `scripts/extractIFC2DB.js`** (bim-compiler PR #83): added real `IfcBuilding` +
+`IfcBuildingStorey` rows to a new `spatial_structure` table, reading `s.Elevation` (a plain IFC
+attribute, unit-corrected via the SAME `autoScale` factor already applied to geometry) and real
+`IfcBuilding`→`IfcBuildingStorey` parentage via `IFCRELAGGREGATES.RelatingObject`/`.RelatedObjects` —
+the exact relation the aggregation pass already walked for storey→space containment, now also checked
+against `IFCBUILDING` parents. EXTRACT ONLY — no z-proximity inference (§PATHS NOT TO TAKE #7).
+`extract_clinic.sh` updated to carry `spatial_structure`/`rel_aggregates` through the merge, and to
+re-apply the `building`→`'Clinic'` normalization (Part A) on every regeneration, so re-running this
+script can never silently reintroduce the streaming regression again.
+
+**A real, disclosed residual, found by this fix, not caused by it:** one of Clinic's 5 discipline files
+(Structural) declares `IfcProject` `LENGTHUNIT=METRE` but its `IfcBuildingStorey.Elevation` values read
+1000x too large (4570/9250/-1000 where 4.57/9.25/-1 is correct) — a source-file authoring defect, not a
+units-conversion miss (confirmed: the file's OWN declared unit is METRE, so no unit-scale factor
+"fixes" it; the raw attribute value itself is wrong). The merge logic (below) is robust to this by
+design — it uses the MEDIAN elevation per storey name, so 3-of-4 agreeing "Second Floor" rows (~4.57)
+outvote the 1 corrupted row — but "Roof - Mech" (sourced ONLY from Structural, no other file has that
+exact name) has no agreeing rows to be outvoted by, so it stays its own unmerged, still-wrong band.
+Disclosed, not hidden; does not affect the merges that matter (First Floor/Level 1, Second Floor/Level
+2 — the pairs §S13.2 actually named).
+
+**Viewer-side merge** (bim-ootb PR #1424) — **decision: viewer-side, not extraction-side, and here is
+why.** `deriveStoreyMergeMap()` (new, `viewer/schedule_gate.js`) groups storey NAMES by MEDIAN
+extracted `Elevation`, merging names within `GAP` (0.5m — this module's own pre-existing "audit: within
+this of" constant, reused per §GUARDRAILS, not a new tuned quantum) of a lower band. Threaded through
+`deriveBandRanks`/`deriveZones` as an OPTIONAL parameter, wired ONLY at `schedule_author.js`
+`materializeZones()` — the DISPLAY/AUDIT layer that runs AFTER `computeSchedule` has already produced
+real element times. `computeSchedule`'s OWN internal `deriveBandRanks` call (PASS-B's band-monotonic
+trade gate) never receives the map, so the engine's `floating=0` invariant is untouched by
+CONSTRUCTION, not just by testing. Rejected extraction-side: rewriting `elements_meta.storey` values
+directly would touch every OTHER consumer of that column (Find Storey lens, Room lens, storey-filter
+UI) for a change that is properly scoped to "what a LEVEL means to the storey gates" — exactly the
+layer this lane's own header already carves out as in-scope, separate from the engine.
+
+### Measured (headless real-viewer probe, `scripts/probe_gantt_stagger.js`, modified viewer +
+### regenerated Clinic vs the previously-served bytes — both fetched/verified, not assumed)
+```
+§S18_STOREY_MERGE names=7 merged=2
+METRIC (before) withinLevelPhasePairs=65 overlapping=44 overlapDaysSum=1986 parallelism=13.47x totalDays=105 tasks=33
+METRIC (after)  withinLevelPhasePairs=45 overlapping=33 overlapDaysSum=1597 parallelism=9.50x  totalDays=105 tasks=23
+§LAYER_BUILDUP (before) violations=1/5 bands=6 ops=16114 detail=["band2(n=2735,med=90.0d)>band3(n=546,med=81.8d)"]
+§LAYER_BUILDUP (after)  violations=1/5 bands=6 ops=16114 detail=["band2(n=2735,med=90.0d)>band3(n=546,med=81.8d)"]  — UNCHANGED, correctly (kernel_ops write-order metric, not storey-name grouping)
+```
+10 `Level-N`/`X Floor` task pairs merged into one task each — every merge's element count sums EXACTLY
+(e.g. `TASK_Architecture_First_Floor` 920 + `TASK_Architecture_Level_1` 134 → 1054; `TASK_MEP_Rough_in_
+First_Floor` 1367 + `TASK_MEP_Rough_in_Level_1` 3644 → 5011), confirming the merge is exact, not
+approximate. Clinic's tasks: **33 → 23**. Same-start cluster (tasks sharing one start day, same
+methodology as §S15): **23/33 → 11/23**.
+
+**Regression check — same modified viewer code, run against Terminal/Hospital's UNREGENERATED data**
+(neither has been re-extracted with the §S18 fix — this proves the fallback, not a Terminal/Hospital
+improvement):
+```
+§S18_STOREY_MERGE_FAIL no such column: elevation — no elevation data, bands unmerged   (Terminal)
+§S18_STOREY_MERGE_FAIL no such table: spatial_structure — no elevation data, bands unmerged   (Hospital)
+tasks=73 (Terminal)  tasks=36 (Hospital)
+```
+Both task counts match the already-documented §S15 baseline exactly (Terminal 73, Hospital 36) — zero
+behavior change confirmed live, not assumed from reading the fallback code.
+
+### OCI upload — gate-verified against served bytes (§S10/§S12 pattern, adapted: full-DB reupload
+### instead of a patch file, see rationale below)
+Regenerated `Clinic_extracted.db`/`_meta.db`/`_geo.db`/`_positions.bin` uploaded to `bim-ootb` bucket
+(gzip -9, `--content-encoding gzip`, per `OCI_UPLOAD.md` rule 8), fetched back, and MD5-verified
+byte-identical to the local artifact (`Clinic_meta.db` and `Clinic_positions.bin` both confirmed;
+`elements_meta.building='Clinic'` count=16,912 and `spatial_structure` 4 `IfcBuilding`/16
+`IfcBuildingStorey` (16 with elevation) confirmed live on the re-fetched served bytes). A patch file
+(the `gen_meta_transform_patch.js`/`oci_patch_gate.js` convention) was considered and rejected for THIS
+fix specifically: a per-guid `UPDATE ... WHERE guid=...` patch restoring 16,114 distinct `building`
+values would be ~1.4-1.6MB of SQL — bigger than the 1.2MB gzipped `Clinic_meta.db` itself, and
+`_applyPendingPatch` re-applies the WHOLE patch on EVERY page load. Full reupload is smaller, cheaper
+per-load, and this is what Part A's own investigation found is unnecessary anyway — the actual Part B
+regeneration (spatial_structure) is what changed, not `building`.
+
+### Acceptance criteria — Clinic (the one this session fully closed)
+| Metric | Before | After | |
+|---|---|---|---|
+| Tasks | 33 | 23 | fewer, more meaningful bars |
+| Overlapping phase-pairs | 44 | 33 | -25% |
+| Overlap-days sum | 1986 | 1597 | -19.6% |
+| Parallelism | 13.47x | 9.50x | real reduction in "many stacked equi-shaped bars" |
+| Same-start cluster | 23/33 | 11/23 | 70% → 48% of tasks |
+| §LAYER_BUILDUP violations | 1/5 | 1/5 | unchanged (different metric, correctly unaffected) |
+
+**Terminal's same-start cluster (§S15, 10/73)** was NOT re-measured post-merge — Terminal's actual
+production extraction uses `DAGCompiler/python/extractIFCtoDB.py` + `extract_merge_disciplines.py`
+(different pipeline from Clinic's `extractIFC2DB.js` + `extract_clinic.sh`), which this pass did not
+touch. The merge infrastructure (`deriveStoreyMergeMap`, threaded through `deriveBandRanks`/
+`deriveZones`) is fully generic and fleet-wide — proven to no-op safely on Terminal's current data
+(above) and to work exactly as designed the moment real `Elevation`/parentage data exists for a
+building. **Extending the fix to `extractIFCtoDB.py` (same class of gap: no `.Elevation` read anywhere
+in that file either, plus a "buildings[0]" blind-assignment bug for storey parentage instead of a real
+`IfcRelAggregates` walk — found by reading it, not yet fixed) and re-running Terminal's/Hospital's own
+production extraction pipelines is the honest, named remainder** — not attempted this pass; no
+regression was introduced by leaving it, and no currently-0 metric moved anywhere in the fleet.
+
 ---
 
 # §ACCEPTANCE — the user's own definition of done (2026-08-17, verbatim, checked against §S14.0)
