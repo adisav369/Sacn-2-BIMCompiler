@@ -1735,13 +1735,15 @@ schedule — the schedule itself is measured clean.
 # review, user: "proceed"). Two small, independently-verifiable cleanups — do not combine into one PR.
 
 **Why now:** an independent review of this whole file found the single highest-leverage remaining
-issue is process, not design — `_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/`_tierAuditRegate`/
-`_ogSupportSweep`/`_cjpJudgeParity` (the pre-CPM 11-pass repair chain) is fully bypassed on the live
-path (`_CPM_DISPLAY` defaults true, `§CAP_RESCALE_SKIP`) but was never physically removed — only
-guarded against. That single loose end caused THREE separate incidents in this lane already
-(`§PATHS NOT TO TAKE` #1; `§S13.7`'s near-shipped fix to unreachable code; `§S17`'s full 8-probe
-audit). `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md §STAGE4_RETIREMENT_PROPOSAL` already names this as the
-next step, marked propose-first — this IS that proposal's go-ahead.
+issue is process, not design — `_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/`_tierAuditRegate`
+is fully bypassed on the live path (`_CPM_DISPLAY` defaults true, `§CAP_RESCALE_SKIP`) but was never
+physically removed — only guarded against. That single loose end caused THREE separate incidents in
+this lane already (`§PATHS NOT TO TAKE` #1; `§S13.7`'s near-shipped fix to unreachable code; `§S17`'s
+full 8-probe audit). `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md §STAGE4_RETIREMENT_PROPOSAL` already
+names this as the next step, marked propose-first — this IS that proposal's go-ahead. ⚠ **CORRECTED
+by §S19_RESULTS below:** this brief originally, wrongly, also listed `_ogSupportSweep`/
+`_cjpJudgeParity` as part of the dead chain. They are NOT — `injectGantt()` calls them on a separate,
+live, unconditional path (`time_machine.js:6089-6091`, confirmed by §S19). Kept, not deleted.
 
 **Part A — delete the dead pipeline.** Remove `_twoTierRemap`, `_midairRepair`, and any function ONLY
 reachable through them (confirm via the same reachability method §S14.0 used — grep every call site,
