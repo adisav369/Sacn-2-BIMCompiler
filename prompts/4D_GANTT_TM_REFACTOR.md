@@ -39,6 +39,18 @@ stage below has a numeric acceptance bar and an existing harness.
 Every item below was TRIED or SPECIFICALLY CONSIDERED and REJECTED with a measurement, not a guess.
 Re-attempting one without new evidence is re-walking a dead end this lane already paid for.
 
+**0. Do not call a DB value "corrupt" on cross-derived-file disagreement alone (2026-08-17 user
+correction).** Two derived files disagreeing with each other is not, by itself, proof either one is
+wrong — it could be a legitimate different representation, or one could faithfully match the raw
+IFC source while the other doesn't. §S11's LTU finding holds ONLY because it was SELF-contradictory
+(`meta.db`'s own r-tree, built FROM `element_transforms` at an earlier point, disagreed with that
+SAME file's current `element_transforms` for the same rows — a file disagreeing with its own prior
+derivation is real evidence of in-pipeline mangling, not source characteristic). Before using
+"corrupt": (a) show self-contradiction within one file (strong), or (b) check the raw source IFC
+directly (definitive) — never blanket-blame a DB from cross-file disagreement alone. If a value
+genuinely matches the IFC source, however unusual, the fix belongs in the 4D-generation/topology
+analysis (make it correctly interpret real geometry), not in "correcting" the data.
+
 1. **Do not fix `_twoTierRemap`/`_midairRepair`** (`viewer/time_machine.js:4585-4586`) for ANY live
    symptom. Confirmed twice, by reading (§S13.8) and by measurement (§S14.0): dead code, reachable
    only via `§CPM_DISPLAY_FALLBACK`, which has never fired live in this lane. A live MEP/order bug
