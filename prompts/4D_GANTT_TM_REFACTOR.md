@@ -1580,45 +1580,84 @@ the same log output — that the isolated call matches what the live default pat
 "The function has a bug" and "the function is why the user sees a bug" are different claims and this
 file conflated them once already. Verify reachability, not just behavior.
 
+
+# §S14.0_RESULTS — 2026-08-17. ✅ EXECUTED, verdict NEGATIVE: the scrambling does NOT reproduce on
+# the live path. §S13.7 was an artifact of retired code end to end, and `t1Complete()` is eliminated.
+# Measurement: bim-ootb PR #1421 (`scripts/probe_cpm_display_path.js`).
+
+**Reachability evidence, printed beside the numbers this time** (the §S13.8 guardrail, honoured):
+```
+§CPM_RUN n=63182 nodes=63222 edges={E1:63147,E2host:2830,E2open:936,E3:60846,E4:54183,...} makespanDays=277.7
+§CPM_LIVE_PATH Hospital_meta cpmRunOk=true -> _displayTimeline would return at
+  time_machine.js:4578 (§CPM_DISPLAY on); _twoTier/_midairRepair at :4585-4586 NOT reached.
+  Module=require(viewer/cpm_schedule.js), not a source slice.
+```
+Nothing sliced: `CpmSchedule` is the shipped module, `require`d directly, and its own `§CPM_RUN`
+line is the proof it executed. The probe emits the table twice — RAW (`computeSchedule`, the
+generative engine) and CPM_LIVE (`CpmSchedule.run`'s solution, what the browser plays) — so
+engine-vs-display is one diff, per phase.
+
+**Live result, p50 start day per storey:**
+
+| building | phases with violations | detail |
+|---|---|---|
+| **Hospital** | **none — 0 violations in EVERY phase** | Superstructure 0/7, MEP Rough-in 0/6: Level 1 **27**, then 54, 101, 153, 208, 269, 277 |
+| **Terminal** | Architecture 1/7 **worst 1d**, MEP Final 3/11 worst 8d | Superstructure 0/14, MEP Rough-in 0/8, Substructure 0/0, Finishes 0/0 |
+| **Clinic** | Architecture 1/6 worst 15d, Finishes 1/3 worst 17d | MEP Rough-in 0/5, Superstructure 0/2, Substructure 0/1, MEP Final 0/3 |
+
+§S13.7's fallback table had Hospital MEP Rough-in Level 1 at p50 **348** with a **180-day**
+inversion. Live it is **27** — first, as it should be. Clinic's two flagged rows are both the
+`First Floor` vs `Level 1` duplicate-vocabulary pair (same physical floor, mean z 0.3 vs 0.3,
+§S13.2): ranking two names for one storey by mean z is what creates the "inversion", so it is a
+metric artifact, not a scheduling defect.
+
+**What this settles:**
+1. §S13.7's finding was an artifact of retired code, end to end — not merely mis-attributed.
+2. `cpm_schedule.js`'s E3 per-level Tier-1 gate `t1Complete()` (§S13.8's leading candidate) does
+   NOT produce the signature. **Eliminated by measurement, not by reading** — do not re-open it
+   without a new symptom.
+3. **The live 4D schedule is bottom-up correct per phase on all three buildings tested. No fix is
+   warranted on this axis, and none was made.**
+
+**Where that leaves the user-visible symptom.** "Hanging MEPs" measured live is 9/16,071 floating
+on Clinic (§S13.1) with zero ordering violations here. Nothing measured in this lane now points at
+the schedule ORDER. If a bake still looks wrong, the next place to look is what the movie renders
+from the schedule, not the schedule itself — and per §S13.8's guardrail, whatever probe is used must
+show its own reachability first.
+
 ---
 
-# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
-**S1-S13. Two things genuinely closed, one tool set shipped, and one conclusion RETRACTED — read
-§S13.7's retraction block first.**
+# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close, after §S14.0
+**S1-S14. Read §S13.8 (retraction) then §S14.0_RESULTS (the re-measurement) before §S13.7 — that
+section is retained only as a record of a bug in retired code.**
 
-CLOSED + LIVE: split-pair transform corruption, fleet-wide and now DETECTABLE rather than hand-found
-— `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417) report
-`audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the served OCI
-bytes. CLOSED: Clinic's bake item — "missing ground slabs" was FALSE (the 2,939m² slab-on-grade is
-there and already Substructure/seq1) and "hanging MEPs" is 9/16,071.
+CLOSED + LIVE: split-pair transform corruption, fleet-wide and now DETECTABLE rather than
+hand-found — `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417)
+report `audited=4 corrupt=0 PASS`; Terminal + LTU patches regenerated, gate-verified against the
+served OCI bytes. CLOSED: Clinic's bake item — "missing ground slabs" was FALSE (the 2,939m²
+slab-on-grade is there, already Substructure/seq1) and "hanging MEPs" is 9/16,071 floating.
 
-⛔ RETRACTED: "`_twoTierRemap` is the second live-side cap" (§S13.7). It is NOT reachable live —
-`_CPM_DISPLAY` defaults true (time_machine.js:4519), `_displayTimeline` returns at :4578 via
-`CpmSchedule.run`, and `_twoTierRemap`/`_midairRepair` at :4585-4586 run only in the
-`§CPM_DISPLAY_FALLBACK` branch. `probe_captured_floating.js` measures exactly that dead branch, so
-its POST_REMAP numbers are fallback-only. Its RAW numbers are `computeSchedule` and still stand.
-**Same failure class as §S10/§S11, one axis over: that was probe-DB vs live-DB, this is probe-PATH vs
-live-PATH. Before attributing a live symptom to a mechanism, read its call site and prove it runs.**
+⛔ RETRACTED then RE-MEASURED: "_twoTierRemap is a second live-side cap" (§S13.7) was measured on
+code `_displayTimeline` only reaches in its `§CPM_DISPLAY_FALLBACK` branch. §S14.0 put the same
+per-phase, per-storey table on the confirmed-live `CpmSchedule.run` path (bim-ootb PR #1421,
+reachability logged as `§CPM_LIVE_PATH … cpmRunOk=true`) and **it does not reproduce**: Hospital 0
+violations in every phase (MEP Rough-in Level 1 p50 **27**, not 348), Terminal Superstructure 0/14
+and MEP Rough-in 0/8, Clinic MEP Rough-in 0/5. `t1Complete()` is ELIMINATED by measurement. **No
+live schedule-ordering defect remains on this axis and no fix was made.**
 
-**NEXT TASK: measure the LIVE display author, `CpmSchedule.run`** (`viewer/cpm_schedule.js`), for the
-same storey/phase ordering question §STOREY_PHASE_ORDER asks — and audit which other harnesses in
-`scripts/probe_*.js` reproduce dead branches, because this one did and nobody had checked. Leading
-candidate, named but NOT yet measured: `t1Complete()` (E3's per-level Tier-1→Tier-2 gate,
-`cpm_schedule.js:226-260`) — every level's MEP Rough-in group is gated behind ALL of that SAME
-level's Tier-1 phases (Sub+Super+Arch) via one shared milestone, and the ground floor carries the
-most Tier-1 phases, so it's the most likely to gate its own MEP the latest.
+**Standing guardrail (§S13.8, earned twice now):** any probe that isolates a function — slices
+source, sandboxes it, calls it out of context — MUST print, in the same log, that its call matches
+what the live default path executes, before its findings are written up as a root cause. "The
+function has a bug" and "the function is why the user sees a bug" are different claims. §S10/§S11
+was probe-DB vs live-DB; §S13.7 was probe-PATH vs live-PATH.
 
-**MECHANICAL gate, not a judgment call — this is the actual fix for §S13.7's failure:** any script
-written for this task MUST print `§CPM_DISPLAY on` (or an equivalent proof the live branch ran) in
-the SAME run, BEFORE the measurement line, and that adjacency must be pasted verbatim into this
-file's results section. A measurement without that line immediately preceding it in the SAME log is
-INVALID — discard it and rerun, do not reason about whether the function is "probably" reachable.
-Check `ListAgents`/this file's dated sections before starting — `bim-compiler-be` may already be
-working this task; do not duplicate.
-
-Also open, unchanged: (1) ⛔ needs a go — storey-band merge is INFERENCE with today's data;
-recommended fix is extraction-side (carry `elements_meta.building` through the split into meta.db;
-extract `IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. (2) `normalize_storey.py`
-invents 5 storeys on Terminal against its own "never invents a level" docstring (673 elements),
-§S13.4 — reported not shipped. (3) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a
-standing audit column. (4) S8 playback-flicker stays PARKED per §PRIORITY.**
+**NEXT, in priority order:** (1) if a bake still looks wrong, look at what the movie RENDERS from
+the schedule, not the schedule — the order is now measured clean live; (2) ⛔ needs a go —
+storey-band merge is INFERENCE with today's data, recommended fix is extraction-side (carry
+`elements_meta.building` through the split into meta.db; extract `IfcBuildingStorey.Elevation` +
+IfcBuilding parentage), §S13.5 — note §S14.0 shows this vocabulary split is also what makes Clinic's
+only two live "violations" appear, so fixing it cleans the metric too; (3) audit which other
+`scripts/probe_*.js` harnesses reproduce dead branches — `probe_captured_floating.js` did and nobody
+had checked; (4) `normalize_storey.py` invents 5 storeys on Terminal against its own docstring
+(§S13.4, reported not shipped); (5) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a
+standing audit column; (6) S8 playback-flicker stays PARKED per §PRIORITY.**
