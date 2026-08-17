@@ -1488,10 +1488,71 @@ the end of a long session is exactly how a deliberate behaviour gets undone. **N
 confirm the straggler mechanism against `t1EndZ` per zone, then fix, with the table above as the
 pass/fail gate — Superstructure must stay 0/7 and MEP Rough-in must return to 0/6.
 
+## §S13.8 ⚠ RETRACTED (2026-08-17, Fable review) — §S13.7 localised a bug in unreachable code, not
+## the live path. HALT any work fixing `_twoTierRemap`/`_midairRepair`. Do not merge `wt-tier-remap`.
+
+**§S13.7's own measurement method proves this.** `STOREY_PHASE_TABLE=1` in
+`scripts/probe_captured_floating.js` slices `_twoTierRemap` straight out of `time_machine.js`'s
+source text and runs it standalone inside a sandboxed `vm.runInContext` (line ~629:
+`this.__remap = _twoTierRemap`). That measures the function in isolation — it says nothing about
+whether the real app ever calls it.
+
+**It doesn't, on the path every symptom in this whole file has been tested on.** Grepped the entire
+repo: `_twoTierRemap(` has exactly ONE call site,
+`time_machine.js:4585` — inside `_displayTimeline()`'s `else` branch, reached ONLY when
+`_CPM_DISPLAY && CpmSchedule.run()` (the `§CPM_DISPLAY` block, `time_machine.js:4519-4589`) either
+is disabled (`?cpm4d=0`) or fails (`r.ok` falsy, which logs `§CPM_DISPLAY_FALLBACK`). Neither
+condition has held anywhere in this lane: `§CPM_DISPLAY on` has fired successfully, live, for both
+Terminal and Hospital, repeatedly, since S1 — see the `§CPM_RUN`/`§CPM_DISPLAY on` lines already
+quoted earlier in this file (§S5_RESULTS's live-deploy verification, the live console dump this
+lane's every stagger probe is measured from). `_midairRepair` sits on the identical unreachable
+line (`4586`) — same verdict. `§TIER_SERIAL` (the witness `witness_tier_serial_display.js`) is part
+of the SAME legacy two-tier chain per `probe_captured_floating.js`'s own comment
+(`"_twoTierRemap + _midairRepair, §TIER_SERIAL 420d on..."`) — also dead on this path.
+
+**What this means for §S13.7's numbers:** they are real measurements of a real bug — in a function
+that has never executed on anything the user has looked at in this entire session. Fixing it,
+including the in-progress `wt-tier-remap` work (narrowing the Tier-2 barrier from per-zone toward
+per-element), changes nothing observable in the browser. **Stop that branch. Do not merge it.**
+
+**Where the live MEP-scrambling bug actually has to be:** inside `CpmSchedule.run()` itself
+(`cpm_schedule.js`) — the only code that runs on the path `§CPM_DISPLAY on` confirms is live. Two
+concrete candidates, both already-read code from earlier in this file's own investigation:
+E3's per-level Tier-1→Tier-2 gate (`t1Complete()`, `cpm_schedule.js:226-260` — EVERY Tier-2 group at
+a level, including MEP Rough-in, is gated FS behind ALL Tier-1 phases at that SAME level finishing,
+via one shared `t1Complete(L)` milestone) and E4's band-to-band chaining (S1's own change,
+`cpm_schedule.js:263-289` — phase-specific, so it should NOT cross-contaminate MEP with
+Superstructure, but has not been specifically checked for the ground-floor case named here).
+E3's per-level Tier-1 gate is the more likely mechanism to produce EXACTLY this signature (ground
+floor carries the most Tier-1 phases — Sub+Super+Arch — so its `t1Complete` milestone is fed by the
+most/slowest elements, gating MEP Rough-in behind all of them) — same shape hypothesis §S13.7 had
+for `_twoTierRemap`, just aimed at the actual live function this time.
+
+**§S14 — MEASURE the live path this time, not a slice of it.** Before touching any code: reproduce
+the Hospital/Clinic MEP-scrambling table from §S13.7 using a probe that provably exercises
+`CpmSchedule.run()` — either a probe that imports `cpm_schedule.js` directly and calls `run()` on
+real element data (no sandboxed slicing of `time_machine.js`), or a live/headless run whose log
+shows `§CPM_DISPLAY on` firing before the measurement is taken. **Acceptance for §S14.0 (before any
+fix):** the same per-phase, per-storey p50 table §S13.7 produced, reproduced on the CONFIRMED-live
+`CpmSchedule.run()` path, with the log evidence proving which path ran quoted in this file. If the
+scrambling does NOT reproduce on the live path, §S13.7's whole finding was an artifact of testing
+retired code — say so plainly and go looking elsewhere (start from `t1Complete()`'s per-level
+gating, above). If it DOES reproduce, THEN localise the mechanism inside `cpm_schedule.js` (not
+`time_machine.js`) and fix there, with the same Superstructure-0/7 / MEP-Rough-in-0/6 pass/fail gate
+§S13.7 already defined — that gate is still valid, only the code location changes.
+
+**Standing guardrail this failure earns, beyond this one bug:** any probe or diagnostic in this lane
+that isolates a function (slices source, calls it out of context, sandboxes it) MUST also show — in
+the same log output — that the isolated call matches what the live default path actually executes
+(same gate condition, same success branch), before its findings get written up as a root cause.
+"The function has a bug" and "the function is why the user sees a bug" are different claims and this
+file conflated them once already. Verify reachability, not just behavior.
+
 ---
 
-# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close
-**S1-S13. Two things closed and one root cause localised.**
+# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close, CORRECTED same evening (§S13.8)
+**S1-S13. Two things closed, one localisation RETRACTED and re-aimed. READ §S13.8 BEFORE §S13.7 —
+§S13.7's own numbers are real, its conclusion about WHERE to fix is wrong.**
 
 CLOSED: split-pair transform corruption, fleet-wide and now DETECTABLE rather than hand-found —
 `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417) report
@@ -1500,23 +1561,35 @@ bytes, live. CLOSED: Clinic's bake item — "missing ground slabs" was FALSE (th
 slab-on-grade is there and already Substructure/seq1; the old note counted only the Superstructure
 bucket) and "hanging MEPs" is 9/16,071 floating.
 
-**NEXT TASK, fully localised (§S13.7, PR #1420): `_twoTierRemap` scrambles MEP while leaving
-structure untouched.** Per-phase, per-storey p50 start on Hospital: Superstructure 0/7 violations
-RAW and 0/7 after the remap; MEP Rough-in 0/6 worst 0d RAW → 1/6 worst 180d after, with Level 1
-going 51 → 348 (+297 days) while Level 2 goes 87 → 168. Clinic reproduces it (MEP Rough-in 0/5 → 2/5,
-86d). The generative schedule is bottom-up correct; the display remap is the second live-side cap and
-it survives a clean DB. Suspected mechanism, NOT yet measured: the Tier-2 barrier clamps every
-Tier-2 element in a zone to `t1EndZ[z]` = the latest end of ANY Tier-1 element there, so one long
-Tier-1 straggler pushes that whole floor's MEP behind it — and the ground floor has the longest
-Tier-1 tail (Sub + Super + Arch all in its zone). Confirm that first, then fix; gate =
-`STOREY_PHASE_TABLE=1` (Superstructure stays 0/7, MEP Rough-in returns to 0/6). Do NOT compensate in
-the storey ladder, and read the §TIER2_* rulings in `_twoTierRemap` before touching it.
+**⚠ DO NOT resume or merge `/tmp/wt-tier-remap` (branch `fix/tier-remap-storey-order`).** It edits
+`_twoTierRemap`/`_midairRepair` — confirmed by direct grep to have exactly one call site
+(`time_machine.js:4585`), reachable ONLY when the live CPM engine is off or fails. It has not been
+off or failed anywhere in this lane; `§CPM_DISPLAY on` fires successfully, live, on every Terminal
+and Hospital run this whole session. That branch fixes code nothing calls. Full evidence: §S13.8.
 
-Also open: (1) ⛔ needs a go — storey-band merge is INFERENCE with today's data; recommended fix is
-extraction-side (carry `elements_meta.building` through the split into meta.db; extract
-`IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. Real but second-order (28-53 days
-engine-side on Clinic; LTU medians coinciding at 0.00m). (2) `normalize_storey.py` invents 5 storeys
-on Terminal against its own "never invents a level" docstring (673 elements); fix measured, does NOT
-improve the schedule — reported not shipped, §S13.4. (3) Terminal's 6 bbox-SIZE mismatches vs
-extracted (≤0.129m), now a standing audit column. (4) S8 playback-flicker stays PARKED per §PRIORITY.
-Read §S13.7 → §S13 → §S12; every harness is named in-file.**
+**NEXT TASK — §S14 (replaces the old §S13.7 "next task"): find the SAME MEP-scrambling bug inside
+`CpmSchedule.run()` (`cpm_schedule.js`), because that's the code that actually runs.** §S13.7's
+numbers are real and worth keeping as the target signature (Hospital MEP Rough-in Level 1 p50
+51→348d, Superstructure untouched 0/7 both sides; Clinic reproduces at 86d) — they just describe a
+function that was never live. First step is not fixing anything: reproduce that same table via a
+probe that provably exercises `CpmSchedule.run()` (no sandboxed slicing — see §S14 acceptance in
+§S13.8). Leading candidate once reproduced: `cpm_schedule.js`'s E3 per-level Tier-1→Tier-2 gate
+(`t1Complete()`, lines 226-260) — every level's MEP Rough-in group is gated behind ALL of that
+SAME level's Tier-1 phases finishing via one shared milestone, and the ground floor carries the most
+Tier-1 phases (Sub+Super+Arch), so it's the most likely to gate its own MEP the latest. Same
+pass/fail gate as before: Superstructure stays 0/7, MEP Rough-in returns to 0/6
+(`STOREY_PHASE_TABLE=1`, but measured through the live path this time, not the sandbox).
+
+**Standing guardrail (§S13.8):** before trusting ANY probe's root-cause claim in this lane again,
+confirm in the SAME log output that the code path it measured is the one the live app actually
+runs — not just that the isolated function has the claimed behavior.
+
+Also open, unaffected by this correction: (1) ⛔ needs a go — storey-band merge is INFERENCE with
+today's data; recommended fix is extraction-side (carry `elements_meta.building` through the split
+into meta.db; extract `IfcBuildingStorey.Elevation` + IfcBuilding parentage), §S13.5. Real but
+second-order (28-53 days engine-side on Clinic; LTU medians coinciding at 0.00m). (2)
+`normalize_storey.py` invents 5 storeys on Terminal against its own "never invents a level"
+docstring (673 elements); fix measured, does NOT improve the schedule — reported not shipped,
+§S13.4. (3) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), now a standing audit column.
+(4) S8 playback-flicker stays PARKED per §PRIORITY. Read §S13.8 → §S13.7 → §S13 → §S12; every
+harness is named in-file.**
