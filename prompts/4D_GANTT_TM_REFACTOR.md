@@ -1669,9 +1669,118 @@ show its own reachability first.
 
 ---
 
-# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close, after §S14.0
-**S1-S14. Read §S13.8 (retraction) then §S14.0_RESULTS (the re-measurement) before §S13.7 — that
-section is retained only as a record of a bug in retired code.**
+# §S15 — the 9/72 residual same-start cluster, INVESTIGATED (2026-08-17). No fix warranted; folds
+# into two already-diagnosed, already-parked causes. Measurement: bim-ootb PR #1422 rerun of
+# `probe_gantt_stagger.js` (`scripts/probe_gantt_stagger.js`, live viewer) + `audit_storey_ladder.js`.
+
+**Fresh run today** (numbers move slightly stage to stage, as expected): Terminal 10/73 tasks share
+start day 4 (was 9/72 at S6); Hospital 4/36 share day 10 + 3/36 share day 12 (was 3/35 at S6). Same
+shape, not a regression — investigated below.
+
+**Terminal's cluster is 100% the storey-ladder vocabulary split (§S13.5).** All 10 same-day tasks —
+`Architecture_Aras_Jalan`, `Architecture_Aras_Kedai`, `Architecture_GROUND_FLOOR_LEVEL`,
+`Architecture_Level_Kedai`, `MEP_Final_GROUND_FLOOR_LEVEL`, `MEP_Final_Level_Kedai`,
+`MEP_Rough_in_GROUND_FLOOR_LEVEL`, `Superstructure_Aras_Kedai`, `Superstructure_Aras_Tanah`,
+`Superstructure_Ground_Lev` — map to storeys `audit_storey_ladder.js` measures at median z 0.63m to
+3.00m: six different NAMES (`GROUND FLOOR LEVEL`, `Aras Kedai`, `Aras Jalan`, `Ground Lev`,
+`Level Kedai`, `Aras Tanah`) for what the ladder audit already flags as overlapping bands (gaps
+0.17m-0.34m between consecutive pairs — well inside one physical floor's thickness). M1's own rule
+(§MODEL) treats each storey NAME as an independent parallel zone — by design, levels inside one band
+are never chained to each other (`Kedai ∥ main hall`). Six names for one ground floor means six
+independent zone-chains with nothing stopping them from becoming schedule-ready on the same day, so
+this is the SAME symptom §S14.0 already predicted: *"this vocabulary split is also what makes
+Clinic's only two live 'violations' appear, so fixing it cleans the metric too."* No new defect —
+it is §S13.5's already-blocked storey-band merge, showing up in a second metric. **No action beyond
+what §S13.5 already asks for (the extraction-side fix, blocked on a go).**
+
+**Hospital's cluster is NOT the ladder** — `audit_storey_ladder.js` measures Hospital's ladder CLEAN
+(0 overlapping pairs, §S13.3). The clustered tasks (`Architecture_Level_1`, `Substructure_Level_2`,
+`Superstructure_Level_1`, `Superstructure_Level_2` at day 10; `Finishes_Level_1`,
+`MEP_Final_Level_1`, `MEP_Rough_in_Level_1` at day 12) are large groups (n=119 to n=5,224), not
+single stragglers, and their SAME phase/storey pairs show ZERO order violations in §S14.0's
+per-phase table measured this same week (Hospital: Superstructure 0/7, MEP Rough-in 0/6, live
+`CpmSchedule.run` path). A task bar's start (M2, the Tukey-envelope of ALL its members' true times)
+is legitimately early when a handful of that phase's elements have their own precedence satisfied
+early, even while the phase's work mass continues for weeks — that's what a 305-day span
+(`Architecture_Level_1` s=10 e=315, n=2026) on a bar means. Two independent phases/storeys can
+correctly land their EARLIEST member on the same day without any ordering defect between them.
+**Trying to pull these apart is re-spacing a display-authored task window — §PATHS NOT TO TAKE #3,
+already tried twice, already rejected (manufactured 4,712 violations / broke 537 contact pairs).
+Not re-attempted here.**
+
+**Verdict:** item (1) from the prior RESUME is CLOSED as investigated, not as fixed — both
+components trace to causes this file already named and already parked (§S13.5's blocked merge;
+§PATHS NOT TO TAKE #3's dead end). The ⚠ "MOSTLY, not zero" line in §ACCEPTANCE stays exactly as
+scored; nothing here changes it.
+
+# §S16 — fresh activation-memory measurement (2026-08-17), replaces the stale "+390MB" figure.
+# Measurement: bim-ootb PR #1422, new `scripts/probe_activation_memory.js` (Puppeteer
+# `page.metrics()`, real viewer, real Time Machine activation — not a synthetic allocation count).
+
+The old figure was pre-#1399 and had never been re-measured against S1/S4/S6/S9-S13's changes to
+the same activation path (§MODEL M4 note). Fresh numbers, JS heap only, baseline → immediately
+post-`§TIME_MACHINE ON` → +20s settle:
+
+```
+§ACT_MEM_BASELINE        Hospital_extracted JSHeapUsedMB=63.5
+§ACT_MEM_POST_ACTIVATION Hospital_extracted activationMs=19382 JSHeapUsedMB=235.8 deltaFromBaselineMB=172.3
+§ACT_MEM_SETTLED         Hospital_extracted JSHeapUsedMB=239.5 deltaFromBaselineMB=176.0 deltaFromPostActivationMB=3.7
+
+§ACT_MEM_BASELINE        Terminal_extracted JSHeapUsedMB=72.8
+§ACT_MEM_POST_ACTIVATION Terminal_extracted activationMs=15837 JSHeapUsedMB=166.5 deltaFromBaselineMB=93.7
+§ACT_MEM_SETTLED         Terminal_extracted JSHeapUsedMB=111.9 deltaFromBaselineMB=39.0 deltaFromPostActivationMB=-54.6
+```
+
+**Current cost is +39MB to +176MB, not +390MB.** Hospital-63k (the building the old figure and S4's
+activation-timing work were both measured against) settles at +176.0MB — well under half the stale
+figure. Terminal's settled heap actually DROPS 54.6MB after peaking (standard V8 GC reclaiming
+during the 20s settle window), landing at +39.0MB net — the peak (+93.7MB) is the more honest
+"cost" number for a memory budget, since GC timing is non-deterministic. Activation wall-clock
+(19.4s Hospital, 15.8s Terminal) is consistent with S4's recorded 20.8-23.2s floor, not a new
+regression.
+
+**No optimization claim follows from this** — item (2) from the prior RESUME asked for a fresh
+number before any optimization work, not for optimization itself. None was warranted or attempted;
+the number is simply no longer stale.
+
+# §S17 — audit of other `probe_*.js` harnesses for the same dead-branch class §S13.7 fell into
+# (2026-08-17, item 5 of the prior RESUME). Measurement: read every `scripts/probe_*.js` in
+# bim-ootb for slice-and-call patterns (`new Function(...)`, `vm.runInContext`) against functions
+# that are gated behind a live/fallback branch, not called unconditionally.
+
+8 probes exist. 6 use source-slicing (`new Function`/`vm`) for SOMETHING — but only one slices a
+branch-gated function without proving which branch is live:
+
+| probe | slices | branch-gated? | verdict |
+|---|---|---|---|
+| `probe_cpm_schedule.js` | (comment only, no call) | — | clean |
+| `probe_cpm_display_path.js` | nothing — `require`s the shipped module directly | n/a, this IS the reachability probe | clean, is the fix |
+| `probe_proxy_carrier_classes.js` | `_contactGraph` | NO — pure geometry, every call site uses it identically, no live/fallback split | clean |
+| `probe_task_collision.js`, `probe_zone_edges.js` | `RATES`/`SEQUENCE_RULES` constants only | NO — config data, not branched code | clean |
+| `probe_gantt_drag_outliers.js`, `probe_gantt_stagger.js` | nothing sliced | n/a | clean |
+| **`probe_captured_floating.js`** | **`_twoTierRemap` + `_midairRepair` (EXP6 / `STOREY_PHASE_TABLE` mode)** | **YES — reachable only via `_displayTimeline`'s `§CPM_DISPLAY_FALLBACK` branch, never live (§S13.8/§S14.0)** | **was the landmine — FIXED this session** |
+
+**Fixed (bim-ootb PR #1422):** EXP6's header comment called this "BROWSER-FAITHFUL" — false since
+§S13.8/§S14.0 retracted exactly that claim. Added an inline retraction note plus a runtime
+`§STOREY_PHASE_TABLE_REACHABILITY_WARNING` log line that fires whenever `STOREY_PHASE_TABLE=1` runs,
+so the retraction is visible in the LOG a future session actually reads (per this project's own Log
+Mandate), not only in a source comment that's easy to skip past. Verified: reran
+`STOREY_PHASE_TABLE=1 probe_captured_floating.js` end to end, confirmed the warning line prints
+before the (still-present, still-retracted) table output. No behavior change — detection-only, the
+underlying EXP6 code is untouched since some other section of this file may still use its other
+outputs.
+
+**No other probe needed a fix.** This audit is a point-in-time result, not a standing gate — a new
+probe added later should be checked against the same question (does it slice a function gated behind
+a live/fallback branch?) before its findings are trusted.
+
+---
+
+# 🏁 RESUME (one-liner for a fresh session) — 2026-08-17 close, after §S15-§S17
+**S1-S17. Read §S13.8 (retraction) then §S14.0_RESULTS (the re-measurement) before §S13.7 — that
+section is retained only as a record of a bug in retired code. §S15-§S17 close out three of the four
+prior NEXT items (same-start cluster investigated/no-fix, memory re-measured, probe audit) — one
+fix shipped (bim-ootb PR #1422, the STOREY_PHASE_TABLE landmine warning).**
 
 CLOSED + LIVE: split-pair transform corruption, fleet-wide and now DETECTABLE rather than
 hand-found — `scripts/audit_split_pairs.js` + `scripts/gen_meta_transform_patch.js` (§S12, PR #1417)
@@ -1696,19 +1805,28 @@ was probe-DB vs live-DB; §S13.7 was probe-PATH vs live-PATH.
 **Read `§PATHS NOT TO TAKE` (right after §LOCKED, top of this file) before proposing any fix below —
 8 measured dead ends, do not re-attempt without new evidence.**
 
-**NEXT, in priority order:** (1) the 9/72 residual same-start cluster from S6 — root cause not yet
-investigated, not fixed; (2) memory during timeline/CPM generation — the old +390MB figure is STALE
-(pre-S1/S4/S6), needs a fresh measurement before any optimization claim; (3) ⛔ needs a go —
+**§S15-§S17 (2026-08-17) closed out items 1, 2, and 5 of the prior NEXT list:**
+1. ✅ INVESTIGATED, no fix warranted — the same-start cluster (now 10/73 Terminal, 4+3/36 Hospital)
+   is Terminal's already-blocked storey-ladder vocabulary split (§S13.5) plus Hospital's legitimate
+   independent-zone parallelism (dead end #3 territory if "fixed") — see §S15.
+2. ✅ RE-MEASURED — activation heap is +39MB to +176MB now, not the stale +390MB — see §S16.
+5. ✅ AUDITED + FIXED — `probe_captured_floating.js`'s `STOREY_PHASE_TABLE` mode was a second
+   instance of the §S13.7 dead-branch class; now carries a retraction comment + runtime warning
+   log line (bim-ootb PR #1422) — see §S17.
+
+**NEXT, remaining (unchanged, none newly actionable this session):** (3) ⛔ still needs a go —
 storey-band merge is INFERENCE with today's data, recommended fix is extraction-side (carry
 `elements_meta.building` through the split into meta.db; extract `IfcBuildingStorey.Elevation` +
-IfcBuilding parentage), §S13.5 — §S14.0 shows this vocabulary split is also what makes Clinic's only
-two live "violations" appear, so fixing it cleans the metric too; (4) if a bake still looks wrong
-despite all the above being green, look at what the movie RENDERS from the schedule, not the
-schedule — the order is measured clean live; (5) audit which other `scripts/probe_*.js` harnesses
-reproduce dead branches — `probe_captured_floating.js` did and nobody had checked; (6)
-`normalize_storey.py` invents 5 storeys on Terminal against its own docstring (§S13.4, reported not
-shipped); (7) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a standing audit column; (8)
-S8 playback-flicker stays PARKED per §PRIORITY.**
+IfcBuilding parentage), §S13.5 — this is now the root of BOTH the Clinic ladder violations (§S13.2)
+AND Terminal's same-start cluster share (§S15), so it is the one remaining item that would clean up
+two metrics at once, if/when a go is given; (4) if a bake still looks wrong despite everything above
+being green, look at what the movie RENDERS from the schedule, not the schedule — the order is
+measured clean live (still conditional on a live symptom report — nothing to check without one);
+(6) `normalize_storey.py` invents 5 storeys on Terminal against its own docstring (§S13.4) — reported
+not shipped, stays that way, no new evidence changes the verdict; (7) Terminal's 6 bbox-SIZE
+mismatches vs extracted (≤0.129m) — unchanged, still a standing audit column, explicitly out of scope
+for the transform-patch pass by design (§S12), not a defect; (8) S8 playback-flicker stays PARKED per
+§PRIORITY (explicit user ruling, not reopened).**
 
 ---
 
@@ -1722,13 +1840,14 @@ checkable criteria and scored against everything measured in this file:
 | Criterion | Status | Evidence |
 |---|---|---|
 | Properly CPM-staggered bars | ✅ DONE | S6 (#1406): Terminal roof spread 0.5d→11.1d, `§CREW_FEASIBILITY` 6/7 fail→0/7 pass |
-| Not all horizontal-stacked (same start day) | ⚠ MOSTLY, not zero | same-start cluster 20/72→9/72 post-S6 — real, not complete |
+| Not all horizontal-stacked (same start day) | ⚠ MOSTLY, not zero — explained | same-start cluster 20/72→9/72 post-S6, now investigated (§S15): Terminal's share is §S13.5's ladder split, Hospital's is legitimate independent-zone parallelism with 0 measured order violations |
 | Not bunched to the start of bars | ✅ DONE | Tukey-envelope bars (S2) + S6 (the tail-compression was a resource bug, not a display bug, and S6 fixed the cause) |
 | Bars/needle/movie not fighting each other (one source of truth) | ✅ DONE for schedule order | `§CPM_DISPLAY_ONE_TRUTH` invariant + `midair=0` hard gate every stage; §S10/S11 closed the worst violation (live viewer reading a different DB than every probe); §S14.0 confirms the CPM engine itself produces bottom-up-correct order on all 3 buildings tested — `t1Complete()` eliminated, no live scheduling defect remains |
 | Needle touches a bar → visible, logical, true | ✅ NUMERICALLY PROVEN | `midair=0` on every building, judge-parity `floating=0`, §-logged per this project's no-screenshot rule |
 
-**What's left open against this checklist:** the 9/72 residual same-start cluster (item 2), and the
-storey-ladder vocabulary merge (§S13.5, blocked on a data-provenance go/no-go) which is now the
-ONLY thing left producing an ordering complaint anywhere in the live fleet. If a bake still looks
-wrong despite this checklist being green, §S14.0's own conclusion applies: look at what the movie
-RENDERS from the schedule next, not the schedule — the schedule itself is measured clean.
+**What's left open against this checklist:** the same-start cluster is now explained, not merely
+observed (§S15) — its only remaining lever is the storey-ladder vocabulary merge (§S13.5, blocked on
+a data-provenance go/no-go), which is the ONE thing left that could still produce an ordering
+complaint anywhere in the live fleet. If a bake still looks wrong despite this checklist being green,
+§S14.0's own conclusion applies: look at what the movie RENDERS from the schedule next, not the
+schedule — the schedule itself is measured clean.
