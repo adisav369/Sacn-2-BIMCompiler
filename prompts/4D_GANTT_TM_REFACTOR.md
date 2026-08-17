@@ -1661,3 +1661,26 @@ only two live "violations" appear, so fixing it cleans the metric too; (3) audit
 had checked; (4) `normalize_storey.py` invents 5 storeys on Terminal against its own docstring
 (§S13.4, reported not shipped); (5) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a
 standing audit column; (6) S8 playback-flicker stays PARKED per §PRIORITY.**
+
+---
+
+# §ACCEPTANCE — the user's own definition of done (2026-08-17, verbatim, checked against §S14.0)
+
+*"4D gantt schedule properly CPM staggered bars, not all horizontal stacked, not bunched to start
+of bars, not fight each other when proper follow the gantt as source of truth is obvious - do when
+needle touches each bar so user can see logically what is happening as truth."* Translated into
+checkable criteria and scored against everything measured in this file:
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| Properly CPM-staggered bars | ✅ DONE | S6 (#1406): Terminal roof spread 0.5d→11.1d, `§CREW_FEASIBILITY` 6/7 fail→0/7 pass |
+| Not all horizontal-stacked (same start day) | ⚠ MOSTLY, not zero | same-start cluster 20/72→9/72 post-S6 — real, not complete |
+| Not bunched to the start of bars | ✅ DONE | Tukey-envelope bars (S2) + S6 (the tail-compression was a resource bug, not a display bug, and S6 fixed the cause) |
+| Bars/needle/movie not fighting each other (one source of truth) | ✅ DONE for schedule order | `§CPM_DISPLAY_ONE_TRUTH` invariant + `midair=0` hard gate every stage; §S10/S11 closed the worst violation (live viewer reading a different DB than every probe); §S14.0 confirms the CPM engine itself produces bottom-up-correct order on all 3 buildings tested — `t1Complete()` eliminated, no live scheduling defect remains |
+| Needle touches a bar → visible, logical, true | ✅ NUMERICALLY PROVEN | `midair=0` on every building, judge-parity `floating=0`, §-logged per this project's no-screenshot rule |
+
+**What's left open against this checklist:** the 9/72 residual same-start cluster (item 2), and the
+storey-ladder vocabulary merge (§S13.5, blocked on a data-provenance go/no-go) which is now the
+ONLY thing left producing an ordering complaint anywhere in the live fleet. If a bake still looks
+wrong despite this checklist being green, §S14.0's own conclusion applies: look at what the movie
+RENDERS from the schedule next, not the schedule — the schedule itself is measured clean.
