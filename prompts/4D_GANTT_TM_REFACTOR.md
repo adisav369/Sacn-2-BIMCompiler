@@ -2696,3 +2696,61 @@ whether this is actually costing HHS anything is unconfirmed — named, not diag
 **Your job: verify the state of this file's claims, not extend it.** Confirm the shipped stages
 hold on a fresh pull (spot-check a PR or two, re-run a fleet probe), and only pick up new
 work — including HHS — if asked.
+
+---
+
+# §S23 — LANE PROCESS HARDENING (2026-08-17, meta-review finding — PROPOSED, NOT GO'D, do not
+# start without an explicit go). Not a schedule/rendering fix. The user asked, after S1-S22, "what
+# is missing or lacking in this lane's design that causes constant session drift — is it the
+# language or framing?" This is that review's answer, turned into a spec, so it doesn't evaporate.
+
+**Verdict the review reached:** drift here is mostly ARCHITECTURAL (a real 6-layer pipeline: raw
+engine → `CpmSchedule.run` E1-E5 → task-window authoring on a *separate real-calendar clock* →
+`kernel_ops` physics timestamps on the TM's *own zero-anchored clock* → render/visibility/xray/DLOD
+→ Gantt-drag edit commit — §S22's bug was those two clocks colliding), not sloppy prose — this
+file's discipline (dated sections, `§`-log evidence, retractions kept verbatim, `§PATHS NOT TO
+TAKE`) is already tight. But one language-level lever DID measurably work: specs that bake an
+explicit "if X doesn't hold, STOP — don't force" clause into the SAME paragraph as the ask (§S22's
+"if none of the 3 candidates reproduce, report, don't force a fix onto the wrong one") prevented the
+next drift instance; specs without one (§S13.6, before that discipline existed) didn't. Three parts,
+independently shippable, none touch schedule/rendering code:
+
+**Part A — a one-page layer map.** A single table near the top of this file (after §LOCKED, before
+§PATHS NOT TO TAKE) naming, in pipeline order: engine name, file:function, its clock/epoch, and
+which stage(s) touched it. Extract this from what S1-S22 already measured — do not re-derive or
+guess anything new. Purpose: a fresh session should be able to place a new symptom on this map in
+one read, instead of re-discovering (as §S9→S11 and §S13.6→S13.8 both did, the hard way) that the
+bug is one layer away from where it was first suspected. Include the near-synonym trap explicitly:
+`ScheduleGate` vs `ScheduleAuthor`, `computeSchedule` vs `CpmSchedule.run`, `_displayTimeline` vs
+the retired `_twoTierRemap`/`displayRemap` — name which is live, which is retired, in one line each.
+
+**Part B — retrofit the STOP-AND-REPORT escape hatch into §DISPATCH itself.** The current rule 2
+list (floating>0, GATE_CHECK>0, new cycle class, unpredicted witness-baseline update, missing
+constant) is enumerated, which invites "my situation isn't literally on this list, so proceed" —
+exactly the gap §S13.6 fell through (no clause anticipated "the mechanism doesn't run on the live
+path"; §S19 Part A anticipated "a witness baseline needs an update" but not "the witness has no
+subject left"). Add ONE principle-based catch-all line: *"if a measurement doesn't match what the
+task assumed going in, STOP and report the actual finding — do not reframe the hypothesis to fit
+what's convenient to ship."* Then audit whether every stage spec from here on states its own
+STOP-AND-REPORT condition inline (§S22 did; earlier stages didn't) — make that inline statement a
+required part of any new stage spec, not something a session has to remember to check three sections
+back in §DISPATCH.
+
+**Part C — name the concurrent-session hazard on this file's own RESUME/HANDOFF block.** S1-S22
+landed in one calendar day from what were evidently concurrent sessions (`087c15990 Merge
+origin/fable/meshdb-livewire (concurrent session sync)`). The 🏁 block is this lane's single
+"read this first" pointer, appended to by whichever session finishes last — a session that starts
+reading it while another session is mid-write gets a stale picture, through no fault of the prose.
+Add one line at the top of every 🏁 block: `git log -3 --oneline -- prompts/4D_GANTT_TM_REFACTOR.md`
++ confirm no other worktree has this file's branch checked out and dirty, before treating the block
+below it as current — mirrors CLAUDE.md's existing "Concurrent branches" rule, stated as a reflex
+exactly where the race actually bites in this lane, instead of three files away.
+
+**Acceptance:** all three parts are documentation-only — no code, no witness, no fleet-probe rerun
+needed. "Done" is the map existing and being accurate to what S1-S22 already measured, the
+catch-all clause being added to §DISPATCH, and one worked example of the inline-STOP-AND-REPORT
+convention on the NEXT stage spec written after this one.
+
+**STOP-AND-REPORT if:** Part A's layer map can't be extracted cleanly from what's already measured
+in S1-S22 (i.e. it would require guessing at a layer nobody has actually profiled yet) — report
+which layer is unclear, don't invent its behavior to complete the table.
