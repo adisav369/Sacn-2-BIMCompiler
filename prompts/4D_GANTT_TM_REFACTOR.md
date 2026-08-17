@@ -2274,7 +2274,166 @@ worsened by this stage's work (they're non-functional either way, Part B cannot 
 already-thrown exception "more broken"). Not named in §S19_RESULTS's table or this stage's brief;
 left unfixed, flagged here for whoever next touches this class of landmine.
 
-## Part B — not started this pass. See §S20 above for scope; resume there.
+## Part B — ✅ SHIPPED + GATE-VERIFIED, bim-ootb PR #1430 (`fix/gantt-s20b-dead-pipeline-delete`,
+worktree `/tmp/wt-gantt-s20b`). Merged 2026-08-17T07:27:05Z, `origin/main` commit `8f8d3de`. GH Pages
+deploy triggered by that merge: `conclusion=success` (live-deploy verified).
+
+**Deleted from `time_machine.js`** (reverified extents fresh, per the brief's own caution — line
+numbers had NOT shifted since Part A, since Part A touched only test files): `_tierAuditRegate`
+(4086-4201 original numbering), `_twoTierRemap` (4717-4871), `_midairRepair` (5032-5116),
+`_tier1Serialize` (4006-4025) — the 4 named functions — PLUS three more found by actually grepping
+every caller before deleting rather than trusting the brief's named list as complete:
+`_tier1Extents`, `_tier1Protrusion`, `_zoneOf`, and the `_TIER1_ORDER` constant. All three had ZERO
+callers outside the four named functions (confirmed by grep, not assumed) — orphaned by the same
+deletion, same dead pipeline, just not individually named in §S19_RESULTS's audit. Net **-540 lines**
+in `time_machine.js` (622 removed, 82 added back as retirement-notice comments at each excision
+point — the convention this file already uses for retired code, e.g. §S6's own history).
+
+**`_displayTimeline`'s fallback branch and `?cpm4d=0`** — the brief's own open question, answered:
+RETIRED. The URL-param lever (`_CPM_DISPLAY = (function(){ try return ...cpm4d...!=='0'; })()`)
+selected between the CPM branch and the now-deleted legacy chain; with the legacy chain gone, the
+lever has nowhere to send `?cpm4d=0` requests. `_CPM_DISPLAY` is now a flat `var _CPM_DISPLAY =
+true;` (kept as a named variable, not inlined, because every witness/probe in this lane injects its
+own `var _CPM_DISPLAY = true;` ahead of a sliced copy of `_displayTimeline` — zero of those files
+needed editing for this). The one truly exceptional path left (`CpmSchedule` missing, or
+`CpmSchedule.run` failing — never once measured live in this lane's history) is a minimal explicit
+`console.error` + no-op, never a silent revert to deleted code.
+
+**Other named consumers retired** (§S19_RESULTS's compact table, all confirmed ungated before
+touching):
+- `probe_bars_vs_ops.js`, `probe_named_element_times.js` — deleted outright (142 + 124 lines). Both
+  were pure diagnostic tools whose entire mechanism was a pre/post `_twoTierRemap`+`_midairRepair`
+  comparison; no salvageable subject once that chain is gone, matching the brief's own framing.
+- `probe_captured_floating.js` EXP3+EXP5(+the shared `DAY5` constant those blocks defined, which
+  EXP6/7/8 also needed — re-added at the retirement point rather than losing it) — retired outright.
+  Their whole premise ("repair BEFORE the window is computed, so windows and the repaired schedule
+  can never desync") already SHIPPED as production code (`_tmDisplayRemap`, schedule_author.js's
+  `displayRemap` hook, §ZONE_DISPLAY_AUTHORING) and is gated live by `witness_zone_display_authoring.js`
+  W-ZDA-1..6 — nothing of value is lost, the question already has a better, live answer.
+- `probe_captured_floating.js` EXP6 — **rebuilt, not deleted** (a real finding beyond the brief's own
+  scope, found by actually reading the file's brace structure rather than trusting the "EXP4/EXP7/EXP8
+  are independent" characterization at face value): EXP7 and EXP8 are LEXICALLY NESTED inside EXP6's
+  own `{ ... }` block and consume `disp` — the exact array EXP6 mutates via
+  `_twoTierRemap`/`_midairRepair` — as their own starting input. Deleting EXP6 outright would have
+  silently broken EXP7/EXP8 (undefined variables), not just "lost EXP6's own measurement" as the
+  brief's characterization implied. Fixed the same way as everywhere else in this stage: `disp` is now
+  authored via `_displayTimeline`'s CPM branch (real `CpmSchedule` module, never sliced), with the
+  same §S14.0 reachability-proof discipline. The EXP6-*specific* measurement passes (§EXP6_INPUT/
+  DISPLAY_FLOATING/PRE_REPAIR_FLOATING/OGSWEEP/POST_SWEEP_FLOATING/FINAL/FINAL_BYCLASS, the
+  STOREY_PHASE_TABLE remap-vs-raw diagnostic, §STOREY_ORDER_L1_DIAG) ARE retired — EXP7/EXP8's own
+  numbers against the live CPM-authored `disp` are the current, better answer to the same class of
+  question. Verified with real numbers, not just a clean exit code:
+  ```
+  Hospital_extracted: §EXP4_FINAL total=34/63182 orphans=35 grounded=811
+    §EXP6_CPM_PATH cpm=true §CPM_DISPLAY on ... midair=0 orphans=35 stragglers=19811
+    §EXP7_FINAL floating=27/63182 inWindow=62011 outWindow=1171
+    §EXP8_FINAL floating=0/63182 inWindow=63178 outWindow=4
+  Duplex_extracted:  §EXP4_FINAL total=0/1119 orphans=1 grounded=71
+    §EXP6_CPM_PATH cpm=true §CPM_DISPLAY on ... midair=0 orphans=1 stragglers=309
+    §EXP7_FINAL floating=0/1119 inWindow=1070 outWindow=49
+    §EXP8_FINAL floating=0/1119 inWindow=1119 outWindow=0
+  ```
+  Net for this file: -237 lines (331 removed for EXP3/5/old-EXP6, 47 added for the CPM-authored
+  EXP6 rebuild + retirement comments).
+- `witness_gantt_lock_integrity.js` — the named "conditional-slice landmine" fixed: its G-LI-2 fixture
+  used to unconditionally try (and, post-deletion, always fail) to slice `_midairRepair` whenever
+  `_midairAudit` was present — a condition that is now ALWAYS true (`_midairAudit` is kept), so it
+  would have failed every run. `_midairRepair` there existed only to pre-author a realistic "what
+  kernel_ops actually contains" fixture before testing `verifyGanttIntegrity()`'s lock/breach logic —
+  same substitution as everywhere else: `_displayTimeline`'s CPM branch authors it now, same
+  reachability proof. **Also found and fixed, same pass, not named in the brief:** two MORE
+  pre-existing gaps in this same file — missing `_zoneIndexBuild`/`_zoneIndex` (§ZONE_INDEX #1313) and
+  `_classifyNameOverride`/`_classifyRule` (§SCHEDULE_CLASSIFY_DEDUP, 2026-08-15) slices, meaning this
+  witness had been throwing `ReferenceError` on EVERY run since those features shipped, unrelated to
+  and predating this deletion. Fixed with the same optional-slice idiom every other witness in this
+  lane already uses. Result: **19/20 pass** (was 0/crashing before this pass touched it at all). The
+  one FAIL (`G-LI-2e`) is a genuine, separate, pre-existing PRODUCTION bug found while fixing this —
+  `verifyGanttIntegrity()`'s `guids` array is built from `ScheduleGate.auditFloating`'s own UNBOUNDED
+  collector first, then only appends `_midairAudit`'s offender list `if (ma.midair && guids.length <
+  20)` — so whenever the auditFloating tail alone already reaches 20 (true on this fixture, floating=
+  362, and documented as real/expected on 4 of 7 shipped buildings historically: "Terminal 8, Clinic 1,
+  JKR 81, LTU_AHouse 334"), the midair-specific offender is silently never named, regardless of which
+  element actually broke. Left RED, not papered over — fixing `verifyGanttIntegrity()`'s production
+  truncation logic is new, unscoped engine work, not a deletion follow-up. This witness is confirmed
+  not gated (not in `gate_4d.sh`'s loop, not referenced by any CI workflow), so this doesn't affect the
+  acceptance bar, but is flagged here for whoever next touches lock-gate integrity.
+- `probe_cpm_schedule.js` — dropped the one-call `_tierAuditRegate` timing comparison (`§CPM_TIMING`
+  used to also report `tierAuditRegateMs`/`regatePushed`/`speedup` against a function that no longer
+  exists; nothing left to compare against). CPM's own build+solve breakdown is unaffected and kept.
+- `probe_cpm_display_path.js`, `scripts/probe_gantt_stagger.js` — stale comments referencing deleted
+  line numbers / a still-existing `?cpm4d=0` behavior corrected for accuracy; no functional change.
+
+**A latent bug this deletion exposed, found and fixed in Part A's own `witness_midair_zero.js`:**
+W-MZ-5b sliced out just the CPM `if` branch of `_displayTimeline` using the string `'var tw =
+_twoTierRemap'` as its end-boundary marker. Once that line was deleted, `indexOf` returned -1 and
+`.slice(x, -1)` silently widened to near-EOF instead of erroring — the assertion would have kept
+PASSING for the wrong reason (broad substring matches, not real boundary containment). Fixed to check
+the whole `_displayTimeline` body directly and additionally assert the dead-chain strings are gone
+entirely — simpler AND catches the class of regression the old check couldn't.
+
+**Not deleted, found, deliberately left alone (documented, not fixed):**
+- `scripts/probe_arch_start.js`, `scripts/probe_door_wall.js` (bim-compiler, called by `gate_4d.sh`'s
+  informational item-2 section) — ALREADY crash on `Error: _midairRepair #1 not found` before ANY
+  change in this whole stage (a pre-existing stale hard-coded slice-index bug, unrelated to and not
+  worsened by this deletion — non-functional either way).
+- `scripts/probe_tier_regate_worklist.js` (bim-compiler) — a completed, one-time A/B performance study
+  (old-vs-new `_tierAuditRegate`) from 2026-08-14, not referenced by `gate_4d.sh` or any CI workflow.
+  Its subject is now doubly obsolete (both versions it compared are deleted), but it already did its
+  job and produced its measurement; left as historical record, same treatment as other completed
+  one-off scripts in this repo.
+- `scripts/tm_gating_body_diff.js`'s (bim-compiler) `GATING_FNS` list (`['_tierAuditRegate',
+  '_twoTierRemap', '_midairRepair', '_tier1Serialize']`) still names the 4 deleted functions — its own
+  `fnLineRange()` already returns `null`/filtered for a missing function, so it doesn't crash and
+  correctly does NOT false-flag a missing cache-version bump (there's nothing left to diff). But this
+  guard's tracked-function list was ALREADY incomplete for the CPM era before this stage (it never
+  tracked `_displayTimeline`'s own CPM branch, added 2026-08-16) — a pre-existing gap, not newly
+  created by this deletion. Flagged, not fixed — deciding what `§CACHE_VERSION_GUARD` SHOULD track in
+  the CPM architecture is new scope, not a deletion follow-up.
+
+## Acceptance — measured fresh after every edit in this pass, not just at the end
+
+```
+gate_4d.sh (bim-compiler scripts/, run against the bim-ootb worktree):
+  BEFORE (Part A close) §GATE_4D_RESULT pass=6 fail=0 missing=1
+  AFTER  (Part B close) §GATE_4D_RESULT pass=6 fail=0 missing=1   <- IDENTICAL, all 6 witnesses
+         re-verified individually green post-deletion too (39/0, 4/4, 5/5, 19/0, 18/0, "ok")
+
+probe_cpm_schedule.js:
+  BEFORE §CPM_FLEET_VERDICT buildings=7 fails=5   (pre-existing storeyViol only, midair=0/7 crewViol=0/7)
+  AFTER  §CPM_FLEET_VERDICT buildings=7 fails=5   <- IDENTICAL per-building row, byte-for-byte
+
+probe_cpm_display_path.js:
+  BEFORE §CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS
+  AFTER  §CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS   <- IDENTICAL
+```
+
+## Net lines removed, this stage (Part A + Part B combined)
+
+```
+Part A (bim-ootb PR #1426): 6 files, 405 insertions(+), 645 deletions(-)   net -240
+Part A (bim-compiler PR #85, docs+harness only): +151 (§S20_RESULTS + gate_4d.sh loop edit)
+Part B (bim-ootb PR #1430): 11 files, 170 insertions(+), 1083 deletions(-)  net -913 (git's
+  own diffstat on the squash-merged commit; three separate probe/test files deleted outright
+  account for 454 of the removed lines on top of time_machine.js's -540)
+------------------------------------------------------------------------------
+Net across both bim-ootb PRs: -1153 lines. time_machine.js alone: -540 lines (622 removed,
+82 retirement-comment lines added back at the four excision points).
+```
+
+## STOP-AND-REPORT triggers — none fired
+
+Neither of the two named triggers occurred: no redesigned witness (Part A) ever needed a trivially-
+always-passing assertion to reach green — every one asserts something real, with fresh measured
+baselines quoted above and in §S20_RESULTS Part A. And Part B's deletion broke nothing beyond what
+§S19_RESULTS's table already named for `probe_captured_floating.js`/`probe_bars_vs_ops.js`/
+`probe_named_element_times.js`/`witness_gantt_lock_integrity.js` — the ADDITIONAL scope found
+(`witness_kernel_ops_sched_version.js` in Part A; the 3 extra orphaned helpers, the EXP7/EXP8-nested-
+in-EXP6 dependency, and 2 more pre-existing `witness_gantt_lock_integrity.js` gaps in Part B) was all
+the SAME dead-pipeline class the prior audit undersold, not a NEW class of break — resolved in the
+same wave rather than treated as a stop condition, consistent with how this whole lane has always
+handled "the audit undersold the scope" (§S19_RESULTS's own EXP3/5/6 finding is the precedent).
+
+🏁 §S20 CLOSED — redesign (Part A) then delete (Part B), both shipped, gate-verified, live-deployed.
 
 ---
 
