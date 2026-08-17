@@ -2099,6 +2099,138 @@ matching what the standalone W-ZDA-6 `cpmSandbox` section already proved works. 
 `W-ZDA-CPM-PATH` reachability check per building (accepts either fresh `§CPM_DISPLAY on` OR the
 one-shot `§CPM_DISPLAY_REUSE` cache-hit, since `materializeZones`' own `displayRemap` hook call
 legitimately computes fresh first and the witness's own direct call then hits the cache — verified
+
+## §S22_RESULTS (2026-08-17) — root cause was NOT any of the 3 named candidates; a clock-unit
+mismatch two layers upstream. FIXED, `bim-ootb` PR #1429.
+
+**Method:** built a Playwright headless harness (Puppeteer wasn't installed in this checkout) that
+waits for REAL streaming completion (`!app.streaming && (Object.keys(app._batchMeta).length +
+Object.keys(app._instanceMeta).length) > 0`, polled, no fixed timeout) before measuring — the gap
+§S22 named. Reproduced the exact live drag already in evidence (Clinic
+`TASK_MEP_Rough_in_Level_1`, +10d, `window.__tmGanttDrag`) — confirmed same building/task/gesture
+by matching `§RETIME_OUTLIER_AUDIT outsideOldWindow=144 collapsed60s=0 inverted=0
+outlierDurMs=[83000,11751000]` byte-for-byte against the prior session's live numbers.
+
+**All 3 named candidates ruled out by direct measurement, not reasoning:**
+- Added a temporary `window.__tmGanttTaskGuids(taskId)` diagnostic hook (kept, harmless,
+  read-only) to cross a task's guid list against `window.__tmSnapshotVisible()`.
+- Used the file's own existing `window.__forceFull` hook (W-INCR-EQUIV) to diff the delta-path
+  scrub render against a full-path re-render at the IDENTICAL cursor. Both gave the SAME visible
+  count (`3592/3644` before the fix's scrub-visibility symptom was isolated, matching baseline
+  exactly after the real fix below) — if the `§PERF_INCR` event-index skip guard (candidate 1) were
+  wrongly skipping the dragged mesh, forceFull would have shown MORE visible than the real delta
+  scrub. It never did. Candidates 2 (xray staging cache) and 3 (DLOD proxy-hide) run unconditionally
+  in both code paths, so this same diff also clears them — nothing in the “apply visibility from
+  correct data” layer was ever broken.
+
+**The actual mechanism — a full-scene drag+scrub (12-step scrub, giant span) first surfaced a
+57-YEAR displayed-axis explosion**, caught by a fast, targeted numeric probe (`tmGetState()` +
+`__tmGanttWindows()` before/after, no scene traversal needed):
+```
+STATE_BEFORE {"projectStart":-1,"projectEnd":9054726000}
+BAR_BEFORE   TASK_MEP_Rough_in_Level_1 startTs=694115000 endTs=7069005000   [1970-01-09..1970-03-23]
+SIBLING_BEFORE TASK_MEP_Rough_in_Level_2 startTs=5246591000 endTs=7339153000 [1970-03-02..1970-03-26]
+DRAG +10d
+§GANTT_DRAG_COMMIT task=TASK_MEP_Rough_in_Level_1 mode=move deltaDays=10 start=2026-08-23 clamped=true
+STATE_AFTER  {"projectStart":-1,"projectEnd":1795305600000}
+BAR_AFTER    TASK_MEP_Rough_in_Level_1 startTs=1787443200000 endTs=1795023228286  [2026-08-23..2026-11-18]
+SIBLING_AFTER (unchanged, still 1970)
+ARITH oldSpanDays=104.8 jumpDays=20693.9 newSpanDays=20779.0 restOfProjectFractionOfNewSpan=0.5044%
+```
+`_ops`/`_ganttTasks.startTs/endTs` (sourced from `kernel_ops.timestamp`) run on the TM's OWN
+internal clock — `cpm_schedule.js`'s zero-anchored day-offset solve, near-1970 by construction
+(matches the raw solver dumps already quoted elsewhere in this file, `rawStart(computeSchedule/E5)
+=1970-02-16...`). `tasks.schedule_start`/`finish` (ScheduleAuthor's table) run on a SEPARATE,
+real-"today"-anchored calendar clock (`_materializeNativeSchedule`'s `todayStart = new
+Date().toISOString()`, `schedule_author.js` `materializeZones` line ~386/480 —
+`_addDays(start, dayCountFromRawSchedule)`). Two consistent, deliberate, but DIFFERENT clocks.
+
+Reading `time_machine.js`'s `retimeTaskElements`/`commitGanttDrag` closed the loop with a code
+citation, not just numbers:
+1. `commitGanttDrag` computed the drag's target date as `d(bar.startTs + deltaDays*86400000)` —
+   `bar.startTs` is the TM clock (≈694,115,000 ≈ "1970-01-09"), so the target string handed to
+   `SA.moveTaskCascade` was **`"1970-01-19"`** — a real ScheduleAuthor verb receiving a nonsense
+   real-date target. `moveTaskCascade`'s C2 predecessor-floor clamp (defensive, by design — never
+   accept a request earlier than a predecessor allows) then snapped it straight back to the task's
+   OWN current real position: measured live, `§GANTT_EDIT_CLAMP requested=1970-01-19
+   clampedTo=2026-08-23 blockedBy=TASK_MEP_Rough_in_TOF_Footing(FS-80d)`. **The user's `+10 days`
+   was silently discarded on every 'move' drag of an on-critical-path task** — the schedule edit
+   itself never actually moved anything; it just re-confirmed the task's already-current date.
+2. `retimeTaskElements` then took `moveTaskCascade`'s (clamped, effectively-inert-but-still-real)
+   `m.start`/`m.finish` result and fed `Date.parse(m.start+'T00:00:00Z')` DIRECTLY into
+   `_retimeSpan` as `nS`/`nE`, alongside `oS`/`oE` (`bar.startTs`/`endTs`, TM clock) — an
+   apples-to-oranges splice. Every dragged/cascaded op's new `start_ts`/`end_ts` landed on the
+   REAL-calendar (huge) scale while every untouched op in the project stayed on the TM's native
+   (small) scale. `computeDays()` (`_projectEnd = Math.max(...)` over ALL ops) then correctly
+   incorporated this huge outlier, ballooning the WHOLE playback timeline's reachable span to ~57
+   years — of which the real, untouched 105-day project now occupied 0.5%. A scripted absolute
+   `__tmSetCursor` jump to that exact value COULD still land there (why §S22's own two prior
+   diagnostics — `_ops` sort order, the reveal-inclusion loop — both individually measured
+   correct and still missed this: neither checked the RESULT's scale against the rest of the
+   project or the practically-reachable scrub range). A live human dragging a normal-width scrub
+   slider cannot practically reach a target sitting in the last 0.5% of a 57-year range — this is
+   the "scrubbing didn't solve it" the user reported.
+
+**Fix (`bim-ootb` PR #1429):** thread the `tasksBefore` real-calendar snapshot — already captured
+at every `retimeTaskElements` call site for undo, just never passed into the function itself —
+through, and compute a **clock-agnostic day-count delta**: `(Date.parse(m.start) -
+Date.parse(tasksBefore[taskId].start))` applied onto `oS`/`oE` (already on the correct TM clock).
+Both clocks share the same 86400000ms/day granularity; only their zero-point differs, so a pure
+delta needs no knowledge of either zero-point. Fixed `commitGanttDrag`'s target-date computation
+the same way (use `tasksBefore[bar.taskId].start`/`.finish`, the task's actual real position,
+instead of misreading `bar.startTs` as real) — same root-cause class, one call site over, caught by
+`linkGanttBars`'s near-identical `new Date(succBar.startTs)...` misuse too, fixed alongside. All 5
+`retimeTaskElements` call sites (`commitGanttDrag`, `shiftGanttSchedule`, `commitGanttGroupShift`,
+`linkGanttBars`, `openGanttProps`'s typed-Apply) now pass `tasksBefore` — required since the
+signature gained a parameter; the other two (`shiftGanttSchedule`/`commitGanttGroupShift`) were
+never affected by the target-date bug (they operate on `deltaDays` directly against ScheduleAuthor,
+never touching `bar.startTs`), only needed the `tasksBefore` thread-through for `retimeTaskElements`
+itself.
+
+**Verified, same live drag, after the fix:**
+```
+[drag] §GANTT_EDIT_MOVE task=TASK_MEP_Rough_in_Level_1 start=2026-09-02 finish=2026-12-02 clamped=false cascaded=7
+[drag] §S22_EPOCH_FIX_DETAIL task=TASK_MEP_Rough_in_Level_1 tb.start=2026-08-23 tb.finish=2026-11-22 m.start=2026-09-02 m.finish=2026-12-02 oS=694115000 oE=7069005000 deltaSdays=10.00 nS=1558115000 nE=7933005000
+[drag] §S22_EPOCH_FIX clockTranslated=8 skippedNoBefore=0
+STATE_AFTER  {"projectStart":-1,"projectEnd":9918726000}
+BAR_AFTER    TASK_MEP_Rough_in_Level_1 startTs=1558115000 endTs=7933005000  [1970-01-19..1970-04-02]
+ARITH oldSpanDays=104.8 jumpDays=10.0 newSpanDays=114.8 restOfProjectFractionOfNewSpan=91.2892%
+```
+The drag now genuinely moves the task (+10 days, CPM-correct push-cascade to 7 real successors,
+`deltaSdays=10.00` for every one of the 8 touched tasks), `_projectEnd` grows by exactly the
+intended 10 days (not 57 years), and the rest of the project keeps 91% of the new range (not
+0.5%). `resizeR` mode independently verified sane too (`startTs` unchanged, `endTs` +7d on the
+correct clock, `jumpDays=7.0`, `restOfProjectFractionOfNewSpan=91.2892%`).
+
+**Visibility — the actual reported symptom — proven fixed via a real drag-scrub sequence** (12-step
+incremental scrub across the new, now-sane, ~10-day window; the delta/incremental render path
+genuinely engaged this time — `mode:"delta"`, `skipped` in the hundreds — unlike the pre-fix probe
+where the 56-year span always forced full-mode regardless):
+```
+AFTER_DRAG (cursor unchanged) visible=3286/3644   (partial — cursor sits inside the shifted window, correct)
+scrub step 1..12/12  mode=delta, skipped=645..690 (event index genuinely engaging, correctly)
+AFTER_SCRUB (delta-path, real scrub) visible=3592/3644
+FORCE_FULL                            visible=3592/3644   (identical — W-INCR-EQUIV agrees)
+VERDICT reproduced=false fixedByForceFull=false baseline=3592/3644 afterScrub=3592/3644
+```
+`3592/3644` is the EXACT SAME count as the pre-drag baseline (the remaining 52 are legitimate
+xray-staging residual, unrelated, present before AND after) — the drag-then-scrub sequence now
+restores full, correct visibility, and delta-path/full-path render agree exactly, confirming
+candidate 1 (`§PERF_INCR` event index) was never broken — it was simply never exercised correctly
+by the corrupted (pre-fix) axis data.
+
+**Fleet floating 0/7 unaffected — verified, not assumed:** `git diff --stat` on the fix confirms
+100% of the change is confined to `viewer/time_machine.js`'s Gantt-EDIT functions
+(`retimeTaskElements`, `commitGanttDrag`, `linkGanttBars`, `openGanttProps`'s Apply handler, plus
+one-line `tasksBefore` threading at 2 more call sites) — zero lines touch `cpm_schedule.js`,
+`schedule_gate.js`, or any schedule-GENERATION code path (floating is a property of the initial CPM
+dependency-graph solve, computed once at generation time, structurally unreachable from a post-hoc
+Gantt task edit). Ran `scripts/gate_4d.sh` against the fixed worktree regardless:
+`§GATE_4D_RESULT pass=6 fail=0 missing=1` (the one MISS, `witness_arch_area_weight`, is a
+pre-existing "not in this revision" gap, unrelated to this change — confirmed via `git diff --stat`
+showing zero witness-file changes).
+
+**PR:** `bim-ootb` #1429, `fix/s22-tm-drag-invisible`, pushed clean.
 this is the real mechanism, not a bug, before writing the assertion this way).
 ```
 §ZDA_WITNESS_SUMMARY pass=18 fail=0
