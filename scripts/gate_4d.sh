@@ -43,7 +43,13 @@ say ""
 # day 0 — because HHS's façade is a curtain wall and wallGrid is keyed on cls.indexOf('IfcWall')===0.
 # Verified to FAIL on the pre-fix tree (G-CWO-RAW HHS=30 early, worst 9.5d IfcDoor@IfcPlate) and pass
 # after, so it is a test that names the issue it proves rather than one that is merely green.
-for w in witness_zone_index witness_tier_serial_display witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host witness_kernel_ops_sched_version witness_curtain_wall_opening; do
+# witness_tier_serial_display REMOVED 2026-08-17 (§S20 Part A, 4D_GANTT_TM_REFACTOR.md): its entire
+# pass/fail methodology was 100% about `_twoTierRemap` (time_machine.js's dead legacy display-repair
+# chain, reachable only via `?cpm4d=0`/`§CPM_DISPLAY_FALLBACK`, never live — §S13.8/§S14.0) — no
+# question survives its deletion, unlike witness_midair_zero/witness_hosted_before_host/
+# witness_curtain_wall_opening, which were rebuilt against the live CPM path (`_displayTimeline`'s
+# CPM branch) in the same PR. File deleted from bim-ootb's viewer/tests/.
+for w in witness_zone_index witness_crew_demand witness_midair_zero witness_arch_area_weight witness_hosted_before_host witness_kernel_ops_sched_version witness_curtain_wall_opening; do
   f="$VIEWER_DIR/tests/$w.js"
   if [ ! -f "$f" ]; then say "MISS  $w  (not in this revision)"; miss=$((miss+1)); continue; fi
   out=$(cd "$VIEWER_DIR/tests" && BLD_DIR="$BLD_DIR" timeout 900 node "$w.js" 2>&1)
