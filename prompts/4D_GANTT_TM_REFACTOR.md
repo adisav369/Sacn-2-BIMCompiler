@@ -2678,3 +2678,21 @@ dump, or a targeted assertion on the specific guid), not by eyeballing a screens
 each, don't force a fix onto the wrong one); a live reproduction needs `?cpm4d=0` or any other
 `§PATHS NOT TO TAKE` item to be re-opened (it doesn't — this bug is confirmed downstream of
 `_ops`/schedule data, which is unaffected by that legacy-vs-live question).
+
+---
+
+# 🏁 REVIEW HANDOFF (2026-08-17 close) — for a fresh session to REVIEW, not to dispatch further
+work from unprompted. S1-S22 all shipped and merged (S18/S21 storey-elevation/parentage fix,
+S19/S20 dead-pipeline retirement + E5 cleanup, S22 drag-visibility clock-bug fix — see §LANE
+SUMMARY / dated §S*_RESULTS sections throughout this file for the full trail). Fleet floating held
+0/7 through every stage, no exceptions.
+
+**One thing surfaced live, same evening, not yet actioned:** `HHS_Office_Federated` shows
+`§S18_STOREY_MERGE_FAIL no such column: elevation` — a THIRD building (after Clinic/Terminal/
+Hospital) missing the same elevation/parentage extraction §S18/§S21 shipped. Its own storey ladder
+looks clean on inspection (4 plain-named bands: Level 1/2/3/Roof Level, no visible name-soup), so
+whether this is actually costing HHS anything is unconfirmed — named, not diagnosed.
+
+**Your job: verify the state of this file's claims, not extend it.** Confirm the shipped stages
+hold on a fresh pull (spot-check a PR or two, re-run a fleet probe), and only pick up new
+work — including HHS — if asked.
