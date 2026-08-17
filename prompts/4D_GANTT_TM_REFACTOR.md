@@ -1770,3 +1770,184 @@ function thought dead turns out to have a live call site (report it, don't force
 worktree/PR-per-part, verify-merged-before-next-part discipline as every prior stage. Sonnet-dispatchable —
 both parts are mechanical once reachability is confirmed, which is the same proven method §S14.0
 already used successfully.
+
+
+# §S19_RESULTS — 2026-08-17, Part A STOP-AND-REPORT (witness suite entanglement), Part B ✅ SHIPPED
+
+## Part A — BLOCKED, not forced. The dead pipeline's own regression witnesses ARE the pipeline.
+
+§S14.0's reachability finding re-confirmed unchanged: `_twoTierRemap`/`_midairRepair` (time_machine.js
+:4585-4586) are still reached ONLY through `_displayTimeline`'s `else` branch (`?cpm4d=0` or
+`§CPM_DISPLAY_FALLBACK`, neither ever fires live — fresh fleet run today, `edges={E1:...,E2host:...,
+E2open:...,E3:...,E4:...,member:...}`, no legacy-chain trace, same as §S14.0).
+
+But grepping every call site (§S19's own instruction) surfaced something §S14.0/§S17 didn't check:
+**4 of `gate_4d.sh`'s own 8 required witnesses build their ENTIRE pass/fail methodology by slicing
+`_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/`_tierAuditRegate` out of time_machine.js's source
+text and CALLING them directly** — not an informational reference, the actual measurement:
+
+| Witness | In gate_4d.sh loop? | In §S5 named set? | Dependency |
+|---|---|---|---|
+| `witness_tier_serial_display.js` | YES | — | 100% ABOUT `_twoTierRemap` (own header: "the two-tier display remap (time_machine.js `_twoTierRemap`)"). W-TS-1..5 all assert on its sliced output (`stats.overlapPairs`, `stats.dagWins`). No CPM-path content at all. |
+| `witness_midair_zero.js` | YES | YES (§S5) | W-MZ-2/3/4/7/8 all assert on `census()` run against items AFTER calling the sliced `__repair = _midairRepair` (line 307: `vm.runInContext('this.__repair(this.__items);', sandbox)`), against LOCKED baselines (`FLOAT_AFTER_BASELINE`, `ORPHAN_BASELINE`) computed from that call. Does not touch `_displayTimeline`/CpmSchedule at all — builds elements via `_buildXrayElements`, RAW-schedules via `ScheduleGate.computeSchedule`, then runs the sliced legacy repair and asserts on ITS output. |
+| `witness_hosted_before_host.js` | YES | — | Slices + calls `__remap = _twoTierRemap; __repair = _midairRepair` (line 183) to produce its "post remap + midair repair" before/after numbers. |
+| `witness_curtain_wall_opening.js` | YES | — | Same pattern, line 198, same slice+call. |
+
+`witness_zone_display_authoring.js` (§S5-named, not in gate_4d.sh's loop) also slices these four
+functions (lines 76-79) alongside the live `_ogSupportSweep`/`_cjpJudgeParity`/`_capWindowRescale` —
+but its ACTUAL assertions (W-ZDA-3/4a/4b/6) only call `_ogSupportSweep`, `_cjpJudgeParity`, and the
+CPM path; the dead-chain slices in its list are unused dead weight in the slice array itself, not
+load-bearing. That one is mechanically fixable (drop 4 lines from its slice list). The other four are
+not — their entire measured subject stops existing.
+
+A fifth file, `witness_gantt_lock_integrity.js` (NOT in gate_4d.sh's loop, NOT referenced by any CI
+workflow — confirmed by repo-wide grep, so not part of this task's acceptance bar), would also start
+crashing: its G-LI-2 fixture setup conditionally slices `_midairRepair` whenever `_midairAudit` is
+present in source (`if (tmSrc.indexOf('function _midairAudit(') >= 0) _names.unshift('_contactGraph',
+'_midairAudit', '_midairRepair');`) — that condition tests for the function we're KEEPING, not the one
+being deleted, so it would still try (and fail) to slice `_midairRepair`. Its actual pass/fail
+assertions (G-LI-2b/2d/2e/2f) test `verifyGanttIntegrity()` against the live `_midairAudit`, not the
+dead functions directly — `_midairRepair` there is only used to pre-repair a realistic fixture. Not a
+blocker for this task, but a real landmine for whoever eventually does Part A.
+
+**time_machine.js exact function extents** (brace-matched, not eyeballed): `_tier1Serialize`
+4006-4025, `_tierAuditRegate` 4086-4201, `_ogSupportSweep` 4216-4430 (KEPT), `_cjpJudgeParity`
+4462-4506 (KEPT), `_twoTierRemap` 4717-4871, `_midairRepair` 5032-5116. Single definition each
+(`grep -c "function _midairRepair("` = 1) — the "defined twice, hoisting matters" caveat several
+witness comments carry is stale, from an older revision.
+
+**`scripts/probe_captured_floating.js`** (880 lines, not referenced by gate_4d.sh or any CI workflow
+— repo-wide grep confirms) would partially break if the four functions were deleted: EXP3 (~448-505)
+calls `_midairRepair` directly; EXP5A/EXP5B (~507-586) inherit EXP3's setup, breaking transitively;
+EXP6 (~589-772, already labeled "⚠ RETRACTED LABEL, KEPT CODE" per §S13.8/§S14.0, includes the
+`STOREY_PHASE_TABLE` sub-mode named in the original brief) slices all four non-optionally, so it
+throws on `main()` entry, not just when `STOREY_PHASE_TABLE=1` is set. EXP4/EXP7/EXP8 call only
+`_ogSupportSweep`/`_cjpJudgeParity`/`_capWindowRescale` (all KEPT) and are unaffected. Since nothing
+here is gated, this isn't part of the blocker — but the brief's instruction to retire the
+`STOREY_PHASE_TABLE` mode "in the same PR" undersold the scope: the whole EXP3+EXP5+EXP6 block would
+need retiring, not one env-gated sub-table.
+
+**Compact table** (file | dependency class | in gate_4d.sh loop | other automated gate | breaks on deletion):
+| file | dependency | gate_4d.sh | other gate | breaks? |
+|---|---|---|---|---|
+| witness_midair_zero.js | pass/fail core method | Y | §S5 named | YES, unsalvageable |
+| witness_hosted_before_host.js | pass/fail core method | Y | — | YES, unsalvageable |
+| witness_curtain_wall_opening.js | pass/fail core method | Y | — | YES, unsalvageable |
+| witness_tier_serial_display.js | pass/fail, ONLY subject | Y | §S5 named | YES, no subject left |
+| witness_gantt_lock_integrity.js | fixture-prep, conditional slice | N | N | YES, but not gated |
+| witness_zone_display_authoring.js | unused dead weight in slice list | N | §S5 named | NO, 4-line fix |
+| witness_crosstask_judge_parity.js | n/a (tests KEPT funcs) | N | §S5 named | NO |
+| probe_captured_floating.js EXP3/5/6 | direct calls, non-optional | N | N | YES, not gated |
+| probe_captured_floating.js EXP4/7/8 | uses KEPT funcs only | N | N | NO |
+| probe_bars_vs_ops.js | sole purpose | N | N | YES, not gated |
+| probe_named_element_times.js | sole purpose | N | N | YES, not gated |
+| probe_cpm_display_path.js | n/a (real require, KEPT funcs) | — | fleet gate probe | NO |
+| probe_cpm_schedule.js:313 | informational timing only | N | fleet gate probe | needs 1 block edited, not blocked |
+
+**Why this blocks Part A as scoped.** Deleting `_twoTierRemap`/`_midairRepair`/`_tier1Serialize`/
+`_tierAuditRegate` from time_machine.js makes `sliceFn`/`sliceAt` throw immediately in all four —
+they cannot run, not "fail with an updated baseline." `witness_tier_serial_display.js` has no
+salvageable subject at all (delete it, full stop). `witness_midair_zero.js`'s underlying QUESTION
+("does anything appear in the movie before what it touches") still matters and is now partially
+answered elsewhere (`witness_zone_display_authoring.js` W-ZDA-6: "CPM display timeline has 0 midair
+through the shipped hook"; fleet `§CPM_FLOATING`/`§CPMDP_FINAL` gates) — but rebuilding it to test the
+CPM-live path instead of the legacy repair is a full methodology redesign (new baselines, new
+independent-judge wiring against a different code path), not a mechanical deletion follow-up.
+`witness_hosted_before_host.js`/`witness_curtain_wall_opening.js` are in the same position: their
+"post-repair" numbers ARE the legacy repair's output.
+
+This is §S19's own STOP-AND-REPORT condition ("a locked witness needs an unpredicted assertion
+change") — except worse than an assertion tweak: two witnesses have nothing left to assert on. The
+brief's "Sonnet-dispatchable, mechanical once reachability is confirmed" framing undersold this —
+reachability on the LIVE APP is exactly what §S14.0 already nailed down; reachability from the TEST
+SUITE (which measures the dead code directly, on purpose, as its own regression baseline) was never
+checked before now, and it's a different, larger claim.
+
+**Not touched:** time_machine.js's `_twoTierRemap`, `_midairRepair`, `_tier1Serialize`,
+`_tierAuditRegate` all remain exactly as they were. `?cpm4d=0` stays wired (nothing to decide — the
+functions it falls back to still exist, unchanged, per the above). `probe_captured_floating.js`'s
+`STOREY_PHASE_TABLE` mode was NOT retired — the brief's instruction to retire it was conditional on
+deleting its target function, which did not happen; it keeps its existing §S17 reachability-warning
+guard (bim-ootb PR #1422) unchanged.
+
+**Also confirmed, correcting the brief's own scope list:** `_ogSupportSweep` and `_cjpJudgeParity`
+were named alongside the dead functions as candidates ("any function ONLY reachable through them")
+but are NOT only reachable through the dead chain — they have a separate, real, currently-live call
+site at `injectGantt`'s captured-schedule path (time_machine.js:6089-6091), confirmed by
+`witness_crosstask_judge_parity.js`'s own W-CJP-1 wiring assertion ("injectGantt's captured path
+actually calls `_cjpJudgeParity(_allScheduled, _cap.win)` immediately after `_ogSupportSweep`").
+`_cjpJudgeParity` runs unconditionally there; `_ogSupportSweep` is skipped only when
+`schedules.display_authored=1` (documented, intentional — imported/legacy/edited-window schedules
+keep it). These would have been wrongly deleted had the brief's "any function only reachable through
+them" language been applied without this check. Left untouched, correctly.
+
+**Recommendation, not executed:** retire `witness_tier_serial_display.js` outright when this is
+picked back up (its subject is being deleted, nothing to salvage) and design a CPM-path-native
+replacement for `witness_midair_zero.js`'s actual question before deleting the legacy functions —
+that redesign is real work, deserves its own spec'd stage, and should not be improvised inside a
+"delete dead code" PR. `witness_hosted_before_host.js`/`witness_curtain_wall_opening.js` need the
+same retire-or-redesign call. Until that stage exists and ships, Part A cannot proceed without either
+breaking gate_4d.sh's pass count (violates this task's own acceptance bar) or leaving the dead
+functions in place (which is not a deletion).
+
+## Part B — ✅ SHIPPED. E5 already had zero executable footprint; only stale documentation remained.
+
+**Measured, not assumed** (`buildGraph`'s `counts` object: `{e1, e2h, e2o, e3, e4, member,
+stragglers}` — no `e5` key ever existed; confirmed again live: `§CPM_RUN ... edges={E1:...,
+E2host:...,E2open:...,E3:...,E4:...,member:...}`, no E5). §S2_REVIEW_VERDICT's original design named
+E5 a per-element lower bound merged into ES via `max(...)` — but per the file's own header comment,
+it was "no explicit edges" from day one: a scalar floor applied inside `solve()`, not a DAG edge.
+§S6 (PR #1406, merged) replaced that floor outright: `solve()` seeds `ES[i] = base` (ONE shared
+epoch, the raw schedule's global min start) for every node, then raises it via precedence (in-edges)
+and the in-pass crew-slot allocator — never via each element's own `computeSchedule(T).start`. There
+was nothing left for §S19 to functionally remove; S6 already did that removal in its own PR. What was
+left was the top-of-file docstring (`cpm_schedule.js` lines 9-17, 106) still describing E5 as a live
+per-element bound — a landmine of the exact same class Part A exists to clean up, just in comment
+form: a future session reading "E5 crew - per-element lower bound ES(T) >= computeSchedule(T).start"
+could go looking for a bug in a mechanism that hasn't existed since PR #1406.
+
+**Measured proof** (`scripts/probe_e5_resolution.js`, new, Terminal 48,428 elements):
+```
+§E5_BOUND_CHECK Terminal_extracted: cpmStart<rawStart(per-element bound NOT enforced)=12131
+  cpmStart>rawStart=36296 cpmStart==rawStart=1/48428 -- CONFIRMS E5-as-lower-bound is fully retired
+  (S6 superseded it)
+§E5_SUMMARY allDurationsPreservedExactly=true maxDeltaMs=0 (E5-as-DURATION-SOURCE is the only source
+  -- cpmDur === rawDur exactly, S6 never recomputes it)
+§E5_ELEMENT_EXAMPLE guid=T0_Terminal_2fKPxuZcr6CuQ1jIJYQwwS cls=IfcMember storey=06 ROOF LEVEL
+  rawStart(computeSchedule/E5)=1970-02-16T21:38:21.000Z rawDurHrs=1.564
+  cpmStart(solve)=1970-04-09T05:11:39.000Z cpmDurHrs=1.564 startShiftDays=51.31
+```
+12,131/48,428 elements (25%) have `cpmStart < rawStart` — impossible if a per-element
+`ES(T) >= computeSchedule(T).start` floor still held, since CPM could then never schedule an element
+EARLIER than its own raw start. This is the decisive, measured proof the "lower bound" reading of E5
+is gone, not merely untested. The one thing still genuinely read from E5's source (`computeSchedule`)
+is DURATION (`e - s`), bit-exact across all 48,428 elements (`maxDeltaMs=0`) — `solve()` has no
+independent duration model, so this dependency is real and correctly left alone.
+
+**Fix** (`viewer/cpm_schedule.js`, comment-only, zero behavior change): corrected the top-of-file
+"Edge types" list and the `buildGraph`/`solve` inline comments to state E5-as-bound is retired,
+name what replaced it (§S6_CREW_PASS's in-pass crew-slot claim, seeded from a single shared epoch),
+and name what's still read from it (duration only). No code line changed inside `buildGraph`/`solve`.
+
+**Regression check (before vs after the comment edit, both fresh fleet runs, all 7 buildings):**
+```
+BEFORE  §CPM_FLEET_VERDICT buildings=7 fails=5 (fails = pre-existing storeyViol only; midair=0/7,
+        crewViol=0/7 both runs, unchanged)
+AFTER   §CPM_FLEET_VERDICT buildings=7 fails=5 — IDENTICAL per-building row (storeyViol
+        Duplex=1/Clinic=1/HHS=0/JKR=7/Hospital=0/Terminal=5/LTU=7 both runs)
+BEFORE  §CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS
+AFTER   §CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS — IDENTICAL outlierOutside per building
+gate_4d.sh BEFORE  §GATE_4D_RESULT pass=7 fail=0 missing=1 (witness_arch_area_weight MISS, pre-existing;
+           the historical "pass=8" cited in §S6/§S7_RESULTS is stale from an earlier repo revision)
+gate_4d.sh AFTER   §GATE_4D_RESULT pass=7 fail=0 missing=1 — IDENTICAL (same 8-witness roster,
+           same one MISS, all 7 others PASS with unchanged §-summaries: witness_tier_serial_display
+           pass=57/fail=0, witness_midair_zero pass=39/fail=0, witness_hosted_before_host 4/4,
+           witness_curtain_wall_opening 5/5, witness_crew_demand 4/4, witness_kernel_ops_sched_version
+           pass=12/fail=0, witness_zone_index ok)
+```
+Named §S5/§S18 witness set also re-run directly: `witness_zone_display_authoring` 16/0,
+`witness_crosstask_judge_parity` 20/0 — both unaffected (comment-only edit, neither slices
+`cpm_schedule.js`'s source text).
+
+PR: bim-ootb #1425 (`fix/gantt-s19b-e5-resolve`) — MERGED 2026-08-17T05:34:51Z (auto-merge squash,
+fast-checks + e2e-tests both SUCCESS).
