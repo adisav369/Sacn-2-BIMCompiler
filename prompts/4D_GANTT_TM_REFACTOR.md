@@ -1693,16 +1693,22 @@ what the live default path executes, before its findings are written up as a roo
 function has a bug" and "the function is why the user sees a bug" are different claims. §S10/§S11
 was probe-DB vs live-DB; §S13.7 was probe-PATH vs live-PATH.
 
-**NEXT, in priority order:** (1) if a bake still looks wrong, look at what the movie RENDERS from
-the schedule, not the schedule — the order is now measured clean live; (2) ⛔ needs a go —
+**Read `§PATHS NOT TO TAKE` (right after §LOCKED, top of this file) before proposing any fix below —
+8 measured dead ends, do not re-attempt without new evidence.**
+
+**NEXT, in priority order:** (1) the 9/72 residual same-start cluster from S6 — root cause not yet
+investigated, not fixed; (2) memory during timeline/CPM generation — the old +390MB figure is STALE
+(pre-S1/S4/S6), needs a fresh measurement before any optimization claim; (3) ⛔ needs a go —
 storey-band merge is INFERENCE with today's data, recommended fix is extraction-side (carry
 `elements_meta.building` through the split into meta.db; extract `IfcBuildingStorey.Elevation` +
-IfcBuilding parentage), §S13.5 — note §S14.0 shows this vocabulary split is also what makes Clinic's
-only two live "violations" appear, so fixing it cleans the metric too; (3) audit which other
-`scripts/probe_*.js` harnesses reproduce dead branches — `probe_captured_floating.js` did and nobody
-had checked; (4) `normalize_storey.py` invents 5 storeys on Terminal against its own docstring
-(§S13.4, reported not shipped); (5) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a
-standing audit column; (6) S8 playback-flicker stays PARKED per §PRIORITY.**
+IfcBuilding parentage), §S13.5 — §S14.0 shows this vocabulary split is also what makes Clinic's only
+two live "violations" appear, so fixing it cleans the metric too; (4) if a bake still looks wrong
+despite all the above being green, look at what the movie RENDERS from the schedule, not the
+schedule — the order is measured clean live; (5) audit which other `scripts/probe_*.js` harnesses
+reproduce dead branches — `probe_captured_floating.js` did and nobody had checked; (6)
+`normalize_storey.py` invents 5 storeys on Terminal against its own docstring (§S13.4, reported not
+shipped); (7) Terminal's 6 bbox-SIZE mismatches vs extracted (≤0.129m), a standing audit column; (8)
+S8 playback-flicker stays PARKED per §PRIORITY.**
 
 ---
 
