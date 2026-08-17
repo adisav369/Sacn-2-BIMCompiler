@@ -2000,6 +2000,150 @@ Report net lines removed.
 what's missing, don't ship a witness that always passes trivially); anything in Part B breaks a
 witness not already named above. Worktree/PR per part, verify merged before the next part.
 
+# §S20_RESULTS — 2026-08-17, Part A ✅ SHIPPED + GATE-VERIFIED, bim-ootb PR #1426
+# (`fix/gantt-s20a-witness-redesign`), bim-compiler PR TBD (`fix/gantt-s20a-witness-redesign-bc`,
+# worktree `/tmp/wt-gantt-s20a-bc`, branched off `origin/fable/meshdb-livewire` — `gate_4d.sh` and
+# this prompt file live ONLY on that branch, NOT `origin/master`; `origin/master` is 1 commit ahead
+# of the merge-base while `fable/meshdb-livewire` is 1138 commits ahead — confirm base before any
+# future worktree in this repo, `git log origin/master -- <path>` first).
+
+## Part A — three named witnesses redesigned against the live CPM path, one extra found+fixed
+
+**`witness_midair_zero.js`** — kept its own INDEPENDENT `census()` (does not call `_contactGraph`,
+unlike `witness_zone_display_authoring.js`'s W-ZDA-6, so a bug in `_contactGraph` itself would still
+be caught here — checked this is not a duplicate of W-ZDA-6 before redesigning, per the brief's own
+instruction: W-ZDA-6 covers 2/7 buildings and is NOT independent of `_contactGraph`; this witness
+covers all 7 and is). Authors the timeline via `_displayTimeline`'s CPM branch (`CpmSchedule.run`,
+required as the real module, never sliced) instead of `_twoTierRemap`+`_midairRepair`. W-MZ-3
+("repair moves nothing earlier than the pre-repair remap output") RETIRED — no intermediate
+remap-then-repair stage exists under CPM's single-pass DAG solve, and the natural analogue (CPM
+start vs RAW start) is MEASURED to move earlier on ~25% of elements as normal, accepted behavior
+(§S19_RESULTS §E5_BOUND_CHECK: `cpmStart<rawStart` for 12,131/48,428 Terminal elements) — asserting
+"earlier==0" against RAW would fail on already-accepted behavior, not catch a regression. Fresh
+baselines measured (not carried over): `CPM_FLOAT_AFTER_BASELINE` = {Terminal:8789, Hospital:5107,
+Duplex:289, HHS:1538, Clinic:3523, LTU_AHouse:15896, JKR:3736}; `CPM_ORPHAN_BASELINE` MEASURED
+IDENTICAL to the retired legacy-chain numbers (Terminal:7, Hospital:35, Duplex:1, HHS:36, Clinic:27,
+LTU_AHouse:865, JKR:1) — confirms orphan-detection is purely geometric, independent of which
+display-authoring path ran, rather than assuming it. Reachability proof per building: `dtResult.cpm
+=== true` (fresh CpmSchedule.run success) plus the captured `§CPM_DISPLAY on` log line, asserted, not
+assumed. New W-MZ-5b wiring check (CPM branch calls `CpmSchedule.run` then `_midairAudit`) replaces
+the retired check on the never-live fallback branch.
+```
+§MIDAIR_ZERO_SUMMARY pass=39 fail=0
+```
+(was 39/0 before this stage — same count: W-MZ-3 swapped for a new per-building CPM-reachability
+assertion.)
+
+**`witness_hosted_before_host.js`** — same treatment (G-HOST-DISPLAY/G-HOST-STAGE against
+`_displayTimeline`'s CPM branch instead of the legacy chain; G-HOST-STAGE's three-stage
+gen→remap→repair attribution collapses to two, gen→display, since CPM authors in one pass). Result:
+**zero EARLY violations of any kind** on all 7 buildings (structurally guaranteed by CPM's E2host
+precedence edge) — stronger than the inherited 5%-of-hostMatched tolerance, never approached.
+```
+PASS  G-HOST-DISPLAY  every building within the 5% margin on the DISPLAY timeline (post CPM authoring...)
+§HOST_WITNESS 4/4 gates passed
+```
+
+**`witness_curtain_wall_opening.js`** — same treatment, but G-CWO-DISPLAY's flat 5%-of-hostMatched
+ceiling FAILED on first measurement (HHS_Office_Federated 10.5%=14/133, LTU_AHouse 13.7%=175/1280,
+worst deviation only 0.7d on both). Investigated rather than re-thresholded blind (per this lane's
+own §PATHS NOT TO TAKE #8 discipline — don't narrow/adjust a rule without confirming what's actually
+happening): checked `dtResult.stats.solution.comp` (CPM's own graph-component id) for every
+violation's opening and its worst-offending host. MEASURED: **207/207 fleet-wide violations are IN
+THE SAME CPM component** (Terminal 5, Hospital 5, Duplex 0, HHS 14, Clinic 4, LTU_AHouse 175, JKR
+4) — `cpm_schedule.js`'s own documented, ALREADY-ACCEPTED SCC-contraction mechanism (a cycle of
+mutual physics edges gets condensed to one shared position class — same class as the
+`fsViolInScc`/`crewOverCapScc` counters it already prints every run and never gates to 0), not a
+defect this redesign introduced. **ZERO cross-component violations** (which WOULD be a real E2open
+wiring defect). Redesigned `countEarly()` to classify in-SCC vs cross-SCC and gate ONLY on
+cross-SCC==0 (the real structural bar, matching §GUARDRAILS' "no new tuned constant not derived from
+the data" — the flat 5% ceiling was calibrated to the legacy chain's different failure mode and would
+have gated an accepted mechanism, not a real defect). Total EARLY/inScc count still fully reported
+per building (G-CWO-STAGE), never hidden.
+```
+PASS  G-CWO-DISPLAY  ZERO cross-component violations on all 7 buildings ... the residual EARLY count
+      is 100% in-SCC (cpm_schedule.js's own documented, accepted SCC-contraction mechanism ...)
+§CWO_WITNESS 5/5 gates passed
+```
+
+**`witness_kernel_ops_sched_version.js`** — NOT named in this stage's brief, found while executing
+it (a genuine gap in §S19_RESULTS's own audit: its grep pass was scoped to `viewer/tests/` +
+bim-ootb's `scripts/probe_*.js`, and missed this witness even though it IS in `gate_4d.sh`'s loop).
+W-KOS-4/W-KOS-5 sliced `_twoTierRemap` directly for its `tier2ShiftDays` stat (`time_machine.js`
+:4788's `tier2Shift` — the single worst-element shift under the legacy two-stage repair). Fixed in
+the same wave, same class as the three named witnesses: measures the analogous quantity —
+`maxShiftDays` = MAX `|CPM start - RAW start|` across all elements — against `_displayTimeline`'s CPM
+branch. Also dropped the W-KOS-0c check (asserted `_TIER1_ORDER` exists in `time_machine.js` — that
+constant is used ONLY inside the dead chain, per a fresh grep: every caller of `_tier1Extents`/
+`_tier1Protrusion`/`_tier1Serialize`/`_tierAuditRegate`/`_twoTierRemap` is another function IN that
+same chain, so `_TIER1_ORDER` goes with it once Part B lands — worth re-verifying at Part B time in
+case that scope needs to grow beyond the 4 named functions).
+```
+§KERNEL_OPS_SCHED_VERSION_MAGNITUDE bld=LTU_AHouse maxShiftDaysIfStaleOpsWereReused=2273.8 ...
+§KERNEL_OPS_SCHED_VERSION_SUMMARY pass=19 fail=0
+```
+(was 12/0 before this stage — 7 new per-building CPM-reachability assertions added.)
+
+**`witness_tier_serial_display.js`** — deleted outright (377 lines removed), no salvageable subject
+(100% about `_twoTierRemap`, per §S19_RESULTS). Removed from `gate_4d.sh`'s loop (this PR) and the
+§S5-named set (this doc — see the compact table above, superseded by this section).
+
+**`witness_zone_display_authoring.js`** — the "4-line unused-slice" fix §S19_RESULTS predicted was
+TESTED, not assumed, and found short: dropping the six dead-chain `sliceFn` calls while leaving
+`_CPM_DISPLAY = false` throws `ReferenceError: _twoTierRemap is not defined` at `_tmDisplayRemap`'s
+own call site (line ~165 area) — the "legacy" comparison this witness built (W-ZDA-4a/4b's `base`)
+was genuinely computed by running `_displayTimeline`'s `_CPM_DISPLAY=false` branch, which calls
+exactly the two functions Part B deletes. Fixed by pointing the ONE remaining live branch
+(`_CPM_DISPLAY=true`, real `CpmSchedule` module) at what production will actually run post-Part-B —
+matching what the standalone W-ZDA-6 `cpmSandbox` section already proved works. Added a
+`W-ZDA-CPM-PATH` reachability check per building (accepts either fresh `§CPM_DISPLAY on` OR the
+one-shot `§CPM_DISPLAY_REUSE` cache-hit, since `materializeZones`' own `displayRemap` hook call
+legitimately computes fresh first and the witness's own direct call then hits the cache — verified
+this is the real mechanism, not a bug, before writing the assertion this way).
+```
+§ZDA_WITNESS_SUMMARY pass=18 fail=0
+```
+(was 16/0 before this stage — 2 new per-building reachability assertions added.)
+
+## Fleet acceptance — floating 0/7 unaffected (Part A touches tests, not the engine)
+
+```
+probe_cpm_schedule.js:
+§CPM_FLEET [["Duplex_extracted","cpm=0",...],["Clinic_extracted","cpm=0",...],
+  ["HHS_Office_Federated_extracted","cpm=0",...],["JKR_extracted","cpm=0",...],
+  ["Hospital_extracted","cpm=0",...],["Terminal_extracted","cpm=0",...],["LTU_AHouse_extracted","cpm=0",...]]
+  (all crewViol=0)
+§CPM_FLEET_VERDICT buildings=7 fails=5 FAIL   <- IDENTICAL to §S19_RESULTS baseline: fails are
+  pre-existing storeyViol only (Duplex/Clinic=1, JKR/Terminal/LTU=5-7, HHS/Hospital=0), midair=0/7
+  and crewViol=0/7 both unchanged
+
+probe_cpm_display_path.js:
+§CPMDP_FLEET_VERDICT buildings=7 fails=0 PASS   <- IDENTICAL to §S19_RESULTS baseline
+```
+
+## gate_4d.sh — before/after, explained
+
+```
+BEFORE  §GATE_4D_RESULT pass=7 fail=0 missing=1   (8-witness roster, witness_arch_area_weight MISS
+        pre-existing, all other 7 PASS — §S19_RESULTS's own baseline)
+AFTER   §GATE_4D_RESULT pass=6 fail=0 missing=1   (7-witness roster, witness_tier_serial_display
+        REMOVED from the loop — the one witness this stage deletes outright, exactly the "pass count
+        may legitimately change" case the brief called out. witness_arch_area_weight MISS unchanged,
+        pre-existing, unrelated to this stage. All 6 remaining witnesses PASS with their new,
+        higher assertion counts — see per-witness sections above.)
+```
+
+**Also found, out of scope, noted not fixed:** `scripts/probe_arch_start.js` and
+`scripts/probe_door_wall.js` (bim-compiler, called by `gate_4d.sh`'s item-2 "§-numbers" section,
+informational only — no pass/fail impact) ALREADY crash on `Error: _midairRepair #1 not found`
+before ANY change in this stage — a pre-existing stale hard-coded slice-index bug (predates the
+`_mrCount`-based dynamic selection the bim-ootb witnesses already carry), unrelated to and not
+worsened by this stage's work (they're non-functional either way, Part B cannot make an
+already-thrown exception "more broken"). Not named in §S19_RESULTS's table or this stage's brief;
+left unfixed, flagged here for whoever next touches this class of landmine.
+
+## Part B — not started this pass. See §S20 above for scope; resume there.
+
 ---
 
 # §S21 — extend §S18's storey-elevation/parentage fix to Terminal, Hospital, LTU. GO GIVEN
