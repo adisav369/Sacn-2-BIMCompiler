@@ -35,6 +35,43 @@ stage below has a numeric acceptance bar and an existing harness.
 - Full architecture + trail: `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` (§CPM_SPEC,
   §CPM_STAGE13_RESULTS, §CPM_DISPLAY, §ZONE_WINDOW_DAGWINS_CLIP). Read it BEFORE any code.
 
+# §PATHS NOT TO TAKE (2026-08-17, consolidated) — read this before proposing a fix in this lane.
+Every item below was TRIED or SPECIFICALLY CONSIDERED and REJECTED with a measurement, not a guess.
+Re-attempting one without new evidence is re-walking a dead end this lane already paid for.
+
+1. **Do not fix `_twoTierRemap`/`_midairRepair`** (`viewer/time_machine.js:4585-4586`) for ANY live
+   symptom. Confirmed twice, by reading (§S13.8) and by measurement (§S14.0): dead code, reachable
+   only via `§CPM_DISPLAY_FALLBACK`, which has never fired live in this lane. A live MEP/order bug
+   lives in `cpm_schedule.js`, never here.
+2. **Do not trust a probe's root-cause claim without proof, in the SAME log, that it exercised the
+   live default path.** `probe_captured_floating.js`'s `STOREY_PHASE_TABLE` mode slices a function
+   into a VM sandbox — that measures behavior, not reachability. This is now a mechanical
+   acceptance gate (§S13.8/§S14), not a suggestion. Same failure class as §S10/§S11's probe-DB vs
+   live-DB, one axis over (probe-PATH vs live-PATH).
+3. **Do not re-space or rescale a display-authored task window.** Two independent attempts,
+   measured and rejected: gap-clamp re-spacing manufactured 4,712 violations from a 0-floating
+   timeline; a rigid per-task shift broke 537 cross-task contact pairs (34 unrepairable).
+   `§CAP_RESCALE_SKIP`/`§OG_SWEEP_SKIP` exist BECAUSE both failed — a display-authored window is a
+   VIEW of element times, not a second schedule to reconcile against them.
+4. **Do not snap LTU's meta.db transform corruption with the same per-row generator that fixed
+   Terminal.** Same corruption class, 16x the scale (33,528 rows, deviations to 291m) — that scale
+   means a genuinely different model snapshot; snapping would tear bboxes/schedule away from the
+   drawn meshes. Needs a full meta+geo regeneration from one extraction, not a patch (§S11).
+5. **Do not patch split-pair DB corruption per-building with hardcoded scripts.** The original
+   §S10/§S11 shape (building-specific names/prefixes/constants) would have caught nothing on a
+   third building — generalized into `audit_split_pairs.js` + `gen_meta_transform_patch.js`
+   specifically because per-symptom patching is "the 11-pass history repeating" (§S12).
+6. **Do not invent storeys to fill a ladder gap.** `normalize_storey.py`'s phantom-storey fix for
+   Terminal was measured, not assumed — it makes 2 schedule metrics WORSE, not better. Reported,
+   not shipped (§S13.4).
+7. **Do not merge storey names by inference (mean-Z proximity) to fix the ladder.** Merging "First
+   Floor" and "Level 1" by z-proximity is a guess with today's data (§S13.5) — still ⛔ needs a go
+   on the extraction-side fix (carry `elements_meta.building` through the split; extract
+   `IfcBuildingStorey.Elevation` + IfcBuilding parentage) before any merge logic gets written.
+8. **Do not keep narrowing a rule (global→per-zone→per-element) as the default fix pattern without
+   first confirming the rule's own code path is live.** A `gateE` fix to `_tier1Serialize` was
+   written as a third such narrowing before #1 above was caught — discarded unshipped, not merged.
+
 # §DIAGNOSIS — measured 2026-08-16, headless real-viewer dumps (scripts/probe_gantt_stagger.js, bim-ootb PR #1400)
 
 **Terminal, CPM engine: 49 of 72 tasks are 1–2-day bars all starting day 149–150 of a 152-day
@@ -60,7 +97,12 @@ remaining sliver describes 3% of the task. (`§CPM_RUN … stragglers=14129`,
 
 **Also in scope (named, measured, from the same user report):** TM activation ≈20s on Hospital-63k
 (`§WRITE_LOOP_TIMING rows=63415 ms=7190` + the seam recomputes `computeSchedule`+`§GEO_ORDER`
-~1.5-2s and then discards them when `§CPM_DISPLAY_REUSE` hits), heap +~390MB during activation.
+~1.5-2s and then discards them when `§CPM_DISPLAY_REUSE` hits). S4 (PR #1404) fixed the double-run
+part and re-measured activation end-to-end (floor ~20.8-23.2s, target 10s not reached — full
+breakdown in §S4_RESULTS below). ⚠ **STALE, do not cite as current:** the heap "+~390MB" figure
+below is pre-#1399 and has never been re-measured against S1/S4/S6's changes to this same path —
+treat it as "unknown, needs a fresh measurement," not as today's number.
+~~heap +~390MB during activation~~
 
 # §MODEL — the remodel, exactly two definitions plus playback acceptance
 
