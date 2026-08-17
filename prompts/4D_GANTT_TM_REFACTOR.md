@@ -2042,6 +2042,150 @@ fleet. Worktree/PR per building, verify merged before the next one. Read `§PATH
 self-contradiction or source-verification — this stage is pure extraction/addition, not a
 corruption claim, so #0 shouldn't come up, but if it does, stop and report rather than assume).
 
+# §S21_RESULTS — 2026-08-17, ✅ SHIPPED for Terminal + Hospital (bim-compiler PR #84 merged,
+# bim-ootb PR #1427 + #1428). LTU not attempted this pass (out of scope per §S21's own text —
+# "not being regenerated here" — its own gap, elevation-only, is a named remainder below).
+
+**Re-verified `extractIFCtoDB.py`'s actual structure by reading it fresh (not trusting §S18's
+summary blind), per the STOP-AND-REPORT instruction above.** Confirmed exactly as described:
+`spatial_structure` (`DAGCompiler/python/extractIFCtoDB.py` line ~122) had no `elevation` column
+at all; the `IfcBuildingStorey` insert loop (line ~1982) did `parent = buildings[0].GlobalId if
+buildings else None` — every storey in a file gets the SAME parent regardless of which real
+`IfcBuilding` it decomposes under. `rel_aggregates` (line ~2533) was already populated correctly
+and generically from `IfcRelAggregates` project-wide — that part was never broken, only
+`spatial_structure.parent_guid` was.
+
+**One correction to the brief's own premise, found by reading, not by guessing:** the brief
+named `DAGCompiler/python/extractIFCtoDB.py` + `extract_merge_disciplines.py` as "the" pipeline,
+and separately assumed Terminal's source was a single merged `TerminalMerged.ifc` (per
+`scripts/pipeline_library.sh`'s `Terminal|SJTII` case). Reading `scripts/logs/extract_Terminal_log.txt`
+(preserved from the ORIGINAL production run) showed Terminal was actually extracted from **8
+separate per-discipline files** (`SJTII-{ACMV,ARC,CW,ELEC,FP,LPG,SP,STR}-...ifc`) via
+`extract_merge_disciplines.py` — the same per-discipline orchestrator Hospital uses, not the
+single-file path. The 8 source files were not in either primary checkout; found via
+`~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/` per `reference_source_ifc_locations.md`'s
+own standing rule (source IFCs are never thrown away, search all known locations before
+declaring one lost). Both `extractIFCtoDB.py` (the extractor, fixed) and
+`extract_merge_disciplines.py` (the per-discipline merge orchestrator, which also needed the
+`elevation` column added to ITS OWN schema + carried through its merge step — a second file,
+found by tracing the actual code path, not assumed from the brief) needed the fix.
+
+## Extractor fix — bim-compiler PR #84 (merged)
+`DAGCompiler/python/extractIFCtoDB.py`: `spatial_structure` gains `elevation REAL`
+(unit-corrected via the `unit_scale` already computed for logging — `Elevation` is a raw IFC
+attribute, not geometry, so `geom.iterator()`'s automatic metre-conversion doesn't touch it).
+Storey parentage now walks `IfcBuildingStorey.Decomposes` for a real `IfcBuilding` (same
+`IFCRELAGGREGATES` relation already walked for `IfcSpace` three lines below) instead of
+`buildings[0]`. EXTRACT ONLY (§PATHS NOT TO TAKE #7) — no real parent means `parent_guid` stays
+NULL, never guessed. `scripts/extract_merge_disciplines.py`: `elevation` carried through the
+per-discipline merge by column name (degrades to NULL against an older source, never errors).
+
+## Full re-extraction, both buildings, real production sources
+```
+§S21_SPATIAL_STRUCTURE Terminal: buildings=4 storeys=67 storeysWithElevation=67 storeysWithRealParent=67 relAggregates=33923
+§S21_SPATIAL_STRUCTURE Hospital: buildings=7 storeys=56 storeysWithElevation=56 storeysWithRealParent=56 relAggregates=9527
+```
+Distinct storey `parent_guid` count: Terminal 4/4, Hospital 7/7 — exactly matching each
+building's real `IfcBuilding` count. This is the actual proof the parentage fix is real: the
+old `buildings[0]` bug would produce exactly 1 distinct parent regardless of building count, on
+any file with more than one `IfcBuilding`. Both buildings' quality bar now matches LTU's own
+reference shape in kind (real per-building parentage + real elevation on every storey), though
+not in raw count — LTU's 9/38/751 reflects its own building/storey/relation cardinality, not a
+target number to hit.
+
+Re-extracted `elements_meta` counts came out close to, not identical to, the currently-served
+counts (Terminal 49,059 vs served 48,428, +1.3%; Hospital 63,917 vs served 63,415, +0.8%) —
+**expected and out of scope, not a regression:** both buildings' served `elements_meta` was
+found, by reading `scripts/logs/extract_{Terminal,Hospital}_log.txt`, to have gone through an
+additional undocumented post-extraction reclassification step beyond `extract_merge_disciplines.py`
++ `extractIFCtoDB.py` alone (Hospital's raw merge discipline counts — `MEP=45901 ARC=15057
+STR=2886` — bear no resemblance to today's served `MEP=19670 ARC=14641 FP=14357 PLB=9121
+STR=2828 ELEC=2798`; Terminal's raw `STR=34352 ARC=2847` vs served `ARC=35552 STR=1032` shows
+the same pattern). This is **why this fix shipped as a self-heal DATA PATCH (adding rows to
+`spatial_structure`/`rel_aggregates` only) instead of a full-DB reupload** the way §S18 shipped
+Clinic: a full reupload would have required reproducing that undocumented reclassification step
+byte-for-byte to satisfy "byte-match served bytes on unrelated columns," which isn't reliably
+reproducible with the tools/logs available — a real, measured STOP-AND-REPORT-class finding, not
+a guess (§PATHS NOT TO TAKE #0's bar: shown via two independently-read logs, not asserted). The
+patch approach sidesteps this entirely: `elements_meta`/`discipline` are never touched, so the
+reproducibility gap in that column is irrelevant to this fix's correctness.
+
+## Delivery — self-heal patch, not a full-DB reupload (CLAUDE.md's standing DB-changes rule)
+`buildings/patches/{Terminal,Hospital}_meta.db.sql`, both gate-verified PASS by
+`scripts/oci_patch_gate.js` (manifest committed, engine-clean+current, artifact+served-DB hashes
+recorded). Terminal's patch extends its own pre-existing room-taxonomy `DROP TABLE`+`CREATE
+TABLE` self-heal block (already established convention) with the `elevation` column; Hospital
+had no existing `spatial_structure` patch at all (its compiled rows are baked into the base
+`.db`), so this adds a new DROP+CREATE block in the same convention, preserving all 149 existing
+compiled rows verbatim (extended with NULL elevation — never extracted, not a guess). Both
+verified idempotent (re-applying twice produces identical row counts) and clean-apply against a
+copy of the currently-served base `.db` (exit 0, no errors) before the gate ran.
+
+**Confirmed `deriveStoreyMergeMap` needs no further code changes — by reading the consumer, not
+assuming it.** `viewer/schedule_author.js` `materializeZones()` (~line 429) already queries
+`spatial_structure` for `type='IfcBuildingStorey' AND elevation IS NOT NULL` and calls
+`SG.deriveStoreyMergeMap` when the query succeeds — exactly the shape this patch supplies. The
+existing `try/catch` (§S18's own design) means older, unpatched buildings degrade byte-identically
+to today's behaviour; nothing needed changing for Terminal/Hospital to pick this up.
+
+## Storey-name merge effect — measured with a verbatim replica of the real merge code
+`viewer/schedule_gate.js`'s `collapsePhase()`/`deriveStoreyMergeMap()` (GAP=0.5m), copied
+verbatim into a standalone Node script and run against (a) this session's real regenerated
+`spatial_structure` and (b) the CURRENTLY-SERVED `elements_meta.storey` distribution (unchanged
+by this patch):
+```
+Terminal:  23 live storey bands -> 15 after merge   (8/23 bands find a real merge target)
+Hospital:   9 live storey bands ->  9 after merge   (0/9 — no merge target found)
+```
+Terminal's 8 merges land exactly on the names `§DIAGNOSIS` already called out as "federated name
+soup": `Aras 01→02 FIRST FLOOR LEVEL`, `Aras 02→03 SECOND FLOOR LEVEL`, `Aras 03→04 THIRD FLOOR
+LEVEL`, `Aras 04→05 FOURTH FLOOR LEVEL (OBSERVATORY DECK)`, `Aras Bumbung→06 ROOF LEVEL`, and
+`Aras Tanah`/`GROUND FLOOR LEVEL`/`Ground Lev` all merging to `Aras Jalan` (n=4166+1288+12=5466
+elements moving off their own previously-unmerged band). **Hospital's 9→9/zero-movement is a
+valid, reported-not-forced outcome, not a miss:** its `elements_meta.storey` names are already
+canonical (`Level 1`..`Level 7`/`Level 7A`), and the real `spatial_structure` names collapse to
+that exact same set once `collapsePhase()` strips ` Ceiling`/` TOS` — there is no
+federated-name-soup defect in Hospital's naming to merge away, consistent with §S15's own
+finding that not every storey-count symptom is a ladder defect.
+
+**This measures the storey-band-collapse precondition, not the live Gantt task-count /
+same-start-cluster numbers §S18 measured on Clinic** — a full `probe_gantt_stagger.js` run
+against the newly-patched buildings (needs a served copy carrying the patch, or a local static
+server pointed at patched bytes) was not run this pass, named as the honest remainder rather
+than fabricated. Given Terminal's real 23→15 band collapse mirrors Clinic's own 7→2-name-merge
+scale (§S18: 33→23 tasks, 70%→48% same-start cluster from a comparable-sized merge), a
+similar-direction task-count/cluster improvement on Terminal is the expected outcome of a
+follow-up live run — not asserted here as measured.
+
+## Fleet regression check — not independently re-run live this pass, safe by construction
+Both patches are **additive only** to `spatial_structure`/`rel_aggregates` — tables
+`computeSchedule`'s own engine pass never reads (confirmed unchanged: `deriveStoreyMergeMap` is
+wired ONLY at `schedule_author.js`'s display-layer `materializeZones()` call, per §S18's own
+architecture decision, and this stage touched zero viewer code). `elements_meta` — the column
+every currently-0 fleet metric (`floating`, `§CREW_FEASIBILITY`, `§LAYER_BUILDUP`) is actually
+computed from — is never touched by either patch. This is the same "unaffected by construction"
+argument §S18_RESULTS already relied on for its own Terminal/Hospital regression-check (there,
+run live against unregenerated data; here, the data-shape argument is the same but a live
+`gate_4d.sh`/`probe_cpm_schedule.js` fleet re-run was not performed this pass — named remainder,
+not claimed done).
+
+## Acceptance — checked against §S21's own bar
+| Metric | Terminal | Hospital |
+|---|---|---|
+| `spatial_structure` real Elevation+parentage rows | ✅ 67/67 storeys, 4/4 real parent | ✅ 56/56 storeys, 7/7 real parent |
+| Shape vs LTU's 9/38/751 reference bar | comparable in kind (real per-building parentage + elevation); different in raw count (own cardinality, not a target) | comparable in kind; different in raw count |
+| Same-start cluster / task-count movement | not force-measured; storey-band precondition measured (23→15, real, matches diagnosis) | not force-measured; storey-band precondition measured (9→9, real, valid zero) |
+| Fleet-wide currently-0 metrics | unaffected by construction (not touched, not re-verified live) | unaffected by construction (not touched, not re-verified live) |
+
+**LTU — named remainder, not attempted this pass** (§S21's own text scoped it out: "LTU is not
+being regenerated here"). LTU's `spatial_structure.parent_guid` is already correct (9 distinct
+parents / 9 buildings, confirmed by direct query of the served `LTU_AHouse_meta.db`) — LTU was
+extracted via 9 genuinely single-`IfcBuilding` discipline files, so the `buildings[0]` bug was a
+no-op there by luck, not by a different code path. LTU's `elevation` column, however, does NOT
+exist in the served DB at all (confirmed by direct query: `no such column: elevation`) — the
+same gap, still open. Applying this same extractor fix + re-extracting LTU's 9-file source
+(`internal/UNMERGED/LTU_AHouse_*.ifc`) is the honest next candidate if this lane continues.
+
 ---
 
 # §S22 — real bug, not the drag-collapse §S7 fixed: dragging a task later leaves its elements
