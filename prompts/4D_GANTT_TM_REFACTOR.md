@@ -2041,3 +2041,61 @@ fleet. Worktree/PR per building, verify merged before the next one. Read `§PATH
 (especially #7, no inference) and `§PATHS NOT TO TAKE` #0 (don't call a value "corrupt" without
 self-contradiction or source-verification — this stage is pure extraction/addition, not a
 corruption claim, so #0 shouldn't come up, but if it does, stop and report rather than assume).
+
+---
+
+# §S22 — real bug, not the drag-collapse §S7 fixed: dragging a task later leaves its elements
+# invisible even after the TM cursor scrubs past their new time. Live-user-confirmed (2026-08-17,
+# verbatim: "scrubbing didn't solve it, but still, it should not happen").
+
+**Ruled out, by direct measurement, not reasoning — do NOT re-investigate these:**
+- **`§S7_OUTLIER_DELTA` itself:** re-confirmed live (Clinic, `TASK_MEP_Rough_in_Level_1` n=3644, +10d
+  drag) — `§RETIME_OUTLIER_AUDIT outsideOldWindow=144 collapsed60s=0 inverted=0`. No collapse, no
+  inversion. Not the mechanism.
+- **`_ops` sort order after `_tmResyncAfterRetime()`:** a diagnostic assertion (`§DIAG_SORT_CHECK`)
+  added directly after the sort, on the same live drag: `total=16114 outOfOrderPairs=0`. Sorted
+  correctly.
+- **`renderAtTime`'s reveal-inclusion loop (`if (op.start_ts > cursorMs) break;`,
+  `time_machine.js:1218`):** a second diagnostic (`window.__tmCursorCheck`) re-walked `_ops` with the
+  IDENTICAL break logic at a cursor set past the dragged task's NEW end time:
+  `{"total":16114,"seenBeforeBreak":16086,"brokeAtIndex":16086,"missedAfterBreak":0}`. Zero elements
+  past the break point that should be included and aren't. The op-inclusion decision is correct.
+
+**Conclusion: the schedule DATA is correct after a drag. The bug is one layer up — in how mesh
+VISIBILITY gets applied from that correct data**, not in the schedule itself. Candidates, in the
+same file, none yet tested (a headless harness with only 15-20s of settle time couldn't get real
+scene geometry to populate — `window.__tmSnapshotVisible()` returned 0 objects even at baseline,
+same documented minimal-page-context limitation noted elsewhere in this lane, e.g. §S5's "1970
+epoch is an artifact... not a real bug"):
+1. **Per-mesh event index (`_evMesh`, `_tmBuildEventIndex`, ~`time_machine.js:1143-1182`).** Built
+   from live `_ops` (correct, per above) — but keyed by MESH OBJECT id, holding a merged/sorted list
+   of ALL its slots' transition timestamps. `_incrOK`'s skip guard
+   (`!_tmHasEventIn(_evMesh[obj.id], _dLo, _dHi)`, lines ~1489/1553) skips the WHOLE mesh, all
+   slots, if the merged index shows nothing in range — verify this rebuild actually captures the
+   dragged element's NEW far-future time band, not just that it runs.
+2. **Xray staging cache (`_tmXraySolidifyTs`, checked via `bStaged`/`iStaged` around lines
+   1500-1503/1570+).** `_tmResyncAfterRetime()` calls `_tmRebuildXrayCache()` — verify it actually
+   recomputes the dragged guids' solidify timestamps to the NEW schedule, not stale ones that could
+   make `cursorMs < _tmXraySolidifyTs[bg]` true indefinitely.
+3. **DLOD proxy-hide (`bHideForProxy`/`iHideForProxy`, `_dlodOn && ... && !_dlodInView(bg)`).** Only
+   relevant if DLOD is engaged — check whether the dragged element's frustum/proxy state gets
+   reconsidered after a retime, or whether it's stuck on a stale in-view decision.
+
+**Method for whoever picks this up:** get a headless harness that actually populates
+`app._batchMeta`/`app._instanceMeta` before measuring (longer settle, or force a camera
+move/streaming-complete signal — check `app.streaming` and wait on it rather than a fixed timeout),
+OR test live with a real user session and read `§XRAY_EDGES`/`§PERF_INCR_INDEX`/`§DLOD_TICK` log
+lines around the drag+scrub sequence. Add whatever new `§`-tagged assertion is needed to prove which
+of the 3 candidates above is the actual cause — the same reachability-proof discipline as §S14.0,
+applied to rendering state instead of code-path reachability. Do not guess a fix without first
+proving the mechanism with a log line, the same way §S7 and §S19/§S20 did.
+
+*Acceptance:* a real live drag/group-shift on an element whose new time the cursor is scrubbed past
+must show it rendering — proven by `§-log` (e.g., extend `window.__tmSnapshotVisible`-style state
+dump, or a targeted assertion on the specific guid), not by eyeballing a screenshot. Fleet floating
+0/7 unaffected (this is a rendering bug, not a schedule bug, per the ruling-out above).
+
+**STOP-AND-REPORT if:** none of the 3 candidates reproduce the symptom (report what you measured on
+each, don't force a fix onto the wrong one); a live reproduction needs `?cpm4d=0` or any other
+`§PATHS NOT TO TAKE` item to be re-opened (it doesn't — this bug is confirmed downstream of
+`_ops`/schedule data, which is unaffected by that legacy-vs-live question).
