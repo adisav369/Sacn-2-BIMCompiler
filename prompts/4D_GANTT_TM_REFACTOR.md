@@ -1602,7 +1602,19 @@ live-PATH. Before attributing a live symptom to a mechanism, read its call site 
 
 **NEXT TASK: measure the LIVE display author, `CpmSchedule.run`** (`viewer/cpm_schedule.js`), for the
 same storey/phase ordering question §STOREY_PHASE_ORDER asks — and audit which other harnesses in
-`scripts/probe_*.js` reproduce dead branches, because this one did and nobody had checked.
+`scripts/probe_*.js` reproduce dead branches, because this one did and nobody had checked. Leading
+candidate, named but NOT yet measured: `t1Complete()` (E3's per-level Tier-1→Tier-2 gate,
+`cpm_schedule.js:226-260`) — every level's MEP Rough-in group is gated behind ALL of that SAME
+level's Tier-1 phases (Sub+Super+Arch) via one shared milestone, and the ground floor carries the
+most Tier-1 phases, so it's the most likely to gate its own MEP the latest.
+
+**MECHANICAL gate, not a judgment call — this is the actual fix for §S13.7's failure:** any script
+written for this task MUST print `§CPM_DISPLAY on` (or an equivalent proof the live branch ran) in
+the SAME run, BEFORE the measurement line, and that adjacency must be pasted verbatim into this
+file's results section. A measurement without that line immediately preceding it in the SAME log is
+INVALID — discard it and rerun, do not reason about whether the function is "probably" reachable.
+Check `ListAgents`/this file's dated sections before starting — `bim-compiler-be` may already be
+working this task; do not duplicate.
 
 Also open, unchanged: (1) ⛔ needs a go — storey-band merge is INFERENCE with today's data;
 recommended fix is extraction-side (carry `elements_meta.building` through the split into meta.db;
