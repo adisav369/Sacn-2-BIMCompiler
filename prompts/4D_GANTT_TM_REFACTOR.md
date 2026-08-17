@@ -1830,6 +1830,49 @@ for the transform-patch pass by design (§S12), not a defect; (8) S8 playback-fl
 
 ---
 
+# §S18 — storey-band merge, extraction-side. GO GIVEN (2026-08-17, user: "do not push back, see to
+# it"). Two independent, separately-verifiable fixes — do not combine into one PR.
+
+**Part A — carry `elements_meta.building` through the split (fixes Clinic).** Verified today:
+`scripts/split_db.sh`'s current DROP list (`component_geometries`, `base_geometries` from meta;
+`elements_meta`+3 others from geo) does NOT drop `elements_meta` from meta.db — it's a full clone
+minus geometry tables, so `building` survives the split AS WRITTEN TODAY. §S13.5's finding ("the
+split DROPS it") was measured against the SHIPPED meta.db files, which predate this script version
+or an older split path — same stale-artifact class as §S10/§S11, not a live script bug.
+*Acceptance:* (1) confirm by direct query — does `Clinic_meta.db` (served OCI bytes, not local) have
+a non-null `building` column today? If yes, Part A is ALREADY DONE, stop, update §S13.5, do not
+regenerate anything. If no: regenerate Clinic's (and any other multi-`building`-value building's)
+meta.db with the CURRENT `split_db.sh`, gate-verify against served bytes per the §S10/§S12 pattern
+(`oci_patch_gate.js`), confirm `building` is queryable live. (2) `§STOREY_ORDER_REPORT` Clinic
+violations must drop from the §S13.2 baseline once the viewer actually uses the column (Part B may
+be required for the viewer to USE it — check before claiming this alone fixes the metric).
+
+**Part B — extract `IfcBuildingStorey.Elevation` + `IfcBuilding` parentage into `spatial_structure`
+(fixes Terminal/LTU/Hospital, all currently 3-7 compiled rows with no real parentage).** Find the
+extractor that currently populates `spatial_structure` (grep `spatial_structure` INSERT statements
+across `tools/*.py`/`build/*.js`/Java sources — not yet located this session, first step). Read how
+it walks the IFC tree today. Add: `IfcBuildingStorey.Elevation` (a plain attribute on every
+ifcopenshell/IFC-parse storey object) and `IfcBuilding`→`IfcBuildingStorey` parentage (via
+`IfcRelAggregates`/`.Decomposes`, same relation LTU's extractor already captures correctly — LTU is
+the reference implementation, 9 IfcBuilding/38 IfcBuildingStorey/751 rel_aggregates, not a guess).
+EXTRACT ONLY — do not infer elevation from element z-values, that is exactly §PATHS NOT TO TAKE #7.
+*Acceptance:* re-extract Clinic + Terminal (or LTU-style regenerate), `spatial_structure` gets real
+Elevation + parentage rows matching LTU's shape; a NEW merge step (viewer or extraction-side, session
+picks the simpler one and states which) uses parentage-then-elevation to group storey NAMES that
+share one physical floor; `§STOREY_ORDER_REPORT`/`§LAYER_BUILDUP` violations on Clinic and Terminal
+must not get worse anywhere they're 0 today (§S13.7/§S14.0/§S3's numbers are the regression floor);
+Terminal's same-start cluster (§S15) should shrink if the merge is real — record the new count, do
+not force it to a target.
+
+**STOP-AND-REPORT if:** Part A is already fixed by the current script (say so, don't do unneeded
+work); the extractor for `spatial_structure` can't be found in one focused search (report where you
+looked, don't guess a location); any regression on a currently-0 metric. Same worktree/PR-per-part
+discipline as every prior stage. Sonnet-dispatchable: Part A is fully mechanical (query, maybe
+regenerate, verify) once step 1 is checked. Part B needs one real read of unfamiliar extraction code
+before it's numeric — do that read first, then it's the same shape as everything else in this file.
+
+---
+
 # §ACCEPTANCE — the user's own definition of done (2026-08-17, verbatim, checked against §S14.0)
 
 *"4D gantt schedule properly CPM staggered bars, not all horizontal stacked, not bunched to start
