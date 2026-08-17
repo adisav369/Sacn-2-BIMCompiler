@@ -1,8 +1,25 @@
 # PROGRESS — Current Development State
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ Over budget (530+ lines, was 330+) — the archiving pass on `## OPEN`'s oldest items is still owed
+> ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
+
+## Session 2026-08-17 (Fable, marathon) — 4D Gantt lane S1-S22 all shipped+merged, closed
+Full trail in `prompts/4D_GANTT_TM_REFACTOR.md`. Root causes fixed, each independently verified
+(PR + numbers, not claims): crew-unaware CPM tail compression ("stack hell", S6), Terminal/LTU
+`meta.db` transform self-corruption (S10/S11, proven via r-tree self-contradiction not just
+cross-file disagreement), missing `IfcBuildingStorey.Elevation`/parentage extraction for
+Clinic/Terminal/Hospital (S18/S21 — federated storey-name-soup was the real driver of residual
+clustering, S15), a live root-cause misdiagnosis caught before shipping (S13.7 measured dead legacy
+code, retracted, redirected — S14.0), the dead legacy 11-pass repair pipeline finally deleted after
+its own witnesses were redesigned first (S19/S20, -1153 net lines), and a real Gantt-drag
+invisible-after-scrub bug (S22 — clock-unit mismatch between TM's internal clock and real-calendar
+dates, not any of 3 initially-suspected rendering candidates). Fleet floating held 0/7 throughout.
+Standing rules added: `§PATHS NOT TO TAKE` (8 dead ends + the "don't call a DB corrupt without
+self-contradiction/source proof" rule) and a mechanical reachability-proof gate for any future
+root-cause probe. **Open, named not fixed:** `HHS_Office_Federated` surfaced live with the same
+missing-elevation gap as a third building — not yet diagnosed whether it costs anything (its own
+storey ladder looks clean). LTU's elevation gap also still open (parentage already correct).
 
 ## Session 2026-08-16 (Sonnet, continued) — §MIRROR_ROOM_PROBE SHIPPED (bim-ootb#1407); 3 costed items queued for next session
 Alt+S glossy/metal materials now reflect a real one-time room-capture instead of only the static
