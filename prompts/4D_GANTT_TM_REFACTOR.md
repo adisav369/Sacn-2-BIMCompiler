@@ -203,6 +203,10 @@ which layer is unclear, don't invent its behavior to complete the table.
 
 ---
 
+# ⛔ SUPERSEDED BY §S25 (2026-08-18, same day) — DO NOT IMPLEMENT §S24.3. Kept verbatim as the record
+# of how §S25 was reached; §S24_TRIAGE below is the review that superseded it. If you are here to
+# build, go to §S25.
+#
 # §S24 — ARCHITECTURE SPEC: LOCAL PHASE-GATE SHELL, replacing whole-graph Tarjan cycle-breaking
 # (2026-08-18, PROPOSED, NOT GO'D — do not implement without an explicit go). A new session must
 # triage this spec deeply, end to end, BEFORE any code is touched. If anything below is wrong,
@@ -464,6 +468,24 @@ so level identity is a **prerequisite**, not the "cleanliness/precision improvem
 (§S24.4's "collapsing is not a correctness blocker, verified 8/8 clean on Terminal" was checked
 against the 0.15m case only; it does not cover this one.)
 
+> **⚠ T7 CORRECTED, same day, before §S25 was written — the finding survives, its headline example
+> does not.** The Terminal "236 elements centred at −15.6m" cluster is NOT a second datum: they are
+> the 236 `jkrST_str-fo_pc_rcp` **30m precast piles** (bbox_z 30.15, base −30.69, top −0.64) that
+> `schedule_gate.js auditFloating`'s own `foundation_pile_misclassified_slab` note already documents
+> — real Substructure, correctly on the ground floor, sitting exactly where a pile sits. The error
+> was in the detection, not the data: clustering on **centre-z** mistakes any tall element for a
+> separate datum. Re-measured with vertical **interval-overlap** clustering (tolerance = the shipped
+> `GAP` 0.5m), which a 30m pile and the slab above it correctly share: Terminal 5 levels / **99**
+> elements in minor clusters (sub-storey strays, e.g. Level 02 = 170 at 10.8-11.0m + 6 at 11.8-11.9m),
+> JKR 3 levels / 31, and **zero on Hospital, Clinic, Duplex and HHS**. The one building where this is
+> a real, large defect is **LTU_AHouse: 5 levels, 4,887 elements (4% of 122,330)** whose geometry does
+> not overlap their own level's body at all — "VÅN 4" carries 1,867 elements at −1.4..1.4m alongside
+> 1,525 at 10.9..16.5m; "VÅNING 3" 158 at −0.6..1.9m alongside 2,049 at 6.0..13.4m. So T7's
+> conclusion stands (name-based level identity is unsound and Step 2's MAX-over-members inherits it)
+> but its **scope is one building plus strays, not the fleet** — and any level-identity rule must
+> cluster by interval overlap, never by centre distance. `probe_phase_gate.js` §PG_LEVEL_SPLIT was
+> fixed to the interval rule in the same commit as §S25.
+
 **T8 — §S24.5's DB rule is right for the wrong reason and picks the wrong file on Clinic.** The
 viewer fetches `<Building>_meta.db` whenever the meta+geo pair exists (`streaming.js:2190-2218`
 §DB_SPLIT_DETECT) — **regardless of mtime**. `Clinic_meta.db` (Jun 6) is OLDER than
@@ -545,3 +567,288 @@ capacity lane (§S24.4 is right that it is orthogonal), Gantt-drag incremental r
 correctly named), the Duplex/HHS TRADE regression, and the `Terminal_meta.db`/`Hospital_meta.db`
 (#1427/#1428) integrity question — all four remain exactly as open as the §RESULTS addendum left
 them. No code in `viewer/` was changed by this triage; the only artifact is the study-only probe.
+
+---
+
+# §S25 — THE LAYER CONTRACT AND ONE FORWARD PASS (2026-08-18). **SUPERSEDES §S24 — do not implement
+# §S24.3.** §S24 and §S24_TRIAGE stay in this file as the record of how this was reached; they are
+# history now, not instructions. This section is the whole design, start to finish, and it is meant
+# to be read alone.
+#
+# Why superseded rather than amended: §S24 built a phase gate on a precedent that has no phase layer
+# (§S24_TRIAGE T1), and defined its conflict rule in terms of GROUP ORDER — "relax the gate for an
+# element the gate would force too early" — when the fact that decides the conflict is GEOMETRY.
+# Patching those two would have left the same shape. The layering below is what the user named, and
+# it resolves both by construction.
+
+## §S25.0 — The statement this whole design rests on
+
+**A construction schedule is not a general dependency graph. It is four layers, each already an
+order, composed in a fixed precedence.** Physical support is a strict order by elevation, so it
+cannot contain a cycle — every physics cycle measured is a data error, and they are tiny (largest
+physics-only SCC on any building in the fleet: 5-17 nodes). Phase order is a fixed list of 3+2
+entries. Level order is a total order by height. Crew capacity is not an order at all — it delays.
+
+The 45,182-node component is therefore **manufactured**, not discovered: it appears only when the
+layers are flattened into one edge set and a general solver is asked to sort out the contradictions,
+at which point the information about which layer each edge came from — the only thing that could
+decide the conflict — has already been thrown away. Ablation proves it (§S24_TRIAGE T5): removing a
+2-6% edge population dissolves the giant component outright on 5 of 7 buildings.
+
+Stop flattening, and the entire apparatus goes with it: no Tarjan, no SCC condensation, no
+contraction, no milestone nodes, no hammock edges, no membership edges, no straggler ancestry, no
+16-sweep repair fixpoint, no sweep cap. What replaces them is one forward pass whose termination is
+a one-line argument (§S25.5).
+
+## §S25.1 — The four layers, and who wins
+
+| layer | what it is | source | may it reorder? |
+|---|---|---|---|
+| **L1 LEVEL LADDER** | level identity + level order | element geometry + storey names | — (it is the coordinate system L3 uses) |
+| **L2 PHYSICS** | "this cannot be built until that is finished" | geometry, per element | **absolute — always wins** |
+| **L3 CONVENTION** | phase order within a level, level order within a phase | fixed lists | **default only — applies where L2 is silent, yields where L2 speaks** |
+| **L4 CAPACITY** | crews per resource | rates table | **never reorders — delays only** |
+
+**The precedence rule, in one sentence:** *physics is absolute, convention is a default, capacity is
+a delay, and every place where physics and convention disagree is named, counted and reported — never
+silently relaxed and never silently enforced.*
+
+That last clause is the part both previous designs lacked. §CPM_STRAGGLER_MEMBERSHIP silently
+exempted; §CPM_STRAGGLER_EXEMPTION_DROPPED silently enforced and let Tarjan clean up; §S24.3 Step 3
+would have silently relaxed per element. All three are the same mistake — resolving a contradiction
+without recording that one occurred.
+
+## §S25.2 — L1: the level ladder
+
+Two distinct jobs, both from measured data, neither invented:
+
+**Identity.** A level is a storey name PLUS a vertical body. Cluster a name's elements by
+**interval overlap** of `[base_z, top_z]` with tolerance `GAP` (0.5m, the shipped constant): two
+elements share a level if their vertical extents touch. **Never cluster by centre-z distance** — that
+reports any tall element as its own datum, which is exactly the error §S24_TRIAGE T7 had to correct
+(Terminal's 236 real 30m precast piles read as a phantom second ground floor). Distinct names whose
+bodies overlap collapse to ONE level: that is the correct treatment of federated ladders (Terminal's
+`Aras 01` @8.15m and `02 FIRST FLOOR LEVEL` @8.00m are one physical storey exported twice).
+
+Measured need, on the scheduler's own element set (`§PG_LEVEL_SPLIT`, 2026-08-18): **LTU_AHouse 5
+levels / 5,045 elements (4.1%)** whose geometry does not overlap their own level's body at all
+("VÅN 4" holds 1,867 elements at −1.4..1.4m alongside 1,525 at 10.9..16.5m); JKR 2 levels / 94;
+Terminal 1 level / 41; and **zero on Hospital, Clinic, Duplex and HHS**. So this layer is mandatory
+for one building and near-noop on four — build it, but do not let it grow into a project.
+
+**Order.** Rank levels by ascending body base. Keep the shipped M1 rule for the ORDERING relation:
+band = `floor(meanZ / 3m)`, dense-ranked over the bands actually present, and the level gate is
+band-to-band. Levels sharing a band are parallel sub-buildings (Terminal's Kedai shop block vs the
+main hall) and are never chained to each other. Identity is what changes here; the band ordering is
+already measured and stays.
+
+Print the derived ladder every run (`§S25_LADDER`), for the same reason §4D_BAND_MONOTONIC prints
+its own: a wrong ladder enforces a wrong order confidently.
+
+## §S25.3 — L2: physics
+
+**Relation (unchanged geometry, keep it):** `contactGraph` → `designatedSupport` (bearing-below,
+embedded, carrier-above, with §GROUNDED_NEVER_HANGS) plus `hostPairs` / `openingPairs`. One
+predecessor per element from support, plus host/opening predecessors.
+
+**Semantics: FINISH-to-START.** A dependent may not START until its support FINISHES. This replaces
+today's start-to-start edge (`cpm_schedule.js:157`, `addEdge(des[i], i, SS, 1, 'e1')`), and it is the
+literal statement of what this lane was asked for — *the floor is finished before the beam goes up*.
+Consequences, stated up front so they are not read later as regressions: `auditFloating`'s TRADE
+count (a dependent starting before its support finishes) should collapse from its locked baselines
+(Terminal 8,789, Hospital 5,107, LTU_AHouse 15,896 — W-MZ-8) toward zero, and the makespan will grow.
+Both are the intended effect. FS is uniform across all three support classes — a column on a cured
+footing, a window in a finished wall, a duct hung from a poured slab.
+
+**Within one group**, order by `base_z` (guid tie-break). A same-group physics constraint whose
+support does not sort earlier is a **contradiction in the data**: drop it, count it
+(`§S25_CONTRADICTION`), never contract it. This is what retires Round-2 contraction; the population
+it replaces is small and already characterised (physics-only SCCs of size ≤5 on most buildings, 1,291
+of them on Terminal, 17 max on HHS).
+
+## §S25.4 — L3: convention. Gates are numbers, never edges
+
+- **Phase gate:** at a level, `Substructure → Superstructure → Architecture`, then every Tier-2 phase
+  after all Tier-1 phases present at that level.
+- **Level gate:** same phase, previous band.
+- **A gate's value is the completion time of the gating group**, where completion is
+  `max end over that group's members that were NOT deferred` (§S25.5), and the excluded set is
+  reported per group.
+
+No milestone nodes exist. No E3/E4/member edges exist. A gate is a `Float64` that becomes known when
+a counter reaches zero, and it is read by a `max()`.
+
+## §S25.5 — The deferral rule: the entire conflict resolution, and why it terminates
+
+Pass order is `(bandRank, phaseRank)` — a **total order**. For each physics constraint `p → e`:
+
+- `group(p) < group(e)` → ordinary predecessor. Nothing special.
+- `group(p) == group(e)` → ordinary predecessor if `p` sorts earlier by `base_z`; otherwise a
+  contradiction (§S25.3), dropped and counted.
+- **`group(p) > group(e)` → `e` is DEFERRED**: it keeps the constraint (physics is absolute), it
+  becomes schedulable only when `p` is finalized, and **it is excluded from its own group's
+  completion time**.
+
+**Termination, in one line: a deferral always points strictly forward in a total order, so a chain of
+deferrals strictly increases and cannot close.** That is the proof that replaces Tarjan. There is no
+fixpoint, no iteration cap, and no cycle to break — not because cycles are broken well, but because
+none can be formed.
+
+**Deferral is LOCAL and non-transitive** — decided by an element's own direct predecessor, never by
+ancestry through a condensation. That single word is the difference from §CPM_STRAGGLER_MEMBERSHIP,
+whose transitive definition classified 54-100% of a phase as stragglers and made "phase complete"
+meaningless. The local population is measured and small: **Terminal 5.9% (2,821 of 48,116), Hospital
+10.9%, HHS 14.1%, Clinic 19.4%, Duplex 8.6%, JKR 6.4%, LTU_AHouse 4.9%**, plus backward host/opening
+pairs (Terminal 726, Clinic 495, LTU_AHouse 1,493).
+
+**Excluding a deferred element from its group's completion is not a fudge — it is the honest
+statement.** A physically-late element is not doing that group's work at that time; it merely carries
+the group's label. But the exclusion is only honest while it is *visible*: the deferred count per
+group is a reported number with a locked baseline, and a group with a large deferred share is a
+**data-quality alarm**, not something to schedule around. Clinic's 19.4% is exactly such an alarm and
+should be read as one.
+
+## §S25.6 — L4: capacity
+
+Same allocator as today and as `computeSchedule`: per-resource slot array, claim the earliest free
+slot, `MAX_CREWS_DEFAULT = 3`, pools shared project-wide. One rule made explicit because §S24.4 got
+it wrong ("same mechanism, smaller input"): **crew slots are claimed in TIME order, not in group
+order.** The ready set is a min-heap keyed `(precedence-feasible start, base_z, guid)`. A
+group-sequential claim order would let a group that is later in the pass but earlier in time claim
+after one that runs later — measurably wrong wherever a pool spans phases (`CONCRETE_GANG` appears in
+both Substructure and Superstructure). Capacity delays; it never reorders.
+
+## §S25.7 — The algorithm, whole
+
+```
+compute(elements, opts):
+  ladder      = levelLadder(elements)                  # §S25.2 — identity by interval overlap, order by band
+  group(e)    = (bandRank[level(e)], phaseRank(e.phase))         # the pass order: a TOTAL order
+  C           = contactGraph(elements)                 # §S25.3 — unchanged geometry
+  preds(e)    = designatedSupport(e,C) + hostPairs + openingPairs        # FS, every one of them
+
+  for each constraint p->e:                            # §S25.5 — classify, never merge
+      forward | sameGroup-ordered   -> predecessor
+      sameGroup-unordered           -> DROP, count §S25_CONTRADICTION
+      group(p) > group(e)           -> predecessor AND mark e DEFERRED
+
+  predCount[e]     = # unfinalized predecessors
+  groupRemaining[g]= # NON-deferred members of g
+  gatePending[g]   = # gating groups (prev phase @ level, same phase @ prev band) not yet complete
+  gateTime[g]      = max completion of those gating groups                # a number, not a node
+
+  ready(e)  iff predCount[e]==0 and gatePending[group(e)]==0
+  heap key  = ( max(gateTime[group(e)], finish of finalized preds), base_z, guid )
+
+  while heap:
+      e     = pop()
+      start = max(gateTime[group(e)], every predecessor's finish, earliest free slot of e.resource)
+      end   = toWall(toProductive(start) + dur(e))     # §S25.8
+      commit that crew slot to `end`
+      for each dependent d: if --predCount[d]==0 and gate open -> push d
+      if not deferred(e) and --groupRemaining[group(e)]==0:
+          complete(g) = max end over g's non-deferred members
+          for each h gated by g: gateTime[h] = max(gateTime[h], complete(g))
+                                 if --gatePending[h]==0 -> push h's ready members
+
+  assert processed == elements.length                  # MUST be 0 leftover; print it, never repair it
+```
+
+`O((V+E) log V)`, one pass, no fixpoint, no sweep cap. **A non-zero leftover is a bug in this design
+and must be reported as one** — not swept up by a fallback loop, which is how `computeSchedule`'s
+`§SUPPORT_CYCLE` residue and `§DEQ_REPAIR`'s 16 sweeps came to exist.
+
+Elements with no level (no storey) get no group gate: physics and crews only, counted separately.
+
+## §S25.8 — Durations, and why this can be ONE engine
+
+`dur = round(installSecs * scaleFactor * 1000)` productive ms, and
+`end = toWall(toProductive(start) + dur)`. Verified pure by direct read (`schedule_gate.js:554-558`):
+it depends on the element and the shift window and on **nothing about placement**. So the layered
+pass computes its own durations and does **not** need `ScheduleGate.computeSchedule` as a duration
+oracle — which is precisely what makes one engine possible instead of two-and-a-bridge. `installSecs`
+keeps coming from `ScheduleAuthor._installSecs` (real class fragmentation + linear weighting), the
+one existing source; nothing about classification moves.
+
+## §S25.9 — Where it lands, and what dies
+
+`viewer/schedule_engine.js` **already exists** as the `compute(elements, opts) → ScheduleModel` class
+this file's DO-NOT-REMOVE header mandates, and today it is wired to nothing but two probes. §S25 is
+its BODY: its Step 1 (`SG.computeSchedule`) and Step 2 (`CPM.run`) are replaced by §S25.7. Order of
+wiring, each step independently checkable:
+
+1. `time_machine.js:4322` `_displayTimeline` → `ScheduleEngine.compute` (the live movie + Gantt).
+2. `schedule_author.js:404` → the same call (task-window authoring, today a second `computeSchedule`).
+3. `time_machine.js:5179` stops calling `computeSchedule`.
+
+Then delete, not deprecate: `cpm_schedule.js`'s `buildGraph` / `tarjanScc` / `solve` and
+`computeSchedule`'s scheduling machinery — `geoGate`, `wallGate`, `hangGate`, `openingGate`,
+`hostGate`, `bandGate`/`bandCommit`, `phaseTrade`, the Kahn placement loop, `§SUPPORT_CYCLE`'s
+fallback and the 16-sweep `§DEQ_REPAIR` fixpoint. Their job is done by L2+L3+L4 and leaving them
+resident is exactly the third gate layer §S24_TRIAGE flagged.
+
+**Stays, untouched:** `contactGraph`, `designatedSupport`, `hostPairs`, `openingPairs`,
+`collapsePhase`, `deriveBandRanks`, `toWall`/`toProductive`, `auditFloating`, `deriveZones`,
+`_buildScheduleElements`, `_installSecs` — geometry, classification and audit, none of which is
+scheduling. `stragglerOf` becomes `deferredOf`: safe, because the bar-window formula that once read
+it is already classification-free (`time_machine.js:4422-4427`) and nothing else consumes it.
+
+Bump `_GANTT_CACHE_VERSION` (`time_machine.js:7903`) — the schedule shape changes — and bump
+`sw.js CACHE_VERSION` in the same PR as any `viewer/*.js` change, per this project's standing rule.
+
+## §S25.10 — Acceptance: what "done" means, against today's measured baselines
+
+1. **`§PG_GAP_CPM` = 0 negative gaps on 7/7 buildings**, or every remaining negative gap attributable
+   by guid to a listed deferral, with that count locked. Today: 7/7 fail, worst −747.2d (LTU).
+2. **`auditFloating` → 0**, or a locked, listed exception set. Today: Terminal 8,789 / Hospital 5,107
+   / LTU 15,896 (W-MZ-8). This is the FS invariant of §S25.3 and it is the acceptance the user asked
+   for in construction terms.
+3. `_midairAudit` stays 0/7 (nothing appears before what it touches).
+4. `§CREW_FEASIBILITY` stays 0 violations.
+5. **Leftover elements = 0**, printed every run.
+6. The 7 hand-computed synthetic cases still pass, plus **three new ones this design's own failure
+   modes require**: a deferral chain across three groups; a same-group contradiction pair; a level
+   with a genuine datum split. Hand-compute each before running it, per §VERIFICATION rule 1, and
+   wire them into the existing fleet gate — not a second gate.
+7. `§PG_LEVEL_SPLIT` ladder correct on 7/7, and every measurement taken on the DB half the viewer
+   actually serves (fix `witness_midair_zero.js:169` first — §S24_TRIAGE T8).
+
+## §S25.11 — Build order (each stage lands alone, each has its own stop condition)
+
+- **S25-1 — L1 ladder only.** No scheduling change. Prove the ladder on 7/7 via `§PG_LEVEL_SPLIT`.
+  *STOP-AND-REPORT if* a building's ladder disagrees with its `spatial_structure` elevations in a way
+  the interval rule cannot explain — report it, do not tune the tolerance until the table looks nice.
+- **S25-2 — the forward pass, physics FS + gates, no crews.** Measure `§PG_GAP` and `auditFloating`.
+  *STOP-AND-REPORT if* leftover ≠ 0, or if negative gaps survive that are not explained by a listed
+  deferral — the deferral model is then wrong and must be reported wrong, not widened until it fits.
+- **S25-3 — L4 crews**, time-ordered claims. Re-check `§CREW_FEASIBILITY` and makespan.
+  *STOP-AND-REPORT if* adding crews reintroduces a negative gap: capacity must only delay.
+- **S25-4 — wiring + deletion** (§S25.9), cache versions bumped, dead gates removed.
+  *STOP-AND-REPORT if* any deleted function still has a live caller outside tests.
+- **S25-5 — Gantt-drag**, the question §S24 left open: an edit is a **re-run of the same pure pass
+  with the dragged element pinned** (its start fixed, everything downstream recomputed). Same
+  function, one extra constraint — no incremental variant, no second code path. Verify the lock gate
+  (`verifyGanttIntegrity`) judges the re-run by the same rules.
+
+Before S25-2, run the bounded experiment §S24_TRIAGE H already specified (refuse or defer the
+backward physics constraints inside today's engine): it costs hours, and it either confirms the
+ablation model on 5/7 buildings or proves it wrong before any of this is built. *STOP-AND-REPORT if
+it does not move `§PG_GAP_CPM` where the ablation predicts* — that would mean this section's
+diagnosis is wrong, and that finding outranks the plan.
+
+## §S25.12 — What this does NOT solve, said plainly
+
+- **The LTU_AHouse 5,045 mislabelled elements are a DATA defect.** The ladder makes them visible and
+  schedules them where their geometry actually is; it does not repair the source model. An element at
+  z≈0 labelled level 4 is wrong in the IFC, and that belongs to extraction, not scheduling.
+- **MEP typing / zone capacity** (untyped `IfcBuildingElementProxy` → Architecture) is orthogonal and
+  stays open, exactly as §S24.4 had it.
+- **The Duplex/HHS TRADE regression** in the §RESULTS addendum is *expected* to be subsumed by
+  §S25.3's FS semantics, since it is the same invariant. That is a prediction, not a claim — if FS
+  lands and those two buildings still show it, STOP and report, do not fold it into this section.
+- **`Terminal_meta.db` / `Hospital_meta.db` integrity** (#1427/#1428 elevation+parentage patch) is
+  still unverified and unrelated to this design.
+- **Nothing here is measured yet.** §S25.0-§S25.6 are grounded in numbers already taken (§S24_TRIAGE.4
+  is the baseline table); §S25.7's pass has not been run against a building even once. The first
+  session to build it should expect to find something in here that the data does not support — and
+  should report that, not route around it.

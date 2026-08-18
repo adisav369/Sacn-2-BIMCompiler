@@ -224,19 +224,28 @@ async function runBuilding(SQL, RATES, bld) {
     ' topPhasePairs=' + JSON.stringify(Object.keys(byPair).sort((a, b) => byPair[b] - byPair[a])
       .slice(0, 5).map(k => k + '=' + byPair[k])));
 
-  // §PG_LEVEL_SPLIT — one storey NAME, two datums (the group key merges them)
-  const zByL = {};
-  items.forEach((o, i) => { if (lvlOf[i]) (zByL[lvlOf[i]] = zByL[lvlOf[i]] || []).push((o.bz + o.tz) / 2); });
+  // §PG_LEVEL_SPLIT — one storey NAME whose elements do not share one vertical body (the group key
+  // merges them anyway). Clustered by INTERVAL OVERLAP of [base_z, top_z] with tolerance GAP, NOT by
+  // centre-z distance: a centre-z rule reports any tall element as its own datum — measured, it
+  // called Terminal's 236 real 30m precast piles a second ground floor (§S24_TRIAGE T7 CORRECTED).
+  // A pile and the slab it carries overlap vertically and stay one level, as they should.
+  const ivByL = {};
+  items.forEach((o, i) => { if (lvlOf[i]) (ivByL[lvlOf[i]] = ivByL[lvlOf[i]] || []).push([o.bz, o.tz]); });
   const splits = [];
-  Object.keys(zByL).forEach(L => {
-    const zs = zByL[L].slice().sort((a, b) => a - b);
-    const cl = [[zs[0]]];
-    for (let i = 1; i < zs.length; i++) { if (zs[i] - cl[cl.length - 1][cl[cl.length - 1].length - 1] > 4) cl.push([zs[i]]); else cl[cl.length - 1].push(zs[i]); }
-    const big = cl.filter(c => c.length >= Math.max(3, 0.03 * zs.length));
-    if (big.length > 1) splits.push([L, big.map(c => [+c[Math.floor(c.length / 2)].toFixed(1), c.length])]);
+  Object.keys(ivByL).forEach(L => {
+    const iv = ivByL[L].slice().sort((a, b) => a[0] - b[0]);
+    const cl = [[iv[0][0], iv[0][1], 1]];
+    for (let i = 1; i < iv.length; i++) {
+      const c = cl[cl.length - 1];
+      if (iv[i][0] <= c[1] + GAP) { if (iv[i][1] > c[1]) c[1] = iv[i][1]; c[2]++; }
+      else cl.push([iv[i][0], iv[i][1], 1]);
+    }
+    const big = cl.filter(c => c[2] >= Math.max(3, 0.03 * iv.length));
+    if (big.length > 1) splits.push([L, big.map(c => [+c[0].toFixed(1), +c[1].toFixed(1), c[2]])]);
   });
-  console.log('§PG_LEVEL_SPLIT ' + bld + ' levels=' + Object.keys(zByL).length +
-    ' multiDatum=' + splits.length + ' ' + JSON.stringify(splits));
+  const strayN = splits.reduce((s, x) => s + x[1].slice(1).reduce((a, c) => a + c[2], 0), 0);
+  console.log('§PG_LEVEL_SPLIT ' + bld + ' levels=' + Object.keys(ivByL).length +
+    ' splitLevels=' + splits.length + ' elementsOutsideMainBody=' + strayN + ' ' + JSON.stringify(splits));
 
   // CPM — what the live viewer actually displays (time_machine.js _displayTimeline)
   const sol = CpmSchedule.solve(items, graph, { maxCrews });
