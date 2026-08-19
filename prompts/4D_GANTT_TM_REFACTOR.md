@@ -161,9 +161,12 @@ them rested on** (§S30 killed elevation-first ordering; §S31.1 then qualified 
 reframed §S26.6 C2). The evidence sections are strong and keep invalidating the design sections.
 **That is the pattern this file now records: measure first, then design — not the reverse.**
 
-## The ONE thing measured, reviewed, and ready to ship
+## ⛔ NOTHING IS SHIP-READY (corrected 2026-08-19)
 
-**§S25_REVIEW.6 — the `designatedSupport` election tie-break.** On the REAL engine, not a probe:
+**§S25_REVIEW.6 was the candidate and it did NOT survive being built.** Its numbers were a
+MIS-ATTRIBUTED COMPARISON (prototype-with-v2 vs live engine — see the ⛔ block above it).
+Built for real, the tie-break alone gives 6/7 or 5/7, not 7/7, with HHS_Office regressing on
+both paths and JKR on one. Not shipped, no PR. The claim as originally written was:
 float better on **7/7** (Terminal 4,756→1,555 · Hospital 7,753→1,293 · Clinic 1,102→327 ·
 JKR 3,183→1,072 · HHS 1,531→243 · Duplex 247→152 · LTU 12,712→9,461), phase gap better-or-equal on
 7/7, backward supports −29% to −51%. It is a tie-break inside one function — no architecture change.
@@ -300,6 +303,56 @@ as a NUMBER, not an edge*, which is literally §S25.4's own "gates are numbers, 
 applied to L2. **It remains the one credible route to float→0 and it has still not been tried.**
 `bearingonly` itself is dominated (float worse than the corrected election on 6/7) and is kept only
 as the instrument that isolated the mechanism.
+
+## ⛔ §S25_REVIEW.6 — CORRECTED 2026-08-19: the numbers below are a MIS-ATTRIBUTED COMPARISON
+
+**The "better on 7/7 versus the live engine" claim is WRONG, and it was the single thing this file
+called ship-ready. Verified in `scripts/proto_s25_forward_pass.js`:**
+
+```
+608:  const cpmRun = CpmSchedule.run(items, { maxCrews });   <- CPM baseline, computed FIRST
+610:  let desOverride = null;                                 <- the v2 election is built AFTER
+644:  const s25 = s25Compute(items, maxCrews, desOverride);   <- fed ONLY to the S25 prototype
+```
+
+`DESIG=v2` **never reaches `CpmSchedule.run`**. So the table below compares the §S25 PROTOTYPE pass
+— its own level ladder, L3/L4 gates, crew allocator and duration model — carrying the v2 election,
+against the untouched live engine. **It attributes the prototype's whole architecture to a tie-break
+inside one function.**
+
+**What the election tie-break ALONE actually does** (agent build 2026-08-19, branch
+`fix/designated-support-election` in `/tmp/wt-desig-election`, both twins patched, port proven
+faithful by 0 mismatches across 267,954 elements on all 7 buildings, two independent verifiers):
+
+| building | proto path before→after | witness path before→after |
+|---|---|---|
+| Terminal | 4,756 → 2,451 | 10,011 → 6,174 |
+| Hospital | 7,753 → 6,251 | 8,103 → 6,716 |
+| Clinic | 1,102 → 653 | 1,205 → 812 |
+| LTU_AHouse | 12,712 → 8,234 | 12,686 → 9,021 |
+| Duplex | 247 → 111 | 237 → 65 |
+| **HHS_Office** | **1,531 → 1,589 WORSE** | **1,491 → 2,505 WORSE (+68%)** |
+| **JKR** | 3,183 → 2,999 | **3,385 → 3,581 WORSE** |
+
+**6/7 (proto path) or 5/7 (witness path) — NOT 7/7.** Magnitudes fall far short of the 1,555 / 1,293
+/ 327 promised below. The `-29% to -51%` backward-supports claim DOES hold — it is a pure property
+of the election and is independent of the engine it runs in.
+
+**Not shipped. No PR.** The agent hit §S25_REVIEW.9's STOP-AND-REPORT and stopped instead of tuning
+the tie-break to chase the target numbers. The faithful port sits uncommitted for inspection.
+
+**⚠ SEPARATE, PRE-EXISTING, AND UNRELATED TO THIS CHANGE: all 7 W-MZ-8 baselines are ALREADY RED on
+`main` today** (`witness_midair_zero.js`, run before any edit): Terminal locked 8,789 / got 10,011 ·
+Hospital 5,107 / 8,103 · Clinic 3,523 / 1,205 · LTU 15,896 / 12,686 · Duplex 289 / 237 · HHS 1,538 /
+1,491 · JKR 3,736 / 3,385. `pass=32 fail=7`. **A locked baseline that no longer matches main is not
+a lock.** Something moved all 7 and was never re-locked. Diagnose that BEFORE re-locking anything.
+
+**⚠ AND: there are now THREE float numbers per building depending on the path** — the W-MZ-8 lock,
+`proto_s25_forward_pass.js`, and `witness_midair_zero.js`'s own `_buildXrayElements`/
+`_displayTimeline` chain (Duplex: 289 / 247 / 237). §S28.R already flagged this. **Every float number
+in this lane must name its instrument or it is meaningless.**
+
+The original section follows verbatim as the record of what was claimed.
 
 ## §S25_REVIEW.6 — THE WIN: correcting the support ELECTION improves every metric on every building,
 ## with no change to the engine at all
@@ -2298,7 +2351,11 @@ landed last and cancels parts of the rejected designs.
 
 Neither had reported. Do not re-dispatch either without checking whether it landed.
 
-**Agent A — ships §S25_REVIEW.6, the `designatedSupport` election fix.** The only change measured on
+**Agent A — REPORTED, STOPPED, DID NOT SHIP (2026-08-19).** See the ⛔ block above §S25_REVIEW.6:
+its numbers were a mis-attributed comparison; built for real the tie-break gives 6/7 or 5/7, not 7/7.
+Branch `fix/designated-support-election` in `/tmp/wt-desig-election`, uncommitted, port proven
+faithful (0 mismatches / 267,954 elements). **Also surfaced: all 7 W-MZ-8 baselines are ALREADY RED
+on main** — diagnose that before re-locking anything. Original brief said: the only change measured on
 the REAL engine (float better on 7/7: Terminal 4,756→1,555 · Hospital 7,753→1,293 · Clinic
 1,102→327 · JKR 3,183→1,072 · HHS 1,531→243 · Duplex 247→152 · LTU 12,712→9,461; phase gap
 better-or-equal 7/7). Briefed on: BOTH twins (`cpm_schedule.js:120` AND `time_machine.js:4575` —
@@ -2393,3 +2450,82 @@ CRLF noise; both §S21 and §KUL001 kept. Docs published: `ViewerComponentModel.
 `https://red1oon.github.io/BIMCompiler/ViewerComponentModel.html`, linked from the Viewer guide.
 Two orphaned live pages recovered into git in the process (`grislab_proof_run.html`,
 `ERP_PROJECT_REVIEW.md`) — both were live on gh-pages and in NO branch.
+
+---
+
+# §S33 — BOTH AGENTS REPORTED (2026-08-19). One gate PASSED, one claim DIED.
+
+## §S33.1 — Agent B: ✅ the §S32 derivation contract is ACHIEVABLE. T4 = 0 on all 7.
+
+`scripts/probe_s32_level_coverage.js` (`32ceb7b66`), read-only, four-tier fallback ladder.
+**Independently re-run and verified by this session**, including `md5sum -c` proving
+`Hospital_meta.db` is byte-identical after the run.
+
+| building | n | T1 space→storey | T2 name→storey | T3 own z | T4 |
+|---|---|---|---|---|---|
+| Hospital_meta | 63,182 | 8,474 (13.4%) | 45,033 (71.3%) | 9,675 (15.3%) | **0** |
+| HHS_Office_Federated | 6,839 | 88 (1.3%) | 4,586 (67.1%) | 2,165 (31.7%) | **0** |
+| Clinic_meta | 16,071 | 2,133 (13.3%) | 3,594 (22.4%) | 10,344 (64.4%) | **0** |
+| JKR_extracted | 8,985 | 107 (1.2%) | 1,910 (21.3%) | 6,968 (77.6%) | **0** |
+| Terminal_meta | 48,428 | 1,009 (2.1%) | 10,224 (21.1%) | 37,195 (76.8%) | **0** |
+| LTU_AHouse_meta | 122,330 | 0 | 0 | 122,330 (100%) | **0** |
+| Duplex_extracted | 1,119 | 0 | 0 | 1,119 (100%) | **0** |
+
+**0 of 276,954 elements fall through.** Structural, not luck: `_buildScheduleElements` already drops
+zero-transform elements upstream, so everything reaching the scheduler has a finite z and **T3 is a
+floor that cannot fail.** `ambiguousStoreyNames=0` on all 7, confirming §S31.4.
+
+**The instrument was proven capable of failing** — a 6-case `§S32_SELFTEST` runs before any real
+building, including a deliberately-broken case D that MUST land on T4; all 6 pass. T1 counts
+cross-check exactly against §S26.16's independently-measured `rel_contained_in_space` figures on all
+7. **This is the first number in this lane that arrived with its own falsifiability proof.**
+
+**NEW, unresolved, and it is a design decision not a measurement:** where a DECLARED level exists it
+sometimes contradicts the element's own z by >3m — Terminal T2 **2,161/10,224 (21.1%)**, Hospital T1
+557/8,474 (6.6%), others under 2.5%. Some is legitimate (tall elements span bands). **The ladder as
+written would silently trust the declared value.** A real derivation needs a stated tie-break for
+declared-vs-geometry disagreement. Agent B correctly stopped at the number.
+
+## §S33.2 — Agent A: ⛔ the one "ship-ready" change did NOT survive being built
+
+**STOPPED at §S25_REVIEW.9's STOP-AND-REPORT rather than shipping. That was the correct call and the
+gate worked.** Full correction is in the ⛔ block immediately above `§S25_REVIEW.6`; summary:
+
+- **The port is not the problem.** Proven faithful: 0 mismatches across 267,954 elements on all 7
+  buildings, verified two independent ways.
+- **The claim was a mis-attributed comparison.** `DESIG=v2` never reaches `CpmSchedule.run`
+  (`proto_s25_forward_pass.js:608` runs CPM *before* the override exists at `:610`, and it is fed
+  only to the prototype at `:644`). The "7/7 versus the live engine" table credited the §S25
+  prototype's entire architecture to a tie-break in one function.
+- **Built for real: 6/7 (proto path) or 5/7 (witness path).** HHS_Office regresses on BOTH
+  (1,531→1,589 and 1,491→2,505, +68%); JKR regresses on the witness path.
+- **The `-29% to -51%` backward-supports claim DOES hold** — a pure property of the election,
+  independent of the engine around it.
+
+**Two further findings, both pre-existing and unrelated to the change:**
+1. **All 7 W-MZ-8 baselines are ALREADY RED on `main`.** `pass=32 fail=7`. A lock that no longer
+   matches main is not a lock — something moved all 7 and was never re-locked. **Diagnose before
+   re-locking anything.**
+2. **Three different float numbers per building depending on path** (Duplex: 289 lock / 247 proto /
+   237 witness). §S28.R flagged this; it is now confirmed on all 7. **Every float number in this
+   lane must name its instrument.**
+
+## §S33.3 — the tally, stated plainly
+
+**Four claims died by measurement today, and the fourth was the one this file called ready to ship:**
+§S30 killed elevation-first ordering · §S31.1 qualified §S30 · §S31.3 was retracted outright ·
+§S33.2 killed §S25_REVIEW.6.
+
+**Every one was a claim written before, or inferred beyond, its measurement.** The two things that
+survived — §S26's evidence base and §S33.1's coverage result — were measured first and carried their
+own falsifiability proof. **That is the whole lesson of this session and it now has four data points.**
+
+## §S33.4 — STOP-AND-REPORT for whoever resumes
+
+- **Do not re-lock W-MZ-8 to today's numbers.** All 7 are red on main for an unknown reason. Find the
+  cause first; re-locking would bless whatever broke them.
+- **Do not ship the election port to chase §S25_REVIEW.6's targets.** Those targets do not exist on
+  the live engine. If the port is shipped it must be on its OWN merits (6/7 or 5/7, HHS regressing),
+  as a user decision, with baselines handled per the item above.
+- **Do not build the level derivation until the declared-vs-geometry tie-break is DECIDED** (§S33.1).
+  Coverage being total does not make the values correct.
