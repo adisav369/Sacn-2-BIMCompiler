@@ -2093,3 +2093,239 @@ corrections/decisions that can land in the same editing pass. **If only one thin
 fix R1: every stage from S3 on stands on an order the spec currently defines twice,
 contradictorily.** Re-vet is cheap after amendment — this review's commands are all cited and
 re-runnable.
+
+---
+
+# §S28 — TWO LANES, NOT ONE PIPELINE (2026-08-19)
+
+**Standing: PROPOSED, NOT VETTED.** Supersedes **§S27's SHAPE**, keeps most of its content. §S27 and
+§S27.R stay verbatim as record (same treatment §S24 got from §S25). No build agent may be dispatched
+until §S28.R records a verdict.
+
+## §S28.0 — why the shape changed, not just the four findings
+
+§S27.R returned NOT VETTED with 4 blocking findings. Three (R1, R2, R3) are one afternoon's spec
+sloppiness and are fixed below. R4 is a real gap and is filled below. **But the reason §S28 exists is
+a fifth problem §S27.R did not have to name, because it is about layout rather than content:**
+
+§S27 was a **seven-stage parallel build of a new engine beside a live one with locked witnesses**.
+That is the same shape as §S23, §S24 and §S25 — three grand designs in this file, none shipped.
+Meanwhile the §S26.14 branch moved measured numbers on 7 buildings with a ONE-LINE change in an
+afternoon. A fourth grand design is the predictable failure here, and it is a process risk, not a
+technical one.
+
+**§S28 splits the work into two lanes that ship independently and neither of which is big-bang:**
+
+- **Lane A — the engine, by DELETION.** Order stops being derived from a graph. Removes machinery.
+  Judged entirely by witnesses that already exist. Does not need Lane B.
+- **Lane B — the product, by ADDITION.** The cell grid is written into the IFC-native tables so a
+  planner gets something editable. Does not need Lane A.
+
+Neither lane blocks the other. Either can be abandoned without stranding the other.
+
+## §S28.1 — R1 RESOLVED: `seq` is the order; `phase` is a label (and the data was right)
+
+§S27.4 asserted trade order comes from `phase`. Measured against
+`viewer/rates/sequence_rules.json`:
+
+```
+seq 1        Substructure
+seq 2,3,4    Superstructure
+seq 5,6      Architecture         (IfcWall, IfcDoor, IfcWindow, IfcStair, …)
+seq 7        Architecture         (curtain-wall glazing, via NAME_OVERRIDE 'glazed_curtainwall_facade')
+seq 7        MEP Rough-in         (IfcFlowSegment, IfcDuctSegment, IfcCableCarrier, …)
+seq 8        Architecture         (IfcRoof)
+seq 9        MEP Final
+seq 10,11    Finishes
+```
+
+`seq` is a **total order over 1..11**. `phase` is **not monotone in seq** — "Architecture" occupies
+5,6,7,8 and straddles "MEP Rough-in" at 7. Ordering by phase is therefore ambiguous; ordering by seq
+never was.
+
+**RESOLUTION: `seq` is the single normative order everywhere in §S28. `phase` is a DISPLAY LABEL for
+the Gantt bar and orders nothing.** A cell is `(location, seq)`, never `(location, phase)`. The
+`trains` array in the §S27.5 template is replaced by seq bands; a template names its trains by seq
+range, and the phase string is carried through for display only.
+
+**Two elements sharing seq 7 across different phases are CONCURRENT, and that is correct, not a
+collision** — curtain-wall glazing and MEP first fix genuinely overlap on site.
+
+**The pattern worth naming, because it is now twice:** a human-readable LABEL used as an IDENTITY.
+Storey label `"Roof - Main"` at three elevations (§S26.6 C2); phase label `"Architecture"` across
+four seq values straddling another trade (here). **Anywhere this codebase keys off a name a human
+typed is a candidate for the same defect.** That is a standing search, not a one-off fix.
+
+## §S28.2 — R2 RESOLVED: the band rank must be BUILT, not cited
+
+§S27.2 told the builder to "use the shipped `§S1_BAND_RANK`". §S27.R found no such shipped function.
+Confirmed independently — `schedule_gate.js:476, 483, 856`:
+
+```js
+var r = _bandRank[collapsePhase(el.storey)];
+rankKey[t] = _bandRank[collapsePhase(elements[t].storey)] || 0;
+```
+
+`_bandRank` is keyed on `collapsePhase(el.storey)` — the **storey NAME**. It is the label ladder
+§S26.6 C2 forbids, not an elevation banding. Real elevation banding exists only in
+`bim-compiler/scripts/probe_s26_rank_monotone.js` (`Math.floor(bz / 3)`, dense-ranked).
+
+**RESOLUTION: Lane B builds `bandRankOf(element)` as new, small, named code**, ported from the
+probe's construction, with its own witness. It is NOT a citation of existing work. The existing
+`_bandRank` is left alone — Lane A does not touch it and Lane B does not consume it.
+
+## §S28.3 — R3 RESOLVED: a stop condition that can actually fail
+
+§S27's STOP CONDITION S1 was `unassigned = 0` where zones are built FROM the elements' own
+footprints — guaranteed by construction, the `engineGap` tautology class (§S25_REVIEW).
+
+**RESOLUTION — S1 is replaced by three numbers, each of which can fail:**
+
+- **S1a — `noGeometry`**: elements with no usable bbox, which genuinely cannot be placed. Non-zero
+  today (§S27.R measured Hospital 233, non-zero on 4/7). **Report the count and the class histogram.
+  It is a data finding, not a pass/fail** — but a change in it between runs is a regression.
+- **S1b — `bandSpan`**: elements whose bbox spans more than one band, assigned to their BASE band.
+  §S26.5 measured 16.3-16.7%. **Report it; a large move means the banding changed underneath.**
+- **S1c — `zoneCount` per level, and the largest zone's share of its level.** If every level yields
+  exactly one zone on every building, **say so plainly** — the grid is level×seq, zones add nothing,
+  and §S28.6's zone step should be dropped rather than kept as ceremony (§S27.10's own honesty note).
+
+§S27's S2 threshold (`CELL_MAX_FRAC = 40%`) is **withdrawn as a gate** — §S27.R found it trips
+Terminal at 40.3% on day one from a genuine metal-deck concentration, while the LTU case that
+motivated it dissolves to 19.2% at cell grain. **Report the distribution; do not gate on it.**
+
+## §S28.4 — R4 RESOLVED: how a task's dates are computed (the gap §S27 left)
+
+§S27 never said how `TASK.start`/`end` are produced. The arithmetic already exists and is reused,
+not invented — `time_machine.js:5105-5130` `§CREW_DEMAND`:
+
+```js
+_crewWorkDays[_r] += (el.installSecs || 0) / 28800;      // crew-days, 8h shift
+var _capacityCd = _crews * projectDays;                  // capacity in the SAME unit
+```
+
+**A cell's duration is that same computation at cell grain instead of project grain:**
+
+```
+cellDemandCrewDays  = Σ (installSecs of the cell's elements) / 28800
+cellDurationDays    = cellDemandCrewDays / crews(resource)
+```
+
+**UNITS ARE PART OF THE SPEC, and this is why:** `§ARCH_START_TEMPO / M1` records that this exact
+ratio was silently wrong for months because demand was quoted in 8-hour crew-days while
+`projectDays` was counted on a 24-hour clock — **one calendar day was worth three crew-days of
+capacity and every utilisation printed was ~3× overstated.** Any implementation must state the shift
+length at every conversion and assert the two sides agree.
+
+**Scheduling within a level:** cells run in ascending `seq`. Zones within one `(level, seq)` run
+**SERIALLY** — see §S28.5. Levels run per the template offset.
+
+**STOP CONDITION D:** total makespan is reported next to today's engine per building (§S26.14's
+"before" column). A wildly different number is a finding to report, not a result to accept.
+
+## §S28.5 — MEASURED: what a real planner's zones actually are (Hospital 2.0.ifc)
+
+§S27 assumed zones were parallel work areas. **Wrong.** Extracted from the hand-authored programme
+in the project's own test model (`/home/red1/Downloads/Hospital 2.0.ifc`, task names in file order):
+
+```
+Structures
+  Piles                 -> Zone A -> Zone B -> Zone C
+  Pile Caps · Foundation Slab · Strip Footing · Footing Columns
+  Level 1
+    Floor Slab
+    Columns             -> Zone A -> Zone B -> Zone C
+    Structural Framing  -> Zone A -> Zone B -> Zone C
+  Level 2
+    Columns             -> Zone A -> Zone B -> Zone C
+  Level 3
+    Columns             -> Zone C -> Zone B -> Zone A      <-- REVERSED
+```
+
+Four facts, all load-bearing for the spec:
+
+1. **The hierarchy is LEVEL → TRADE → ZONE.** Exactly the cell grid, with zone as a third level.
+2. **Zones are SPATIAL, not categorical** — same level, same trade, different part of the plan.
+3. **Zones are SEQUENTIAL, not parallel.** Every `IfcRelSequence` between them is `.FINISH_START.`
+   (§S26.13). A zone split is one crew FLOWING through a floor — the LBMS mechanism (§S26.10) —
+   not concurrency.
+4. **Level 3's columns run C → B → A.** Serpentine: the crew works back the way it came rather than
+   teleporting to Zone A. That is a human planning crew movement, and it is the strongest single
+   piece of evidence in this file that the model carries a genuine programme.
+5. **The planner zoned STRUCTURE, not architecture** — Piles, Columns, Structural Framing. Nothing
+   in the architecture trades is zoned.
+
+**Consequence for §S28.6: build zone-capable, default to one zone per level.** If a level's raster
+yields one component, that level is one zone and the grid is level×seq — reported as such per
+§S28.3 S1c, never forced into a k-way split.
+
+**Correction to the record:** §S26.13 and §S27.8 say Hospital carries "121 IfcTask". §S27.R found
+this is a grep conflation — `IFCTASK(` = **75**, plus 46 `IFCTASKTIME` = 121. The project's own
+importer agrees (75). The 43 `IfcRelSequence` figure stands. **The programme is real; the count was
+wrong.** Also: §S27.8's "the other six have them empty" is wrong — `LTU_AHouse_meta.db` lacks the
+task tables too, so it is 5 empty + 2 absent (Terminal, LTU).
+
+## §S28.6 — LANE B: the product, by addition
+
+Order of work, each step reporting its number before the next begins:
+
+- **B1** `bandRankOf()` — new code per §S28.2, with a witness. Stop: band count and membership
+  reported per building; a level is never a storey name.
+- **B2** zone compiler — reuse `compile_rooms.py`/`room_walker.js`'s rasterizer, change the consumer
+  from exterior-unreachable pockets to occupancy components (§S26.16). Stop: §S28.3 S1a/S1b/S1c.
+  **§S27.R raised whether that rasterizer is separable from the flood-fill at all — B2 must answer
+  that with function/line boundaries BEFORE writing code, and report if it is not.**
+- **B3** element → cell `(level, zone, seq)`. Stop: cell count + size distribution, no gate.
+- **B4** durations per §S28.4. Stop: makespan vs §S26.14 baseline.
+- **B5** write `schedules`/`tasks`/`task_sequences`/`task_elements`. Stop: row counts; task count in
+  the same order of magnitude as Hospital's own 75.
+- **PROHIBITION (unchanged from §S27.8, and it is still the most important line):** never write
+  element-level physics arrows into `task_sequences`. That makes the 2.46M-edge web permanent
+  instead of ephemeral.
+
+Lane B changes **no scheduling behaviour**. It is a new output. Nothing it does can regress a
+witness, which is exactly why it is separable.
+
+## §S28.7 — LANE A: the engine, by deletion
+
+Independent of Lane B. The hypothesis, and it is falsifiable in one run:
+
+> Order comes from a sort — `(bandRank, seq, base_z, guid)` — and physics returns to being a
+> `max()` delay over already-placed elements, as it was before `0fe8eb2` (2026-08-07). The SCC
+> pass, the condensation, the cycle-breaker and the contraction counters become unreachable.
+
+Deletable surface, measured: `viewer/cpm_schedule.js` is 650 lines with **38** lines matching
+`tarjan|scc|contract`.
+
+**The one hazard, and it is documented in the code that was deleted** — `0fe8eb2^
+schedule_gate.js:252-262`: re-sorting made 2,341 elements float again because the gate scanned a
+PARTIAL grid of already-placed elements. **Guard (§S26.6 C1): the gate uses the judge's global scan
+(`auditFloating`'s grids, `schedule_gate.js:1055-1059`), which was always global and correct.** A
+backward relation is then REPORTED and counted, never silently skipped.
+
+**STOP CONDITION A (this is the whole lane):** float and midair, from the UNCHANGED existing judges,
+no worse than §S26.14's "before" column per building. Better is a win; worse kills the lane. **A "0"
+produced by any check built on the sort's own definitions is not evidence** (§S25_REVIEW precedent).
+
+§S27.R also flagged that the Duplex float baseline is quoted as 247 (probe) while the witness-side
+measure is 237 — **name the instrument in every number this lane reports.**
+
+## §S28.8 — what §S28 does NOT solve
+
+Everything in §S27.10 still applies, plus:
+
+- **Whether Lane A's sort actually reproduces float parity is UNTESTED.** It is the lane's whole
+  hypothesis and it may simply fail — that is the point of running it first and cheaply.
+- **Crew realism.** §S28.4 reuses `§CREW_DEMAND`'s arithmetic; whether the resulting durations are
+  credible to a planner is untested and F4's Hospital comparison is still the only anchor.
+- **Zone semantics remain a computable proxy** for what a planner means by a zone. Hospital's
+  A/B/C are named regions on a plan; a connected component of an occupancy raster is not obviously
+  the same partition, and §S28.5's evidence does not establish that it is.
+- **Serpentine order (§S28.5 fact 4) is NOT modelled.** Zones run A→B→C every level; the real
+  programme alternates. Named so it is not mistaken for an oversight.
+- **The host/opening extraction gap** (§S26.12.2) and the **`designatedSupport` election win**
+  (§S25_REVIEW.6) are both untouched and both belong to other lanes.
+
+## §S28.R — REVIEW VERDICT (empty = NOT VETTED = do not build)
+
+_(pending)_
