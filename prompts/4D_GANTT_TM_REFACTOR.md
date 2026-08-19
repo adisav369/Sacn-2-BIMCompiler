@@ -2963,3 +2963,151 @@ open PR, (b) a decision put in front of the user, or (c) an entry in this ledger
 is neither.** Any session that produces a number and ends without doing one of those three has
 dropped it — which is how §S37.1's A1 and A2 sat idle, and how LTU's storey ladders were missed by
 two consecutive sessions.
+
+---
+
+# §S38 — B5 ANSWERED: the storey NAME carries the ladder. The invented constants go; a new gate opens. (2026-08-19)
+
+Instrument: `scripts/probe_s37_name_derived_ladders.js` (`§S37_SELFTEST 7/7` — the family parser
+splits `VÅN`/`VÅNING`, reads a leading digit as an ordinal not a family, reports "no ordinal"; the
+ladder check is shown flagging an inverted ladder AND not false-positiving on a clean one; the
+partition metric shown at 0 and non-zero). Read-only; `md5sum -c` on all 7 frozen DBs **OK before
+and after**. Numbering: `§S37` was taken by the ledger committed in parallel (`c0449334f`) — this is
+the answer to its item **B5**, not a competing section.
+
+## §S38.0 — the miss, in one line
+
+`buildGrid()` asked `spatial_structure.center_z` and, finding none, invented a uniform 3m grid for
+122,330 LTU elements. It never asked the 121,635 of them (**99.43%**) that carry a storey NAME.
+
+## §S38.1 — Q1/Q2: the ladders exist, and 3 of 4 LTU families are monotonic
+
+Per-name elevation derived as the **median `base_z` of the name's own members** — the statistic §S38.4
+then tests rather than assumes.
+
+| building | family | k | elements | derived ladder (m) | monotonic |
+|---|---|---|---|---|---|
+| LTU | `PLAN` | 4 | **105,253** | 5.25 · 8.58 · 11.72 · 12.79 | **YES** |
+| LTU | `VÅNING` | 4 | 6,014 | 1.30 · 4.90 · 7.95 · 11.37 | **YES** |
+| LTU | `STOREY` | 3 | 4,067 | 4.56 · 8.21 · 11.46 | **YES** |
+| LTU | `VÅN` | 5 | 5,725 | 2.63 · 4.90 · 7.95 · **−0.19** · 16.07 | ⛔ **NO** — `VÅN 3`(7.95) → `VÅN 4`(−0.19) |
+| LTU | `REF.` / `TAKPLAN` | 1 each | 297 / 279 | no ordinal — cannot be laddered | n/a |
+| Duplex | `LEVEL` | 2 | 123 | 0.00 · 3.22 | YES |
+| HHS | `LEVEL` | 3 | 4,674 | 2.87 · 6.25 · 9.85 | YES |
+
+**The offender explains itself.** Member spread (IQR of `base_z`) separates "this name is a floor"
+from "this name is not": `Plan 1` 0.55m · `Plan 4` 0.82m · `VÅN 5` 0.01m · `VÅNING 1` 1.14m — versus
+**`VÅN 4` 13.87m · `VÅN 2` 10.27m · `TAKPLAN` 9.58m · `VÅN 3` 8.48m**. The four widest are exactly
+the family that broke monotonicity plus the un-ordinaled roof plan. `VÅN 4`'s 3,392 elements run from
+p25 −0.42m to p75 13.44m — that name is not a storey, it is a bucket. **5,132 LTU elements (4.2%)
+sit under a name that is not a single floor.**
+
+Note `VÅN 2` = `VÅNING 2` = 4.90 and `VÅN 3` = `VÅNING 3` = 7.95 exactly — two spellings of one
+source model's storeys, which is why family splitting matters and a global grid cannot work.
+
+## §S38.2 — Q3: per-family grids on LTU, measured
+
+`§S37_Q3_COST` / `§S37_Q3_OVERRIDE`, controls printed alongside (self-vs-self **0**, half-band shift
+21.58% → `metricResponds=YES`):
+
+| | uniform 3m (shipped) | per-family name-derived |
+|---|---|---|
+| levels | 11 non-empty bands | 18 groups |
+| elements landing in a different level | — | **20,305 (16.69%)** |
+| declared coverage | **0** | **121,635 (99.43%)** |
+| override rate under the §S34.3 tie-break | n/a (no declared values exist) | **4,008 / 121,635 = 3.30%** |
+| still uncovered | 122,330 (100%, all geometry on an invented grid) | **695 (0.57%)**, no name at all |
+
+3.30% sits between Terminal (1.25%) and JKR (11.85%) — LTU stops being the building with no level
+structure and becomes an ordinary one. Duplex: 143 named elements only (12.78%), 0 overrides.
+
+## §S38.3 — the constants: BOTH disappear, on this fleet, and one new question replaces them
+
+**`FALLBACK_BAND_M` (3.0m): removable.** A name-derived grid exists on **every** fleet building —
+the weakest is Duplex, where 143 named elements (12.78%) still yield four real lines
+`[−1.55 (T/FDN) · 0.00 (Level 1) · 3.22 (Level 2) · 6.00 (Roof)]`, on which the remaining 87.22%
+place geometrically. `§S37B_GLOBALGRID` prints `fallbackNeeded=NO` for both fallback buildings.
+Cost of the swap: LTU 43.24% of elements land differently vs the uniform grid, Duplex 16.18%.
+
+**The clustering bandwidth (`CLUSTER_BW`): removable — it is not needed at all.** §S36.1 only
+reached for slab-top clustering because the names had been overlooked. No clustering, no bandwidth,
+no `CLUSTER_MIN`.
+
+⚠ **But a NEW question replaces them, and it is not yet answered: the per-name quality gate.**
+`VÅN 4` proves a name can be a bucket rather than a floor, and using such a name as a grid LINE
+injects a garbage elevation (−0.19m). A candidate gate with no invented constant — *a name's IQR
+must not exceed its own family's median inter-level gap, falling back to the building's median gap
+for a family of one* — was tested (`§S38_SELFTEST 4/4`, shown returning both answers) and **it is
+not good enough**:
+
+| building | names | flagged | flagged elements | verdict |
+|---|---|---|---|---|
+| LTU | 18 | 5 | 5,429 (4.46%) | ✅ flags exactly `VÅN 2/3/4`, `TAKPLAN`, `Ref.` |
+| Hospital · Duplex · HHS | 8 · 4 · 4 | **0** | 0 | ✅ no false positives |
+| **Terminal** | 22 | 7 | **6,765 (46.40%)** | ⛔ over-flags |
+| **Clinic** | 7 | 3 | **7,779 (71.30%)** | ⛔ over-flags |
+| **JKR** | 20 | 10 | **4,390 (54.23%)** | ⛔ over-flags |
+
+Cause, named: those three buildings have mostly single-name families, so the denominator falls back
+to the BUILDING's median gap — which on densely-named models is 0.30m (JKR) or 0.98m (Terminal), so
+almost every real storey trips it. The gate works where families are ladders and fails where names
+are unique-per-storey. **Reported as unsolved rather than tuned into looking solved.**
+
+Mitigation that already exists, measured: with the bad names left IN, LTU's per-family override rate
+is still only 3.30% — the §S34.3 tie-break absorbs most of a bad declared level by overriding it.
+The gate matters for GRID-LINE construction, not for element assignment.
+
+## §S38.4 — Q4: name-derived vs declared `center_z`, where both exist (23 names, 5 buildings)
+
+| statistic | fleet MAE vs declared | preserves declared order |
+|---|---|---|
+| median `base_z` | **1.01m** | 4/5 buildings |
+| median `center_z` | **0.91m** | **5/5** |
+| p10 `base_z` | 1.98m | 5/5 |
+
+The two medians are within 0.10m of each other; `p10` is twice as bad. `median center_z` is also
+what the shipped engine already uses (`viewer/schedule_author.js:305-307`), so it is the precedent,
+not a new choice. **The one order failure is `median base_z` on JKR — and it is the 1cm twin again**
+(`01 Aras Satu` declared 82.89 vs `00 Aras Tanah` declared 82.90; derived puts them 0.97m apart in
+the opposite order). §S36.2 already showed that 1cm ordering is a coin flip, so this is weak
+evidence against `base_z`, not strong evidence for `center_z`.
+
+**Disagreements are a finding, per the brief.** Hospital tracks within Δ+0.11 to +0.96m on levels
+1-5, then drifts to −1.93m on `Level 7` (191 elements — sparse levels derive badly). JKR's derived
+elevations sit **0.9–1.9m BELOW** every declared value, consistently. Neither is a defect in the
+derivation; both say a derived elevation is a floor-line ESTIMATE with roughly ±1m of scatter, which
+is well inside the local storey gap the §S34.3 band uses.
+
+## §S38.5 — this is not only an LTU fix: declared coverage rises fleet-wide
+
+`§S37_NAMES` — elements carrying a storey NAME versus elements the shipped ladder can call declared:
+
+| building | named | currently declared (§S35.2) | distinct names / names with a stored `center_z` |
+|---|---|---|---|
+| **JKR** | **90.09%** | 19.79% | 20 / 4 |
+| LTU | **99.43%** | 0% | 18 / 0 |
+| Hospital | 85.03% | 83.38% | 8 / 7 |
+| HHS | 69.00% | 68.26% | 4 / 3 |
+| **Clinic** | **67.89%** | 35.34% | 7 / 3 |
+| Terminal | 30.11% | 22.91% | 22 / 6 |
+| Duplex | 12.78% | 0% | 4 / 0 |
+
+**§S31.4's 21-85% "joinability" was measuring the JOIN, not the DATA** — exactly the root cause
+§S37 names. Clinic's B3 item (32% `Unknown`) is unchanged by this: those elements genuinely carry no
+name and stay on the geometry tier.
+
+## §S38.6 — converted to action, per §S37.5
+
+- **B5 → ANSWERED.** Both invented constants (`FALLBACK_BAND_M`, clustering bandwidth) are removable
+  on this fleet; the replacement is name-derived per-family grids. **Nothing adopted here** — the
+  brief said measure, not switch, and `level_deriver.js` is unchanged.
+- **The change this authorises, when a spec is written:** in `build/level_deriver.js`, `buildGrid()`
+  gains a name-derivation tier between T2 and the fallback (per-family grids from member medians),
+  and the `uniform3m` branch plus `FALLBACK_BAND_M` are deleted. `levelFor()` gains a T2b tier for
+  elements whose name resolves only through the derived ladder. **Not written — that is a spec, and
+  specs in this lane get vetted before they get built (§RESUME R.2).**
+- **NEW LEDGER ITEM (B6): the per-name quality gate is unsolved.** A derived gate works on 4/7 and
+  over-flags on 3/7 (Terminal 46%, Clinic 71%, JKR 54%). Needed for grid-line construction; NOT
+  needed for element assignment (the tie-break absorbs bad names — LTU 3.30%). Owner: whoever writes
+  the B5 spec. Do not adopt the IQR-vs-family-gap rule as it stands.
+- **B4 (Terminal furniture) is unchanged and still unexplained.** Nothing here touches it.
