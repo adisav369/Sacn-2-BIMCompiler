@@ -2632,3 +2632,78 @@ asked about. It also puts §S37 B1 (the hull) and this in the same place: `_disp
 | **E4** | **`scripts/anchor/anchor_pre1242_witness.js` `require`s another session's `/tmp` scratchpad** — a `/tmp` clear makes §S42 unreproducible. Vendor the module or read it via `git show`. | open, one line |
 | **E5** | The float is made by the CPM layer (§S40.4) — fold into B1's target rather than opening a new lane. | open |
 
+
+---
+
+# §S43 — B1 MEASURED: the bars are wide, but NOT because of one stray element (2026-08-19)
+
+**Measured before designing, at `_displayTimeline`'s own output and `time_machine.js:6074`'s own
+grouping — not in a separate lane.** Instrument: `scripts/hull/hull_probe.js` (a copy of
+`witness_midair_zero.js` with a hull measurement added; copy into `bim-ootb/viewer/tests/` to run),
+on `3bf771e` — the §S26.2 branch, i.e. post-#1439 float. Read-only. The task tables hold 0 rows on
+every fleet building (§S26.13), so `storey|phase` IS the live grouping, as the code's own fallback.
+
+## §S43.1 — the symptom is real and it is widespread
+
+`§S43_HULL` — a "bar" is one `storey|phase` group; RAW = the hull its members actually describe
+(`min start … max end`), TRIMMED = what ships after `§GANTT_MINI_TRIM`'s Tukey fence:
+
+| building | bars | project days | RAW >50% | RAW >80% | TRIMMED >50% | TRIMMED >80% | median RAW | median TRIMMED |
+|---|---|---|---|---|---|---|---|---|
+| LTU_AHouse | 58 | 1,429 | **35** | **25** | 21 | 16 | **74.4%** | 29.8% |
+| Duplex | 16 | 15.4 | 8 | 2 | 3 | 2 | **68.7%** | 18.1% |
+| HHS_Office | 17 | 98.6 | 9 | 1 | 4 | 0 | **60.0%** | 29.7% |
+| Hospital | 35 | 543.5 | 15 | 10 | 11 | 6 | 25.8% | 17.3% |
+| Terminal | 72 | 164.7 | 25 | 6 | 12 | 5 | 30.1% | 17.1% |
+| JKR | 64 | 45.6 | 14 | 4 | 8 | 1 | 26.6% | 16.5% |
+| Clinic | 32 | 183.5 | 9 | **9** | 7 | 3 | 22.9% | 18.4% |
+
+**On LTU 60% of bars span more than half the project and 43% span more than 80% of it**, even
+before the trim. Clinic is the sharp case: every one of its 9 wide bars is >80% — there is no
+middle. The trim is doing real work (median bar 74.4% → 29.8% on LTU, 68.7% → 18.1% on Duplex) but
+it does not fix the shape: 21 of LTU's 58 bars still cross half the project AFTER trimming.
+
+## §S43.2 — ⛔ the stated cause does not survive measurement
+
+§OBJECTIVE and §S37 B1 both say: *"one stray element stretches the whole bar."* Measured, per bar:
+the share of the raw hull that disappears if you delete the ONE element that shortens it most
+(the earliest starter or the latest finisher, whichever helps more):
+
+| building | median share of hull owed to ONE element | bars where one element owns >50% | RAW>50% bars, before → after dropping that element |
+|---|---|---|---|
+| JKR | **3.3%** | 8/64 | 14 → 11 |
+| Terminal | **1.9%** | 9/72 | 25 → 22 |
+| Clinic | 0.8% | 4/32 | 9 → 7 |
+| Duplex | 0.7% | 1/16 | 8 → 7 |
+| LTU_AHouse | 0.5% | 5/58 | 35 → 31 |
+| Hospital | 0.4% | 2/35 | **15 → 15** |
+| HHS_Office | 0.4% | 3/17 | 9 → 6 |
+
+**The median bar owes 0.4–3.3% of its width to its worst single element.** Deleting that element
+outright removes at most 4 wide bars on any building and removes NONE on Hospital. **A bar is not
+wide because one member is late. It is wide because its members are genuinely spread across the
+project** — the trimmed span, which throws out the whole outlier tail on both sides, still covers
+17–30% of the project at the median and >50% on 3–21 bars per building.
+
+This is the §S30/§S31.3 pattern again: a mechanism written down before it was measured, refuted by
+its own measurement. The symptom is real; the named cause is not it.
+
+## §S43.3 — what that means for B1's scope
+
+- **An outlier fix cannot deliver this.** Neither a better trim nor removing stragglers moves the
+  numbers above — the shipped Tukey trim is already the strong version of that idea and it leaves
+  LTU with 21 bars over half the project.
+- **"Schedule the group" is therefore not a display change, it is a SCHEDULING change.** Making a
+  `storey|phase` bar narrow means constraining its members to a contiguous window — which changes
+  when elements are built, not how they are drawn. That is a much larger claim than "fix the grain"
+  suggests, and it needs its own vetted spec.
+- **The dispersion has a known source.** §S42 measured that `_displayTimeline`'s CPM pass compresses
+  the makespan ~2.2× and manufactures essentially all of the lane's float (fleet 456 → 31,470 on
+  `b81f646`). A pass that interleaves work to compress duration is precisely what spreads one
+  group's members across the whole programme. **Symptom 1 and symptom 2 share one owner —
+  `_displayTimeline` — which is what §OBJECTIVE claims, but through dispersion, not through hulls.**
+- **What has NOT been measured yet, and is the next honest step:** how much of a bar's dispersion is
+  crew-capacity levelling (a real constraint, correct to keep) versus CPM interleaving (a choice).
+  That number decides whether narrowing bars costs schedule duration or is free.
+
+**Nothing designed, nothing built, no grid.** `viewer/` unchanged by this section.
