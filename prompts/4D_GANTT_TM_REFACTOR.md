@@ -69,24 +69,56 @@ ground truth, not by building the next layer on an unconfirmed one.
 
 ---
 
+# §OBJECTIVE — what this lane exists to fix (user, 2026-08-19)
+
+Two symptoms. Everything else in this file is scaffolding around them.
+
+**1. Hanging ARCH/MEP** — elements appearing before what holds them up is built.
+Live, unchanged all of 2026-08-19: Terminal 4,756 · Hospital 7,753 · LTU 12,712 · JKR 3,183 ·
+HHS 1,531 · Clinic 1,102 · Duplex 247. (Strict midair — start before support *starts* — is already
+0; it is the start-before-support-*finishes* overlap that reads as floating on screen.)
+
+**2. Stacked Gantt bars** — "one pile, full project length".
+
+**Both are the same defect: scheduling is per ELEMENT, display and measurement are per GROUP.**
+`time_machine.js:6074` groups bars by `storey|phase` but each bar's span is min-start to max-end
+over elements scheduled individually, so one stray element stretches the whole bar. The shipped
+mitigation is a Tukey trim that hides outliers. Fix the grain — schedule the group — and both
+symptoms go together. This is §S37 B1, the largest unexploited finding here, and nothing has been
+built against it.
+
+**Four measured causes, all unshipped:**
+- support predicate counts a pipe as holding up a wall — 760 of 761 Duplex physics-vs-phase
+  contradictions (§S26.2)
+- `hang` rule is 93-99.8% redundant and the sole cycle source; deleting it → acyclic 7/7 (§S26.3)
+- the blob destroys the dependency chain — uncapped crews, live engine finishes Terminal in 0.6d,
+  i.e. nearly everything at once (§S31.1)
+- a Gantt bar is a hull (§S26.13, above)
+
+**Progress is measured by those seven float numbers moving, and by bars ceasing to span the
+project. Not by new sections in this file.**
+
+---
+
 # §STATUS — read this first (2026-08-19, end of a full consolidation)
 
 > **Resuming in a new session? Read `# 🔄 §RESUME` at the END of this file first — it names the
 > standing rulings and the required order of work. Both agents it lists have since REPORTED (§S33);
-> §S34 then decided the tie-break §S33.1 left open and §S35 built the derivation. Next open step is
-> §RESUME R.5 step 3 — a probe carrying the REAL engine gates — then ONE vetted spec.**
+> §S34 then decided the tie-break §S33.1 left open and §S35 built the derivation. Read `# §OBJECTIVE` above FIRST — it
+> states the two symptoms this lane exists to fix, and neither has moved. The next step is to ship
+> one of the four measured causes, not to measure again.**
 
 **Nothing has shipped. `viewer/` is unchanged.**
 
 **⚖ STANDING RULING — §S32 (user, 2026-08-19), read before acting on ANY section below:** the
-extractor is CORRECT and must not be changed; `buildings/*.db` are FROZEN and must not be rebuilt or
-written to; every derived fact is computed at RUNTIME, ONCE, on load — the room-injection pattern.
+extractor is CORRECT and must not be changed; `buildings/*.db` EXTRACTION tables are FROZEN (§S32.6: the
+SCHEDULE tables — `schedules`/`tasks`/`task_sequences`/`task_elements`/`calendars` — ARE writable); every derived fact is computed at RUNTIME, ONCE, on load — the room-injection pattern.
 §S32.2 lists what this CANCELS in §S27, §S28 and §S31, including the Hospital rebuild those sections
 called for.
 
 | § | what it is | standing |
 |---|---|---|
-| §S25_REVIEW | outside review + what measurement did to it | **HOLDS** — carries the one ship-ready change (§S25_REVIEW.6) |
+| §S25_REVIEW | outside review + what measurement did to it | **HOLDS**, but its "ship-ready" §S25_REVIEW.6 claim is DEAD — killed by §S33.2 (mis-attributed comparison) |
 | §S26 | evidence base — the blob is predicate-made, `hang` redundant, LBMS/trains, the IFC container already exists and is empty | **HOLDS** — independently re-derived by two adversarial passes |
 | ~~§S27 / §S28~~ | both NOT VETTED designs | **ARCHIVED 2026-08-19** — `prompts/archive/…_S27-S28_rejected_2026-08-19.md`. Not build targets. |
 | §S29 | generality audit — the design is fitted to 7 multi-storey new-build buildings | **HOLDS** |
