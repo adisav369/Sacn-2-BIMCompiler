@@ -2411,3 +2411,94 @@ deprecated DB.** Correct order, stated so it is not re-derived:
 **Nothing pushed to `bim-ootb`.** Worktree `/tmp/wt-wmz-pre` holds branch
 `fix/wmz8-relock-after-1434-1435` with no commits (the re-lock edit was verified green, then
 reverted pending the DB-resolution decision above).
+
+---
+
+# §S42 — THE HISTORICAL ANCHOR: is the graph era ahead of the engine it replaced? (2026-08-19)
+
+**Question (user):** the engine before `0fe8eb2` (#1242, 2026-08-07) ordered by sort with physics as
+a clock — no graph, no blob, no cycles. Every fix since removes bad edges from the graph that commit
+introduced. **Are we ahead of that baseline, or still climbing back to it?**
+
+**Answer: neither, and the framing does not survive the measurement. The two eras fail in DIFFERENT
+ways.** Pre-#1242 is better on overlap and makespan; it is catastrophically worse on the symptom
+§OBJECTIVE leads with. Reverting the graph would trade a defect the fleet no longer has for one it
+does.
+
+## §S42.1 — method: only the SCHEDULER changes
+
+Instrument: `witness_midair_zero.js` with the pre-#1242 `schedule_gate.js` loaded as a SECOND module
+(`git show 0fe8eb2^:viewer/schedule_gate.js`), preserved as
+`scripts/anchor/anchor_pre1242_witness.js` in this repo. Held constant: the DB files (today's
+`_meta.db`, post-#1438 resolver), the element build (`_buildXrayElements`), the rates, the crew
+caps, and **both judges** — today's `ScheduleGate.auditFloating` and this witness's own `census()`.
+Today's global `ScheduleGate` is saved and restored around the old module's `require`, since it
+assigns the global on load. The old signature is unchanged (`computeSchedule(elements, baseMs,
+scaleFactor, maxCrews)`), so nothing is adapted or approximated.
+
+**Today's witness cannot simply run at `0fe8eb2^`** — it hard-requires `viewer/cpm_schedule.js`
+(#1398, seven weeks later) and slices `_displayTimeline` by source text. Swapping the scheduler
+under a constant judge is the only comparison that is actually like-for-like, and it is the one
+reported here.
+
+## §S42.2 — the three engines, side by side
+
+| building | pre-#1242 float / days | today PRE-CPM float / days | today POST-CPM (#1439) float / days |
+|---|---|---|---|
+| Terminal | **42** / 123.6 | **5** / 373.2 | 2,151 / 164.7 |
+| Hospital | **3** / 331.8 | **0** / 1026.2 | 3,960 / 543.5 |
+| Duplex | **0** / 9.7 | **0** / 31.3 | 44 / 15.4 |
+| HHS_Office | **141** / 46.8 | **9** / 129.2 | 889 / 98.6 |
+| Clinic | **4** / 149.7 | **1** / 464.1 | 877 / 183.5 |
+| LTU_AHouse | **611** / 861.2 | **360** / 2500.2 | 5,023 / 1429.0 |
+| JKR | **169** / 40.5 | **81** / 118.2 | 1,222 / 45.6 |
+
+Read the middle column first. **Today's scheduler beats the pre-#1242 scheduler on float, on all 7**
+(5 vs 42 · 0 vs 3 · 0 vs 0 · 9 vs 141 · 1 vs 4 · 360 vs 611 · 81 vs 169). **#1242's geometry DAG is
+not the debt** — on this judge it is an improvement over what it replaced. It buys that with
+DURATION: today's raw schedule is 2.5–3.0× longer than pre-#1242's.
+
+**The float is manufactured by the CPM display layer, not by the graph.** Every building's number
+explodes between the middle and right columns — 5 → 2,151, 0 → 3,960, 360 → 5,023 — while the
+makespan is COMPRESSED by roughly half (373→165, 1026→544, 2500→1429). CPM buys ~2.2× compression
+and pays for it in overlap violations. That is the actual mechanism behind §OBJECTIVE's seven
+numbers, and it sits in `_displayTimeline`'s CPM branch (#1398), not in #1242.
+
+## §S42.3 — the column that reverses the verdict
+
+`census()`, this witness's own W-MZ-2 judge — **elements appearing before the first thing they
+touch**, the visible "hanging in mid-air" symptom:
+
+| building | pre-#1242 | today (#1439) |
+|---|---|---|
+| Terminal | **900** | **0** |
+| Hospital | **709** | **0** |
+| Duplex | **17** | **0** |
+| HHS_Office | **146** | **0** |
+| Clinic | **345** | **0** |
+| LTU_AHouse | **4,316** | **0** |
+| JKR | **108** | **0** |
+
+**The pre-graph engine put 17 to 4,316 elements on screen before the thing they physically touch
+existed.** Today's is zero on all 7 and has been since the graph era matured. §OBJECTIVE states this
+as already-solved ground ("strict midair … is already 0"); the anchor shows what solved it.
+
+## §S42.4 — the honest conclusion
+
+- **"The last five weeks were debt repayment" is not supported.** #1242's own scheduler is better
+  than its predecessor on the overlap judge, and the graph era eliminated a defect class
+  (strict midair) that the pre-graph engine had in the thousands.
+- **"Reverting the graph is the shortest route" is refuted by the same run.** It would trade
+  44–5,023 overlap violations for 17–4,316 mid-air appearances, plus lose every gate built since.
+- **What the anchor DOES change: the target moves.** The float §OBJECTIVE tracks is created almost
+  entirely by the CPM display layer compressing the schedule ~2.2×, not by the support graph. The
+  next place to look is `_displayTimeline`'s CPM branch, not #1242.
+- **Trade-off, stated:** pre-#1242 was 2.5–3.0× faster in makespan than today's raw scheduler. That
+  is a real advantage and it is not free — the ~3× spread is how today's raw schedule keeps float
+  near zero. Whether the product wants short-and-overlapping or long-and-clean is a user decision
+  this section does not make.
+
+**Caveat on the judge:** `auditFloating` counts "starts before a support FINISHES" and `census()`
+counts "appears before a support APPEARS". Neither measures whether the trade order is sensible.
+Pre-#1242 ordered by `seq`, so phase order alone satisfied most of the finish-before-start test —
+which is exactly why it scores well there and fails the physical one.
