@@ -677,6 +677,12 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | [4D/5D Analysis](4D5DAnalysis.md) | nD analytics (4D–8D) |
 | [Asset Classification & JKR/SKATA](JKR_SKATA.md) | Classification codes, Malaysian handover compliance — what we measure, and what we don't yet certify |
 
+### For developers
+
+| Doc | What |
+|-----|------|
+| [Viewer Component Model](ViewerComponentModel.html) | The viewer's 128 JS modules as dependency strata, derived from the call graph — layers, fan-in, and where the scheduling subsystem sits |
+
 ---
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
