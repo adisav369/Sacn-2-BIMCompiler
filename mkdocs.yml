@@ -106,6 +106,7 @@ nav:
       - "Spatial ERP × BIM × HR — One Building, One Log": SpatialERPIntegration.md
       - "Distributed ERP": DistributedERP.md
       - "How the Database Works (big picture)": SQLiteWasmArchitectureActual.html
+      - "Viewer Component Model (dev architecture)": ViewerComponentModel.html
       - "Red Pill — Design From Grammar": RED_PILL.md
       - "Clash Detection": CLASH_DETECTION.md
       - "Asset Classification & JKR/SKATA": JKR_SKATA.md
