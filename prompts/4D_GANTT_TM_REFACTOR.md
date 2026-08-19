@@ -1678,3 +1678,211 @@ a location breakdown structure is for.
 measured the same way this table measures room coverage. The failure mode is identical — a location
 layer that covers a minority of elements silently sends the majority to a default bucket, which is
 how the storey-name path failed in the first place.
+
+---
+
+# §S27 — THE GRID: implementable spec (2026-08-19)
+
+**Standing: PROPOSED, NOT VETTED.** Written to be reviewed and torn apart before any build agent is
+dispatched — user directive 2026-08-19: *"do not do so until the specs are fully vetted."*
+No build work may start against this section until §S27.R records a review verdict.
+
+**Supersedes:** nothing. §S25/§S25_REVIEW stand; §S25_REVIEW.6's `designatedSupport` election win is
+independent and should ship on its own merits regardless of §S27's fate. §S26 is the evidence base
+this spec sits on — every measurement §S27 relies on is cited there with its `§`-tag, and §S27
+introduces NO new measurement of its own.
+
+## §S27.0 — the one-sentence claim, stated so it can be falsified
+
+> A construction schedule is a **grid of (location × trade) cells** whose order comes from two
+> ordered lists, not from a derived graph; physics is a post-hoc check on the answer, not an input
+> to it; and the result is written into the IFC-native `schedules`/`tasks`/`task_sequences`/
+> `task_elements` tables this repo already declares as source of truth.
+
+**It is FALSE if any of these is false, and each is measurable before the next is built:**
+
+- F1 — a location layer can be computed that covers **100%** of scheduled elements (§S26.16 measured
+  the room layer at 0-13%; that is the specific failure this must beat).
+- F2 — trade order within a location is total and needs no solving (i.e. `sequence_rules.json`'s
+  existing `seq` is already a total order over trades).
+- F3 — the schedule that results is not worse than today's on the two invariants already locked:
+  `auditFloating` float and the directional midair judge.
+- F4 — a planner-grade programme (Hospital's own 121 tasks / 43 links, §S26.13) is expressible in
+  the resulting tables without loss.
+
+## §S27.1 — data model (4 objects, nothing else)
+
+```
+ZONE     { id, band, name, storeyRefs[], polygon|rasterMask, area_m2, elementCount }
+CELL     { zoneId, tradeSeq }                    -- the unit of scheduling; == one Gantt bar
+TASK     { id, cellId, name, start, end, durationSecs, elementGuids[] }
+LINK     { fromTaskId, toTaskId, type=FS, lagSecs, origin: 'template'|'manual'|'physics' }
+```
+
+`CELL` is the whole model. An element belongs to exactly one cell. A cell is one bar. **Elements
+carry no links.**
+
+## §S27.2 — STAGE 1: the zone compiler (`compile_zones`)
+
+**Reuse, do not rewrite:** `scripts/compile_rooms.py` / `build/room_walker.js` already rasterize a
+storey's wall/door/column/window footprint at `RES=0.20m` with `SEAL=2` dilation and
+`RASTER_EPS=1e-6` translation invariance (§S26.16). **Take that rasterizer verbatim. Change only the
+consumer.** Rooms flood-fill the pockets the exterior CANNOT reach; zones partition the storey's
+OCCUPIED extent, so fabric is included.
+
+1. **Band the storeys first.** `spatial_structure` reports 63 storeys for Hospital, 73 for Terminal,
+   38 for LTU (§S26.16) — federated pseudo-storeys. Merge by the shipped 3m band rank
+   (`§S1_BAND_RANK`, already used by two consumers). A storey NAME is a display label and is never
+   an identity. **A band, after merge, is a LEVEL.**
+2. **Per level, rasterize the union of all element footprints** (not just wall-like — every
+   scheduled element, because every one must land somewhere).
+3. **Zone = connected component of that occupancy raster**, min area `ZONE_MIN_AREA` (start at
+   `MIN_AREA=4.0` m², the room compiler's own constant — do not invent a new one). Components below
+   it merge into their nearest neighbour by centroid distance.
+4. **If a level yields ONE component, that level is ONE zone.** This is expected and correct — it is
+   the coarse LBMS case, and it degenerates the grid to level × trade, which is still a valid grid.
+   **It is NOT a failure and must not be "fixed" by forcing a k-way split.**
+5. Zone names are deterministic: `L{bandRank}-Z{componentIndex}`, ordered by centroid (x then y).
+   Hospital's own hand-authored programme names them `Zone A/B/C` (§S26.13) — a display alias may
+   map onto these, but the identity is the computed one.
+
+**STOP CONDITION S1 (independently checkable, no scheduler needed):** every scheduled element on
+every one of the 7 fleet buildings is assigned to exactly one zone. Report `unassigned=0`. Anything
+above 0 is a STOP, not a default-bucket. **This is F1 and it is the gate for the whole spec.**
+
+## §S27.3 — STAGE 2: element → cell
+
+`cell(e) = (zone(e), tradeSeq(e))`.
+
+- `zone(e)`: the zone whose raster the element's XY centre falls in, on its own band. For an element
+  spanning bands (16.3-16.7% of elements, §S26.5), use its **base** band — that is when it starts
+  being built.
+- `tradeSeq(e)`: the existing `e.seq` from `viewer/rates/sequence_rules.json`. **Not re-derived.**
+- Declared containment (`rel_contained_in_space`) is used where present as a FINER sub-location for
+  reporting only. **It does not select the cell** — coverage is 0-13% (§S26.16) and a
+  minority-coverage key must never be load-bearing.
+
+**STOP CONDITION S2:** `count(distinct cell) ` is reported per building, and no cell holds more than
+`CELL_MAX_FRAC = 40%` of the building's elements. LTU's `Plan 1` currently holds 36% of the building
+in one storey group (§S26.6 C2) — if the grid reproduces that, the zone split is not doing its job
+and the cause must be reported, not tuned around.
+
+## §S27.4 — STAGE 3: order, from two lists
+
+- **Trades within a level:** ascending `seq`. Verify F2 first — that `sequence_rules.json` yields a
+  TOTAL order over the trade values actually present (no ties that matter, no gaps that imply
+  concurrency). If it does not, report and STOP; do not invent a tiebreak.
+- **Levels:** ascending band rank.
+- **Nothing else orders anything.** No graph, no topological sort, no SCC pass, no cycle-breaker.
+
+## §S27.5 — STAGE 4: the template (the only tunable)
+
+A template is a JSON document, shipped as data, editable without a rebuild:
+
+```json
+{ "name": "in-situ concrete, floor by floor",
+  "trains": ["Substructure","Superstructure","Architecture","MEP","Finishes"],
+  "offsets": { "Superstructure": {"after":"Substructure","levels":0},
+               "Architecture":   {"after":"Superstructure","levels":1},
+               "MEP":            {"after":"Architecture","levels":1},
+               "Finishes":       {"after":"MEP","levels":1} },
+  "structureRunsAhead": 0 }
+```
+
+`structureRunsAhead: 0` = in-situ concrete (a storey completes before the next starts).
+`structureRunsAhead: 3` = the steel-frame case the USER named — frame erected 3 levels ahead of
+slabs. **Default ships as in-situ concrete**, per the user's product ruling: the long tail of DIY /
+small firms wants a sensible OOTB default and experts adjust or replace it.
+
+**Durations** come from `installSecs` exactly as today (`§S25.8`) — a cell's duration is the sum
+over its elements, divided by its crew count. **Not re-derived, not invented.**
+
+**STOP CONDITION S4:** changing one offset value changes the schedule and nothing else; the shipped
+default reproduces Stage 3's ordering exactly.
+
+## §S27.6 — STAGE 5: links are the exception
+
+Only three origins, and the count is reported per building:
+
+- `template` — the offsets above, materialised as cell→cell FS links.
+- `manual` — a person adds one where the grid is genuinely wrong (transfer beam, long-span truss,
+  temporary works). Expected order: **tens per building, not thousands.**
+- `physics` — **NOT generated in v1.** The 2.46-million-arrow web (§S26.12) is exactly what this
+  spec exists to delete. See §S27.8 for the explicit prohibition.
+
+**Cycle policy, taking the field's approach over this engine's (§S26.10):** a link that would close
+a cycle is **REFUSED at insertion and reported**, never created-then-contracted. No Tarjan, no
+condensation, no cycle-breaker anywhere in v1.
+
+**STOP CONDITION S5:** `linkCount` per building is reported and the `manual` bucket is 0 on a
+first run. If the template alone cannot produce a schedule without manual links, say so — do not
+back-fill with physics links.
+
+## §S27.7 — STAGE 6: physics becomes a check
+
+Run the existing, unchanged judges on the finished schedule:
+
+- `ScheduleGate.auditFloating` — the float number `witness_midair_zero.js` W-MZ-8 already locks.
+- the directional midair judge (`_midairAudit`).
+
+**STOP CONDITION S6 (this is F3, and it is the real acceptance test):** per building, float and
+midair must be **no worse** than the live engine's current numbers — the §S26.14 "before" column
+(Terminal float 4,756 / midair 0; Hospital 7,753 / 0; Clinic 1,102 / 0; LTU 12,712 / 0; Duplex
+247 / 0; HHS 1,531 / 0; JKR 3,183 / 0). A regression here kills §S27 regardless of how clean the
+grid is. **Note explicitly: a "0 violations" result from a check built on the grid's own definitions
+is NOT evidence** — §S25_REVIEW's `engineGap` tautology is the standing precedent. Only the
+pre-existing judges count.
+
+## §S27.8 — STAGE 7: write into the tables that already exist
+
+`schedules` / `tasks` / `task_sequences` / `task_elements` — declared source of truth at
+`schedule_author.js:6`, built by the user in PR #59 / #502, currently **0 rows on every shipped
+building** (§S26.13).
+
+- One `tasks` row per CELL. Hospital's own planner-authored programme is 121 tasks for 63,182
+  elements (§S26.13); a grid of ~7 levels × ~5 trades × 1-3 zones lands in the same order of
+  magnitude. **That similarity is the sanity check for F4.**
+- One `task_sequences` row per LINK.
+- `task_elements` maps elements to their cell's task.
+- `Terminal_meta.db` lacks these tables entirely while the other six have them empty — establish
+  which extraction vintage is current BEFORE writing (§S26.15).
+
+**PROHIBITION, and it is the most important line in this spec:** do **not** write element-level
+physics arrows into `task_sequences`. That would persist the 2.46-million-edge web into the
+IFC-native container and make the blob permanent instead of ephemeral (§S26.15).
+
+## §S27.9 — build order and model assignment
+
+| stage | deliverable | model | why |
+|---|---|---|---|
+| — | this spec, vetted | **Fable** (review) | the role that caught `engineGap` being arithmetically incapable of failing |
+| S1 | `compile_zones` + coverage report | **Sonnet** | mechanical once §S27.2 is fixed; stop condition is a single number |
+| S2 | element→cell + cell-size report | **Sonnet** | same |
+| S3-S4 | order + template loader | **Sonnet** | data-driven, no judgment |
+| S5-S6 | links + judge run | **Sonnet** | judges already exist and are unchanged |
+| S7 | table writer | **Sonnet** | DDL already shipped |
+| any | a stage that STOPS | **Opus** | a stop condition firing is a design question, not a coding one |
+
+**No stage may begin before its predecessor's stop condition is reported green with its number.**
+Stages S1-S2 need no scheduler at all — they are properties of the data.
+
+## §S27.10 — what §S27 does NOT solve (stated in full, per §S26.7's precedent)
+
+- **Crew levelling quality, duration realism, makespan credibility.** `installSecs` is carried
+  through unchanged; whether the resulting durations are believable to a planner is untested.
+- **The construction-practice claims in §S26.4/§S26.11 have not been checked by a real planner.**
+  They are general knowledge. F4's Hospital comparison is the only empirical anchor.
+- **Zone semantics.** A connected component is a computable proxy for a planner's zone, not the same
+  thing. If S1 yields one zone per level on most buildings, the grid is level×trade and this spec
+  delivers no zone benefit — only the deletion of the graph. **That would still be a win, but it
+  must be reported as what it is, not dressed up.**
+- **`rel_contained_in_space` at 0-13%** stays unused for cell selection (§S27.3).
+- **The host/opening declared-relation gap** (§S26.12.2 — read on import, dropped before the shipped
+  DB, geometric guesses backwards 18-40%/76%) is NOT fixed here. It is an extraction fix and belongs
+  in its own lane.
+- **The `designatedSupport` election win** (§S25_REVIEW.6) is orthogonal and unaffected.
+- **Nothing about steel-frame templates is verified** beyond the user's own observation.
+
+## §S27.R — REVIEW VERDICT (to be filled by the vetting pass; empty = NOT VETTED = do not build)
+
+_(pending)_
