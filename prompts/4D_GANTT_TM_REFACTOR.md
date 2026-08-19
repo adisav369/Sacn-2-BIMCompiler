@@ -1619,3 +1619,62 @@ deleted to close the gap.
 - **Terminal_meta.db lacks the 4D tables entirely** while the other six have them empty — two
   different extraction vintages in one shipped fleet. Establish which is current before either is
   treated as the schema.
+
+## §S26.16 — Room Path reuse: the right machine, the wrong output grain (cursory check, 2026-08-19)
+
+USER: *"The Room Path effort also can be refactored for reuse here."* Checked. The instinct is
+right and the reuse is real, but not as a drop-in — the numbers say why.
+
+**What it already is.** `bim-compiler/scripts/compile_rooms.py` and its verbatim JS port
+`build/room_walker.js` (also shipped at `bim-ootb/viewer/lib/room_walker.js`) rasterize each
+storey's wall/door/column/window footprint at `RES=0.20m`, flood-fill the exterior from the border,
+and treat every pocket the exterior cannot reach as a room. **Its output is exactly the two tables
+§S26.11 needs**: `spatial_structure` IfcSpace rows and `rel_contained_in_space`. It is also the
+answer to a question §S26.12.1 left open — Hospital's 8,474 containment rows are COMPILED by this,
+not read from the IFC.
+
+It is hardened, not a sketch: `§RASTER-EPS` (1e-6 cell-fraction snap — translation invariance,
+measured 8/14 translations previously flipped Terminal's compile), `§STAIR-EXCLUDE` (a stairwell is
+circulation, not a room), `§SUSPECT-LARGE` (a fixed area drop threshold was silently eating HHS
+Level 3's real 456 m² corridor and causing 73/70 room-graph dead-ends — now flags instead of drops).
+That is the same measure-then-fix discipline this file runs on.
+
+**Why it cannot be the location layer as-is — measured coverage:**
+
+| building | elements | storey rows | IfcSpace | contained | coverage |
+|---|---|---|---|---|---|
+| Hospital_meta | 63,415 | 63 | 142 | 8,474 | **13%** |
+| Clinic_meta | 16,114 | 3 | 118 | 2,133 | **13%** |
+| Terminal_meta | 48,428 | 73 | 73 | 1,009 | **2%** |
+| JKR_extracted | 9,410 | 4 | 79 | 107 | **1%** |
+| HHS_Office_Federated | 6,880 | 3 | 14 | 88 | **1%** |
+| LTU_AHouse_meta | 125,698 | 38 | 0 | 0 | **0%** |
+| Duplex_extracted | 1,193 | — | — | — | tables absent |
+
+**The cause is structural, not a bug: a room is a void bounded by fabric, so the fabric is never in
+it.** `rel_contained_in_space` assigns "elements whose XY centre falls in a room" — a wall's centre
+is inside the wall, a slab spans every room at once, a column sits in a wall line. Structure is what
+makes rooms, so structure has no room. Rooms cover a building's CONTENTS; a schedule must place its
+FABRIC. 87-100% of elements are unplaced.
+
+**Second caveat, and it is the §S26.6 C2 problem appearing in the declared data too:** Hospital's
+`spatial_structure` reports **63 storeys**, Terminal **73**, LTU **38**. Those are federated
+pseudo-storeys. Declared containment is not automatically clean containment — it needs the same
+band-merge treatment storey names do.
+
+**The reuse that IS sound — one rasterizer, two consumers.** The valuable asset is not the room
+list; it is the per-storey occupancy raster that produces it (already persisted for two buildings as
+`storey_walkable_raster`). Partition that same raster into contiguous **ZONES** and every element on
+the storey — fabric included — falls in one.
+
+Zones, not rooms, are the LBMS location for structure, and this project already has the proof in its
+own test data: Hospital 2.0.ifc's hand-authored programme (§S26.13) uses tasks named **`Zone A` /
+`Zone B` / `Zone C`**, chained `.FINISH_START.`. A human planner, on this exact building, chose
+storey-zones as the location grain. Rooms stay the right grain for the trades that work inside them
+(architecture, MEP, finishes) — a second, finer level of the same breakdown structure, which is what
+a location breakdown structure is for.
+
+**STOP-AND-REPORT:** do NOT fold room compilation into the scheduler before zone coverage is
+measured the same way this table measures room coverage. The failure mode is identical — a location
+layer that covers a minority of elements silently sends the majority to a default bucket, which is
+how the storey-name path failed in the first place.
