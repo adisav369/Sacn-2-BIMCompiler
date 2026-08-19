@@ -852,3 +852,116 @@ diagnosis is wrong, and that finding outranks the plan.
   is the baseline table); §S25.7's pass has not been run against a building even once. The first
   session to build it should expect to find something in here that the data does not support — and
   should report that, not route around it.
+
+---
+
+# §S25_PROTO — §S25 BUILT AND MEASURED ON ALL 7 BUILDINGS (2026-08-19). Still a prototype
+# (`bim-compiler/scripts/proto_s25_forward_pass.js`, study-only) — `viewer/` is unchanged. This is
+# §S25.11's stages S25-1..S25-3 executed as one measurement instead of argued about.
+#
+# **Headline: the layer contract works mechanically and is provably clean on its own terms —
+# leftover 0, gate violations 0, midair 0, crew violations 0, on 7/7 buildings. And it still cannot
+# make the phase statement true as LABELLED, because 17-64% of elements carry a phase label their own
+# physics contradicts.** The remaining problem is not the scheduler. It is classification.
+
+## §S25_PROTO.1 — Four corrections the prototype forced on §S25, each found by running it
+
+**C1 — §S25.5 as written DEADLOCKS. Excluding a deferred element from its group's completion is not
+enough.** First run, Duplex: **975 of 1,119 elements stuck**. The cycle is: a NON-deferred element X
+waits on a deferred element Y in its own group → the group never completes → the later group Y waits
+for never opens → Y never runs → X never runs. Lateness has to MOVE the element, not excuse it.
+**Replacement rule:** `effectiveRank(e) = max(passRank(group(e)), max over predecessors p of
+effectiveRank(p))` — one longest-path propagation. Every constraint is then forward-or-same by
+construction, group completion means "all my work is done" with no exclusion accounting, and no
+deadlock can form. Re-homed elements are counted and reported exactly as deferred ones were.
+
+**C2 — that propagation must run over the CONDENSATION, not over elements.** Propagating per element
+and then giving a contracted component its members' max rank afterwards re-broke it (**674 of 1,119
+stuck**): raising a member's rank after the fact leaves its successors ranked BELOW their own
+predecessor. Compute component ranks first, propagate over the condensation, then assign.
+
+**C3 — physics cycles must be CONTRACTED, not dropped.** Dropping the edges inside a mutual-support
+component cost **53 midair violations on Duplex** (the dependent had nothing holding it). Contracting
+them — one shared start, the judge's own equality contract — restores **midair 0**. This is a Tarjan
+on the PHYSICS LAYER ONLY (largest component in the fleet: 4-17 nodes), where a cycle means the model
+is wrong; it is not the merged-graph Tarjan §S25.0 rejects. Consequence: §S25.3's invented same-group
+"contradiction drop" is unnecessary — acyclicity comes from the contraction — and is deleted.
+Measured contradictions dropped fleet-wide after this change: **0**.
+
+**C4 — §S25.3's "FS closes the float invariant" is true only for the DESIGNATED support, and the
+obvious fix is measurably worse.** `auditFloating` tests every qualifying support; the designated
+edge covers one. Constraining against all of them was tried (`ALL_SUPPORTS=1`, kept in the probe so
+this stays checkable): contact relations in real data are mutual, so the physics cycles explode —
+Duplex largest component **5 → 672**, contracted edges **76 → 4,821**, re-homed **31.6% → 93.3%**,
+makespan **8.1d → 2.7d**. A schedule where almost everything shares a start is not a schedule.
+The RAW shell reaches float=0 by a different mechanism entirely (a grid gate that only sees supports
+ALREADY PLACED, plus its 16-sweep repair loop). So float stays a **counted residual**, not zero, and
+§S25.10 acceptance #2 must be rewritten to say so.
+
+## §S25_PROTO.2 — Results, 7/7 buildings, one run, same shift (24h) for all three engines
+
+RAW = `computeSchedule` · CPM = `CpmSchedule.run` (live today) · S25 = this pass.
+`engineGap` = the acceptance question measured on the ENGINE's own level identity, effective
+membership — what §S25 actually enforces. `asLabelled` = the same test with the re-homed tail counted
+back into its labelled phase — what a planner reading phase names sees.
+
+| building | n | leftover | engineGap | asLabelled (worst) | midair CPM→S25 | float CPM→S25 | crew | re-homed | pass ms |
+|---|---|---|---|---|---|---|---|---|---|
+| Terminal_meta | 48,428 | **0** | **0/14** | 14/15 (−30.98d) | 0→0 | 4,756→**3,523** | 0 | 25.9% | 406 |
+| Hospital_meta | 63,182 | **0** | **0/10** | 8/10 (−216.81d) | 0→0 | 7,753→**4,095** | 0 | 16.9% | 784 |
+| Clinic_meta | 16,071 | **0** | **0/7** | 10/10 (−80.34d) | 0→0 | 1,102→3,086 | 0 | 39.9% | 121 |
+| LTU_AHouse_meta | 122,330 | **0** | **0/11** | 13/14 (−768.47d) | 0→0 | 12,712→19,327 | 0 | 34.7% | 1,515 |
+| Duplex_extracted | 1,119 | **0** | **0/2** | 4/4 (−5.95d) | 0→0 | 247→280 | 0 | 31.6% | 5 |
+| HHS_Office_Federated | 6,839 | **0** | **0/4** | 4/4 (−22.03d) | 0→0 | 1,531→**1,436** | 0 | 33.4% | 54 |
+| JKR_extracted | 8,985 | **0** | **0/4** | 9/9 (−19.21d) | 0→0 | 3,183→**3,078** | 0 | 63.6% | 84 |
+
+Read it honestly, both halves:
+
+- **What is now proven.** The pass terminates with **zero leftover on 7/7** — the total-order
+  termination argument holds on real data, at 122k elements, in 1.5s. The gate it enforces is
+  enforced **exactly: 0 violations, worst 0.00d, on every building**. `midair` stays 0 (parity with
+  CPM). Crew feasibility stays 0. No Tarjan over a merged graph, no fixpoint, no sweep cap, no
+  straggler ancestry — the machinery §S25.0 said was unnecessary is in fact unnecessary.
+- **What is not fixed, and is not a scheduler problem.** `asLabelled` is still 8/10 to 14/15
+  negative. That is the direct arithmetic consequence of re-homing 17-64% of elements: when a
+  "Substructure" pipe is physically forced to wait for a level-3 slab, the Substructure phase — AS
+  LABELLED — cannot finish before Superstructure starts, under any scheduler. **No algorithm can make
+  that statement true. Only re-classifying the element can.**
+- **float is a mixed result, and C4 explains it:** better on Terminal (−26%), Hospital (−47%), HHS,
+  JKR; worse on Clinic, LTU, Duplex. It tracks how much of each building's support structure the one
+  designated edge happens to cover.
+- **The amplification is the real lever.** JKR: **609 backward constraints → 5,715 re-homed elements
+  (9.4×)**. Terminal: 4,263 → 12,547. A handful of wrong support designations relabels a large part
+  of a building. §S24_TRIAGE T4/D (validate `designatedSupport`'s backward cases) is therefore not a
+  follow-up — it is the highest-leverage item in this lane, and it now has a number attached.
+
+## §S25_PROTO.3 — Two new gaps the prototype exposed in §S25.2 (level ladder)
+
+- **The acceptance test must use the ENGINE's level identity, not the storey name.** Measured by
+  name, Clinic and LTU "failed" — but the engine had split Clinic's `Roof - Main` into **three**
+  physical levels (median 4.5m, 7.3m, 11.3m) and merged federated names elsewhere
+  (`Level 2=Roof - Main`, `VÅN 3=VÅN 4=VÅNING 4=Ref.`). Comparing a re-derived ladder against a
+  by-name grouping measures the mismatch, not the schedule. §S25.10 #1 needs this stated.
+- **Tiny levels get a full band rank and gate real work.** LTU's ladder contains levels with **n=2 at
+  −45.8m** and n=2 at −13.9m, each occupying its own band rank ahead of 44,383 elements at 5.3m.
+  §S25.2 needs a minimum-population / merge-into-nearest rule, derived from data, not a guessed
+  threshold. Not yet designed.
+
+## §S25_PROTO.4 — Where this leaves the lane (the honest next move, not a plan to write another plan)
+
+1. **Fix the support designation before anything else** (§S24_TRIAGE T4/D). The 9.4× amplification
+   makes this the only change with fleet-scale leverage. Specifically: the same-level
+   `Architecture→Superstructure` designations (a wall elected as a column's support — Hospital 513,
+   HHS 427, Clinic 386) and `MEP→Superstructure` (Terminal 644). Each is a candidate misclassification
+   that today silently re-homes everything resting on it.
+2. **Then re-run this prototype.** `asLabelled` is the number that should move. If it does not move
+   when the bad designations are fixed, **STOP and report** — that would mean the re-homing is
+   dominated by genuine physics, and the phase labels themselves (not the supports) are what disagree
+   with the building.
+3. **Only then wire §S25 into `schedule_engine.js`** (§S25.11 S25-4). Wiring an engine whose
+   `asLabelled` output is still 8/10 negative would ship a correct scheduler that still looks wrong
+   on a planner's screen — the exact trap this whole file exists to avoid.
+
+**STOP-AND-REPORT, inline:** if fixing the designations moves `asLabelled` but breaks `engineGap`
+(currently 0/7), the layer contract is not as separable as §S25.1 claims — report that, do not
+re-tune the ladder to make both numbers look good at once.
