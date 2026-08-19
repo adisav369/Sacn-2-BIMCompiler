@@ -134,6 +134,9 @@ picks this up next should resolve those before treating today's merges as the en
 
 # §STATUS — read this first (2026-08-19, end of a full consolidation)
 
+> **Resuming in a new session? Read `# 🔄 §RESUME` at the END of this file first — it names the
+> two agents that were in flight, the standing rulings, and the required order of work.**
+
 **Nothing has shipped. `viewer/` is unchanged.**
 
 **⚖ STANDING RULING — §S32 (user, 2026-08-19), read before acting on ANY section below:** the
@@ -2273,3 +2276,120 @@ Any runtime derivation added under this ruling MUST:
   Rule 1 is unconditional.
 - **A runtime derivation whose coverage is below 100% STOPS and reports the gap**, rather than
   defaulting the remainder (§S32.4).
+
+---
+
+# 🔄 §RESUME — HANDOFF TO A FRESH OPUS SESSION (written 2026-08-19, end of session)
+
+**Read this block, then `# §STATUS` at the top of this file, then `# §S32`. Those three are enough
+to resume. Everything else in this file is evidence you can consult on demand — do NOT read it
+end-to-end.**
+
+## R.0 — the one-paragraph state
+
+Two designs were written and BOTH were rejected by adversarial vetting (§S27.R, §S28.R). The
+measurements that followed then refuted premises both designs rested on, and one of this session's
+own findings (§S31.3) was retracted the same day. **Nothing has shipped; `viewer/` is unchanged.**
+What IS solid is the evidence base (§S25_REVIEW, §S26, §S29, §S30, §S31) and one measured,
+ship-ready fix. The user's standing ruling §S32 (extractor correct · DBs frozen · derive at runtime)
+landed last and cancels parts of the rejected designs.
+
+## R.1 — TWO AGENTS WERE IN FLIGHT when this session ended. Collect them FIRST.
+
+Neither had reported. Do not re-dispatch either without checking whether it landed.
+
+**Agent A — ships §S25_REVIEW.6, the `designatedSupport` election fix.** The only change measured on
+the REAL engine (float better on 7/7: Terminal 4,756→1,555 · Hospital 7,753→1,293 · Clinic
+1,102→327 · JKR 3,183→1,072 · HHS 1,531→243 · Duplex 247→152 · LTU 12,712→9,461; phase gap
+better-or-equal 7/7). Briefed on: BOTH twins (`cpm_schedule.js:120` AND `time_machine.js:4575` —
+`witness_midair_zero.js:127` and `probe_captured_floating.js` slice the time_machine copy BY SOURCE
+TEXT, so a one-file edit goes green on code that never ran); W-MZ-8 `CPM_FLOAT_AFTER_BASELINE`
+(~`witness_midair_zero.js:177`) must be re-measured and re-locked in the SAME PR; STOP-AND-REPORT if
+its numbers disagree materially with the above rather than tuning the tie-break.
+**On receipt:** verify the twin change actually happened and that the witness EXERCISED the new
+election (not merely went green). Then it is mergeable.
+
+**Agent B — measures whether a TOTAL runtime level derivation is possible from the frozen DBs.**
+Read-only probe, `scripts/probe_s32_level_coverage.js`, four-tier fallback ladder (T1
+`rel_contained_in_space`→space→storey→`center_z` · T2 `elements_meta.storey` name→`spatial_structure`
+`center_z` · T3 derived from element z · T4 nothing worked), per building, plus a
+declared-vs-geometry consistency check nobody has run.
+**On receipt: this number is the GATE for everything else.** If T4 is non-zero on any building, a
+grid/cell design cannot be built as §S27/§S28 specified, and that must be said plainly rather than
+defaulted around (§S32.4, §S29.1).
+
+## R.2 — the standing rulings you must not violate
+
+- **§S32 (user, unconditional):** the extractor is CORRECT — do not edit `extractIFCtoDB.py` or
+  `import_worker.js` extraction logic. `buildings/*.db` are FROZEN — no writes, no rebuild, no
+  re-import. All derived metadata is computed at RUNTIME, ONCE, on load (the room-injection
+  pattern). §S32.2 lists what this CANCELS; §S32.5 lists the STOP-AND-REPORT triggers.
+- **§S28.6 B5 (writing `schedules`/`tasks`/`task_sequences` into the DB) is BLOCKED pending a USER
+  decision** — it is a DB write, and whether the IFC-native tables count as "tamper" or as the
+  intended output surface is the user's call. Do not assume either way.
+- **Instrument rule.** Three false zeros in this lane: `engineGap` arithmetically incapable of
+  failing (§S25_REVIEW.1), a judge fed `bz`/`tz` where it reads `base_z`/`top_z` (returned 0 on a
+  schedule with 247 real violations), and durations all 0 so nothing could float. All three reported
+  clean passes. **Every number prints `durOk`/`judgeCanFail`-style guards. A green number is
+  worthless until the instrument has been shown to go red.**
+- **Vetting is a gate, not a courtesy.** §S27 and §S28 were both stopped by it, correctly. Do not
+  dispatch a build agent against a spec whose `§…R` verdict block is empty or NOT VETTED.
+
+## R.3 — what is SOLID (cite these; they survived adversarial re-derivation)
+
+- The 93% blob is manufactured by the support PREDICATE, not by buildings — restricting support to
+  load-bearing classes and dropping `embedded` takes Hospital's largest component 49,436→1,951,
+  LTU 74,617→1,460, Duplex 672→5 (§S26.1).
+- The `hang` family is 93.5-99.8% redundant with phase order and is the SOLE remaining cycle source;
+  deleting it gives `largestSCC=1` on all 7 (§S26.3, §S26.5).
+- A Gantt bar is a HULL over independently-scheduled elements (`time_machine.js:6074`, grouped by
+  `storey|phase`, min-start to max-end). One cause under three symptoms: midair, "one pile full
+  project length" stacking, and the phase-gap metric itself (§S26.13 / the code's own comment).
+- The IFC-native container already exists, was built by the user (PR #59 `2253664` 2026-05-30,
+  PR #502 `b195103`), is declared source of truth at `schedule_author.js:6`, and holds **0 rows on
+  every shipped building** (§S26.13).
+- The extractor is NOT broken — it already declares `rel_fills_host`, `port_elements`,
+  `port_connections`, `rel_adjacency`, `rel_anchored` (§S31.2). Under §S32 the DBs are simply the
+  frozen input.
+- Sort-key measurement (§S30, §S31.1): under REAL crew caps seqfirst 5/7, zfirst 2/7; with caps
+  lifted BOTH reach 7/7. So trade-first's advantage is a resource-levelling property, **not** an
+  ordering-quality one, and §S30.2 must not be quoted bare. Backward supports are 21-65% of elements
+  — the norm, not a residual, so a sort alone does NOT make physics safe.
+- Correctness metric nobody had measured: **mean 83.0%, range 64.6-93.1%** of elements not starting
+  before a real support finishes, live CPM path (§S31, Q6).
+
+## R.4 — what is NOT solid (do not build on these)
+
+- §S27 and §S28 as designs — both NOT VETTED, and §S32 has since cancelled parts of both.
+- `scripts/probe_s30_sortkey.js` is a standalone reimplementation with NO `wallGate`, `hangGate`,
+  `openingGate`, host pairs, or phase/level gates. Its numbers do not transfer to the engine. **A
+  probe carrying the real gates is a prerequisite for any sort-based refactor.**
+- §S31.3's storey-`Name` claim — RETRACTED in place, wrong file and wrong phenomenon. §S26.6 C2
+  inherited the same mistake and is qualified by that retraction. The real Clinic finding is that
+  **32% of its elements resolve to storey `Unknown`.**
+- JKR as a representative building — it has ~1% room-injection coverage and is the least
+  representative of the 7. Do not headline its numbers.
+
+## R.5 — the sequence, in order, and why the order matters
+
+1. **Collect Agent A.** Verify twins + witness actually exercised. Merge.
+2. **Collect Agent B.** Its coverage number is the gate.
+3. **Build a probe that carries the REAL gates** (R.4) so a sort result transfers to the engine.
+4. **THEN write ONE spec**, grounded in 2 and 3, under §S32. Vet it before any refactor code.
+
+**This order is the session's main lesson.** Every design written BEFORE its measurement was
+refuted by it — §S30 killed elevation-first ordering, §S31.1 then qualified §S30, §S31.3 was
+retracted outright. Three in one session. **Measure, then design.** If the next spec also fails
+vetting, stop redesigning and keep making measured single-function fixes like the election one —
+the only thing that produced a 7/7 result all day.
+
+## R.6 — housekeeping already done, so you do not redo it
+
+Live file consolidated 2,955→2,166 lines with zero content lost (185 headings before; 120 live + 71
+archived; verified programmatically). §S23/§S24/§S24_TRIAGE/§S25/§S25_PROTO archived verbatim to
+`prompts/archive/4D_GANTT_TM_REFACTOR_S23-S25_superseded_2026-08-19.md`. §S29 restored ahead of §S30.
+`extractIFCtoDB.py` merge with `origin/master` RESOLVED and pushed (`86b059df2`) — it was 97%
+CRLF noise; both §S21 and §KUL001 kept. Docs published: `ViewerComponentModel.html` live at
+`https://red1oon.github.io/BIMCompiler/ViewerComponentModel.html`, linked from the Viewer guide.
+Two orphaned live pages recovered into git in the process (`grislab_proof_run.html`,
+`ERP_PROJECT_REVIEW.md`) — both were live on gh-pages and in NO branch.
