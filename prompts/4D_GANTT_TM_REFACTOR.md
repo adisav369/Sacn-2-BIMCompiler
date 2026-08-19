@@ -1144,3 +1144,299 @@ max over ALL — stands, and is §S25_REVIEW.5's subject.
 live engine's float does NOT move as §S25_REVIEW.6 measured, the prototype's election differs from
 the shipped one in some way not yet identified — report that difference, do not tune the tie-break
 until the numbers agree.
+
+---
+
+# §S26 — THE SCHEDULE IS TRAINS, NOT A GRAPH (2026-08-19, measured)
+
+**Standing:** proposed. Supersedes NOTHING yet — §S25 and §S25_REVIEW stay as written, and the
+`designatedSupport` election win in §S25_REVIEW.6 is orthogonal to this and should ship on its own
+merits. What §S26 challenges is not any fix in this file; it is the assumption every design in this
+file has shared since §S23 — that element-to-element physical precedence is the right abstraction
+for a construction schedule.
+
+**Provenance, stated because it matters for how much weight this carries:** §S26 came out of a
+2026-08-19 working conversation with the user, not from a spec review. Two of its load-bearing
+claims are the USER's, not this session's, and both were then measured and held (§S26.3, §S26.6).
+Every number below is from `scripts/probe_s26_rank_monotone.js`, written this session, run on the
+same 7-building fleet as `proto_s25_forward_pass.js`, reading the same `contactGraph`/`hostPairs`/
+`openingPairs` predicates so the numbers are directly comparable. **Nothing in `viewer/` was
+changed.** Probe logs: `§S26G_*`.
+
+## §S26.0 — the architecture changed on a known date, and the date is checkable
+
+`viewer/cpm_schedule.js` is 3 days old (`a5de597`, 2026-08-16). The graph it consumes is not.
+Ordering became a physics graph on **2026-08-07, PR #1242 `0fe8eb2`** — "placement order derived
+from geometry DAG, seq demoted to tiebreak".
+
+Before that commit, `schedule_gate.js` ordered by two plain sorts and used physics only as a clock:
+
+```js
+// 0fe8eb2^ viewer/schedule_gate.js:248-249, 268
+var struct = elements.filter(e => e.seq <= 4).sort((a,b) => (a.base_z-b.base_z) || (a.seq-b.seq));
+...
+var start = Math.max(geoGate(el), slot.time);
+```
+
+A sort cannot cycle. A `max()` over already-placed elements cannot cycle. Three days after #1242,
+PR #1276 landed `§TM_GEO_ORDER_CYCLES — Terminal support-DAG cycles 37,927→0`. Every design in this
+file from §S23 onward is downstream of that one commit.
+
+**This is not an argument that #1242 was wrong.** It closed a real defect (`nothing floats` as a
+structural property rather than a per-building patch chase, and the commit message says so). It is
+an argument that the cost has never been priced, and §S26.1-§S26.4 price it.
+
+## §S26.1 — VERIFIED: the 93% blob is manufactured, and by which edges exactly
+
+`probe_s26_rank_monotone.js` builds the required-precedence set from the same predicates the engine
+uses, then measures its largest strongly-connected component. Two configurations, same fleet, same
+run:
+
+| building | n | live predicate | corrected predicate | ratio |
+|---|---|---|---|---|
+| Hospital_meta | 63,182 | **49,436** | 1,951 | 25× |
+| LTU_AHouse_meta | 122,330 | **74,617** | 1,460 | 51× |
+| Terminal_meta | 48,428 | **28,802** | 1,358 | 21× |
+| Clinic_meta | 16,071 | **8,340** | 768 | 11× |
+| JKR_extracted | — | **5,362** | 1,034 | 5× |
+| HHS_Office_Federated | 6,839 | **4,628** | 1,742 | 2.7× |
+| Duplex_extracted | 1,119 | **672** | 5 | 134× |
+
+`corrected` = `STRUCT=1 EMBED=0`: a support must be a load-bearing class (the existing `seq<=4` +
+promoted-slab pool), and the `embedded` family is dropped. The live largest-component share
+reproduces §S24_TRIAGE's independently-measured fleet numbers (Hospital 98%, Terminal 93%, LTU 90%)
+and §S25_REVIEW's `largest physics component 672` on Duplex — three separate probes agreeing.
+
+**The blob is not a property of the building. It is a property of the predicate.**
+
+## §S26.2 — VERIFIED: the predicate counts plumbing as structure
+
+The live support test is geometric only — any lower box in contact is a support. Measured on Duplex:
+
+- support = anything below → **4,706** bearing relations
+- support = load-bearing classes → **702** (6.7× inflation)
+
+Actual offending pairs, from `§S26G_EG`:
+
+```
+IfcFlowSegment @ -0.7m / MEP Rough-in   "supports"  IfcWallStandardCase @ 0.1m / Architecture
+IfcFlowFitting @  2.6m / MEP Rough-in   "supports"  IfcWall             @ 3.1m / Architecture
+```
+
+Consequence — direct physics-vs-phase contradictions on Duplex, `§S26G_CAUSE`:
+
+- support = anything below → **761**
+- support = load-bearing classes → **1**
+
+760 of 761 apparent conflicts between physics and phase order are the engine insisting a pipe must
+be installed before the wall above it. **There is no physics-vs-convention war in this data.** There
+is a predicate that calls plumbing structure, and a solver dutifully resolving the contradiction by
+dragging MEP forward — which is the phase scramble this whole lane has been chasing.
+
+## §S26.3 — VERIFIED: the `hang` family is redundant, and it is the sole remaining cycle source
+
+**This claim is the USER's** ("this rule is redundant — when a ceiling is complete it no longer
+arises"), recorded here because it was given more than once before it was measured.
+
+Isolation, `STRUCT=1 EMBED=0`, `§S26G_ACYCLIC`:
+
+| configuration | Clinic | Duplex | HHS |
+|---|---|---|---|
+| drop `hang`, keep bearing+host+opening | **acyclic, largest = 1** | **acyclic, largest = 1** | **acyclic, largest = 1** |
+| keep `hang`, drop host+opening | 768 | 5 | 1,742 |
+
+Every remaining cycle lives in `hang`. Host and opening are harmless.
+
+And `hang` contributes no ordering that phase order does not already give — `§S26G_HANGREDUNDANT`,
+share of hang edges where the carrier is already an earlier phase than the hanger:
+
+| Hospital | LTU | Duplex | JKR | HHS | Clinic | Terminal |
+|---|---|---|---|---|---|---|
+| **99.8%** | 98.3% | 98.5% | 97.5% | 97.4% | 97.2% | 93.5% |
+
+The residue is not hanging at all. Top same-phase pairs, `§S26G_HANGSAME`, all inside Superstructure:
+`IfcSlab carries IfcBeam` ×153 (Clinic) ×91 (Hospital) · `IfcBeam carries IfcColumn` ×148 (LTU) ·
+`IfcPlate carries IfcPlate` ×605 (Terminal). Phase-inverted residue, `§S26G_HANGINV`:
+`IfcSlab/Superstructure carries IfcFooting/Substructure`.
+
+A slab does not carry a beam; a beam does not carry a column; a slab does not carry a footing. **Not
+one element in the residue is a light, a duct, or a fixture** — nothing in it is actually hanging.
+The rule fires 8,026–49,199 times per building, is 93–99.8% redundant, and its non-redundant part is
+the same relation with the direction reversed.
+
+**Not chased today, and deliberately:** whether the reversal is a bbox-direction defect in the
+predicate or genuinely mis-elevated geometry in the source models. The user ruled it not worth the
+contention given the family is being deleted either way. Recorded so it is not rediscovered.
+
+## §S26.4 — the design, stated in the user's terms rather than the graph's
+
+Real programmes are not a dependency web. They are a small number of **trains**, each running level
+by level, offset from each other:
+
+```
+Level 8   structure
+Level 6              walls
+Level 4                        MEP first fix
+Level 2                                       finishes
+```
+
+Precedence lives at **(level, trade)**, never element-to-element. Physics is not the order; it is a
+check run on the answer.
+
+Two consequences that came out of the conversation and are design inputs, not observations:
+
+**(a) The structural train's shape is a template, not a constant.** USER: *"beams and columns may all
+come up all stories before even floor slabs come in."* That is steel-frame erection — frame runs
+several floors ahead, deck and slabs follow. In-situ concrete does the opposite: a storey completes
+before the one above starts. Both are common. **Default = in-situ concrete, floor by floor** (the
+simpler shape and the common case for the DIY/small-firm long tail this product targets); steel-frame
+is template two. A template is a JSON document — trains, order, offsets — editable by a planner
+without a rebuild, which is the stated product requirement: *"as long as the resulting JSON is easily
+editable by real experts… it can be crude, but they easily fill in the gap or readjust or simply
+import their model."*
+
+**(b) The mid-air judge is template-dependent, and today it is not.** Under a steel template a
+level-5 column legitimately starts before the level-4 slab exists — it is bolted to the column
+below, not resting on the slab. Today's judge would call that a defect and "fix" it. **A hard-coded
+assumption about how buildings go up, applied to buildings that do not go up that way, is a latent
+defect independent of everything else in this file.**
+
+**Cast-in MEP is not MEP.** Conduit, sleeves and box-outs precede the pour but belong to the concrete
+activity ("Slab L4 — rebar, conduit & box-outs, pour"), one bar owned by the structures contractor.
+Wall first-fix sits inside or immediately after the wall activity. Neither is a separate trade item,
+and neither ever gates the storey above. This is general construction practice, NOT extracted from
+project data — flagged as such so it is checked against a real planner before it is built on.
+
+## §S26.5 — HONEST RESULT: the strong form of §S26 is FALSE
+
+The claim worth testing was: *a single integer rank R(e), computed from data alone, satisfies
+R(S) < R(E) for every required relation* — which would make ordering a sort, with no graph at all.
+
+**It does not hold.** `§S26G_VERDICT zeroViolation=0/7` in every configuration tried:
+
+| configuration | violations | largest SCC (worst building) |
+|---|---|---|
+| live predicate | 27–39% | 74,617 |
+| `STRUCT=1 EMBED=0` | 3–36% | 1,951 |
+| `+ HANG=one` (single elected carrier) | 2.8–12.1% | 504 |
+| `+ HANG=0` (family deleted) | 1.65–7.36% | **1 — acyclic on all 7** |
+
+Two things follow, and they must not be merged:
+
+1. **Deleting `hang` reaches acyclic on the FULL fleet** — `§S26G_ACYCLIC … kahnLeftover=0
+   largestSCC=1` on all seven, Hospital 63,182 and LTU_AHouse 122,330 included. This is the §S26.8
+   stage-1 stop condition and it is **MET**, not projected. The 49,436-element Hospital component
+   and the 74,617-element LTU component do not shrink — they cease to exist.
+2. **Even acyclic, 1.65–7.36% of relations still point backwards in rank.** Per building
+   (`§S26G_VIOL`, `STRUCT=1 EMBED=0 HANG=0`):
+
+   | building | total | bearing | host | opening |
+   |---|---|---|---|---|
+   | JKR_extracted | 341/20,686 (1.65%) | 86/19,921 | 59/506 | 196/259 |
+   | Terminal_meta | 1,050/50,114 (2.10%) | 178/47,213 | 556/2,099 | 316/802 |
+   | HHS_Office_Federated | 305/10,252 (2.98%) | 3/9,241 | 222/725 | 80/286 |
+   | LTU_AHouse_meta | 124,124/3,933,718 (3.16%) | 120,876/3,925,180 | 1,865/5,466 | 1,383/3,072 |
+   | Hospital_meta | 1,529/37,261 (4.10%) | 155/33,495 | 1,123/2,830 | 251/936 |
+   | Duplex_extracted | 51/850 (6.00%) | 30/702 | 9/104 | 12/44 |
+   | Clinic_meta | 834/11,325 (7.36%) | 261/8,189 | 484/2,737 | 89/399 |
+
+   A sort alone therefore still leaves real backward relations, concentrated in `host` (Clinic 18%,
+   HHS 31%, Hospital 40%) and `opening` (JKR 76%). They are *countable and nameable* rather than
+   *silent*, which is the whole point of §S26.6, but they are not zero and §S26 must not claim they
+   are. **LTU is the outlier and it is a density artefact, not a rate one** — its 120,876 bearing
+   violations are 3.1% of 3.9M edges, see §S26.7's 32-supports-per-element flag.
+
+## §S26.6 — WHY THE OLD DEFAULT FAILED, and whether it bites again
+
+**This is the USER's question and it is the most important one in the section**, because §S26.4's
+train model IS roughly what the pre-#1242 engine did. If it was abandoned once it can be abandoned
+again.
+
+The reason is written in the code at the exact place it was abandoned — `0fe8eb2^
+schedule_gate.js:252-262`:
+
+> *"band-gate WITH re-sorting by rank: inversions → 0, but **2,341 elements FLOAT again** (beams
+> 15/1970, members 2304/7127, slabs 22/35). geoGate reads `grid`, which holds only what is already
+> placed, so re-ordering PASS A places elements before their own supports."*
+
+**The mechanism, exactly:** the *gate* scanned a partial grid containing only already-placed
+elements. Reorder, and the support is simply not there to be seen. The gate returns `baseMs`, the
+element starts at time zero, and **nothing reports it**. Not an exception, not a cycle, not a
+warning — a silent zero.
+
+Three named causes, each with a guard, because the shape of the fix decides whether it recurs:
+
+**C1 — the gate was blind by construction; the judge never was.** `auditFloating(elements, sched, …)`
+at `schedule_gate.js:1055-1059` builds its grids from **all** `elements`, not the partial placement
+grid. The judge was always global and correct. Only the gate was partial. → **Guard: the gate must
+use the judge's scan.** With rank computed up front rather than discovered incrementally, elements
+process in rank order and supports are already placed by construction — for the 93–97% that are
+rank-monotone. For the 3.0–7.4% that are not (§S26.5), the backward relation is **reported and
+counted**, never silently skipped. That single change is the difference between the old default and
+a safe return to it.
+
+**C2 — the rank came from storey labels, and labels are junk.** Measured, `§S26G_LADDER`-equivalent
+from the S25 probe: Clinic's `"Roof - Main"` occupies **three distinct elevations** (ranks 2, 3 and
+4); LTU merges `VÅN 3=VÅN 4=VÅNING 4=Ref.` at −0.6m, and puts 44,383 of 122,330 elements (36%) in a
+single group named `Plan 1`. → **Guard: rank comes from elevation bands only** (`§S1_BAND_RANK`'s 3m
+bands, already shipped and already used by two other consumers). A storey label is a display name.
+
+**C3 — the reaction changed the architecture instead of the verifier.** #1242 made floats
+*structurally impossible* by making physics the order. That traded a silent failure for a structural
+one: floats → 0, cycles → 37,927. → **Guard: a check that cannot fail is not a check.** §S25_REVIEW
+caught this session's own instance of the same error — `engineGap = 0/7` published as proof when
+`min-start(B) ≥ gateTime(B) ≥ complete(A) = max-end(A)` is enforced arithmetic. Same class, three
+weeks apart, and it is the most likely thing in this file to recur.
+
+## §S26.7 — what §S26 does NOT solve
+
+Stated in full, because §S25.12's version of this list was incomplete and that was a review finding:
+
+- **Crew levelling, durations, makespan realism, and whether a planner would call the output
+  sensible.** Untouched. §S26 addresses ordering and mid-air only.
+- **The 3.0–7.4% residual backward relations** (§S26.5), concentrated in `host`. Made visible, not
+  eliminated.
+- **The `host`/`opening` families' high violation rates** — host: Clinic 18%, HHS 31%, Hospital 40%;
+  opening: JKR 76% (196/259) — undiagnosed. These are the largest remaining unknown in §S26 and the
+  most likely place its residual 1.65–7.36% is hiding something structural rather than incidental.
+- **LTU generates 3,925,180 bearing relations for 122,330 elements — 32 per element**, versus ~1 per
+  element on Terminal (47,213/48,428). A 30× density outlier, cause unknown, flagged and not chased.
+  Any implementation must expect it as a perf ceiling.
+- **Template shapes beyond in-situ concrete and steel frame** — precast, tilt-up, timber — unexamined.
+- **The construction-practice claims in §S26.4 are general knowledge, not project data**, and have
+  not been checked with a real planner.
+- **Nothing here is implemented.** `viewer/` is unchanged; `probe_s26_rank_monotone.js` is a probe.
+
+## §S26.8 — build order, each stage with a stop condition that does not depend on a later stage
+
+1. **Delete `hang`.** Stop condition: `§S26G_ACYCLIC` reports `largestSCC=1` on all **7** buildings.
+   **✅ MET 2026-08-19** — `kahnLeftover=0 largestSCC=1` fleet-wide (§S26.5). Independently
+   checkable — a property of the edge set, needing no scheduler to exist.
+2. **Restrict `support` to load-bearing classes; drop `embedded`.** Stop condition: physics-vs-phase
+   contradictions ≤ 1 per building (`§S26G_CAUSE` `phase=`). Also pure edge-set, no scheduler.
+3. **Rank from elevation bands + phase.** Stop condition: backward-relation count reported per
+   building and matching §S26.5's table to within noise. Pure data, no scheduler.
+4. **Sort + `max()` clock, gate using the judge's global scan (C1).** Stop condition: `auditFloating`
+   float count vs the live engine, on the same fleet — must not regress. First stage requiring a
+   scheduler, and its check is the shipped judge, not a new one.
+5. **Template file + offsets.** Stop condition: changing an offset in JSON changes the schedule and
+   nothing else; the default reproduces stage 4's numbers exactly.
+6. **Template-dependent mid-air judge (§S26.4b).** Stop condition: a steel template does not report
+   a level-5 column as mid-air, and the concrete template still does when it genuinely is.
+
+Stages 1–3 are edge-set properties measurable with the probe that already exists. **No stage depends
+on a later stage to validate itself** — the specific defect §S25.11 was reviewed for.
+
+## §S26.9 — STOP-AND-REPORT
+
+- **Stage 1 is MET fleet-wide (§S26.5) — but on the PROBE's edge set, not the engine's.** If the
+  engine reaches a different result after `hang` is removed for real, the engine's predicate differs
+  from `probe_s26_rank_monotone.js`'s in some way not yet identified. Report that difference and
+  STOP — do not delete a second family to chase it.
+- **If the residual backward-relation count in stage 3 exceeds §S26.5's measured 3.0–7.4% band on any
+  building**, the rank construction differs from this probe's. Report the difference; do not tune.
+- **If any stage reports a `0` that cannot fail** (C3), treat it as unmeasured and say so in the same
+  breath as reporting it. §S25_REVIEW's `engineGap` demotion is the precedent.
+- **Before stage 5 is designed**, the §S26.4 construction-practice claims need one pass by someone
+  with real planning experience. They are general knowledge, they are load-bearing for the template
+  shape, and this session cannot verify them from project data.
