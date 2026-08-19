@@ -2643,3 +2643,92 @@ where the label is a system label rather than a location, physical elevation is 
 - **Correction to §S33.1's prose:** the fleet total is **266,954** scheduled elements, not 276,954 —
   §S33.1's own per-building table sums to 266,954, re-derived here with every per-building `n`
   matching that table exactly (`§S34_TIERCHECK`). The T4=0 result is unaffected.
+
+---
+
+# §S35 — THE RUNTIME LEVEL DERIVATION, BUILT (2026-08-19). 100% coverage on 7/7, nothing wired.
+
+**Deliverables**, both new, both in `bim-compiler` (the `build/room_walker.js` → `viewer/lib/` source
+pattern §S32.1 rule 3 names as the precedent):
+
+- `build/level_deriver.js` — the runtime pass. Dual-mode (node + browser sql.js), read-only,
+  `window.LevelDeriver` / `module.exports`.
+- `scripts/witness_level_derive.js` — 14 hand-computed fixtures (§VERIFICATION rule 1) + the fleet run.
+
+**⚠ NOT WIRED INTO THE SCHEDULER, deliberately.** Consuming this in `CpmSchedule`/`time_machine`
+changes ordering behavior and needs its own vetted spec (§RESUME R.5 step 4). This file derives and
+reports; nothing in `viewer/` changed.
+
+## §S35.1 — the §S32.4 contract, clause by clause, with the evidence
+
+| §S32.4 clause | how it is met | evidence |
+|---|---|---|
+| read only | only `db.exec()` with SELECT/PRAGMA — `db.run` occurs once in the file, in a comment | `md5sum -c` on all 7 DBs: **7/7 OK** after every run this session |
+| once per load | `derive(db, elements)` is a single pass; caller holds the result | one call per building in the witness |
+| **be total** | geometry tier is the floor and cannot fail — `_buildScheduleElements` drops zero-transform rows upstream (`viewer/schedule_author.js:346` `.filter(!e.noGeo)`, read this session) | `T4=0` on 7/7, **coverage 266,954/266,954 = 100.000%** |
+| report coverage + fallbacks | `§LEVEL_DERIVE_GRID` / `_TIER` / `_OVERRIDE` / `_AMBIGUOUS`, per building | full log below |
+| instrument guards | `§LEVEL_DERIVE_GUARD` prints per building whether the declared and override branches were REACHABLE at all, so "0 overrides" is distinguishable from "the branch never ran" | LTU + Duplex print `overrideBranchReachable=NO — tie-break MOOT`, the other 5 print `YES` |
+
+## §S35.2 — fleet result (`§W_LEVEL_FLEET_VERDICT`, `node scripts/witness_level_derive.js`, exit 0)
+
+| building | n | declared kept | geometry | overrides | grid source | T4 |
+|---|---|---|---|---|---|---|
+| Terminal_meta | 48,428 | 11,093 (22.9%) | 37,335 | 140 (1.25% of declared) | declared, k=6 | 0 |
+| Hospital_meta | 63,182 | 52,684 (83.4%) | 10,498 | 823 (1.54%) | declared, k=7 | 0 |
+| Clinic_meta | 16,071 | 5,679 (35.3%) | 10,392 | 48 (0.84%) | declared, k=3 | 0 |
+| LTU_AHouse_meta | 122,330 | 0 | 122,330 | 0 (MOOT) | **uniform 3m, k=23** | 0 |
+| Duplex_extracted | 1,119 | 0 | 1,119 | 0 (MOOT) | **uniform 3m, k=5** | 0 |
+| HHS_Office_Federated | 6,839 | 4,668 (68.3%) | 2,171 | 6 (0.13%) | declared, k=3 | 0 |
+| JKR_extracted | 8,985 | 1,778 (19.8%) | 7,207 | 239 (11.85% ⚠) | declared, k=4 | 0 |
+| **fleet** | **266,954** | **75,902** | **191,052** | **1,256 (1.63% of declared)** | | **0** |
+
+`ambiguousStoreyNames=0` on all 7 — re-checked per building by the module itself, not inherited
+from §S31.4.
+
+**Reconciliation with §S34's probe, not glossed:** the probe counted 1,260 genuine contradictions,
+the module overrides 1,256. Element-level diff on the two buildings that differ (`moduleOnly=0`,
+`probeOnly=3` Hospital / `2` JKR) shows the module's override set is a strict SUBSET: the delta is
+elements sitting within the ±0.05m slack of the tolerance boundary — e.g. an `IfcPipeFitting` whose
+top is 5.372m below a declared level with a 5.33m local gap, and a JKR `IfcSlab` at 82.879 against a
+band starting at 82.90. **No element is overridden by the module that the probe would have kept.**
+
+## §S35.3 — the witness found a real bug before anything was wired
+
+Fixtures A4 / A5 / A14 failed on the first run. Cause: the downward tolerance is what validates a
+DECLARED value, but the first draft also used those extended bands to PLACE geometry-only elements —
+and extended bands deliberately OVERLAP (band(4)'s extension reaches into band(0)), so a scan put an
+element at z=0.2 on level 4. **Two different questions needed two different intervals:**
+`declaredBandOf()` = `[Z_i − localGap, Z_i+1)` for "does this element reach the storey it claims?",
+`geomIdx()` = plain `[Z_i, Z_i+1)` for "which storey is it on?". Both are now named, commented with
+the failure that produced them, and A14 stands as the guard (3.9m→level 0, 4.1m→level 4 — the
+classifier provably responds to input rather than returning a constant).
+
+**This is the §RESUME R.5 lesson working in the other direction:** the fixtures were hand-computed
+before the engine ran, so a wrong implementation could not report itself green.
+
+## §S35.4 — the 14 fixtures and what each one proves
+
+`A1` declared+geometry agree · `A2` a slab whose top IS the floor line is not a contradiction
+(§S34.1's datum) · `A3` one storey below still counts as declared (the local-gap allowance) ·
+`A4` a far miss overrides to geometry and is FLAGGED · `A5` geometry without a declared value is NOT
+an override (override count ≠ geometry count) · `A6` T1 beats T2 · `A7` a full-height riser keeps
+its declared base level · `A8` a storey name with no elevation is not a declared value · `A9` both
+`Unknown` spellings are non-declarations · `A10` T4 stays uncovered, never defaulted · `A11` a
+declared value survives unusable geometry · `A12` total off the bottom of the grid · `A13` total off
+the top · `A14` the classifier responds to input. **14/14 pass, `§W_LEVEL_FIXTURES pass=14 fail=0`.**
+
+## §S35.5 — STOP-AND-REPORT (what this run is NOT allowed to imply)
+
+- **LTU and Duplex get a uniform-3m grid, and that is a REPORTED FALLBACK, not a result.** No storey
+  row in either DB carries an elevation, so there is nothing declared to extract. LTU's is worse than
+  Duplex's: it is federated across source models with different floor heights (§S34.4), so a single
+  global grid is wrong for it by construction and `k=23` bands from −48m upward is the honest
+  printout of that, not a level structure anyone should build a Gantt on. **A derived grid
+  (slab-top clustering — Duplex's slabs cluster cleanly at 0.0 / 3.0 / 6.5) is NOT attempted here:
+  untested on one building, wrong by construction on the other.** Named as open work, not defaulted.
+- **JKR's 11.85% override rate is a grid degeneracy** (two storeys 0.01m apart), not a data-quality
+  verdict on JKR. §RESUME R.4 already says not to headline JKR numbers.
+- **100% coverage is not 100% correctness.** It says every element got a level from a stated source
+  with a stated fallback. Whether those levels order work correctly is §S30/§S31.1 territory and is
+  untouched by this section.
+- **Nothing shipped.** `viewer/` unchanged, no PR, no DB written.
