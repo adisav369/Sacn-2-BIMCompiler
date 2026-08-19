@@ -57,6 +57,7 @@ const GAP = ScheduleGate.GAP, EPS = ScheduleGate.EPS;
 // §S25.8 — the duration mapping, reimplemented here rather than imported, precisely to prove the
 // pass needs nothing from computeSchedule. Verbatim schedule_gate.js toProductive/toWall.
 const SHIFT_MS = SHIFT_HOURS * 3600 * 1000;
+const SCALE = process.env.SCALE ? Number(process.env.SCALE) : 1;
 function toProductive(t) { const o = t; if (o <= 0) return 0; const d = Math.floor(o / DAY), r = o - d * DAY; return d * SHIFT_MS + (r < SHIFT_MS ? r : SHIFT_MS); }
 function toWall(p) { if (p <= 0) return 0; const d = Math.floor(p / SHIFT_MS), r = p - d * SHIFT_MS; return d * DAY + r; }
 
@@ -117,7 +118,7 @@ function levelLadder(items) {
 function phaseRank(P) { const t = TIER1.indexOf(P); return t >= 0 ? t : 3; }
 
 // ── the §S25.7 pass ──────────────────────────────────────────────────────────────────────────────
-function s25Compute(items, maxCrews) {
+function s25Compute(items, maxCrews, desOverride) {
   const t0 = Date.now();
   const n = items.length;
   const lad = levelLadder(items), levelOf = lad.levelOf, levels = lad.levels;
@@ -161,11 +162,38 @@ function s25Compute(items, maxCrews) {
   // 8.1d -> 2.7d (a schedule where almost everything shares a start is not a schedule). The RAW
   // shell reaches float=0 by a different mechanism entirely — a grid gate that only sees supports
   // ALREADY PLACED, plus its 16-sweep repair loop — not by holding all of them as constraints.
-  const ALL_SUPPORTS = process.env.ALL_SUPPORTS === '1';
+  // SUPPORTS=designated (default, one elected support) | bearing | all.
+  //   bearing  — exactly the predicate the JUDGE (auditFloating) tests: EVERY bearing-below support
+  //              (S.base_z < T.base_z - EPS, STRICTLY ANTISYMMETRIC so it cannot cycle) plus the
+  //              scoped hang set (fires only when the element has no bearing support at all, and the
+  //              carrier is strictly above its top — mutual hang impossible). Proposed by the
+  //              2026-08-19 review as the option C4 never tested: C4's `all` also included EMBEDDED,
+  //              the symmetric clause (two coincident boxes each embed the other) that manufactured
+  //              the cycle explosion C4 then blamed on all-supports as such.
+  //   all      — C4's original: bearing + embedded + hang.
+  const SUPPORTS = process.env.SUPPORTS || 'designated';
   const cons = [];
   let nSup = 0;
-  for (let i = 0; !ALL_SUPPORTS && i < n; i++) if (des[i] >= 0) { cons.push([des[i], i]); nSup++; }
-  for (let i = 0; ALL_SUPPORTS && i < n; i++) {
+  if (SUPPORTS === 'designated') {
+    for (let i = 0; i < n; i++) { const j = desOverride ? desOverride[i] : des[i];
+      if (j >= 0) { cons.push([j, i]); nSup++; } }
+  } else if (SUPPORTS === 'bearing' || SUPPORTS === 'bearingonly') {
+    for (let i = 0; i < n; i++) {
+      const list = G.contacts[i]; if (!list) continue;
+      const T = items[i];
+      let below = 0;
+      for (let k = 0; k < list.length; k++) {
+        const j = list[k], S = items[j];
+        if (S.bz < T.bz - EPS && S.tz >= T.bz - GAP) { cons.push([j, i]); nSup++; below++; }
+      }
+      if (SUPPORTS === 'bearingonly') continue;
+      if (!below && !G.grounded[i]) for (let k = 0; k < list.length; k++) {
+        const j = list[k], S = items[j];
+        if (S.bz >= T.tz - GAP && S.tz > T.tz + EPS) { cons.push([j, i]); nSup++; }
+      }
+    }
+  }
+  for (let i = 0; SUPPORTS === 'all' && i < n; i++) {
     const list = G.contacts[i]; if (!list) continue;
     const T = items[i];
     let below = 0;
@@ -183,8 +211,13 @@ function s25Compute(items, maxCrews) {
       }
     }
   }
-  ScheduleGate.hostPairs(gateEls).forEach(p => cons.push([p.h, p.i]));
-  ScheduleGate.openingPairs(gateEls).forEach(p => cons.push([p.h, p.i]));
+  // 'bearingonly' isolates the DIRECTION question: bearing-below edges alone are strictly
+  // antisymmetric in base_z and therefore cannot cycle at all. Every other family (hang, host,
+  // opening) can point DOWN, and it is those that close cycles against a bearing chain running up.
+  if (SUPPORTS !== 'bearingonly') {
+    ScheduleGate.hostPairs(gateEls).forEach(p => cons.push([p.h, p.i]));
+    ScheduleGate.openingPairs(gateEls).forEach(p => cons.push([p.h, p.i]));
+  }
 
   // ── §S25.5 CORRECTED (2026-08-19, found by this prototype's first run: the rule as written in
   // §S25.5 DEADLOCKS — a NON-deferred element whose predecessor is a DEFERRED element of its own
@@ -207,7 +240,7 @@ function s25Compute(items, maxCrews) {
   // component, COUNT them. This is not the merged-graph Tarjan §S25.0 rejects: it runs on one layer,
   // where a cycle means the model is wrong, and it reports rather than silently contracting.
   const predsOf = new Array(n), succsOf = new Array(n);
-  let cForward = 0, cSame = 0, cContra = 0, cDefer = 0, cPhysCycle = 0;
+  let cForward = 0, cSame = 0, cDefer = 0, cPhysCycle = 0;
   let compOf = null, compSizes = null;
   {
     const adj = new Array(n);
@@ -296,7 +329,10 @@ function s25Compute(items, maxCrews) {
   const groupAtRank = new Int32Array(groups.length);
   order.forEach((g, r) => { groupAtRank[r] = g; });
   const effGroupOf = new Int32Array(n).fill(-1);
-  for (let i = 0; i < n; i++) if (effRank[i] >= 0) effGroupOf[i] = groupAtRank[effRank[i]];
+  // §S25.7: an element with no level gets NO group gate. Lifting it into a group by its ancestor's
+  // rank made it feed that group's completion time while never being counted as re-homed — a silent
+  // membership channel (found by review, 2026-08-19).
+  for (let i = 0; i < n; i++) if (effRank[i] >= 0 && gidOf[i] >= 0) effGroupOf[i] = groupAtRank[effRank[i]];
   const effMembers = new Array(groups.length);
   for (let g = 0; g < groups.length; g++) { effMembers[g] = []; groups[g].remaining = 0; groups[g].deferred = 0; }
   for (let i = 0; i < n; i++) if (effGroupOf[i] >= 0) { effMembers[effGroupOf[i]].push(i); groups[effGroupOf[i]].remaining++; }
@@ -334,7 +370,7 @@ function s25Compute(items, maxCrews) {
   for (let i = 0; i < n; i++) predCount[i] = predsOf[i] ? predsOf[i].length : 0;
   const ES = new Float64Array(n), EE = new Float64Array(n), done = new Uint8Array(n);
   const DUR = new Float64Array(n);
-  for (let i = 0; i < n; i++) DUR[i] = Math.round((items[i].installSecs || 120) * 1000);   // productive ms
+  for (let i = 0; i < n; i++) DUR[i] = Math.round((items[i].installSecs || 120) * SCALE * 1000);  // productive ms (§S25.8)
 
   const crews = {};
   const capFor = r => (typeof maxCrews === 'number' ? maxCrews : (maxCrews && maxCrews[r]) || 3);
@@ -406,7 +442,7 @@ function s25Compute(items, maxCrews) {
   drain();
   for (let i = 0; i < n; i++) if (effGroupOf[i] < 0) tryReady(i);   // ungrouped: physics + crews only
 
-  let processed = 0;
+  let processed = 0, crewOverCapScc = 0;
   function finalize(i, start) {
     const end = toWall(toProductive(start) + DUR[i]);
     ES[i] = start; EE[i] = end; done[i] = 1; processed++;
@@ -444,7 +480,7 @@ function s25Compute(items, maxCrews) {
         const u = used[r] || (used[r] = {});
         let si = -1;
         for (let k = 0; k < pool.length; k++) if (!u[k] && (si < 0 || pool[k] < pool[si])) si = k;
-        if (si < 0) { si = 0; for (let k = 1; k < pool.length; k++) if (pool[k] < pool[si]) si = k; }
+        if (si < 0) { crewOverCapScc++; si = 0; for (let k = 1; k < pool.length; k++) if (pool[k] < pool[si]) si = k; }
         else { u[si] = 1; if (pool[si] > start) start = pool[si]; }
         picks.push([m, r, si]);
       });
@@ -482,9 +518,9 @@ function s25Compute(items, maxCrews) {
   let minS = Infinity, maxE = -Infinity;
   for (let i = 0; i < n; i++) { if (done[i]) { if (ES[i] < minS) minS = ES[i]; if (EE[i] > maxE) maxE = EE[i]; } }
   return { times: Array.from({ length: n }, (_, i) => ({ s: ES[i], e: EE[i] })),
-           leftover: n - processed, levels, groups, deferredN: cDefer, contradictions: cContra,
+           leftover: n - processed, levels, groups, deferredN: cDefer,
            forwardN: cForward, sameN: cSame, deferredEls: cRehome, physCycleDropped: cPhysCycle,
-           bulkMask: Array.from({ length: n }, (_, i) => !rehomed[i]), nSup,
+           bulkMask: Array.from({ length: n }, (_, i) => !rehomed[i]), nSup, crewOverCapScc,
            gidOf, effGroupOf, levelOf, rehomed,
            maxComp: compSizes.reduce((a, b) => (b > a ? b : a), 0),
            makespanDays: (maxE - minS) / DAY, ms: Date.now() - t0 };
@@ -571,7 +607,41 @@ async function runBuilding(SQL, RATES, bld) {
   const rawT = items.map(o => ({ s: o.s, e: o.e }));
   const cpmRun = CpmSchedule.run(items, { maxCrews });
   const cpmT = cpmRun.ok ? cpmRun.solution.times : rawT;
-  const s25 = s25Compute(items, maxCrews);
+  let desOverride = null;
+  if (process.env.DESIG === 'v2') {   // load-bearing preference + phase-order tie-break among equals
+    const lvl = [], ag = {};
+    items.forEach((it, i) => { const L = it.storey ? ScheduleGate.collapsePhase(it.storey) : null; lvl[i] = L;
+      if (L) { const a = ag[L] || (ag[L] = { sum: 0, c: 0 }); a.sum += it.bz; a.c++; } });
+    const lv = Object.keys(ag).sort((a, b) => ag[a].sum / ag[a].c - ag[b].sum / ag[b].c);
+    const bo = {}; lv.forEach(L => { bo[L] = Math.floor((ag[L].sum / ag[L].c) / 3); });
+    const bvals = []; lv.forEach(L => { if (bvals.indexOf(bo[L]) < 0) bvals.push(bo[L]); });
+    bvals.sort((a, b) => a - b); const bro = {}; bvals.forEach((b, r) => { bro[b] = r; });
+    const br = {}; lv.forEach(L => { br[L] = bro[bo[L]]; });
+    const gk2 = i => (!lvl[i] ? -1 : br[lvl[i]] * 8 + phaseRank(items[i].phase || '_UNPHASED'));
+    const EPS2 = ScheduleGate.EPS, GAP2 = ScheduleGate.GAP;
+    desOverride = new Int32Array(items.length).fill(-1);
+    for (let i = 0; i < items.length; i++) {
+      const list = G.contacts[i]; if (!list) continue;
+      const T = items[i];
+      let bJ = -1, bCls = 9, bStruct = -1, bFwd = -1, bScore = Infinity;
+      for (let k = 0; k < list.length; k++) {
+        const j = list[k], S = items[j];
+        let cls, score;
+        if (S.bz < T.bz - EPS2 && S.tz >= T.bz - GAP2) { cls = 0; score = -S.tz; }
+        else if (S.bz <= T.bz + EPS2 && S.tz >= T.tz - EPS2) { cls = 1; score = Math.abs(S.bz - T.bz); }
+        else { cls = 2; score = S.bz; }
+        const st = (cls < 2 && (S.seq <= 4 || (S.cls === 'IfcSlab' && S.seq > 4))) ? 1 : 0;
+        const gj = gk2(j), gi = gk2(i);
+        const fw = (gj >= 0 && gi >= 0 && gj <= gi) ? 1 : 0;
+        if (cls < bCls || (cls === bCls && st > bStruct) || (cls === bCls && st === bStruct && fw > bFwd) ||
+            (cls === bCls && st === bStruct && fw === bFwd && (score < bScore ||
+             (score === bScore && (bJ < 0 || String(S.guid) < String(items[bJ].guid))))))
+          { bCls = cls; bStruct = st; bFwd = fw; bScore = score; bJ = j; }
+      }
+      desOverride[i] = (bCls === 2 && G.grounded[i]) ? -1 : bJ;
+    }
+  }
+  const s25 = s25Compute(items, maxCrews, desOverride);
 
   console.log('§S25P_LADDER ' + bld + ' levels=' + s25.levels.length +
     ' groups=' + s25.groups.length +
@@ -631,13 +701,23 @@ async function runBuilding(SQL, RATES, bld) {
     ' worst=' + bulk.worst.toFixed(2) + 'd' + (bulk.worstRow ? ' at[' + bulk.worstRow.L + ' ' +
     bulk.worstRow.pair + ']' : '') + ' ' + (bulk.bad === 0 ? 'PASS' : 'FAIL') +
     ' — same test over each phase\'s OWN work (re-homed tail excluded, listed above)');
+  console.log('§S25P_COMPARE ' + bld + ' [byName gap | float | makespanD]  RAW=' +
+    out.RAW.g.bad + '/' + out.RAW.g.pairs + ' ' + out.RAW.g.worst.toFixed(1) + 'd | ' + out.RAW.f + ' | ' +
+    ((Math.max.apply(null, rawT.map(t => t.e)) - Math.min.apply(null, rawT.map(t => t.s))) / DAY).toFixed(1) +
+    '   CPM=' + out.CPM.g.bad + '/' + out.CPM.g.pairs + ' ' + out.CPM.g.worst.toFixed(1) + 'd | ' + out.CPM.f + ' | ' +
+    ((Math.max.apply(null, cpmT.map(t => t.e)) - Math.min.apply(null, cpmT.map(t => t.s))) / DAY).toFixed(1) +
+    '   S25=' + out.S25.g.bad + '/' + out.S25.g.pairs + ' ' + out.S25.g.worst.toFixed(1) + 'd | ' + out.S25.f + ' | ' +
+    s25.makespanDays.toFixed(1) + '   supports=' + (process.env.SUPPORTS || 'designated') +
+    ' desig=' + (process.env.DESIG || 'v0') + ' crewOverCapScc=' + s25.crewOverCapScc);
   console.log('§S25P_VERDICT ' + bld +
     ' gap ' + out.CPM.g.bad + '->' + out.S25.g.bad + '/' + out.S25.g.pairs +
     ' | float ' + out.CPM.f + '->' + out.S25.f +
     ' | midair ' + out.CPM.m + '->' + out.S25.m +
     ' | crew ' + out.CPM.c + '->' + out.S25.c +
     ' | leftover=' + s25.leftover + ' | engineGap=' + engEff.bad + '/' + engEff.pairs +
-    ' | bulkGapByName=' + bulk.bad + '/' + bulk.pairs);
+    ' | bulkGapByName=' + bulk.bad + '/' + bulk.pairs + (bulk.bad ? ' BULK_FAIL worst=' +
+      bulk.worst.toFixed(2) + 'd' : '') +
+    '   [engineGap is a SELF-ASSERT, not evidence: min-start(B) >= gateTime(B) >= complete(A) = max-end(A) by construction]');
   return { bld, n: items.length, out, s25, bulk, engEff, engLab };
 }
 

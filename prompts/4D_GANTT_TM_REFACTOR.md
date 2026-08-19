@@ -582,6 +582,10 @@ them. No code in `viewer/` was changed by this triage; the only artifact is the 
 # it resolves both by construction.
 
 ## §S25.0 — The statement this whole design rests on
+> **⚠ ITS CENTRAL PREMISE IS HALF WRONG — corrected by measurement 2026-08-19, see §S25_REVIEW.5.**
+> "Physical support is a strict order by elevation, so it cannot contain a cycle" is true ONLY of
+> bearing-below. The hang, host and opening families point DOWN or sideways and make the physics
+> layer genuinely cyclic. Acyclicity is manufactured by contraction, not inherited from geometry.
 
 **A construction schedule is not a general dependency graph. It is four layers, each already an
 order, composed in a fixed precedence.** Physical support is a strict order by elevation, so it
@@ -646,6 +650,10 @@ Print the derived ladder every run (`§S25_LADDER`), for the same reason §4D_BA
 its own: a wrong ladder enforces a wrong order confidently.
 
 ## §S25.3 — L2: physics
+> **⚠ AMENDED by §S25_PROTO C3-C4 and §S25_REVIEW (2026-08-19):** the same-group "contradiction drop"
+> below is DELETED (acyclicity comes from contracting physics cycles, not from an ordering rule), and
+> "FS closes the float invariant" is FALSE as stated — it holds only for the one designated support.
+> Read §S25_PROTO C3, C4 and §S25_REVIEW.5 before implementing this section.
 
 **Relation (unchanged geometry, keep it):** `contactGraph` → `designatedSupport` (bearing-below,
 embedded, carrier-above, with §GROUNDED_NEVER_HANGS) plus `hostPairs` / `openingPairs`. One
@@ -679,6 +687,9 @@ No milestone nodes exist. No E3/E4/member edges exist. A gate is a `Float64` tha
 a counter reaches zero, and it is read by a `max()`.
 
 ## §S25.5 — The deferral rule: the entire conflict resolution, and why it terminates
+> **⛔ SUPERSEDED IN PLACE by §S25_PROTO C1-C2 (2026-08-19). The rule as written below DEADLOCKS on
+> first contact with real data (975 of 1,119 elements stuck on Duplex).** Kept verbatim because this
+> file keeps its retractions. Implement the effective-rank mechanism in §S25_PROTO C1-C2, never this.
 
 Pass order is `(bandRank, phaseRank)` — a **total order**. For each physics constraint `p → e`:
 
@@ -965,3 +976,171 @@ Read it honestly, both halves:
 **STOP-AND-REPORT, inline:** if fixing the designations moves `asLabelled` but breaks `engineGap`
 (currently 0/7), the layer contract is not as separable as §S25.1 claims — report that, do not
 re-tune the ladder to make both numbers look good at once.
+
+---
+
+# §S25_REVIEW — outside review of §S25/§S25_PROTO, and what measurement did to it (2026-08-19).
+# A Fable-model review was run adversarially against the spec, the prototype and the live engine. Its
+# findings are recorded here with the outcome of CHECKING each one — accepted, refuted by experiment,
+# or verified wrong. Two of its findings changed the headline of §S25_PROTO; one of its proposed fixes
+# was tested and failed; one of its code claims is incorrect. Nothing was taken on the report's word.
+
+## §S25_REVIEW.1 — ACCEPTED, and it is the most important correction in this lane: `engineGap = 0/7`
+## is a TAUTOLOGY, not evidence. §S25_PROTO's headline was wrong.
+
+Re-derived by reading the prototype's own code, not the report's summary: `engineGap(effective)`
+spans each group by `effGroupOf` — the very membership the pass schedules with. Every element starts
+at `max(predFinish, gateTime[effGroup])`; `gateTime[B] ≥ complete(A)`; and `complete(A)` is defined
+as `max end over A's effective members` — exactly the quantity `engineGap` compares against. So
+`min-start(B) ≥ max-end(A)` is **enforced arithmetic**. It cannot come out non-zero unless the
+implementation is broken. It is a useful self-assert, nothing more, and **§S25_PROTO.2 presented it
+as the proof that "the gate it enforces is enforced exactly"** — which is the precise failure this
+file's own WATCHDOG block names: a proxy standing in for ground-truth validation. Demoted to an
+assert; the prototype now prints that caveat inline on every `§S25P_VERDICT` line.
+
+**A second-order consequence the review is also right about:** a re-homed element inherits its new
+group's whole gate stack, which physics never demanded (physics demanded only "after my support
+finishes"). That inflates the `asLabelled` magnitudes §S25_PROTO then blamed on classification. How
+much of the −216d/−768d is gate inheritance rather than physics is NOT yet separated — open.
+
+## §S25_REVIEW.2 — ACCEPTED: the like-for-like comparison existed in the log and was left out of the
+## table. Here it is, and it does not flatter the design.
+
+`§S25P_COMPARE` now prints it every run. Same name-based test, same run, all three engines
+(negative pairs / worst gap · auditFloating · makespan days):
+
+| building | RAW (local shell) | CPM (live today) | S25 v0 | S25 **+ corrected election (v2)** |
+|---|---|---|---|---|
+| Terminal | 11/17 −21.5d · **4** · 132.6 | 17/17 −76.0d · 4,756 · 85.1 | 16/17 −96.5d · 3,523 · 103.7 | **11/17** −97.5d · **1,555** · 103.7 |
+| Hospital | 5/10 −41.5d · **0** · 333.4 | 10/10 −246.6d · 7,753 · 263.5 | 8/10 −216.8d · 4,095 · 298.1 | **4/10** −71.3d · **1,293** · 300.5 |
+| Clinic | 7/10 −14.7d · **0** · 153.4 | 10/10 −85.0d · 1,102 · 96.1 | 10/10 −80.3d · 3,086 · 100.9 | 9/10 −84.2d · **327** · 105.5 |
+| LTU_AHouse | 18/20 −112.8d · **25** · 886.1 | 19/20 −747.2d · 12,712 · 748.5 | 17/20 −794.2d · 19,327 · 797.8 | **16/20** −812.5d · **9,461** · 815.3 |
+| Duplex | 4/4 −0.4d · **0** · 9.9 | 3/4 −6.3d · 247 · 8.3 | 4/4 −6.0d · 280 · 8.1 | **3/4** −2.5d · **152** · 8.4 |
+| HHS | 4/4 −22.0d · **4** · 47.5 | 4/4 −27.4d · 1,531 · 28.8 | 4/4 −22.0d · 1,436 · 45.3 | 4/4 −21.1d · **243** · 45.8 |
+| JKR | 14/17 −11.7d · **0** · 38.6 | 16/17 −16.3d · 3,183 · 16.5 | 16/17 −18.5d · 3,078 · 22.8 | **14/17** −24.0d · **1,072** · 28.7 |
+
+Honest reading: **S25 v0 was roughly a wash against CPM and lost to RAW.** The FS makespan growth the
+spec predicted is real and was unreported (Terminal 85→104d, Hospital 264→298d). **RAW still wins the
+float invariant on 7/7** — its §DEQ_REPAIR loop enforces exactly that predicate — and no variant of
+this design has beaten it there.
+
+## §S25_REVIEW.3 — ACCEPTED: four real prototype defects, all fixed
+
+`DUR` ignored `scaleFactor` though §S25.8 specifies it (no effect at scale 1, wrong in production);
+a no-storey element with a grouped ancestor was silently lifted into a group it never belonged to,
+feeding that group's completion while never counted as re-homed (§S25.7 says it gets no group gate —
+now enforced); the contracted-component allocator reused an occupied crew slot with no counter where
+`cpm_schedule.js` counts the same event as `drops.crewOverCapScc` (now counted — and it is **0 in the
+default configuration**, but **35,705 on Terminal under the bearing-set variant**, which is how that
+variant's collapse was caught); and `contradictionDropped: 0` was a dead counter reporting a rule C3
+had already deleted — "measured 0 fleet-wide" was vacuous and is removed.
+
+Also accepted, not yet fixed: **Tier-2 phases are ranked alphabetically** (`Finishes` < `MEP Final` <
+`MEP Rough-in`), so a Rough-in→Final support classifies as "backward" by name accident. Some fraction
+of the deferral population is that artifact. Needs a real Tier-2 order or an explicit "unordered
+within Tier-2" rule.
+
+## §S25_REVIEW.4 — ACCEPTED: `midair` and `crew` are structural zeros, not results
+
+`midair 0→0` on 7/7 discriminates nothing: CPM satisfies it by construction (SS edge, never dropped)
+and S25 satisfies it by construction (FS edge, always kept or contracted). `crewViol` only flags a
+resource after >24h cumulative over-capacity. Of §S25_PROTO.2's four "clean" numbers only
+**`leftover = 0`** is genuinely informative — and it stays genuinely informative.
+
+## §S25_REVIEW.5 — REFUTED BY EXPERIMENT, and the refutation is worth more than the proposal:
+## §S25.0's central premise is half wrong, and the cycles are intrinsic
+
+The review proposed that C4's all-supports explosion was caused by the *embedded* clause (symmetric —
+two coincident boxes each embed the other) and that constraining against exactly the judge's set
+(every bearing-below support + the scoped hang set) would be cycle-free and viable. **Tested
+(`SUPPORTS=bearing`): it explodes harder.** Largest physics component Terminal **35,217**, Hospital
+**38,550**, LTU **62,703**; re-homed 80.7–97.9%; float far worse (Terminal 3,523 → **30,990**);
+`crewOverCapScc` 35,705 on Terminal. Not viable.
+
+Isolating why produced the real finding. **`SUPPORTS=bearingonly` (bearing-below edges only, no hang,
+no host/opening) gives largest physics component = 1 on every building — zero cycles, zero
+contraction, 7/7.** So:
+
+> **Bearing-below alone is a strict order and cannot cycle. Every cycle in this system is created by
+> the DOWN-POINTING families — hang, host, opening — whose direction contradicts elevation.**
+
+That corrects §S25.0's premise ("physical support is a strict order by elevation, so it cannot
+contain a cycle" — true only of bearing) and it partly vindicates the original CPM design's decision
+to contract: any *edge-based* engine holding hang/host constraints must either contract them (which
+collapses the schedule — 80-98% re-homed) or drop them (which leaves the float residual). RAW escapes
+the dilemma by not using edges for this at all: `geoGate` reads only supports **already placed**, then
+`§DEQ_REPAIR` sweeps to a fixpoint. That is the review's untested option (b) — *a placed-support gate
+as a NUMBER, not an edge*, which is literally §S25.4's own "gates are numbers, never edges" doctrine
+applied to L2. **It remains the one credible route to float→0 and it has still not been tried.**
+`bearingonly` itself is dominated (float worse than the corrected election on 6/7) and is kept only
+as the instrument that isolated the mechanism.
+
+## §S25_REVIEW.6 — THE WIN: correcting the support ELECTION improves every metric on every building,
+## with no change to the engine at all
+
+§S25_PROTO.4 item 1 said fixing `designatedSupport` was the highest-leverage item. Measured, it is.
+The corrected election (`DESIG=v2`) keeps the classification exactly as shipped and changes only the
+tie-break **between physically equivalent candidates**: at the same class, a structure-pool member
+outranks a non-structural one (a pipe 1cm under a wall must not outrank the slab 10cm under it), then
+a candidate that does not contradict the phase order outranks one that does.
+
+- **Backward supports −51% to −29%**: Terminal 4,263→3,032 deferrals, Hospital 7,822→6,490, Clinic
+  3,539→2,372, JKR 609→299, Duplex 112→66, HHS 1,166→761, LTU 13,460→12,290.
+- **Float, versus the live engine: better on 7/7** — Terminal 4,756→**1,555**, Hospital
+  7,753→**1,293**, Clinic 1,102→**327**, HHS 1,531→**243**, JKR 3,183→**1,072**, Duplex 247→**152**,
+  LTU 12,712→**9,461**.
+- **Phase gap, versus the live engine: better or equal on 7/7**, and better than RAW on 3
+  (Hospital 4/10 vs 5/10, LTU 16/20 vs 18/20, Duplex 3/4 vs 4/4), equal on 3, worse on 1 (Clinic).
+
+This is the first configuration in this lane that beats the shipped engine on both invariants at
+once. It is also the cheapest: a tie-break inside one function.
+
+## §S25_REVIEW.7 — one review claim VERIFIED WRONG, recorded so it is not inherited
+
+The review states `contactGraph`'s carrier clause is a "±GAP = 0.5m band" and concludes rod-hung MEP
+0.51-9.5m below its carrier gets no designated support at all. **Incorrect.** `cpm_schedule.js`'s
+carrier clause is `S.bz >= T.tz - GAP && S.tz > T.tz + EPS` — a LOWER bound only, uncapped above (the
+deliberate §DAY_GAP_TAIL asymmetry, already recorded in this project's memory). The ±GAP band the
+review is thinking of is in `auditFloating`'s hang clause (`schedule_gate.js` ~1090), a different
+function; the far-carrier case there is covered by §HANG_NEAREST for big elements. The review's
+broader point — that S25 constrains against ONE support while `geoGate`/`wallGate`/`hangGate` take the
+max over ALL — stands, and is §S25_REVIEW.5's subject.
+
+## §S25_REVIEW.8 — ACCEPTED and still open (not fixed today, named so they are not lost)
+
+- **Within-level trade order is deleted with no replacement.** `phaseTrade` (`schedule_gate.js`
+  885-887) and per-trade `bandGate` die under §S25.9, and L3 orders Tier-2 only *after* Tier-1 — so
+  MEP Final may run before MEP Rough-in, furniture before ductwork, on every level. §S25.4 must gain
+  an intra-Tier-2 order (and see §S25_REVIEW.3's alphabetical artifact — same root).
+- **§S25_PROTO.2's "no Tarjan… the machinery is unnecessary" is false as written.** Tarjan, SCC
+  contraction, a condensation and a topological longest-path pass are all present — only the
+  *merged-graph* scope is gone. The claim must be narrowed to that.
+- **§S25.10's acceptance baselines are stale** (W-MZ-8's 8,789/5,107/15,896 came from the
+  `_extracted.db` files T8 already flagged; the served-DB measurement is 4,756/7,753/12,712).
+- **§S25P_BULK failed on 2/7** (Clinic 1/7 −10.61d, LTU 3/17 −672d) and §S25_PROTO reported no
+  failure. Still needs guid-level attribution before the ladder-vs-name explanation is accepted.
+- **Hospital's ladder places "Level 5" in four rows and merges `Level 5=Level 3=Level 6`** on a DB
+  whose #1427/#1428 elevation patch is still unverified — the −216d Hospital figure may be
+  substantially ladder/DB artifact.
+- **Gantt-drag is still not a design** ("re-run with the element pinned" is undefined against gates,
+  and bars are keyed on names the ladder splits/merges), and the `stragglerOf`/cache return contract
+  in `_displayTimeline` still needs porting. Leftover elements currently return `{s:0,e:0}` — day-0
+  placement, the exact §4D_NOGEO poison — which must become an explicit consumer contract.
+- **Stability is unmeasured:** one added element can move a level's median, re-rank bands and cascade
+  re-homing through thousands of elements, against caches keyed by `_GANTT_CACHE_VERSION`.
+
+## §S25_REVIEW.9 — the next move, unchanged in shape but now decided by data
+
+1. **Ship the corrected election first** (§S25_REVIEW.6). It is a tie-break in `designatedSupport`,
+   it improves the LIVE engine's own float on 7/7 without any of §S25 being built, and it shrinks the
+   population every later stage has to reason about. It needs its own witness (the election is a
+   behavioural change to a function three consumers share) — that is the next commit, not a rewrite.
+2. **Then test the placed-support NUMERIC gate** (§S25_REVIEW.5's option (b)) — the only untried
+   route to float→0, and doctrinally the one §S25.4 already prescribes.
+3. **Only then** consider wiring §S25 (§S25.11 S25-4), and not before §S25_REVIEW.1's gate-inheritance
+   question is separated from the classification claim.
+
+**STOP-AND-REPORT, inline:** if the corrected election is implemented in `designatedSupport` and the
+live engine's float does NOT move as §S25_REVIEW.6 measured, the prototype's election differs from
+the shipped one in some way not yet identified — report that difference, do not tune the tie-break
+until the numbers agree.
