@@ -3182,3 +3182,96 @@ before concluding the data is absent.
 These are working rules for the 4D lane, not global doctrine. **Do not promote them to `MEMORY.md`.**
 If they prove to generalise across lanes, that is a separate, deliberate synthesis pass by a session
 whose job is memory — not a byproduct of finishing a task here.
+
+---
+
+# §S39 — A2 DIAGNOSED: what moved the 7 W-MZ-8 baselines, and a second defect in the same ruler (2026-08-19)
+
+**A2 asked: all 7 W-MZ-8 baselines are RED on main, `pass=32 fail=7`, undiagnosed. Find what moved
+them.** Answer: **PR #1434 moved all 7, then PR #1435 moved all 7 again. Neither re-locked.** Found
+by commit-by-commit bisect, not by reading commit messages — and the first message read was wrong.
+
+## §S39.1 — the bisect (instrument: `viewer/tests/witness_midair_zero.js`, unchanged, DBs unchanged)
+
+Run on the two fastest buildings at each commit between the lock and main; the DB files are byte-
+identical across every run (`BLD_DIR` defaults to the same `~/bim-ootb/buildings` in every commit),
+so this isolates CODE from DATA:
+
+| commit | PR | W-MZ-8 |
+|---|---|---|
+| `8f8d3de` | #1430 — §S20 Part B, where the baselines were locked | ✅ **GREEN** (Duplex 289=289, HHS 1538=1538) |
+| `07d6744` | #1431 ScheduleEngine single-source class | ✅ GREEN |
+| `dd3a746` | #1432 buildGanttTasks Tukey fence | ✅ GREEN |
+| `035561e` | #1433 computeDays axis-end Tukey fence | ✅ GREEN |
+| `5ea6fcf` | **#1434 — E3 gate no longer exempts stragglers from their own phase's completion** | ⛔ **RED, all 7** |
+| `6a395ca` | #1435 designatedSupport + directional floating judge | ⛔ RED, all 7, different numbers |
+| `13700fd` | main today | ⛔ RED, all 7 (`pass=32 fail=7`, and W-MZ-8 is the ONLY failing invariant) |
+
+| building | locked (§S20) | after #1434 | after #1435 = main | net vs lock |
+|---|---|---|---|---|
+| Terminal | 8,789 | 10,086 | 10,011 | **+1,222 worse** |
+| Hospital | 5,107 | 8,466 | 8,103 | **+2,996 worse** |
+| Duplex | 289 | 239 | 237 | −52 better |
+| HHS_Office_Federated | 1,538 | 1,606 | 1,491 | −47 better |
+| Clinic | 3,523 | 958 | 1,205 | −2,318 better |
+| LTU_AHouse | 15,896 | 15,296 | 12,686 | −3,210 better |
+| JKR | 3,736 | 3,656 | 3,385 | −351 better |
+
+**5 of 7 improved; Terminal and Hospital got worse.** Both movers are merged, intentional,
+independently-verified correctness fixes (#1434 is one of §RESULTS' five bugs — the straggler
+exemption that let a phase count as done while 54-100% of it wasn't). So the schedule legitimately
+moved and **the lock, not the engine, is what is stale.**
+
+**⛔ Correction to #1435's own commit message.** It says W-MZ-8 "now fails against its old locked
+baseline numbers" *because of that fix*, and defers the re-lock. Measured: all 7 were **already red
+at `6a395ca^`**. #1435 inherited a broken lock and attributed it to itself. §S33.2's framing
+("something moved all 7 and was never re-locked") was right that the cause was unknown; the cause is
+#1434, one PR earlier.
+
+## §S39.2 — the SECOND defect, found while fixing the first: the ruler reads DEPRECATED DBs
+
+`witness_midair_zero.js:169` — `const DB_FILE = { LTU_AHouse: 'LTU_AHouse_meta.db' };` and
+`:242` falls back to `<bld>_extracted.db` for everything else. **Terminal, Hospital and Clinic all
+HAVE a `_meta.db`, and the witness reads their deprecated `_extracted.db` instead:**
+
+| building | `_extracted.db` | `_meta.db` | witness reads |
+|---|---|---|---|
+| Terminal | Jun 5 | **Aug 17** (patched, PR #1427) | ⛔ extracted |
+| Hospital | Aug 3 | **Aug 17** (patched, PR #1428) | ⛔ extracted |
+| Clinic | Aug 3 | Jun 6 | ⛔ extracted |
+| LTU_AHouse | Aug 3 | Aug 10 | ✅ meta |
+| Duplex · HHS · JKR | — | none | ✅ n/a |
+
+**Measured cost, same engine (main), only the DB file changed:**
+
+| building | on `_extracted.db` | on `_meta.db` | delta |
+|---|---|---|---|
+| **Terminal** | 10,011 | **4,256** | **−57.5%** |
+| Hospital | 8,103 | 8,210 | +107 |
+| Clinic | 1,205 | 1,205 | identical |
+| Duplex · HHS · LTU · JKR | 237 · 1,491 · 12,686 · 3,385 | unchanged | — |
+
+**Terminal's W-MZ-8 number is 2.4× larger on the deprecated file.** Every Terminal float figure in
+this lane measured through this witness carries that error. This is the same landmine §RESULTS'
+addendum hit on 2026-08-18 (stale `Terminal_extracted.db`/`Hospital_extracted.db` vs the same-day
+patched `_meta.db` pair) — it was diagnosed then, a branch `fix/witness-dbfile-resolution` was
+created for it, and **that branch has zero commits on it.** Another named-never-worked item.
+
+## §S39.3 — why the re-lock is HELD, not pushed
+
+A re-lock to main's current numbers would bless **10,011 for Terminal — a number measured on a
+deprecated DB.** Correct order, stated so it is not re-derived:
+
+1. **Fix `DB_FILE` resolution first** — prefer `<bld>_meta.db` whenever it exists, `_extracted.db`
+   only when it does not. One line; the branch for it already exists and is empty.
+2. **Then re-lock all 7 in the SAME PR**, to the meta-measured numbers: Terminal **4,256** ·
+   Hospital **8,210** · Duplex **237** · HHS **1,491** · Clinic **1,205** · LTU **12,686** ·
+   JKR **3,385**. Verified locally: `pass=39 fail=0` with the extracted-DB numbers, and the
+   meta-DB numbers above are measured, not projected.
+3. **Only then judge A1.** The `hang` deletion's "+722 Hospital / +227 JKR" regression was scored
+   against the stale §S20 lock AND (for Terminal/Hospital) against a deprecated DB. Both halves of
+   the ruler were wrong; A1's trade must be re-measured before it is decided.
+
+**Nothing pushed to `bim-ootb`.** Worktree `/tmp/wt-wmz-pre` holds branch
+`fix/wmz8-relock-after-1434-1435` with no commits (the re-lock edit was verified green, then
+reverted pending the DB-resolution decision above).
