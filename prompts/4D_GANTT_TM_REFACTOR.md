@@ -2890,3 +2890,76 @@ what is unresolved is the price.
   serializes what a smarter within-SCC schedule could overlap). Neither is tuned; both are printed.
 
 **Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
+
+---
+
+# §S46 — ROOM×TRADE: the location hypothesis tested with the field's own definition, and NOT confirmed (2026-08-20)
+
+**§S45 said the location breakdown cannot be dodged. This tests it without inventing one** — the
+location comes from `rel_contained_in_space` (the IFC's own element→space containment, §S26.12) and,
+where no room is declared, from `build/level_deriver.js` (§S35 — built, gate-passed, 100% coverage,
+T4=0, 14/14 hand-computed fixtures). No new grid derived. Instrument:
+`scripts/hull/room_cell_probe.js`, same cycle machinery as §S45, on `9db62a6`.
+
+## §S46.1 — how much declared location actually exists
+
+| building | elements | with a declared room | distinct rooms | derived levels |
+|---|---|---|---|---|
+| Hospital | 63,182 | 8,474 (**13.41%**) | 127 | 7 |
+| Clinic | 16,071 | 2,133 (**13.27%**) | 98 | 3 |
+| Terminal | 48,428 | 1,009 (2.08%) | 23 | 6 |
+| HHS_Office | 6,839 | 88 (1.29%) | 13 | 3 |
+| JKR | 8,985 | 107 (1.19%) | 20 | 4 |
+| LTU_AHouse | 122,330 | **0** | 0 | 11 (uniform 3m) |
+| Duplex | 1,119 | **0** | 0 | 4 (uniform 3m) |
+
+## §S46.2 — the result, and the control that stopped it being a false positive
+
+`ACYCLIC` = no cell sits in a mutual-dependency cycle. **The control re-keys the SAME restricted
+population by the COARSE `storey|phase` grain** — because restricting to 1–13% of elements drops
+most edges, which mechanically reduces cycles. If the coarse grain is acyclic on that population
+too, the acyclicity is subsetting, not the grain.
+
+| building | room\|phase (declared pop) | CONTROL: storey\|phase, same pop | reading |
+|---|---|---|---|
+| Terminal | ✅ 0/84 cells in cycles | ✅ **0/20** | ⛔ **subsetting** — coarse grain is acyclic too |
+| HHS_Office | ✅ 0/30 | ✅ **0/9** | ⛔ **subsetting** |
+| JKR | ✅ 0/44 | ✅ **0/4** | ⛔ **subsetting** |
+| Clinic | ❌ 2/273 (biggest 2) | ✅ **0/11** | ⛔ room grain is **WORSE** than coarse |
+| Hospital | ❌ 10/505 (biggest **3**) | ❌ 10/26 (biggest **8**) | ⚠ the only real signal: cycles remain, but the blob shrinks 8 → 3 |
+
+**Without the control, three buildings would have been reported as "rooms make it acyclic". They
+don't — the coarse grain is equally acyclic on those same 88–1,009 element subsets.**
+
+And on the whole population, the hybrid grain (room where declared, derived level otherwise) does
+not go acyclic anywhere, and on two buildings it is worse than `storey|phase`:
+
+| building | storey\|phase biggest SCC | room-or-level\|phase biggest SCC |
+|---|---|---|
+| Clinic | 21 | **90** ⛔ |
+| Hospital | 26 | **46** ⛔ |
+| Terminal | 28 | 17 ✅ |
+| LTU_AHouse | 54 | 33 ✅ |
+| Duplex | 8 | 10 ⛔ |
+| JKR | 23 | 29 ⛔ |
+
+## §S46.3 — the verdict
+
+- **The location hypothesis is NOT confirmed, tested on the field's own definition of a location.**
+  Declared rooms do not make the cell graph acyclic. Where the room grain looks acyclic, the control
+  shows the subset is doing the work; where the population is large enough to be a real test
+  (Hospital, 8,474 elements / 505 room-cells), cycles survive.
+- **There is ONE genuine signal and it is worth keeping:** on Hospital the room grain shrinks the
+  largest mutual-dependency blob from 8 cells to 3. A finer location does help — it just does not
+  reach acyclic, which is what contiguity needs.
+- **The data cannot answer this at fleet scale, and that is §S26.12's point sharpened:** 5 of 7
+  buildings have ≤2.1% declared containment and two have none at all. The declared locations exist
+  and the scheduler ignores them, but there are nowhere near enough of them to schedule on.
+- **§S45's −36%/+100% band therefore does NOT collapse.** Symptom 2 still has no priced fix.
+- **Named, not taken:** `room_walker.js` COMPILES rooms from wall/door enclosure deterministically
+  (the room-injection pattern §S32 already blesses) and is the only path to room coverage on LTU and
+  Duplex. Whether compiled rooms behave like declared ones under this same cycle test is one more
+  run of this same probe — it is not a new design, and it is the last cheap thing to try before the
+  band becomes a product question.
+
+**Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
