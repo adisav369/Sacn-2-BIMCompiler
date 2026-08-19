@@ -1440,3 +1440,182 @@ on a later stage to validate itself** — the specific defect §S25.11 was revie
 - **Before stage 5 is designed**, the §S26.4 construction-practice claims need one pass by someone
   with real planning experience. They are general knowledge, they are load-bearing for the template
   shape, and this session cannot verify them from project data.
+
+## §S26.10 — the field already names all of this, and we never looked (2026-08-19)
+
+USER, on being shown that the three arrow rules converge on location-based planning: *"It is
+perplexing why we been doing without even a peek at what is out there."* Researched; the answer is
+that every part of §S26.4 is established practice with a literature and commercial implementations.
+
+- **LBMS (Location-Based Management System)** and **Takt planning** ARE the train model. LBMS is
+  described as "the combination of location-based methods and a slightly modified Critical Path
+  Method" — a location breakdown structure carrying location-based logic on top of CPM. Takt fixes
+  the duration per location; LBMS keeps a crew moving with buffers.
+  ([LBMS workflow/resource study](https://www.tandfonline.com/doi/full/10.1080/01446193.2017.1410561) ·
+  [Takt vs LBMS comparison](https://iglcstorage.blob.core.windows.net/papers/attachment-bab39cab-949b-40a3-b03c-a1fd05b200f5.pdf))
+- **Rule-based spatial reasoning from topology exists** — but never as bare geometric contact. It is
+  always topology PLUS "structural construction, material layers and work access, some common
+  construction practices and hierarchical relationships between the building entities."
+  ([Automated Generation of 4D BIM through Spatial Reasoning](https://ascelibrary.org/doi/10.1061/9780784412329.062))
+- **The reported limitation of the geometry-only approach is our exact bug:** approaches that stay
+  "predominantly quantity- and geometry-driven… consequently require substantial expert intervention
+  to define the breakdown and/or precedence relations at an actionable level."
+  ([BIM–NLP framework survey](https://www.mdpi.com/2411-9660/10/2/43))
+- **Commercial tools multiply recipes, not links.** ALICE "ingests the scope of the project, rules
+  about how that scope gets built, and multiplies the rules across the scope."
+  ([ALICE Model](https://www.alicetechnologies.com/alice-model) · [BEXEL Manager scheduling](https://bexelmanager.com/bexel-manager/scheduling/))
+- **On cycles the field does the OPPOSITE of this engine:** "a graph-based cycle check is applied so
+  any candidate link that would create a cycle in the precedence network is REJECTED. Self-loop
+  relations are removed, and reverse duplicate links are avoided." Rejected at creation — the cycle
+  never exists. `cpm_schedule.js` builds every link, then runs Tarjan and contracts what it finds,
+  by which point the good links are inside the knot with the bad ones.
+
+**Fourth practical rule, and the cheapest of the four: refuse a link that would close a cycle,
+instead of creating it and breaking it later.**
+
+## §S26.11 — the design restated top-down (supersedes §S26.4's phrasing, not its content)
+
+§S26.4 arrived at the right shape from the wrong end — filtering a web down with boundary clauses.
+Stated the way the field states it, there is no web:
+
+1. **The unit of scheduling is a cell: one LOCATION × one TRADE.** Every element belongs to exactly
+   one. "Level 3 × Superstructure" is a cell.
+2. **Order is two ordered lists, not a graph.** Trades in fixed order within a location; locations
+   bottom to top. Nothing to solve, nothing to untangle.
+3. **Flow is the tuned parameter** — how far the structure train runs ahead of the walls train.
+   LBMS vs Takt is exactly the choice of how that offset behaves.
+4. **Arrows are the EXCEPTION**, added by a person where the grid genuinely gets it wrong (transfer
+   beam, long-span truss, temporary works). A handful per building, not 2.46 million derived.
+5. **A link that would close a cycle is refused, never created** (§S26.10).
+
+§S26.4's three rules then stop being rules and become CONSEQUENCES: *same band* is free because a
+cell IS a location; *forward in trade* is free because trades are an ordered list inside a cell;
+*one arrow per element* is moot because elements carry no arrows. **The boundaries were being
+invented to tame a structure that should not exist.**
+
+Cost, stated plainly: the grid needs locations that are real. That becomes the ONE hard input —
+see §S26.12.1, which is also where the answer already sits.
+
+## §S26.12 — VERIFIED: four things the field solved that this repo re-derived or dropped
+
+**1. The declared locations are already in the shipped DB, and the scheduler ignores them.**
+`Hospital_meta.db` carries `spatial_structure` (212 rows — `IfcBuildingStorey` with its own z:
+`Level 1` @ 168.73, `Level 2` @ 174.06), `rel_contained_in_space` (**8,474** element→room rows,
+space guids like `RM_Level_2_25`), and `rel_aggregates` (9,528 declared parent→child). The scheduler
+instead parses storey NAME strings through `collapsePhase()` and buckets `base_z` into 3m slabs.
+**Rooms are what LBMS calls a location.** The junk-label problem (§S26.6 C2) is not a parsing
+problem — the declared answer is in the file and unread.
+
+**2. The host relation is declared in IFC, parsed on import, and dropped before the scheduler.**
+`import_worker.js:315` reads `IfcRelVoidsElement` (wall→opening); `:328` reads `IfcRelFillsElement`
+(opening→door). The shipped DBs carry neither — `schedule_gate.js:92` records this honestly ("no
+IfcRelVoidsElement/host column exists in the shipped extracted DBs… so the host is inferred
+geometrically"). Measured cost of that inference (§S26.5): host guesses point BACKWARDS 18% on
+Clinic, 31% on HHS, 40% on Hospital; opening guesses 76% on JKR (196/259). **Not a predicate to
+tune — a column that stops at the extractor.**
+
+**3. Classification is hand-rolled** — `viewer/rates/sequence_rules.json` maps IFC class → trade by
+hand, where Uniclass 2015 / OmniClass Table 22 / MasterFormat publish work sections with IFC
+mappings. NOTE THE CONTRAST, because it is the diagnostic: `viewer/rates/` holds **17 national cost
+libraries** (BCIS UK, RSMeans US, CIDB MY, Rawlinsons AU, SINAPI BR, GB50500 CN, KICT KR, …). The
+cost domain was researched properly. The sequencing domain was not. Same repo, same author. Cost
+*felt* like a domain with authorities; sequencing felt like a maths problem. It is not.
+
+**4. IFC's native schedule schema — and this one is NOT a gap. See §S26.13.**
+
+## §S26.13 — THE CONTAINER ALREADY EXISTS, WAS BUILT BY THE USER, AND IS EMPTY
+
+USER: *"we just infuse them with such schedule format data rather than create another 'container'
+framework."* Correct — and the container is already shipped, already declared source of truth, and
+carrying zero rows.
+
+**Is IFC's schedule schema usually empty in the wild? Measured on the actual source models:**
+
+| model | IfcTask | IfcWorkSchedule | IfcRelSequence |
+|---|---|---|---|
+| Clinic · TerminalMerged · LTU_AHouse_AIR · Duplex_ARC · jkrST25 | 0 | 0 | 0 |
+| **Hospital 2.0.ifc** | **121** | **1** | **43** |
+
+Five of six carry nothing — so yes, usually empty. But the sixth carries a real planner's programme:
+`IFCWORKPLAN 'Construction Programme'` · `IFCWORKSCHEDULE 'Baseline Schedule' .PLANNED.` ·
+tasks `Structures` / `Piles` / `Zone A` / `Zone B` / `Zone C` · `IFCTASKTIME 'P15D'`
+2026-05-16→2026-05-30 · 43 × `IFCRELSEQUENCE … .FINISH_START.` chaining Zone A→B→C.
+**121 tasks for a 63,182-element building — the train model, authored by hand, at exactly the grain
+the field uses, sitting inside this project's own test model.**
+
+**Has this project ever used it? Yes — the user built it, in the Find Panel period.**
+- `2253664` **2026-05-30, PR #59**, Redhuan D. Oon — "capture native IFC 4D in Drop-IFC importer
+  (T1+T1b, widened schema)": walks `IfcWorkSchedule`/`IfcTask`(+`IfcTaskTime`)/`IfcRelSequence`,
+  dual-direction task↔element links (`IfcRelAssignsToProcess` + `IfcRelAssignsToProduct` — "the
+  Bonsai/Hospital fix that yields the 2900 links"), WBS via `IfcRelNests`, `IfcWorkCalendar`,
+  "ISO-8601 durations/floats kept VERBATIM (PRIME RULE — no re-derivation)". Ported from
+  bim-compiler T1+T1b, so the design predates the viewer.
+- `b195103` **2026-06-23, PR #502** — "respect IFC schedules crafted in Bonsai/Revit (adopt, don't
+  clobber)", logged as "User point (2026-06-23)".
+- `schedule_author.js:6` states it outright: **"SOURCE OF TRUTH = the IFC-native tables
+  `schedules`/`tasks`/`task_elements` ONLY"**.
+- Dating the era: Find panel `§S275` landed `4352b04`/`58318b9` **2026-05-24**; find multi-select
+  `#53` **2026-05-29**; the IFC 4D capture `#59` the NEXT DAY, **2026-05-30**. Same week, same burst.
+
+**And every shipped building DB has the tables empty:**
+
+```
+Hospital_meta    schedules=0  tasks=0  task_sequences=0  task_elements=0
+Clinic_meta      schedules=0  tasks=0  task_sequences=0  task_elements=0
+Duplex_extracted schedules=0  tasks=0  task_sequences=0  task_elements=0
+JKR_extracted    schedules=0  tasks=0  task_sequences=0  task_elements=0
+Terminal_meta    (the tables do not exist at all)
+```
+
+Hospital's source IFC has the programme; `Hospital_meta.db` has zero rows. **The extraction pipeline
+discards the planner's schedule.**
+
+**The consequence, and it closes §S26's loop:** `task_sequences` is the `IfcRelSequence` mirror — the
+declared home for dependencies. It holds ZERO rows while the engine derives 2.46 million arrows in
+memory on every load. That is why the blob went unseen for weeks (the links were never written
+anywhere anyone could look), and why the user's product requirement — *"the resulting JSON is easily
+editable by real experts… they easily fill in the gap or readjust or simply import their model"* —
+cannot be met today: **there is nothing to edit.**
+
+**No new framework is needed.** Fill the tables already declared as source of truth, and the arrows
+become rows a planner can see, sort, delete, or replace.
+
+## §S26.14 — MEASURED: the §S26.3 change applied to the LIVE engine (branch, no PR)
+
+Branch `fix/s26-drop-carrier-ordering` (bim-ootb), off `6a395ca`. One-line change in BOTH twins —
+`cpm_schedule.js:138` and `time_machine.js:4593` — `designatedSupport` never elects a carrier-above.
+`schedule_gate.js hangGate()` (the start-time CLOCK) deliberately untouched, so a genuine rod-hung
+element still waits for its carrier. Both twins together because `witness_midair_zero.js:127` and
+`probe_captured_floating.js` slice `_designatedSupport` out of `time_machine.js` BY SOURCE TEXT — a
+`cpm_schedule`-only edit leaves those witnesses green on code that never ran.
+
+| building | physics SCCs contracted | CPM float | CPM midair |
+|---|---|---|---|
+| Terminal_meta | 1,291 → **370** | 4,756 → 4,216 | 0 → 0 |
+| Hospital_meta | 1,063 → **682** | 7,753 → 8,475 ⚠ | 0 → 0 |
+| Clinic_meta | 748 → **662** | 1,102 → 991 | 0 → 0 |
+| LTU_AHouse_meta | 5,983 → **4,917** | 12,712 → 11,663 | 0 → 0 |
+| Duplex_extracted | 37 → **32** | 247 → 178 | 0 → 0 |
+| HHS_Office_Federated | 289 → **130** | 1,531 → 1,279 | 0 → 0 |
+| JKR_extracted | 141 → **93** | 3,183 → 3,410 ⚠ | 0 → 0 |
+
+Phase `negGap`: better on 2, worse on 1, unchanged on 4 — **not fixed by this change.**
+
+**HONEST NEGATIVE, and §S26.9's STOP-AND-REPORT was honoured rather than chased:** this does NOT
+reproduce the probe's acyclic 7/7. The probe needed THREE changes (drop hang, restrict support to
+load-bearing classes, drop `embedded`); this branch makes ONE. Reported, stopped, no second family
+deleted to close the gap.
+
+## §S26.15 — STOP-AND-REPORT, added
+
+- **Before any grid/location work, confirm `rel_contained_in_space` coverage per building.** Hospital
+  has 8,474 rows for 63,182 elements — **13%**. If room containment covers only a small minority
+  fleet-wide, locations must fall back to storeys and §S26.11's cell grid is coarser than LBMS
+  assumes. Measure before designing on it.
+- **Do NOT "fix" the empty `tasks`/`task_sequences` tables by generating rows from the current
+  engine.** That would persist the 2.46-million-arrow web into the IFC-native container and make the
+  blob permanent instead of ephemeral. The tables are for a summary programme at Hospital's grain
+  (121 tasks), not for element-level physics.
+- **Terminal_meta.db lacks the 4D tables entirely** while the other six have them empty — two
+  different extraction vintages in one shipped fleet. Establish which is current before either is
+  treated as the schema.
