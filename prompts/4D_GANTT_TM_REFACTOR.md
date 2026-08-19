@@ -2738,3 +2738,132 @@ the top · `A14` the classifier responds to input. **14/14 pass, `§W_LEVEL_FIXT
   with a stated fallback. Whether those levels order work correctly is §S30/§S31.1 territory and is
   untouched by this section.
 - **Nothing shipped.** `viewer/` unchanged, no PR, no DB written.
+
+---
+
+# §S36 — THREE CHECKS ON §S34/§S35 BEFORE ANY SPEC (2026-08-19). Answers only, nothing adopted.
+
+Instrument: `scripts/probe_s36_tiebreak_sensitivity.js`, read-only, `§S36_SELFTEST 6/6` (each pure
+function shown able to return the NEGATIVE answer: clustering can return an empty grid, the
+partition metric reports 0 on identical grids and non-zero on an offset one, the snap check detects
+a foreign line and does not false-positive on an exact one). `md5sum -c` on all 7 frozen DBs: **7/7
+OK** before and after every run in this section. No adoption, no switch, no wiring.
+
+## §S36.1 — Q1: the uniform-3m fallback is EXPENSIVE, and clustering does not rescue it
+
+**Answer: not "few". 8.73–29.78% of LTU depending on the clustering bandwidth, 7.06% of Duplex.**
+
+`§S36_Q1_COST` — elements landing in a different level under uniform-3m vs a slab-top-derived grid.
+The metric compares GROUPINGS, not level values (each uniform group is mapped to the derived group
+most of its members land in; members not following their own group's plurality are counted).
+Controls printed alongside: grid-vs-itself = **0**, half-band shift = 21.56% (LTU) / 25.92%
+(Duplex) — `metricResponds=YES`.
+
+| clustering params | LTU derived k | elements in a different level | | Duplex derived k | different |
+|---|---|---|---|---|---|
+| bw=1.00m | 2 | 10,683 (**8.73%**) | | 2 | 79 (**7.06%**) |
+| bw=0.50m | 4 | 18,003 (**14.72%**) | | 2 | 79 (7.06%) |
+| bw=0.25m, min=10 | 12 | 29,270 (23.93%) | | — | — |
+| bw=0.25m, min=3 | 17 | 36,432 (**29.78%**) | | 2 | 79 (7.06%) |
+
+**The second finding matters as much as the first: clustering is not a determinate alternative on
+LTU.** Its derived grid swings k=2 → 4 → 17 across bandwidths 1.0 → 0.5 → 0.25m, and the cost
+number swings with it. The bandwidth is a free parameter — an invented value — which is exactly
+what this project's Prime Rule forbids adopting without a derivation. On Duplex clustering IS stable
+(k=2 at every bandwidth) but WRONG in a knowable way: it finds 0.01m and 3.11m and drops the roof at
+~6.5m, which has only 1 slab and cannot clear any sane minimum.
+
+**LTU is federated: `IfcBuildingRows=9`.** Nine buildings in one DB, sharing one global z grid. That
+is the mechanism behind level_deriver.js's own "wrong by construction" comment, now measured rather
+than asserted.
+
+⛔ **This goes on the open list, not in a footnote.** 122,330 elements — **45.8% of the fleet** — are
+levelled by a fallback that disagrees with the nearest plausible alternative on 8.7–29.8% of them,
+and the alternative is itself parameter-dependent. Neither grid is trustworthy on LTU; the honest
+statement is that **LTU has no validated level structure at all**, and any §S30-style ordering claim
+computed on LTU inherits that. Do not adopt clustering on this result — it is a cost measurement,
+not a switch.
+
+## §S36.2 — Q2: `nearestIdx` never snaps a declared storey onto a foreign line — but JKR's twin is real and it costs 204 overrides
+
+**Answer: `snappedToAForeignLine = 0` on all 5 buildings with a declared grid** (Terminal, Hospital,
+Clinic, HHS, JKR — 46 declared storey values in total). The grid is built from those same
+elevations, so the snap is exact by construction; measured, not assumed.
+
+`§S36_Q2` — the near-twin population, per building: Terminal minimum line separation 2.497m,
+Hospital 4.784m, Clinic 1.196m, HHS 3.382m, **JKR 0.010m** (82.888 / 82.899). JKR is the only case,
+and 493 declared elements sit on one of those two twinned lines (284 + 209).
+
+**What the twin actually breaks is not identity — it is the BAND ARITHMETIC**, and both twins break,
+from opposite directions (`§JKR_BYLINE`):
+
+| JKR line | local gap (= down tolerance) | declared kept | overridden | override rate |
+|---|---|---|---|---|
+| 82.888 | 3.040m — but its band CEILING is the twin at 82.899, i.e. 0.011m tall | 209 | 79 | 27.4% |
+| 82.899 | **0.010m** — essentially no downward allowance at all | 284 | 128 | **31.1%** |
+| 85.938 | 3.040m | 1,251 | 32 | 2.5% |
+| 89.182 | 3.244m | 34 | 0 | 0.0% |
+
+**Counterfactual, measured, adopted by nothing** (`§JKR_MERGED_COUNTERFACTUAL`): collapsing grid
+lines closer than 0.5m gives declaredKept 1,778 → **1,982** and overrides 239 → **35**. So **204 of
+JKR's 239 overrides (85%) are an artifact of two storey lines 1cm apart**, not a property of JKR's
+data quality. That also retires the "JKR 11.85%" figure as a headline number (§S35.5 already said
+not to headline it; this says why, quantitatively).
+
+**Would carrying storey identity (guid/name) instead of snapped z close it? No.** There is no
+snapping bug to close — mis-snap is 0 everywhere. The tie-break still needs a z BAND to ask "does
+this element reach the storey it claims", and that band is computed from neighbouring elevations
+whether the key is a guid or a number. What closes it is a grid-construction rule (collapse lines
+closer than a threshold), measured above. **And identity has a real cost:** 77.1% of Terminal,
+80.2% of JKR, 64.7% of Clinic and 100% of LTU/Duplex resolve by geometry and have no storey identity
+to carry, so the level key would split into two incompatible spaces — storey ids for declared
+elements, band indices for the rest — with every consumer needing a z per key anyway. Zero measured
+benefit on 6 of 7 buildings.
+
+## §S36.3 — Q3: 1.0× is the KNEE, not an interior point of a slope — and the outer half is not doing the job §S34 said it was
+
+`§S36_Q3_SWEEP` — override rate vs downward tolerance, as a fraction of the local storey gap:
+
+| building | 0× | 0.25× | 0.5× | 0.75× | **1.0×** | 1.5× | 2.0× |
+|---|---|---|---|---|---|---|---|
+| Terminal | 23.51% | 16.18% | 8.31% | 3.04% | **1.25%** | 0.93% | 0.93% |
+| Hospital | 25.65% | 15.66% | 3.19% | 2.55% | **1.54%** | 1.51% | 1.46% |
+| Clinic | 29.44% | 18.07% | 1.22% | 0.93% | **0.84%** | 0.82% | 0.10% |
+| HHS_Office | 14.87% | 11.90% | 0.39% | 0.13% | **0.13%** | 0.13% | 0.00% |
+| JKR | 38.23% | 34.01% | 19.78% | 12.15% | **11.85%** | 11.85% | 10.56% |
+
+**Shape (`§S36_Q3_SHAPE`): steep below 1.0×, flat immediately above it.** Tightening 1.0× → 0.5×
+costs +7.07pp (Terminal), +1.65pp (Hospital), +7.93pp (JKR), +0.38pp (Clinic), +0.26pp (HHS).
+Loosening 1.0× → 2.0× buys only −0.32pp / −0.08pp on the two largest — a 20-22× asymmetry. So 1.0×
+is the SMALLEST tolerance that reaches the flat part, which is a defensible corner rather than an
+arbitrary pick. **Two of five buildings (Clinic, HHS) are already flat at 0.5×; three are not.**
+
+**But the rationale under-describes what the outer half rescues** (`§S36_Q3_OUTERHALF`). The
+elements rescued only between 0.5× and 1.0× sit **0.52–0.83 of a full storey** below their declared
+floor line (p50), which is not "a slab's top IS the floor line" (that is 0.2–0.3m). What they are:
+
+- **Hospital: 553 `IfcFooting`** of 882 (62.7%) — foundations sitting ~0.81 of a storey below the
+  level they carry. Physically defensible: a footing belongs to the structure above it.
+- **Terminal: 259 `IfcPipeSegment` + 220 `IfcPipeFitting` + 172 `IfcFurniture`** of 794. The pipes
+  are the known MEP pattern; **`IfcFurniture` 0.72 of a storey below its declared floor is not
+  explained by any datum convention** and is a named open question, not a settled case.
+- **JKR: 101 `IfcSlab` + 20 `IfcBeam`** of 160 — slabs ~0.56 of a gap below their declared line.
+  Note JKR's grid is the degenerate one (§S36.2), so read this one last.
+
+**Verdict on the ruling:** §S34.3 lands on the curve's knee and the measurement supports the choice
+of 1.0× over 0.5× or 2.0×. What it does NOT support is the stated JUSTIFICATION covering the whole
+tolerance — the inner half is the hosted-at-level datum, the outer half is mostly foundations and
+MEP, plus a Terminal furniture population nobody has explained. **The honest form of the rule is
+"declared wins unless the element is more than one storey away from the level it claims", with the
+datum argument covering only part of why that threshold works.** No change made; this is the
+qualification that belongs on the rule before it reaches a spec.
+
+## §S36.4 — the three answers in one line each
+
+1. **LTU fallback cost is LARGE** (8.7–29.8%, parameter-dependent) and clustering is not a
+   determinate alternative → open list, `⛔ LTU has no validated level structure`.
+2. **No mis-snap anywhere (0/46 declared storey values)**; JKR's 1cm twin is real, costs 204 of its
+   239 overrides, and storey IDENTITY would not fix it — grid-line collapsing would.
+3. **1.0× is the knee** (steep below, flat above, 20–22× asymmetry) — but its outer half rescues
+   footings, MEP and unexplained Terminal furniture, not the datum case §S34 cited. Rule stands,
+   justification narrowed.
