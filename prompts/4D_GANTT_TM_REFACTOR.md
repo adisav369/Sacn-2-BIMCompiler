@@ -2435,6 +2435,13 @@ defaulted around (§S32.4, §S29.1).
 - JKR as a representative building — it has ~1% room-injection coverage and is the least
   representative of the 7. Do not headline its numbers.
 
+## R.4b — ⚠ READ §S37 BEFORE PICKING WORK
+
+`# §S37` is the CARRIED-FORWARD LEDGER: everything measured in this lane and never converted into
+an action. It exists because LTU's storey ladders were missed by two consecutive sessions, and
+because two clean results (the `hang` deletion, and 7 red W-MZ-8 baselines) sat idle for a full day.
+**Do not start new measurement before checking whether the answer is already in §S37.**
+
 ## R.5 — the sequence, in order, and why the order matters
 
 1. **Collect Agent A.** Verify twins + witness actually exercised. Merge.
@@ -2867,3 +2874,63 @@ qualification that belongs on the rule before it reaches a spec.
 3. **1.0× is the knee** (steep below, flat above, 20–22× asymmetry) — but its outer half rescues
    footings, MEP and unexplained Terminal furniture, not the datum case §S34 cited. Rule stands,
    justification narrowed.
+
+---
+
+# §S37 — CARRIED-FORWARD LEDGER: measured, not actioned (2026-08-19)
+
+**Why this section exists.** User challenge: *"Why isn't this spec'd when we did go thru it? What
+else is forgotten?"* — after LTU's storey ladders (`Plan 1..4`, `VÅN 1..5`, `VÅNING 1..4`,
+`Storey 1..3`) were found in `elements_meta.storey` AFTER two sessions had concluded LTU has no
+level structure.
+
+**The root cause of that miss, stated plainly so it is not repeated:** §S31.4 measured the LOOKUP
+("how often does a storey name join to a stored `spatial_structure.center_z`" — 21-85%) and read
+the shortfall as missing data. It never asked the next question: **the name IS the grouping, so
+derive the elevation from the members carrying it.** §S32 says derive at runtime; the spec still
+went hunting for a stored value. **A partial JOIN is not the same as absent DATA.**
+
+**The pattern this ledger fixes:** this lane reliably produces good numbers and then writes them
+down instead of converting them into work. Every item below is MEASURED and IDLE. A finding with no
+owner and no next action is a finding that will be re-discovered.
+
+## §S37.1 — measured, cheap, and nobody opened it
+
+| # | item | evidence | why it is still open |
+|---|---|---|---|
+| **A1** | **`hang` deletion → acyclic 7/7.** Branch `fix/s26-drop-carrier-ordering` is PUSHED. | §S26.3, §S26.5, §S26.14 — `largestSCC=1` on all 7; physics SCCs contracted down 8-71%; midair 0→0 | **No PR was ever opened.** Cleanest result in the lane. Float regressed on 2/7 (Hospital, JKR), so it needs a decision, not a merge — but it needs SOMEONE to make it. |
+| **A2** | **All 7 W-MZ-8 baselines are RED on `main`.** `pass=32 fail=7` | §S33.2, agent-measured before any edit | **Undiagnosed.** Every float judgement in this lane is scored against locks that no longer match main. This is the gate everything else is measured by, and it is currently broken. **Diagnose before re-locking anything.** |
+| **A3** | **Support restricted to load-bearing classes + drop `embedded`** | §S26.1 — Hospital largest component 49,436→1,951, LTU 74,617→1,460, Duplex 672→5 | Measured in a probe, never taken to the engine. |
+
+## §S37.2 — measured, needs a design, never designed against
+
+| # | item | evidence | the unanswered question |
+|---|---|---|---|
+| **B1** | **A Gantt bar is a HULL** over independently-scheduled elements | §S26.13, `time_machine.js:6074`; the code's own comment names it "one pile, full project length" | ONE cause under THREE symptoms — midair, stacking, and the phase-gap metric itself. Nothing has ever been built against it. **This is the largest unexploited finding in the file.** |
+| **B2** | **Trade pipelining** — Hospital starts the next trade in Zone A once the previous clears Zone B, not Zone C | §S28.R, verified in the IFC's own `IfcRelSequence` links | No serial-trade model can express it. §S27/§S28 both assumed serial. Unresolved. |
+| **B3** | **32% of Clinic resolves to storey `Unknown`** (5,160/16,114) | §S31.3 | The real Clinic finding, replacing the retracted storey-Name claim. Never chased. |
+| **B4** | **Furniture 0.72 of a storey below its declared floor** — Terminal 172 elements | §S36 | No datum convention explains it. Named open by §S36, no owner. |
+| **B5** | **LTU per-family level ladders** | this section's header; `elements_meta.storey` | Prompt issued 2026-08-19. If per-family grids work, `FALLBACK_BAND_M` and the clustering bandwidth both disappear — no invented constants left. |
+
+## §S37.3 — blocked on a USER decision, not on work
+
+| # | item | the decision only the user can make |
+|---|---|---|
+| **C1** | **Writing `schedules`/`tasks`/`task_sequences`/`task_elements`** | Under §S32.1 rule 2 the DBs are frozen. Is writing the IFC-native task tables **tampering**, or is it **the intended output surface**? Everything about making the schedule editable by a planner waits on this. |
+| **C2** | **Whether `fix/s26-drop-carrier-ordering` ships** | Acyclic 7/7 and midair 0→0, but float regresses on Hospital (+722) and JKR (+227). A trade, not a free win. |
+| **C3** | **Lever 2 of the LFS fix** | Settings → Archives → uncheck "Include Git LFS objects in archives". Web-UI only, confirmed not API-exposed. |
+
+## §S37.4 — prerequisites that gate later work
+
+| # | item | gates |
+|---|---|---|
+| **D1** | **A probe carrying the REAL gates** (`wallGate`, `hangGate`, `openingGate`, host pairs, phase/level gates) | ANY sort-based refactor. `probe_s30_sortkey.js` is a standalone reimplementation; its numbers do not transfer to the engine (§RESUME R.4). |
+| **D2** | **§S29.6's untouched classes** — demolition/refurbishment, calendars (`IfcWorkCalendar` captured by PR #59, consumed by nothing), procurement lead times, site/external works | Any claim that the design is general. Named, never examined. |
+
+## §S37.5 — the standing rule this ledger adds
+
+**A measurement is not finished when it is written down. It is finished when it is either (a) an
+open PR, (b) a decision put in front of the user, or (c) an entry in this ledger with the reason it
+is neither.** Any session that produces a number and ends without doing one of those three has
+dropped it — which is how §S37.1's A1 and A2 sat idle, and how LTU's storey ladders were missed by
+two consecutive sessions.
