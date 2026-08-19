@@ -2328,4 +2328,206 @@ Everything in §S27.10 still applies, plus:
 
 ## §S28.R — REVIEW VERDICT (empty = NOT VETTED = do not build)
 
-_(pending)_
+**VERDICT: NOT VETTED.** §S28 genuinely fixed R1's order question and R2 (verified below), half-fixed
+R3 and R4 — and its two NEW load-bearing pieces both fail re-derivation: §S28.5's headline
+observation (the Level 3 reversal, "the strongest single piece of evidence in this file") is a
+file-ordering artifact contradicted by both the IfcRelSequence links and the task dates, and BOTH
+lanes carry a blocking defect that makes §S28.0's independence claim false. Written 2026-08-19 by
+the vetting pass. Method per the WATCHDOG mandate: every number below re-measured by this pass's own
+commands — IFC via grep + a paren-aware entity parser, DBs via python3/sqlite3 read-only,
+`ONLY=Duplex node viewer/tests/witness_midair_zero.js` run fresh (log saved and read), pre-#1242
+code via `git show 0fe8eb2^:viewer/schedule_gate.js`. bim-ootb read-only throughout; `viewer/`
+untouched.
+
+### §S28.R.0 — VERIFIED, re-derived independently
+
+| claim | source | re-derived result |
+|---|---|---|
+| seq/phase table | §S28.1 | **exact** against `sequence_rules.json` (58 classes): seq total over 1..11; Architecture = {5,6,8} + seq 7 via `glazed_curtainwall_facade` override; MEP Rough-in = {7}; MEP Final = {9}; Finishes = {10,11}. Phase is not monotone in seq ✓. One omission: `SEQUENCE_DEFAULT` = phase Architecture, **seq 6, resource null** — absent from the table and load-bearing for R5 below |
+| `_bandRank` is a storey-NAME ladder | §S28.2 | **exact** — `schedule_gate.js:476` `_bandRank[collapsePhase(el.storey)]`, `:856` `rankKey[t]=...`; probe's `floor(bz/3)` dense rank confirmed at `probe_s26_rank_monotone.js` (BAND_M=3) |
+| noGeometry counts | §S28.3 S1a | **exact**: Hospital 233, Clinic 43, HHS 41, Duplex 3, Terminal/JKR/LTU 0 (elements_meta minus Opening/Space, LEFT JOIN element_transforms IS NULL; zero-bbox rows = 0 everywhere) |
+| `§CREW_DEMAND` citation + units history | §S28.4 | **exact** — `time_machine.js:5104-5106` `installSecs/28800`, `:5130` `_capacityCd = _crews * projectDays`, §ARCH_START_TEMPO/M1 3× overstatement comment verbatim at :5112-5116 |
+| Hospital counts | §S28.5 | **exact**: `IFCTASK(`=75, `IFCTASKTIME(`=46 (75+46=121 conflation confirmed), `IFCRELSEQUENCE(`=43 all `.FINISH_START.`, `IFCWORKSCHEDULE(`=1; importer DB (`Downloads/Hospital 2.0_meta.db`) tasks=75/task_sequences=43/task_elements=2,900 |
+| 5 empty + 2 absent | §S28.5 correction | **exact**: Terminal_meta + LTU_AHouse_meta lack all four tables; the other five have them at 0 rows |
+| zones are SPATIAL | §S28.5 fact 2 | **confirmed with data §S28.5 never had**: joining task_elements→element_transforms, L1 Columns Zone A x∈[−12.1,22.5], B x∈[29.3,45.3], C x∈[52.2,86.7] — clean disjoint X-bands of ONE plate (which also confirms §S27.R R7: connectivity-zoning cannot produce them) |
+| pre-#1242 order + 2,341-float note | §S28.7 | **exact text** at `0fe8eb2^ schedule_gate.js:245-262`; `auditFloating` builds grids from ALL elements at `schedule_gate.js:1056-1060` ✓; cpm_schedule.js = 650 lines, `tarjan\|scc\|contract` case-insensitive = **40** lines today (spec says 38 — immaterial) |
+| W-MZ-8 instrument gap | §S28.7 last ¶ | **worse than stated — see R4**: witness re-run today, `FAIL W-MZ-8 Duplex locked 289 got 237` |
+
+### §S28.R.1 — findings, ordered by how much they change the build
+
+**R1 — BLOCKING, LANE A'S HYPOTHESIS IS NOT THE MEASURED ONE: the sort key §S28.7 states was never
+measured, and the evidence cited for it was produced by a different key that §S28.1 just outlawed.**
+`probe_s26_rank_monotone.js` (header + :43-46) ranks by **(bandRank, phaseRank, depth, bz, guid)**
+with two components §S28.7's `(bandRank, seq, base_z, guid)` does not have: (a) **phaseRank**
+(Substructure < Superstructure < Architecture < everything else) — a PHASE order, the exact thing
+§S28.1 demoted to a display label, sits inside the probe that produced every §S26.5/§S26.6 monotone
+number Lane A leans on; (b) **INHERITANCE** — "a hosted element takes its HOST's bandRank, a hanging
+element takes its CARRIER's bandRank", the probe's own hole-closer for the two down-pointing
+families — plus (c) `depth` (longest bearing path). So the 93-97%-monotone framing is un-inherited
+by Lane A's key: seq≠phaseRank, no depth, and without inheritance a band-major sort puts a hanger's
+carrier-above (the slab whose base_z is the next band) systematically LATER than the hanger.
+Additionally the claim "as it was before 0fe8eb2" is wrong: the pre-#1242 engine (re-read via git
+show) was TWO passes — struct-only `(base_z, seq)`, then non-struct `(seq, bandRank-name, base_z)`
+with ALL structure placed before ANY non-structure — never one band-major sort. Every carrier was
+placed before any hanger by construction; Lane A's unified sort forfeits exactly that property.
+**Required amendment: state the actual key (and whether it includes inheritance — which requires
+computing hang/host relations, i.e. the "no graph" framing dies), or re-run the probe with the
+literal §S28.7 key and quote THOSE violation numbers.** STOP-AND-REPORT: if the seq-keyed re-run's
+backward-relation counts differ materially from §S26.5's table, Lane A's cost is unknown — report,
+do not proceed on the phaseRank-keyed numbers.
+
+**R2 — BLOCKING, LANE B IS NOT INERT: any dated rows B5 writes flip every shipped building to the
+captured-schedule path in the live viewer.** `injectGantt`'s `_cap` probe (`time_machine.js:
+4790-4818`) does `SELECT ... FROM tasks WHERE schedule_start IS NOT NULL ... AND (is_summary IS NULL
+OR is_summary=0)` — no schedule_id filter, no status filter, no display_authored gate. One dated
+non-summary row + task_elements links ⇒ `_cap` non-null ⇒ timeline rebased to `_cap.base`, covered
+elements overlaid with task dates/names (`:5377+`), `_capWindowRescale`/`_ogSupportSweep` engaged.
+B5 maps EVERY element to a cell task — near-100% coverage — so "Lane B changes no scheduling
+behaviour. It is a new output" (§S28.6) is FALSE as written; the write target is live input to the
+display pipeline. (`witness_midair_zero.js` itself does NOT read the tasks tables — verified by
+grep — so "cannot regress a witness" is literally true while the live viewer changes completely:
+proxy-green, ground-truth-changed, the WATCHDOG's own named failure shape.) This also collides with
+the file's DO-NOT-REMOVE header: Lane B's §S28.4 forward pass is a SECOND computation of schedule
+timing, persisted where the viewer reads it. **Required amendment: an explicit adoption policy —
+either B5's rows are meant to drive the viewer (then say so, spec the interaction with Lane A's
+engine output and the §S26.14 baselines, and reuse ScheduleAuthor's writer conventions
+`schedule_author.js:448-466` including schedule_id scoping and delete-first), or they must be
+invisible to `_cap` (then name the mechanism, which is an engine-side change and breaks Lane B's
+"no engine edits" premise).** Note also: shipped-DB writes must ship per the project's
+patch+self-heal-loader rule, never as binaries — B5 says nothing about distribution.
+
+**R3 — BLOCKING FOR THE RECORD, WRONG: §S28.5 fact 4 ("Level 3's columns run C→B→A ... REVERSED
+... serpentine") is a file-ordering artifact.** Re-derived from the entities, not the file order:
+Level 3 Columns' IfcRelSequence links run **Floor Slab→Zone A→Zone B→Zone C** — identical to every
+other level — and the IfcTaskTime dates agree: Zone A #3462440 Aug 14-18, Zone B #3462434 Aug
+19-23, Zone C #3462428 Aug 24-28 (C carries P75D total float, non-critical). The C,B,A appearance
+is entity-ID/file order only (#3462271 C < #3462275 B < #3462277 A). §S28.5's own method line
+("task names in file order") is the GIGO mechanism, same class as the 121-task grep conflation it
+corrects. Consequences: fact 4 is deleted, not amended; §S28.8's "the real programme alternates" is
+also false; and the genuineness of the programme rests on the (real, verified) links/dates/float,
+not on serpentine. **The serpentine instinct IS in the data — one level down and §S28.5 missed
+it:** Zone A of Piles is the EAST band (x∈[51.8,76.1]) while Zone A of Columns is the WEST band
+(x∈[−12.1,22.5]) — the crew flows E→W piling, W→E on columns, and the planner RELABELS so A→B→C
+always equals work order. Zone labels are per-(trade) orderings, not fixed regions — which
+§S28.6's fixed-zone cell identity cannot represent and must at least name.
+
+**R4 — BLOCKING, THE STOP CONDITIONS CITE NUMBERS THAT DISAGREE OR DON'T EXIST.** (a) STOP A pins
+"§S26.14's before column" measured by "the UNCHANGED existing judges" — but three Duplex floats now
+coexist: W-MZ-8's lock **289**, §S26.14's before **247** (probe-side), today's judge **237**
+(re-run this pass: `FAIL W-MZ-8 Duplex locked 289 got 237`, witness RED on main `6a395ca`). A build
+agent literally cannot satisfy the witness and the baseline at once. (b) STOP D and B4 compare
+"makespan ... §S26.14's before column" — §S26.14's table has NO makespan column (SCCs/float/midair
+only); the nearest real makespan baseline is §S25_REVIEW.2's CPM column (Terminal 85.1d, Hospital
+263.5d ... at ITS shift settings; the probe runs SHIFT_HOURS=24, the witness differs). **Required
+amendment: ONE baseline table — building × {float, midair, makespan} × named instrument × shift ×
+DB set — measured fresh, plus the W-MZ-8 relock/repair decision (the §RESULTS-addendum Duplex
+regression is still open), BEFORE either lane's stop condition is evaluable.**
+
+**R5 — CONDITION, §S28.4 RESOLVES R4's FORMULA BUT NOT R4's QUESTIONS.** Still undefined, each a
+place a Sonnet builder invents: (a) **multi-resource cells** — seq 4 = CONCRETE_GANG+STEEL_ERECTOR,
+seq 7 = 4 resources, seq 9 = 3, seq 6 = CARPENTER+CONCRETE_GANG+null: `crews(resource)` singular
+has no value for most real cells; (b) **resource null** (SEQUENCE_DEFAULT, IfcSpace,
+IfcBuildingElementProxy) — §CREW_DEMAND itself SKIPS the `_DEFAULT` bucket (`if (!_cdr) continue`);
+(c) **what lag `"levels":1` materialises as** — asked by §S27.R R4, still unanswered; (d)
+**calendar** (toWall/toProductive, shift hours) unstated — M1's own trap; (e) the formula grants
+each cell the FULL crew pool while the live engine's §S6_CREW_PASS (`cpm_schedule.js:398-420`)
+serializes elements onto ONE project-wide slot pool per resource — same-resource cells overlapped
+by template offsets (PLUMBER at seq 7 level N+1 vs seq 9 level N, CONCRETE_GANG at seqs 1/4/6)
+overcommit capacity with no check, and Lane B runs no crewViol judge; (f) the planner's own
+programme PIPELINES trades within a level — Framing Zone A starts after Columns Zone **B** (link
+verified), while Columns Zone C is still running — which strict serial ascending-seq cannot
+express, so STOP D's makespan will run structurally long against the one real anchor.
+
+**R6 — CONDITION, §S28.3 REPLACED A TAUTOLOGY WITH NO GATE AT ALL, and S1b's number is wrong.**
+S1a/S1b/S1c are each "report the number" — none has a pass/fail bound, so none can FAIL in the stop
+condition sense; with S2's CELL_MAX_FRAC withdrawn, NOTHING gates a pathological grid (a banding
+bug putting 90% of a building in one cell passes silently, reported at best). Acceptable only if
+declared: Lane B v1 has no hard gates, human reviews the three reports. And S1b's baseline
+"§S26.5 measured 16.3-16.7%" fails re-derivation twice: §S26.5 contains no bandSpan measurement
+(dangling citation), and the fleet range is actually **8.8-25.0%** (Terminal 8.8, LTU 12.5,
+Hospital 16.3, Clinic 16.7, Duplex 16.7, JKR 22.1, HHS 25.0) — "16.3-16.7%" is a three-building
+coincidence quoted as the fleet band.
+
+**R7 — CONDITION, THE DEFAULT TEMPLATE STILL DOES NOT EXIST AT SEQ GRAIN.** §S28.1 says "a
+template names its trains by seq range" but never writes the default template's ranges, and the
+only concrete template in the spec (§S27.5's JSON) still names PHASE trains. Contiguous seq RANGES
+cannot express Architecture {5,6,8} straddling MEP Rough-in {7} — the trains must be re-cut at seq
+boundaries (e.g. [1],[2-4],[5-6],[7],[8],[9],[10-11]) with offsets redefined between THOSE, and
+the phase display labels straddling train boundaries acknowledged. Until the default template JSON
+is written into the spec, §S27.R R1's "a builder would invent" verdict still stands for §S28.4's
+"levels run per the template offset" and all of B4.
+
+**R8 — CONDITION, §S28.5's remaining facts need three corrections.** (a) Fact 1: the hierarchy is
+**DISCIPLINE → LEVEL → WORKTYPE → ZONE** — the roots are `Structures`, `Architecture`, `Site
+Works`; levels sit UNDER the Structures train (and substructure worktypes sit directly under it
+with no level node). That top discipline layer actually strengthens the trains model — say it.
+(b) Fact 5 ("the planner zoned STRUCTURE, not architecture") over-reads the data: the Architecture
+root's 7 child tasks are **unnamed ($), undated, unsequenced stubs** — the programme does not
+cover architecture at all, so no zoning CHOICE about architecture can be inferred from it. (c) The
+sketch omits `Site Works > Site Excavation` (dated, and the true programme start:
+Site Excavation → Piles Zone A), and the partial-zone levels (L6 Framing has ONLY Zone B, L6b only
+Zone C, L4 no Columns) — the planner's grid has holes, which B3's cell model should expect rather
+than "fix".
+
+**R9 — NOTE, LANE INDEPENDENCE (§S28.0) IS FALSE IN BOTH DIRECTIONS, in ways R1/R2 imply but the
+spec must state.** A→B: Lane A's sort key names `bandRank`, §S28.2 assigns building `bandRankOf()`
+to Lane B (B1) and forbids both lanes the existing name-keyed `_bandRank` — so Lane A either waits
+on B1, duplicates it (the DO-NOT-REMOVE header's named defect), or silently uses the C2 junk
+ladder. B→A: R2's `_cap` adoption — if B5 lands first, every live building displays Lane B's
+captured overlay and Lane A's engine changes become invisible in the product until the adoption
+policy exists. The `designatedSupport` twins are NOT a coupling here (neither lane edits them;
+witness slices `_designatedSupport` from time_machine source text at witness:127, verified), and
+`witness_midair_zero.js` is Lane-A-only (does not read tasks tables, verified). **Amend §S28.0 to
+"independent once B1 is extracted as a shared, lane-neutral prerequisite and R2's adoption policy
+is decided" — as written, "neither blocks the other" is untrue.**
+
+### §S28.R.2 — the six questions, answered directly
+
+1. **R1-R4 fixed?** R1: order fix REAL (seq table verified exact) but template half missing (R7)
+   and the evidence base is phase-ranked (R1 above). R2: FIXED (build-new is right; `_bandRank`
+   re-verified as name-keyed). R3: tautology removed, replaced by gate-free reports with one wrong
+   number (R6). R4: formula + units citation REAL and exact; the five semantic questions §S27.R R4
+   actually asked remain open (R5).
+2. **§S28.5 re-derived:** counts exact; zones spatial (proven with coordinates, which §S28.5 never
+   did); zones sequential FS ✓; hierarchy needs the discipline root (R8a); **reversal FALSE —
+   file-order artifact, links and dates both A→B→C** (R3); "zoned structure not architecture" —
+   architecture is an empty stub, programme covers structure+site only (R8b).
+3. **Stop conditions:** S1a-c can produce surprising numbers but cannot FAIL — no bounds (R6);
+   Hospital 233 verified exact (plus 43/41/3/0/0/0); withdrawing S2 leaves NO gate on cell
+   concentration anywhere in Lane B.
+4. **§S28.4:** citation and units history verbatim-correct; the formula is §CREW_DEMAND's
+   arithmetic at cell grain, but §CREW_DEMAND is a REPORTING block — the engine's actual allocator
+   is a global serial slot pool (§S6_CREW_PASS), which the formula ignores along with
+   multi-resource/null-resource cells and the calendar (R5).
+5. **Lane A guard:** the C1 guard fixes support VISIBILITY, not the CLOCK — a support that sorts
+   later has no finish time to `max()` against, so "reported and counted" is not float parity; the
+   partial-grid problem survives as a partial-clock problem, made systematic for hang carriers by
+   the band-major key, and the "as before 0fe8eb2" precedent claim is factually wrong (R1).
+6. **Independence:** false both directions (R9); Lane B's "cannot regress a witness" is true of
+   the witness and false of the live viewer (R2).
+
+### §S28.R.3 — what this review did NOT check
+
+§S26.14's after-column numbers (still not re-run); the probe's §S26.5 violation table beyond the
+two buildings §S27.R already reproduced; whether `rates.js`'s hardcoded tables and the JSON mirror
+are in sync today (R10's citation point stands unfixed — §S28.1 again cites the mirror);
+`compile_rooms.py` separability beyond §S27.R.3's function-boundary audit (B2 rightly carries that
+as its own gate); LTU's 32×-density perf ceiling; and every construction-practice claim, which
+remains planner-unverified except where Hospital's own programme now speaks (R3/R5f/R8).
+
+### §S28.R.4 — what must change before a build agent is dispatched
+
+Same treatment §S27 got: amendments first, re-vet cheap after. (1) R1 — state Lane A's real key
+and re-measure the violation table with it, or adopt the probe's key and say what that does to
+"seq is the single normative order" and to "no graph"; fix the 0fe8eb2 precedent sentence.
+(2) R2 — write the adoption policy for B5 (drive the viewer, or be invisible to `_cap` — named
+mechanism either way) and the patch+loader distribution note. (3) R4 — one instrument-named
+baseline table + the W-MZ-8 Duplex relock decision. (4) R3/R8 — correct §S28.5 (delete fact 4,
+fix facts 1/5, add Site Works + partial zones + label-direction flip) and §S28.8's serpentine
+line. (5) R7 — write the default template JSON at seq grain. (6) R5 — one paragraph each:
+multi-resource/null-resource crews, offset lag semantics, calendar, and the named decision that
+v1 ignores cross-cell crew contention (with R6's "Lane B has no hard gates" declaration made
+explicit). **If only one thing is fixed first, fix R1: Lane A is the cheap falsifiable experiment
+this spec's whole shape argues for, and as written it would be run with a key nobody measured,
+scored by an instrument that is currently red, against a baseline quoted from a different
+instrument.**
