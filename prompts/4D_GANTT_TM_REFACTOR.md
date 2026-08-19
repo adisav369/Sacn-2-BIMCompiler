@@ -2327,34 +2327,38 @@ Any runtime derivation added under this ruling MUST:
   elements got a declared value, how many a derived one, how many a default.
 - **Print `durOk` / `judgeCanFail`-style instrument guards** on any number it produces (§STATUS).
 
-## §S32.6 — CLARIFICATION (user, 2026-08-19): "frozen" means the SHIPPED FILE, not the user's own copy
+## §S32.6 — CLARIFICATION (user, 2026-08-19): "frozen" is about WHICH TABLES, not which file
 
-Rule 2 was being read too widely, and it blocked the product goal for a day. The user's clarifying
-ruling, and it is now settled:
+Rule 2 was being read too widely and blocked the product goal for a day. Two readings were tried;
+**the second is the ruling.**
 
-> **Frozen means the shipped file. A user's own schedule edits save to their own local copy.
-> Writing `tasks`/`task_sequences`/`task_elements` there is the INTENDED OUTPUT, not tampering.**
+**First attempt (mine, superseded):** "frozen = the shipped file; edits go to a browser-local copy."
+**The user corrected it, and the correction is sharper:** the separation is not WHERE the file
+lives — it is **WHICH DATA MODEL** is being written. The building DB already carries two distinct
+models, and the schedule one exists precisely to be written:
 
-The distinction, stated so it is not re-litigated:
+| model | tables | standing |
+|---|---|---|
+| **EXTRACTION — source** | `elements_meta` · `element_transforms` · `element_instances` · `component_geometries`/`base_geometries` · `spatial_structure` · `rel_*` · `qto_cache` · `storey_walkable_raster` | **FROZEN.** Rule 2 in full. No rebuilds to make a measurement come out differently, no extractor edits. |
+| **SCHEDULE — output** | `schedules` · `tasks` · `task_sequences` · `task_elements` · `calendars` | **WRITABLE. This is what they are for.** Added by the user in PR #59 (`2253664`) and declared source of truth at `schedule_author.js:6`. Currently **0 rows on every shipped building.** |
 
-- **SOURCE data** — geometry, elements, spatial structure, the extracted content of
-  `buildings/*.db` as shipped. **Frozen. Rule 2 applies in full.** This is what the ruling was
-  protecting: no rebuilds to make a measurement come out differently, no extractor edits.
-- **A planner's schedule** — tasks, sequences, task→element assignments, edits made in the Gantt.
-  **Not source data. It is the user's work, and it belongs in the user's own browser-local copy**
-  (the same layer that already holds imported models and `kernel_ops` edit history). The shipped
-  file is never modified.
+> **THE RULING: a saved schedule belongs IN the building DB, in the schedule tables. That is not
+> tampering — it is a separate data model, and writing it is the intended use.** The extraction
+> tables are untouched by it.
 
-**Why this matters and is not a technicality:** the task tables are empty on every shipped building
-(§S26.13). A planner opening the 4D view today has literally nothing to edit — dependencies exist
-only in memory, are rebuilt from scratch on every page load, and vanish when the tab closes.
-**Filling those tables in the local copy IS the feature** the user has stated repeatedly: *"as long
-as the resulting JSON is easily editable by real experts… they easily fill in the gap or readjust or
-simply import their model."*
+Verified on `Hospital_meta.db`: the two groups are cleanly disjoint — extraction tables carry
+63,415 / 63,182 / 9,528 / 8,474 / 212 rows; all five schedule tables carry **0**.
 
-**§S28.6 B5 is UNBLOCKED** on this basis. **§S32.5's first STOP-AND-REPORT is narrowed accordingly:**
-a task that would write to the SHIPPED `buildings/*.db` still stops; writing the user's local copy
-does not. The §S32.5 prohibition on editing extractors (rule 1) is unchanged and still unconditional.
+**Why this matters and is not a technicality:** with those tables empty, a planner opening the 4D
+view has nothing to edit — dependencies exist only in memory, are rebuilt from scratch on every page
+load, and vanish when the tab closes. **Filling them IS the feature** the user has stated
+repeatedly: *"as long as the resulting JSON is easily editable by real experts… they easily fill in
+the gap or readjust or simply import their model."* It also means a building can be shared WITH its
+programme, which a browser-local-only store could never do.
+
+**§S28.6 B5 is UNBLOCKED. §S37 C1 is CLOSED.** §S32.5's first STOP-AND-REPORT is narrowed
+accordingly: a write to an EXTRACTION table still stops and reports; a write to a SCHEDULE table
+does not. **Rule 1 (no extractor edits) is unchanged and still unconditional.**
 
 ## §S32.5 — STOP-AND-REPORT
 
