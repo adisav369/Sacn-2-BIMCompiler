@@ -2037,11 +2037,26 @@ gives the whole component a shared start, and every dependency inside it evapora
 4.6 days because it actually waits for supports. **The 49,436-element blob was not merely
 scrambling phase order; it was destroying the dependency chain outright.**
 
-`KEY=zfirst` under NOCREW also passes where measured (Terminal 3,144, Hospital 8,124, Clinic 3,863
-— all better than CPM), so the seqfirst-vs-zfirst gap of §S30.2 is a CAPPED-crew phenomenon. Under
-capped crews seqfirst wins 5/7 vs zfirst 2/7; without caps both beat CPM. **§S30.2's "trade-first
-decisively beats elevation-first" must therefore be qualified: it holds under real crew capacity,
-which is the shipping condition, but it is not a property of the ordering alone.**
+`KEY=zfirst` under NOCREW **also reaches 7/7** (run completed 2026-08-19): Terminal 3,144 ·
+Hospital 8,124 · Clinic 3,863 · LTU 24,166 · Duplex 368 · HHS_Office 2,337 · JKR 2,228 — every one
+better than CPM. So the seqfirst-vs-zfirst gap of §S30.2 is entirely a CAPPED-crew phenomenon:
+
+| condition | seqfirst | zfirst |
+|---|---|---|
+| crew caps ON (shipping condition) | **5/7** | **2/7** |
+| crew caps LIFTED | **7/7** | **7/7** |
+
+**§S30.2's "trade-first decisively beats elevation-first" is hereby QUALIFIED and must not be
+quoted bare.** Both keys beat the live engine on ordering alone. Trade-first only pulls ahead once
+finite crews are in play — i.e. the advantage is in how the two keys INTERACT WITH CREW QUEUEING,
+not in ordering quality. seqfirst groups same-trade work together, so a capped crew pool drains in
+one place instead of thrashing between trades; zfirst interleaves trades within a band and makes
+every crew queue longer. That is a resource-levelling property, and it is a better reason to prefer
+trade-first than the one §S30.2 gave — but it also means neither key is the "physically correct"
+order the earlier sections kept reaching for.
+
+One outlier to keep visible: zfirst's LTU makespan is **125.3d** vs seqfirst's 113.3d and CPM's
+1.2d, on the same uncapped run. A 100× spread between engines on one building is not explained here.
 
 ## §S31.2 — VERIFIED: the extractor is NOT broken; the shipped DBs are stale
 
