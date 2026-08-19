@@ -85,11 +85,17 @@ to any number in this lane.** (Strict midair — start before support *starts* �
 **2. Stacked Gantt bars** — "one pile, full project length".
 
 **Both are the same defect: scheduling is per ELEMENT, display and measurement are per GROUP.**
-`time_machine.js:6074` groups bars by `storey|phase` but each bar's span is min-start to max-end
-over elements scheduled individually, so one stray element stretches the whole bar. The shipped
-mitigation is a Tukey trim that hides outliers. Fix the grain — schedule the group — and both
-symptoms go together. This is §S37 B1, the largest unexploited finding here, and nothing has been
-built against it.
+`time_machine.js:6074` groups bars by `storey|phase`, but each bar's span is min-start to max-end
+over elements scheduled individually.
+
+⛔ **CORRECTED 2026-08-19 by §S43 — this section used to say "one stray element stretches the whole
+bar." That is measured to be FALSE.** The median bar owes **0.4–3.3%** of its width to its single
+worst element, and deleting that element clears 0–3 wide bars out of 15–35 (zero on Hospital). Bars
+are wide because their members are genuinely DISPERSED across the programme — the Tukey-trimmed
+span, which already discards both outlier tails, still covers 17–30% of the project at the median.
+So the shipped trim is not a weak version of the fix; outlier removal is the wrong lever entirely,
+and "fix the grain — schedule the group" means constraining members to a contiguous window, i.e. a
+SCHEDULING change, not a display one. §S37 B1 stands as the target; its stated mechanism does not.
 
 **Four measured causes, all unshipped:**
 - support predicate counts a pipe as holding up a wall — 760 of 761 Duplex physics-vs-phase
@@ -2707,3 +2713,85 @@ its own measurement. The symptom is real; the named cause is not it.
   That number decides whether narrowing bars costs schedule duration or is free.
 
 **Nothing designed, nothing built, no grid.** `viewer/` unchanged by this section.
+
+---
+
+# §S44 — THE SPLIT: dispersion is CPM interleaving, NOT crew levelling (2026-08-19)
+
+**The one question §S43 named and §S42 pointed at, answered in one run.** Instrument:
+`scripts/hull/split_probe.js` (copy into `bim-ootb/viewer/tests/` to run), on `9db62a6` — main with
+#1440 landed. Read-only. Same elements, same `_meta.db` files, same rates, same judges
+(`ScheduleGate.auditFloating` + `time_machine.js:6074`'s own `storey|phase` grouping — the task
+tables hold 0 rows fleet-wide, §S26.13, so that fallback IS the live grouping).
+
+Three configurations. **A vs C isolates crew levelling. B vs A isolates the CPM pass.**
+
+| | scheduler | crew caps | levelling | CPM interleaving |
+|---|---|---|---|---|
+| **C** | `computeSchedule` | **off** (uncapped) | no | no |
+| **A** | `computeSchedule` | **shipped** | yes | no |
+| **B** | `+ _displayTimeline` CPM | **shipped** | yes | **yes** — what ships |
+
+## §S44.1 — median bar span: levelling does nothing, CPM does everything
+
+| building | C caps off | A caps on | **levelling Δ** | B + CPM | **CPM Δ** |
+|---|---|---|---|---|---|
+| Terminal | 13.6% | 12.6% | **−1.0pp** | 30.1% | **+17.5pp (2.4×)** |
+| Hospital | 22.6% | 22.7% | **+0.1pp** | 25.8% | +3.1pp |
+| Duplex | 13.4% | 13.4% | **0.0pp** | 68.7% | **+55.3pp (5.1×)** |
+| HHS_Office | 30.7% | 33.3% | +2.6pp | 60.0% | **+26.7pp (1.8×)** |
+| Clinic | 13.6% | 12.0% | **−1.6pp** | 22.9% | +10.9pp (1.9×) |
+| LTU_AHouse | 14.0% | 13.9% | **−0.1pp** | 74.4% | **+60.5pp (5.4×)** |
+| JKR | 20.5% | 20.4% | **−0.1pp** | 26.6% | +6.2pp |
+
+**Levelling moves bar width by −1.6 to +2.6pp and the sign goes both ways — it is noise.** CPM
+multiplies it 1.1× to 5.4×. Same story on wide bars (>50% of the project), fleet totals:
+**C 52 → A 53 → B 115.** Levelling adds ONE wide bar across the whole fleet; CPM adds sixty-two.
+
+Float behaves identically: fleet **456 → 456 → 14,166**. Crew levelling creates no float at all.
+
+## §S44.2 — but "free" is the wrong word, and this is the fork
+
+Levelling is not what widens bars — **it is what costs duration**, and CPM is what buys it back:
+
+| building | C days | A days | levelling cost | B days | CPM saving |
+|---|---|---|---|---|---|
+| Terminal | 287.2 | 373.2 | +30% | 164.7 | **−56%** |
+| Hospital | 740.0 | 1,026.2 | +39% | 543.5 | −47% |
+| Duplex | 22.0 | 31.3 | +42% | 15.4 | −51% |
+| HHS_Office | 101.2 | 129.2 | +28% | 98.6 | −24% |
+| Clinic | 324.2 | 464.1 | +43% | 183.5 | −60% |
+| LTU_AHouse | 1,718.2 | 2,500.2 | +45% | 1,429.0 | −43% |
+| JKR | 93.1 | 118.2 | +27% | 45.6 | −61% |
+| **fleet** | 3,285.9 | 4,642.7 | +41% | **2,432.3** | **−48%** |
+
+**So narrowing bars is free of the levelling constraint, but not free of duration.** The CPM pass
+buys a 24–61% shorter programme and pays for it with wider bars AND essentially all the lane's
+float. Turning it off would give narrow bars and near-zero float at **~2.3× the duration** — which
+is precisely the §S42 trade, now reaching the same fork from the other symptom. **Two findings, one
+question.**
+
+## §S44.3 — ⚖ THE QUESTION FOR THE USER (this is the fork, stated once)
+
+Today's shipped schedule (B) versus the same engine without the CPM display pass (A):
+
+| | duration | wide bars (>50%) | float | strict midair |
+|---|---|---|---|---|
+| **B — ships today** | **2,432 days** | **115** | **14,166** | 0 |
+| **A — no CPM pass** | 4,643 days (+91%) | 53 | **456** | 0 on 5/7 · Terminal 900 · LTU 4,316 ⚠ |
+
+⚠ **A is not simply "the good one"** — the strict-midair column is measured on the pre-CPM times in
+§S42 and is NOT zero everywhere; the CPM pass is what drives midair to 0 fleet-wide. So the choice
+is three-way, not two-way, and that is the honest statement of it.
+
+**What is NOT measured, and is the actual fix candidate:** whether CPM can keep most of its
+compression while being constrained to keep a `storey|phase` group's members contiguous. Nobody has
+tried it. If a contiguity constraint costs 5% duration it ships; if it costs 90% it is the same
+product choice as above. **That is one measurement, and it is the next one — not a design.**
+
+## §S44.4 — what this closes
+
+- §S43's "named-not-taken" split: **answered — interleaving, not levelling.**
+- §S42's open trade and §S43's open trade are **the same fork**, and it is now stated with numbers
+  on both axes rather than as two separate lanes.
+- **Nothing built, nothing shipped.** `viewer/` unchanged by this section.
