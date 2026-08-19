@@ -2499,7 +2499,14 @@ touch**, the visible "hanging in mid-air" symptom:
 | JKR | **108** | **0** |
 
 **The pre-graph engine put 17 to 4,316 elements on screen before the thing they physically touch
-existed.** Today's is zero on all 7 and has been since the graph era matured. §OBJECTIVE states this
+existed (fleet 6,541).** Today's is zero on all 7 and has been since the graph era matured.
+
+**The middle column, added 2026-08-19 from §S44's run:** today's PRE-CPM schedule is **9,928** —
+Terminal 1,278 · Hospital 1,890 · Clinic 604 · HHS 309 · JKR 242 · Duplex 54 · LTU 5,551. So the
+raw scheduler is worse on strict midair than the pre-#1242 engine it replaced, and **the CPM
+display pass is the only thing in any measured configuration that reaches zero.** That sharpens
+§S42.4: the graph era's win is not the scheduler, it is the CPM pass — which is also what
+manufactures the float and the bar dispersion. §OBJECTIVE states this
 as already-solved ground ("strict midair … is already 0"); the anchor shows what solved it.
 
 ## §S42.4 — the honest conclusion
@@ -2777,11 +2784,21 @@ Today's shipped schedule (B) versus the same engine without the CPM display pass
 
 | | duration | wide bars (>50%) | float | strict midair |
 |---|---|---|---|---|
-| **B — ships today** | **2,432 days** | **115** | **14,166** | 0 |
-| **A — no CPM pass** | 4,643 days (+91%) | 53 | **456** | 0 on 5/7 · Terminal 900 · LTU 4,316 ⚠ |
+| **B — ships today** | **2,432 days** | **115** | **14,166** | **0 on all 7** |
+| **A — no CPM pass** | 4,643 days (+91%) | 53 | **456** | **9,928** ⚠ |
 
-⚠ **A is not simply "the good one"** — the strict-midair column is measured on the pre-CPM times in
-§S42 and is NOT zero everywhere; the CPM pass is what drives midair to 0 fleet-wide. So the choice
+⛔ **CORRECTED 2026-08-19 — the A row first published here read "0 on 5/7 · Terminal 900 · LTU
+4,316". That was wrong: those are §S42's PRE-#1242 anchor figures, a different engine, pasted into
+a row describing today's pre-CPM schedule.** Re-read from this probe's own `§MIDAIR_BEFORE` output
+(the same run that produced every other number in §S44), config A's strict midair is **non-zero on
+all seven**: Terminal 1,278 · Hospital 1,890 · Clinic 604 · HHS 309 · JKR 242 · Duplex 54 ·
+LTU 5,551 = **9,928 fleet**. Independently reproduced at both `b81f646` and `3bf771e`, so #1439
+does not move it.
+
+**This makes the case against A stronger, not weaker.** Turning the CPM pass off does not merely
+cost 91% duration — it puts 9,928 elements on screen before the thing they touch exists. And note
+the ordering it exposes: today's raw scheduler is WORSE on midair than the pre-#1242 engine
+(9,928 vs §S42's 6,541). **Only the CPM pass reaches zero, on any engine measured.** So the choice
 is three-way, not two-way, and that is the honest statement of it.
 
 **What is NOT measured, and is the actual fix candidate:** whether CPM can keep most of its
