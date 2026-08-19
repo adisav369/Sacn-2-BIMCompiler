@@ -2628,3 +2628,328 @@ ordered." **Until that separation is measured, §S30.1's 5/7 must not be quoted 
 - **Any future number from this lane prints `durOk` and `judgeCanFail`.** Two false zeros in one
   session, plus §S25_REVIEW's `engineGap` tautology three weeks earlier, is three instances of the
   same class. It is the most reliable failure mode in this file.
+---
+
+# §S29 — GENERALITY AUDIT: the grid is fitted to 7 multi-storey buildings (2026-08-19)
+
+**Standing: PROPOSED.** Written on the user's directive — *"look out for omissions, gaps in the
+model, comparing with what was done onset that was OK, and what is done by others… It has to be
+fundamentally handle general cases not particular."* Applies to §S28 and, where noted, to the live
+engine as well. Held out of the file until §S28.R lands (concurrent-edit discipline).
+
+## §S29.0 — the test set is not a test set
+
+All 7 fleet buildings are **multi-storey buildings with named storeys, one building each,
+new-build, vertical**:
+
+| building | n | storeys | buildings |
+|---|---|---|---|
+| Terminal_meta | 48,428 | 23 | 1 (`TerminalMerged`) |
+| Hospital_meta | 63,415 | 9 | 1 |
+| Clinic_meta | 16,114 | 8 | 1 |
+| LTU_AHouse_meta | 125,698 | 19 | **no `building` column at all** |
+| JKR_extracted | 9,410 | 21 | 1 |
+| HHS_Office_Federated | 6,880 | 5 | 1 (despite the name) |
+| Duplex_extracted | 1,193 | 5 | 1 |
+
+Every design decision in §S25/§S26/§S27/§S28 was validated against this one shape. **A spec that
+passes 7/7 here has been shown to work on one building type.**
+
+## §S29.1 — THE CORE FINDING: the grid needs 4 inputs where the onset needed 2
+
+**Onset (pre-`0fe8eb2`, `schedule_gate.js:248-268`):**
+```
+struct.sort((base_z, seq)) · nonst.sort((seq, rank, base_z))
+start = max(geoGate(el), crewSlot)
+```
+Required inputs: **`base_z` and `seq`. Two numbers per element.** No storeys, no bands, no zones,
+no rooms, no phases, no template. It produces *some* defensible order on any model with geometry
+and a class — a warehouse, a bridge, a fit-out, a model with no storey data at all.
+
+**§S28's grid:** `bandRank` (needs meaningful z-stratification) × `zone` (needs a plan raster with
+separable components) × `seq` (needs `sequence_rules.json` to cover the model's classes) ×
+`template` (needs trades matching the model's actual content). **Four inputs, each of which can be
+absent, degenerate, or meaningless.**
+
+**This is a generality REGRESSION versus the thing being replaced, and the spec does not say so.**
+
+**And the failure modes differ in visibility, which is worse than the input count:**
+- Onset failed **loudly** — elements float, and `auditFloating` counts them.
+- The grid fails **silently** — a degenerate grid produces ONE BIG BAR, and one bar looks like a
+  schedule. Nothing in §S28 detects it.
+
+**STOP-AND-REPORT: §S28 needs a DEGENERACY DETECTOR before it needs anything else** —
+`cells / elements` ratio, and a hard report when any level yields 1 zone AND 1 trade, or when
+`distinct(cells) < 4`. A schedule with fewer cells than trades is not a schedule.
+
+## §S29.2 — `band = floor(z/3)` assumes VERTICAL is the location axis. That is the deepest
+particular assumption in the whole design.
+
+A road, bridge, tunnel, jetty, or rail alignment stratifies along a **horizontal chainage**, not
+elevation. Their locations are `CH 0+000 → 0+250 → 0+500`. There are no storeys, and z is roughly
+constant.
+
+**This is not hypothetical for this project:** `prompts/INFRA_ROAD_RAIL_GAP_CLOSURE.md` exists in
+this repo (2026-08-19 working set), and IFC 4.3 ships `IfcFacility`/`IfcBridge`/`IfcRoad`/
+`IfcRailway` precisely for it. **A z-band grid cannot schedule a road at all** — every element
+lands in one band, the grid collapses to trades, and §S29.1's silent failure fires.
+
+**The general form:** the location axis is **the direction the work progresses along**, which is
+vertical for buildings and longitudinal for infrastructure. `floor(z/3)` is one instance of
+`floor(projection onto the progression axis / quantum)`.
+
+## §S29.3 — what others do about generality: the LBS is DATA with VARIABLE DEPTH, not a derivation
+
+LBMS's answer (§S26.10) is a **Location Breakdown Structure** that the planner defines, typically
+`Site → Building → Section → Floor → Zone → Room`, with each project choosing its own depth. That
+single mechanism covers a hospital, a campus and a bridge because the *structure* is an input.
+
+**§S28 hard-codes depth at 2 or 3** (`level × trade`, or `level × zone × trade`). Every generality
+question then becomes a special case instead of a parameter:
+
+| project | LBS the field would use | what §S28 gives |
+|---|---|---|
+| single-storey warehouse | `Building → Zone` | 1 band → trades only |
+| hospital | `Building → Floor → Zone` | fits |
+| 3-building campus | `Site → Building → Floor → Zone` | **§S29.4 — broken** |
+| road | `Route → Chainage` | **§S29.2 — impossible** |
+| fit-out | `Floor → Room` | rooms unused (§S27.3) |
+
+**RECOMMENDATION: make the LBS a variable-depth list of AXES, each with its own key function**, and
+let the shipped default be `[building, band(z,3m), zone]`. Then infrastructure is a different axis
+list, not a different engine — the same move §S28.5's template made for trade order.
+
+## §S29.4 — VERIFIED GAP: multi-building federation merges across buildings
+
+`elements_meta` carries a `building` column — **and LTU_AHouse_meta has no such column at all**,
+so the schema is not uniform across the shipped fleet. All 7 fleet buildings report exactly ONE
+building, so **this path has never been exercised.**
+
+On a federated campus model, Building A's Level 3 and Building B's Level 3 sit at the same
+elevation → the same band → **the same cell → scheduled as one activity**. Two separate structures,
+one bar, no way to sequence one before the other.
+
+Federation is not an edge case — it is what BIM coordination *is*, and `HHS_Office_Federated` is
+literally named for it. **`building` must be the outermost LBS axis, above band** (§S29.3), and
+§S28 does not mention it.
+
+## §S29.5 — `SEQUENCE_DEFAULT` makes an unknown model collapse to one trade, silently
+
+`viewer/rates/sequence_rules.json`: `SEQUENCE_DEFAULT = {phase: "Architecture", sequence: 6}`.
+
+Any class the rules do not cover becomes seq 6. A model dominated by unmatched classes — a process
+plant (`IfcTank`, `IfcChimney`, `IfcDistributionChamberElement`), an infrastructure model, a
+proprietary export — yields **one seq for the whole building → one cell per zone → one bar.**
+Again silent, again §S29.1.
+
+**STOP-AND-REPORT: report `unmatchedClassRate` per building at Lane B's B3 step.** It is currently
+measured nowhere, and it is the single number that tells you whether trade order means anything on
+a given model.
+
+## §S29.6 — omissions shared by BOTH the onset and the grid (neither is a regression; both are gaps)
+
+- **Demolition / refurbishment.** All 7 buildings are new-build. Refurb inverts the order —
+  top-down strip-out before anything ascends. An ascending-only grid cannot express it, and neither
+  could the onset sort.
+- **Calendar.** `IfcWorkCalendar` is captured by PR #59 (`2253664`) and consumed by nothing.
+  Durations are raw days: no weekends, no public holidays, no monsoon shutdown. Real programmes are
+  quoted in working days.
+- **Procurement / lead time.** Many real programmes are lead-time-driven (structural steel ordered
+  12 weeks ahead), not physics- or crew-driven. Neither design has any representation for a
+  constraint that is not a physical or resource one.
+- **Site and external works.** Roads, drainage, landscaping, temporary works — no storey, often no
+  z-stratification. Same shape as §S29.2.
+- **Serpentine crew flow.** §S28.8 names it as unmodelled. The GENERAL principle is "the crew's next
+  location is the nearest unfinished one", not "reverse alternate levels" — worth stating that way
+  so it is not implemented as a Hospital-specific hack.
+
+## §S29.7 — what to change in §S28, ranked
+
+1. **Add the degeneracy detector (§S29.1).** Cheapest, catches the whole silent-failure class, and
+   is needed regardless of every other item here.
+2. **Make the LBS a variable-depth axis list (§S29.3), with `building` outermost (§S29.4).**
+   Default `[building, band(z,3m), zone]` reproduces §S28 exactly on all 7 fleet buildings, so it
+   costs nothing today and is the only item that makes infrastructure reachable later.
+3. **Report `unmatchedClassRate` (§S29.5).**
+4. **State the progression axis explicitly (§S29.2)** even if v1 only implements vertical — so the
+   assumption is visible rather than buried in `floor(z/3)`.
+5. **Name demolition, calendar, procurement, external works as OUT (§S29.6)** rather than
+   unmentioned. §S28.8 currently implies the gap list is complete and it is not.
+
+## §S29.8 — the honest summary
+
+§S28 is a good design **for multi-storey new-build buildings with usable storey data and covered
+IFC classes** — which is the fleet, and plausibly most of the addressable market. It is not
+fundamental in the sense the user asked for: three of its four inputs (band, zone, template) are
+undefined or degenerate outside that shape, and it fails silently rather than loudly when they are.
+
+**Items 1-3 of §S29.7 close the silent-failure class and cost almost nothing on the current fleet.
+Item 2 is the one that decides whether this design generalises or gets rewritten when the first
+road model arrives.**
+
+---
+
+# §S31 — THE EXTRACTION CHAIN: what is actually lost, and where (2026-08-19)
+
+**Recorded late, and that is the finding to note first.** Everything below was measured across
+2026-08-19 and existed only in conversation for several hours while `§S29` sat unwritten in a
+scratchpad. The user's correction — *"this is repetition! already done a few posts ago. Why don't
+u record what was done?"* — is upheld: re-running a measurement because the first result was never
+written down is the same waste this file's `⚠ WATCHDOG` header exists to prevent. **A measurement
+that is not in this file did not happen.**
+
+## §S31.1 — §S30.6 RESULT: the crew confound, separated (the run §S30.4 called for)
+
+`NOCREW=1` lifts capacity on BOTH engines, so queueing delay cannot mask a gate the sort failed to
+enforce. Whatever float survives is ORDERING, not waiting.
+
+| building | float CPM | float SORT | sort better by |
+|---|---|---|---|
+| Terminal | 38,722 | **3,052** | 12.7× |
+| LTU_AHouse | 56,128 | **15,630** | 3.6× |
+| Hospital | 18,594 | **5,908** | 3.1× |
+| Clinic | 7,398 | **3,242** | 2.3× |
+| JKR | 4,530 | **2,262** | 2.0× |
+| Duplex | 632 | **324** | 2.0× |
+| HHS_Office | 3,999 | **3,048** | 1.3× |
+
+**`floatNoWorseThanCPM = 7/7`** (was 5/7 with caps on — Duplex and HHS_Office both flip to PASS).
+
+**The confound resolved AGAINST the live engine, not against the sort.** Comparing each engine to
+its own capped run: CPM 4,756 → 38,722 on Terminal (**8× worse** once queueing stops covering for
+it); the sort 1,722 → 3,052 (under 2×). **The live engine's float number is substantially an
+artifact of crew delay masking bad ordering.**
+
+Mechanism, visible in makespan: with caps lifted CPM finishes Terminal in **0.6 days** — nearly
+everything starting at once. That is the blob. The graph collapses to one component, contraction
+gives the whole component a shared start, and every dependency inside it evaporates. The sort takes
+4.6 days because it actually waits for supports. **The 49,436-element blob was not merely
+scrambling phase order; it was destroying the dependency chain outright.**
+
+`KEY=zfirst` under NOCREW also passes where measured (Terminal 3,144, Hospital 8,124, Clinic 3,863
+— all better than CPM), so the seqfirst-vs-zfirst gap of §S30.2 is a CAPPED-crew phenomenon. Under
+capped crews seqfirst wins 5/7 vs zfirst 2/7; without caps both beat CPM. **§S30.2's "trade-first
+decisively beats elevation-first" must therefore be qualified: it holds under real crew capacity,
+which is the shipping condition, but it is not a property of the ordering alone.**
+
+## §S31.2 — VERIFIED: the extractor is NOT broken; the shipped DBs are stale
+
+User challenge: *"since when is our IFC to DB extraction broken? I need to be convinced as it was
+working very well."* Upheld — the "broken extractor" framing (raised by an outside review) is wrong.
+
+`DAGCompiler/python/extractIFCtoDB.py` already declares the relation schema said to be missing:
+
+```sql
+CREATE TABLE rel_fills_host (...)    -- IfcRelVoidsElement ∘ IfcRelFillsElement, "recovered
+                                     -- verbatim… NON-INVENT, we copy authored relations"
+CREATE TABLE port_elements (...)     -- IfcRelConnectsPorts
+CREATE TABLE port_connections (...)
+CREATE TABLE rel_adjacency / rel_anchored / datum_plane / rel_aggregates / rel_contained_in_space
+```
+
+The browser importer reads VOIDS/FILLS into `bom_tree` (`import_worker.js:315,328`) and has since
+the 2026-05-23 initial migration. **Both extractors preserve these relations.**
+
+The shipped `buildings/*.db` predate that work and were never rebuilt. `JKR_extracted.db`:
+`project_name=jkr_aligned`, `import_date=2026-07-11`, browser-built (`component_geometries`, not
+`base_geometries`), **no `bom_tree` table, no `elevation` column**. So every "relation table is
+empty" observation is a STALE ARTIFACT, not a lossy pipeline.
+
+**Two corrections to the outside review, both measured:**
+- *"`IfcRelSequence` present in source, 0 rows in DB"* — **fabricated.** All 7 JKR discipline files
+  grep to `IFCRELSEQUENCE:0`. Nothing was dropped; JKR has no programme. Only `Hospital 2.0.ifc`
+  carries one (43 links).
+- *"`IfcRelContainedInSpatialStructure` 5+22 in source but 107 in DB — synthesized?"* — 50 across
+  all 7 files, and the extractor composes containment from several sources. Not an inflation.
+
+**Merge unblocked, 2026-08-19 (`86b059df2`):** the `extractIFCtoDB.py` conflict with `origin/master`
+that blocked the docs deploy was **97% line-ending noise** — master flipped the file to CRLF, this
+branch is LF, so all 3,113 lines read as changed. Normalising both sides to LF and re-running the
+3-way merge against the merge-base gives **zero conflicting hunks**; the two changes are additive.
+Resolution keeps both: master's §S21 (`spatial_structure.elevation` + real `IfcBuilding` parentage
+via `.Decomposes`) and this branch's §KUL001 (`elements_meta.building` + `project_metadata`).
+3,113/3,118 → 3,151 lines, LF throughout, `py_compile` passes.
+
+## §S31.3 — THE ONE-LINE DEFECT: the spatial hierarchy is used, then flattened to a label
+
+Outside review asked whether the model uses the declared spatial decomposition or reconstructs it
+from geometry. **It uses it** — `extractIFCtoDB.py:493-506`:
+
+```python
+def get_storey_for_element(element):
+    for rel in element.ContainedInStructure:          # IfcRelContainedInSpatialStructure
+        container = rel.RelatingStructure
+        if container.is_a("IfcBuildingStorey"):
+            return container.Name                     # ← THE DEFECT
+        if hasattr(container, "Decomposes"):          # IfcRelAggregates fallback
+            for dec in container.Decomposes:
+                if dec.RelatingObject.is_a("IfcBuildingStorey"):
+                    return dec.RelatingObject.Name    # ← same
+```
+
+Both relations are walked correctly, including the aggregation fallback. **Then the declared
+container's identity and elevation are discarded and only its display Name is kept.**
+`elements_meta` carries exactly one column for this: `storey TEXT`.
+
+**That single `return` produces every downstream symptom this file has chased:**
+- Clinic's `"Roof - Main"` at three elevations — three distinct `IfcBuildingStorey` entities, same
+  `Name`, collapsed into one string.
+- Terminal's 73 / Hospital's 63 / LTU's 38 "storeys" — federated files each declaring their own.
+- `collapsePhase(el.storey)` regex-parsing name strings — a string is all that survived.
+- §S26.6 C2's "storey labels are junk" — they are not junk, they are NAMES being asked to do an
+  IDENTITY's job. **That reframing is the correction; C2's remedy (3m z-banding) treats the symptom.**
+
+## §S31.4 — MEASURED: how much of the elevation is already recoverable TODAY
+
+User challenge: *"isn't the room injection already given us such meta-data?"* — **largely yes.**
+`spatial_structure` already carries a real per-storey `center_z`, written by the compile/injection
+path (`object_type='COMPILED'`). Hospital's storey ladder is clean: 168.7 / 174.1 / 178.8 / 183.9 /
+188.8 — a 5m rhythm, extracted not guessed.
+
+Federation duplicates AGREE: Hospital has 63 storey rows over 20 distinct names, `"Level 5"`
+appearing **8 times** (8 discipline files), and **all 8 report the same z**. Storey guids are
+synthetic and name-derived (`STC_Level_1`, `STC_First_Floor`), so the join key available today is
+the name.
+
+**Joinability of `elements_meta.storey` → a `spatial_structure` storey with a real `center_z`:**
+
+| building | elements | joinable | | ambiguous names |
+|---|---|---|---|---|
+| Hospital_meta | 63,415 | 53,740 | **84.7%** | 0 |
+| HHS_Office_Federated | 6,880 | 4,715 | **68.5%** | 0 |
+| Clinic_meta | 16,114 | 5,755 | **35.7%** | 0 |
+| Terminal_meta | 48,428 | 11,233 | **23.2%** | 0 |
+| JKR_extracted | 9,410 | 2,017 | **21.4%** | 0 |
+| LTU_AHouse_meta | 125,698 | — | **no `center_z` column** | — |
+| Duplex_extracted | 1,193 | — | **no `spatial_structure` table** | — |
+
+**`ambiguousNames = 0` on every building that has the data** — no storey name maps to two different
+elevations. So where the join resolves, it is SAFE, and no extractor change is needed to use it.
+
+**But coverage is 21–85% and two buildings cannot join at all** — the same stale-artifact pattern as
+§S31.2 (LTU and Duplex predate the schema). So room injection gives us most of what is needed on
+the newest DBs and nothing on the oldest.
+
+## §S31.5 — the ordered conclusion
+
+1. **Elevation does not need to be inferred.** It is declared, and on Hospital it is already
+   joinable for 84.7% of elements with zero ambiguity. `floor(z/3)` banding is a workaround for a
+   join nobody wired.
+2. **The remaining gap is coverage, not capability** — old DBs lack the columns. Rebuilding with the
+   now-merged extractor (§S31.2) is the fix, and it is a re-run, not new code.
+3. **The extractor change worth making is small:** return the storey GUID alongside the Name, so the
+   join is on identity rather than a display string. Master's §S21 already landed the other half
+   (`spatial_structure.elevation`).
+4. **None of this is scheduled work yet.** No spec has passed vetting (§S27.R, §S28.R both NOT
+   VETTED), and §S31 records measurements, not a design.
+
+## §S31.6 — STOP-AND-REPORT
+
+- **Record before re-measuring.** This section exists because several hours of findings lived only
+  in chat and one audit (§S29) sat unwritten in a scratchpad while adjacent measurements were
+  re-run. Write the number into this file in the same turn it is produced.
+- **Do NOT quote §S30.2's "trade-first beats elevation-first" unqualified.** §S31.1 shows it is a
+  capped-crew result; both keys beat CPM without caps.
+- **Do NOT rebuild the fleet DBs and re-measure §S26–§S30 in one step.** Rebuild ONE building
+  (Hospital — highest join coverage, newest schema), confirm `rel_fills_host` / `elevation` / storey
+  guids populate, and re-measure that building alone before touching the rest.

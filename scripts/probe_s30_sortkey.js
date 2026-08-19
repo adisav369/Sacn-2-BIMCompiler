@@ -43,6 +43,9 @@ async function run(SQL, RT, bld) {
   db.close();
   const maxCrews = {};
   for (const r in RT.LABOR_RATES) if (RT.LABOR_RATES[r].max_crews) maxCrews[r] = RT.LABOR_RATES[r].max_crews;
+  // §S30.3 confound separation: NOCREW=1 lifts capacity on BOTH engines, so queueing delay cannot
+  // mask a gate the sort failed to enforce. Whatever float survives is ORDERING, not waiting.
+  if (process.env.NOCREW === '1') for (const r in maxCrews) maxCrews[r] = 1e6;
   const els = elements.map(it => Object.assign({}, it, { bz: it.base_z, tz: it.top_z }));
   let q = console.log; console.log = () => {};
   const raw = SG.computeSchedule(els, 0, 1, maxCrews, SHIFT_HOURS);
@@ -123,7 +126,7 @@ async function run(SQL, RT, bld) {
     ' | makespanD CPM=' + msCpm.toFixed(1) + ' SORT=' + msSort.toFixed(1) +
     ' | backwardSupports=' + backwardSupports + ' onEls=' + lateSupportEls +
     ' (' + (100 * lateSupportEls / n).toFixed(1) + '%)' +
-    ' | durOk=' + durOk + ' judgeCanFail=' + judgeLive);
+    ' | crew=' + (process.env.NOCREW==='1'?'LIFTED':'capped') + ' | durOk=' + durOk + ' judgeCanFail=' + judgeLive);
   return { bld, n, fCpm, fSort, msCpm, msSort, backwardSupports, lateSupportEls };
 }
 
@@ -134,7 +137,7 @@ async function run(SQL, RT, bld) {
   const all = [];
   for (const b of FLEET) { const r = await run(SQL, RT, b); if (r) all.push(r); }
   const better = all.filter(r => r.fSort <= r.fCpm).length;
-  console.log('§S30_VERDICT KEY=' + KEY + ' buildings=' + all.length + ' floatNoWorseThanCPM=' + better + '/' + all.length +
+  console.log('§S30_VERDICT KEY=' + KEY + ' NOCREW=' + (process.env.NOCREW||'0') + ' buildings=' + all.length + ' floatNoWorseThanCPM=' + better + '/' + all.length +
     ' — PROBE ONLY, viewer/ unchanged');
   console.log('§S30_TABLE ' + JSON.stringify(all.map(r => [r.bld, r.fCpm + '->' + r.fSort,
     r.msCpm.toFixed(0) + 'd->' + r.msSort.toFixed(0) + 'd', (100 * r.lateSupportEls / r.n).toFixed(1) + '%'])));
