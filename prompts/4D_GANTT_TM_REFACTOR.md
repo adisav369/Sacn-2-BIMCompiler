@@ -2812,3 +2812,81 @@ product choice as above. **That is one measurement, and it is the next one — n
 - §S42's open trade and §S43's open trade are **the same fork**, and it is now stated with numbers
   on both axes rather than as two separate lanes.
 - **Nothing built, nothing shipped.** `viewer/` unchanged by this section.
+
+---
+
+# §S45 — THE CELL: what contiguity costs, and why the answer is a RANGE (2026-08-19)
+
+**§S44.3 named this as the next measurement: can CPM keep its compression while a `storey|phase`
+group's members are constrained to a contiguous window — the location×trade cell, which is also the
+grain a P6 export needs?** Built as the cell, as asked; no scheduling code changed, nothing shipped.
+
+Instrument: `scripts/hull/cell_probe.js` (copy into `bim-ootb/viewer/tests/` to run), on `9db62a6`.
+The cell is modelled as a task-level CPM: **cell duration** = crew-limited work content
+(`max over resources of Σ member durations / cap`, using the engine's OWN per-element durations from
+config A so units match the makespan comparison); **cell edges** = E1 physics lifted to cells;
+**makespan** = longest path. Cells sharing a resource may overlap, so this is optimistic on crews —
+stated, not hidden.
+
+## §S45.1 — the blocking finding: `storey|phase` is not an orderable grain
+
+| building | cells | E1 edges CROSSING cells | cells inside a cycle | biggest cell-SCC |
+|---|---|---|---|---|
+| Duplex | 16 | **98.0%** | 8/16 | 8 |
+| Hospital | 35 | **96.4%** | 26/35 | 26 |
+| Clinic | 32 | 92.6% | 24/32 | 21 |
+| JKR | 64 | 91.4% | 29/64 | 23 |
+| LTU_AHouse | 58 | 86.5% | **54/58** | **54** |
+| HHS_Office | 17 | 72.7% | 15/17 | 15 |
+| Terminal | 72 | 33.8% | 33/72 | 28 |
+
+**34–98% of physical support relations cross a cell boundary**, and once lifted, the cell graph is
+not a DAG on any building: 8 to 54 cells per building fall into mutual-dependency cycles, and on
+LTU a single SCC swallows **54 of 58 cells**. A cell that must start before another cell that must
+start before it cannot both be contiguous and ordered. **This is a grain problem, not a scheduling
+one** — and it is the reason the answer below is a range rather than a number.
+
+## §S45.2 — the cost of contiguity, bounded from both sides
+
+The two honest treatments of a cell-level cycle, run as a range:
+
+- **Ceiling** — a cyclic group cannot be ordered, so contiguity forces it to run as ONE serial
+  block: duration = SUM of its members'.
+- **Floor** — pretend a cycle's members run fully in parallel: duration = MAX of its members'.
+  Physically unjustified, but no contiguous schedule can beat it.
+
+| building | B ships today | contiguous CEILING | vs B | contiguous FLOOR | vs B |
+|---|---|---|---|---|---|
+| Terminal | 164.7 d | 263.6 | +60.0% | 152.2 | **−7.6%** |
+| Hospital | 543.5 | 878.3 | +61.6% | 294.6 | **−45.8%** |
+| Duplex | 15.4 | 24.5 | +58.9% | 17.6 | +14.3% |
+| HHS_Office | 98.6 | 196.0 | +98.9% | 42.1 | **−57.3%** |
+| Clinic | 183.5 | 488.3 | +166.1% | 137.2 | **−25.2%** |
+| LTU_AHouse | 1,429.0 | 2,901.2 | +103.0% | 873.1 | **−38.9%** |
+| JKR | 45.6 | 121.1 | +165.8% | 36.0 | **−21.1%** |
+| **fleet** | **2,432 d** | **4,873** | **+100%** | **1,553** | **−36%** |
+
+**The band spans both sides of the decision** — contiguity is either a doubling of the programme or
+a third off it, and **the entire width of that band is the cell-cycle problem in §S45.1.** Every bar
+is contiguous by construction in both bounds (`wide50 = 0`), so symptom 2 is solved at either end;
+what is unresolved is the price.
+
+## §S45.3 — what this settles, and the one thing it does not
+
+- **Contiguity does NOT obviously "hold most of CPM's compression"** — it might beat it by 36% or
+  cost 100%, and nothing in this measurement narrows that further.
+- **So it does not ship on this evidence.** §S44.3's condition ("if contiguity holds most of the
+  compression, it ships") is not met; the condition for a product question is not cleanly met
+  either, because the ceiling is not a real bound — it assumes serialization the engine would never
+  actually need.
+- **The next measurement is now forced, and it is the one the cell was meant to avoid:** does a
+  FINER location grain make the cell graph acyclic? The cycles come from 34–98% of supports
+  crossing cells, which is a statement about `storey|phase` being too coarse, not about physics
+  being cyclic (element-level physics is acyclic — §S26.3, `largestSCC=1` on all 7 with `hang`
+  dropped). **A location breakdown is the thing this probe was scoped to defer, and the data says
+  it cannot be deferred.** That is a finding about sequencing, not a design.
+- **Caveats, both directions:** the model is optimistic on crews (cells sharing a resource may
+  overlap; a resource-feasible schedule is ≥ these numbers) and pessimistic inside SCCs (the ceiling
+  serializes what a smarter within-SCC schedule could overlap). Neither is tuned; both are printed.
+
+**Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
