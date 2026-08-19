@@ -2502,3 +2502,120 @@ as already-solved ground ("strict midair … is already 0"); the anchor shows wh
 counts "appears before a support APPEARS". Neither measures whether the trade order is sensible.
 Pre-#1242 ordered by `seq`, so phase order alone satisfied most of the finish-before-start test —
 which is exactly why it scores well there and fails the physical one.
+
+---
+
+# §S40 — WATCHDOG: PR #1439 IS NOT ON `main`. The lane is scoring itself against a commit that
+# never landed. (2026-08-19, verified — id §S40 taken because it was free, §S41/§S42 untouched)
+
+**One line: `3bf771e` (#1439) is not an ancestor of `origin/main`.** It lives only on
+`origin/fix/wmz8-relock-after-1434-1435`. GitHub shows the PR `MERGED`, because it *was* merged —
+**into a branch that had already been squashed into main 18 minutes earlier.**
+
+```
+$ git merge-base --is-ancestor 3bf771e origin/main   →  NO
+$ git branch -r --contains 3bf771e                   →  origin/fix/wmz8-relock-after-1434-1435   (only)
+$ gh pr view 1439 --json baseRefName                 →  base=fix/wmz8-relock-after-1434-1435
+   #1438 merged 12:33Z  (squash of that branch → main = b81f646)
+   #1439 merged 12:51Z  (into the branch, post-squash)  ← orphaned here
+```
+
+This is the exact failure `CLAUDE.md` names: *"a squash-merge + a late push orphans the new commit
+(observed PR #138, 2026-06-05). After a branch is squash-merged, start the follow-up off fresh
+`origin/main` — never re-use it."* The branch was re-used.
+
+## §S40.1 — the cost, measured on both commits with the SAME locked witness
+
+`viewer/tests/witness_midair_zero.js`, unmodified, `BLD_DIR=~/bim-ootb/buildings`, run twice in two
+detached worktrees. **Both runs `pass=39 fail=0`** — each commit is internally green against its own
+lock, which is why nothing has flagged this.
+
+| building | `origin/main` (b81f646, LIVE) | `3bf771e` (#1439, orphaned) | what live is missing |
+|---|---|---|---|
+| Terminal | **4,256** | 2,151 | −2,105 |
+| Hospital | **8,210** | 3,960 | −4,250 |
+| LTU_AHouse | **12,686** | 5,023 | −7,663 |
+| JKR | **3,385** | 1,222 | −2,163 |
+| HHS_Office_Federated | **1,491** | 889 | −602 |
+| Clinic | **1,205** | 877 | −328 |
+| Duplex | **237** | 44 | −193 |
+| **fleet** | **31,470** | **14,166** | **−17,304 (−55%)** |
+
+Instrument named per §STATUS: W-MZ-8 `auditFloating` post-`_displayTimeline`; the can-fail guard
+W-MZ-7 (`judge catches a re-introduced hanging`) PASSED on 7/7 in **both** runs, so neither column is
+a false zero. DB resolution logged per building (`§W_MZ_DBFILE`): meta for Terminal/Hospital/Clinic/
+LTU, extracted for Duplex/HHS/JKR — the post-#1438 rule, identical in both runs.
+
+**Three different scoreboards are now live in this one file:** §OBJECTIVE line 77 (`Terminal 4,756`
+— pre-#1438), main's lock (`4,256`), and §S42's right-hand column (`2,151` — the orphan). Only the
+middle one describes what a user loads today.
+
+## §S40.2 — recovery is a 130-line cherry-pick, verified clean
+
+`3bf771e`'s parent `7e1d0dc` is content-identical to main's `b81f646` (the squash), so the commit
+lifts straight across; only a *merge* of the branch conflicts (stale merge base in
+`witness_midair_zero.js`).
+
+```
+$ git diff 3bf771e^ 3bf771e | wc -l                        →  130
+$ git apply --check   (against a worktree at origin/main)  →  clean, 4 files
+   viewer/schedule_gate.js · viewer/cpm_schedule.js · viewer/time_machine.js
+   viewer/tests/witness_midair_zero.js  (the 7 W-MZ-8 locks: 4256… → 2151…)
+```
+
+Not done by this watchdog session — it is a push to `main` and belongs to the builder. **Until it
+lands, `origin/fix/wmz8-relock-after-1434-1435` is the only copy of a −55% fleet result.** Deleting
+it as "merged" destroys the work.
+
+## §S40.3 — §S42 JUDGED: method sound, numbers reproduced, one label wrong
+
+Checked rather than taken on report (§S41.1). Independent re-run in a separate worktree at
+`origin/main`, with a coverage instrument §S42's probe did not print:
+
+- ✅ **The anchor module is authentic.** The probe loads a copy from another session's scratchpad;
+  `diff` against `git show 0fe8eb2^:viewer/schedule_gate.js` → **byte-identical**.
+- ✅ **The judge really is held constant.** `SG_PRE1242` is used for `computeSchedule` only; both
+  columns are scored by today's `ScheduleGate.auditFloating` and this witness's own `census()`.
+- ✅ **Every pre-#1242 number reproduces exactly**: float 42 · 3 · 0 · 141 · 4 · 611 · 169, midair
+  900 · 709 · 17 · 146 · 345 · 4,316 · 108 (`§S42_ANCHOR`, my run, `scripts/anchor` probe + coverage).
+- ✅ **NEW — the population bias I went looking for is not there.** The probe writes `mOld` under
+  `if (r)` and filters `oldSched[e.guid]`, so a scheduler that skipped elements would score low for
+  free. Measured: `pre1242Scheduled == todayScheduled == pop` on **7/7**
+  (48,428 · 63,182 · 1,119 · 6,839 · 16,071 · 122,330 · 8,985). Full-population, fair comparison.
+- ⛔ **The column header "today POST-CPM (#1439)" is not today.** It is §S40's orphan. §S42's own
+  conclusions survive — they rest on the pre-#1242 vs today-PRE-CPM pair, which is unaffected — but
+  the right column overstates the live engine by 2.0–2.5× per building.
+
+## §S40.4 — the finding §S42 and this run agree on, from opposite directions
+
+`witness_midair_zero.js` has been printing this all along and no section records it: **the base
+scheduler leaves almost no float; `_displayTimeline`'s CPM branch manufactures nearly all of it.**
+
+| building | midair before → after | float `auditFloating` before → after (main) |
+|---|---|---|
+| Terminal | 1,278 → **0** | 5 → **4,256** |
+| Hospital | 1,890 → **0** | 0 → **8,210** |
+| Duplex | 54 → **0** | 0 → **237** |
+| HHS_Office_Federated | 309 → **0** | 9 → **1,491** |
+| Clinic | 604 → **0** | 1 → **1,205** |
+| LTU_AHouse | 5,551 → **0** | 360 → **12,686** |
+| JKR | 242 → **0** | 81 → **3,385** |
+| **fleet** | **9,928 → 0** | **456 → 31,470 (69×)** |
+
+Same judge on both sides (`_floatAt()` re-reads the same `items` array `__dt` mutates in place), so
+only the times differ. **§OBJECTIVE symptom 1 is not produced by the scheduler, by `hang`, or by the
+support predicate — it is produced by the display re-authoring pass, and it is the price paid for
+taking strict midair to 0 and halving the makespan.** That is a trade the product has never been
+asked about. It also puts §S37 B1 (the hull) and this in the same place: `_displayTimeline` + the
+`time_machine.js:6074` grouping are one target, not two.
+
+## §S40.5 — actioned per §S37.5
+
+| # | item | state |
+|---|---|---|
+| **E1** | **Land #1439 on `main`** — cherry-pick `3bf771e`, re-run W-MZ, PR. −55% fleet float. | ⛔ **DECISION FOR THE USER/BUILDER.** Verified clean; not this session's to push. |
+| **E2** | **Do not delete `origin/fix/wmz8-relock-after-1434-1435`** until E1 lands. | ⚠ standing warning |
+| **E3** | **§OBJECTIVE's numbers are stale** (line 77 = pre-#1438). Re-state them from main's lock once E1 settles, and say which commit they describe. | open |
+| **E4** | **`scripts/anchor/anchor_pre1242_witness.js` `require`s another session's `/tmp` scratchpad** — a `/tmp` clear makes §S42 unreproducible. Vendor the module or read it via `git show`. | open, one line |
+| **E5** | The float is made by the CPM layer (§S40.4) — fold into B1's target rather than opening a new lane. | open |
+
