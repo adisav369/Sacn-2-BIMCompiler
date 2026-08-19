@@ -2353,8 +2353,10 @@ Neither had reported. Do not re-dispatch either without checking whether it land
 
 **Agent A — REPORTED, STOPPED, DID NOT SHIP (2026-08-19).** See the ⛔ block above §S25_REVIEW.6:
 its numbers were a mis-attributed comparison; built for real the tie-break gives 6/7 or 5/7, not 7/7.
-Branch `fix/designated-support-election` in `/tmp/wt-desig-election`, uncommitted, port proven
-faithful (0 mismatches / 267,954 elements). **Also surfaced: all 7 W-MZ-8 baselines are ALREADY RED
+Branch **`fix/designated-support-election` — now COMMITTED AND PUSHED (`7a06a12`)** as negative
+evidence, not a shipping candidate; port proven faithful (0 mismatches / 267,954 elements, two
+verifiers), so a porting bug is ruled out as the explanation. Do not merge it against
+§S25_REVIEW.6's targets — those do not exist on the live engine. **Also surfaced: all 7 W-MZ-8 baselines are ALREADY RED
 on main** — diagnose that before re-locking anything. Original brief said: the only change measured on
 the REAL engine (float better on 7/7: Terminal 4,756→1,555 · Hospital 7,753→1,293 · Clinic
 1,102→327 · JKR 3,183→1,072 · HHS 1,531→243 · Duplex 247→152 · LTU 12,712→9,461; phase gap
@@ -2471,7 +2473,7 @@ Two orphaned live pages recovered into git in the process (`grislab_proof_run.ht
 | LTU_AHouse_meta | 122,330 | 0 | 0 | 122,330 (100%) | **0** |
 | Duplex_extracted | 1,119 | 0 | 0 | 1,119 (100%) | **0** |
 
-**0 of 276,954 elements fall through.** Structural, not luck: `_buildScheduleElements` already drops
+**0 of 266,954 elements fall through** (the 276,954 first written here was a transcription slip; the table above sums to 266,954 — re-derived in §S34, every per-building `n` matches). Structural, not luck: `_buildScheduleElements` already drops
 zero-transform elements upstream, so everything reaching the scheduler has a finite z and **T3 is a
 floor that cannot fail.** `ambiguousStoreyNames=0` on all 7, confirming §S31.4.
 
@@ -2529,3 +2531,115 @@ own falsifiability proof. **That is the whole lesson of this session and it now 
   as a user decision, with baselines handled per the item above.
 - **Do not build the level derivation until the declared-vs-geometry tie-break is DECIDED** (§S33.1).
   Coverage being total does not make the values correct.
+
+---
+
+# §S34 — THE DECLARED-vs-GEOMETRY TIE-BREAK, MEASURED THEN DECIDED (2026-08-19)
+
+**§S33.1 stopped at a number and refused to guess the ruling. This section measures the question
+first, then rules.** Instrument: `scripts/probe_s34_declared_vs_geometry.js` (read-only, sql.js
+buffer, `db.run()` never called; `md5sum` of all 7 DBs identical before/after — printed below).
+`§S34_SELFTEST 13/13`, all four buckets exercised including a fixture that MUST come out FAR and an
+interval fixture that MUST come out `false`. `§S34_TIERCHECK` re-derives this probe's own T1/T2
+counts against §S33.1's committed table and MATCHES on all 7 buildings, so the ladder has not drifted.
+
+## §S34.0 — the statistic that raised the question could not answer it
+
+§S33.1 reported `|declaredZ − ownCenterZ| > 3m` — Terminal T2 21.1%, Hospital T1 6.6%. That single
+distance conflates four situations that need four different rulings, and it silently assumed
+`center_z` is the datum a declared storey elevation is keyed to. Measured (`§S34_DATUM`), **no single
+datum wins the fleet**: `base_z` is the best predictor on Terminal (77.56% vs 77.25%) and HHS
+(99.40% vs 97.11%), `center_z` on Hospital (93.44%), Clinic (94.13%) and JKR (62.32%). A point-datum
+test is therefore the wrong instrument on its own terms — which is why the test below compares the
+element's whole vertical EXTENT against the storey's INTERVAL.
+
+## §S34.1 — MEASURED: storey elevations are floor lines, and most "disagreement" is the datum
+
+`§S34_GRID` — the declared elevation grid actually available per building:
+
+| building | declared storey elevations (m) | k | min gap |
+|---|---|---|---|
+| Terminal_meta | 3.05 · 10.07 · 13.84 · 17.82 · 22.63 · 25.13 | 6 | 2.50 |
+| Hospital_meta | 168.74 · 174.06 · 178.85 · 183.93 · 188.82 · 193.90 · 201.43 | 7 | 4.78 |
+| Clinic_meta | 0.80 · 2.00 · 6.61 | 3 | 1.20 |
+| HHS_Office_Federated | 1.69 · 5.36 · 8.75 | 3 | 3.38 |
+| JKR_extracted | 82.89 · 82.90 · 85.94 · 89.18 | 4 | **0.01** ⚠ |
+| LTU_AHouse_meta, Duplex_extracted | (none — no storey row carries `center_z`) | 0 | n/a |
+
+Only **6 of Terminal's 73** storey rows and **7 of Hospital's 63** carry a `center_z` at all; the
+rest are NULL. The grid is small, and it is a set of FLOOR LINES, not band centres.
+
+Consequence, measured (`§S34_SIGNED`): of the declared elements whose extent does not overlap
+`[Z_i, Z_i+1)`, **87–100% sit BELOW their own declared floor line**, not above — Terminal 91.2%,
+Hospital 93.2%, Clinic 95.5%, HHS 100.0%, JKR 86.7%. That is the hosted-at-level convention (a
+slab's top IS the level; a beam hangs under it), not a contradiction.
+
+`§S34_TOLSWEEP` sweeps a downward tolerance and finds a knee at ~3m on every building, after which
+it stops paying: Terminal 574→157→105 at 2/3/5m, Hospital 3,764→890→831, HHS 6→6→6, Clinic 50→7→6.
+**~3m is one storey height**, so the tolerance is taken from the data, not tuned: the LOCAL storey
+gap `Z_i − Z_i−1` (median gap for the lowest storey). Nothing to configure, and it adapts to a
+building whose storeys are 2.5m apart or 7.5m apart (§S29 generality).
+
+## §S34.2 — MEASURED: the genuine contradiction population is 1.63% of declared elements
+
+`§S34_GAPTOL` — declared elements whose own extent does not reach their declared storey band even
+after the local-gap allowance. **This, and only this, is what a tie-break decides:**
+
+| building | declared | genuine contradictions | % of declared | % of all scheduled |
+|---|---|---|---|---|
+| Terminal_meta | 11,233 | 140 | 1.25% | 0.289% |
+| Hospital_meta | 53,507 | 825 | 1.54% | 1.306% |
+| Clinic_meta | 5,727 | 48 | 0.84% | 0.299% |
+| HHS_Office_Federated | 4,674 | 6 | 0.13% | 0.088% |
+| JKR_extracted | 2,017 | 241 | 11.95% ⚠ | 2.682% |
+| LTU_AHouse_meta, Duplex_extracted | 0 | — | MOOT (100% T3, no declared value exists) |
+| **fleet** | **77,158** | **1,260** | **1.63%** | **0.47%** |
+
+**What they are** (`§S34_GAPTOL_CLASS`) — overwhelmingly distribution elements and proxies:
+Terminal `IfcPipeFitting` 34.3% + `IfcPipeSegment` 29.3% + `IfcBuildingElementProxy` 25.7%;
+Hospital `IfcPipeFitting` 52.7% + `IfcDistributionControlElement` 25.6%; HHS 100% `IfcFlowSegment`.
+Clinic is the one structural block: 38 `IfcFooting` (79.2%) declared on a storey their geometry is
+nowhere near. These are elements whose declared storey is a SYSTEM/design label, not a location.
+
+**Falsifiability, not assumed** (`§S34_CONTROL`): the declared labels are shuffled within each
+building and the whole measurement re-run. Real labels beat random ones by **3.9× (Hospital) to
+36.9× (Clinic)** on the interval metric and 15.9×–311.8× on the bucket metric. Declared data carries
+real information; it is not noise to be discarded. **JKR is the exception and it is reported as
+one**: ratio 1.6×, printed as `intervalMetricDiscriminates=NO — ⚠ void`, caused by its two storeys
+0.01m apart (82.89 / 82.90). On a grid that degenerate the geometric test cannot separate the
+levels at all and the declared NAME is the only thing that can — evidence FOR keeping declared, from
+the one building where the instrument admits it failed.
+
+## §S34.3 — ⚖ THE RULING
+
+**Declared wins where the element physically reaches the storey it claims; geometry wins where it
+does not. The band a declared storey owns is `[Z_i, Z_i+1)` extended DOWN by the local storey gap.**
+
+1. An element with a declared level (T1 or T2) whose extent `[base_z, top_z]` intersects that
+   extended band keeps the DECLARED value — 98.37% of declared elements fleetwide.
+2. An element whose extent misses it entirely is OVERRIDDEN to the band its own geometry occupies —
+   1,260 elements, 0.47% of the fleet, and the override is COUNTED and `§`-logged per building, per
+   class, never silent (§S32.4).
+3. An element with no declared level (T3 — 100% of LTU and Duplex, 64–78% of Clinic/JKR/Terminal)
+   is placed by geometry alone. No tie-break exists there; nothing to decide.
+
+**Why declared is the default and not geometry:** the shuffle control proves declared labels carry
+real information (3.9–36.9×), and JKR proves geometry alone cannot separate two levels 0.01m apart
+while the name can. **Why geometry wins the miss case:** a schedule is about when a crew can install
+a thing, and a crew cannot install a fitting at z=180 while working a level at z=168 — for the 1.63%
+where the label is a system label rather than a location, physical elevation is the operative fact.
+
+## §S34.4 — what this does NOT settle (named, not smoothed over)
+
+- **LTU is federated and a single global grid is wrong for it by construction** (§S29.4). Its storey
+  NAMES exist but come from several source models with different floor heights — measured:
+  `Plan 1` avg z 4.86 · `Storey 1` 4.45 · `VÅNING 1` 2.95, three different "level 1"s. It has no
+  declared `center_z` grid at all, so §S34.3 rule 3 applies and the tie-break never fires; the
+  federation problem is untouched by this ruling and stays open.
+- **JKR's grid is degenerate** (0.01m between two storeys) and its 11.95% override rate is an
+  artifact of that, not a data-quality finding about JKR. Do not headline it (§RESUME R.4).
+- **This ruling is about the VALUE of a level, not about how levels order work.** Sort-key and band
+  ordering remain where §S30/§S31.1 left them.
+- **Correction to §S33.1's prose:** the fleet total is **266,954** scheduled elements, not 276,954 —
+  §S33.1's own per-building table sums to 266,954, re-derived here with every per-building `n`
+  matching that table exactly (`§S34_TIERCHECK`). The T4=0 result is unaffected.
