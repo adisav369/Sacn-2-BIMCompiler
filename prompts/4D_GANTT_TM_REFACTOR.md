@@ -2327,6 +2327,35 @@ Any runtime derivation added under this ruling MUST:
   elements got a declared value, how many a derived one, how many a default.
 - **Print `durOk` / `judgeCanFail`-style instrument guards** on any number it produces (§STATUS).
 
+## §S32.6 — CLARIFICATION (user, 2026-08-19): "frozen" means the SHIPPED FILE, not the user's own copy
+
+Rule 2 was being read too widely, and it blocked the product goal for a day. The user's clarifying
+ruling, and it is now settled:
+
+> **Frozen means the shipped file. A user's own schedule edits save to their own local copy.
+> Writing `tasks`/`task_sequences`/`task_elements` there is the INTENDED OUTPUT, not tampering.**
+
+The distinction, stated so it is not re-litigated:
+
+- **SOURCE data** — geometry, elements, spatial structure, the extracted content of
+  `buildings/*.db` as shipped. **Frozen. Rule 2 applies in full.** This is what the ruling was
+  protecting: no rebuilds to make a measurement come out differently, no extractor edits.
+- **A planner's schedule** — tasks, sequences, task→element assignments, edits made in the Gantt.
+  **Not source data. It is the user's work, and it belongs in the user's own browser-local copy**
+  (the same layer that already holds imported models and `kernel_ops` edit history). The shipped
+  file is never modified.
+
+**Why this matters and is not a technicality:** the task tables are empty on every shipped building
+(§S26.13). A planner opening the 4D view today has literally nothing to edit — dependencies exist
+only in memory, are rebuilt from scratch on every page load, and vanish when the tab closes.
+**Filling those tables in the local copy IS the feature** the user has stated repeatedly: *"as long
+as the resulting JSON is easily editable by real experts… they easily fill in the gap or readjust or
+simply import their model."*
+
+**§S28.6 B5 is UNBLOCKED** on this basis. **§S32.5's first STOP-AND-REPORT is narrowed accordingly:**
+a task that would write to the SHIPPED `buildings/*.db` still stops; writing the user's local copy
+does not. The §S32.5 prohibition on editing extractors (rule 1) is unchanged and still unconditional.
+
 ## §S32.5 — STOP-AND-REPORT
 
 - **Any task that would write to `buildings/*.db` STOPS and reports** rather than writing, including
@@ -2916,7 +2945,7 @@ owner and no next action is a finding that will be re-discovered.
 
 | # | item | the decision only the user can make |
 |---|---|---|
-| **C1** | **Writing `schedules`/`tasks`/`task_sequences`/`task_elements`** | Under §S32.1 rule 2 the DBs are frozen. Is writing the IFC-native task tables **tampering**, or is it **the intended output surface**? Everything about making the schedule editable by a planner waits on this. |
+| **C1** | ✅ **DECIDED 2026-08-19 — see §S32.6. Writing the task tables to the USER'S LOCAL COPY is the intended output, not tampering.** The shipped file stays frozen. This item is CLOSED and no longer blocks. |
 | **C2** | **Whether `fix/s26-drop-carrier-ordering` ships** | Acyclic 7/7 and midair 0→0, but float regresses on Hospital (+722) and JKR (+227). A trade, not a free win. |
 | **C3** | **Lever 2 of the LFS fix** | Settings → Archives → uncheck "Include Git LFS objects in archives". Web-UI only, confirmed not API-exposed. |
 
