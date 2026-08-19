@@ -1885,4 +1885,211 @@ Stages S1-S2 need no scheduler at all — they are properties of the data.
 
 ## §S27.R — REVIEW VERDICT (to be filled by the vetting pass; empty = NOT VETTED = do not build)
 
-_(pending)_
+**VERDICT: NOT VETTED.** The evidence base (§S26) held up under independent re-derivation almost
+completely — but §S27 itself carries four blocking defects (R1-R4), each of which would force a
+Sonnet build agent to invent, and inventing is the one thing this project forbids. Written
+2026-08-19 by the vetting pass §S27.9 row 1 asked for. Method: per the WATCHDOG mandate, nothing
+was inherited — every number below was re-measured by this pass's own commands (logs in the session
+scratchpad; probe re-runs via `scripts/probe_s26_rank_monotone.js`, DB queries via python3/sqlite3
+read-only, IFC via grep). `viewer/` untouched; bim-ootb read-only throughout.
+
+### §S27.R.0 — VERIFIED, re-derived independently (the §S26 base is real)
+
+| claim | source | re-derived result |
+|---|---|---|
+| room-coverage table, all 7 rows | §S26.16 | **exact**: Hospital 63,415 el / 63 storeys / 142 spaces / 8,474 (13.4%) · Clinic 16,114/3/118/2,133 (13.2%) · Terminal 48,428/73/73/1,009 (2.1%) · JKR 9,410/4/79/107 (1.1%) · HHS 6,880/3/14/88 (1.3%) · LTU 125,698/38/0/0 (0%) · Duplex tables absent |
+| 63/73/38 pseudo-storeys | §S27.2.1 | **exact** (`spatial_structure WHERE type LIKE '%Storey%'`) |
+| §S26.5 backward-relation table | §S26.5 | **exact** on the 2 re-run buildings: `STRUCT=1 EMBED=0 HANG=0` → Duplex 51/850 (6.00%), bearing 30/702, host 9/104, opening 12/44; Clinic 834/11,325 (7.36%), bearing 261/8,189, host 484/2,737, opening 89/399; both `kahnLeftover=0 largestSCC=1` |
+| §S26.1 live vs corrected SCC | §S26.1 | **exact** on Duplex: live 672, `STRUCT=1 EMBED=0` 5, n=1,119; bearing-only acyclic (§S25_REVIEW.5) confirmed by the same run's `bearingKahnLeftover=0` |
+| task tables empty | §S26.13 | **confirmed with a correction — see R9**: Hospital/Clinic/JKR/HHS/Duplex all 0 rows; Terminal_meta AND LTU_AHouse_meta lack the tables entirely |
+| §S26.14 branch | §S26.14 | branch `fix/s26-drop-carrier-ordering` exists (local+origin, `c30623d` off `6a395ca`); diff is exactly the one-line `if (bestCls === 2) continue` twin change at `cpm_schedule.js:138` + `time_machine.js:4593`. Fleet before/after numbers NOT re-run (cost); the before column matches §S25_REVIEW.2's independently-printed CPM column 7/7 — but see R8 |
+| code citations | §S26.12/13, §S27.7/8 | `schedule_author.js:6` SOURCE-OF-TRUTH line ✓ · `schedule_gate.js:92-93` host-inference honesty note ✓ · `import_worker.js:315-317/:329` voids/fills readers ✓ · `witness_midair_zero.js:127` slices `_designatedSupport` by source text ✓ · `storey_walkable_raster` persisted in exactly 2 DBs (Hospital_meta, Terminal_meta) ✓ · Hospital's 8,474 containment rows all `RM_*` guids — compiled, not IFC-read ✓ |
+| Hospital 2.0.ifc programme | §S26.13 | 43 `IFCRELSEQUENCE` ✓ · 1 `IFCWORKSCHEDULE` ✓ · 1 `IFCWORKPLAN` ✓ · **121 IfcTask is WRONG — see R6** |
+
+A bonus reconciliation the file never states: the two different element counts it carries per
+building (§S26.1's n vs §S26.16's) are BOTH right — "scheduled n" = `elements_meta` −
+IfcOpeningElement/IfcSpace (`schedule_author.js:295`) − rows with no usable transform. Verified
+exactly: LTU 125,698−3,368−0=122,330 · Duplex 1,193−71−3=1,119 · Hospital 63,415−0−233=63,182.
+That definition is load-bearing for F1/S1 and appears nowhere in §S27 — see R3.
+
+### §S27.R.1 — findings, ordered by how much they change the build
+
+**R1 — BLOCKING, WRONG AS WRITTEN: F2 fails in the spec's own vocabulary — §S27.4 and §S27.5
+specify two contradictory orders.** Re-derived from `viewer/rates/sequence_rules.json` (58 classes):
+`seq` runs 1-11 with no gaps and each seq maps to one phase in the class map — so at SEQ grain F2
+holds (a total order exists). But the class map gives Architecture = seqs **{5,6,8}** with MEP
+Rough-in = **{7}** *interleaved between them*, and MEP Final = {9}; meanwhile §S27.5's template
+trains are PHASES (`"Architecture"` strictly before `"MEP"`), and `"MEP"` matches NO phase value in
+the rules (they are `MEP Rough-in`/`MEP Final`). Worse, `NAME_OVERRIDES[0]`
+(glazed_curtainwall_facade) assigns phase=Architecture at sequence=**7**, so seq 7 maps to two
+phases and phase(seq) is not even a function. §S27.4 (sort by seq → MEP Rough-in runs *inside* the
+Architecture band) and §S27.5 (offset trains → all Architecture before all MEP) are both normative
+and disagree. Per §S27.4's own rule this is report-and-STOP, delivered at vetting time instead of
+build time. **Required amendment: declare ONE normative order (seq is the defensible one — it is
+what the class map actually totals) and define the train↔seq mapping explicitly (which seqs
+constitute each train, and what train owns seq 7's two phases).** Until then S3, S4, S5 and S6 all
+stand on an undefined order.
+
+**R2 — BLOCKING, WRONG CITATION: the level ladder §S27.2.1 tells the builder to reuse does not
+exist as shipped code, and the nearest shipped thing is the construction §S26.6 C2 forbids.**
+`§S1_BAND_RANK` appears in shipped viewer code only as a changelog comment (`sw.js:57`). The
+"already used by two consumers" function is `deriveBandRanks` (`schedule_gate.js:329`; consumers
+:469 computeSchedule, :1154 deriveZones) — and it is a **storey-NAME ladder** (groups by
+`collapsePhase(e.storey)`, ranks names by median base_z), i.e. exactly the "rank came from storey
+labels, and labels are junk" defect C2 guards against. The per-element `floor(base_z/3)` dense rank
+§S26's numbers were measured with exists ONLY in `probe_s26_rank_monotone.js:15-17` (study-only,
+bim-compiler). Two other shipped 3m constructs are near-misses: `time_machine.js:4947`
+`Math.floor(cz/3)` (CENTER z, display banding) and `cpm_schedule.js:197` `floor(levelMeanZ/3)`
+(name-keyed levels). A build agent following §S27.2.1 literally would wire in the name ladder and
+believe it complied. **Required amendment: name the exact construction (per-element
+floor(base_z/3), dense-ranked, the probe's) and state that it must be ported, not found.**
+
+**R3 — BLOCKING, ENGINEGAP-CLASS: STOP CONDITION S1 (`unassigned=0`) is arithmetically near-unable
+to fail, and its only failable population is nonzero TODAY on 4/7 buildings.** The zone raster is
+the union of ALL element bbox footprints (§S27.2.2) rasterized as filled rects
+(`compile_rooms.py:333` `_rasterize` fills the whole bbox); an element's XY centre always lies
+inside its own bbox, so every element WITH a transform lands in an occupied cell — and merge-below-
+MIN_AREA still assigns. `unassigned` can therefore only count elements with no usable transform.
+Pre-computed today, no scheduler: **Hospital 233, Clinic 43, HHS 41, Duplex 3, Terminal/JKR/LTU 0.**
+So as written S1 either (a) includes them → guaranteed day-one STOP on 4/7 buildings, or (b)
+excludes them → the check cannot fail and F1 is a tautology, the precise §S25_REVIEW.1 trap §S27.7
+warns about — for a different stage than the one it actually bites. **Required amendment: define
+the S1 denominator (the R0 reconciliation above is the real one, in code at
+`schedule_author.js:295`) and state the no-geo policy explicitly** — these are §S25_REVIEW.8's
+`{s:0,e:0}` day-0 population and they must not be silently dropped OR silently day-0'd. The
+meaningful F1 content then lives in S2, not S1.
+
+**R4 — BLOCKING, UNDER-SPECIFIED: the computation that produces `TASK.start/end` is not in the
+spec.** §S27.4 gives order, §S27.5 durations and offsets, §S27.6 links — no stage says how times
+are computed from them: do sibling zones within a level run serial (Hospital's planner chains
+Zone A→B→C `.FINISH_START.` — §S26.13) or parallel (completely different makespan and float)? What
+lag does `"levels": 1` materialise as? How is a multi-resource cell's "crew count" chosen — seq 4
+holds IfcSlab (CONCRETE_GANG) and IfcPlate (STEEL_ERECTOR) in ONE cell, and `SEQUENCE_DEFAULT`
+(`rates.js:260`) is resource:**null**? Which calendar (`toWall`/`toProductive`, §S25.8)? S4's and
+S6's stop conditions both measure this unspecified computation, so neither is currently checkable.
+**Required amendment: one §S27.4b-style paragraph defining the forward pass over cells** — it can
+be ten lines, but it must exist before a builder writes it by taste.
+
+**R5 — CONDITION, WRONG NUMBER: STOP CONDITION S2's threshold misses its own motivating case and
+trips a different building on day one.** Pre-computed today (band=floor(base_z/3), seq from the
+class map, degenerate 1 zone/level): max cell share **LTU 19.2%** — the LTU `Plan 1` 36% worry
+§S27.3 cites dissolves at cell grain because trades subdivide it — while **Terminal = 40.3%**
+(19,521/48,428 in band 6 × seq 4: the Metal Deck IfcPlate population) already exceeds
+`CELL_MAX_FRAC=40%`. Others: Duplex 37.9%, Clinic 20.3%, JKR 13.7%, HHS 12.9%, Hospital 11.0%.
+As configured, S2 = a guaranteed Terminal STOP (→ Opus per §S27.9) unless zones genuinely split
+band 6, and near-vacuous everywhere else. The threshold was set without computing the distribution
+it gates. **Amend: either re-derive the threshold from the failure it is meant to catch, or
+pre-declare Terminal's stop as the expected first Opus question.** (Method caveat: computed from
+the JSON mirror's class map without NAME_OVERRIDES; the curtain-wall override matches zero Terminal
+elements by that rule's own documentation, so band6×seq4 stands.)
+
+**R6 — CONDITION, WRONG NUMBER: Hospital's programme is 75 IfcTask, not 121.** `grep -o
+"IFCTASK("` on `/home/red1/Downloads/Hospital 2.0.ifc` → **75**; `grep -c "IFCTASK"` → 121 = 75 +
+46 `IFCTASKTIME` — the 121 is a substring conflation, the exact GIGO shape the WATCHDOG names. The
+project's own importer agrees: `Downloads/Hospital 2.0_meta.db` holds tasks=**75**,
+task_sequences=43, schedules=1, task_elements=2,900 (the "2900 links" §S26.13 itself quotes).
+43 IfcRelSequence and 1 IfcWorkSchedule verify. Correct §S26.13's table, F4's text, and §S27.8's
+sanity line. The order-of-magnitude argument survives — today's occupied (band×seq) cell counts are
+Hospital 94, Terminal 74, LTU 68, Clinic 45, JKR 42, HHS 35, Duplex 27, same order as 75.
+
+**R7 — CONDITION, F4 IS UNVERIFIABLE AS WRITTEN, and its anchor contradicts the zone definition.**
+(a) No stage measures F4: §S27.8's "same order of magnitude" is not "expressible without loss", and
+round-tripping the planner's actual 75 tasks/43 links through the tables is PR #59's importer path,
+which §S27 never schedules as a check. (b) Zone = connected component of an occupancy union that
+INCLUDES floor slabs (§S27.2.2 "every scheduled element") — a continuous floor plate is one
+component by construction, so k=1 per level is the near-certain outcome, which §S27.2.4/§S27.10
+accept; but Hospital's planner cut THIS connected building into Zone A/B/C — a spatial split of one
+plate. The spec's own F4 anchor is evidence that connectivity cannot reproduce planner zones.
+**Amend: give F4 a real check (import the planner's programme into the same tables and diff), and
+state in §S27.10 that connectivity-zoning cannot produce Hospital's A/B/C — only disjoint plates
+ever split.**
+
+**R8 — CONDITION, INSTRUMENT MISMATCH in STOP CONDITION S6.** S6 pins the §S26.14 "before" column
+(probe-measured, e.g. Duplex float **247**) but mandates "the existing, unchanged judges" as the
+instrument. Run today on live `main` (`ONLY=Duplex node viewer/tests/witness_midair_zero.js`): the
+judge-side measure is `auditFloating 0 → 237`, and W-MZ-8 currently **FAILS** (locked 289, got 237)
+— the §RESULTS-addendum Duplex regression, still open. Two instruments, 247 vs 237, ten apart on
+the smallest building. "No worse than live" is unfalsifiable until the baseline names its
+instrument, shift-hours, and DB set — and until the addendum's two open items (Duplex/HHS TRADE
+regression; the #1427/#1428 Hospital/Terminal meta elevation-patch integrity check, which sits
+directly under §S27.2's banding input) are resolved or explicitly carried as known-dirty baseline.
+S6 is otherwise the one genuinely external check in the spec — this is fixable with one table.
+
+**R9 — CONDITION, WRONG: §S27.8 "Terminal_meta.db lacks these tables entirely while the other six
+have them empty."** Re-derived via sqlite_master: **LTU_AHouse_meta.db also lacks all four tables**
+(and `qto_cache`/`storey_walkable_raster`). Five empty + TWO absent. The "which extraction vintage
+is current" question §S27.8 defers is therefore bigger than stated and blocks S7 on two buildings,
+not one.
+
+**R10 — NOTE, WRONG SOURCE CITED: §S27.3's `tradeSeq` source.** `viewer/rates/sequence_rules.json`
+is a documented MIRROR — its own `meta.note`, `rates.js:109` and `sw.js:186` all state viewer.html
+never calls `loadSequenceRules()`; the executed tables are `rates.js`'s hardcoded
+`SEQUENCE_RULES`/`SEQUENCE_DEFAULT`/`SEQUENCE_NAME_OVERRIDES`. The mirror has drifted before
+(worth 37d of Hospital programme, per its own header). Cite `rates.js` as the source, or declare
+the JSON authoritative for the new engine and say the divergence risk out loud.
+
+**R11 — NOTE, §S27.10 honesty gaps (Q: is the not-solved list complete? No — five omissions):**
+1. the **#1427/#1428 elevation-patch integrity question** (§RESULTS addendum, §S25_REVIEW.8) —
+   open, and §S27.2's bands are computed from exactly those possibly-patched base_z values;
+2. the **Duplex/HHS TRADE-invariant regression** (addendum: "real/unexplained") — open, and it
+   lives inside S6's baseline (R8);
+3. the **no-geo population** (R3) and its consumer contract (§S25_REVIEW.8's `{s:0,e:0}` day-0
+   poison) — never mentioned;
+4. the **template-blind midair judge**: §S26.4b names "a hard-coded assumption about how buildings
+   go up" a latent defect, §S27.5 ships steel-frame as template two, §S27.7 runs today's judge
+   unchanged — a steel-template run will fail S6's judge on legitimate schedules; only the in-situ
+   default is protected, and §S27.10's "nothing about steel-frame is verified" understates this;
+5. **manual links assume an editing surface that does not exist** — §S27.6 expects a person to add
+   tens of links, §S25_REVIEW.8's "Gantt-drag is still not a design" is the same missing UX,
+   unlisted. (Minor: §S26.7's LTU 32×-density perf flag also applies to S6's `auditFloating` run.)
+
+### §S27.R.2 — the stop-condition audit §S27 asked for (Q3, answered directly)
+
+No stage's condition depends on a LATER stage — that §S25.11 defect is genuinely absent (S1's
+coverage report needs the `zone(e)` lookup that §S27.3 nominally owns, but §S27.9 puts the report
+in S1's deliverable, so it is a blurred boundary, not a forward dependency). The cannot-fail trap
+is present twice: **S1** (R3) and **S5**, whose `manual=0` on a first run is true by definition
+(nobody has added manual links) and whose "if the template alone cannot produce a schedule" has no
+defined failure mode — a grid of two sorted lists ALWAYS produces a schedule. S2 can fail (R5 —
+and will, on Terminal). S4 is checkable only after R4 is fixed. S6 is real and external (R8
+caveat). S7 has no stop condition at all — F4's check should become it (R7).
+
+### §S27.R.3 — Room Path separability (Q4, answered directly)
+
+§S27.2's "take the rasterizer verbatim, change only the consumer" is **honest at the function
+boundary but understates what changes**. Genuinely separable and worth taking verbatim:
+`_rasterize` (`compile_rooms.py:333-346` — pure: rects+grid+origin → occupancy bytearray),
+`_dilate` (:348-362), the `RASTER_EPS` quantizers and extent formulas (`flood_rooms`:561-562; JS
+twin `build/room_walker.js:249-272`, constants :22-40). NOT reusable, must be new code: (a) the
+INPUT — `storey_walls` (:256-283) is hardwired to WALL_LIKE classes + `discipline='ARC'` +
+§STOREY-Z name-anchor assignment, while §S27.2.2 needs all scheduled elements keyed by band rank
+(so the producer changes too, not "only the consumer"); (b) connected components over OCCUPIED
+cells — the room code labels components only of FREE space (`flood_rooms` pocket loop,
+`_flood_exterior`:716); a CC pass over the blocked set exists nowhere in it; (c) a decision the
+spec does not make: does the ZONE raster apply `SEAL=2` dilation (0.4m bridging — fuses anything
+within 0.8m into one zone) or the raw raster? It is outcome-determining for zone count and is
+unspecified. Constants verified as claimed: RES=0.20 (:19), MIN_AREA=4.0 (:20), SEAL=2 (:34),
+RASTER_EPS=1e-6 (:46), §STAIR-EXCLUDE (:51-52), §SUSPECT thresholds (:709, :870). The three
+walker copies have drifted in surface area (build/room_walker.js 1,347 lines vs
+viewer/lib/room_walker.js 1,474 — the viewer copy adds camera-room-index functions); the
+rasterizer core matches, but the spec should name WHICH copy is canonical for the port.
+
+### §S27.R.4 — what this review did NOT check
+
+§S26.14's after-column fleet numbers (branch verified, diff verified, numbers not re-run);
+§S26.3's hang-redundancy percentages and §S26.2's 4,706 all-below count (the 702 load-bearing
+denominator DID reproduce inside the §S26.5 re-run); §S26.5 on the 5 buildings not re-run
+(Terminal/Hospital/LTU/JKR/HHS — the two re-run were exact, and §S26.1's three-probe agreement
+covers the SCC side); whether `rates.js` and the JSON mirror are in sync TODAY (R10 is about which
+to cite, not a measured drift); and the §S26.4 construction-practice claims, which remain
+planner-unverified exactly as §S26.9 says.
+
+### §S27.R.5 — what must change before a build agent is dispatched
+
+R1 (one order + train↔seq map), R2 (name the real band-rank construction), R3 (S1 denominator +
+no-geo policy), R4 (define the forward pass) are spec amendments — none is large, all four are
+prose, and every one of them is a place a Sonnet builder would otherwise invent. R5-R9 are
+corrections/decisions that can land in the same editing pass. **If only one thing is fixed first,
+fix R1: every stage from S3 on stands on an order the spec currently defines twice,
+contradictorily.** Re-vet is cheap after amendment — this review's commands are all cited and
+re-runnable.
