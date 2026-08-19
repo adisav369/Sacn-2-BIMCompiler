@@ -2531,3 +2531,100 @@ explicit). **If only one thing is fixed first, fix R1: Lane A is the cheap falsi
 this spec's whole shape argues for, and as written it would be run with a key nobody measured,
 scored by an instrument that is currently red, against a baseline quoted from a different
 instrument.**
+
+---
+
+# §S30 — THE MEASUREMENT BOTH VETTING PASSES DEMANDED (2026-08-19)
+
+`scripts/probe_s30_sortkey.js`. STUDY ONLY, `viewer/` unchanged. §S27.R and §S28.R independently
+found the same hole: **Lane A's literal sort key had never been run.** `probe_s26_rank_monotone.js`
+measures `(bandRank, phaseRank, depth, bz, guid)` WITH host/carrier band inheritance — it contains
+the phase order §S28.1 outlawed plus two components Lane A drops. Every Lane A number was inherited
+from an instrument that does not measure Lane A. This runs the literal key.
+
+**Method:** order by the key; clock = `start(e) = max(end of every already-placed real support,
+crew slot)` — the pre-`0fe8eb2` architecture with §S26.6's C1 guard (GLOBAL scan, a support that
+sorts later is COUNTED not silently skipped); score with the SHIPPED judge called the working way,
+`ScheduleGate.auditFloating(keep, schedMap)` on ORIGINAL elements. Baseline = live CPM, same run.
+
+**Instrument guards, because this session produced two false zeros before getting it right:**
+`durOk=true` and `judgeCanFail=true` printed on every line. The first false zero passed remapped
+objects with `bz`/`tz` where the judge reads `base_z`/`top_z` — every predicate saw `undefined`,
+`auditFloating(keep,m)=247` vs `auditFloating(items,m)=0` on the SAME schedule. The second omitted
+`s`/`e`, so every duration was 0 and nothing could start before a zero-length thing finished. Both
+returned a clean 100% correct on 7/7. **A green number here is worthless until the instrument has
+been shown to go red.**
+
+## §S30.1 — RESULT: `KEY=(bandRank, seq, base_z, guid)` — the literal §S28.7 key
+
+| building | n | float CPM → SORT | | makespan | backward-support elements |
+|---|---|---|---|---|---|
+| LTU_AHouse | 122,330 | 12,712 → **2,752** | −78% | 749d → 844d | 59.5% |
+| Terminal | 48,428 | 4,756 → **1,722** | −64% | 85d → 100d | 21.0% |
+| Hospital | 63,182 | 7,753 → **3,136** | −60% | 264d → 352d | 61.9% |
+| Clinic | 16,071 | 1,102 → **552** | −50% | 96d → 108d | 52.8% |
+| JKR | 8,985 | 3,183 → **1,925** | −40% | 17d → 29d | 65.5% |
+| Duplex | 1,119 | 247 → 257 | +10 ⚠ | 8d → 8d | 58.4% |
+| HHS_Office | 6,839 | 1,531 → **2,103** | +572 ⚠ | 29d → 37d | 48.5% |
+
+**`floatNoWorseThanCPM = 5/7.`** Not the clean pass Lane A assumed, not the failure either.
+
+## §S30.2 — `KEY=(bandRank, base_z, seq)` is WORSE, and that overturns the stated intuition
+
+| building | float CPM → SORT | |
+|---|---|---|
+| Terminal | 4,756 → 3,141 | PASS |
+| JKR | 3,183 → 2,218 | PASS |
+| Hospital | 7,753 → 8,147 | +394 |
+| Duplex | 247 → 368 | +121 |
+| HHS_Office | 1,531 → 2,337 | +806 |
+| Clinic | 1,102 → 3,863 | **+2,761** |
+| LTU_AHouse | 12,712 → 23,085 | **+10,373** |
+
+**`floatNoWorseThanCPM = 2/7.`** Ordering by elevation *before* trade — the physics-respecting key,
+the one this file's own reasoning kept reaching for — is **substantially worse** than trade-first.
+Clinic nearly quadruples. That is a measured refutation of an assumption stated repeatedly in
+§S26–§S29, including by this author, and it was never tested until now.
+
+## §S30.3 — the finding that matters more than either verdict
+
+**Backward supports are not a residual. They are the norm: 21.0–65.5% of elements have at least
+one support that sorts after them.** Raw counts run 2,015 (Duplex) to 1,146,641 (LTU).
+
+§S26.6's C1 guard says such a support is "reported and counted, never silently skipped" — and it
+is. But §S28.7 presented C1 as the thing that makes a sort safe. **It does not make it safe; it
+makes the damage visible.** A support that sorts later has no finish time to `max()` against, so
+the dependent starts early regardless. §S28.R said exactly this ("the C1 guard fixes support
+*visibility*, not the *clock*") and it is now measured: correct, and larger than anyone assumed.
+
+**⚠ Confound, named rather than resolved: the float gains may be partly bought with delay.**
+Makespan inflates on every building — Hospital +34%, JKR +77%, LTU +13%. Crew queueing pushes
+starts later, which incidentally covers gates the sort failed to enforce. The correlation is NOT
+clean (Duplex makespan flat yet float worse; HHS makespan +29% and float worse), so delay is not
+the whole story — but no run here separates "ordered correctly" from "delayed enough to look
+ordered." **Until that separation is measured, §S30.1's 5/7 must not be quoted as ordering quality.**
+
+## §S30.4 — what this settles, and what it does not
+
+**Settles:**
+- The literal Lane A key beats live CPM on float on 5/7 buildings, by 40–78% where it wins. The
+  sort-based direction is NOT dead — the outcome §S28.R correctly refused to assume either way.
+- Trade-first beats elevation-first, decisively (5/7 vs 2/7). The opposite was assumed throughout.
+- A pure sort does not eliminate backward supports. At 21–65% it is the dominant behaviour, not an
+  edge case, so any design claiming a sort makes physics safe is wrong as stated.
+
+**Does not settle:**
+- Whether the float win is ordering or queueing (§S30.3 confound). **This is the next measurement
+  and it is cheap:** re-run with crew caps lifted, so delay cannot mask a missing gate.
+- Why HHS_Office and Duplex regress while the other five improve. Both are small; not diagnosed.
+- Anything about phase-gap, zones, templates, or the IFC-native tables. Untouched here.
+
+## §S30.5 — STOP-AND-REPORT
+
+- **Do NOT start Lane A on this result.** 5/7 with an unseparated confound and 21–65% backward
+  supports is a reason to run one more probe, not to change `viewer/`.
+- **§S28.7's C1 claim must be restated** before any build: C1 makes backward supports *visible*, it
+  does not make a sort *safe*. The current wording implies float parity follows from C1. It does not.
+- **Any future number from this lane prints `durOk` and `judgeCanFail`.** Two false zeros in one
+  session, plus §S25_REVIEW's `engineGap` tautology three weeks earlier, is three instances of the
+  same class. It is the most reliable failure mode in this file.
