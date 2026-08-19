@@ -135,7 +135,9 @@ picks this up next should resolve those before treating today's merges as the en
 # §STATUS — read this first (2026-08-19, end of a full consolidation)
 
 > **Resuming in a new session? Read `# 🔄 §RESUME` at the END of this file first — it names the
-> two agents that were in flight, the standing rulings, and the required order of work.**
+> standing rulings and the required order of work. Both agents it lists have since REPORTED (§S33);
+> §S34 then decided the tie-break §S33.1 left open and §S35 built the derivation. Next open step is
+> §RESUME R.5 step 3 — a probe carrying the REAL engine gates — then ONE vetted spec.**
 
 **Nothing has shipped. `viewer/` is unchanged.**
 
@@ -154,6 +156,10 @@ called for.
 | §S29 | generality audit — the design is fitted to 7 multi-storey new-build buildings | **HOLDS** |
 | §S30 | the literal sort key, measured | **HOLDS** — instrument-guarded; qualified by §S31.1 |
 | §S31 | the extraction chain — what is lost and where | **HOLDS** |
+| §S32 | USER RULING — extractor correct · DBs frozen · derive at runtime | **STANDING** — unconditional |
+| §S33 | both in-flight agents reported: coverage gate PASSED, §S25_REVIEW.6 claim DIED | **HOLDS** |
+| §S34 | declared-vs-geometry tie-break — measured, then RULED (2026-08-19) | **HOLDS** — instrument-guarded, shuffle control 3.9–36.9× |
+| §S35 | the runtime level derivation, BUILT — `build/level_deriver.js` + `scripts/witness_level_derive.js` | **BUILT, NOT WIRED** — 100% coverage 7/7, T4=0, 14/14 hand-computed fixtures |
 | archive | §S23 · §S24 · §S24_TRIAGE · §S25 · §S25_PROTO | superseded, moved out |
 
 **Two designs written, two rejected, and the measurements that followed refuted premises BOTH of
