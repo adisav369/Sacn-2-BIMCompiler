@@ -134,7 +134,13 @@ picks this up next should resolve those before treating today's merges as the en
 
 # §STATUS — read this first (2026-08-19, end of a full consolidation)
 
-**Nothing has shipped. `viewer/` is unchanged. No build agent has been dispatched.**
+**Nothing has shipped. `viewer/` is unchanged.**
+
+**⚖ STANDING RULING — §S32 (user, 2026-08-19), read before acting on ANY section below:** the
+extractor is CORRECT and must not be changed; `buildings/*.db` are FROZEN and must not be rebuilt or
+written to; every derived fact is computed at RUNTIME, ONCE, on load — the room-injection pattern.
+§S32.2 lists what this CANCELS in §S27, §S28 and §S31, including the Hospital rebuild those sections
+called for.
 
 | § | what it is | standing |
 |---|---|---|
@@ -2096,34 +2102,47 @@ Resolution keeps both: master's §S21 (`spatial_structure.elevation` + real `Ifc
 via `.Decomposes`) and this branch's §KUL001 (`elements_meta.building` + `project_metadata`).
 3,113/3,118 → 3,151 lines, LF throughout, `py_compile` passes.
 
-## §S31.3 — THE ONE-LINE DEFECT: the spatial hierarchy is used, then flattened to a label
+## §S31.3 — ⛔ RETRACTED (2026-08-19, same day, by measurement) — the storey-Name claim was WRONG
 
-Outside review asked whether the model uses the declared spatial decomposition or reconstructs it
-from geometry. **It uses it** — `extractIFCtoDB.py:493-506`:
+**This section originally asserted that `extractIFCtoDB.py:499` `return container.Name` was a
+one-line defect producing Clinic's three-elevation `"Roof - Main"`, Terminal's 73 storeys, and the
+whole label-parsing problem. That is wrong on two counts and is retracted in full.** It is left here
+rather than deleted because it was committed to this file and acted on in conversation.
 
-```python
-def get_storey_for_element(element):
-    for rel in element.ContainedInStructure:          # IfcRelContainedInSpatialStructure
-        container = rel.RelatingStructure
-        if container.is_a("IfcBuildingStorey"):
-            return container.Name                     # ← THE DEFECT
-        if hasattr(container, "Decomposes"):          # IfcRelAggregates fallback
-            for dec in container.Decomposes:
-                if dec.RelatingObject.is_a("IfcBuildingStorey"):
-                    return dec.RelatingObject.Name    # ← same
-```
+**Wrong file.** Every shipped DB is BROWSER-built — they carry `component_geometries` (the browser
+importer's table), not `base_geometries` (the Python CLI's). `extractIFCtoDB.py` produced none of
+them. The equivalent browser path is `import_worker.js:284-300`, which is also name-keyed
+(`storeyMap[expressID] = normalizeStorey(s.Name)`).
 
-Both relations are walked correctly, including the aggregation fallback. **Then the declared
-container's identity and elevation are discarded and only its display Name is kept.**
-`elements_meta` carries exactly one column for this: `storey TEXT`.
+**Wrong phenomenon.** `Clinic.ifc` declares **exactly one** `Roof - Main` storey:
+`TOF Footing · Second Floor · Roof - Mech · Roof - Main · Level 2 · Level 1 · First Floor · Unknown`.
+No suffixed siblings, nothing ambiguous, nothing collapsed. The "same name at three elevations"
+observation came from the §S25 PROTOTYPE's own level ladder (`Level 2=Roof - Main`,
+`Roof - Main=Second Floor`, `Roof - Main`), which merges bodies by median datum — **an artifact of
+the probe's clustering, not of extraction.** §S26.6 C2 inherited the same mistake and is qualified
+by this retraction.
 
-**That single `return` produces every downstream symptom this file has chased:**
-- Clinic's `"Roof - Main"` at three elevations — three distinct `IfcBuildingStorey` entities, same
-  `Name`, collapsed into one string.
-- Terminal's 73 / Hospital's 63 / LTU's 38 "storeys" — federated files each declaring their own.
-- `collapsePhase(el.storey)` regex-parsing name strings — a string is all that survived.
-- §S26.6 C2's "storey labels are junk" — they are not junk, they are NAMES being asked to do an
-  IDENTITY's job. **That reframing is the correction; C2's remedy (3m z-banding) treats the symptom.**
+**Also mislabelled:** `import_worker.js:273-282` `§STOREY_NORMALIZE` folds `"Level 2 Ceiling"` ->
+`"Level 2"` DELIBERATELY, because Revit exports reference planes as `IfcBuildingStorey`. That is
+intentional and correct, and the retracted claim would have flagged it as the bug.
+
+**What IS true, measured on `Clinic_meta.db`** — per-storey element z spread:
+
+| storey | n | z span |
+|---|---|---|
+| **Unknown** | **5,160** | **13.9m** |
+| Second Floor | 1,708 | 10.1m |
+| Level 2 | 1,410 | 9.9m |
+| First Floor | 2,343 | 9.0m |
+| TOF Footing | 1,676 | 4.2m |
+| Roof - Main | 45 | 7.9m |
+
+**The real finding is the top row: 5,160 of 16,114 elements (32%) resolve to storey `Unknown`** —
+a containment gap, far larger than any naming issue. The wide spans on the others are mostly tall
+elements legitimately reaching the level above and are NOT a defect.
+
+**Name-keyed storey mapping remains a LATENT weakness in both importers. It is not the cause of
+anything observed on this fleet.** Do not act on it.
 
 ## §S31.4 — MEASURED: how much of the elevation is already recoverable TODAY
 
@@ -2179,3 +2198,78 @@ the newest DBs and nothing on the oldest.
 - **Do NOT rebuild the fleet DBs and re-measure §S26–§S30 in one step.** Rebuild ONE building
   (Hospital — highest join coverage, newest schema), confirm `rel_fills_host` / `elevation` / storey
   guids populate, and re-measure that building alone before touching the rest.
+
+---
+
+# §S32 — USER RULING: the extractor is correct, the DBs are frozen, metadata is derived at RUNTIME (2026-08-19)
+
+**USER DIRECTIVE, verbatim:** *"i maintained that the script is correct, and no further tamper on
+the DBs. All subsequent metadata must be derived runtime 1 time ie rooms injection."*
+
+**This is a standing architectural constraint, not a preference.** It settles several threads this
+file left open and it CANCELS work that earlier sections proposed. Read it before acting on any
+earlier recommendation.
+
+## §S32.1 — the three rules
+
+1. **`extractIFCtoDB.py` (and the browser importer) are CORRECT. Do not change them.** The extractor
+   already preserves what matters — §S31.2 verified `rel_fills_host`, `port_elements`,
+   `port_connections`, `rel_adjacency`, `rel_anchored`, `rel_aggregates`,
+   `rel_contained_in_space`. §S31.3's proposed "return the storey GUID" change is **retracted along
+   with the claim that motivated it.**
+2. **The shipped `buildings/*.db` are FROZEN. Do not rebuild, migrate, or re-import them** to make a
+   measurement come out differently. Their contents are the input, whatever state they are in.
+3. **Every derived fact is computed at RUNTIME, ONCE, on load** — the room-injection pattern that
+   already exists (`scripts/compile_rooms.py` / `build/room_walker.js` /
+   `viewer/lib/room_walker.js`): read the frozen DB, compute, hold in memory for the session.
+
+## §S32.2 — what this CANCELS
+
+| earlier item | status under §S32 |
+|---|---|
+| §S31.5 item 3 — "return the storey GUID alongside the Name" | ⛔ **CANCELLED** — extractor is correct, and §S31.3 is retracted anyway |
+| §S31.5 item 2 — "rebuild with the merged extractor" | ⛔ **CANCELLED** — DBs are frozen |
+| §S31.6 — "rebuild ONE building (Hospital) and re-measure" | ⛔ **CANCELLED** — same reason |
+| §S27.2 / §S28.6 B2 — zone compiler as a build stage writing to the DB | ⛔ **CANCELLED as written** — becomes a runtime derivation, writes nothing |
+| §S28.6 B5 — write `schedules`/`tasks`/`task_sequences` into the DB | ⚠ **BLOCKED pending a ruling** — this is a DB write. §S32 forbids tampering; whether the IFC-native tables are "tamper" or "the intended output surface" is a USER decision, not one to assume |
+| §S26.12 / §S31.2's "stale artifacts" framing | ⚠ **REFRAMED** — the DBs are not "stale pending rebuild", they are the FROZEN INPUT. Anything missing from them is derived at runtime or not used |
+
+## §S32.3 — what this makes CLEANER
+
+The ruling removes the hardest unsolved problem in §S27/§S28 rather than solving it.
+
+- **No migration, no schema change, no re-extraction, no version skew.** The 5 empty / 2 absent task
+  tables, LTU's missing `center_z`, Duplex's missing `spatial_structure` — none of these need fixing
+  upstream. The runtime layer computes what it needs from geometry that IS present.
+- **One derivation pass, one place.** Storey elevation, band rank, zones, and the 32% `Unknown`
+  containment gap (§S31.3) all become outputs of the same runtime pass, not four separate lookups
+  with four different coverage rates (§S31.4's 21-85% joinability stops mattering — the pass derives
+  it uniformly for 100%).
+- **§S29's generality problem shrinks.** A runtime derivation can degrade per building without a
+  schema migration: no `spatial_structure`? derive from element z. No rooms? one zone per band.
+  The variable-depth LBS §S29.3 asked for becomes a runtime choice, not a stored structure.
+- **It matches what already works.** Room injection is the proven precedent and it is already
+  hardened (`§RASTER-EPS` translation invariance, `§STAIR-EXCLUDE`, `§SUSPECT-LARGE`).
+
+## §S32.4 — the derivation contract (what a runtime pass must satisfy)
+
+Any runtime derivation added under this ruling MUST:
+
+- **Read only.** No `INSERT`/`UPDATE`/`CREATE` against `buildings/*.db`. Results live in memory for
+  the session.
+- **Run once per load**, not per query — the room-injection cadence.
+- **Be total.** Every scheduled element gets a value, including the 32% with storey `Unknown` and
+  the elements in buildings with no `spatial_structure` at all. A derivation that covers a subset
+  and silently defaults the rest is the §S29.1 silent-failure class and is not acceptable.
+- **Report its own coverage and its fallbacks**, per building, with `§`-tagged log lines — how many
+  elements got a declared value, how many a derived one, how many a default.
+- **Print `durOk` / `judgeCanFail`-style instrument guards** on any number it produces (§STATUS).
+
+## §S32.5 — STOP-AND-REPORT
+
+- **Any task that would write to `buildings/*.db` STOPS and reports** rather than writing, including
+  §S28.6 B5's task-table write. That is a user decision under §S32.1 rule 2.
+- **Any task that would edit `extractIFCtoDB.py` or `import_worker.js`'s extraction logic STOPS.**
+  Rule 1 is unconditional.
+- **A runtime derivation whose coverage is below 100% STOPS and reports the gap**, rather than
+  defaulting the remainder (§S32.4).
