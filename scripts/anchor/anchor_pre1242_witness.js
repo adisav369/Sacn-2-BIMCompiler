@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// §S42 ANCHOR PROBE — copy into bim-ootb/viewer/tests/ and run from there (its requires are
+// relative to that directory). ANCHOR_REF env var overrides the default 0fe8eb2^ (#1242's parent).
 // witness_midair_zero.js — §MIDAIR_REPAIR (2026-08-12, bim-compiler
 // prompts/4D_SCHEDULE_PERFECTION.md — the acceptance bar in the user's own words:
 // "all i want is not to see a single item hanging in midair that is all").
@@ -89,7 +91,24 @@ const CpmSchedule = require(path.join(__dirname, '..', 'cpm_schedule.js'));
 // element build, the DB files, the rates and the JUDGE (today's ScheduleGate.auditFloating) are
 // all held constant, which is the whole point of the comparison.
 const __savedSG = global.ScheduleGate;
-const SG_PRE1242 = require('/tmp/claude-1000/-home-red1-bim-compiler/590f1ec4-8b25-4978-9134-8c9adf8a9531/scratchpad/schedule_gate_pre1242.js');
+// §S42 fix (2026-08-19): the pre-#1242 module is EXTRACTED FROM GIT at run time, not read from a
+// session scratchpad. The first version required a /tmp path belonging to the session that wrote
+// it — one /tmp clear and §S42 would have been unreproducible. This reads it out of the repo the
+// probe is already running inside, so the anchor stays reproducible from the commit alone.
+const __os = require('os');
+const __cp = require('child_process');
+const __ANCHOR_REF = process.env.ANCHOR_REF || '0fe8eb2^';
+const __anchorPath = path.join(__os.tmpdir(), 'schedule_gate_pre1242_' +
+  __cp.execFileSync('git', ['rev-parse', '--short', __ANCHOR_REF],
+    { cwd: path.join(__dirname, '..', '..'), encoding: 'utf8' }).trim() + '.js');
+if (!fs.existsSync(__anchorPath)) {
+  fs.writeFileSync(__anchorPath, __cp.execFileSync('git',
+    ['show', __ANCHOR_REF + ':viewer/schedule_gate.js'],
+    { cwd: path.join(__dirname, '..', '..'), maxBuffer: 64 * 1024 * 1024 }));
+}
+console.log('§S42_ANCHOR_SRC ref=' + __ANCHOR_REF + ' extractedTo=' + __anchorPath +
+  ' bytes=' + fs.statSync(__anchorPath).size + ' — extracted from git, not from a scratchpad');
+const SG_PRE1242 = require(__anchorPath);
 global.ScheduleGate = __savedSG;
 const tmSrc = fs.readFileSync(path.join(__dirname, '..', 'time_machine.js'), 'utf8');
 

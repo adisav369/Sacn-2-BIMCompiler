@@ -74,8 +74,12 @@ ground truth, not by building the next layer on an unconfirmed one.
 Two symptoms. Everything else in this file is scaffolding around them.
 
 **1. Hanging ARCH/MEP** — elements appearing before what holds them up is built.
-Live, unchanged all of 2026-08-19: Terminal 4,756 · Hospital 7,753 · LTU 12,712 · JKR 3,183 ·
-HHS 1,531 · Clinic 1,102 · Duplex 247. (Strict midair — start before support *starts* — is already
+Terminal 4,756 · Hospital 7,753 · LTU 12,712 · JKR 3,183 · HHS 1,531 · Clinic 1,102 · Duplex 247
+— ⚠ **these are PRE-#1438 figures** (measured before the witness stopped reading deprecated
+`_extracted.db` files, §S39.2). On the corrected ruler, `main` at `b81f646` reads Terminal 4,256 ·
+Hospital 8,210 · LTU 12,686 · JKR 3,385 · HHS 1,491 · Clinic 1,205 · Duplex 237, fleet 31,470; and
+the orphaned §S26.2 fix (`3bf771e`, PR #1440) takes that to 14,166, −55%. **State the commit next
+to any number in this lane.** (Strict midair — start before support *starts* — is already
 0; it is the start-before-support-*finishes* overlap that reads as floating on screen.)
 
 **2. Stacked Gantt bars** — "one pile, full project length".
@@ -2443,7 +2447,16 @@ reported here.
 
 ## §S42.2 — the three engines, side by side
 
-| building | pre-#1242 float / days | today PRE-CPM float / days | today POST-CPM (#1439) float / days |
+**⚠ WHICH COMMIT EACH COLUMN IS (corrected 2026-08-19 after §S40).** The right-hand column is
+`3bf771e` — the §S26.2 support-pool fix — which was **squash-orphaned and is NOT on `main`**
+(re-landed as PR #1440). Live `main` at `b81f646` still scores the pre-#1439 numbers: Terminal
+4,256 · Hospital 8,210 · Duplex 237 · HHS 1,491 · Clinic 1,205 · LTU 12,686 · JKR 3,385.
+**§S42's conclusions are unaffected** — they rest on the pre-#1242 vs PRE-CPM comparison, and the
+`3bf771e` column only sharpens how much of the float the CPM layer owns. Every number in this lane
+now names its commit; there were three live scoreboards in this file at once (§OBJECTIVE's
+pre-#1438 figures, main's post-#1438 figures, and this branch's).
+
+| building | pre-#1242 `0fe8eb2^` float / days | PRE-CPM, `b81f646` main float / days | POST-CPM, **`3bf771e` orphan branch** float / days |
 |---|---|---|---|
 | Terminal | **42** / 123.6 | **5** / 373.2 | 2,151 / 164.7 |
 | Hospital | **3** / 331.8 | **0** / 1026.2 | 3,960 / 543.5 |
@@ -2469,7 +2482,7 @@ numbers, and it sits in `_displayTimeline`'s CPM branch (#1398), not in #1242.
 `census()`, this witness's own W-MZ-2 judge — **elements appearing before the first thing they
 touch**, the visible "hanging in mid-air" symptom:
 
-| building | pre-#1242 | today (#1439) |
+| building | pre-#1242 `0fe8eb2^` | POST-CPM, `3bf771e` orphan branch |
 |---|---|---|
 | Terminal | **900** | **0** |
 | Hospital | **709** | **0** |
