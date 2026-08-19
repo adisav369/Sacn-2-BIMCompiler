@@ -226,12 +226,36 @@ async function main() {
   }
 
   // ── Storeys ──
+  // §S18 (2026-08-17, prompts/4D_GANTT_TM_REFACTOR.md): storeyGuid/storeyElevation added alongside
+  // the existing name map — both are plain IfcBuildingStorey attributes (GlobalId, Elevation),
+  // EXTRACTED not inferred. Elevation was never read anywhere in this extractor before; without it
+  // spatial_structure had no real per-storey height signal at all (only elements_meta.storey names).
   const storeyMap = {};
+  const storeyGuid = {};
+  const storeyElevation = {};
   const storeyIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCBUILDINGSTOREY);
   for (let i = 0; i < storeyIds.size(); i++) {
     try {
       const s = ifcApi.GetLine(modelID, storeyIds.get(i));
       storeyMap[storeyIds.get(i)] = s.Name ? s.Name.value : 'Level ' + i;
+      storeyGuid[storeyIds.get(i)] = s.GlobalId ? s.GlobalId.value : null;
+      storeyElevation[storeyIds.get(i)] = (s.Elevation && s.Elevation.value != null) ? s.Elevation.value : null;
+    } catch(e) {}
+  }
+
+  // ── Buildings ──
+  // §S18: IfcBuilding rows, read the same way storeys are — GlobalId + Name off the plain IFC
+  // entity. Used below to resolve each storey's REAL parent building via IfcRelAggregates (not a
+  // guess, not "buildings[0]" — see §PATHS NOT TO TAKE #7 in the spec: no z-proximity inference).
+  const buildingMap = {};
+  const buildingIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCBUILDING);
+  for (let i = 0; i < buildingIds.size(); i++) {
+    try {
+      const b = ifcApi.GetLine(modelID, buildingIds.get(i));
+      buildingMap[buildingIds.get(i)] = {
+        guid: b.GlobalId ? b.GlobalId.value : null,
+        name: b.Name ? b.Name.value : null
+      };
     } catch(e) {}
   }
 
@@ -259,11 +283,22 @@ async function main() {
   // Without this pass every IfcSpace row falls to storey='Unknown' (measured: all 269 Clinic spaces,
   // before this fix). Reuses the same storeyMap; never overrides an entry the containment pass above
   // already set (spaces and physical elements don't collide on the same expressID).
+  // §S18: same IFCRELAGGREGATES pass now also resolves each storey's REAL parent IfcBuilding
+  // (storeyParentBuildingGuid) when RelatingObject is a building rather than a storey — the exact
+  // relation LTU_AHouse's extraction already captures correctly for its own 9/38/751 shape. Purely
+  // additive: the pre-existing storey->space branch below is untouched (same condition, same effect).
+  const storeyParentBuildingGuid = {};
   const aggIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCRELAGGREGATES);
   for (let i = 0; i < aggIds.size(); i++) {
     try {
       const rel = ifcApi.GetLine(modelID, aggIds.get(i));
       const parentId = rel.RelatingObject ? rel.RelatingObject.value : null;
+      if (parentId != null && parentId in buildingMap && rel.RelatedObjects) {
+        for (let j = 0; j < rel.RelatedObjects.length; j++) {
+          const relId = rel.RelatedObjects[j].value;
+          if (relId in storeyGuid) storeyParentBuildingGuid[relId] = buildingMap[parentId].guid;
+        }
+      }
       if (!(parentId in storeyMap)) continue;
       const storeyName = storeyMap[parentId];
       if (rel.RelatedObjects) {
@@ -517,6 +552,18 @@ async function main() {
     }
   }
   console.log(`§UNITS autoScale=${autoScale}`);
+  // §S18: IfcBuildingStorey.Elevation is read straight off the IFC attribute (no conversion applied
+  // at read time), so it is in whatever length unit that FILE declared — same raw-units situation
+  // element_transforms was in before the autoScale heuristic above. Measured need: Clinic's federated
+  // discipline files mix units (Structural's file reads Elevation in mm — 4570/9250/-1000 — while
+  // Architectural/Electrical/HVAC read the same physical floors in m — 4.57/9.25/-1). Applying the
+  // SAME per-file autoScale factor already derived from this file's own element spread keeps Elevation
+  // comparable across files without a second, separately-tuned heuristic.
+  if (autoScale !== 1.0) {
+    for (const sid in storeyElevation) {
+      if (storeyElevation[sid] != null) storeyElevation[sid] *= autoScale;
+    }
+  }
 
   // ── 4D extraction (if present) ──
   const schedules = [], tasks = [], taskSequences = [], taskElements = [];
@@ -607,6 +654,17 @@ async function main() {
   db.exec(`CREATE TABLE element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)`);
   db.exec(`CREATE TABLE component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT)`);
 
+  // §S18 (2026-08-17, prompts/4D_GANTT_TM_REFACTOR.md §S18 Part B): real IfcBuilding + IfcBuildingStorey
+  // rows, EXTRACTED not compiled — this extractor never wrote spatial_structure at all before (the only
+  // source was scripts/compile_rooms.py's synthetic STC_/RM_ fallback, injected downstream with no
+  // Elevation and no real parentage). Schema matches LTU_AHouse's reference shape (guid/type/name/
+  // parent_guid/object_type/predefined_type) plus one new column, `elevation`, since no shipped schema
+  // carried it anywhere in the fleet. compile_rooms.py ALTER-TABLE-ADD-COLUMNs its own bbox columns on
+  // top of whatever exists (idempotent on name, see its own `_addcol` guard) — this table coexisting
+  // with its later STC_*/RM_* rows is by design, not a collision (disjoint guid namespaces).
+  db.exec(`CREATE TABLE spatial_structure (guid TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT, parent_guid TEXT, object_type TEXT, predefined_type TEXT, elevation REAL)`);
+  db.exec(`CREATE TABLE rel_aggregates (parent_guid TEXT NOT NULL, child_guid TEXT NOT NULL, PRIMARY KEY (parent_guid, child_guid))`);
+
   // 4D tables (empty if no scheduling data)
   db.exec(`CREATE TABLE schedules (schedule_id TEXT PRIMARY KEY, name TEXT, status TEXT, created_date TEXT)`);
   db.exec(`CREATE TABLE tasks (task_id TEXT PRIMARY KEY, schedule_id TEXT, name TEXT, start_date TEXT, finish_date TEXT, duration_days REAL, status TEXT)`);
@@ -624,6 +682,25 @@ async function main() {
   const elStmt = db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
   for (const el of elements) {
     elStmt.run(el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material || null, buildingName);
+  }
+
+  // Insert spatial structure — §S18: real IfcBuilding + IfcBuildingStorey rows with EXTRACTED
+  // Elevation + real IfcRelAggregates-derived building parentage (storeyParentBuildingGuid, built
+  // above; null when the source IFC genuinely has no such relationship — never a guess/fallback).
+  const ssStmt = db.prepare('INSERT OR IGNORE INTO spatial_structure (guid,type,name,parent_guid,object_type,predefined_type,elevation) VALUES (?,?,?,?,?,?,?)');
+  for (const bid in buildingMap) {
+    const b = buildingMap[bid];
+    if (b.guid) ssStmt.run(b.guid, 'IfcBuilding', b.name, null, null, null, null);
+  }
+  for (const sid in storeyMap) {
+    const g = storeyGuid[sid];
+    if (!g) continue;
+    ssStmt.run(g, 'IfcBuildingStorey', storeyMap[sid], storeyParentBuildingGuid[sid] || null, null, null, storeyElevation[sid]);
+  }
+  const raStmt = db.prepare('INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) VALUES (?,?)');
+  for (const sid in storeyParentBuildingGuid) {
+    const g = storeyGuid[sid];
+    if (g) raStmt.run(storeyParentBuildingGuid[sid], g);
   }
 
   // Insert transforms
@@ -663,6 +740,7 @@ async function main() {
   const fileSize = fs.statSync(outPath).size;
   console.log(`§DB_WRITTEN ${outPath} size=${(fileSize/1024/1024).toFixed(1)}MB`);
   console.log(`§SUMMARY elements=${elements.length} geometries=${geometries.length} uniqueHashes=${seenHashes.size} 4D_tasks=${tasks.length}`);
+  console.log(`§S18_SPATIAL_STRUCTURE buildings=${Object.keys(buildingMap).length} storeys=${Object.keys(storeyMap).length} storeysWithElevation=${Object.values(storeyElevation).filter(v => v != null).length} storeysWithRealParent=${Object.keys(storeyParentBuildingGuid).length} relAggregates=${Object.keys(storeyParentBuildingGuid).length}`);
 }
 
 main().catch(e => { console.error('§FATAL', e.message); process.exit(1); });

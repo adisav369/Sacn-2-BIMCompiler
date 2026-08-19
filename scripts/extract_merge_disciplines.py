@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS project_metadata (
 );
 CREATE TABLE IF NOT EXISTS spatial_structure (
     guid TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT,
-    parent_guid TEXT, object_type TEXT, predefined_type TEXT
+    parent_guid TEXT, object_type TEXT, predefined_type TEXT,
+    elevation REAL
 );
 CREATE TABLE IF NOT EXISTS elements_meta (
     id INTEGER PRIMARY KEY, guid TEXT UNIQUE NOT NULL,
@@ -348,11 +349,18 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
                 pass
 
     # spatial_structure
+    # §S21 (prompts/4D_GANTT_TM_REFACTOR.md): elevation carried through the per-discipline merge —
+    # read by column name (sqlite3.Row), so this stays correct even if the source tmp_db (an older
+    # extractIFCtoDB.py run) predates the elevation column and doesn't have it. EXTRACT ONLY, no
+    # inference: a source row with no elevation stays NULL, never backfilled from another row.
+    src_cols = {r[1] for r in src.execute("PRAGMA table_info(spatial_structure)")}
+    _has_elevation = "elevation" in src_cols
     for row in src.execute("SELECT * FROM spatial_structure"):
         dst.execute(
-            "INSERT OR IGNORE INTO spatial_structure VALUES (?,?,?,?,?,?)",
+            "INSERT OR IGNORE INTO spatial_structure VALUES (?,?,?,?,?,?,?)",
             (row["guid"], row["type"], row["name"], row["parent_guid"],
-             row["object_type"], row["predefined_type"])
+             row["object_type"], row["predefined_type"],
+             row["elevation"] if _has_elevation else None)
         )
 
     # rel_contained_in_space

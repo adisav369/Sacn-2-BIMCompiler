@@ -130,7 +130,14 @@ CREATE TABLE IF NOT EXISTS spatial_structure (
     -- Spaces are non-geometric in the iterator (no body mesh) but DO carry a Representation solid;
     -- we tessellate it once here for the AABB only. NULL for Building/Storey (no own footprint).
     center_x REAL, center_y REAL, center_z REAL,
-    size_x REAL, size_y REAL, size_z REAL
+    size_x REAL, size_y REAL, size_z REAL,
+    -- §S21 (prompts/4D_GANTT_TM_REFACTOR.md, bim-ootb 4D lane): IfcBuildingStorey.Elevation, a
+    -- plain IFC attribute, EXTRACTED not inferred (§PATHS NOT TO TAKE #7). Unit-corrected by
+    -- unit_scale (the same factor already computed for logging above) since this is a raw
+    -- attribute read, not geometry — geom.iterator() only auto-converts tessellated geometry.
+    -- NULL for Building/Space (no own elevation). Matches the schema §S18 (bim-compiler PR #83)
+    -- shipped for extractIFC2DB.js/Clinic — same column name, same convention, second extractor.
+    elevation REAL
 );
 CREATE TABLE IF NOT EXISTS elements_meta (
     id INTEGER PRIMARY KEY,
@@ -1979,11 +1986,42 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             conn.execute(
                 "INSERT OR IGNORE INTO spatial_structure (guid, type, name) "
                 "VALUES (?, 'IfcBuilding', ?)", (b.GlobalId, b.Name))
+        # §S21: real IfcBuilding->IfcBuildingStorey parentage via .Decomposes (the same
+        # IFCRELAGGREGATES relation already walked for IfcSpace->IfcBuildingStorey below, and
+        # already walked project-wide into rel_aggregates further down this function) — replaces
+        # the "parent = buildings[0]" blind assignment, which silently collapsed EVERY storey onto
+        # the first IfcBuilding in file order whenever a file declares more than one (§DIAGNOSIS's
+        # "federated name soup" on Terminal). EXTRACT ONLY, no inference (§PATHS NOT TO TAKE #7):
+        # if a storey has no real .Decomposes parent, parent_guid stays NULL rather than guessing.
         for s in ifc_file.by_type("IfcBuildingStorey"):
-            parent = buildings[0].GlobalId if buildings else None
+            parent = None
+            try:
+                for rel in s.Decomposes:
+                    if rel.RelatingObject.is_a("IfcBuilding"):
+                        parent = rel.RelatingObject.GlobalId
+                        break
+            except (AttributeError, TypeError):
+                pass
+            elevation = None
+            if s.Elevation is not None:
+                try:
+                    elevation = float(s.Elevation) * unit_scale
+                except (TypeError, ValueError):
+                    pass
             conn.execute(
-                "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
-                "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+                "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid, elevation) "
+                "VALUES (?, 'IfcBuildingStorey', ?, ?, ?)", (s.GlobalId, s.Name, parent, elevation))
+        _n_storeys = len(ifc_file.by_type("IfcBuildingStorey"))
+        _n_storey_elev = sum(1 for s in ifc_file.by_type("IfcBuildingStorey") if s.Elevation is not None)
+        _n_storey_parent = 0
+        for s in ifc_file.by_type("IfcBuildingStorey"):
+            try:
+                if any(rel.RelatingObject.is_a("IfcBuilding") for rel in s.Decomposes):
+                    _n_storey_parent += 1
+            except (AttributeError, TypeError):
+                pass
+        print(f"  §S21_SPATIAL_STRUCTURE buildings={len(buildings)} storeys={_n_storeys} "
+              f"storeysWithElevation={_n_storey_elev} storeysWithRealParent={_n_storey_parent}")
         # IfcSpace footprint AABB — tessellate the space solid ONCE (world coords) for its bounding box.
         # Enables habitable-AABB room qualification + per-room door proximity (SPATIAL_DEPENDENCY_GRAPH
         # room/storey design). World-coord AABB is normalized later alongside element_transforms.
