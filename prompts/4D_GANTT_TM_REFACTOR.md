@@ -2963,3 +2963,98 @@ not go acyclic anywhere, and on two buildings it is worse than `storey|phase`:
   band becomes a product question.
 
 **Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
+
+---
+
+# §S47 — REFUSE-AT-CREATION, TESTED. The band collapses to a number, and the cost is the LOCATION RULE (2026-08-20)
+
+**Leg 1 of the model strategy (§S26.10/§S26.11): refuse a link that would close a cycle instead of
+creating it and breaking it later.** Cheapest test of the whole thesis, no new data. Instrument:
+`scripts/hull/grid_probe.js` on `9db62a6`. Location = derived level (§S35 `level_deriver.js`,
+already gate-passed), ordered bottom-up. Trade = the engine's own `SEQUENCE_RULES` sequence number.
+A cell is (level, trade); grid edges are `(L,T)→(L,T+1)` and `(L,T)→(L+1,T)`.
+
+## §S47.1 — the mechanism works, and §S45's band becomes a single number
+
+**The grid is acyclic BY CONSTRUCTION** — a product order has no cycles, so there is nothing to
+contract, no ceiling/floor treatment, and no band. §S45's −36%/+100% collapses to one figure:
+
+| building | B ships today | grid (contiguous, acyclic) | cost |
+|---|---|---|---|
+| Terminal | 164.7 d | 264.9 | +60.8% |
+| Hospital | 543.5 | 832.5 | +53.2% |
+| Duplex | 15.4 | 25.9 | +68.2% |
+| HHS_Office | 98.6 | 141.1 | +43.2% |
+| Clinic | 183.5 | 324.9 | +77.1% |
+| LTU_AHouse | 1,429.0 | 2,326.5 | +62.8% |
+| JKR | 45.6 | 65.4 | +43.5% |
+| **fleet** | **2,432 d** | **3,981** | **+63.7%** |
+
+`wide50 = 0` by construction on every building — **symptom 2 is solved at a stated price of +64%
+programme**, no longer an unpriced band.
+
+## §S47.2 — what refusal actually costs: the physics the grid cannot express
+
+Every E1 support edge is classified against the grid's product order. `REFUSED` = the edge
+contradicts it, i.e. exactly what refuse-at-creation would decline to create:
+
+| building | inside one cell | represented by grid | **REFUSED** | elements affected |
+|---|---|---|---|---|
+| Hospital | 3.2% | 18.1% | **78.69%** | 49,206 (77.9%) |
+| HHS_Office | 10.2% | 29.0% | **60.79%** | 4,119 (60.2%) |
+| JKR | 10.2% | 45.0% | 44.73% | 3,778 (42.1%) |
+| Duplex | 0.8% | 60.5% | 38.68% | 422 (37.7%) |
+| LTU_AHouse | 13.7% | 54.4% | 31.85% | 35,935 (29.4%) |
+| Clinic | 6.1% | 63.8% | 30.08% | 4,046 (25.2%) |
+| Terminal | 69.1% | 22.4% | 8.46% | 4,063 (8.4%) |
+
+**Refusing 79% of Hospital's support relations is not a handful of planner exceptions.** On its face
+this kills the grid.
+
+## §S47.3 — but the cost is almost entirely ONE thing: where a suspended element is filed
+
+The refused edges are dominated by MEP whose designated support sits on the level ABOVE it — a pipe
+under level N+1's slab is filed on level N by geometry, so its support edge points DOWN the grid and
+is refused. **Filing such an element on the level it hangs FROM is extraction, not invention: it
+uses `designatedSupport()`'s own answer.** Re-classified with that one change:
+
+| building | REFUSED before | **REFUSED after** | elements affected | promoted |
+|---|---|---|---|---|
+| **Hospital** | 78.69% | **1.90%** | 49,206 → **1,187** | 77.3% |
+| **Terminal** | 8.46% | **1.66%** | 4,063 → **797** | 7.3% |
+| **Clinic** | 30.08% | **6.15%** | 4,046 → **828** | 23.3% |
+| LTU_AHouse | 31.85% | 21.93% | 35,935 → 24,744 | 17.1% |
+| HHS_Office | 60.79% | 28.87% | 4,119 → **1,956** | 33.8% |
+| JKR | 44.73% | 22.85% | 3,778 → **1,930** | 34.0% |
+| Duplex | 38.68% | 33.73% | 422 → **368** | 33.1% |
+
+**On Hospital the grid goes from representing 18% of physics to representing 95.1% of it, by
+changing where suspended elements are filed — nothing else.** Terminal 98.3%, Clinic 88.5%.
+
+**The three that stay high are the three the level axis is weakest on** — Duplex and LTU have no
+declared rooms and a `uniform3m` level grid (§S46.1), and JKR's declared grid is the degenerate
+0.01m-twin one (§S36.2). The residue tracks data quality on the LOCATION axis, exactly as §S46
+predicted, not on the trade axis.
+
+## §S47.4 — what this settles for the four-leg strategy
+
+- **Leg 2 (refuse at creation) is VALIDATED as a mechanism** — acyclic by construction, band gone,
+  `wide50=0`, price stated (+64%). It costs nothing to implement and it removes the whole SCC
+  apparatus at cell level.
+- **Leg 1 (split, don't assign) is now the measured priority, and §S47.3 is its miniature.** A
+  suspended element is the simplest spanning case — it belongs to the level it hangs from, not the
+  level its centroid falls in — and fixing just that recovers 77 percentage points on Hospital. A
+  real span-and-apportion rule (riser, two-storey column, curtain wall) is the same argument applied
+  to elements that occupy MORE than one cell. **This is where the effort belongs**, as called.
+- **Leg 3 (surface the residue) has a size for the first time:** 797–1,956 elements per building on
+  the four with a usable location axis. **That is elements, not cells — the reviewable count is
+  cell-PAIRS and it is not yet measured.** One more pass of this same probe gives it; until then
+  "≤10 per building" is neither met nor refuted.
+- **A caveat, stated plainly:** the +63.7% makespan is measured on the BASE location assignment. The
+  hang-aware variant changes cell membership, so its makespan is NOT yet measured and could move in
+  either direction.
+
+**Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
+The host-relation column (`IfcRelVoidsElement`/`IfcRelFillsElement` parsed on import, absent from
+the shipped DBs) remains flagged as **§S32 rule 1 territory — a user call before anyone touches
+`extractIFCtoDB.py`.**
