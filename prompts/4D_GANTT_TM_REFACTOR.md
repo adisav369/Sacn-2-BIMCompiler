@@ -3058,3 +3058,94 @@ predicted, not on the trade axis.
 The host-relation column (`IfcRelVoidsElement`/`IfcRelFillsElement` parsed on import, absent from
 the shipped DBs) remains flagged as **§S32 rule 1 territory — a user call before anyone touches
 `extractIFCtoDB.py`.**
+
+---
+
+# §S48 — THE FOUR-AXIS TABLE. The hang-aware grid does NOT buy both symptoms. (2026-08-20)
+
+**The last run. §S47 priced the grid on two axes; this schedules the HANG-AWARE variant for real and
+judges it on all four with the same instruments as every other configuration in this lane** —
+`ScheduleGate.auditFloating` for float, this witness's own `census()` for strict midair, cell spans
+for bars. Elements are packed inside their cell against GLOBAL per-resource crew pools (a trade's
+crew cannot be in two cells at once), cells in product order. Instrument:
+`scripts/hull/grid_probe.js` on `9db62a6`. Control = **B, what ships today**.
+
+## §S48.1 — the table
+
+| building | | days | wide50 | float | strict midair |
+|---|---|---|---|---|---|
+| Terminal | grid | 315.0 (+91.3%) | **0** | **549** | 687 |
+| | B ships | 164.7 | 25 | 2,151 | **0** |
+| Hospital | grid | 870.9 (+60.2%) | **0** | **771** | 179 |
+| | B ships | 543.5 | 15 | 3,960 | **0** |
+| Clinic | grid | 345.2 (+88.2%) | **0** | **232** | 373 |
+| | B ships | 183.5 | 9 | 877 | **0** |
+| Duplex | grid | 25.1 (+62.7%) | **0** | 205 | 30 |
+| | B ships | 15.4 | 8 | **44** | **0** |
+| HHS_Office | grid | 169.8 (+72.2%) | **0** | 2,376 | 535 |
+| | B ships | 98.6 | 9 | **889** | **0** |
+| JKR | grid | 103.1 (+126.4%) | **0** | 2,331 | 153 |
+| | B ships | 45.6 | 14 | **1,222** | **0** |
+| LTU_AHouse | grid | 2,549.9 (+78.4%) | **0** | 9,022 | 6,745 |
+| | B ships | 1,429.0 | 35 | **5,023** | **0** |
+| **FLEET** | **grid** | **4,379 (+80.0%)** | **0** | **15,486** | **8,702** |
+| | **B ships** | **2,432** | **115** | **14,166** | **0** |
+
+## §S48.2 — the verdict: it is not shippable, and it is not a close product call either
+
+**The grid wins exactly one axis.** Bars go to zero wide, by construction. On the other three it
+loses: **+80% programme, float 9% WORSE fleet-wide, and strict midair goes 0 → 8,702** — the one
+invariant this lane has held all day, on every building, since the graph era matured.
+
+**Float-by-construction did not happen, and the reason is structural:** refusing an edge does not
+make the precedence go away, it drops it. An element whose support was refused can start before that
+support finishes (float) or before it even appears (midair). **Refusal without RE-INJECTION loses
+physics** — §S26.11's leg 4 (arrows as declared exceptions) is not optional decoration on the grid;
+it is what makes refusal sound, and this run is what proves it.
+
+## §S48.3 — the one real signal, and it is consistent with §S46/§S47
+
+Float splits cleanly by location-data quality:
+
+| | representable after hang-awareness (§S47.3) | float vs B |
+|---|---|---|
+| Hospital | 95.1% | 3,960 → **771** (−80%) |
+| Terminal | 98.3% | 2,151 → **549** (−74%) |
+| Clinic | 88.5% | 877 → **232** (−74%) |
+| HHS_Office | 71.1% | 889 → 2,376 (+167%) |
+| JKR | 77.2% | 1,222 → 2,331 (+91%) |
+| LTU_AHouse | 78.1% | 5,023 → 9,022 (+80%) |
+| Duplex | 66.3% | 44 → 205 (+366%) |
+
+**Above ~88% representability the grid cuts float by three-quarters while zeroing wide bars. Below
+it, the grid makes float worse.** Three findings now agree — §S46 (residue tracks location data),
+§S47 (refusals track the location axis), §S48 (so does float). The grain is not the problem; the
+LOCATION DATA is.
+
+## §S48.4 — leg 3 sizing, folded in free
+
+Distinct CELL PAIRS spanned by refused edges — the reviewable unit, not elements:
+
+| Terminal | Hospital | Clinic | Duplex | HHS | JKR | LTU |
+|---|---|---|---|---|---|---|
+| 53 / 2,862 | 76 / 3,422 | 30 / 870 | 17 / 812 | 33 / 600 | 49 / 1,260 | **468 / 5,402** |
+
+**17–76 declared arrows per building on six of seven** — an afternoon's review for a planner, and
+well inside "a handful per building, not 2.46 million derived". LTU's 468 is the outlier and it is
+the building with no rooms and a `uniform3m` level axis. **So leg 4 is affordable exactly where leg
+1's location data is good — the same split as everything else in this section.**
+
+## §S48.5 — ⚖ TO THE USER, and the lane stops measuring here
+
+- **Do NOT ship the grid as measured.** It costs +80% programme and breaks midair-0. That is not a
+  product choice, it is a regression.
+- **The decision that IS live:** leg 1 (split spanning elements) + leg 4 (re-inject the 17–76 refused
+  cell-pairs as declared arrows) is the only configuration that could deliver both symptoms, and it
+  is a real design, not a probe. §S48.3 says it would work on the three buildings with good location
+  data and fail on the four without.
+- **So the prior question is data, not design:** LTU and Duplex have no declared rooms at all, JKR's
+  level grid is the 0.01m twin. Compiled rooms (`room_walker.js`, §S32-blessed) is the named path.
+- **Nothing has shipped since #1440.** Five measurement sections today; this one closes the budget.
+  No sixth probe, no third grain, no leg-1 build until the above is a user decision.
+
+`viewer/` unchanged. A1, A3 and the 13 ledger items stay parked. Host column still §S32 rule 1.

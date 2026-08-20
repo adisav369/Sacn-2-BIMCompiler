@@ -774,6 +774,85 @@ function census(items) {
       ' topClasses=' + JSON.stringify(Object.keys(refusedByCls2).sort((a, b) => refusedByCls2[b] - refusedByCls2[a])
         .slice(0, 4).reduce((o, k2) => { o[k2] = refusedByCls2[k2]; return o; }, {})));
 
+    // ── §S48 — THE HANG-AWARE GRID, SCHEDULED, ON ALL FOUR AXES ───────────────────────────────
+    // §S47 priced the BASE grid on two axes only. This schedules the HANG-AWARE grid for real —
+    // cells in product order, elements packed inside their cell against GLOBAL per-resource crew
+    // pools (a trade's crew cannot be in two cells at once) — and then judges the result with the
+    // SAME instruments as every other configuration in this lane: ScheduleGate.auditFloating for
+    // float, this witness's own census() for strict midair. Control = B, what ships today.
+    const gcells2 = {};
+    items.forEach(it => {
+      const k = gridKey2(it);
+      (gcells2[k] || (gcells2[k] = { lvl: lvl2[it.guid], trd: trdOf(it), mem: [] })).mem.push(it);
+    });
+    const order2 = Object.keys(gcells2).sort((x, y) =>
+      (gcells2[x].lvl - gcells2[y].lvl) || (gcells2[x].trd - gcells2[y].trd));
+    const cellFin = {}, gridS = {}, gridE = {};
+    const pools = {};
+    const poolFor = r => pools[r] || (pools[r] = new Array(capOf(r)).fill(0));
+    order2.forEach(k => {
+      const c = gcells2[k];
+      let es = 0;
+      order2.forEach(k2 => {
+        if (k2 === k) return;
+        const c2 = gcells2[k2];
+        const prevTrade = (c2.lvl === c.lvl && c2.trd < c.trd);
+        const prevLevel = (c2.trd === c.trd && c2.lvl < c.lvl);
+        if ((prevTrade || prevLevel) && cellFin[k2] > es) es = cellFin[k2];
+      });
+      // pack this cell's elements against global crew pools, never earlier than the cell's own ES
+      const mem = c.mem.slice().sort((a, b) => (a.bz - b.bz) || (a.guid < b.guid ? -1 : 1));
+      let fin = es;
+      mem.forEach(it => {
+        const pool = poolFor(it.resource || '_DEFAULT');
+        let idx = 0;
+        for (let q = 1; q < pool.length; q++) if (pool[q] < pool[idx]) idx = q;
+        const st = Math.max(es, pool[idx]);
+        const en = st + (durA[it.guid] || 0);
+        pool[idx] = en;
+        gridS[it.guid] = st; gridE[it.guid] = en;
+        if (en > fin) fin = en;
+      });
+      cellFin[k] = fin;
+    });
+    const gridItems = items.map(it => Object.assign({}, it, { s: gridS[it.guid], e: gridE[it.guid] }));
+    const gm = {}; gridItems.forEach(it => { gm[it.guid] = { start: it.s, end: it.e }; });
+    const qg = console.log; console.log = () => {};
+    let gridFloat; try { gridFloat = ScheduleGate.auditFloating(geoEls, gm); } finally { console.log = qg; }
+    const gridCensus = census(gridItems);
+    const bCensus = census(items);   // B's own strict-midair, measured here rather than taken from W-MZ-2's assertion
+    let gLo = Infinity, gHi = -Infinity;
+    gridItems.forEach(it => { if (it.s < gLo) gLo = it.s; if (it.e > gHi) gHi = it.e; });
+    const gSpan = gHi - gLo;
+    let wide50g = 0, wide80g = 0;
+    order2.forEach(k => {
+      const mem = gcells2[k].mem;
+      let lo = Infinity, hi = -Infinity;
+      mem.forEach(it => { if (gridS[it.guid] < lo) lo = gridS[it.guid]; if (gridE[it.guid] > hi) hi = gridE[it.guid]; });
+      const frac = gSpan ? (hi - lo) / gSpan : 0;
+      if (frac > 0.5) wide50g++;
+      if (frac > 0.8) wide80g++;
+    });
+    // leg 3 sizing, free: how many CELL PAIRS do the refused edges span?
+    const refusedPairs = {};
+    for (let i = 0; i < des.length; i++) {
+      if (des[i] < 0) continue;
+      const a = items[des[i]], b = items[i];
+      if (gridKey2(a) === gridKey2(b)) continue;
+      if (!((lvl2[b.guid] >= lvl2[a.guid]) && (trdOf(b) >= trdOf(a))))
+        refusedPairs[gridKey2(a) + '>' + gridKey2(b)] = 1;
+    }
+    console.log('§S48_FOURAXIS ' + bld +
+      ' | GRID_hangAware cells=' + order2.length +
+      ' days=' + (gSpan / 86400000).toFixed(1) +
+      ' wide50=' + wide50g + ' wide80=' + wide80g +
+      ' float=' + gridFloat + ' midair=' + gridCensus.midair +
+      ' | B_shipsToday days=' + B.days.toFixed(1) +
+      ' wide50=' + B.wide50 + ' wide80=' + B.wide80 +
+      ' float=' + floatPost + ' midair=' + bCensus.midair +
+      ' | costDays=' + (B.days > 0 ? ((gSpan / 86400000 / B.days - 1) * 100).toFixed(1) + '%' : 'n/a') +
+      ' refusedCellPairs=' + Object.keys(refusedPairs).length + '/' + (order2.length * (order2.length - 1)));
+
     console.log('§S44_SPLIT ' + bld +
       ' medianBarSpan ' + (C ? pf(C.medRaw) : '?') + ' --levelling--> ' + pf(A.medRaw) +
       ' --CPM--> ' + pf(B.medRaw) +
