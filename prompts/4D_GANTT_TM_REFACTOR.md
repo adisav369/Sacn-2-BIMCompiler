@@ -3149,3 +3149,85 @@ the building with no rooms and a `uniform3m` level axis. **So leg 4 is affordabl
   No sixth probe, no third grain, no leg-1 build until the above is a user decision.
 
 `viewer/` unchanged. A1, A3 and the 13 ledger items stay parked. Host column still §S32 rule 1.
+
+---
+
+# §S49 — LEG 4 (re-injection): pass mark NOT met, and the mark itself was unachievable (2026-08-20)
+
+**Step 1 of the three-step order, run with the pass mark declared BEFORE the run: strict midair back
+to 0 on 7/7, float no worse than B.** Instrument: `scripts/hull/leg4_probe.js` on `9db62a6`, same
+judges as every other configuration (`auditFloating`, this witness's `census()`). Control = B.
+
+Sound re-injection is the INVERSE of §S47: **physics is mandatory and never refused; the grid is the
+tidiness layer and yields where the two disagree.** Elements are scheduled in an order respecting
+every physics edge, with the grid's (location, trade) rank as the priority breaking every tie.
+
+## §S49.1 — variant A: honour every physics edge
+
+| building | days vs B | wide50 (B) | float (B) | midair (B) | cycle breaks |
+|---|---|---|---|---|---|
+| Terminal | 242.2 (+47.1%) | **7** (25) | **1,004** (2,151) | 388 (0) | 633 |
+| Hospital | 812.9 (+49.6%) | **13** (15) | **1,347** (3,960) | 19 (0) | 37 |
+| Clinic | 275.6 (+50.2%) | **3** (9) | **506** (877) | 38 (0) | 91 |
+| HHS_Office | 127.9 (+29.7%) | **4** (9) | **409** (889) | 25 (0) | 63 |
+| Duplex | 22.6 (+46.5%) | **4** (8) | **33** (44) | 1 (0) | 7 |
+| JKR | 60.7 (+33.2%) | **3** (14) | 1,445 (1,222) | 5 (0) | 41 |
+| LTU_AHouse | 2,263.9 (+58.4%) | **31** (35) | 7,181 (5,023) | 1,495 (0) | 3,346 |
+
+**Float PASSES on 5/7** (Terminal −53%, Hospital −66%, Clinic −42%, HHS −54%, Duplex −25%) and bars
+improve on **7/7**. **Midair FAILS on 7/7** — and it tracks the cycle breaks almost exactly
+(midair ≈ 0.4–0.6 × breaks). Every break is a real precedence that then cannot be honoured.
+
+## §S49.2 — variant B: delete the `hang` family first (ledger A1), so nothing needs breaking
+
+§S26.3 measured that dropping `hang` makes the support graph acyclic. Confirmed here: **`cycleBreaks
+= 0` on all 7.** But midair got WORSE, not better:
+
+| | Terminal | Hospital | Clinic | HHS | Duplex | JKR | LTU |
+|---|---|---|---|---|---|---|---|
+| variant A midair | 388 | 19 | 38 | 25 | 1 | 5 | 1,495 |
+| **variant B midair** | **1,649** | 97 | 319 | 206 | 34 | 37 | **4,644** |
+| hang edges skipped | 11,585 | 46,779 | 8,121 | 3,410 | 743 | 2,854 | 53,167 |
+
+Deleting `hang` removes the cycles by removing 743–53,167 REAL appearance constraints. A suspended
+element then no longer waits for what it hangs from, so it appears before it. **A1 makes the graph
+acyclic and the schedule less correct on this axis.**
+
+## §S49.3 — why the pass mark was unachievable, stated structurally
+
+**B's midair-0 is not evidence that every element waits for its support.** It is an artifact of SCC
+CONTRACTION: `cpm_schedule.solve()` gives every member of a pure-physics cycle a SHARED START, which
+satisfies "appears no earlier than its support" by simultaneity — and pays for it with 14,166 float
+(starting before that support FINISHES).
+
+So, while the support graph is cyclic:
+
+- **strict edge satisfaction** (leg 4) can reach low float but CANNOT reach midair-0 — a cycle has
+  no strict ordering, so something must break;
+- **contraction** (today's B) reaches midair-0 but cannot reach low float — simultaneity is exactly
+  what "starts before its support finishes" measures;
+- **deleting the cycles' source** (A1) removes the cycles by removing the constraints, which makes
+  midair worse, not better.
+
+**"Midair 0 AND float no worse" is not a bar leg 4 failed to clear. It is two invariants that are
+mutually exclusive under a cyclic support graph, and this run is what establishes that.**
+
+## §S49.4 — ⚖ consequence for the three-step order
+
+- **Step 1 does NOT pass. Step 2 (ship the gated grid) therefore does NOT proceed** — that was the
+  stated rule, and it holds. Step 3 (compiled rooms) is downstream of step 2 and also does not.
+- **A1 must NOT be unparked as a correctness fix.** It is measured here to make midair worse on 7/7.
+  Its acyclicity claim (§S26.3) is confirmed and its float/midair consequence is now also measured;
+  the ledger entry should carry both.
+- **What IS live, and it is a genuine product question, not a defect:** leg 4 variant A delivers, on
+  the five buildings with a usable location axis, **float down 25–66% and narrower bars on 7/7, at
+  +30–50% programme, in exchange for 1–388 elements that appear before something they touch.**
+  Whether 19 midair elements on Hospital is worth 2,613 fewer float violations is a call only the
+  user can make. It is not a call this lane can measure its way out of.
+- **The prior question is upstream of all of it:** the cycles come from `designatedSupport()`'s
+  carrier-above branch, and the host relation that would disambiguate real suspension
+  (`IfcRelVoidsElement`/`IfcRelFillsElement`) is parsed on import and absent from the shipped DBs —
+  18–40% backward host guesses. **That is still §S32 rule 1 and still a user call**, and §S49 is the
+  measurement that makes it the highest-value one in the lane.
+
+**Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
