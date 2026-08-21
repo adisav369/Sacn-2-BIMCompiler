@@ -400,3 +400,57 @@ This is the recurring `sw.js` cache-version bug class this project has been bitt
 **Cost:** small and self-contained. **Value:** it protects every file added from here on, including
 every module the `support_sweep.js` / `scene.js` / `crud_overlay.js` extractions would create — each
 of which adds exactly the kind of new file this check exists to catch.
+
+
+---
+
+# §S61.3 — RAN THE WHOLE WITNESS SUITE (2026-08-21) — 22 of 63 are not green
+
+The §S61.1 retraction left one real question: if every witness gates correctly, **what happens when
+you actually run them all?** Nobody does — each is run standalone by the session that touched it.
+Run here against `origin/main` @ `a98b62c`, real fleet DBs, 150s timeout each.
+
+| | n |
+|---|---|
+| green (exit 0) | **39** |
+| nonzero exit | **22** |
+| timeout at 150s | **2** (`witness_class_outline_live.js`, `witness_panel_abstraction.js`) |
+
+**The gates all worked.** Not one of these is a gating failure — every red exited nonzero exactly as
+it should. They are pre-existing failures that nothing surfaced because the suite is never run as a
+suite. Three distinct causes, do NOT treat them as one queue:
+
+## A. Stale-slice crashes — the §S53.5 bug class, still live, now named
+```
+ReferenceError: _zoneIndex is not defined   at evalmachine.<anonymous>:104
+```
+- `witness_big_element_support_coverage.js` — crashes AFTER its first PASS line (W-BIGSUP-0), so it
+  looked alive
+- `witness_tm_geo_order_cycles.js` — same, after printing `§TMREPRO_SLICE state=post-refactor`
+
+Identical shape to `witness_zone_display_authoring.js`'s `_tukeyBound is not defined` (dead 4 days,
+§S53.5): a source-text slice of `time_machine.js` calls a module-scope helper the sandbox was never
+given. **This is the failure class `§S58`'s `support_sweep.js` extraction retires permanently** —
+42 of 43 slices go away, and a `require()` cannot half-import a function. That raises §S58 from
+housekeeping to a fix for a recurring, currently-live defect.
+
+## B. Hardcoded absolute path
+- `witness_zone_index.js` — `ENOENT: no such file or directory, open '/tmp/vw/time_machine.js'`.
+  Same class as `38-offline-pwa.spec.js`'s hardcoded `VIEWER_URL` (CLAUDE.md, GH_DEPLOY_ISSUES Issue 4).
+  One-line fix: resolve relative to `__dirname` like every other witness.
+
+## C. Real reds in browser witnesses that DID run
+`witness_isolate_zoom_2026-07-12.js` reached a live browser, loaded Duplex, and reported
+`🔴 Parts axis reachable via toggle — axis=disc`. That is a genuine product red, not an environment
+problem. Several others in the 22 print `🔴` rather than the string `FAIL`, which is why a
+FAIL-grep classifier misses them — **the same lesson as §S61.1: one pattern is not a measurement.**
+Some in this bucket genuinely need a server that was not up (`witness_shakeout_2026-07-06.js`:
+`page.goto: Timeout 30000ms`). **Each of the remaining 22 needs individual triage** — this section
+does not claim to have classified them all, and no red was fixed.
+
+## The actual finding
+Not "tests can't fail" (that was §S61.1, wrong). It is: **nothing runs the suite, so reds accumulate
+silently and get discovered by accident** — §S53.5 found one by auditing consumers of a moved
+function, and this run found more the same way. A suite runner that executes all witnesses and
+prints one summary is worth more than any single extraction on this list. Logs for every run:
+`scratchpad/s61run/*.log`.
