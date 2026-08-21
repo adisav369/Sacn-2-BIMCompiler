@@ -3917,3 +3917,80 @@ while the 25.8MB read had already happened against the wrong building.
 `node --check` over `viewer`+`modeller` green.
 
 **§S52.4 is now zero:** F1 ✅ #1445 · F2 ✅ #1447 · F3 ✅ #1446 · F4 ✅ no change needed (§S54.1).
+
+---
+
+# §S55 — does authored task identity keep the §S51 cell win? (spec 2026-08-21, base `6dab2d1`)
+
+**The question, and it has never been measured.** §S51's "0 wide cells" was measured with **no
+authored schedule** — every shipped DB ships `tasks=0 / task_elements=0` (verified 2026-08-21:
+Hospital/Clinic/Duplex/HHS all 0/0; `Terminal_meta.db` has **no such table**). Identity is created
+**in-session** by the authoring path (`schedule_author.js:463+`). So the demo has an order
+dependency, and on the far side of it the grouping rule changes:
+
+```
+gantt_model.js groupKeyOf:  tid ? 'T:'+tid  :  cellId ? 'C:'+cellId  :  storey|phase
+```
+
+`tid` **outranks** `_cell`. Every op the authoring run covers stops being grouped by its cell and is
+grouped by its task instead. This is the intersection of "accurate schedule" and "editable bars",
+and nobody has run it.
+
+## §S55.1 — DECLARED BEFORE THE RUN (this is the point of writing it first)
+
+| outcome | meaning |
+|---|---|
+| **PASS** | with a real authored `idx`, wide-bar count stays **0** and bar count stays at the CELL grain (Hospital ≈451, Terminal ≈197) |
+| **FINDING, not a failure** | bar count collapses toward the TASK grain (Hospital ≈35, Terminal ≈72 — the §S51_SCREEN *BEFORE* line, since `schedule_author`'s zones are phase×storey) and/or wide bars > 0 |
+
+A FINDING is the **expected shape** if identity outranks the cell stamp, which the code says it
+does. §S51's result was measured at `idx=null`; a difference is not a regression and is **NOT to be
+fixed in this PR**. The number is the deliverable.
+
+## §S55.2 — method (three constraints, each for a named reason)
+
+1. **`idx` from a REAL authoring run, never a synthetic map.** `schedule_author.js:463+` writes the
+   rows; the demo path IS the authoring path, so the witness measures what it actually produces.
+2. **Report BOTH grains — wide-bar count AND bar count.** If identity collapses 451 cell bars into
+   35 task bars, the drawer has left what §S51 locked, and that shows in the COUNT before it shows
+   in the widths.
+3. **Report the split**: of the bars produced with a real `idx`, how many are `T:`-keyed vs
+   `C:`-keyed vs `storey|phase` — i.e. how much of the model the authoring run actually covers.
+
+Fleet: **Hospital primary**, Terminal + Clinic secondary (the three cell-path buildings). Node-side
+only, no browser, no screenshots. Deliverable `viewer/tests/witness_s55_identity_vs_cell.js`.
+
+## §S55.3 — RESULTS (2026-08-21) — **FINDING**, on all three cell-path buildings
+
+Shipped as bim-ootb **PR #1448** (`feat/s55-identity-vs-cell`, base `6dab2d1`). Measurement only —
+no engine file touched. `witness_s55_identity_vs_cell.js`, `pass=18 fail=0`, 13.8s for the fleet.
+
+| building | ops | `idx=null` (today's live state) | real authored `idx` | split |
+|---|---|---|---|---|
+| **Hospital** | 63,182 | **451 bars, 0 wide** | **36 bars, 6 wide** | T:=36 C:=0 s\|p=0 |
+| **Terminal** | 48,428 | **197 bars, 0 wide** | **49 bars, 6 wide** | T:=49 C:=0 s\|p=0 |
+| **Clinic** | 16,071 | **255 bars, 0 wide** | **32 bars, 4 wide** | T:=32 C:=0 s\|p=0 |
+
+**Coverage is TOTAL** — `identified` = every op, `unidentified` = 0 on all three. Authoring does not
+partially override the cell grain; it **replaces it entirely**. That is the §S55.1 FINDING branch,
+the expected shape if `tid` outranks `_cell`, and it is **reported, not fixed here**.
+
+**What it means for the two goals, stated once.** "Bars not stacked" and "bars editable" are
+currently the SAME switch, in opposite positions:
+
+- **unauthored** (today's cold open): 451/197/255 bars at the cell grain, **0 wide**, and **nothing
+  is editable** — no `tasks` row exists, so no bar carries a `taskId`.
+- **authored** (what a planner must do to drag anything): 36/49/32 bars at the zone grain,
+  **6/6/4 wide** — 17% / 12% / 13% of bars again spanning >50% of the project.
+
+The destacking §S51 bought is not lost to a bug; it is handed back by the grouping precedence the
+moment identity exists. **Do not "fix" this by demoting `tid`** — task identity is what makes a bar
+addressable by `moveTask`/`resizeTask`, and §S51's own §S51.3 already recorded cell-level edit verbs
+as not-wired. The real options are a user call, unmeasured, and NOT to be picked by a session:
+(a) author AT the cell grain so identity and cell agree (the zone decomposition becomes 451 tasks,
+not 36), or (b) keep zone tasks but sub-group bars by cell within a task. Both are design, not
+repair.
+
+**Anchor that makes the number trustworthy:** W-S55-1 reproduces §S51's own lock (0 wide of
+451/197/255) on the same instrument BEFORE measuring anything new, and W-S55-4 refuses to be green
+by absence (at `identified=0` the question would be untested). Full guard list in the PR body.
