@@ -317,36 +317,47 @@ All five files copied verbatim from `origin/main` (git show) to scratch; line co
 
 ---
 
-# §S61 — PRECONDITION: the suite cannot currently fail (2026-08-21, watchdog session)
+# §S61 — the harness, audited (2026-08-21, watchdog session)
 
 **Why this section is in this file:** §S59/§S60 disqualify candidate after candidate with the rule
-*"low witness coverage RAISES risk"*. §S61 is that rule turned on the harness itself. **These two gaps
-are preconditions for any extraction being provably safe — they come BEFORE `support_sweep.js`, not
-after.** Measured on `origin/main` @ `a98b62c`, not estimated.
+*"low witness coverage RAISES risk"*. §S61 turns that rule on the harness itself. Two gaps were
+claimed. **One was real and is fixed (§S61.2, shipped as bim-ootb PR #1452). The other was a
+measurement error and is RETRACTED below (§S61.1) — the harness gates fine.**
 
-## §S61.1 — 65 of 112 probe/test files print `FAIL` and exit 0
+⚠ **Neither is a precondition for `support_sweep.js`.** The original framing said they were; that
+followed from the §S61.1 error and does not survive it. §S58 can be taken whenever dev reaches it.
 
-Counted by reading every `scripts/probe_*.js` and `viewer/tests/*.js` at `origin/main`: a file
-containing the string `FAIL` but no `process.exit(1)` / `exitCode = 1` anywhere. **65 of 112.**
-8 are `scripts/probe_*`, 57 are under `viewer/tests/`.
+## §S61.1 — RETRACTED: the "65 of 112" figure was a regex artifact. The real number is 3.
 
-Anything reading exit codes — CI, a shell loop, a batch runner — sees green across all 65 no matter
-what they print.
+**This section originally claimed "65 of 112 probe/test files print `FAIL` and exit 0" and called
+the suite ungated. That was WRONG and is corrected here.** Caught by the agent dispatched to execute
+it, then re-measured independently before this rewrite — the execution pass is what disproved the
+plan it was given, which is the correct outcome, not a failed task.
 
-**⛔ DECISION OWED (user/dev call, do NOT mass-edit first):** is this deliberate or a gap?
-- *Deliberate* is defensible: this project's doctrine is that **witnesses prove by their `§` log
-  output, read from a saved log** — a probe is an instrument, not a gate, and exit codes were never
-  its contract. If that is the answer, it needs writing down ONCE, here, and the runner that reads
-  these files must be named — because nothing currently distinguishes "instrument" from "gate" by
-  looking at the file.
-- *Gap* is equally defensible for the `witness_*` half: a witness that asserts and then exits 0 is
-  the §S25_REVIEW.1 failure class (passing by absence) at the harness level.
-- **Recommended split, not a blanket change:** `witness_*` files gate (exit 1 on any FAIL);
-  `probe_*` and `poc_*_live` files stay instruments and get a one-line header saying so. That is a
-  rule a future session can apply without re-litigating it.
+**The error:** the original count grepped for the literal strings `process.exit(1)` / `exitCode = 1`.
+This codebase's convention is a COMPUTED exit — `process.exit(fail ? 1 : 0)`,
+`process.exit(fail === 0 ? 0 : 1)`, `process.exit(passed === results.length ? 0 : 1)` — none of which
+contain that literal. Every file using the house style was counted as ungated.
 
-Do not convert 65 files in one pass. Convert the `witness_*` subset, run each, and expect some to go
-red — a red that appears is the finding, not a regression introduced by the change.
+**Re-measured on `origin/main` @ `a98b62c`**, classifying each FAIL-printing file by whether it has
+any `process.exit` and whether that exit is conditional:
+
+| | n | |
+|---|---|---|
+| already gate (conditional exit or literal `exit(1)`) | **101** | the suite works as intended |
+| no `process.exit` anywhere | **1** | `viewer/tests/redpill_gate.js` — a file named "gate" that cannot fail |
+| ends in an unconditional `process.exit(0)` | **2** | `scripts/probe_gantt_drag_outliers.js`, `scripts/probe_gantt_stagger.js` |
+
+**What survives of the original plan:** the instrument-vs-gate DISTINCTION is still worth stating once
+— a `probe_*` reporting by `§`-log is not a gate, and the two unconditional-exit probes should say so
+in a header rather than look like broken witnesses. And `redpill_gate.js` is a real (single) hole.
+**What does NOT survive:** any claim that the harness is broadly unable to fail, and any framing of
+this as a precondition blocking `§S58`. It is not. `support_sweep.js` was never gated behind it.
+
+**Standing lesson, worth more than the finding was:** a count derived from one grep pattern is a
+hypothesis, not a measurement. The house idiom beat the pattern. Before a count drives a decision,
+classify a handful of hits by hand and confirm the pattern matches the convention — the same
+verify-before-load-bearing rule this project already applies to code claims.
 
 ## §S61.2 — both precache/script audits check only one direction
 
