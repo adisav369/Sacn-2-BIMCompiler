@@ -38,9 +38,10 @@ first. Do NOT re-walk §S23-§S49 — that trail is settled and archived in plac
    rooms do NOT rescue LTU/Duplex (1.25-5.61%); the broken axis there is the `uniform3m` vertical.
    The wall-anchor level-grid idea is named in §S50.2.e as a **user call, not built**.
 
-**First thing to check on restart:** bim-ootb **PR #1445** (witness baselines → JSON) was auto-merging
-on `e2e-tests` at shutdown. **Verify it actually landed as an ancestor of `origin/main`** — PR #1439
-showed MERGED while being orphaned off a squashed branch, so `gh pr view` alone is not proof:
+**Nothing is in flight.** bim-ootb PR **#1445** (witness baselines → `tests/baselines/midair.json`)
+merged and verified landed — `origin/main` is at **`a4932ee`**, both CI checks green. Standing habit
+for any future PR: `gh pr view` alone is NOT proof it reached main — #1439 showed MERGED while
+orphaned off an already-squashed branch. Confirm with
 `git merge-base --is-ancestor <sha> origin/main`.
 
 **Disk state at shutdown — nothing lost by the reboot:**
