@@ -4008,3 +4008,126 @@ repair.
 **Anchor that makes the number trustworthy:** W-S55-1 reproduces §S51's own lock (0 wide of
 451/197/255) on the same instrument BEFORE measuring anything new, and W-S55-4 refuses to be green
 by absence (at `identified=0` the question would be untested). Full guard list in the PR body.
+
+---
+
+# §S58 — observability hardening: the log lines that would have caught things (spec 2026-08-21)
+
+Scouted, then each claim verified first-hand on `origin/main` @ `cab9ad5`. **Additive logging only —
+no behaviour change, no rule change.** §S56/§S57 stay reserved for the bake guard and the Alt+C
+witness. Both headline gaps sit exactly on the two acceptance goals.
+
+## §S58.1 — the two that matter
+
+**(a) The Gantt's three proof lines fire ONCE PER BUILDING, ever — so every EDIT is unlogged.**
+`time_machine.js:5668` declares `_ganttTasksComputed = false; // log once flag`; it gates
+`§GANTT_MINI` / `§GANTT_ROW_ORDER` / `§GANTT_BAR_IDENTITY` at `:6104-6119` and is reset only at
+`:8273` (building close). But `drawGanttMini()` `:7224` calls `buildGanttTasks()` on every redraw,
+and the model recomputes whenever `_ganttDirty` is set — i.e. after every drag, retime, group-move,
+link and undo. So bar count, phase row order and the editable/non-editable identity mix are
+reported for the FIRST build and never again. **This is the "Gantt editable, timeline updated" goal
+with no proof line on the edit path.** A drag that duplicates bars, reorders phases or flips the
+identity mix is invisible in the log for the rest of the session.
+
+Fix: report on every real REBUILD, not once. Cost is bounded and not per-frame — `buildGanttTasks()`
+early-returns on `!_ganttDirty`, so this fires only when the model actually recomputed. Add a
+rebuild ordinal so a reader can see how many rebuilds a gesture caused.
+
+**(b) `§HOSTED_BEFORE_HOST` has NO log line at all** — `grep -c "console.log('§HOSTED_BEFORE_HOST"`
+in `schedule_gate.js` = **0**. It is the fix for the user-reported "electrical outlets and hanging
+elements appearing a bit early" bug, and it is unobservable. `§GEO_ORDER` reports `hostEdges=`
+(matches found) with **no denominator** and no count of hosted elements that fell through unguarded.
+Its own sibling already does this correctly — `§CURTAIN_WALL_OPENING` reports `cwGated=` /
+`stillUngated=`. **This is the "ARCH completed sub→level upwards before anything else" goal with a
+blind spot.** Fix: report `hostedTotal` / `hostMatched` / `fellThrough`, same shape as the sibling.
+
+## §S58.2 — four silent failures that log nothing (additive `console.warn` only)
+
+Each is a `catch` that returns a degraded result indistinguishable from a legitimate one. **Not
+changing the fail-open behaviour — that is a separate decision with its own witness.** Making it
+VISIBLE first is the cheap half and the honest order.
+
+| file:line | what goes silently wrong |
+|---|---|
+| `schedule_author.js:117` / `:169` | `_classFragmentation` / `_linearWeighting` return empty on ANY throw — durations silently revert to flat/count-based, the §LABOR_QUANTITY_WEIGHT and §HEAVY_MEMBER_SPEED_LIMIT fixes just don't fire |
+| `schedule_author.js:1005-1014` | `wouldCycle()` — if the `task_sequences` read throws, `adj={}` and it returns **false for every check**: the sole guard against a cyclic (invalid) schedule goes blind, fails OPEN |
+| `schedule_author.js:1257-1264` | `moveTaskCascade` — same pattern; a move computes with no predecessor clamp / successor cascade, logged identically to "this task has no dependencies" |
+| `location_axis.js:52` | persisted-containment COUNT swallowed — `§LOC_AXIS` then reports a false "zero persisted" instead of "couldn't check" |
+
+Plus `time_machine.js` `computeDays()`: the Tukey-qualified display axis vs the true playback end is
+written to `window.__tmGanttAxis` and **never logged**, though §GANTT_AXIS_OUTLIER's own header names
+that quantity as the cause of a prior bug class ("a bar's DATA could be correct while its DRAWN pixel
+position was still wrong"). One line.
+
+## §S58.3 — witness
+
+`witness_s58_observability.js`. Each check names its issue:
+
+| id | proves / disproves |
+|---|---|
+| W-S58-1 | a SECOND rebuild emits the three §GANTT lines again — the once-per-building gate is gone, so an edit is auditable |
+| W-S58-2 | the rebuild ordinal increments, so N rebuilds per gesture is readable from the log |
+| W-S58-3 | `§HOSTED_BEFORE_HOST` fires on a real building with `hostedTotal>0` and `hostMatched+fellThrough == hostedTotal` — an accounting identity, not a bare count |
+| W-S58-4 | the four silent catches each emit a `§`-tagged warn when forced to throw — proven by INDUCING the throw, not by reading source |
+| W-S58-5 | `§GANTT_AXIS` reports both the qualified axis and the true bounds |
+
+## §S58.4 — RESULTS (2026-08-21)
+
+Shipped as bim-ootb **PR #1449** (`feat/s58-observability`, base `cab9ad5`). Additive logging only.
+`sw.js` v1063 → **v1064**. Gates: `node --check` viewer+modeller, `audit_sw_precache` 121/121,
+`audit_script_tags` 146/146, eslint clean on every touched file, `witness_s55` re-run `pass=18
+fail=0` with the new lines present.
+
+**The new §HOSTED_BEFORE_HOST line found something on its FIRST run** — a number that did not exist
+before because nothing reported it:
+
+| building | hostedTotal | matched | fellThrough |
+|---|---|---|---|
+| Hospital | 2,877 | 2,830 | 47 (1.6%) |
+| **Terminal** | 2,367 | 2,099 | **268 (11.3%)** |
+| Clinic | 2,742 | 2,737 | 5 (0.2%) |
+
+All fall-throughs are `noNearest` — the host cell WAS found, no nearest host matched. Those elements
+are gated at `baseMs` only, i.e. **not held behind their host**: the "outlets appearing early"
+symptom class, unmeasurable until this line existed. **Reported, not chased** — Terminal's 268 is
+the item to look at when this is next picked up.
+
+**Owed:** the §S58.3 witness (W-S58-1..5) is NOT in #1449 — pushed without it so the lines are
+live-testable now. It must INDUCE each catch to prove the warn fires, not read source.
+
+## §S58.5 — ⛔ WITNESS-SUITE ROT: a scouted audit of all 45 4D witnesses/probes
+
+Ran as part of the same sweep. **Findings are the scout's; the two I re-ran myself are marked.**
+Ranked, and every one of these is a REPAIR item, not a new feature:
+
+1. **`witness_midair_zero.js` — the scout reports `pass=32 fail=7`.** ⚠ **I ran this same witness
+   twice today on `a4932ee` and after #1446 and got `pass=49 fail=0` both times.** The scout ran it
+   against the STALE working checkout (`13700fd`), not `origin/main`. **Verify before believing
+   either number** — but its second claim needs checking on its own merits: that `census()` inside
+   the witness is still the *symmetric* pre-fix formula that commit `6a395ca` (2026-08-18) retired
+   fleet-wide for misreading "something built on top of me" as "I am floating."
+2. **Three witnesses CRASH on the same stale-slice bug class as the `_tukeyBound` one §S53.5 found**
+   — `witness_tm_geo_order_cycles.js` and `witness_big_element_support_coverage.js` (both
+   `ReferenceError: _zoneIndex is not defined`), and `witness_zone_display_authoring.js` (still
+   crashing on the pre-#1446 checkout). `tm_geo_order_cycles` carries the load-bearing Terminal
+   regression bar (cycles===0, floating===8) and has been down silently for 9+ days. **This is the
+   third instance of the same failure mode — the argument for extracting `support_sweep.js` is now
+   empirical, not aesthetic.**
+3. **`witness_door_window_host_wall.js` — RED (exit 1)**, and it exits on first failure, so the real
+   "door starts before host wall finishes" check never runs. Brittle exact-string match broke when a
+   legitimate `hostGate(el)` was added to the chain.
+4. **`witness_crew_demand.js` — GREEN but computing wrong numbers**: reimplements crew/cost math
+   against a stale 8h `SHIFT_MS` instead of the live 24h `SHIFT_HOURS`, so reported utilisation is
+   ~3x too low. Green-and-wrong is worse than red.
+5. **`probe_gantt_stagger.js` prints a real `FAIL` then calls `process.exit(0)` unconditionally** —
+   same pattern in `probe_gantt_panel_stagger.js` and `probe_gantt_drag_outliers.js`. Exit-code
+   automation can never see these fail.
+6. **5 puppeteer probes cannot run at all** in this checkout (module missing) — every finding about
+   them is static-only.
+7. Lower: `probe_captured_floating.js` (17 source-text slices, the highest in the suite, and ZERO
+   assertions — cannot fail short of an exception), `witness_class_fallback_blackbox.js` (no
+   fixture-presence guard), `witness_shift_schedule.js`/`witness_shift_tasks.js` (silent-skip then
+   exit 0), `witness_tm_refold.js` (hand-retyped "sliced" SQL, no drift detection).
+
+**The pattern across 1, 2, 4, 5 and 7 is one thing:** a witness that cannot fail, or fails silently,
+is worse than no witness — it is a green light nobody earned. That is the repair queue.
