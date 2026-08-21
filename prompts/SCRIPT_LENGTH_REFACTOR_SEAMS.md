@@ -345,8 +345,11 @@ any `process.exit` and whether that exit is conditional:
 | | n | |
 |---|---|---|
 | already gate (conditional exit or literal `exit(1)`) | **101** | the suite works as intended |
-| no `process.exit` anywhere | **1** | `viewer/tests/redpill_gate.js` — a file named "gate" that cannot fail |
-| ends in an unconditional `process.exit(0)` | **2** | `scripts/probe_gantt_drag_outliers.js`, `scripts/probe_gantt_stagger.js` |
+| no `process.exit` anywhere | **1** | `viewer/tests/redpill_gate.js` — **also a false positive**: it is a LIBRARY (`module.exports` of `identityGate`/`governedDeltaGate`/`digest`, `:151-157`), not a runnable test. Its "FAIL" strings are verdict NAMES in comments (`:115-116`). A module correctly has no exit. |
+| ends in an unconditional `process.exit(0)` | **2** | `scripts/probe_gantt_drag_outliers.js`, `scripts/probe_gantt_stagger.js` — instruments by design; a header line saying so is the whole fix |
+
+**Final count: ZERO test files fail to gate.** The two probes are instruments, and the third "hole"
+was a library. The original figure was off by 65.
 
 **What survives of the original plan:** the instrument-vs-gate DISTINCTION is still worth stating once
 — a `probe_*` reporting by `§`-log is not a gate, and the two unconditional-exit probes should say so
