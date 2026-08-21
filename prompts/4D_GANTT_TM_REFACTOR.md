@@ -3509,3 +3509,109 @@ days/wide50/float/midair to that control in the same §S50_FOURAXIS lines)
 **Deliverable state: PR #1442 open against `origin/main`, auto-merge enabled, witness green at
 `pass=39 fail=0` on the branch. `viewer/` display path untouched. No DB file modified, no binary
 committed, nothing written to any table.**
+
+---
+
+# §S51 — SHIPPED: THE ACCEPTANCE SPLIT + ITEM d (the Gantt reads the cell schedule) (2026-08-21)
+
+**User direction (relayed 2026-08-21): pragmatic, outliers acceptable, ship. The locked midair
+residue (Terminal 684 · Hospital 218 · Clinic 422) is ACCEPTED as the leg-4 exception surface —
+not re-litigated here, no leg-4 enforcement built, no harder gating. Symptom 1 is measured by
+float from here. 5% infringement tolerance: already cleared by the §S50 locks themselves —
+Terminal 684/48,428 = 1.41% · Hospital 218/63,182 = 0.35% · Clinic 422/16,071 = 2.63% (arithmetic
+on locked values, no run spent re-proving it).**
+
+Shipped: **PR #1444** (`feat/s51-display-reads-cells` off `eb832c1` = merged §S50); merge SHA and the ancestor-of-main check recorded at the end of this section. Control for every number
+below = `eb832c1`. Log: `witness_s51_fleet.log` (§-lines), `pass=49 fail=0` (§S50's 39 + 10 new
+asserts, all green; float/midair/days locks UNTOUCHED and green — the schedule itself did not move
+in this PR, only what the drawer reads).
+
+## §S51.1 — the acceptance split: "within walls or last" as a general rule
+
+Rule (general — element class plays no part in the rule, no per-building constants, no tuned
+thresholds; §S29's invented-constants lesson applied):
+- **embedded** = some contact SPANS the element's height — the census judge's OWN `embedded`
+  clause (bbox-based, so "within walls" is approximate enclosure — the judge's clause, not a new
+  predicate), recorded per element;
+- **late** = the element's phase sorts STRICTLY AFTER first-fix MEP (`MEP Rough-in`) in the
+  SEQUENCE_RULES-derived phase order (min sequence per phase — the same global-table derivation
+  time_machine's §GANTT_ROW_ORDER uses). Global rules table, not per-building;
+- **NEITHER** = early + free-standing — the only number that matters.
+
+Instrument: `witness_midair_zero.js` §S51_RESIDUE (census `emb` flag + rules-derived order).
+Can-fail guard: **W-S51d asserts profiled == the locked §S50 baseline per building** (a profile
+over any other population is the §S46 subset trap); §S51_RESIDUE_GUARD prints branch
+reachability — `late` fired on exactly one element fleet-wide (Hospital), proving the branch CAN
+fire and is not a structural zero.
+
+| building | residue (locked) | embedded | late | **NEITHER** | neither as % of population | neither in first 10% of days |
+|---|---|---|---|---|---|---|
+| Terminal | 684 | 210 | 0 | **474** | **0.979%** | 43 |
+| Hospital | 218 | 153 | 1 | **64** | **0.101%** | 1 |
+| Clinic | 422 | 320 | 0 | **102** | **0.635%** | 16 |
+
+**Composition of NEITHER (the honest read): it is dominated by STRUCTURE, not MEP.** Terminal:
+Superstructure 391 of 474 (IfcPlate 326 — the metal-deck plate population, IfcColumn 39,
+IfcMember 18) vs MEP Rough-in 75. Clinic: Superstructure 57 (IfcBeam 39, IfcColumn 16) vs MEP
+Rough-in 37. Hospital: MEP Rough-in 30 (ducts 15, pipes 12), Architecture 26 (proxies 18),
+Superstructure 8. **Early free-standing MEP specifically — the user's named unacceptable case —
+is 75 / 30 / 37 elements = 0.15% / 0.05% / 0.23% of population**, far inside the 5% tolerance;
+Hospital's first-10%-of-days window carries exactly 1 free-standing element of any kind.
+Fleet-specific observation (NOT a rule input): Terminal's plate population dominating its bucket
+is particular to that model's metal-deck extraction; the rule would read the same without knowing
+that.
+
+**Verdict per the user's framing: the early window is essentially clean of MEP dangling
+(Hospital 1 element total in the first 10%), the residue is majority within-walls on
+Hospital/Clinic, and the remainder is structure-phase plates/beams — shipped, not stopped.**
+
+## §S51.2 — item d, narrowly: the drawer groups bars BY the schedule's own cells
+
+Mechanism (3 links, each source-text-asserted by W-S51a/b/c so unwired code cannot go green):
+1. `_displayTimeline` CPM-success branch remembers guid→cell (`_lastCell`) when the §S50 gate ran
+   the CELL path — and sets it NULL on a GRAPH-path authoring (no cross-building leakage). Kept
+   across the same generation cycle's REUSE replay (the partner-consumer path).
+2. `injectGantt` stamps `_cell` into each op's parameters JSON (coverage-checked ≥99.9% like the
+   display-timeline cache; §S51_CELL_STAMP log line). kernel_ops is the app's own write surface —
+   no frozen table touched.
+3. `buildGanttTasks` groups by real task id → **cell stamp** → storey|phase fallback. Graph-path
+   buildings and pre-§S51 ops carry no stamp and group exactly as before.
+   `_GANTT_CACHE_VERSION` 36→37 regenerates pre-stamp ops; sw.js v1061.
+
+**On-screen wide50, before → after** (instrument: witness §S51_SCREEN — buildGanttTasks' own
+grouping + `_tukeyBound` trim mirrored on the same items; can-fail: the graph-path rows must and
+do read IDENTICAL):
+
+| building | path | wide50 on screen BEFORE (storey\|phase, trimmed) | AFTER (cell bars) |
+|---|---|---|---|
+| Terminal | CELL | 9/72 bars | **0/197** |
+| Hospital | CELL | 6/35 bars | **0/451** |
+| Clinic | CELL | 4/32 bars | **0/255** |
+| Duplex · HHS · JKR · LTU | GRAPH | 3/16 · 4/17 · 8/64 · 21/58 | IDENTICAL (no stamp exists) |
+
+Four axes vs `eb832c1`: days/float/midair BYTE-IDENTICAL (same schedule, same locks green —
+Terminal 554/684, Hospital 935/218, Clinic 324/422, graph buildings 44/889/1222/5023 & 0);
+wide50 is the axis this PR moves, and only on screen. Coverage lines (§LOC_AXIS) unchanged from
+§S50.2.b, printed again in the same run.
+
+Siblings re-run on the branch: hosted_before_host, kernel_ops_sched_version, curtain_wall_opening,
+s50_cell_engine GREEN; gantt_lock_integrity and zone_display_authoring remain at their exact
+pre-existing main-state failures (§S50.2.e — verified identical on `eb832c1`, not this PR's).
+
+## §S51.3 — deliberately NOT done
+
+- No leg-4 enforcement, no harder gate, no midair re-litigation (user acceptance stands).
+- The full item-d inversion (schedule authored once → display consumes, killing `_displayTimeline`
+  re-authoring entirely) is still open — this PR makes the DRAWER read the cell schedule; the
+  authoring seam itself is unchanged.
+- Bar labels use the cell's location token (room guid / `L<n>`) — friendlier naming is cosmetic
+  and left out.
+- Cell bars are non-editable (taskId=null), same as storey|phase fallback bars today — wiring the
+  edit verbs to cells is follow-on.
+
+**MERGED AND VERIFIED: PR #1444 squash = `81cdf27`, confirmed `git merge-base --is-ancestor` of
+`origin/main` (2026-08-21). Zero unpushed commits on the branch. `pass=49 fail=0` on the branch
+head; the two pre-existing reds (G-LI-2e, zone_display_authoring) re-measured on THIS branch and
+byte-identical to their `eb832c1` PASS/FAIL sets (only ms timings differ) — including
+zone_display_authoring, re-run deliberately because §S51 edits `_displayTimeline`, which it
+slices.**
