@@ -3683,3 +3683,152 @@ never equals a count — the lock would **pass by absence**, the §S25_REVIEW.1 
 | **F3** | extract `gantt_model.js` from `time_machine.js` | open — do it AFTER item d lands, else it collides |
 | **F4** | `mep_qto_populate.js:19` hardcoded DB filename → argument | open, cosmetic |
 
+
+---
+
+# §S53 — F3: extract `gantt_model.js` from `time_machine.js` (2026-08-21)
+
+**Scope:** §S52.4 item **F3**, taken now that item d (#1444) has landed. Behaviour-preserving
+extraction only — no rule changes, no new numbers. Base: `origin/main` @ `a4932ee`.
+
+## §S53.1 — one correction to §S52.2 before any code
+
+§S52.2 claimed extracting the Gantt model *"also removes the reason `witness_midair_zero.js` slices
+six functions out of `time_machine.js` by source text."* **That is wrong and is corrected here**
+(verified by reading `witness_midair_zero.js:110-130` against `time_machine.js`, not from memory).
+The six sliced functions are `_promoteRoofLoadPath`, `_buildXrayElements`, `_contactGraph`,
+`_designatedSupport`, `_midairAudit`, `_displayTimeline` — the **schedule** path, none of which F3
+touches. Extracting the Gantt model does not free any of them; that would be a separate extraction.
+
+What F3 **does** remove, verified in the same read, is a different and closer coupling — three
+places where the witness re-implements or slices the drawer's own rules:
+
+| witness_midair_zero.js | what it does today | after F3 |
+|---|---|---|
+| `:139` | slices `_tukeyBound` **by source text** out of `time_machine.js` | `require('../gantt_model.js').tukeyBound` |
+| `:453-478` (`§S51_SCREEN`) | **re-implements** `buildGanttTasks()`'s grouping + trim ("this witness mirroring buildGanttTasks grouping+_tukeyBound", its own words) | calls the real grouping |
+| `:487-492` (`§S51_RESIDUE`) | **re-derives** the SEQUENCE_RULES phase order — "same derivation as time_machine's §GANTT_ROW_ORDER" | `GanttModel.phaseOrder(SR)` |
+
+A mirrored judge is the §S25_REVIEW.1 failure class one step removed: the drawer's rule can change
+and the witness that reports on the drawer keeps measuring the old rule, green throughout.
+
+## §S53.2 — SPEC (written before the code)
+
+New file `viewer/gantt_model.js`, dual-mode (`window.GanttModel` + `module.exports`), following
+`cpm_schedule.js` / `lib/level_deriver.js`'s exact convention. **Pure functions only** — it holds no
+state, reads no TM module var, touches no DOM. Everything moved verbatim; comments move with their
+code (the WHY stays attached to the rule it explains).
+
+| export | moved from | contract |
+|---|---|---|
+| `tukeyBound(arr, lowSide)` | `time_machine.js:4413` | unchanged formula, the one envelope both the axis and every bar span use |
+| `phaseOrder(seqRules)` | the `_ROW_PHASE_ORDER` IIFE inside `buildGanttTasks()` | derived from SEQUENCE_RULES' own sequence numbers; the 6-name fallback only when SR has not loaded |
+| `FALLBACK_PHASE_ORDER` | same | exported so a caller can assert *which* branch it got |
+| `groupKeyOf(taskId, cellId, storey, phase)` | `buildGanttTasks()` `:6121` | the §S51 precedence: real task id → cell stamp → `storey\|phase` |
+| `buildTasks(ops, idx, seqRules)` | `buildGanttTasks()` body | `{ tasks, identified, unidentified }` — grouping, Tukey trim, §GANTT_ROW_ORDER sort |
+| `computeDays(placeOps)` | `computeDays()` `:125` | `{ days, projectStart, projectEnd, axisStart, axisEnd, n }` |
+
+`time_machine.js` keeps both function names as **thin wrappers**: the dirty-flag gate, the
+assignment into `_ganttTasks`/`_days`/`_projectStart`/`_projectEnd`/`_ganttAxisStart`/`_ganttAxisEnd`,
+the `window.__tmGanttAxis` hook and the three `§GANTT_*` console lines stay in `time_machine.js`,
+because they are **state and reporting**, not model. The model computes; TM owns the state.
+
+**Degrade:** the module is essential to the drawer, so a load failure must be LOUD, never silent —
+the wrappers log `§LOAD_FAIL gantt_model.js` and leave the state untouched rather than throwing
+mid-frame. Same posture as the `location_axis.js`/`cpm_schedule.js` script tags.
+
+**Wiring:** `viewer.html` script tag BEFORE `time_machine.js`; `sw.js` precache entry + mandatory
+`CACHE_VERSION` bump in the same PR (`feedback_sw_version` — missed once on #1409, cost a round-trip).
+
+## §S53.3 — the witness (issue each check names)
+
+New `viewer/tests/witness_gantt_model.js` — `require()`s the real module, no slicing. Each check
+names the issue it proves, per the project's test rule:
+
+| id | proves / disproves |
+|---|---|
+| W-GM-1 | grouping precedence: a task id beats a cell stamp beats `storey\|phase` — the §S51 rule, so a regression that drops the cell stamp is caught here, not on screen |
+| W-GM-2 | one outlier member cannot define a bar's span (the §GANTT_MINI_TRIM cliff bug), and an `n=1` group is still non-negative-width |
+| W-GM-3 | row order is DERIVED from SEQUENCE_RULES, not the stale `_VAR_ORDER` copy — feed SR with MEP before Architecture and the derived order must follow SR, not the fallback |
+| W-GM-4 | an unknown phase sorts AFTER the known ones (never silently bucketed at position 0) |
+| W-GM-5 | `computeDays` axis is QUALIFIED: one wild `end_ts` must not rescale `axisEnd`, while `projectEnd` (the real playback bound) still reaches it |
+
+**Behaviour-preserving proof:** `witness_midair_zero.js` before/after on the same tree — every
+number identical, `pass=49 fail=0`. Baseline captured at `a4932ee` before any edit.
+
+## §S53.4 — RESULTS (2026-08-21)
+
+**Shipped as bim-ootb PR #1446** (`refactor/gantt-model`, base `a4932ee`). Behaviour-preserving.
+
+| | before | after |
+|---|---|---|
+| `time_machine.js` | 9,293 | **9,186** (−107) |
+| `gantt_model.js` | — | 206 (the rules + their comments, nothing new) |
+| `witness_gantt_model.js` | — | 169 (**21 checks**, `pass=21 fail=0`) |
+| source-text slices of `time_machine.js` in `witness_midair_zero.js` | 12 | **11** (`_tukeyBound` gone) |
+| re-implementations of a drawer rule inside a witness | 3 | **0** |
+
+**Proof it changed nothing.** `witness_midair_zero.js` before (`a4932ee`, pristine) vs after, same
+tree, same DBs: `pass=49 fail=0` both, and a normalized diff of the two full logs (175 lines each)
+is EMPTY except wall-clock `ms={...}`/`compileMs=` timings and the two lines whose *label text* this
+work deliberately changed. Every count, every span, every baseline: identical.
+
+**W-GM-* is not passing by absence** — three perturbations of the extracted module, each proven red,
+then reverted:
+
+| perturbation | result |
+|---|---|
+| cell branch removed from `groupKeyOf` | `FAIL W-GM-1b`, `FAIL W-GM-1d`, `pass=19 fail=2` |
+| `tukeyBound` → plain min/max | `FAIL W-GM-2a` (bar span 19.0d → **901.0d**), `FAIL W-GM-2d`, `FAIL W-GM-5c` (axis 48d → 1001d), `pass=18 fail=3` |
+| `phaseOrder` forced to the fallback list | `FAIL W-GM-3a`, `FAIL W-GM-3c`, `pass=19 fail=2` |
+
+The middle row is the §GANTT_MINI_TRIM cliff bug reproducing on demand: 12 members inside 12 days
+plus one at day 900, and the retired rule draws the bar across the whole project.
+
+CI-equivalent gates run locally, all green: `node --check` over all of `viewer`+`modeller`,
+`npx eslint viewer modeller`, `audit_sw_precache.js` (121/121, `gantt_model.js` registered),
+`audit_script_tags.js` (146/146). `sw.js` `CACHE_VERSION` v1061 → **v1062** in the same commit
+(`feedback_sw_version`). Also re-run green, unchanged: `witness_s50_cell_engine`,
+`witness_gantt_edit_undo` (9), `witness_gantt_native_generate` (5), `witness_gantt_group_move` (9),
+`witness_gantt_baseline` (11). `witness_gantt_lock_integrity` fails 1 of 20 (`G-LI-2e`) — its own
+assert message calls it a KNOWN PRE-EXISTING BUG, unrelated and untouched here.
+
+## §S53.5 — ⛔ FOUND WHILE DOING F3: `witness_zone_display_authoring.js` has been DEAD since 2026-08-17
+
+Not caused by this work — **verified at pristine `a4932ee`, the identical crash.** Auditing every
+consumer of the moved `_tukeyBound` turned it up:
+
+```
+ReferenceError: _tukeyBound is not defined
+    at _tmDisplayRemap (evalmachine.<anonymous>:672:26)
+```
+
+Stage 2 hoisted `_tukeyBound` to `time_machine.js` module scope and `_tmDisplayRemap` started
+calling it; this witness slices `_tmDisplayRemap` but was never given `_tukeyBound`. It has died
+before its FIRST assertion on every run since. **Fixed here** the way F3 makes natural — bound from
+the real module (`var _tukeyBound = GanttModel.tukeyBound;`, both sandboxes) instead of sliced, so
+the failure mode cannot return.
+
+**With it alive again: `pass=16 fail=2`, and the 2 are a real open question, not a wiring fault.**
+
+```
+§ZDA_WITNESS Duplex_extracted              floating 22  -> 37    outWindow 13  -> 0
+FAIL W-ZDA-4a  floating not worse under display-authored windows (22 -> 37)
+§ZDA_WITNESS HHS_Office_Federated_extracted floating 894 -> 1839 outWindow 707 -> 11
+FAIL W-ZDA-4a  floating not worse under display-authored windows (894 -> 1839)
+```
+
+What the run itself says about it, stated as evidence and NOT as a diagnosis — this was not chased,
+it is outside F3:
+- `base` runs `_ogSupportSweep`, `next` deliberately SKIPS it (the shipped §ZONE_DISPLAY_AUTHORING
+  change, asserted PASS two lines earlier: *"overlay skips `_ogSupportSweep` exactly on
+  `display_authored=1`"*). The sweep is the floating-reducing pass, so the delta is the sweep's
+  contribution — the open question is whether display-authored windows were supposed to make it
+  redundant. On this judge they do not.
+- Window fidelity moves the OTHER way and hard: `outWindow` 13→0 and 707→11 (W-ZDA-4b PASS).
+- W-ZDA-6 on the same buildings, same run: **midair=0** on the CPM display timeline — the ops
+  timeline the movie actually plays. W-ZDA-4a judges `capWindowRescale`-clamped WINDOW items, which
+  this witness's own neighbouring comment calls *"the WINDOW view … not the schedule."*
+
+**Next session:** decide whether W-ZDA-4a's premise still holds post-§CPM_DISPLAY (it predates it),
+or whether skipping the sweep has a real cost. Do not absorb the two reds silently.
