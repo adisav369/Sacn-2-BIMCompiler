@@ -3615,3 +3615,71 @@ head; the two pre-existing reds (G-LI-2e, zone_display_authoring) re-measured on
 byte-identical to their `eb832c1` PASS/FAIL sets (only ms timings differ) — including
 zone_display_authoring, re-run deliberately because §S51 edits `_displayTimeline`, which it
 slices.**
+
+---
+
+# §S52 — WATCHDOG AUDIT: witness/code length and per-building hardcoding (2026-08-21)
+
+**User ask:** *"i am also concerned about witness and code length and custom building hardcoded. See
+if they are all in order. Recommend any refactor."* Audited on `origin/main` @ `eb832c1`
+(pre-#1444). Answer: **the 4D path is clean of per-building hardcoding; length is one file.**
+
+## §S52.1 — hardcoded buildings: 3 real hits in all of `viewer/`, none in the scheduler
+
+Every building name in `cpm_schedule.js` (6), `schedule_gate.js` (13), `schedule_author.js` (3) and
+`lib/level_deriver.js` (3) is a **comment citing measured evidence**, not a code branch. That is the
+provenance discipline working, not a fit. Executable-code hits, whole viewer, excluding vendored
+libs (`web-ifc`, `exceljs`, `sql-wasm`) whose matches are IFC class names (`IFCFLOWTERMINAL` etc.):
+
+| file:line | what | verdict |
+|---|---|---|
+| `time_machine.js:5802` (`_loadTwin`) | `var building = (app && app.activeBuilding) \|\| 'Hospital'` | ⚠ **silent default to Hospital** for any model with no active building — loads the wrong ERP twin rather than none |
+| `time_machine.js:5831` (`_loadShopfloor`) | same idiom | ⚠ same |
+| `mep_qto_populate.js:19` | hardcoded `'HHS_Office_Federated_extracted.db'` | one-off tool; should take an argument |
+
+Not 4D-critical, and §S29's generality problem is NOT in the scheduler — it is these two ERP-twin
+loaders. Fix is to fall back to `null` and skip the load, never to guess a building.
+
+## §S52.2 — length: `time_machine.js` is 60% of the 4D surface
+
+`time_machine.js` **9,259** · `schedule_author.js` 1,703 · `lib/room_walker.js` 1,478 ·
+`schedule_gate.js` 1,236 · `cpm_schedule.js` 867 · `foreign_schedule.js` 547 ·
+`lib/level_deriver.js` 278 · `location_axis.js` 162 — **15,530 total**. Witnesses are proportionate:
+`witness_midair_zero.js` 451, `witness_s50_cell_engine.js` 139.
+
+Everything except `time_machine.js` is in order. **Named, not taken:** extract the Gantt model
+(`buildGanttTasks()`, `computeDays()`, the `:6074` grouping) into `gantt_model.js`. It also removes
+the reason `witness_midair_zero.js` slices six functions out of `time_machine.js` **by source text**
+— a fragility that has already silently widened a slice once (`:141`).
+
+## §S52.3 — DONE: the witness baselines are now DATA (bim-ootb PR #1445)
+
+The one refactor taken. `CPM_FLOAT_AFTER_BASELINE` / `CPM_MIDAIR_BASELINE` / `CPM_ORPHAN_BASELINE`
+moved out of the witness into `viewer/tests/baselines/midair.json`; the WHY stays in the witness
+comments that cite the measuring section. A re-lock is now a data edit with a readable diff, and an
+eighth building never edits test code.
+
+**Why it was worth doing:** that coupling already cost this lane twice — §S39's 7 baselines red and
+undiagnosed for a day, and #1435 attributing the failure to itself when all 7 were already red at
+#1434.
+
+Behaviour-preserving: `pass=49 fail=0`, every number identical to `81cdf27`. The loader refuses two
+silent-failure modes, **both proven red, not assumed** (§STATUS instrument rule):
+
+| perturbation | result |
+|---|---|
+| `float_after_cpm.Duplex` 44 → 43 | `FAIL W-MZ-8 Duplex … locked at 43 (got 44)`, `pass=12 fail=1` |
+| `midair.JKR` deleted | `Error: … group "midair" has 6 buildings, expected 7` |
+
+The second matters most: a missing group would assert against `undefined`, and `x === undefined`
+never equals a count — the lock would **pass by absence**, the §S25_REVIEW.1 failure class.
+
+## §S52.4 — actioned per §S37.5
+
+| # | item | state |
+|---|---|---|
+| **F1** | witness baselines → JSON | ✅ **PR #1445**, auto-merge |
+| **F2** | `time_machine.js:5802/:5831` default to `'Hospital'` — fall back to `null`, skip the load | open, small, general-IFC correctness |
+| **F3** | extract `gantt_model.js` from `time_machine.js` | open — do it AFTER item d lands, else it collides |
+| **F4** | `mep_qto_populate.js:19` hardcoded DB filename → argument | open, cosmetic |
+
