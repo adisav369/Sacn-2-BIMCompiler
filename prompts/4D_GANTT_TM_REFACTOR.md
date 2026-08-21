@@ -3679,9 +3679,9 @@ never equals a count — the lock would **pass by absence**, the §S25_REVIEW.1 
 | # | item | state |
 |---|---|---|
 | **F1** | witness baselines → JSON | ✅ **PR #1445**, auto-merge |
-| **F2** | `time_machine.js:5802/:5831` default to `'Hospital'` — fall back to `null`, skip the load | open, small, general-IFC correctness |
-| **F3** | extract `gantt_model.js` from `time_machine.js` | open — do it AFTER item d lands, else it collides |
-| **F4** | `mep_qto_populate.js:19` hardcoded DB filename → argument | open, cosmetic |
+| **F2** | `time_machine.js:5802/:5831` default to `'Hospital'` — fall back to `null`, skip the load | ✅ **PR #1447** (§S54.2) |
+| **F3** | extract `gantt_model.js` from `time_machine.js` | ✅ **PR #1446** (§S53), merged `a0885e2` |
+| **F4** | `mep_qto_populate.js:19` hardcoded DB filename → argument | ✅ **no change needed** — the premise was wrong, the tool already takes `[db_path ...]` (§S54.1) |
 
 
 ---
@@ -3832,3 +3832,88 @@ it is outside F3:
 
 **Next session:** decide whether W-ZDA-4a's premise still holds post-§CPM_DISPLAY (it predates it),
 or whether skipping the sweep has a real cost. Do not absorb the two reds silently.
+
+---
+
+# §S54 — F2 + F4: the last two §S52.4 items (2026-08-21)
+
+## §S54.1 — F4 is ALREADY DONE. Closed with evidence, not with a change.
+
+§S52.1 recorded `mep_qto_populate.js:19` as *"hardcoded `HHS_Office_Federated_extracted.db`; one-off
+tool; should take an argument."* Re-read at `a0885e2` before touching anything — **the premise is
+wrong, the tool already takes arguments**:
+
+```js
+:9    * Usage: node mep_qto_populate.js [db_path ...] [--template=cidb2024_my]
+:18   const DEFAULT_DBS = [ 'HHS_Office_Federated_extracted.db', 'Hospital_extracted.db',
+:19-24    'Terminal_extracted.db', 'Ifc4_Revit_extracted.db', 'SampleHouse_extracted.db',
+          'Duplex_extracted.db' ];
+:31-34  for (const a of args) { if (a.startsWith('--template=')) …; else dbPaths.push(a); }
+:83-85  const targets = dbPaths.length > 0 ? dbPaths : DEFAULT_DBS.map(f => path.join(BUILDINGS_DIR, f));
+```
+
+`:19` is the FIRST ENTRY of a six-building default fleet, reached only when the caller passes no
+path — not a hardcoded target. The audit read one line and inferred the rest. **F4 = ✅ no change
+needed**, and the §S52.1 row is corrected here rather than left to be re-discovered.
+
+## §S54.2 — F2 SPEC: never guess a building for the ERP twin
+
+`time_machine.js` `_loadTwin()` and `_loadShopfloor()` both open with:
+
+```js
+var building = (app && app.activeBuilding) || 'Hospital';
+```
+
+With no active building the loaders do not skip — they **silently load Hospital's ERP twin** and
+attach its cost/phase figures to whatever model is on screen. This is the one real per-building
+hardcoding left in the 4D path (§S52.1 audited the rest clean: every other building name in the
+scheduler is a comment citing measured evidence).
+
+**Rule, and it is the project's own:** never invent a value. No active building is a REAL state — an
+arbitrary IFC opened straight into the viewer — and the correct answer there is "this model has no
+folded ERP project", which is exactly what both functions already return for a building with no
+`C_Project` row (`§TM_TWIN_MISS`).
+
+**Change (both functions, symmetric):**
+- `var building = app && app.activeBuilding;`
+- if falsy: log `§TM_TWIN_NOBLD` / `§PERF_NEG_CACHE shopfloor no-building`, return
+  `Promise.resolve(null)` **before** the 25.8MB `ad_seed.db` fetch. Not a `_twinMiss` entry — the miss
+  cache is keyed by building name and this state has none; it is a skip, not a cached miss.
+- Nothing else moves. The cache checks, the in-flight guards and the negative caches below are
+  untouched, and a building that IS active behaves exactly as before.
+
+**Witness `witness_tm_erp_twin_guard.js`** — slices both functions out of `time_machine.js` into a vm
+sandbox whose `APP.cachedFetch` counts calls:
+
+| id | proves / disproves |
+|---|---|
+| W-TET-1 | with no active building, `_loadTwin` resolves null **and never fetches** `ad_seed.db` — the guess is gone, and gone before the 25.8MB read |
+| W-TET-2 | same for `_loadShopfloor` |
+| W-TET-3 | with an active building, both still fetch and still resolve — the guard did not disable the feature |
+| W-TET-4 | `'Hospital'` appears nowhere in either function's source — a fallback cannot creep back as a different expression |
+
+## §S54.3 — RESULTS (2026-08-21)
+
+**F2 shipped as bim-ootb PR #1447** (`fix/tm-erp-twin-no-building`, base `a0885e2`). Both loaders
+now skip on a falsy `activeBuilding`, before the fetch. `witness_tm_erp_twin_guard.js`: **`pass=6
+fail=0`**.
+
+**Not passing by absence** — restoring the exact pre-fix line, `(app && app.activeBuilding) ||
+'Hospital'`, in both functions:
+
+| | fixed | pre-fix line restored |
+|---|---|---|
+| W-TET-1 `_loadTwin` | PASS, `fetches=0` | **FAIL**, `fetches=1` |
+| W-TET-2 `_loadShopfloor` | PASS, `fetches=0` | **FAIL**, `fetches=2` |
+| W-TET-3a/b control (building present) | PASS | PASS (correctly — the loaders still work) |
+| W-TET-4a/b source | PASS | **FAIL** both |
+| summary | `pass=6 fail=0` | **`pass=2 fail=4`** |
+
+The fetch counter is what makes W-TET-1/2 real: with the fallback restored the promise still
+resolves null (the witness's `cachedFetch` rejects), so a value-only assertion would have passed
+while the 25.8MB read had already happened against the wrong building.
+
+`sw.js` `CACHE_VERSION` v1062 → **v1063**. `audit_sw_precache` 121/121, `audit_script_tags` 146/146,
+`node --check` over `viewer`+`modeller` green.
+
+**§S52.4 is now zero:** F1 ✅ #1445 · F2 ✅ #1447 · F3 ✅ #1446 · F4 ✅ no change needed (§S54.1).
