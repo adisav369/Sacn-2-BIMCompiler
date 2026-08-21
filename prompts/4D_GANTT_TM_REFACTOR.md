@@ -119,6 +119,10 @@ project. Not by new sections in this file.**
 > one of the four measured causes, not to measure again.**
 
 **Nothing has shipped. `viewer/` is unchanged.**
+> **⚠ SUPERSEDED 2026-08-21 — see §S50 (end of file): the cell-grain schedule SHIPPED (PR #1442).**
+> The user retired the support graph as the live precedence carrier; `cpm_schedule.js` now gates
+> per building (Terminal/Hospital/Clinic → cell path, float −63..−76%; Duplex/HHS/JKR/LTU → the
+> graph engine unchanged). The graph-era analysis below §S26–§S49 remains the evidence record.
 
 **⚖ STANDING RULING — §S32 (user, 2026-08-19), read before acting on ANY section below:** the
 extractor is CORRECT and must not be changed; `buildings/*.db` EXTRACTION tables are FROZEN (§S32.6: the
@@ -3231,3 +3235,277 @@ mutually exclusive under a cyclic support graph, and this run is what establishe
   measurement that makes it the highest-value one in the lane.
 
 **Nothing built, nothing shipped, `viewer/` unchanged.** A1, A3 and the 13 ledger items stay parked.
+
+---
+
+# §S50 — SHIP: THE CELL-GRAIN SCHEDULE (user decision 2026-08-21 — the graph is RETIRED) (2026-08-21)
+
+**USER DECISION (2026-08-21), superseding the graph-side program:** the per-element support graph
+is RETIRED. Precedence is carried by **(location, trade) ordering**, not by derived support edges.
+Everything graph-side — ledger A1 (`hang` deletion), refuse-at-creation as a graph operation, SCC
+contraction, the §S45/§S46 grain probes — is **SUPERSEDED, not parked**. The shippable
+decomposition, in the user's own terms:
+
+- **a. ARCH right** — trades ordered within a cell; a cell = one LOCATION × one TRADE. Plus the one
+  real exception, measured in §S47.3: an element suspended from above is filed by what it hangs
+  from, so MEP in location N waits on STRUCT in location N+1.
+- **b. Rooms injection** — the location axis: declared rooms where present, compiled rooms
+  (`viewer/lib/room_walker.js`, the §S32-blessed pattern) where absent, `level_deriver.js` (§S35)
+  for the vertical.
+- **c. Unstacked bars** — falls out of a+b; `wide50` is the existing measure, not a separate task.
+- **d. Rendering follows the schedule** — NOT in this section's scope. `_displayTimeline` re-authors
+  at render time; that inversion is the named follow-on.
+
+This section is the SPEC (written before code, §S50.1) and then the RESULTS (§S50.2+). Branch:
+`feat/cell-grain-location-schedule` off bim-ootb `origin/main` = `9db62a6`.
+
+## §S50.1 — SPEC (b then a), written before any code
+
+### S50.1.a — modules and ownership
+
+| file | status | responsibility |
+|---|---|---|
+| `viewer/lib/level_deriver.js` | NEW (port of bim-compiler `build/level_deriver.js`, §S35 — algorithm unchanged, provenance header added) | vertical axis: ordered level for every element, T1-T4 ladder, §S34.3 tie-break, §LEVEL_DERIVE_* self-report |
+| `viewer/location_axis.js` | NEW | the ONE runtime location pass (§S32.4 contract): per element → `{lvlIdx, loc, locSource}` where `locSource ∈ declared\|compiled\|level`; memoized per db object (once per load); read-only — NO writes to any table; §LOC_AXIS coverage lines per building |
+| `viewer/cpm_schedule.js` | CHANGED | `run()` now schedules cells in product order (S50.1.c). `contactGraph`/`designatedSupport` KEPT (the hang-filing extraction + judge parity). `buildGraph`/`solve` remain exported for probes but are RETIRED from the live path — `run()` no longer calls them |
+| `viewer/viewer.html` | CHANGED | script tags: `lib/room_walker.js?v=3`, `lib/level_deriver.js?v=1`, `location_axis.js?v=1` before consumers |
+| `viewer/sw.js` | CHANGED | CACHE_VERSION bump + precache the two new files (room_walker already network-first-listed) |
+| `viewer/time_machine.js` | CHANGED (one constant) | `_GANTT_CACHE_VERSION` bump — the schedule shape changes, cached materializations must regenerate. `_displayTimeline` body and every display/render function UNTOUCHED |
+| `viewer/tests/witness_midair_zero.js` | CHANGED | re-lock (S50.1.e); LevelDeriver now required from `../lib/level_deriver.js` (in-repo), not from bim-compiler |
+
+### S50.1.b — the location axis (b)
+
+For every scheduled element (the same `_twItems` population the engine receives — no
+subsetting, §S46's trap is named and avoided; every per-building number below states its N):
+
+1. **Vertical**: `LevelDeriver.derive(db, elements)` — §S35 as built and gate-passed (100%
+   coverage 7/7, T4=0, 14/14 fixtures). `lvlIdx` = the element's index on the building's level
+   grid; elements with non-finite geometry (T4) get `lvlIdx = -1`, counted, reported.
+   **The level-grid source is NOT extended in this PR** — `declared` where `spatial_structure`
+   carries elevations, `uniform3m` fallback otherwise (LTU/Duplex). Deriving a grid from
+   compiled-room wall anchors is a named possible follow-on, not built (§S34.4/§S29.4 cautions).
+2. **Horizontal (the room)**, first match wins, source recorded per element:
+   - `declared` — `rel_contained_in_space` rows whose space_guid is NOT a compiled `RM_`/`STC_`
+     row: the IFC's own containment (name-keyed column read — the LTU column-order landmine).
+   - `compiled` — where the DB already carries injected `RM_` rows (a prior in-session
+     `RoomWalker.walk(write:true)`), those are read back as-is; otherwise
+     `RoomWalker.compileRooms(db)` runs IN MEMORY and elements are assigned by the SAME
+     containment join `writeRooms` uses (XY centre in any of the room's rects, canonical-floor /
+     z-anchor storey join, SUSPECT rooms excluded) — join helpers exported from room_walker.js,
+     not re-derived. Nothing is written to any table by this pass.
+   - `level` — no room contains the element (slabs, roofs, façades, verticals): the location is
+     the level itself (`L<lvlIdx>`).
+3. **Coverage report** (§S32.4): `§LOC_AXIS <bld> n=… declared=… compiled=… level=… lvlT4=…`
+   plus `§LOC_AXIS_GUARD` naming which branches were reachable on this building (a building with
+   zero declared rooms must SAY the declared branch was unreachable, so 0 is not a silent default).
+
+### S50.1.c — the cell schedule (a)
+
+- **Cell** = `(lvlIdx, loc, trade)`; `trade` = the engine's own `seq` (SEQUENCE_RULES sequence
+  number; `seq==null → 99`, the §S47 probe's rule).
+- **Hang filing (the ONE exception)**: `designatedSupport(items, contactGraph(items))` — the
+  judge's own election, unchanged — is read ONCE as EXTRACTION. If `lvl(support) > lvl(element)`,
+  the element is re-filed at the support's `(lvlIdx, loc)` at its own trade (single pass, §S47b's
+  measured mechanism; promoted count printed).
+- **Order — two ordered lists, level-scoped (the §S48 instrument's own skeleton,
+  `grid_probe.js` lines 788-817, room-refined):**
+  `ES(cell(L, loc, T)) = max( finish of every cell (L, *, T'<T), finish of every cell (L'<L, *, T), epoch )`
+  where epoch = min raw start (extracted, not invented). **Trade order is enforced at LEVEL
+  scope, not room scope — stated as spec, not drift:** a room's own supports (its floor slab, its
+  enclosing walls) are filed at the level location, so room-scoped trade order would leave the
+  slab→fit-out relation unrepresented — exactly §S47.2's refused class. Rooms subdivide a level's
+  cells (finer bars, contiguous packing per room); they add no cross-room edges within a level —
+  rooms at one level are parallel locations, crew pools are what serialize them.
+- **Packing**: cells processed in `(lvlIdx, trade, loc)` order (predecessors are always already
+  final); members sorted `(bz, guid)`; each claims the earliest slot of its GLOBAL per-resource
+  crew pool (same caps + default-3 as computeSchedule §CREW-CAP); `start = max(cellES, slot)`.
+  Deterministic throughout — no randomness, no Date.now in the schedule.
+- **Result shape unchanged** for `_displayTimeline`/`ScheduleEngine`: `{ok, solution:{times,
+  makespanDays}, graph:{out:[], nElements, nNodes, msMeta:[], stragglerOf:zeros,
+  counts:{…0, stragglers:0}, designated}}` — dependencies are simply EMPTY now (arrows are the
+  declared-exception surface, none derived; ScheduleEngine emits `dependencies: []`).
+- **Self-report + can-fail guard**: `§CELL_RUN` prints cells, locations, trades, promoted count,
+  and the count of E1 support edges the final filing still cannot represent
+  (`refusedEdges`, §S47's measure, computed against the final cell keys) — with the population
+  stated. This number CAN go red (it is nonzero today on every building) — it is the engine-side
+  guard that the § line is measuring something real.
+
+### S50.1.d — what this deliberately does NOT do
+
+- No `_displayTimeline`/render changes (d is the follow-on; the display grouping stays
+  `storey|phase` until d lands, so on-screen bars are the coarser hull of the cell schedule).
+- No extractor edits, no DB rebuilds, no writes to any table from the runtime pass (§S32; even
+  the schedule tables stay untouched here — filling them is schedule_author's seam, not this
+  engine's).
+- No new level-grid source (see S50.1.b.1).
+- No deletion of `buildGraph`/`solve` yet — exported, probe-reachable, retired from `run()`.
+  Deleting them orphans several probes/witnesses in one PR; that cleanup is named as follow-on.
+
+### S50.1.e — witness contract (same PR, never after)
+
+- `W-MZ-2` (midair == 0) was the GRAPH era's invariant — §S49.3 proves it and low float are
+  mutually exclusive under a cyclic support graph, and the user chose the grid. It becomes a
+  LOCKED PER-BUILDING BASELINE (`CPM_MIDAIR_BASELINE`), measured fresh, first run with
+  placeholder −1s and real numbers read off the FAIL lines (the §S20 lock discipline — never
+  invented). `W-MZ-7` (drag one element 5d before its first contact → the judge MUST see it)
+  stays as the can-fail proof of the same instrument.
+- `W-MZ-8` float baselines re-measured and re-locked the same way, same PR.
+- `W-MZ-4` orphans: purely geometric, expected UNCHANGED (that expectation is itself checkable).
+- NEW `§S50_FOURAXIS` line per building: `days` (schedule span) · `wide50` (cell-grain bars AND
+  the storey|phase display hull, both named) · `float` (`ScheduleGate.auditFloating`) · `midair`
+  (this witness's own independent `census()`), each with the instrument named in the line.
+- Coverage lines (S50.1.b.3) asserted present per building.
+
+### S50.1.f — acceptance (what §S50.2 must show, control = B-ships-today at `9db62a6`)
+
+All FOUR axes per building and fleet, new engine vs B control, instruments named; per-building
+coverage (declared/compiled/level); can-fail evidence (W-MZ-7 red-capable + refusedEdges nonzero
+somewhere + the lock discipline's first-run FAIL lines). Verified control baseline on `main`
+(witness run, log `control_main_9db62a6.log`): `pass=39 fail=0`, W-MZ-8 float Terminal 2,151 ·
+Hospital 3,960 · LTU 5,023 · JKR 1,222 · HHS 889 · Clinic 877 · Duplex 44 (fleet 14,166).
+
+### S50.1.g — two additions folded in BEFORE any code (coordinator, 2026-08-21) + the gate
+
+**1. §S46 subset control is mandatory.** Any figure computed on a restricted population (e.g.
+room-contained elements only) is reported WITH the same population re-keyed by coarse
+`storey|phase`. The gate quantity below avoids the trap by construction: it is computed on the
+WHOLE scheduled population, N stated per building.
+
+**2. Compiled-room coverage on LTU/Duplex is measured EARLY — before the cell scheduler is built
+on top of it — with the pass mark declared BEFORE the run:**
+
+> **PASS MARK (declared 2026-08-21, before the early probe runs): a building takes the cell path
+> only if its hang-aware representability — (E1 designated-support edges inside one cell +
+> representable by the product order) / (all E1 edges), §S47b's own formula, computed at the FINAL
+> location filing on the WHOLE population — is ≥ 0.88.** §S48.3 measured the split: ≥88.5%
+> representability → float −74–80% vs B; ≤78.1% → float +80–366% vs B. Below the mark the building
+> KEEPS TODAY'S ENGINE (per-building fallback, computed at runtime from the data by this same
+> formula — a rule, not a dictionary, §S39 discipline). **No tuning to reach the number:** if
+> compiled rooms do not clear the mark on LTU/Duplex, that is the reported result and those
+> buildings fall back; the level-grid-from-wall-anchors idea stays un-built (S50.1.b.1).
+
+**Consequent engine change (supersedes the S50.1.c result-shape sentence only in that `run()` now
+has two paths):** `run()` computes the location axis + hang filing + representability, prints
+`§CELL_GATE <bld> repr=… mark=0.88 path=cell|graph`, and EITHER schedules cells (≥ mark) OR calls
+the retained `buildGraph`+`solve` unchanged (< mark). The witness locks per-building baselines on
+whichever path the gate selects — the gate decision line is part of the witness evidence, and the
+fallback is exercised by whichever fleet buildings fail the mark (can-fail: both branches must be
+seen live in the fleet run, or the gate itself is untested).
+
+**Location filing detail (belongs to S50.1.b, stated here once):** an element contained in a room
+takes the ROOM's level (`lvlIdx` of the room's floor anchor on the level grid) — the room is the
+location and the location owns the vertical position; an element with no room keeps its own
+derived level. Declared-room elements already get this via §S35 T1 (space→parent storey), so this
+changes nothing for them; it makes compiled-room filing consistent with it.
+
+**Control run for §S50.2 (done before code, log `control_main_9db62a6.log`, witness
+`witness_midair_zero.js` at `9db62a6`): pass=39 fail=0; W-MZ-8 float Terminal 2,151 · Hospital
+3,960 · Duplex 44 · HHS 889 · Clinic 877 · LTU 5,023 · JKR 1,222 (fleet 14,166). B's days/wide50
+control values come from the early probe's own B rows (same instrument family as §S48.1).**
+
+## §S50.2 — RESULTS. Shipped: PR #1442 (`feat/cell-grain-location-schedule`, base `9db62a6`) (2026-08-21)
+
+**Everything below is measured, logged, and named by instrument. Logs (session scratchpad):
+`control_main_9db62a6.log` (control witness on main) · `probe_s50_early.log` (early gate probe) ·
+`witness_s50_run1.log` (placeholder run — the FAIL lines the locks were read from) ·
+`witness_s50_run2.log` (green re-run, `pass=39 fail=0`).**
+
+### S50.2.a — the fleet-wide data finding first: "declared rooms" never existed
+
+`rel_contained_in_space` carries **ZERO IFC-declared rows on all 7 buildings** — every row is an
+`RM_` room persisted by an EARLIER RoomWalker run (`rooms_meta` version stamp absent = pre-stamp
+compile). §S46.1's "declared 13.41%/13.27%" was compiled containment all along. Consequence built
+into `location_axis.js`: rooms are compiled FRESH in memory with the current walker (v3) — one
+algorithm, one version, uniform fleet, nothing written; persisted rows are reported, not used.
+
+### S50.2.b — the early probe (coordinator directive: measure BEFORE building; mark declared first)
+
+Gate = hang-aware representability, §S47b formula, whole population (instrument:
+`scripts/hull/probe_s50_early.js` on `9db62a6`; §S46 subset control printed per building):
+
+| building | population | compiled-room coverage | lvl grid | repr | path (mark 0.88) |
+|---|---|---|---|---|---|
+| Terminal | 48,428 | 2,175 (4.49%) in 41 rooms | declared | **98.32%** | CELL |
+| Hospital | 63,182 | 6,943 (10.99%) in 152 rooms | declared | **97.06%** | CELL |
+| Clinic | 16,071 | 1,429 (8.89%) in 181 rooms | declared | **91.24%** | CELL |
+| LTU_AHouse | 122,330 | 6,863 (5.61%) in 99 rooms | **uniform3m** | 78.06% | GRAPH |
+| JKR | 8,985 | 143 (1.59%) in 21 rooms | declared (0.01m twins) | 77.15% | GRAPH |
+| HHS_Office | 6,839 | 1,464 (21.41%) in 64 rooms | declared | 71.13% | GRAPH |
+| Duplex | 1,119 | 14 (1.25%) in 4 rooms | **uniform3m** | 66.27% | GRAPH |
+
+**The coordinator's question answered: compiled rooms do NOT rescue LTU/Duplex.** Coverage is
+1.25–5.61% there and the broken axis is the VERTICAL (`uniform3m`), which rooms cannot fix — so
+those buildings (plus JKR/HHS) fall back to today's engine rather than shipping the §S48.3
+regression. No tuning was done to reach the mark. §S46 controls printed (e.g. Clinic roomed-subset
+repr 37.84% vs whole 91.24% — the subset is WORSE, so nothing was claimed from a subset).
+
+### S50.2.c — the four-axis table (instrument: `viewer/tests/witness_midair_zero.js` §S50_FOURAXIS;
+control = B ships today at `9db62a6`, float/midair from `control_main_9db62a6.log`, B days/wide50
+from §S48.1's grid_probe B rows — cross-validated: the four GRAPH-path buildings measure IDENTICAL
+days/wide50/float/midair to that control in the same §S50_FOURAXIS lines)
+
+| building | path | days | wide50 | float (`auditFloating`) | strict midair (`census()`) |
+|---|---|---|---|---|---|
+| Terminal | CELL | 164.7 → 239.4 (+45.3%) | cell bars **0**/197 · display hull 25→22 | 2,151 → **554 (−74.2%)** | 0 → 684 (LOCKED) |
+| Hospital | CELL | 543.5 → 604.7 (+11.3%) | cell bars **0**/451 · display hull 15→16 | 3,960 → **935 (−76.4%)** | 0 → 218 (LOCKED) |
+| Clinic | CELL | 183.5 → 237.0 (+29.2%) | cell bars **0**/255 · display hull 9→9 | 877 → **324 (−63.1%)** | 0 → 422 (LOCKED) |
+| Duplex | GRAPH | 15.4 (=) | 8/16 (=) | 44 (=) | 0 (=) |
+| HHS_Office | GRAPH | 98.6 (=) | 9/17 (=) | 889 (=) | 0 (=) |
+| JKR | GRAPH | 45.6 (=) | 14/64 (=) | 1,222 (=) | 0 (=) |
+| LTU_AHouse | GRAPH | 1,429.0 (=) | 35/58 (=) | 5,023 (=) | 0 (=) |
+| **FLEET** | | **2,432 → 2,670 (+9.8%)** | | **14,166 → 8,991 (−36.5%)** | **0 → 1,324** |
+
+- **Float** (§OBJECTIVE symptom 1's driver): −74/−76/−63% on the three gated buildings — inside
+  §S48.3's predicted −74..−80% band. Fleet −36.5%.
+- **Bars** (symptom 2): 0 wide CELLS on all three (measured, not assumed — `wide50cell` is computed
+  from real spans and CAN be nonzero). The on-screen hull barely moves (25→22 / 15→16 / 9→9)
+  because display grouping is still `storey|phase` — that re-pointing is item d, the named
+  follow-on, NOT done here.
+- **Days**: +45.3/+11.3/+29.2% — far below §S48's level-grain +91/+60/+88% on the same three.
+  Mechanism: rooms subdivide a level's cells, and same-(level,trade) room cells are PARALLEL
+  (crew pools serialize them), so packing overlaps where the level-grain probe serialized.
+- **Midair**: the leg-4 exception surface, 684/218/422 (same order as §S48.1's 687/179/373),
+  now LOCKED per building so it can never drift silently. §S49.3 stands: midair-0 and low float
+  are mutually exclusive under a cyclic support graph — B's 0 was SCC-contraction simultaneity,
+  and the user chose the grid.
+
+### S50.2.d — can-fail evidence (the §STATUS instrument rule)
+
+1. **The lock discipline itself went red first**: run 1 shipped placeholder −1 baselines and
+   produced exactly 6 FAILs with the real numbers on the FAIL lines (`witness_s50_run1.log`),
+   then run 2 locked them green (`pass=39 fail=0`). Never invented.
+2. **W-MZ-7 unchanged and green 7/7** — drag one element 5d before its first contact, the census
+   judge reports it.
+3. **Both gate branches fired in one fleet run** (3 CELL / 4 GRAPH) — the gate is exercised,
+   neither outcome is a structural constant. The cell engine ALSO went red during development:
+   a cascading-promotion variant read 87.04% on Clinic where the instrument reads 91.24% —
+   caught by `witness_s50_cell_engine.js` (shipped), fixed to the §S47b single-pass semantics.
+4. **GRAPH-path identity proven, not assumed**: `witness_s50_cell_engine.js` asserts a gated-GRAPH
+   building's times are IDENTICAL to a legacy no-db call, plus determinism (0 diffs on re-run).
+5. `refusedE1` prints nonzero on every building (807–24,751) — the § lines measure something real.
+
+### S50.2.e — what did NOT ship, and why (named, not smoothed over)
+
+- **LTU/Duplex/JKR/HHS stay on the graph engine.** Their float/midair/bars are exactly yesterday's.
+  The named lever (NOT built, §S32-adjacent user call): a level grid derived from compiled-room
+  wall z-anchors for buildings with no declared elevations — §S34.4/§S29.4 caution that LTU's
+  federated floor heights make a per-label grid wrong by construction, so this is a decision,
+  not a default.
+- **Leg-4 arrows are surfaced, not enforced** — `refusedE1` + the locked midair baselines ARE the
+  reviewable exception surface (§S48.4 sized it at 17–76 cell pairs on six buildings). Enforcing
+  them (variant-A style re-injection) was measured in §S49 to break midair further; wiring them
+  as PLANNER-DECLARED arrows in the schedule tables is the intended product path, not something
+  this engine invents.
+- **Item d (display follows the schedule)** — untouched, as scoped. `_displayTimeline` still
+  re-authors at render time; the display hull still groups `storey|phase`. This is the next task.
+- **`buildGraph`/`solve` not deleted** — they ARE the fallback engine now, plus probe surface.
+- **Two pre-existing red witnesses left red** (verified byte-identical on clean `9db62a6`,
+  logs `main_witness_*.log`): `G-LI-2e` (its own message documents the known guids-collector bug)
+  and `witness_zone_display_authoring` (`_tukeyBound` absent from its slice list — it crashes on
+  main too). Not this PR's regressions; not silently absorbed either.
+- **Persisted `RM_` rows left in place** — read-only ruling; they are reported (`persistedRM=`)
+  and ignored. Whether to purge them from the shipped files is a user call (§S32 rule 2).
+
+**Deliverable state: PR #1442 open against `origin/main`, auto-merge enabled, witness green at
+`pass=39 fail=0` on the branch. `viewer/` display path untouched. No DB file modified, no binary
+committed, nothing written to any table.**
