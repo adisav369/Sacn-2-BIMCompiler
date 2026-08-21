@@ -4100,12 +4100,25 @@ live-testable now. It must INDUCE each catch to prove the warn fires, not read s
 Ran as part of the same sweep. **Findings are the scout's; the two I re-ran myself are marked.**
 Ranked, and every one of these is a REPAIR item, not a new feature:
 
-1. **`witness_midair_zero.js` — the scout reports `pass=32 fail=7`.** ⚠ **I ran this same witness
-   twice today on `a4932ee` and after #1446 and got `pass=49 fail=0` both times.** The scout ran it
-   against the STALE working checkout (`13700fd`), not `origin/main`. **Verify before believing
-   either number** — but its second claim needs checking on its own merits: that `census()` inside
-   the witness is still the *symmetric* pre-fix formula that commit `6a395ca` (2026-08-18) retired
-   fleet-wide for misreading "something built on top of me" as "I am floating."
+1. **`witness_midair_zero.js` — the scout's `pass=32 fail=7` is WRONG, resolved 2026-08-21.** Run
+   a THIRD time, on `cab9ad5` + §S58: **`pass=49 fail=0`, zero FAIL lines** — matching my two
+   earlier runs (`a4932ee` and post-#1446). The scout ran it against the STALE working checkout
+   (`13700fd`). Its "least trustworthy in the suite / 7 admitted failures" framing does not hold on
+   `main`. *(Standing lesson, third time this week: a scout reading `~/bim-ootb`'s working tree is
+   reading a stale branch — dispatch prompts must say `git show origin/main:<path>`.)*
+
+   **But its SECOND claim survives and is worth measuring.** `census()`
+   (`witness_midair_zero.js:297`) counts a contact as `bearing || carrier || embedded`, where
+   `carrier` is explicitly an element ABOVE (`S.bz >= T.tz - GAP && S.tz > T.tz + EPS`) — the
+   witness's own comment says it "mirrors `_contactGraph`'s carrier clause EXACTLY... that asymmetry
+   was measured and deliberately LEFT ALONE." Meanwhile the SHIPPED judge went directional in
+   `6a395ca`/#1435 (*"designatedSupport() never hangs a grounded element on carrier-above +
+   directional floating judge"*). So the independent judge and the shipped judge now encode
+   DIFFERENT rules. The `isGround` gate above `midair++` mitigates the obvious case (an element whose
+   only contacts are above is counted grounded, not midair), which is presumably why it is still
+   green — but "green" and "measuring the same thing the engine measures" are not the same claim.
+   ⛔ **Open: measure whether the two judges still agree per element, or only in aggregate.** Not
+   chased here."
 2. **Three witnesses CRASH on the same stale-slice bug class as the `_tukeyBound` one §S53.5 found**
    — `witness_tm_geo_order_cycles.js` and `witness_big_element_support_coverage.js` (both
    `ReferenceError: _zoneIndex is not defined`), and `witness_zone_display_authoring.js` (still
