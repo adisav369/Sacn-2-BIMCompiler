@@ -82,6 +82,20 @@ the orphaned §S26.2 fix (`3bf771e`, PR #1440) takes that to 14,166, −55%. **S
 to any number in this lane.** (Strict midair — start before support *starts* — is already
 0; it is the start-before-support-*finishes* overlap that reads as floating on screen.)
 
+**▸ CURRENT AS OF 2026-08-21 (`6dab2d1`) — read this before acting on the numbers above.** The
+figures in symptom 1 are correctly commit-tagged history (pre-#1438 / `b81f646`) and are NOT current;
+they stop at fleet 14,166. Since then §S50 shipped the cell-grain schedule (#1442): **fleet 14,166 →
+8,991, −36.5%** (Terminal −74.2%, Hospital −76.4%, Clinic −63.1%), and strict midair on the
+cell-path buildings is 684/218/422, user-accepted and locked in `viewer/tests/baselines/midair.json`.
+Symptom 2 is closed on the same three buildings: **0 wide bars** (Terminal 0/197, Hospital 0/451,
+Clinic 0/255) — but only while NO schedule is authored; see §S55.3, where authored identity replaces
+the cell grain and 12-17% of bars go wide again. The four low-representability buildings
+(Duplex/HHS/LTU/JKR) still run the unchanged graph engine.
+
+⚠ The `time_machine.js:6074` pointer below is stale twice over: item d (#1444) changed that grouping
+to the cell stamp, and §S53/F3 (#1446) moved the whole model to **`viewer/gantt_model.js`**
+(`groupKeyOf`/`buildTasks`). The DESCRIPTION of the defect still stands; only the address changed.
+
 **2. Stacked Gantt bars** — "one pile, full project length".
 
 **Both are the same defect: scheduling is per ELEMENT, display and measurement are per GROUP.**
