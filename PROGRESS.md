@@ -4,53 +4,41 @@
 > ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
-## ▶ NEXT TASK ON RESTART (written 2026-08-21, watchdog session, machine going down for reboot)
+## ▶ NEXT TASK ON RESTART (rewritten 2026-08-21 after the §S52.4 F-list was worked to zero)
 
-**Lane: `prompts/4D_GANTT_TM_REFACTOR.md`. Read `§OBJECTIVE` → `§STATUS` → `§S50` → `§S51` → `§S52`
-first. Do NOT re-walk §S23-§S49 — that trail is settled and archived in place.**
+**Lane: `prompts/4D_GANTT_TM_REFACTOR.md`. Read `§OBJECTIVE` → `§STATUS` → `§S50` → `§S51` → `§S53`
+→ `§S54` first. Do NOT re-walk §S23-§S49 — settled and archived in place.**
 
-**State at shutdown — both symptoms have moved, nothing is dangling:**
-- Symptom 1 (float): fleet **14,166 → 8,991 (−36.5%)** — Terminal −74.2%, Hospital −76.4%,
-  Clinic −63.1%. Shipped as the §S50 cell-grain schedule (bim-ootb **#1442**, `eb832c1`).
-- Symptom 2 (stacked bars): the Gantt now reads the cell schedule — §S51 item d (bim-ootb **#1444**,
-  `81cdf27`). 0 wide cells on the three cell-path buildings.
-- The support graph is **RETIRED** as the live precedence carrier (user ruling 2026-08-21). Ledger
-  A1 / refuse-at-creation / SCC contraction / the §S45-§S46 grain probes are **superseded, not
-  parked** — do not reopen them.
-- Terminal/Hospital/Clinic run the CELL path; Duplex/HHS/LTU/JKR fall below the 0.88
-  representability mark and keep the unchanged GRAPH engine, proven byte-identical.
-- Accepted by the user: strict midair 684/218/422 on the cell-path buildings (1.41% / 0.35% / 2.63%
-  of elements, inside the 5% tolerance). Locked in `viewer/tests/baselines/midair.json`.
-  **Do not re-litigate it and do not build leg-4 enforcement.**
+**The §S52.4 F-list is DONE, all four:** F1 ✅ #1445 (witness baselines are data) · F2 ✅ #1447 (ERP
+twin loaders no longer default to Hospital) · F3 ✅ #1446, merged `a0885e2` (`gantt_model.js`
+extracted; `time_machine.js` 9,293 → 9,186) · F4 ✅ no change needed — the audit's premise was wrong,
+`mep_qto_populate.js` already takes `[db_path ...]` (§S54.1).
 
-**Pick up here, in this order (§S52.4 F-items):**
-1. **F3 — extract `gantt_model.js`** out of `time_machine.js` (9,259 lines, 60% of the whole 4D
-   surface): `buildGanttTasks()`, `computeDays()`, the `:6074` grouping. Deliberately deferred until
-   item d had landed; it has. Also removes the reason `witness_midair_zero.js` slices six functions
-   out of `time_machine.js` **by source text**, which has silently widened a slice once already.
-2. **F2 — `time_machine.js:5802` and `:5831`** (`_loadTwin`, `_loadShopfloor`) silently default to
-   `'Hospital'` when there is no active building, so an arbitrary IFC loads the wrong ERP twin.
-   Fall back to `null` and skip the load. These two lines are the ONLY per-building hardcoding in
-   the 4D path — §S52.1 audited the rest and it is clean (every other building name is a comment
-   citing measured evidence).
-3. **F4 — `mep_qto_populate.js:19`** hardcoded `HHS_Office_Federated_extracted.db` → take an argument.
-4. Then the four low-representability buildings (Duplex/HHS/LTU/JKR). §S46 measured that compiled
-   rooms do NOT rescue LTU/Duplex (1.25-5.61%); the broken axis there is the `uniform3m` vertical.
-   The wall-anchor level-grid idea is named in §S50.2.e as a **user call, not built**.
+**Both original symptoms stay closed:** float fleet 14,166 → 8,991 (−36.5%, §S50 / #1442); the Gantt
+reads the cell schedule, 0 wide cells on the three cell-path buildings (§S51 item d / #1444). The
+support graph is RETIRED as the live precedence carrier (user ruling) — ledger A1, refuse-at-creation,
+SCC contraction and the §S45-§S46 grain probes are **superseded, not parked**. Strict midair
+684/218/422 on the cell-path buildings is USER-ACCEPTED and locked in
+`viewer/tests/baselines/midair.json` — do not re-litigate it, do not build leg-4 enforcement.
 
-**Nothing is in flight.** bim-ootb PR **#1445** (witness baselines → `tests/baselines/midair.json`)
-merged and verified landed — `origin/main` is at **`a4932ee`**, both CI checks green. Standing habit
-for any future PR: `gh pr view` alone is NOT proof it reached main — #1439 showed MERGED while
-orphaned off an already-squashed branch. Confirm with
-`git merge-base --is-ancestor <sha> origin/main`.
+**Pick up here:**
+1. **⛔ §S53.5 — two real reds, newly visible.** `witness_zone_display_authoring.js` had been dead
+   since 2026-08-17 (crashed on `ReferenceError: _tukeyBound is not defined` before its first
+   assertion; verified identical at pristine `a4932ee`, so NOT caused by F3). Fixed in #1446, and
+   alive it reads `pass=16 fail=2`: `W-ZDA-4a` floating Duplex 22→37, HHS 894→1839. Evidence both
+   ways is in §S53.5 — `outWindow` improves hard (13→0, 707→11) and W-ZDA-6 reads midair=0 on the
+   ops timeline in the same run. **Decide whether W-ZDA-4a's premise still holds post-§CPM_DISPLAY,
+   or whether skipping `_ogSupportSweep` has a real cost. Do not absorb the reds silently.**
+2. **The four low-representability buildings** (Duplex/HHS/LTU/JKR) still run the unchanged GRAPH
+   engine, below the 0.88 mark. §S46 measured that compiled rooms do NOT rescue LTU/Duplex
+   (1.25-5.61%); the broken axis is the `uniform3m` vertical. The wall-anchor level-grid idea is
+   named in §S50.2.e as a **user call, not built**.
 
-**Disk state at shutdown — nothing lost by the reboot:**
-- Both repos: **zero committed-but-unpushed**. 8 single-copy branches from other lanes were pushed
-  this session; the 2 that still read "unpushed" (`chore/lfs-export-ignore`,
-  `feat/bonsai-operability-v4`) are stale local refs whose commits are already on `origin/main`.
-- `/tmp/wt-mep-reclass` (10 dirty files, no remote, NOT ours) is archived at
-  `~/wt-mep-reclass-rescue-2026-08-20.tar.gz` and unchanged since. `/tmp/wt-sandbox`'s only dirty
-  entry is a symlink typechange. Our own `/tmp/wt-wd-main` was pruned. **`/tmp` is safe to lose.**
+**Nothing is in flight.** Both PRs verified ANCESTOR-OF-MAIN, not just "MERGED" (#1439 showed MERGED
+while orphaned off an already-squashed branch): `origin/main` is at **`6dab2d1`** (#1447), with
+`a0885e2` (#1446) beneath it. Keep using `git merge-base --is-ancestor <sha> origin/main`.
+
+**Disk state:** both repos pushed, zero committed-but-unpushed.
 
 ## Session 2026-08-17 (Fable, marathon) — 4D Gantt lane S1-S22 all shipped+merged, closed
 Full trail in `prompts/4D_GANTT_TM_REFACTOR.md`. Root causes fixed, each independently verified
