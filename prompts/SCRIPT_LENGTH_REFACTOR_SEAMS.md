@@ -314,3 +314,75 @@ Said plainly: `_caseGet` :1251-1258 and `_resolveDisplay` :1261-1270 have NO exi
 
 ## Method note
 All five files copied verbatim from `origin/main` (git show) to scratch; line counts verified by `wc -l` and all match the tasked list. All cited `file:line` values were read directly from those copies. Consumers from `git grep -l "<basename>" origin/main` in /home/red1/bim-ootb (read-only).
+
+---
+
+# §S61 — PRECONDITION: the suite cannot currently fail (2026-08-21, watchdog session)
+
+**Why this section is in this file:** §S59/§S60 disqualify candidate after candidate with the rule
+*"low witness coverage RAISES risk"*. §S61 is that rule turned on the harness itself. **These two gaps
+are preconditions for any extraction being provably safe — they come BEFORE `support_sweep.js`, not
+after.** Measured on `origin/main` @ `a98b62c`, not estimated.
+
+## §S61.1 — 65 of 112 probe/test files print `FAIL` and exit 0
+
+Counted by reading every `scripts/probe_*.js` and `viewer/tests/*.js` at `origin/main`: a file
+containing the string `FAIL` but no `process.exit(1)` / `exitCode = 1` anywhere. **65 of 112.**
+8 are `scripts/probe_*`, 57 are under `viewer/tests/`.
+
+Anything reading exit codes — CI, a shell loop, a batch runner — sees green across all 65 no matter
+what they print.
+
+**⛔ DECISION OWED (user/dev call, do NOT mass-edit first):** is this deliberate or a gap?
+- *Deliberate* is defensible: this project's doctrine is that **witnesses prove by their `§` log
+  output, read from a saved log** — a probe is an instrument, not a gate, and exit codes were never
+  its contract. If that is the answer, it needs writing down ONCE, here, and the runner that reads
+  these files must be named — because nothing currently distinguishes "instrument" from "gate" by
+  looking at the file.
+- *Gap* is equally defensible for the `witness_*` half: a witness that asserts and then exits 0 is
+  the §S25_REVIEW.1 failure class (passing by absence) at the harness level.
+- **Recommended split, not a blanket change:** `witness_*` files gate (exit 1 on any FAIL);
+  `probe_*` and `poc_*_live` files stay instruments and get a one-line header saying so. That is a
+  rule a future session can apply without re-litigating it.
+
+Do not convert 65 files in one pass. Convert the `witness_*` subset, run each, and expect some to go
+red — a red that appears is the finding, not a regression introduced by the change.
+
+## §S61.2 — both precache/script audits check only one direction
+
+Read in full: `tests/audit_sw_precache.js` (41 lines) and `tests/audit_script_tags.js` (35 lines).
+Note they live at **repo-root `tests/`**, not `viewer/tests/`.
+
+| audit | asks | does NOT ask |
+|---|---|---|
+| `audit_sw_precache.js:23-37` | for each entry in `sw.js` `PRECACHE_ASSETS`, does the file exist on disk? | is every file the viewer actually loads listed in `PRECACHE_ASSETS`? |
+| `audit_script_tags.js:16-31` | for each `<script src>` in `viewer.html`, does the file exist on disk? | is that script precached? |
+
+Both answer "is this listed thing real?" Neither answers "is every needed thing listed." **A new
+viewer file added to `viewer.html` but omitted from `PRECACHE_ASSETS` passes both audits, passes every
+witness, and breaks only offline users** — silently, and only for people already holding an old cache.
+This is the recurring `sw.js` cache-version bug class this project has been bitten by before; the
+`CACHE_VERSION`-bump rule in CLAUDE.md is the discipline that exists because the check does not.
+
+### SPEC — the missing invariant, one check, written before any code
+**Claim (W-SW-UNLISTED):** every non-`lib/`, non-CDN `<script src="...">` in `viewer.html` appears in
+`sw.js` `PRECACHE_ASSETS`.
+
+- **Where:** extend `tests/audit_sw_precache.js` (it already parses `PRECACHE_ASSETS`; reuse the
+  `viewer.html` script-tag regex from `audit_script_tags.js:13` verbatim rather than writing a second
+  one — one parser, two callers).
+- **Skips, matching the existing audits' own rules:** `http`/`//` prefixes (`audit_script_tags.js:21`)
+  and `lib/` (`:23`, third-party/dynamically loaded).
+- **Output:** one `§SW_AUDIT_UNLISTED <file>` line per miss, folded into `§SW_AUDIT_SUMMARY`; exit 1
+  if any, same as the existing `fail > 0` gate at `:40`.
+- **Pre-existing misses:** run it FIRST and read the log before wiring the exit. If the current tree
+  is already clean, it ships green and protects every future file. If not, each miss goes in a
+  `KNOWN_UNLISTED` list **with a stated reason** — the same shape as `KNOWN_MISSING` at `:20` — never
+  a bare skip.
+- **Proof it can go red (mandatory, per the project's own test rule):** delete one known-precached
+  entry (e.g. `gantt_model.js`) from a scratch copy of `sw.js` and confirm the audit fails naming that
+  file; restore. An audit that has never been seen red proves nothing.
+
+**Cost:** small and self-contained. **Value:** it protects every file added from here on, including
+every module the `support_sweep.js` / `scene.js` / `crud_overlay.js` extractions would create — each
+of which adds exactly the kind of new file this check exists to catch.
