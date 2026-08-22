@@ -477,15 +477,12 @@ worktrees pruned.** `origin/main` carries it all; `CACHE_VERSION` **v1068**.
 All three demo gates (§S55 identity, §S56 lock, §S57 bake) are CLOSED.
 
 ## Pick up here, in this order
-1. **⛔ `witness_tm_geo_order_cycles` — Terminal floating tail measured 12, W-TMREPRO-5 locks 8**
-   (cycles=0, clean). The witness was DEAD 9+ days on a stale-slice crash; the number moved while
-   nothing watched. Either the lock is stale or something regressed — **this is a measurement
-   session, not a refactor**, and it is the only item where a real number disagrees with a lock.
-2. **`witness_zone_index.js` — one-line fix.** Hardcodes `/tmp/vw/time_machine.js`; resolve from
-   `__dirname` like every sibling. Retires a second red for almost nothing.
-3. **W-ZDA-4a → per-building baseline lock** (dev's version, agreed, still unbuilt): record
-   Duplex 37 / HHS 1839 in `viewer/tests/baselines/midair.json` so it reddens on a CHANGE instead of
-   shipping permanently red. Do NOT use a 5% threshold — that judge transfer was tried and retracted.
+1. ✅ **DONE (witness) 2026-08-22 — `witness_tm_geo_order_cycles`.** Bisected (18 runs), isolated to
+   ONE file, cause measured, re-locked at 12 + composition. Full trail: §S63 below.
+2. ✅ **DONE (witness) 2026-08-22 — `witness_zone_index.js`.** NOT the one-line fix predicted here:
+   `OLD` is a prior REVISION, not a sibling file. See §S63.
+3. ✅ **DONE (witness) 2026-08-22 — W-ZDA-4a per-building baseline lock.** Duplex 22→37, HHS 894→1839
+   recorded in `viewer/tests/baselines/midair.json`. No threshold, exactly as specified. See §S63.
 
 Then the next extraction, by the rule both of this session's extractions obeyed: **take a seam
 because it retires a named failure, never because of a line count.** Honest candidates left in
@@ -503,3 +500,124 @@ sparks/smoke + day-night sky that are not 4D at all.
 - **A sliced function cannot state its own dependencies.** That single fact caused the dead witness
   (§S53.5), both `_zoneIndex` crashes (§S62), and the two witnesses my own §S56 guard broke. It is
   the argument for every extraction on this list.
+
+---
+
+# §S63 — the three handover items, all closed (2026-08-22)
+
+Measurement + witness work only. **Zero product-code lines changed** — no `viewer/*.js` outside
+`tests/`, so no `sw.js` `CACHE_VERSION` bump applies (nothing a user's browser caches moved).
+
+## 1. `witness_tm_geo_order_cycles` — 8 vs 12 (the only real number-vs-lock disagreement)
+Reproduced first (floating=12, cycles=0, n=48428), then **bisected**: the witness held at HEAD, only
+`viewer/{schedule_gate,time_machine}.js` + `rates/sequence_rules.json` swapped across every commit that
+touched `schedule_gate.js` since the lock was set. 18 runs, ~3 s each. Constant **8** through
+`2463ff1`, constant **12** from `a2c30ee` on — one step, no flapping. Then **isolated**: over the
+`2463ff1` tree, `a2c30ee`'s `schedule_gate.js` ALONE gives 12; its `time_machine.js` alone gives 8.
+
+`a2c30ee` = #1345 §STAIR_FLIGHT_GRID_VISIBILITY. The 4 added floaters are all `IfcStairFlight`, and the
+mechanism is measured to the day: the flight is now a scheduling support for the landing members above
+it (carrier start day 1.1083 == flight end day 1.1083; pre-#1345 those carriers finished day 0.25),
+while `auditFloating` — deliberately unchanged by #1345 — still audits the flight as *hanging from*
+those same members. Deficit **0.01 d (~14 min)**. Re-locked at 12 plus a new `W-TMREPRO-5b` on the class
+composition, so a swap that keeps the count still reddens. Also measured: the mirror #1345 reverted
+(flights into `auditFloating`'s `structGrid`) does **not** fix it — still 12, same composition.
+
+Full trail, with the per-element numbers and the ⛔ open item it leaves behind:
+`prompts/4D_SCHEDULE_PERFECTION.md` §S63.
+
+## 2. `witness_zone_index.js` — the "one-line fix" was wrong about the bug
+§S61.3 classified this as class B, "hardcodes `/tmp/vw/time_machine.js`, resolve from `__dirname` like
+every sibling." **That fix would not have worked.** `OLD` is not a sibling FILE, it is a prior
+**REVISION** — the last commit before §ZONE_INDEX (#1313) consolidated the two inline banding copies.
+No such file exists anywhere in the tree to resolve to. The original run staged it by hand at
+`/tmp/vw/`, which is exactly why it ENOENT-crashed for everyone after.
+
+Fixed properly: derive the baseline from git at `475373b^`, cached under the OS temp dir, `OLD=` /
+`OLD_REV=` still overriding, and **skip cleanly (exit 0, `§ZONE_INDEX_SKIP`) when the revision cannot be
+produced** instead of crashing. Two undeclared slice dependencies §S62 had exposed were fixed in the
+same pass (`ZoneIndex` module in the sandbox; `_classifyRule`/`_classifyNameOverride` in the slice set)
+— the same "a sliced function cannot state its own dependencies" class, third instance.
+
+Result: **5/5 gates, 7 buildings, 267,274 elements compared guid-by-guid, mismatch=0** — so the
+§ZONE_INDEX consolidation is *still* provably a no-op today, which is a live gate again rather than a
+dead file. `medianZ` ties: 0 everywhere except LTU_AHouse=2. Proven red by reversing the band sort in
+`zone_index.js` (G-ZONE-BANDS FAIL); skip path proven by `OLD_REV=deadbeef1234` (exit 0, no crash).
+
+**Lesson for the §S61.3 table: a red's one-line classification is a hypothesis, not a diagnosis.**
+Two of that table's three named causes were right; this one named the symptom and guessed the fix.
+
+## 3. W-ZDA-4a — an inequality that was permanently false
+`assert(nextFloat <= baseFloat)` had shipped RED on every run since the display-authoring path landed,
+because the display path IS worse: Duplex 22→37, HHS 894→1839. An assertion that is false on every run
+gates nothing — it only teaches readers to skip the file. Replaced with an exact per-building lock in
+`viewer/tests/baselines/midair.json` (new `zda_display_float` group, same file + same discipline as
+`witness_midair_zero.js`'s baselines: data in the JSON, the WHY in the witness). No threshold — that
+judge transfer was tried and retracted, as the handover said.
+
+Proven red three ways: lock 36 vs measured 37 → FAIL naming both; building absent from the group →
+FAIL telling you to record it; group absent → loud throw, never a silent pass. Green: 18/0.
+
+**The trade itself is still open, not blessed by being locked** — locking makes a CHANGE visible, it
+does not endorse 1839.
+
+## Housekeeping done in the same PR
+- `tests/run_witness_suite.js` KNOWN_RED drained of all three (the runner's own contract: drain in the
+  PR that fixes it). Remaining known reds: `witness_gantt_lock_integrity` (self-declared),
+  `witness_door_window_host_wall` (untriaged), `witness_tm_stream_index_defer` + `witness_xray_cache_memo`
+  (reproducible, cause not established).
+- `witness_big_element_support_coverage.js`'s floating commentary was stale (said Terminal=8, HHS=0).
+  Re-measured from its own green run and dated: Terminal=12 Hospital=0 Duplex=0 HHS=9 Clinic=1
+  LTU_AHouse=360 JKR=80. That witness asserts `unchecked`, never floating — the column is commentary,
+  now honest commentary. Its Terminal=12 is an INDEPENDENT confirmation of §S63's number.
+
+## §S63 CLOSE — shipped
+**bim-ootb PR #1470**, auto-merge armed. Suite after: **green=40 new_red=0 known_red=4 flaky=0,
+total=44** (was green=37 known_red=7). Remaining known reds, all pre-existing and untouched here:
+`witness_gantt_lock_integrity` (self-declared bug in its own assert), `witness_door_window_host_wall`
+(untriaged), `witness_tm_stream_index_defer` + `witness_xray_cache_memo` (reproducible, cause not
+established). Logs: `scratchpad/geoc/*.log` (bisect_*, probe*, p1–p6, py1–py3, suite).
+
+---
+
+# ▶ RESUME HERE (2026-08-22, §S63 session end)
+
+**Nothing in flight.** PR #1470 pushed with auto-merge armed; zero unpushed commits. The three items
+the previous RESUME block handed over are all `✅ DONE (witness)`.
+
+## Open, in the order I'd take them
+1. **⛔ The scheduler/audit support asymmetry** (`4D_SCHEDULE_PERFECTION.md` §S63's open item). This is
+   the only item on this list where a real physical question is unanswered, not just untidy:
+   `geoGate`'s `below` has no top-proximity bound while `auditFloating`'s bearing test requires
+   `S.top_z >= T.base_z - GAP`, so one element can be a *scheduling* support for something it is not an
+   *audit* support for — and be audited as hanging from that same thing. Terminal's 4 stair flights are
+   the measured instance (0.01 d deficit). Any fix must be measured on all 7 buildings and re-lock
+   `W-TMREPRO-5`/`5b`. **Do not start by mirroring flights into `auditFloating` — that was measured this
+   session and does nothing** (still 12, same composition).
+2. **The 4 remaining KNOWN_RED**, cheapest first. Two have never been triaged at all
+   (`witness_door_window_host_wall`, and `witness_tm_stream_index_defer`/`witness_xray_cache_memo`
+   are labelled "cause NOT established" — that label is honest, not a diagnosis). §S63's own lesson
+   applies: **a red's one-line classification is a hypothesis** — §S61.3 named `witness_zone_index`'s
+   cause correctly and its FIX wrongly, and the fix that was written down would not have worked.
+3. **The duplicate lower-half `contained` rule** — `geoGate`'s inline clause (`schedule_gate.js:540`)
+   and `edgeContained` (`:793`) are the same rule written twice; only the second feeds the reported
+   cycle count. They agree today, so this is not a defect, but it is the exact shape §S26.2 lifted
+   `supportPool()` out of, and it is why perturbing one of them cannot redden `W-TMREPRO-4`.
+
+Then the next extraction, by the rule every extraction on this list has obeyed: **take a seam because
+it retires a named failure, never because of a line count.** Honest candidates left in
+`time_machine.js` (now 8,673 lines): the 1,131-line `§GANTT_DRAG`/`§GANTT_RETIME` block, and ~870 lines
+of sparks/smoke + day-night sky that are not 4D at all.
+
+## Standing lessons this session paid for
+- **Bisect before you judge.** "The lock is stale" and "something regressed" look identical from one
+  run. 18 three-second runs turned a nine-day-old mystery into one commit, one file, one predicate.
+- **A one-line classification of a red is a hypothesis, not a diagnosis** (see item 2 above).
+- **An assertion that is false on every run gates nothing.** `W-ZDA-4a` shipped red for weeks and
+  taught readers to skip the file. If a bar cannot currently be met, lock the measured number and name
+  the trade — never leave an inequality that only ever prints FAIL.
+- **Lock the composition, not just the count.** `floating=12` alone would let four stair flights be
+  swapped for four columns silently; `W-TMREPRO-5b` is one line and closes that.
+- **`git checkout HEAD -- <file>` destroys uncommitted work.** Used it to restore a perturbation and
+  wiped the new `baselines/midair.json` group in the same stroke. Back up to the scratchpad, or commit
+  first, before using checkout as an undo during perturbation testing.

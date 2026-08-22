@@ -3799,6 +3799,109 @@ same reason as above) — whoever picks this up next should land this one-line p
 what happens with the reclassification itself, it's a real tooling gap, not tied to today's specific
 finding.
 
+### Continuation (2026-08-18) — own-phase zone split TRIED, MEASURED, does NOT fix the regression
+
+Tried the fix this section's own "what would need to be true before this can ship" named as one of the
+two candidates: give the reclassified population its **own distinct `phase` string** (`'MEP Rough-in —
+Equipment'`, `sequence:7` unchanged) instead of sharing `'MEP Rough-in'`, so `deriveZones`'s
+`zid = phase + '||' + storey` key (`schedule_gate.js` ~:1018 — `sequence` is not part of the key) puts
+it in its own zone instead of merging into the same one as already-correctly-scheduled real MEP
+siblings. Worktree/branch unchanged: `/tmp/wt-mep-reclass`, `fix/mep-proxy-phase-reclass`, still fully
+uncommitted.
+
+**Files changed** (bim-ootb):
+- `viewer/rates.js` — `mep_proxy_phase_reclass` rule's `phase` → `'MEP Rough-in — Equipment'`
+  (~:373); new `PHASE_COLORS` entry `'MEP Rough-in — Equipment':'#548235'` (~:426, a darker/olive
+  RGB×0.75 shade of the existing `'MEP Rough-in':'#70AD47'`).
+- `viewer/rates/sequence_rules.json` — mirrored `phase` change + reason addendum (~:65-68).
+- `viewer/ghostglass.js` — `PHASE_HEX` entry `0x548235` (~:19-25), mirrors rates.js.
+- `viewer/time_machine.js` — `PHASE_COLORS`/`PHASE_INK`/`PHASE_SHORT` entries (`'#188118'` / `'#ffffff'`
+  / `'MEP-E'`, ~:5782-5820, hue-derived not eyeballed — see inline comment + witness below); the
+  `_ROW_PHASE_ORDER` no-SEQUENCE_RULES fallback array (~:6194) and the dashboard `PHASE_ORDER` array
+  (~:7565), both had the new phase inserted next to `'MEP Rough-in'` — found by grepping every
+  `viewer/*.js` for the literal `'MEP Rough-in'` per this task's brief, beyond the 2 spots (`time_machine.js`
+  `PHASE_ORDER`, `ghostglass.js` `PHASE_HEX`) the brief already named. Everywhere else that touches phase
+  names (`schedule_gate.js`'s zone keying, `schedule_read_4d.js`/`boq_charts.html`'s `phaseOrder()`,
+  `schedule_diff.js`'s P6-import matcher, `export_5d.js`'s VO-sheet `voPhase()`) is generic/derived from
+  `SEQUENCE_RULES` or keys off `ifc_class` only — confirmed by reading each, none needed an edit.
+- `viewer/tests/witness_tier_serial_display.js` — added to the test's own `TIER2` array (~:113) so its
+  W-TS-5 concurrency check and §TIER_MOVIE count don't silently undercount the new phase. **Note:** this
+  file was deleted from bim-ootb main entirely by PR #1426 (§S20 Part A, 2026-08-17) — this worktree's
+  branch point (`4f8a5c5`) predates that PR, so the file still exists here but is already dead on current
+  `origin/main` and not present in `gate_4d.sh`'s witness list. Edited for internal consistency of this
+  worktree; irrelevant once synced to main.
+- Colour choice was MEASURED, not eyeballed: a straight blend between the two existing MEP colours was
+  tried first and rejected — they are only 36.7 dE apart (CIE76), so any point on that line is
+  geometrically ≤18.4 dE from one of them, short of `witness_gantt_palette.js`'s 30 dE separability floor
+  by construction. Grid-searched HSL space instead (hue shifted toward this palette's own MEP-Final hue,
+  123° vs MEP-Rough-in's 148° — the two shipped MEP colours were never on the same hue either) for a
+  value clearing every gate with real margin. Re-ran `witness_gantt_palette.js` after: **7/7 PASS**, min
+  pairwise dE 33.2 (floor 30), min dE to a reserved status hue 60.9 (floor 40), worst label contrast
+  5.01:1 (floor 3.0) — log: `/tmp/wt-mep-reclass/_logs/witness_gantt_palette.log`.
+
+**The CAP-path measurement — the actual test of the hypothesis — says the split does NOT fix the
+regression.** Real A/B on this exact worktree/codebase, `probe_captured_floating.js`, `§CAP_POST_REPAIR_FLOATING`,
+all 7 buildings, `_extracted.db`, deterministic (Hospital re-run twice, byte-identical `677` both times).
+"BEFORE" = this worktree exactly as handed off (rule already active, merged into `'MEP Rough-in'` — this
+branch does not yet have PR #1382 §OG_HANG_UNBOUND, branched before it, hence these before-numbers equal
+that PR's own pre-fix baseline coincidentally). "AFTER" = this session's own-phase split:
+```
+              merged(BEFORE) -> split(AFTER)   Δ
+Terminal      545 -> 532                       -13  (better)
+Hospital      643 -> 677                       +34  (WORSE — badly; the reported building)
+Duplex         38 ->  38                         0
+HHS           143 -> 148                        +5  (worse)
+Clinic        413 -> 410                        -3  (better)
+LTU_AHouse   1325 -> 1337                       +12  (worse — same magnitude as the ORIGINAL
+                                                        rule-off-vs-merged regression, unresolved)
+JKR           137 -> 137                         0
+TOTAL        3244 -> 3279                       +35  net WORSE — MORE than the +28 this fix was
+                                                        supposed to cure, not less
+```
+Only 2 of 7 buildings improved, 2 unchanged, 3 got worse — including Hospital, the building this whole
+reclassification was chasing, whose regression roughly DOUBLED (+17 originally, +34 here). The explicit
+success bar this task set ("no building should get WORSE than its current \[merged\] baseline") is
+violated by Hospital, HHS, and LTU_AHouse.
+
+**Why, traced via Hospital's own class breakdown (`§CAP_POST_REPAIR_BYCLASS`), not guessed:**
+```
+merged: {..., PipeSegment:4,  BuildingElementProxy:54, PipeFitting:18, DuctSegment:5,  Valve:0,  ...}
+split:  {..., PipeSegment:13, BuildingElementProxy:42, PipeFitting:35, DuctSegment:15, Valve:12, ...}
+```
+The reclassified population itself DID improve exactly as hypothesized (BuildingElementProxy 54→42,
+-12) — giving it its own zone genuinely helps ITS OWN floating count. But `IfcPipeSegment` (+9),
+`IfcPipeFitting` (+17), `IfcDuctSegment` (+10) and `IfcValve` (0→12, newly floating) all got WORSE than
+under the merged approach — a combined +48 that swamps the -12 win. `§CAP_ZONES` confirms the mechanism
+is real, not noise: `n=35 edges=56` (merged) → `n=41 edges=67` (split) — splitting one populous zone
+into two sequence-7 siblings adds zones AND cross-zone edges, and `materializeZones`' per-task window
+rescale + `_ogSupportSweep` repair interact with that larger graph differently, not obviously "more
+isolated". LTU_AHouse shows the opposite micro-pattern from Hospital (BuildingElementProxy itself got
+WORSE, 25→37, everything else unchanged) — same as this section's original note that the per-building
+zone/window interaction isn't even consistent in direction, only in being real.
+
+Related, smaller finding: `scripts/gate_4d.sh` (`VIEWER_DIR=/tmp/wt-mep-reclass/viewer`) went from the
+worktree's own baseline (`pass=6 fail=0 missing=1`, re-verified by stashing this session's edits and
+re-running) to **`pass=5 fail=1 missing=1`** — `witness_midair_zero` W-MZ-8 LTU_AHouse's locked joint-
+fixpoint TRADE audit constant moved `1561 → 1556` (a DIFFERENT metric than the CAP-path table above —
+this is the RAW generative-schedule audit, pre-rescale — so "5 fewer" here is not in tension with
+CAP-path LTU_AHouse showing +12 worse; they measure different points in the pipeline). Not touched —
+`witness_midair_zero.js`'s locked constant is outside this task's file scope, and re-locking a baseline
+for a fix that isn't shipping would be pointless. Logs: `/tmp/wt-mep-reclass/_logs/gate_4d.log`,
+`/tmp/wt-mep-reclass/_logs/probe_before/*.log`, `/tmp/wt-mep-reclass/_logs/probe_after/*.log`.
+
+**This is a FOURTH instance of the pattern this section already named**: a change correctly reasoned
+about at one layer (classification → now zone identity) produces a different, sometimes opposite,
+result once measured through the full captured-path pipeline. **NOT SHIPPED, same as the original
+attempt, for essentially the same reason** — the zone/task-grouping + per-task-rescale architecture
+itself doesn't isolate crew-demand the way splitting the phase key assumed it would. Code left
+uncommitted in the worktree for review (per this task's explicit instruction — implement, measure,
+report, don't silently drop it), but the recommendation is: do not ship this either. The two structural
+candidates this section already named (upstream zone/window awareness before placing a new
+classification, or — now falsified — its own dedicated zone) still leave only the first standing.
+Whoever picks this up next should treat "give it its own zone" as a closed, measured-negative branch,
+not retry it with a different phase string or sequence number without first explaining why THIS
+measurement would come out differently.
+
 ## §OG_HANG_UNBOUND — SHIPPED (2026-08-15, bim-ootb PR #1382), the cap-reach decision made and closed
 
 User: "U cannot ask me those questions as i only direct" / "u know the issues" — the still-open
@@ -4299,3 +4402,79 @@ either thread below.
 **Do NOT re-walk this file's "next levers" prose above this block searching for what's still open — this
 block is the single current answer.** Everything above it (§CHASE_TO_ZERO_WINDOW_AUTHORING's EXP1-8,
 §TIER1_PER_ELEMENT_CLAMP EXP, §CJP_DAY_ROUNDING_TOL) is settled history, not an active task list.
+
+---
+
+## §S63 — Terminal's floating tail 8 → 12: BISECTED, ISOLATED, MEASURED, RE-LOCKED (2026-08-22)
+
+**Separate thread from the ▶ NEXT SESSION block above** (that one is the window-authoring lever; this
+one is the `witness_tm_geo_order_cycles` drift `prompts/SCRIPT_LENGTH_REFACTOR_SEAMS.md` handed over).
+Measurement session, no scheduler code changed. Shipped: **bim-ootb PR #1470** (tests + one baseline
+JSON only, zero product-code lines — no `sw.js` bump applies).
+
+### The question
+`witness_tm_geo_order_cycles.js` locks Terminal's floating tail at 8 (`W-TMREPRO-5`, set 2026-08-10 by
+#1276). The witness was DEAD 9+ days on a stale-slice crash; §S62 (#1459) revived it and it immediately
+reported **12**, cycles=0. Either the lock was stale or something regressed. Nobody had checked.
+
+### 1. Bisect — 18 runs, one variable
+The witness itself was held at HEAD; only `viewer/{schedule_gate,time_machine}.js` +
+`viewer/rates/sequence_rules.json` were swapped to each commit that ever touched `schedule_gate.js`
+since the lock was set (`268a85f..HEAD`). Every run against the real `Terminal_extracted.db`, n=48428.
+
+| range | floating |
+|---|---|
+| `268a85f` (#1276, lock set) → `2463ff1` (#1333) — 11 commits | **8**, constant |
+| `a2c30ee` (#1345) → `HEAD` (`6ec0dcc`) — 7 commits | **12**, constant |
+
+No gradual drift, no flapping: one step, at **`a2c30ee` = #1345 §STAIR_FLIGHT_GRID_VISIBILITY**.
+
+### 2. Isolate — one file, not two
+Over the `2463ff1` tree, swapping **only** `a2c30ee`'s `schedule_gate.js` gives **12**; swapping **only**
+its `time_machine.js` gives **8**. The change is entirely inside `schedule_gate.js`.
+
+### 3. What actually moved (numbers, not narrative)
+The 4 added floaters are **all `IfcStairFlight`** (the original 8 are the same 8 thin promoted roof
+slabs at `base_z=30.568`, unchanged). Taking flight `...UjZp` (`base_z 18.892 → top_z 20.864`):
+
+- It has **zero bearing-below supports** in `auditFloating`'s pool, so it is audited on the **hang**
+  path against the landing above it: `IfcSlab seq=4 @20.864` + 2× `IfcMember seq=3 @20.564`.
+- On the **scheduler** side the same pair runs the *other way*. #1345 added `isStairFlight()` to the
+  scheduler's support pool (now `supportPool()`, `schedule_gate.js:1246`), and `geoGate`'s `below`
+  predicate has **no top-proximity bound** — so the flight, whose base is 1.7 m under them, is now a
+  gating support *for* those carriers. Measured: carrier `...UjXu` starts day **1.1083**, which is
+  exactly the flight's end day **1.1083**; its next candidate down ends day 0.3139.
+- Pre-#1345 those carriers finished day **0.25** and the flight started day **1.15** — 0.89 d clear.
+  Now the flight starts **0.01 d (~14 min)** before its audited carrier ends → flagged.
+
+`auditFloating` was NOT changed by #1345 — its `structGrid` still admits `seq<=4` or promoted `IfcSlab`
+only (`:1076`). #1345's own commit message says mirroring flights into it was tried and **reverted**
+because it surfaced an unrelated `_twoTierRemap` weakness.
+
+### 4. Would that mirror have fixed it? Measured: NO
+Re-ran the reverted change (add `IfcStairFlight` to `auditFloating`'s `structGrid`): Terminal stays at
+**floating=12, same composition**. It cannot help — the flights fail on the HANG path, and admitting
+flights as *candidates* does not remove the members above from the hang scan.
+
+### 5. Verdict + what shipped
+**The lock was stale, and the +4 is an audit/scheduler asymmetry, not a physics regression** — one pair
+of elements where the scheduler says "the member bears on the flight" and the audit says "the flight
+hangs from the member", with a rounding-scale 0.01 d deficit. Re-locked, not absorbed:
+`W-TMREPRO-5` now locks **12**, and a new `W-TMREPRO-5b` locks the **class composition**
+(`IfcSlab:8,IfcStairFlight:4`) so a swap that keeps the count still reddens.
+
+Proven red (3 perturbations, each restored): pre-#1345 `schedule_gate.js` → `got 8` / `IfcSlab:8`;
+`isStairFlight → false` at HEAD → same; pre-fix `edgeContained` → `cycles=38254`, `floating=50`,
+`IfcColumn:8,IfcMember:30,IfcSlab:8,IfcStairFlight:4` (all three assertions red at once).
+
+Incidental find while proving `W-TMREPRO-4`: the lower-half `contained` rule exists **twice** —
+`geoGate`'s inline clause (`:540`) and `edgeContained` (`:793`). Only the second feeds the reported
+cycle count, so perturbing the first cannot redden `W-TMREPRO-4`. Not a defect today (they agree), but
+it is the same duplicate-rule shape §S26.2 lifted `supportPool()` out of. Named, not chased.
+
+### ⛔ OPEN (named here, deliberately NOT fixed in a measurement session)
+**The scheduler/audit support asymmetry on stair flights.** `geoGate`'s `below` has no top-proximity
+bound while `auditFloating`'s bearing test requires `S.top_z >= T.base_z - GAP`, so a tall element can
+be a *scheduling* support for something it is not an *audit* support for — and simultaneously be
+audited as hanging from it. The 4 flights are the measured instance. Any fix must be measured
+fleet-wide (7 buildings) before it is trusted, and re-locking `W-TMREPRO-5`/`5b` is part of it.
