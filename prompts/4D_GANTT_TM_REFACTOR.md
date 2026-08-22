@@ -4210,3 +4210,84 @@ call sits at offset 5073.** The function grew (the §S22_EPOCH_FIX audit code) a
 `retimeTaskElements` still calls `_retimeSpan` — the assertion is wrong, the code is fine. Fix is to
 brace-match the function body instead of slicing a magic 2200. Same class as every other
 "a text slice cannot state its own dependencies" finding on this project.
+
+---
+
+## §S67 — "editing screws up redisplay": FOUND, FIXED, GATED (2026-08-22, bim-ootb PR #1474 merged)
+
+User report, verbatim: *"it is challenging and problematic the last time I edited it screws up
+redisplay."* Not vague, not intermittent, not a mystery — it was **wiring**, and it took one grep to
+find once §S65 had mapped the path.
+
+`retimeTaskElements()` rewrites every affected element's `kernel_ops` row. The 3D canvas does not
+re-read that by itself: `_tmResyncAfterRetime()` (`time_machine.js:5990`) is what re-sorts `_ops`,
+clears the incremental-reveal index (`_evMesh`/`_evSig`/`_incrPrimed`) and rebuilds the X-ray cache.
+Its call sites have carried the comment *"without this the canvas plays the OLD times"* from day one.
+
+**Measured on `origin/main` @ `3b5a3e9`: five functions re-time, only three resynced.**
+
+| gesture | re-times | resyncs | redisplay |
+|---|---|---|---|
+| `commitGanttDrag` (bar drag) | ✅ | ✅ | correct |
+| `shiftGanttSchedule` (ruler) | ✅ | ✅ | correct |
+| `commitGanttGroupShift` (marquee) | ✅ | ✅ | correct |
+| `undoLastGanttEdit` | — | ✅ | correct |
+| **`linkGanttBars`** — E4 dependency link, `:6614` | ✅ | ❌ | **STALE** |
+| **`openGanttProps`** — E7 typed apply, `:6691` | ✅ | ❌ | **STALE** |
+
+Both broken paths repaint the GANTT and never rebuild the reveal state: the bars move, the model
+does not. The four correct paths are exactly why it read as intermittent rather than always-on.
+
+**Fixed** with one `_tmResyncAfterRetime()` call in each, identical to the four existing sites.
+**Gated** by `viewer/tests/witness_gantt_retime_resync_wiring.js` — `W-RESYNC-1` brace-matches every
+function containing a `retimeTaskElements()` call and asserts it resyncs; `W-RESYNC-2a/b/c` assert
+the resync still does its three jobs (a resync that stopped clearing the reveal index would pass
+W-RESYNC-1 and still ship the bug). Proven red three ways, including against unmodified `origin/main`
+where it names exactly the two offenders. Placed in `viewer/tests/` so the suite runner sees it (§S66).
+`sw.js` v1069 → v1070.
+
+**The lesson worth keeping:** §S65 was commissioned as documentation and paid for itself the same
+hour. The bug had been reachable by `grep -c retimeTaskElements` vs `grep -c _tmResyncAfterRetime`
+for as long as it existed. **Map the path before hunting the bug.**
+
+---
+
+# ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
+
+**Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
+**#1470** (§S63 witness reds), **#1472** (§S64 audit/gate asymmetry), **#1474** (§S67 redisplay).
+`CACHE_VERSION` **v1070**.
+
+`4D_SCHEDULE_PERFECTION.md` now carries a 🏁 §MILESTONE marking **generation + buildup SOLVED** at the
+user's call, with the numbers behind it (floating 0.136%, midair 0.50%, cycles 0 on 5 of 7, suite
+green=40/44). **That milestone explicitly does NOT cover editing. Editing is this file's lane now.**
+
+## Take these in order
+1. **⛔ SETTLE FIRST, it is a product question not a code one: the drag does NOT run CPM.** `computeCpm`
+   has exactly two callers (`schedule_editor_ui.js:441`, `schedule_sync.js:26`), neither reachable
+   from the in-canvas Gantt. The drag runs a push-only forward cascade + predecessor-floor clamp —
+   deliberate and documented (`schedule_author.js:1385`), not an oversight. If the intent is
+   "drag → CPM re-solve → new critical path on screen", **that is a feature to build, not a bug to
+   fix**, and its size depends entirely on the answer. Do not start any edit-path work before this.
+2. **`§TM_BAKE_LOCK` guards 2 of 5 edit entry points.** `_tmBusyRecording` is called at `:6017` and
+   `:6358` only — `shiftGanttSchedule`, `commitGanttGroupShift` and `undoLastGanttEdit` can still
+   mutate the timeline mid-recording. Same shape as §S67 and the same size of fix. Extend
+   `witness_tm_bake_lock.js` in the same PR; a source-level wiring gate like §S67's is the right tool.
+3. **No persistence on the edit path.** `persistDb` has two callers, neither in `time_machine.js` —
+   an in-canvas drag lives only in the in-memory sql.js `app.db` and dies on reload. Decide whether
+   that is intended (edits are scratch until the Editor tab saves) or a gap, then witness the answer.
+4. **`G-COH-6` is a false negative** — `witness_gantt_edit_coherence.js:117` slices a fixed 2200
+   chars looking for a call now at offset 5073. Brace-match it like §S67's witness. Cheap, and it
+   also moves that file into `viewer/tests/` where the runner can see it (§S66).
+5. **`§RETIME_OUTLIER_AUDIT`'s `collapsed60s`/`inverted` counters are asserted by nothing** — logged
+   on every real commit, tested only on synthetic input.
+
+## Standing lessons this session paid for
+- **Map the path before hunting the bug** (§S67 above).
+- **A recap agent's claims are hypotheses until you grep them yourself.** The §S65 agent was accurate
+  but ran against a 30-commit-stale checkout and said so; every load-bearing claim was re-verified on
+  `origin/main` before it was written down. Two would have been wrong without that.
+- **Fix the audit before the engine.** §S64's fleet floating fell 462 → 362 by changing two lines
+  that no gate reads. The candidate that touched the engine (C2) made it 3× worse and was rejected on
+  measurement, not taste.
+- **A witness outside `viewer/tests/` does not exist** as far as the suite runner is concerned (§S66).
