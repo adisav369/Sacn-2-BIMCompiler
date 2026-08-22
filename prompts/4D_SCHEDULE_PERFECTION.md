@@ -4478,3 +4478,80 @@ bound while `auditFloating`'s bearing test requires `S.top_z >= T.base_z - GAP`,
 be a *scheduling* support for something it is not an *audit* support for — and simultaneously be
 audited as hanging from it. The 4 flights are the measured instance. Any fix must be measured
 fleet-wide (7 buildings) before it is trusted, and re-locking `W-TMREPRO-5`/`5b` is part of it.
+
+---
+
+## §S64 — the §S63 open item, studied fleet-wide: it is TWO defects, not one (2026-08-22)
+
+**STUDY ONLY — nothing shipped, no product code changed.** User steer this session: *"it must not
+regress the fundamental basics already well laid for 4D generics. Allow 5% midair towards the end or
+within well formed ARCH."* Both proposals below are **audit-only** — they change zero schedule times,
+so no 4D generic can regress by construction. Probe: `scripts/probe_support_asymmetry.js` (new, reads
+only). Logs: `scratchpad/s64/*.log`.
+
+### Fleet baseline
+462 floating across 7 buildings / 266,443 elements = **0.17%** — already an order of magnitude under
+the 5% bar the user set. Midair (`W-MZ-2`, a different and stricter judge) is likewise under it
+everywhere: Terminal 684/48,428 = 1.4%, Clinic 422/16,071 = 2.6%, Hospital 0.34%, Duplex/HHS/LTU/JKR 0.
+
+### The decomposition (every floater attributed to a named predicate)
+
+| class | n | share | what it is |
+|---|---|---|---|
+| **cycle fallback** | **350** | 76% | JKR + LTU_AHouse only. NOT an asymmetry. |
+| **A3b** wall-above-bound | 73 | 16% | audit's `wallGrid` bearing is unbounded at the top; the gate's is not |
+| **A1** `tPool` not mirrored | 17 | 4% | the §S63 instance, generalized |
+| **A4** hangNearest/none | 13 | 3% | untriaged |
+| **A2** hang carrier | 9 | 2% | untriaged |
+
+### Finding 1 — the biggest class is not the audit at all, it is §SUPPORT_CYCLE
+350 of the 462 are **scheduler self-contradictions**: the element starts before its OWN `geoGate`
+`below` support ends, at final times. `computeSchedule`'s `§DEQ_REPAIR` fixpoint is supposed to make
+that impossible. Measured membership, not inferred: **350 of 350 are in the `§SUPPORT_CYCLE` fallback
+set** (JKR 80/80 of 4,564 cycles; LTU_AHouse 270/270 of 25,708). Kahn cannot order a cycle member, so
+it falls back to seq order and `geoGate` cannot see a support that has not been placed yet. Every
+building with `cycles=0` has **zero** self-contradictions (Terminal 0/12, Hospital, Duplex, HHS 0/9,
+Clinic 0/1). This is upstream modelling geometry, already named and deliberately not resolved
+(no-invent: a true geometric cycle is a MODELING fact). **Do not chase it in the audit.**
+
+**REJECTED candidate C2** — extend the `§DEQ_REPAIR` loop to re-check PASS-A (`seq<=4`) too. Measured:
+LTU_AHouse floating 360 → **1139**, JKR 80 → **159**, `§DEQ_REPAIR sweeps=16` (the cap — no fixpoint)
+with 56,948 / 42,141 shifts, and 348/78 self-contradictions still standing. PASS-A elements chase each
+other through `geoGate`'s unbounded `below` on a cycle-laden model and never converge. Do not retry it.
+
+### Finding 2 — the real asymmetry is two lines in `auditFloating`, both audit-only
+
+**C1 — `tPool` never mirrored `hangGate`'s `elPool`.** `hangGate` uses
+`elPool = isPromotedSlab(el) || isStairFlight(el)` (`:611`); `auditFloating` still uses
+`tPool = T.cls === 'IfcSlab' && T.seq > 4` (`:1106`) — whose own comment claims it "mirrors the
+scheduler's hangGate pool rule, so audit and scheduler agree". It stopped mirroring at #1345. So a
+stair flight is refused a hang-carrier by the scheduler and given one by the audit. Fix = add
+`|| T.cls === 'IfcStairFlight'`. Measured fleet 462 → **435**.
+
+**C3 — the audit's `wallGrid` bearing has no upper bound.** `wallGate` (`:684`) and the DAG's
+`wallCarries` (`:797`) both require `S.top_z <= T.base_z + GAP` — the §TM_GEO_ORDER_CYCLES carry-at-top
+rule. `auditFloating` offers `wallGrid` to a promoted slab with only `S.top_z >= T.base_z - GAP`, so a
+wall whose crown rises metres past the slab's underside counts as audit-support the scheduler never
+gated on (Terminal: `IfcWall` top 37.06 vs slab base 30.57; LTU: 10.80 vs 8.60). Fix = apply the same
+bound in the audit's wall pool. Measured fleet 462 → **389**.
+
+**C1 + C3 together: 462 → 362.** Per building: **Terminal 12 → 0**, Clinic 1 → 0, HHS 9 → 5,
+LTU_AHouse 360 → 277, JKR 80 → 80, Hospital/Duplex 0 → 0. Everything left is the cycle residual (350)
+plus A2/A4 (12).
+
+### Non-regression, measured (this is the user's constraint, checked not assumed)
+Zero schedule times change — both fixes are inside `auditFloating`, which no gate reads.
+- `W-MZ-2` **midair unchanged on all 7** · `W-MZ-4` orphans unchanged · `W-ZDA-4a/4b` 18/0 green.
+- `W-MZ-8 float_after_cpm` moves DOWN on 3: HHS 889→884, LTU_AHouse 5023→4998, JKR 1222→1212.
+- `W-TMREPRO-5` Terminal 12 → **0** (and its composition empties).
+- `W-BIGSUP-*-5` `unchecked` moves UP by exactly the elements that stopped getting a false carrier:
+  Terminal 32→36, HHS 13→17, LTU_AHouse 611→626. **This is the honest trade**: a stair flight with no
+  modelled support below it becomes a named `§SUPPORT_UNCHECKED` warn (warn-only, never a gate)
+  instead of a false "floating" verdict. No gate is weakened; three baselines need re-locking with
+  this as the named cause.
+
+### ⛔ Still open after this study
+- **A2 (9) and A4 (13)** — untriaged. HHS `IfcFlowSegment` ×4, LTU `IfcStair` ×5 / mixed ×13.
+- **JKR + LTU_AHouse cycle counts** (4,564 / 25,708) — the real remaining cost, and an EXTRACTION /
+  modelling question, not a scheduler one. Terminal proved cycles can go 37,927 → 0 with a geometry
+  rule (§TM_GEO_ORDER_CYCLES); nobody has done that analysis for these two.
