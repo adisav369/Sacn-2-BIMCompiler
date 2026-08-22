@@ -4556,3 +4556,60 @@ Zero schedule times change — both fixes are inside `auditFloating`, which no g
 - **JKR + LTU_AHouse cycle counts** (4,564 / 25,708) — the real remaining cost, and an EXTRACTION /
   modelling question, not a scheduler one. Terminal proved cycles can go 37,927 → 0 with a geometry
   rule (§TM_GEO_ORDER_CYCLES); nobody has done that analysis for these two.
+
+---
+
+# 🏁 §MILESTONE — 4D SCHEDULE GENERATION + TIME MACHINE BUILDUP: SOLVED (2026-08-22)
+
+**User's call, this session:** *"we also mark a strong line that the present 4D schedule generating
+and build up in Time Machine is solved to 95%+ success"*, and the two failure modes named as gone:
+> *"the 2 hellish situations are not happening anymore: 1. Gantt Chart overstacked, 2. midair,
+> non-correlation between bars and needle movement."*
+
+This block draws that line. **Scope is GENERATION + BUILDUP. The EDIT path is a separate feature and
+is NOT covered by it** — see §S67 and `4D_GANTT_TM_REFACTOR.md`.
+
+### The measured backing (95%+ was the bar; these are the actual numbers)
+Fleet = 7 shipped buildings, 266,443 elements with real geometry, real DBs, shipped functions.
+
+| judge | what it means | fleet | worst building |
+|---|---|---|---|
+| `auditFloating` | starts before a support FINISHES | **362 = 0.136%** → **99.86% clean** | LTU_AHouse 277/122,330 = 0.23% |
+| `W-MZ-2` midair | appears before the first thing it TOUCHES | **1,324 = 0.50%** → **99.50% clean** | Clinic 422/16,071 = 2.6% |
+| `§SUPPORT_CYCLE` | support DAG acyclic | **0 on 5 of 7** | JKR 4,564 · LTU_AHouse 25,708 |
+| witness suite | `viewer/tests` headless | **green=40 known_red=4 new_red=0 flaky=0** | — |
+
+Both judges clear the 5% bar by an order of magnitude, and clear it **per building**, not just on the
+fleet average. Terminal — the LOD400 reference — is now **0 floating and 0 cycles**.
+
+### The two named situations, and what actually closed each
+1. **"Gantt Chart overstacked"** — closed by the row/band work: `deriveBandRanks` +
+   `§4D_BAND_MONOTONIC`'s storey ladder, `deriveStoreyMergeMap` (§S18, storey bands merged from
+   EXTRACTED `IfcBuildingStorey.Elevation`, never inferred from element Z), and the `gantt_model.js`
+   extraction (#1446) that made bar grouping/trim/row-order one testable thing.
+2. **"midair, non-correlation between bars and needle movement"** — closed by the physics chain, in
+   order: `§GEOMETRIC_SUPPORT_ORDER` (order derived from a geometry DAG, `seq` demoted to tiebreak)
+   → `§DEQ_V1` + the `§DEQ_REPAIR` fixpoint (no PASS-B element starts before its own gates)
+   → `§MIDAIR_REPAIR` (5,561 → 0) → `§TM_GEO_ORDER_CYCLES` (Terminal 37,927 cycles → 0)
+   → `§CROSSTASK_JUDGE_PARITY` + `§CJP_DAY_ROUNDING_TOL` (fleet floating −49.8%)
+   → `§S57` `witness_bake_plays_schedule` (the film plays the REAL schedule, 16/16, numeric)
+   → §S64 (the audit finally agrees with the gate it claims to mirror).
+
+### What the residual 0.14% / 0.50% actually IS — not unknown, measured (§S64)
+350 of the 362 floating are the **`§SUPPORT_CYCLE` fallback on JKR + LTU_AHouse**, 350/350 by
+measured cycle-set membership. Kahn cannot order a cycle member, so it falls back to seq order and
+`geoGate` cannot see a support not yet placed. That is **upstream modelling geometry in those two
+source files**, already named by the engine and deliberately not resolved (no-invent: a true
+geometric cycle is a MODELING fact, not a scheduler bug). The other 12 are A2/A4, untriaged.
+
+**So the line is honest in both directions:** the engine is solved; two of seven source models carry
+cyclic support geometry that no scheduler can order, and the engine says so out loud instead of
+inventing an order.
+
+### ⛔ What this milestone does NOT claim
+- **Editing is not covered.** §S67 fixed a real redisplay bug on two edit gestures the same day this
+  line was drawn. The edit path also does not run CPM, does not persist, and guards only 2 of 5 entry
+  points against a live bake (`4D_GANTT_TM_REFACTOR.md` §S65).
+- **JKR + LTU_AHouse cycle counts are open** and are the single biggest remaining 4D number. Terminal
+  proved cycles can go 37,927 → 0 with a geometry rule; nobody has done that analysis for these two.
+- 4 known-red witnesses remain in the suite, and the suite itself sees 44 of ~346 witness files (§S66).
