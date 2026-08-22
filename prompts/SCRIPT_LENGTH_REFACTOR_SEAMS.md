@@ -621,3 +621,37 @@ of sparks/smoke + day-night sky that are not 4D at all.
 - **`git checkout HEAD -- <file>` destroys uncommitted work.** Used it to restore a perturbation and
   wiped the new `baselines/midair.json` group in the same stroke. Back up to the scratchpad, or commit
   first, before using checkout as an undo during perturbation testing.
+
+---
+
+# §S66 — the suite runner sees 44 of ~346 witnesses (2026-08-22)
+
+Found while verifying §S65's recap, not by looking for it. `witness_gantt_edit_coherence.js` is RED on
+current main and **the suite never reported it**, because the suite never runs it.
+
+`tests/run_witness_suite.js:67` — `const TESTS_DIR = path.resolve(__dirname, '..', 'viewer', 'tests')`.
+It globs `witness_*.js` in that ONE directory. Measured on `origin/main` today:
+
+| location | `witness_*.js` | headless |
+|---|---|---|
+| `viewer/tests/` — the only one scanned | 65 | 44 (the suite's 44) |
+| **repo root** | **151** | **150** |
+| **`modeller/tests/`** | **130** | not counted |
+| total | ~346 | — |
+
+So "one command runs every witness" (§S61.3, #1453) actually runs **~13%** of them. This is §S61.3's
+own finding one level up, and it is the same shape as its own §S61.1 lesson: **one pattern is not a
+measurement** — a runner scoped to one directory measures that directory, not the repo.
+
+The confirmed red it hid, `witness_gantt_edit_coherence.js` G-COH-6, is itself a false negative (a
+2200-char fixed slice window looking for a call that is now at offset 5073 — see
+`prompts/4D_GANTT_TM_REFACTOR.md` §S65). That does NOT make this finding smaller: nobody knew it was
+red either way, which is precisely the defect the runner was built to end.
+
+**Do NOT just widen `TESTS_DIR` and run 346 files.** The order matters, and §S61.3 already paid for
+this lesson: classify before you count. Suggested sequence — (1) widen the scan to root +
+`modeller/tests/`, but list-only (`--list`) first, so the population is a printed fact; (2) run the
+150 headless root ones ONCE with a generous timeout, capture the verdict set, and expect a large
+KNOWN_RED harvest that must be triaged by hand, not bulk-labelled; (3) only then let the wider scan
+gate. Two of the three causes §S61.3 named (stale slices, hardcoded absolute paths) are exactly what a
+150-file directory nobody has run in months will be full of.

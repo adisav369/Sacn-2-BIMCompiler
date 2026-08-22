@@ -31,6 +31,82 @@ mode" (user's name). Shipped chain, all merged to bim-ootb main and serving on g
 4. Multi-stick-per-walk flow relies on click (plant-and-continue); if users mostly Enter/Space-exit
    per stick, the click path's discoverability is untested with real hands.
 
+## ✅ FIXED (2026-08-11) — §CPE_WALK_ROLL_SNAP — PR bim-ootb#1292, auto-merge armed
+User: *"of course fix it, now is untenable. Need to behave exactly when navigating on canvas."*
+Fixed in `/tmp/wt-cpe-walk-rollsnap` (worktree, branch `fix/cpe-walk-roll-snap` off `origin/main`
+@`fd3e021`), not the shared `~/bim-ootb` checkout (dirty with another session's work).
+
+**Fix, `viewer/cpe_walk.js`:**
+1. `_vfCam.rotation.order = 'YXZ'` set once at mount (was left at THREE's default `'XYZ'`). Under
+   `'XYZ'`, pitch composes around the WORLD X axis after yaw, so ANY diagonal mouse move (yaw and
+   pitch changing together — nearly all real input) bakes real roll into the camera: right vector's
+   y-component = `sin(pitch)*sin(yaw)`, nonzero whenever both are nonzero. `'YXZ'` (three.js's own
+   `PointerLockControls` convention, not invented here) composes pitch around the camera's own local
+   X axis BEFORE yaw sweeps it around world Y — right.y is mathematically 0 for every yaw/pitch
+   combination. This is structurally what OrbitControls (canvas mouse/finger nav, the user's own
+   reference) already gets for free, since it parameterizes on clamped spherical phi/theta instead of
+   raw Euler components.
+2. The fresh-spawn branch of `start()` now derives `_yaw`/`_pitch` from the inherited camera's
+   forward vector (`atan2`/`asin`, roll-immune) instead of reading `.rotation.x/.y` directly, and
+   calls `.rotation.set(_pitch,_yaw,0)` immediately in BOTH the fresh-spawn and resume branches
+   (previously only resume did) — any roll baked in by `cinema_path_editor.js`'s `lookAt()`-based
+   spawn/scrub pose (steep gaze targets near vertical) no longer survives past mount.
+
+**Witnessed:** new `witness_cpe_walk_roll_snap.js`, 3/3 PASS (G-ORDER-YXZ, G-SPAWN-LEVEL,
+G-DIAGONAL-NO-ROLL — 5 combined yaw/pitch combos incl. near the ±90° pitch clamp, right.y ~1e-17
+noise-floor). **Confirmed the SAME witness FAILS 2/3 on pre-fix code** (`git stash`, right.y up to
+0.66 on ordinary combos like yaw=-60°/pitch=50°) — proves this is a real regression catch, not a
+tautology. Full regression unaffected: `witness_cpe_walk_edit.js` 24/24, `witness_cpe_walk_ctrldrag_fix.js`
+4/4. `sw.js` CACHE_VERSION v983→v984.
+
+**Not independently proven (secondary defense, plausible not confirmed on Duplex's default spawn
+angle):** the lookAt()-degeneracy half of the bug (item 2 above) — Duplex's own walk-head spawn pose
+happened to already be near-level pre-fix (G-SPAWN-LEVEL passed even on unpatched code), so that path
+wasn't caught red-handed the way the diagonal-mouse-look bug was. The fix is still correct and cheap
+(same call already needed for the primary fix); a steep-gaze building/pin would be needed to witness
+it failing pre-fix specifically, not pursued further since the dominant, "easily" reproducible bug
+(diagonal look) is unambiguously fixed and proven.
+
+## 🔍 BUG DIAGNOSED, NOT YET FIXED (2026-08-11) — §CPE_WALK_ROLL_SNAP
+User report: *"cam gets toppled ie turned upside down easily. It supposed to behave similar to
+canvas mouse or fingers navigation."* Diagnosed read-only from `origin/main`@`1c3b989` (shared
+`~/bim-ootb` checkout was dirty with a large unrelated deletion set — not touched; `git show`, per
+[[feedback_readonly_investigation_use_git_show_not_checkout]]).
+
+**Root cause, two files, one handoff:**
+1. `cinema_path_editor.js:3515` (`_walkSpawnPose`) and `:1379-1383` (`_applyVFPose`, used for
+   scrub/rehearsal poses inherited before a walk mounts) both position `vfCam` via
+   `camera.lookAt(tx,ty,tz)` with `up` left at THREE's default `(0,1,0)`, never reset. `lookAt()`
+   cross-products `up` against the look direction to build the basis — when the cinematic gaze
+   target (§CINEMA_GAZE_SENSE two-layer facing) sits close to straight up/down from the camera (a
+   steep stairwell run, a pin aimed up a facade), that cross product is near-degenerate and can bake
+   real ROLL into the resulting quaternion, not just pitch/yaw.
+2. `cpe_walk.js:503-504`, the fresh-spawn branch of `start()`: `_yaw = _vfCam.rotation.y; _pitch =
+   _vfCam.rotation.x;` reads the inherited (possibly-rolled) quaternion's Euler components straight
+   into the walk's yaw/pitch state — **no clamp on `_pitch`, and no `.rotation.set(_pitch,_yaw,0)`
+   to force roll back to zero** (that reset only happens in the `_resumePose` branch, line 507). The
+   camera keeps whatever roll `lookAt()` produced, on screen, until the very FIRST `_onMouseMove`
+   (`cpe_walk.js:230-233`) fires `.rotation.set(_pitch, _yaw, 0)` — snapping roll to 0 using a
+   `_pitch` that was never validated as a true pitch (it's an Euler-x read of a rotation that may
+   have had real roll in it). That snap is the "topples... easily" moment: it can fire on the very
+   first tiny mouse nudge after spawn or resume.
+
+**Why OrbitControls (the user's reference — "canvas mouse or finger navigation") never does this:**
+`viewer/lib/OrbitControls.module.js:744` parameterizes orientation as spherical `phi`/`theta` around
+a target, clamped `minPolarAngle=0`/`maxPolarAngle=Math.PI` — it never reads back an inherited
+quaternion's Euler components, so there is no "borrow a possibly-rolled rotation, then reinterpret a
+piece of it as pure pitch" step. `_onMouseMove` itself is not the bug — same clamp pattern as
+`navigate_controls.js:47-48`, the file it explicitly copied. The bug is specifically the SPAWN/RESUME
+handoff from a `lookAt()`-built camera into that yaw/pitch model.
+
+**Fix shape, for confirmation before coding (Spec-First — not yet implemented):** at spawn, derive
+`_yaw`/`_pitch` from the forward vector via `atan2`/`asin` (roll-immune) instead of reading
+`.rotation.x/.y`, and call `_vfCam.rotation.set(_pitch, _yaw, 0)` in the fresh-spawn branch too
+(today only the resume branch does it) — makes spawn deterministically level, the same guarantee
+OrbitControls gives for free. Needs a `/tmp/wt-*` worktree per Worktree Hygiene (shared checkout is
+currently dirty with another session's work) and a §-log numeric witness (yaw/pitch/roll-equivalent
+at spawn across a few steep-gaze poses) per the FUNDAMENTAL LAW — no screenshots.
+
 ## ✅ REGRESSION FOUND + FIXED (2026-08-08) — §CPE_WALK_CTRL_DRAG_EXIT
 **User report on live v971 (Hospital, real GPU). Diagnosed read-only from a bim-compiler session
 (per [[feedback_diagnose_in_session_fix_in_other_session]]), then the user said "fix it, I need to

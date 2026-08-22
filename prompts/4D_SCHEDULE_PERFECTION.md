@@ -4483,7 +4483,8 @@ fleet-wide (7 buildings) before it is trusted, and re-locking `W-TMREPRO-5`/`5b`
 
 ## §S64 — the §S63 open item, studied fleet-wide: it is TWO defects, not one (2026-08-22)
 
-**STUDY ONLY — nothing shipped, no product code changed.** User steer this session: *"it must not
+**SHIPPED as bim-ootb PR #1472 (merged `d29acf0`) — C1 and C3 below are live; C2 stays rejected.**
+Written as a study first; this line added on close. User steer this session: *"it must not
 regress the fundamental basics already well laid for 4D generics. Allow 5% midair towards the end or
 within well formed ARCH."* Both proposals below are **audit-only** — they change zero schedule times,
 so no 4D generic can regress by construction. Probe: `scripts/probe_support_asymmetry.js` (new, reads

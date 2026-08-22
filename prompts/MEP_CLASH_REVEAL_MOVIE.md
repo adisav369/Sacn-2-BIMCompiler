@@ -213,3 +213,29 @@ not a detour into the 4D construction-sequence movie.
 **Open item, not yet resolved:** "supporting elements" (which elements besides the clashing pair get
 included in a BuildUp replay — e.g. the host wall/slab, adjacent hangers/connections) has no query yet.
 Needs a definition before BuildUp is buildable — flagged, not invented.
+
+## Open question #4 — ANSWERED 2026-08-14 (dispatched agent, from `CINEMA_DISCIPLINE_REVEAL.md §6` handoff)
+
+**"Does `_getMaterial` ever consult `DISC_COLORS`, or is that palette only used for placeholders/
+highlights/nav?" — the latter, confirmed definitively, not assumed.** `A._getMaterial`
+(`viewer/streaming.js:338-491`) has zero references to `A.DISC_COLORS` anywhere in its body. Grepped
+every `DISC_COLORS` consumer across `viewer/` (13 files) — every one is a load placeholder
+(`streaming.js:266`, `_drawBboxPlaceholders`, wireframe only, replaced once real geometry streams in),
+highlight/nav-minimap (`measure.js`, `navigate_find.js`, `dlod_nav.js`), UI swatch (`panels.js`), chart/
+export (`export_5d.js`, `boq_charts.html`), or import/wizard preview (`import.js`, `rates.js`,
+`wizard_classify.js`) — never the real streamed/baked geometry material.
+
+Checked against real data (HHS_Office_Federated_extracted.db, direct SQL query): confirms the predicted
+"blue-duct/yellow-conduit/red-pipe" convention gap is real. HHS's actual MEP (3399 elements, 99.7% NULL
+`material_rgba`, all `IfcFlowSegment`/`IfcFlowFitting`/`IfcFlowTerminal` — the IFC2x3 generic convention
+this repo's own `streaming.js` comment already names HHS as using) falls into a `STD_MAT` class fallback
+that is discipline-blind — same flat blue-grey metal look for every trade (FP/PLB/ACMV/etc. all
+identical), even though `elements_meta.discipline` is already selected in the same SQL row. Item 5's own
+prediction was right: **the fix is a discipline-driven base colour using DISC_COLORS' existing 12 hex
+values** (FP=`0xcc8844` brick, ACMV=`0xcc4444` red, PLB=`0x8844cc` purple, HEAT=`0xff6644` red-orange) —
+threaded into `_getMaterial` as a 4th `discipline` argument, scoped to the IFC2x3 generic `IfcFlow*`
+classes only (real material_rgba and IFC4-specific classes like `IfcPipe`/`IfcDuct` stay untouched, per
+the "trust IFC colors" doctrine). Named precisely, NOT implemented — full write-up, exact line numbers,
+and the DB query evidence are in `CINEMA_DISCIPLINE_REVEAL.md`'s own `## Findings 2026-08-14` section,
+not duplicated here. That section also found STR's own "boring blue" is real, populated IFC data (not
+this gap) and stairs' "blue" traces to adjacent steel railings, not the stair class itself.

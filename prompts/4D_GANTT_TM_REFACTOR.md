@@ -4144,3 +4144,69 @@ Ranked, and every one of these is a REPAIR item, not a new feature:
 
 **The pattern across 1, 2, 4, 5 and 7 is one thing:** a witness that cannot fail, or fails silently,
 is worse than no witness — it is a green light nobody earned. That is the repair queue.
+
+---
+
+## §S65 — RECAP: the Gantt-editor edit path and what actually witnesses it (2026-08-22)
+
+Commissioned by the user while §S64 shipped: *"GanttChart editor … allowing the Gantt Chart in Time
+Machine to be edited by pulling the bars, and doing CPM. Thus they have to regenerate the JSON that
+drives the build up on canvas. U may launch an agent to recap its Witness logging."* A recap agent did
+the sweep; **every load-bearing claim below was re-verified directly against `origin/main` before it
+was written here** — the agent's own run was against a 30-commit-stale checkout and it said so.
+
+### The real path (verified, `file:line` on `origin/main`)
+`wireGanttDrag()` (`time_machine.js:6413`) captures the gesture and gates pointerdown on
+`_ganttEditable` → `commitGanttDrag()` (`:6015`) refuses while a bake is recording
+(`_tmBusyRecording`, `:6007`) → the engine verb `ScheduleAuthor.moveTaskCascade` (`schedule_author.js:1260`)
+or `resizeTask` (`:1346`) → `retimeTaskElements()` (`time_machine.js:5890`) rewrites each element's
+`kernel_ops` row (`UPDATE kernel_ops SET timestamp=?, parameters=?` — this IS "regenerate the JSON";
+`parameters` is a per-element JSON blob mutated in place) → `_tmResyncAfterRetime()` (`:5990`)
+re-sorts `_ops` and invalidates the reveal index + X-ray cache → `invalidateGanttModel(); computeDays();
+drawGanttMini(); renderAtTime(_cursor)` re-paints the buildup.
+
+### ⚠ CORRECTION TO THE MENTAL MODEL — the drag does **not** run CPM
+`computeCpm` (`schedule_author.js:1428`, the real forward+backward pass that writes float and
+`is_critical`) has exactly **two callers**, verified by grep over all of `viewer/` excluding tests:
+`schedule_editor_ui.js:441` (the standalone Schedule Editor tab's own "Compute CPM" button) and
+`schedule_sync.js:26` (`case 'cpm'`, a cross-tab replay). **Neither is reachable from the in-canvas
+Time Machine drag.** What the drag runs is a *push-only forward cascade plus a predecessor-floor
+clamp* — a topological BFS over `task_sequences`, not a float/critical-path solve. That is a
+deliberate, documented choice (`schedule_author.js:1385` explains why `computeCpm`'s graph derivation
+is not used for the display/edit layer), not an oversight. **If the intent is "drag → CPM re-solve →
+new critical path on screen", that step is NOT BUILT.** Nothing is missing a witness here; the
+feature itself does not do it. This is the one thing to settle before any more work on this lane.
+
+### § coverage — the edit path is well instrumented
+Refusals: `§TM_BAKE_LOCK` (`:6019`, `:6360`), `§GANTT_DRAG_REJECT` (`:6434`, `:6449`, `:6025`,
+`:6030`, `:6063` the §S22_EPOCH_FIX clock guard, `:6079`), `§GANTT_PROPS_REJECT`.
+Engine: `§GANTT_EDIT_CLAMP` (`schedule_author.js:1302`), `§GANTT_EDIT_MOVE` (`:1334`),
+`§GANTT_EDIT_RESIZE` (`:1356`), `§GANTT_EDIT_CASCADE_ABORT` (`:1311`), `§CASCADE_BLIND` (`:1289`).
+Retime: `§S22_EPOCH_FIX_DETAIL` (`:5938`), `§GANTT_RETIME tasks/rows/ms` (`:5971`),
+`§RETIME_OUTLIER_AUDIT` (`:5973`), `§S22_EPOCH_FIX` (`:5977`). Commit: `§GANTT_DRAG_COMMIT` (`:6112`).
+Siblings: `§TM_RULER_SHIFT_*`, `§GANTT_GROUP_SHIFT_*`, `§GANTT_EDIT_UNDO*`.
+Lock gate: `§GANTT_LOCK_BASELINE` (`:4243`), `§GANTT_LOCK_BREACH` (`:6752`), `§GANTT_LOCK_VERIFY` (`:6764`).
+
+### ⛔ The gaps, verified not guessed
+1. **`§TM_BAKE_LOCK` guards 2 of 5 edit entry points.** `_tmBusyRecording` is called at `:6017`
+   (`commitGanttDrag`) and `:6358` (`generateGanttSchedule`) — **verified by grep, exactly two call
+   sites.** `shiftGanttSchedule` (`:6152`), `commitGanttGroupShift` (`:6203`) and `undoLastGanttEdit`
+   (`:6255`) have none: a ruler shift, a group move or an undo can still mutate the timeline
+   mid-recording. `witness_tm_bake_lock.js` only covers the two that are guarded, so the hole is
+   unwitnessed as well as unguarded. **This is the cheapest real fix on this lane.**
+2. **No persistence on the edit path.** `persistDb` (`schedule_author.js:1657`) has two callers,
+   verified by grep: `schedule_editor_ui.js:493` and `schedule_author_ui.js:27`. None of the four TM
+   commit functions call it — an in-canvas drag lives only in the in-memory sql.js `app.db`.
+3. **`§RETIME_OUTLIER_AUDIT`'s `collapsed60s`/`inverted` counters are logged on every commit and
+   asserted by nothing.** `witness_gantt_edit_coherence.js` G-COH-2..4 test the pure `_retimeSpan` on
+   synthetic input, not the live counters a real drag accumulates.
+4. The four commit-summary lines' FIELD values (`cascaded=N`, `clamped=`) are asserted nowhere; only
+   the browser `drag_test.js` checks that `§GANTT_DRAG_COMMIT` fires at all.
+
+### 🔴 G-COH-6 is a FALSE NEGATIVE — a stale fixed-window assertion
+`witness_gantt_edit_coherence.js:117` does `txt.slice(rt, rt + 2200)` from `function
+retimeTaskElements(` and asserts the slice contains `_retimeSpan(`. **Measured on current main: the
+call sits at offset 5073.** The function grew (the §S22_EPOCH_FIX audit code) and the window did not.
+`retimeTaskElements` still calls `_retimeSpan` — the assertion is wrong, the code is fine. Fix is to
+brace-match the function body instead of slicing a magic 2200. Same class as every other
+"a text slice cannot state its own dependencies" finding on this project.
