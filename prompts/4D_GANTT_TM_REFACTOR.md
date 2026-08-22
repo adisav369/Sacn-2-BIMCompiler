@@ -4252,6 +4252,138 @@ for as long as it existed. **Map the path before hunting the bug.**
 
 ---
 
+## §S68 — SPEC: drag → CPM **annotate** (not re-solve). User's decision, 2026-08-23
+
+**The item-1 product question is SETTLED: annotate.** The drag keeps its push-only cascade +
+predecessor clamp as the date engine. CPM runs *after* it, in `fixedDates` mode, purely to derive
+float and criticality from the dates the cascade just produced. Nothing re-derives a date.
+
+### Why not a true re-solve — and an honest correction to the number that motivated it
+`computeCpm`'s forward pass, with `fixedDates` OFF, derives each task's ES from the graph (`max` over
+predecessors' EF+lag). `schedule_author.js:1385` records the measured cost of that on a multi-parent
+zone graph — **Terminal's 71-zone graph deriving PF=138d against the real movie's 93d, +48%**
+(CPM_FLOAT_GAP.md, 2026-08-03) — and that historical number is what the decision was argued from.
+
+**Re-measured on current `main`, with the real `LABOR_RATES`/`RATES`, it does not reproduce.** Both
+modes return an IDENTICAL project duration on all 8 fleet buildings today (Clinic 466d, Duplex 29d,
+HHS 133d, Hospital 1208d, JKR 115d, LTU 2460d, TermRooms 389d, Terminal 389d); criticality differs by
+at most 7pp. So on a *freshly generated, unedited* schedule the derived forward pass currently agrees
+with the real dates. Stating this plainly rather than repeating the +48%, which is no longer what the
+code does on these fixtures.
+
+**The flag is still load-bearing, and the measurement that shows it is the EDIT case — the only case
+that matters here.** Push one task 30 days off its graph-derived position (exactly what a user drag
+does) and the modes split immediately: `fixedES=54` vs `derivedES=24`, `fixedPF=59d` vs `derivedPF=29d`
+(W-CPM-3, real Duplex fixture). Without `fixedDates`, CPM would compute float against dates the user's
+drag deliberately overrode — and since it also WRITES `early_start`, it would publish an `early_start`
+that contradicts the `schedule_start` on the same row. `fixedDates:true` skips exactly that forward
+derivation and nothing else.
+
+### What annotate writes — and what it must never write
+`computeCpm`'s only write is one `UPDATE tasks SET early_start, early_finish, late_start,
+late_finish, free_float, total_float, is_critical` (`schedule_author.js:1466`). It does **not**
+touch `schedule_start` / `schedule_finish` / `schedule_duration`. That is the whole safety property
+of this feature and W-CPM-2 asserts it byte-for-byte, not by reading the code.
+
+Under `fixedDates:true`: ES/EF come straight from the persisted, movie-coherent dates; the Kahn topo
+sort still runs (it is the cycle/orphan integrity check); the backward pass (LS/LF → total float →
+`is_critical = total_float <= 0`) runs unchanged over the real edges. So criticality stays meaningful
+while the dates stay the cascade's.
+
+### Wiring — one call per re-time path, the §S67 shape
+New `_tmAnnotateCpm(schedId)` in `time_machine.js`, called immediately after
+`_tmResyncAfterRetime()` in **all six** functions that call `retimeTaskElements()`
+(`commitGanttDrag`, `shiftGanttSchedule`, `commitGanttGroupShift`, `undoLastGanttEdit`,
+`linkGanttBars`, `openGanttProps`), plus once on first Gantt build so the path is visible before any
+edit. It caches `taskId -> {critical, totalFloat}` in `_ganttCritical` and logs
+`§GANTT_CPM_ANNOTATE`. Undo is included on purpose: undoing an edit must un-colour the bars it
+coloured.
+
+### Display
+`drawGanttMini` paints a **2px red (#e53935) rail along the bottom edge** of every critical bar —
+deliberately not a stroke frame, because all three frame colours are taken (yellow = captured,
+orange = cursor-active, cyan = marquee-selected) and a fourth frame would be unreadable at 9px. The
+solid-edge-marker idiom is already in this file (the variance panel's cost cap,
+`ctx.fillRect(px + pw - 3, y, 3, barH)`). `openGanttProps` gains a read-only total-float line.
+
+### Known limits, named not discovered later
+1. **Cycle bail.** `computeCpm` returns `{error:'cycle'}` and logs `§SE_CPM_BAIL` on a non-DAG. Per
+   `4D_SCHEDULE_PERFECTION.md` §MILESTONE, **cycles are 0 on 5 of 7 buildings** — the other two get
+   no critical path at all. That is correct behaviour (never fake a critical path), logged loudly.
+2. **Leaf-only.** The query excludes `is_summary=1`, so summary bars are never marked critical.
+3. **Thin `tasks` table.** A schedule whose `tasks` predates the widened DDL has no `is_critical`
+   column and the `UPDATE` throws. Annotate guards on a probe query and logs
+   `§GANTT_CPM_ANNOTATE_SKIP reason=thin_tasks_table` rather than throwing inside a drag commit.
+4. **Not persisted.** Annotate writes to the in-memory `app.db` like every other edit-path write —
+   RESUME item 3 (no `persistDb` on the edit path) applies to it identically and is unchanged by it.
+
+### Witnesses — `viewer/tests/witness_gantt_cpm_annotate.js`
+- **W-CPM-1** (source gate, brace-matched like §S67 — never a fixed slice): every function that
+  calls `retimeTaskElements(` also calls `_tmAnnotateCpm(`. Proves the wiring cannot rot the way
+  §S67's resync did.
+- **W-CPM-2** (behavioural, real sql.js): a 4-task FS chain + one parallel slack task, dates already
+  set. Run `computeCpm(..., {fixedDates:true})`; assert **every `schedule_start`/`schedule_finish`/
+  `schedule_duration` is byte-identical before and after**, and that `is_critical=1` lands on the
+  chain and `0` on the slack task with `total_float > 0`. This is the "annotate never moves a date"
+  proof — the one property the whole decision rests on.
+- **W-CPM-3** (the counter-proof): the SAME fixture with `fixedDates` OFF must derive a DIFFERENT
+  early_start for the slack task than the fixed run — proving the flag is actually load-bearing and
+  W-CPM-2 is not passing because the two modes are identical on this fixture.
+- **W-CPM-4** (display gate): `drawGanttMini`'s body reads `_ganttCritical` — a computed criticality
+  nothing paints is not the feature.
+
+---
+
+
+### ✅ BUILT — §S68 shipped (2026-08-23). Evidence, in the order it was produced.
+
+**Code** (`bim-ootb`, branch `fix/gantt-cpm-annotate`): `viewer/time_machine.js` `_tmAnnotateCpm()`
++ 8 call sites (the 5 re-time paths, `undoLastGanttEdit`, `linkGanttBars`'s edge case, the unlink
+handler, and a once-per-building prime in `buildGanttTasks`), the float rail in `drawGanttMini`, the
+float line in `openGanttProps`. `viewer/sw.js` v1070 → **v1071** (mandatory same-PR, or the fix never
+reaches an existing user). `viewer/tests/witness_gantt_cpm_annotate.js` is new.
+
+**W-CPM 20/20 green** (`node viewer/tests/witness_gantt_cpm_annotate.js`), and **proven RED against
+unmodified `origin/main`** — exit 1, naming exactly the 5 unwired functions plus both display gates,
+while W-CPM-2 stays green there (correct: the engine property predates the wiring).
+
+**The safety property, measured not assumed:** `§GANTT_CPM_ANNOTATE_DATES tasks=20 changed=0` — every
+`schedule_start`/`schedule_finish`/`schedule_duration` byte-identical across a real
+`computeCpm(fixedDates:true)` on a real materialized Duplex schedule. `is_critical` persisted 15/15.
+
+**Live, in the real page** (headless probe, real drag through `window.__tmGanttDrag`, Duplex):
+- first build: `§GANTT_CPM_ANNOTATE tasks=19 critical=11 (58%) projectDuration=13d float=0..3 datesWritten=0 (fixedDates)`
+- after `move +7d`: `§GANTT_EDIT_MOVE ... cascaded=5` → `§GANTT_CPM_ANNOTATE tasks=19 critical=3 (16%) projectDuration=20d float=0..10`
+
+The drag pushed the end date 13d → 20d and the critical set re-derived 58% → 16% off the new dates.
+That is the feature working end to end, in §-log values, with no screenshot involved.
+
+**Fleet criticality, real rate tables (W-CPM-5):** Terminal 27%, TermRooms 27%, Hospital 33%, LTU 55%,
+JKR 64%, Clinic 78%, Duplex 79%, HHS 82%. CPM ran on **8 of 8** — no cycle bail. (Limit 1 in the spec
+above was over-cautious: the §MILESTONE cycle count is about the generation graph, not `computeCpm`'s
+topo check on the materialized leaf tasks.)
+
+**Display decision, made from that measurement.** A red-only rail marks 4 bars in 5 at the top of that
+range, so the rail paints **both** colours: red `#e53935` = zero float, green `#26a69a` = has slack.
+Bottom edge, 2px, not a fourth stroke frame — yellow (captured), orange (cursor-active) and cyan
+(marquee-selected) already take all three, and a fourth is unreadable at a 9px row.
+
+**Regression sweep, 14 related witnesses:** 13 PASS, 1 RED. The red is `witness_gantt_lock_integrity`
+— **verified RED on unmodified `origin/main` too**, so it is not this change. Its cause is the same
+class as G-COH-6: it slices functions by name out of `time_machine.js` and a *comment* containing
+`` `function _midairAudit(` `` gets picked up as the declaration, producing `SyntaxError: Unexpected
+template string`. Named here, not fixed here.
+
+`witness_gantt_edit_undo` DID go red on this branch and was fixed properly: it evaluates the sliced
+`commitGanttDrag` in a `vm` sandbox, so it needed a `_tmAnnotateCpm` stub next to the
+`_tmResyncAfterRetime` stub §GANTT_RETIME_RESYNC added for the same reason. Green again.
+
+**What this does NOT do**, so nobody re-discovers it as a bug: annotate writes to the in-memory
+`app.db` like every other edit-path write, so RESUME item 3 (no `persistDb` on the edit path) applies
+to the CPM columns identically. And the drag still does not re-solve dates — that was the decision.
+
+---
+
 # ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
@@ -4263,12 +4395,11 @@ user's call, with the numbers behind it (floating 0.136%, midair 0.50%, cycles 0
 green=40/44). **That milestone explicitly does NOT cover editing. Editing is this file's lane now.**
 
 ## Take these in order
-1. **⛔ SETTLE FIRST, it is a product question not a code one: the drag does NOT run CPM.** `computeCpm`
-   has exactly two callers (`schedule_editor_ui.js:441`, `schedule_sync.js:26`), neither reachable
-   from the in-canvas Gantt. The drag runs a push-only forward cascade + predecessor-floor clamp —
-   deliberate and documented (`schedule_author.js:1385`), not an oversight. If the intent is
-   "drag → CPM re-solve → new critical path on screen", **that is a feature to build, not a bug to
-   fix**, and its size depends entirely on the answer. Do not start any edit-path work before this.
+1. **✅ SETTLED + BUILT 2026-08-23 — ANNOTATE.** User's call: the drag keeps its push-only cascade as
+   the date engine, and CPM runs after it in `fixedDates` mode to derive float/criticality FROM those
+   dates. Shipped on `fix/gantt-cpm-annotate` with W-CPM 20/20 green, proven red on main, and a live
+   drag measured at 58% → 16% critical / PF 13d → 20d. Full evidence in **§S68** above. A true
+   drag→re-solve is NOT built and deliberately is not: annotate never writes a schedule date.
 2. **`§TM_BAKE_LOCK` guards 2 of 5 edit entry points.** `_tmBusyRecording` is called at `:6017` and
    `:6358` only — `shiftGanttSchedule`, `commitGanttGroupShift` and `undoLastGanttEdit` can still
    mutate the timeline mid-recording. Same shape as §S67 and the same size of fix. Extend
