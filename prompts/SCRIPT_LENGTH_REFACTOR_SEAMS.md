@@ -454,3 +454,52 @@ silently and get discovered by accident** — §S53.5 found one by auditing cons
 function, and this run found more the same way. A suite runner that executes all witnesses and
 prints one summary is worth more than any single extraction on this list. Logs for every run:
 `scratchpad/s61run/*.log`.
+---
+
+# ▶ RESUME HERE (2026-08-22, watchdog session end)
+
+**Everything below is MERGED and verified ancestor-of-main. Nothing is in flight, no unpushed work,
+worktrees pruned.** `origin/main` carries it all; `CACHE_VERSION` **v1068**.
+
+## What shipped this session
+| PR | what | proof |
+|---|---|---|
+| #1452 / #1454 | `audit_sw_precache.js` gained the OTHER direction (needed-is-listed) + the 18 scripts it exposed are now precached | 141 found/0 missing · 114 precached/0 unlisted · proven red both ways |
+| #1453 / #1454 | `tests/run_witness_suite.js` — one command runs every witness | headless 42 GATE, browser 21 report-only (three sweeps proved the browser set is not deterministic) |
+| #1455 | **§S58** `viewer/support_sweep.js` — 6 functions, 604 lines out | `witness_midair_zero` 49/49 before AND after, normalized log diff EMPTY; 43 source-text slices → 0 |
+| #1457 | code-side ⛔ pointers for the midair judge divergence | refs §S58.5 |
+| #1458 | `tests/audit_section_refs.js` — every `prompts/*.md` pointer must resolve | 100 resolved · 25 archived · 13 known-gone · 0 dead |
+| #1459 | **§S62** `viewer/zone_index.js` — 63 lines out, retired a dead witness | suite green=34→35, known_red 8→7 |
+| #1460 | **§S56** `§TM_BAKE_LOCK` — the Gantt refuses edits while the film records | `witness_tm_bake_lock` 10/10, proven red |
+| #1464 | **§S57** `witness_bake_plays_schedule` — the film plays the REAL schedule | 16/16 on Hospital+Clinic, headless and numeric, proven red |
+
+`time_machine.js` **9,217 → 8,673**. Suite: **green=37 known_red=7 new_red=0**, 44 witnesses.
+All three demo gates (§S55 identity, §S56 lock, §S57 bake) are CLOSED.
+
+## Pick up here, in this order
+1. **⛔ `witness_tm_geo_order_cycles` — Terminal floating tail measured 12, W-TMREPRO-5 locks 8**
+   (cycles=0, clean). The witness was DEAD 9+ days on a stale-slice crash; the number moved while
+   nothing watched. Either the lock is stale or something regressed — **this is a measurement
+   session, not a refactor**, and it is the only item where a real number disagrees with a lock.
+2. **`witness_zone_index.js` — one-line fix.** Hardcodes `/tmp/vw/time_machine.js`; resolve from
+   `__dirname` like every sibling. Retires a second red for almost nothing.
+3. **W-ZDA-4a → per-building baseline lock** (dev's version, agreed, still unbuilt): record
+   Duplex 37 / HHS 1839 in `viewer/tests/baselines/midair.json` so it reddens on a CHANGE instead of
+   shipping permanently red. Do NOT use a 5% threshold — that judge transfer was tried and retracted.
+
+Then the next extraction, by the rule both of this session's extractions obeyed: **take a seam
+because it retires a named failure, never because of a line count.** Honest candidates left in
+`time_machine.js`: the 1,131-line `§GANTT_DRAG`/`§GANTT_RETIME` block, and ~870 lines of
+sparks/smoke + day-night sky that are not 4D at all.
+
+## Standing lessons this session paid for
+- **One pattern is not a measurement.** "65 of 112 files never gate" was a regex artifact; the real
+  number is 0 (see §S61.1, RETRACTED). Classify a handful of hits by hand before a count drives work.
+- **One observation is not a verdict.** Three sweeps of the same commit gave three different browser
+  red-sets; a red is only believed when it reproduces (`--retries`).
+- **CI's lint gate sees what nothing local does.** `node --check`, four audits, four physics
+  witnesses and the whole suite were green while 6 undefined `SupportSweep` references sat in
+  `time_machine.js`. Cross-file identifier resolution has exactly one guard.
+- **A sliced function cannot state its own dependencies.** That single fact caused the dead witness
+  (§S53.5), both `_zoneIndex` crashes (§S62), and the two witnesses my own §S56 guard broke. It is
+  the argument for every extraction on this list.
