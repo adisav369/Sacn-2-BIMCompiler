@@ -4979,3 +4979,131 @@ green=40/44). **That milestone explicitly does NOT cover editing. Editing is thi
   that no gate reads. The candidate that touched the engine (C2) made it 3× worse and was rejected on
   measurement, not taste.
 - **A witness outside `viewer/tests/` does not exist** as far as the suite runner is concerned (§S66).
+
+---
+
+# §S76 — Gap 4 + Gap 7 from §S72's gap list, closed with one real P0 found doing it (2026-08-23)
+
+Dispatched to extend §S70's persistence proof to Hospital (252MB, the only case §S72 flagged as never
+actually run) and to check whether §S72's "harmless today, a trap later" characterization of the K3
+cache-key rule was actually true. **Gap 7 was real today, not later, and cheap. Gap 4 uncovered a
+genuine P0: split-mode buildings — Hospital and Clinic, confirmed in the current deploy fleet — lose
+every persisted Gantt edit on reload, silently, and §S70's live proof never exercised this path
+because Duplex is never split-mode.**
+
+## Gap 7 — CLOSED. `DbResolve.cacheKey`'s K3 rule missed the no-leading-slash form.
+
+§S70 said K3 "keys on a LEADING `/deploy/`... harmless today, a trap later." Traced the actual call
+chain instead of taking that at face value: `viewer/config.js:28` sets `A.DB_URL =
+_params.get('db') || ...` — the `?db=` query param reaches `cacheKey()` completely unvalidated, no
+leading-slash normalization anywhere. Proved by direct call, no browser needed:
+
+```
+cacheKey('deploy/dev/buildings/Terminal_extracted.db', PROD) → 'buildings/Terminal_extracted.db'
+cacheKey(PROD+'buildings/Terminal_extracted.db', PROD)       → 'buildings/Terminal_extracted.db'
+COLLISION: true
+```
+
+**Reachability, precisely stated:** no KNOWN shipped tool triggers this — `viewer/dlod_bench.html`
+(the one real dev-bench tool) always uses a leading slash (`/bim-compiler/deploy/dev/buildings/...`),
+confirmed by reading it. But the `?db=` param is a first-class, unguarded app feature, not a hack, and
+nothing stops a future tool or a hand-typed test URL from omitting the slash. Fixed the regex to match
+`deploy/`/`modeller/` as a path segment with or without a leading `/`:
+```js
+if (/(^|\/)(deploy|modeller)\//.test(url)) return url;           // K3
+```
+3 new witness cases (`K3-*-noslash`) plus a direct collision-guard assertion in
+`viewer/tests/witness_db_cache_key.js`. **Proven red before the fix** (17/20, reverted the regex by
+hand and re-ran) **and green after** (20/20). Sibling `witness_db_404_oci_retry.js` unaffected (12/12
+— same file, different function). `viewer/db_resolve.js` + `viewer/tests/witness_db_cache_key.js`,
+commit `052ee5a` on `housekeeping/tm-hospital-persist-cachekey`.
+
+## Gap 4 — NOT closed. A P0 found, named precisely, not patched — this is a design decision.
+
+### What was run
+Adapted `probe_gantt_gestures.js`'s harness (real puppeteer, `SERVE_ROOT` = repo root per §S72's
+serve-root lesson) into `scripts/probe_gantt_hospital_persist.js`: load Hospital (real 252MB
+`_extracted.db` + `_geo.db` + `_meta.db`, copied from the live fleet), drag a task bar, wait for
+`§SCHED_PERSIST`, then **launch a genuinely separate browser instance pinned to the same
+`--user-data-dir`** (a fresh `puppeteer.launch()` with no shared profile would trivially fail or
+pass for the wrong reason — this was caught and fixed before the first real run), and read the
+dragged task's date back from the freshly-loaded `APP.db`.
+
+### What happened
+```
+H2 baseline   TASK_Substructure_Level_1  schedule_start = 2026-08-23
+H3/H4 drag    §GANTT_EDIT_PERSIST what=drag url=/buildings/Hospital_extracted.db ok=true
+              §SCHED_PERSIST key=buildings/Hospital_extracted.db size=60244KB
+              in-memory schedule_start → 2026-11-04   (H4 PASS)
+[reload, same IDB profile]
+H5            §CACHE_HIT lines seen: Hospital_positions.bin, Hospital_meta.db
+              — NO §CACHE_HIT for Hospital_extracted.db, ever.
+H6            reloaded tasks table columns: [task_id, schedule_id, name, start_date, finish_date,
+              duration_days, status]  ← NOT the schema the drag was written against
+              (schedule_start doesn't exist in it)              → FAIL, the edit is gone
+```
+
+### The mechanism, traced to source, not guessed
+`viewer/streaming.js` has two `A.db` assignment sites: `:2304` (split mode) and `:2475` (whole-db
+mode). Split-mode detection (`:2190-2216`, §SPLIT_PAIR_REQUIRED) requires BOTH `_meta.db` and
+`_geo.db` to exist before committing. **When split mode is active, `A.db` is built from `metaBuf` —
+`_meta.db`'s bytes — never from `_extracted.db` at all** (`:2304`,
+`A.db = new SQL.Database(new Uint8Array(metaBuf))`). `_meta.db` has its own, independently-generated
+`tasks` table (`start_date`/`finish_date` shape) — an artifact of a different extraction pass, not a
+view onto `_extracted.db`.
+
+So on Hospital: the Gantt edit happens in memory against `_meta.db`'s loaded schema, persists correctly
+under the CORRECT canonical key for `A.DB_URL` (`buildings/Hospital_extracted.db` — §S70's fix works
+exactly as designed), and is unreachable forever after, because **the reload path's split-mode
+detection re-derives `metaUrl` (`buildings/Hospital_meta.db`) and checks the cache under THAT key** —
+a slot the persist never wrote to. Two correctly-functioning pieces (§S70's key derivation, split-mode
+detection) compose into data loss because neither knows about the other. `time_machine.js` and
+`schedule_author.js` have **zero references to split mode** — grepped, confirmed — so TimeMachine has
+no way to even know it is editing a split-mode building.
+
+**This is not the bug §S70 fixed reappearing — it is a sibling in the same bug FAMILY** (persist and
+read disagreeing on the slot), found because §S70's own live proof only ever ran on Duplex, and Duplex
+is never split-mode (`viewer/streaming.js` :2192-2199's own comment: "Duplex: small building, never
+needed a split at all").
+
+### Blast radius, measured against what's actually shipped
+`deploy/buildings/` (the production source): `_meta.db` exists for Clinic, Duplex, Hospital,
+SampleHouse, Schependomlaan, Terminal. `_geo.db` exists ONLY for **Clinic and Hospital** — the
+`_geoHeadOk` requirement means only buildings with BOTH ever commit to split mode. Terminal and LTU
+were investigated for exactly this class of split-pair defect before (`project_split_db_live_vs_probe_
+landmine.md`, "fleet CLEAN 2026-08-17, Terminal+LTU repaired") and Terminal currently ships with no
+`_geo.db` at all — consistent with that repair. **Hospital and Clinic are the two buildings in the
+current fleet where every Gantt edit is silently lost on reload, right now, in production**, unless a
+user never refreshes the tab after editing.
+
+### Why this is named, not fixed here
+Three real candidate fixes exist and they are an architecture choice, not a bug-fix:
+1. **Make `_tmPersistEdit` split-mode-aware**: persist under `metaUrl`'s canonical key instead of
+   `A.DB_URL`'s when split mode is active. Cheapest, but freezes "the edit lives in meta.db" as the
+   permanent model — does the Room lens / other meta.db readers expect task-edit columns to ever
+   appear there?
+2. **Merge on read**: when split mode is detected, ALSO check for a persisted extracted.db-keyed blob
+   and fold its task rows over meta's. More correct, more moving parts, more places to get the merge
+   wrong.
+3. **Refuse to edit**: `_tmEditLocked`-style refusal when `A.db` was loaded via the split path, with a
+   clear status message, until (1) or (2) ships. Safest short-term (no silent loss), costs the feature
+   for Hospital and Clinic users today.
+None of these is a "clean bounded fix" in the sense gap 7 was — each has a real design consequence for
+how split-mode and the edit engine relate going forward. Named here with full mechanism and measured
+blast radius so the next session does not have to re-derive it; left for the project owner's call.
+
+### Cost numbers, measured (not the same shape as §S70's isolated `export()` figures)
+`loadMs≈5-10s` (cold, real 252MB+229MB+25MB fleet), `dragToCommitMs≈6-7s` (includes the 1200ms
+debounce), **persisted blob = 60,244KB — not 252MB**, because the persisted content in split mode is
+`_meta.db`-shaped (small), not the monolithic extracted.db §S70's cost table measured. `reloadMs≈4-10s`.
+Full round trip (fresh load → drag → persist → fresh reload) ≈ 60-65s including two full browser
+launches — the majority of it is Hospital's real network/disk fetch time, not the persist mechanism.
+
+### Artefacts
+`scripts/probe_gantt_hospital_persist.js` (new, bim-ootb) — not gated into the suite (it needs the
+real 507MB Hospital fleet files locally, same constraint as any other real-fixture probe in this repo)
+but left committed as the reproduction for whoever picks up the design decision above. Two full runs'
+raw logs: `/tmp/hospital_persist_run1.log` (crashed cleanly on the schema mismatch, which is what led
+to the diagnostic rewrite), `/tmp/hospital_persist_run2.log` (the full H0-H6 result quoted above) —
+scratchpad only, not committed (per this project's DB/binary discipline, a 507MB local fixture set is
+never committed either).
