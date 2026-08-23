@@ -4384,6 +4384,117 @@ to the CPM columns identically. And the drag still does not re-solve dates — t
 
 ---
 
+## §S69 — SPEC: §TM_BAKE_LOCK guards 2 edit paths in 8. RESUME item 2.
+
+### The count in RESUME is wrong, and wrong in the unsafe direction
+RESUME item 2 says "guards 2 of 5 edit entry points." **Measured on `origin/main` @ `89ad90f`:
+`_tmBusyRecording` has exactly two call sites (`time_machine.js:6082` `commitGanttDrag`, `:6427`
+`generateGanttSchedule`) and there are EIGHT timeline-mutating entry points, not five** — so the real
+figure is 2 of 8, with SIX unguarded. §S67 found `linkGanttBars` and `openGanttProps` after item 2
+was written and nobody went back to re-count; the eighth was not on anyone's list at all (below).
+
+| entry point | mutates | §TM_BAKE_LOCK on main |
+|---|---|---|
+| `commitGanttDrag` | dates + `kernel_ops` | ✅ |
+| `generateGanttSchedule` | the whole schedule | ✅ |
+| `shiftGanttSchedule` | every task's dates + ops | ❌ |
+| `commitGanttGroupShift` | selected tasks' dates + ops | ❌ |
+| `undoLastGanttEdit` | restores dates + ops | ❌ |
+| `linkGanttBars` | adds an edge, re-applies successor | ❌ |
+| `openGanttProps` (apply + unlink) | dates + ops / removes an edge | ❌ |
+| `buildTaskIndex` → §GANTT_SCHEDULE_STALE regen | **re-materializes the whole schedule in place** | ❌ |
+
+**The eighth was found by the gate, not by reading.** `buildTaskIndex`'s stale-genVersion self-heal
+calls `materializeZones` and rewrites the entire schedule — mid-bake that swaps the timeline out from
+under the recorder. It is on no list in this file because nobody thought of it as an "edit path"; it
+is one, and W-TBL-5's derivation named it on the first run. Its guard goes on the REGEN BLOCK, not on
+`buildTaskIndex` itself: refusing the whole function would leave the Gantt with no task index and
+break the display the film is recording. Skipping only the regen keeps the film on the schedule it
+started with, and `genVersion` stays stale so the self-heal simply runs on the next rebuild after the
+bake.
+
+`setGanttBaseline` is deliberately NOT on this list: it writes only the `task_baseline` snapshot
+table, touches no `tasks` date and no `kernel_ops` row, so it cannot desync a recording. Left
+unguarded on purpose, stated here so the next reader does not "fix" it.
+
+### The fix
+Extract the refusal — currently five duplicated lines at each of the two guarded sites — into
+`_tmEditLocked(verbName)`: it calls the existing `_tmBusyRecording(A())`, logs the SAME
+`§TM_BAKE_LOCK refused=<verb> reason=<flag>` line, and returns true. Every mutating entry point
+becomes `if (_tmEditLocked('<name>')) return;` on its first line. For `openGanttProps` the guard goes
+on the two WRITE handlers (typed apply, unlink), not on opening the panel — reading a task's dates
+mid-bake is harmless and blocking it would be a worse product than the bug.
+
+No new flag: `_tmBusyRecording` keeps reading the same `_maxqActive` / `_cinemaOrbitActive` /
+`_stillRefineActive` triple `dlod_nav.js` already names (W-TBL-0b exists precisely to stop a second
+source of truth appearing, and it stays green).
+
+### Witnesses — extending `viewer/tests/witness_tm_bake_lock.js`
+- **W-TBL-5 (the gate that makes the count self-maintaining).** Do not hardcode a list of seven. A
+  function is timeline-mutating if its brace-matched body calls `retimeTaskElements(` or one of the
+  mutating engine verbs (`moveTaskCascade` / `shiftSchedule` / `shiftTasks` / `materializeZones` /
+  `addDependency` / `removeDependency`). Assert every such named function calls `_tmEditLocked(`.
+  A new edit path added next month is caught by construction; that is the whole point, since this
+  item exists because two paths were added and the guard was not.
+- **W-TBL-5b** `undoLastGanttEdit` by name — it mutates by restoring rows directly and calls none of
+  those verbs, so the derived rule cannot see it. Same shape as W-CPM-1b.
+- **W-TBL-6 (behaviour, not source).** Extend the existing `run(flags)` sandbox to drive
+  `shiftGanttSchedule` and `commitGanttGroupShift` as well: with a recording flag set, neither
+  reaches its engine verb and both log a loud refusal; with nothing recording, both run past the
+  guard. The RELATIVE pairing the existing W-TBL-4 established — a guard that refuses everything
+  must fail — extends to the new paths.
+- The existing W-TBL-1..4 must stay green with the refusal moved into the helper: the log line is
+  byte-identical by construction, and the sandbox now slices `_tmEditLocked` alongside
+  `_tmBusyRecording`.
+
+---
+
+
+### ✅ BUILT — §S69 shipped (2026-08-23). Evidence.
+
+**Measured on unmodified `origin/main` before touching anything** (same derivation the new gate uses,
+looking for main's per-site `_tmBusyRecording` pattern):
+```
+mutating entry points (incl. undo) = 8
+  GUARDED   (2): commitGanttDrag, generateGanttSchedule
+  UNGUARDED (6): buildTaskIndex, shiftGanttSchedule, commitGanttGroupShift,
+                 linkGanttBars, openGanttProps, undoLastGanttEdit
+```
+
+**Code:** `_tmEditLocked(verb)` — one helper, one log format — replaces the two duplicated per-site
+refusals and is now called from all eight (`openGanttProps` on its two WRITE handlers, not on opening
+the panel; `buildTaskIndex` on the regen block only). `sw.js` v1071 → **v1072**.
+
+**W-TBL 17/17 green**, up from 10. The new checks:
+- **W-TBL-5** derives the mutating-entry-point set from the code (calls `retimeTaskElements` or a
+  mutating engine verb) and requires every one to be guarded — `§TM_BAKE_LOCK_WIRING
+  mutatingEntryPoints=7 [...] unguarded=0`. This is what makes the count self-maintaining; it is the
+  check that found `buildTaskIndex` in the first place.
+- **W-TBL-5b/5c/5d** cover the three cases the derivation cannot: `undoLastGanttEdit` (mutates by
+  restoring rows directly, calls no engine verb), and the two deliberate exemptions —
+  `setGanttBaseline` (writes only `task_baseline`) and `_materializeNativeSchedule` (bails when a
+  schedule already exists, so it can only ever write a building's FIRST one). Both exemptions assert
+  the PROPERTY that earns them, not the name.
+- **W-TBL-6a/6b** extend the existing relative pairing: with a flag set the two shift verbs reach no
+  engine verb (`move=0 materialize=0 shiftSchedule=0 shiftTasks=0`, 4 loud refusals); idle, both run
+  past the guard into `SA.shiftSchedule` / `SA.shiftTasks`. A guard that refused everything fails.
+
+**Red-proved** against unmodified `origin/main`: exit 1 with `W-TBL-0c _tmEditLocked ... is not
+defined`. That explicit early check exists so the red reads as the finding it is instead of an opaque
+`ReferenceError` from a slice.
+
+**Live, real page** (same headless probe as §S68, Duplex): unchanged behaviour, no spurious refusal —
+`§GANTT_MINI tasks=19 rebuild=1` → `§GANTT_CPM_ANNOTATE critical=11 (58%) PF=13d`, drag `move+7d`
+commits and re-annotates to `critical=3 (16%) PF=20d`. The guard is on hot paths (`buildTaskIndex`
+runs on every rebuild), so "does the viewer still work idle" is a real question and this answers it.
+
+**Regression sweep, 13 related witnesses: all PASS.** Two went red on this branch and were fixed
+properly, not stubbed around: `witness_gantt_edit_undo` and `witness_gantt_native_generate` slice
+verbs into a `vm` sandbox and now slice `_tmEditLocked` alongside `_tmBusyRecording` — the real
+helper, not a stub, so the sandbox stays honest about what the guard does.
+
+---
+
 # ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
@@ -4400,10 +4511,10 @@ green=40/44). **That milestone explicitly does NOT cover editing. Editing is thi
    dates. Shipped on `fix/gantt-cpm-annotate` with W-CPM 20/20 green, proven red on main, and a live
    drag measured at 58% → 16% critical / PF 13d → 20d. Full evidence in **§S68** above. A true
    drag→re-solve is NOT built and deliberately is not: annotate never writes a schedule date.
-2. **`§TM_BAKE_LOCK` guards 2 of 5 edit entry points.** `_tmBusyRecording` is called at `:6017` and
-   `:6358` only — `shiftGanttSchedule`, `commitGanttGroupShift` and `undoLastGanttEdit` can still
-   mutate the timeline mid-recording. Same shape as §S67 and the same size of fix. Extend
-   `witness_tm_bake_lock.js` in the same PR; a source-level wiring gate like §S67's is the right tool.
+2. **✅ DONE 2026-08-23 — it was 2 of 8, not 2 of 5.** All eight timeline-mutating entry points now
+   call one shared `_tmEditLocked()`, including a path nobody had listed (`buildTaskIndex`'s
+   stale-schedule regen, which re-materializes the whole schedule mid-bake). W-TBL 17/17, red-proved
+   on main, live-checked. Evidence in **§S69** above.
 3. **No persistence on the edit path.** `persistDb` has two callers, neither in `time_machine.js` —
    an in-canvas drag lives only in the in-memory sql.js `app.db` and dies on reload. Decide whether
    that is intended (edits are scratch until the Editor tab saves) or a gap, then witness the answer.
