@@ -35,10 +35,10 @@
 
 **Both closures found real bugs while fixing, not before (worth knowing for next time):** the access-gate
 fix hit a missing `ad_entitytype` table in the trimmed seed; the seed-bake fix found the SAME class of gap
-independently the same day. Also found: 4 witnesses cited in `prompts/archive/IDMP_FULLWIDTH_SEED.md` as
-the seed-change re-witness protocol (`poc_ad_docfsm_live.js`, `W-AD-ACCESS-LIVE`, `W-AD-MODELVAL-LIVE`,
-`W-AD-MENU-PRF-LIVE`) don't exist anywhere in the tree — a re-witness protocol citing files that aren't
-there isn't re-runnable. Nobody has fixed that citation yet.
+independently the same day. Also (2026-08-23) claimed: 4 witnesses cited in `prompts/archive/
+IDMP_FULLWIDTH_SEED.md`'s re-witness protocol don't exist anywhere in the tree. **This claim was WRONG,
+corrected 2026-08-24 (item 6 below)** — the search that produced it only checked bim-ootb; all 5 scripts
+live in `bim-compiler/scripts/`. Re-running them live surfaced a real gap instead (item 8 below).
 
 **The seed-regeneration "lost recipe" question is answered, not just worked around:** `erp/ad_seed.db` was
 never a single reproducible pipeline output. `git log --follow -- erp/ad_seed.db` shows one full export
@@ -73,19 +73,32 @@ to whatever's in the container today. Always bake additively into the existing `
 5. **`AD_Form` data exists now; no Form-screen renderer does.** Real iDempiere Forms are bespoke coded
    screens (Bank Statement matching, GL Journal generator, etc.), not declarative Window/Tab/Field data.
    The data gap is closed; the feature isn't — don't conflate the two if this comes up again.
-6. ✅ **DONE (witness) 2026-08-24** — The dead re-witness-citation problem (4 phantom witness names in the
-   archived seed-deploy doc). Root cause confirmed by exhaustive search (`find`/`grep -r` current tree +
-   `git log --all -S` per exact string, bim-ootb + bim-compiler, full history): the 4 scripts
-   (`poc_ad_docfsm_live.js`, `poc_ad_access_live.js`, `poc_ad_modelval_live.js`, `poc_ad_menu_prf_live.js`)
-   were run from a since-pruned `/tmp/wt-fullseed` worktree and never `git add`-ed permanently — bim-ootb
-   has no `scripts/` dir at all. Fixed in `prompts/archive/IDMP_FULLWIDTH_SEED.md` (new dated `# CORRECTION
-   (2026-08-24)` section, appended not rewritten): flags the 4 as non-re-runnable, names the real survivor
-   (`poc_ad_displaylogic.js`) and the real current substitute for the access one (`erp/tests/
-   poc_access_gate_live.js`, `W-ACCESS-GATE-LIVE`, PR #1495), and notes DocFSM/ModelValidator/Menu-
-   permission have zero live witness today (would need to be written from scratch, not re-run).
+6. ✅ **DONE (witness) 2026-08-24** — The dead re-witness-citation problem. **The original claim was
+   wrong** — a first search pass checked only bim-ootb and concluded the 5 witness scripts didn't exist.
+   Re-checked properly: all 5 (`poc_ad_docfsm_live.js`, `poc_ad_access_live.js`, `poc_ad_modelval_live.js`,
+   `poc_ad_menu_prf_live.js`, `poc_ad_displaylogic_live.js`) are tracked, clean, on `origin/master`, in
+   **`bim-compiler/scripts/`** (committed by this card's own `1122ddbec`) — the engine/witness code lives
+   in bim-compiler, bim-ootb only hosts the deployed app. **Actually re-ran all 5** (`bash build/erp/
+   run_witness.sh scripts/poc_ad_<X>_live.js`): DOCFSM/ACCESS/MODELVAL/MENU-PRF all 🟢 PASS;
+   DISPLAYLOGIC 🔴 FAILS FOR REAL (exit 2) — see item 8, a genuine new finding, not a stale-witness
+   artifact. Fixed in `prompts/archive/IDMP_FULLWIDTH_SEED.md`: CORRECTION-1 (struck, records the wrong
+   bim-ootb-only search) + CORRECTION-2 (the real result table + root cause). **Takeaway for next time:**
+   when a witness/script "doesn't exist," check `bim-compiler/scripts/` and `build/erp/` before concluding
+   it was never committed — don't search bim-ootb alone.
 7. **Read-write-vs-read-only access is implemented and headless-proven, but not live-data-demonstrable** —
    the shipped seed carries zero `isreadwrite='N'` grant rows anywhere. Not a bug; just means the live
    witness can't currently show the RW distinction actually gating something, only the visibility gate.
+8. **NEW 2026-08-24 — AD_Field·DisplayLogic hiding is not exercised on the current default record view.**
+   `docs/internal/ERP_COVERAGE_MATRIX.md:24`'s ✅ COVERED row (W-AD-DISPLAYLOGIC-LIVE) is stale: re-running
+   `scripts/poc_ad_displaylogic_live.js` today shows the record route (`?window=143&record=100`) now
+   renders through `erp/crud_overlay.js`'s newer inline-edit overlay (`§INPLACE-EDIT … fields=8 mount=inline`,
+   `§AD-LOGIC-LIVE … withLogic=0`) instead of the original accordion/form path that actually hides fields
+   by AD DisplayLogic (`erp/idempiere.html:2901-2914` + `erp/ad_ui.js:183-195`, still present, tag
+   `§AD-DISPLAYLOGIC-LIVE` still emitted — just not reached by this route anymore). Same failure shape as
+   the access-gate finding this whole T-0 pass started from: a proven-live behavior silently superseded by
+   a newer code path, un-re-witnessed. Not yet root-caused further (which routes still reach the old path,
+   whether the inline overlay should also honor DisplayLogic, or whether the matrix row needs re-scoring)
+   — queued, not fixed.
 
 ### The one that dwarfs everything else — restate this every time someone reads this file
 **454 of 476 real iDempiere processes, ~200 beforeSave overrides, and 139 callout atoms remain
@@ -96,20 +109,21 @@ parity needle. If the standing goal is genuinely "an iDempiere user feels at hom
 dominant remaining distance, by a wide margin, and nothing currently scheduled closes it.
 
 ## Queue, in order (all of this is in scope by the standing intent above — not a menu, a sequence)
-1. Item 6 (the dead witness citations) is cheap and prevents the next session from re-discovering the same
-   confusion.
-2. Item 1 (enumerable ledger) is the highest-leverage T-0 remnant — it's the thing that makes every other
+1. ✅ Item 6 (the dead witness citations) — DONE 2026-08-24, see above.
+2. Item 8 (DisplayLogic-live regression) — same failure family as the access-gate fix that opened this
+   whole T-0 pass, discovered as a direct byproduct of closing item 6, reviewer context still warm.
+3. Item 1 (enumerable ledger) is the highest-leverage T-0 remnant — it's the thing that makes every other
    claim in this file checkable instead of asserted.
-3. Item 4 (`gateRecordFor` wiring) is the natural next security-hardening step after this session's access
+4. Item 4 (`gateRecordFor` wiring) is the natural next security-hardening step after this session's access
    work, same file family, same reviewer context still warm.
-4. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
+5. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
    field layout from `AD_Form`/`AD_Field` where declarable) plus per-Form logic for whichever Forms are
    highest-traffic in real iDempiere use (Bank Statement matching, Payment Allocation, GL Journal
    generator are the classic first three — verify against real usage, don't guess the order). Start with
    ONE Form end-to-end (spec → witness → ship) before generalizing, same discipline as every other lane
    in this project. `AD_Form`'s 49 rows and `erp/genesis.js`'s access-grant consumer are already there
    (§8) — this item is the missing renderer + per-form behavior, not new data plumbing.
-5. **The 454-proc corpus — queued as a campaign, not deferred indefinitely.** Real long pole, genuinely
+6. **The 454-proc corpus — queued as a campaign, not deferred indefinitely.** Real long pole, genuinely
    multi-session. Before writing code: triage the 454 by actual usage weight (which processes a real
    GardenWorld-shaped tenant calls often vs. rarely-touched edge cases — the equivalence campaign's own
    K=1/K=2 pattern already shows how thin the walked paths are), and sequence the highest-traffic slice

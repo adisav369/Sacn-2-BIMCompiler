@@ -149,27 +149,47 @@ appendix (Watchdog rule). Anything needing a user fact → `⛔ BLOCKED: <one qu
 
 ---
 
-# CORRECTION (2026-08-24) — 4 of the 5 §3 re-witness scripts don't exist; checked against the live tree
+# CORRECTION-1 (2026-08-24, RETRACTED — see CORRECTION-2 below) — wrongly claimed the 5 scripts don't exist
 
-`docs/ERP_PROJECT_REVIEW.md` §7/§8 (2026-08-23) flagged that 4 witness names cited in §3/DONE above —
-`poc_ad_docfsm_live.js`, `W-AD-ACCESS-LIVE`, `W-AD-MODELVAL-LIVE`, `W-AD-MENU-PRF-LIVE` — aren't anywhere
-in the bim-ootb tree. Re-checked here (2026-08-24) by exhaustive search: `find`/`grep -r` over the current
-tree, `git log --all -S"<exact string>"` per string over full history, both bim-ootb and bim-compiler.
-Confirmed:
-- **`poc_ad_docfsm_live.js` / `poc_ad_access_live.js` / `poc_ad_modelval_live.js` / `poc_ad_menu_prf_live.js`
-  were never committed as permanent files.** They're only *mentioned* in later commit messages (PR #265
-  `fd09ad1`, #267 `f8cbe1e`, #264 `8229cc6`, #271 `81dd2b3`, #332 `99add21`) as a regression-suite run
-  against the `/tmp/wt-fullseed` worktree this card's §2 names. The worktree was pruned per the standing
-  Worktree Hygiene rule (CLAUDE.md) and the scripts inside it were never `git add`-ed anywhere permanent —
-  bim-ootb has no `scripts/` directory at all today. **The §3/DONE §-lines above are a historical claim,
-  not a re-derivable one — don't cite them as "re-run this to re-verify," it isn't runnable.**
-- **`poc_ad_displaylogic.js` is real and re-runnable today** (`bim-ootb/erp/tests/poc_ad_displaylogic.js`)
-  — the one survivor of the five.
-- **Access has a real, current substitute**: `erp/tests/poc_access_gate_live.js` (bim-ootb PR #1495,
-  witness `W-ACCESS-GATE-LIVE`) proves the same territory live — role-based window/process/form visibility
-  via `AdAccess` delegation — and supersedes the dead `W-AD-ACCESS-LIVE` citation. Cite that one instead.
-- **DocFSM, ModelValidator, and Menu-permission have NO live witness in the tree as of 2026-08-24.** If
-  those three are needed again, they must be written from scratch against the current `erp/` layout
-  (`erp/ad_docfsm.js`, `erp/doc_cycle_validator.js`), not "re-run."
-- Nothing upstream needs fixing — `IDMP_FULLWIDTH_SEED §1-§4` itself shipped and is live (unaffected by
-  this). This was a documentation-only gap: a re-witness protocol citing files that were never permanent.
+The first pass at this correction searched only **bim-ootb** (`find`/`grep -r` current tree + `git log --all
+-S` per string) and concluded the 5 §3 witness scripts were never committed. That search missed the actual
+location: **all 5 live in `bim-compiler/scripts/`** (this repo), not bim-ootb — a wrong-repo search error,
+not a missing-file finding. Left in place below, struck by CORRECTION-2, as a record of the mistake (don't
+repeat: when a witness name is "missing," check bim-compiler's own `scripts/`/`build/erp/` before concluding
+it never existed — the engine/witness code lives here, bim-ootb only hosts the deployed browser app).
+
+# CORRECTION-2 (2026-08-24) — the 5 §3 witnesses DO exist (bim-compiler `scripts/`), re-run live: 4 PASS, 1 FAILS FOR REAL
+
+All 5 are tracked, clean, on `origin/master`, committed by `1122ddbec` (`IDMP_FULLWIDTH_SEED §1-§4`, this
+card's own DONE commit): `scripts/poc_ad_docfsm_live.js`, `poc_ad_access_live.js`, `poc_ad_modelval_live.js`,
+`poc_ad_menu_prf_live.js`, `poc_ad_displaylogic_live.js`. Actually re-run (`bash build/erp/run_witness.sh
+scripts/poc_ad_<X>_live.js`, ERP_ROOT default `~/bim-ootb/erp`, 2026-08-24, fresh-synced bim-ootb `origin/main`):
+
+| witness | result |
+|---|---|
+| W-AD-DOCFSM-LIVE | 🟢 PASS — `build/erp/poc_ad_docfsm_live.log` |
+| W-AD-ACCESS-LIVE | 🟢 PASS — `build/erp/poc_ad_access_live.log` (role-scoped menu, real `ad_window_access` grants; note this witness's *territory* now overlaps `erp/tests/poc_access_gate_live.js` from bim-ootb PR #1495 — both live, not a replacement) |
+| W-AD-MODELVAL-LIVE | 🟢 PASS — `build/erp/poc_ad_modelval_live.log` |
+| W-AD-MENU-PRF-LIVE | 🟢 PASS — `build/erp/poc_ad_menu_prf_live.log` |
+| W-AD-DISPLAYLOGIC-LIVE | 🔴 **FAIL, exit 2** — `build/erp/poc_ad_displaylogic_live.log`: `shown=1 hiddenByLogic=0 ChargeAmt-rendered=0 DocumentNo-rendered=0` |
+
+**The DisplayLogic failure is a real, diagnosed regression, not a stale-witness artifact.** Root cause
+(diagnostic run capturing full console output against the same route, `?window=143&record=100`): the record
+now renders through a **different, newer UI path** — `crud_overlay.js`'s inline-edit overlay
+(`§INPLACE-EDIT table=c_order id=100 verb=update fields=8 mount=inline`, `§AD-LOGIC-LIVE key=c_order fields=8
+withLogic=0 visibilityFlips=0`) — instead of the original accordion/form render this witness was built
+against (`idempiere.html:2901-2914`, `.idmp-fld` markup, the real `§AD-DISPLAYLOGIC-LIVE table=… hidden=…`
+tag). **Both code paths still exist in `erp/idempiere.html`/`erp/ad_ui.js`** (verified: `.idmp-fld` at
+`idempiere.html:2817,2917`; `§AD-DISPLAYLOGIC-LIVE` tag still emitted at `idempiere.html:2914` and
+`ad_ui.js:183-195`) — the newer inline-edit overlay (`erp/crud_overlay.js`) has just taken over as the
+default render for this route, and its `§AD-LOGIC-LIVE` field-visibility pass reports `withLogic=0`: the
+DisplayLogic-hiding behavior (`docs/internal/ERP_COVERAGE_MATRIX.md:24`'s ✅ `AD_Field·DisplayLogic
+W-AD-AD-DISPLAYLOGIC-LIVE` row) is **not exercised on the current default record view** — same failure shape
+as the access-gate finding this whole T-0 pass started from (`ERP_PROJECT_REVIEW.md` §2.1: a proven-live
+behavior silently superseded by a newer code path, nobody re-witnessed). **Queued as a new named gap** —
+see `prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md` item 8.
+
+**For the re-witness protocol itself:** the 5 scripts ARE re-runnable exactly as written in §3 above — no
+rewrite needed to run them, only to fix the one real failure. `poc_ad_displaylogic.js` at
+`bim-ootb/erp/tests/` (an unrelated, differently-scoped headless test, not this witness) is a false-friend
+name collision — don't confuse it with `poc_ad_displaylogic_live.js` here.
