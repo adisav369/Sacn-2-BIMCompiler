@@ -4824,6 +4824,56 @@ proven on Duplex only, Hospital 252MB round trip unrun), **7** (`cacheKey` K3 le
 
 ---
 
+## §S74 — "I am not aware of any visual cue showing CPM." They were right. (2026-08-23)
+
+The user could not see the critical-path cue. It was not discoverability: **the rail was being painted
+over.** bim-ootb **#1486**, `CACHE_VERSION` **v1076**.
+
+### How the cue is supposed to work (the answer to the question as asked)
+1. **The rail.** Every Gantt bar carries a 2px rail on its bottom edge: **red `#e53935` = zero float
+   (on the critical path)**, **green `#26a69a` = has slack**. Both colours on purpose — fleet
+   criticality runs 27–82% of tasks, so at the top of that range a red-only rail marks four bars in
+   five and the SCARCE thing (what can move) is what needs to stand out.
+2. **The typed panel.** Double-click any bar → `CRITICAL PATH · zero float` or `Total float Nd`, with
+   `(CPM, dates unchanged)` next to it.
+3. **The log line**, on open and after every edit:
+   `§GANTT_CPM_ANNOTATE schedule=SCH_AUTHORED tasks=19 critical=11 (58%) projectDuration=13d float=0..3 datesWritten=0 (fixedDates)`
+4. **When it recomputes:** once per building when the drawer opens, then after every drag, resize,
+   ruler shift, group move, undo, link, unlink and typed apply.
+
+### What was actually wrong, measured in pixels
+§S68 drew the rail immediately after the bar fill — **before** the three stroke frames. The yellow
+captured-schedule frame is a 1px `strokeRect` around the whole bar, so it painted over the rail's
+bottom row. Read back off the LIVE site's canvas, 19 bars on Duplex:
+```
+railVisibleAt row h-2 = 15    railVisibleAt row h-1 = 0    yellowFrame at h-1 = 17/19
+```
+A 2px cue rendering as 1px, and that 1px often an anti-aliased blend of rail colour and phase fill
+(`#ea5a36` where `#e53935` was intended). CPM was running correctly the entire time.
+
+After moving the rail to draw last: `h-2 = 18, h-1 = 18, yellowFrame at h-1 = 0`, colour exact.
+**W-CPM-6 gates the ORDER by source index** so it cannot silently go quiet again.
+
+### The lesson this pays for
+Every §S68 gate asked *"is the value computed, and does the code that paints it exist?"* — all green,
+all true, and the user still saw nothing. **A drawing order bug is invisible to a source gate.** The
+check that found it reads the canvas back as numbers (`getImageData` at computed bar coordinates and
+compares hex) — still no screenshot, still programmatically assertable, but measuring the OUTPUT
+rather than the intent. Any future "the cue doesn't show" question should start there.
+
+### Deploy note found on the way
+`erp/version.json` (the System Monitor Release row) stamps `build` from **`erp/sw.js`**'s
+`CACHE_VERSION` — currently `v766` — while the viewer ships `viewer/sw.js` at `v1076`. Two separate
+service workers, one provenance field. Reading that row as "which viewer build am I on" gives the
+wrong answer. Not touched here; named so it is not re-discovered as a mystery.
+
+### Offered, NOT built — the user's call
+A legend in the Gantt drawer's lock bar (`▬ critical 11 · ▬ float 8`, live counts from the same
+annotate pass) would make the colours self-explaining instead of requiring this document. That is new
+UI rather than a repair, so it waits for a go.
+
+---
+
 # ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
