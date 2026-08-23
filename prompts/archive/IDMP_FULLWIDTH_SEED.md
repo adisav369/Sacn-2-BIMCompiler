@@ -146,3 +146,30 @@ appendix (Watchdog rule). Anything needing a user fact → `⛔ BLOCKED: <one qu
   failures = the UNRELATED flaky viewer S274 GP.2 goto-timeout; passed on re-run; ERP-only diffs.)
   bim-compiler: 1122ddbe on `feat/erp-substrate-phase012`, pushed. Matrix C_DocType-FSM residuals + AD_Process
   seed-gate notes updated; UI_UNPARK_RESUME residual banner added; NEW_CLIENT_MGMT #5-install flipped ✅.
+
+---
+
+# CORRECTION (2026-08-24) — 4 of the 5 §3 re-witness scripts don't exist; checked against the live tree
+
+`docs/ERP_PROJECT_REVIEW.md` §7/§8 (2026-08-23) flagged that 4 witness names cited in §3/DONE above —
+`poc_ad_docfsm_live.js`, `W-AD-ACCESS-LIVE`, `W-AD-MODELVAL-LIVE`, `W-AD-MENU-PRF-LIVE` — aren't anywhere
+in the bim-ootb tree. Re-checked here (2026-08-24) by exhaustive search: `find`/`grep -r` over the current
+tree, `git log --all -S"<exact string>"` per string over full history, both bim-ootb and bim-compiler.
+Confirmed:
+- **`poc_ad_docfsm_live.js` / `poc_ad_access_live.js` / `poc_ad_modelval_live.js` / `poc_ad_menu_prf_live.js`
+  were never committed as permanent files.** They're only *mentioned* in later commit messages (PR #265
+  `fd09ad1`, #267 `f8cbe1e`, #264 `8229cc6`, #271 `81dd2b3`, #332 `99add21`) as a regression-suite run
+  against the `/tmp/wt-fullseed` worktree this card's §2 names. The worktree was pruned per the standing
+  Worktree Hygiene rule (CLAUDE.md) and the scripts inside it were never `git add`-ed anywhere permanent —
+  bim-ootb has no `scripts/` directory at all today. **The §3/DONE §-lines above are a historical claim,
+  not a re-derivable one — don't cite them as "re-run this to re-verify," it isn't runnable.**
+- **`poc_ad_displaylogic.js` is real and re-runnable today** (`bim-ootb/erp/tests/poc_ad_displaylogic.js`)
+  — the one survivor of the five.
+- **Access has a real, current substitute**: `erp/tests/poc_access_gate_live.js` (bim-ootb PR #1495,
+  witness `W-ACCESS-GATE-LIVE`) proves the same territory live — role-based window/process/form visibility
+  via `AdAccess` delegation — and supersedes the dead `W-AD-ACCESS-LIVE` citation. Cite that one instead.
+- **DocFSM, ModelValidator, and Menu-permission have NO live witness in the tree as of 2026-08-24.** If
+  those three are needed again, they must be written from scratch against the current `erp/` layout
+  (`erp/ad_docfsm.js`, `erp/doc_cycle_validator.js`), not "re-run."
+- Nothing upstream needs fixing — `IDMP_FULLWIDTH_SEED §1-§4` itself shipped and is live (unaffected by
+  this). This was a documentation-only gap: a re-witness protocol citing files that were never permanent.

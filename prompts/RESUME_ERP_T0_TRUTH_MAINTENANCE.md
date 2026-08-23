@@ -73,9 +73,16 @@ to whatever's in the container today. Always bake additively into the existing `
 5. **`AD_Form` data exists now; no Form-screen renderer does.** Real iDempiere Forms are bespoke coded
    screens (Bank Statement matching, GL Journal generator, etc.), not declarative Window/Tab/Field data.
    The data gap is closed; the feature isn't — don't conflate the two if this comes up again.
-6. **The dead re-witness-citation problem** (4 phantom witness names in the archived seed-deploy doc) —
-   named, not fixed. Worth a line noting they were probably branch-local scripts never kept as permanent
-   files, and updating the doc's own re-witness protocol to name what's actually there.
+6. ✅ **DONE (witness) 2026-08-24** — The dead re-witness-citation problem (4 phantom witness names in the
+   archived seed-deploy doc). Root cause confirmed by exhaustive search (`find`/`grep -r` current tree +
+   `git log --all -S` per exact string, bim-ootb + bim-compiler, full history): the 4 scripts
+   (`poc_ad_docfsm_live.js`, `poc_ad_access_live.js`, `poc_ad_modelval_live.js`, `poc_ad_menu_prf_live.js`)
+   were run from a since-pruned `/tmp/wt-fullseed` worktree and never `git add`-ed permanently — bim-ootb
+   has no `scripts/` dir at all. Fixed in `prompts/archive/IDMP_FULLWIDTH_SEED.md` (new dated `# CORRECTION
+   (2026-08-24)` section, appended not rewritten): flags the 4 as non-re-runnable, names the real survivor
+   (`poc_ad_displaylogic.js`) and the real current substitute for the access one (`erp/tests/
+   poc_access_gate_live.js`, `W-ACCESS-GATE-LIVE`, PR #1495), and notes DocFSM/ModelValidator/Menu-
+   permission have zero live witness today (would need to be written from scratch, not re-run).
 7. **Read-write-vs-read-only access is implemented and headless-proven, but not live-data-demonstrable** —
    the shipped seed carries zero `isreadwrite='N'` grant rows anywhere. Not a bug; just means the live
    witness can't currently show the RW distinction actually gating something, only the visibility gate.
