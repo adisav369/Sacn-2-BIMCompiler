@@ -4604,6 +4604,62 @@ slot. Not touched here; named so it is not re-discovered as a mystery.
 
 ---
 
+## §S71 — G-COH-6 was a false negative; the audit counters now have an assertion. RESUME items 4 + 5.
+
+### Item 4 — the false negative, measured
+`witness_gantt_edit_coherence.js:117` asserted over `txt.slice(rt, rt + 2200)` from
+`function retimeTaskElements(`. **Measured on current `main`: the brace-matched body is 6345 chars
+and the `_retimeSpan(` call sits at offset 5073** — outside the window. Run the old expression
+against today's source and it returns `false`. The assertion was wrong; the code was always right.
+
+Two things kept it invisible, and both are fixed here:
+1. **A text slice cannot state its own dependencies.** Now brace-matched, like §S67's and §S69's gates.
+2. **The file lived in the repo ROOT, so the suite runner never ran it** (§S66: a witness outside
+   `viewer/tests/` does not exist as far as the runner is concerned). `git mv`'d into `viewer/tests/`,
+   `SRC` re-pathed. A check nobody runs cannot report a false negative to anybody.
+
+### Item 5 — the counters had no assertion, and the reason is subtle
+`§RETIME_OUTLIER_AUDIT outsideOldWindow / collapsed60s / inverted` is logged on every real commit.
+G-COH-2..4 test the pure `_retimeSpan` on synthetic spans, which is a **different claim** from "a real
+drag, on a real schedule, through the real commit path, produced zero collapses and zero inversions."
+
+The counters only ever count ops that ride OUTSIDE their bar's drawn window — which exist because
+`§GANTT_MINI_TRIM`'s Tukey trim makes a bar narrower than the ops it summarises. So an assertion built
+on hand-made bars whose windows equal their ops' span would count nothing and prove nothing.
+**G-COH-9 is the red control for precisely that failure mode.**
+
+New section drives the SHIPPED `commitGanttDrag` (sliced, not reimplemented) over a real fixture, with
+bars from the REAL `GanttModel.buildTasks` so the trim is real, and reads the log line the code
+itself emits:
+- **G-COH-7** the audit line is emitted on every commit (a commit that stops logging it silently
+  removes the only signal these counters carry).
+- **G-COH-8** `collapsed60s === 0` and `inverted === 0` across a move AND a shrink. The shrink is the
+  dangerous gesture: it compresses the window an outlier is remapped into.
+- **G-COH-9** RED CONTROL: at least one gesture must have `outsideOldWindow > 0`.
+
+### Measured
+Node, real Duplex fixture, real model bars:
+```
+§W-COH_FIXTURE building=Duplex bars=19 ops=1119 opsOutsideTheirTrimmedBar=53
+§W-COH_AUDIT move 20d    → outsideOldWindow=0  collapsed60s=0 inverted=0
+§W-COH_AUDIT resizeR -1d → outsideOldWindow=53 collapsed60s=0 inverted=0 outlierDurMs=[1630189,1630189]
+```
+Live, headless, real Terminal (`scripts/probe_gantt_drag_outliers.js`, the §S7 probe that exists for
+exactly this population — the biggest Superstructure task, 10950 elements):
+```
+MOVE+5d       §GANTT_RETIME tasks=7 rows=11674 ms=311.1
+              §RETIME_OUTLIER_AUDIT outsideOldWindow=11 collapsed60s=0 inverted=0 outlierDurMs=[960000,4760000]
+RESIZE-30pct  §GANTT_RETIME tasks=1 rows=10950 ms=285.5
+              §RETIME_OUTLIER_AUDIT outsideOldWindow=6  collapsed60s=0 inverted=0 outlierDurMs=[1478000,4760000]
+```
+**The counters are clean — in node on the fixture and live on the fleet's worst outlier population.**
+The §S7 edit-path defect these counters were added to catch is not occurring; that is now asserted
+rather than eyeballed in a log nobody reads.
+
+No `sw.js` bump: this PR changes only witnesses, no served runtime file.
+
+---
+
 # ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
@@ -4629,11 +4685,12 @@ green=40/44). **That milestone explicitly does NOT cover editing. Editing is thi
    (`persistDb`, `kernel_ops`, the Editor) since W-DB-CACHE-KEY: they wrote the raw url, `cachedFetch`
    reads `DbResolve.cacheKey(url)` and only falls back to the raw url on a miss. Fixed in the writer,
    gated on six url shapes. Evidence in **§S70** above.
-4. **`G-COH-6` is a false negative** — `witness_gantt_edit_coherence.js:117` slices a fixed 2200
-   chars looking for a call now at offset 5073. Brace-match it like §S67's witness. Cheap, and it
-   also moves that file into `viewer/tests/` where the runner can see it (§S66).
-5. **`§RETIME_OUTLIER_AUDIT`'s `collapsed60s`/`inverted` counters are asserted by nothing** — logged
-   on every real commit, tested only on synthetic input.
+4. **✅ DONE 2026-08-23** — brace-matched (body is 6345 chars, the call sits at 5073, the old 2200
+   window returned false on today's source) and `git mv`'d into `viewer/tests/` so the runner sees it.
+5. **✅ DONE 2026-08-23** — G-COH-7/8/9 drive the shipped commit path over a real fixture with real
+   trimmed bars and assert the live counters: `collapsed60s=0 inverted=0` with `outsideOldWindow=53`
+   proving they were exercised. Confirmed live on Terminal too (11 and 6 outliers, both clean).
+   Evidence in **§S71** above.
 
 ## Standing lessons this session paid for
 - **Map the path before hunting the bug** (§S67 above).
