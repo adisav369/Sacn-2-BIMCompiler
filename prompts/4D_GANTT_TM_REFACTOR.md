@@ -5208,3 +5208,112 @@ blind — that was tried (a corrected coordinate pick matching G7 exactly still 
 narrowed with real evidence — 5 confirmed live, 1 honestly flagged unresolved, 2 hypotheses tested and
 one corrected (SE_CPM_BAIL), the rest triaged with a named, cheap next step instead of left as an
 undifferentiated pile of 216.
+
+---
+
+# §S78 — Gap 4's P0 CLOSED: split-mode Gantt edits now persist under the key the reload actually reads (2026-08-23)
+
+§S76 found and named, but deliberately did not fix, a P0: Hospital and Clinic (the fleet's two
+split-mode buildings — both ship `_meta.db` + `_geo.db`) silently lost every persisted Gantt edit on
+reload, because the edit-persist path wrote under `A.DB_URL`'s key (the extracted.db) while `A.db`'s
+actual content — and therefore what the reload reads back — comes from `_meta.db`. Three candidate
+fixes were named; the project owner picked **option 1: make the persist path resolve to the same key
+the loader reads, symmetric with §S70's original fix for the non-split case.** Rejected: option 2
+(merge-on-read — a second synchronization point for no benefit once the root asymmetry is fixed) and
+option 3 (refuse-to-edit — a feature regression for 2 of 7 fleet buildings).
+
+## The fix — one source of truth, not a second independent check
+
+`viewer/streaming.js` now sets `A._dbPersistUrl` at the EXACT point `A.db` is assigned, in both
+branches: `metaUrl` in the split-mode branch (~:2304, where `A.db` is built from `metaBuf`), `A.DB_URL`
+itself in the whole-db branch (~:2481). Nothing re-derives split state independently — every persist
+call site now reads this one field instead of guessing. Both branches set it explicitly (not left
+unset in one) so a hypothetical re-entry can never see a stale value from a prior building.
+
+Three persist call sites updated to use `app._dbPersistUrl || app.DB_URL` instead of a bare
+`app.DB_URL`:
+- `viewer/time_machine.js` `_tmPersistEdit` (all 8 Gantt edit paths route through this one function —
+  §S69 already consolidated them, so one call-site fix covers drag/resize/undo/ruler-shift/
+  groupShift/link/unlink/propsApply).
+- `viewer/kernel_ops.js` `_persistToIdb` — the general kernel-op persistence path, same `APP.db`
+  object, same latent bug (found while fixing the Gantt path — §S70 originally touched this file
+  alongside `persistDb`/the Editor, so leaving it unfixed here would have reintroduced exactly the
+  asymmetry this fix exists to close).
+
+**Deliberately NOT touched:** `viewer/schedule_editor_ui.js` (the standalone Editor tab). It loads its
+`db` directly from whatever url it's launched with (`resolveDbUrl()` → `?db=<APP.DB_URL>`, always the
+extracted.db url) and has **no split-mode detection of its own** — it never branches to a meta.db load
+at all. Whether the Editor even correctly opens a split-mode building's task data today is a genuinely
+separate, unverified question this session did not test — named here so it isn't silently assumed
+fixed by this PR.
+
+## Proof — three buildings, direct data-level, real browser, real reload
+
+The obvious plan — reuse `scripts/probe_gantt_hospital_persist.js` (§S76's own drag→persist→reload
+harness) — hit a wall: on THIS machine, `window.toggleTimeMachine` took **180327–180446ms to become
+defined** across three separate runs (before AND after this fix, and on unmodified `origin/main` —
+confirmed via `git stash`), and the Gantt drawer never got a single bar even after 120s of extra
+polling. Root cause, found by process of elimination (not guessed): Chrome 127.0.6533.88 (the version
+`puppeteer@22` pins by default) could not create a WebGL2 context under `--use-angle=swiftshader` in
+this environment (`Could not create a WebGL2 context... Failed to create a WebGL2 context`), which
+threw `§INIT_VIEWER_ERROR` and cascaded into aborting the sql.js library load itself
+(`lib/sql-wasm.js net::ERR_ABORTED`) — so `A.db` never populated, for ANY building, regardless of this
+fix. Switching to Chrome 152.0.7977.42 (already cached on this machine at
+`~/.cache/puppeteer/chrome/linux-152.0.7977.42/`) fixed it: `window.APP.db` ready in **1.7–4.4s**,
+matching §S76's original "loadMs≈5-10s" figures. Environment artefact, not a product or fix defect —
+recorded here so the next session doesn't re-spend the time diagnosing it.
+
+Given that, and since the actual claim under test is about DATA (which IDB slot gets read/written),
+not rendering, a new probe (`scripts/probe_splitmode_persist_direct.js <Building>`) proves it without
+ever touching the Gantt canvas: wait for `window.APP.db`, call `window.toggleTimeMachine()` once to
+materialize the `tasks` table (schema-agnostic — split-mode's `meta.db`-sourced table starts as
+`start_date`/`finish_date` before `activate()` normalizes it, per §S76's own observation), then mutate
+`schedule_start` via direct SQL, `persistDb`, and check the ACTUAL cache key math
+(`DbResolve.cacheKey`) matches what the reload will look up — before ever closing the browser. Then a
+real second browser instance, same profile, confirms the edit reads back.
+
+```
+Hospital (252MB, split):  dataReadyMs=4051  activateMs=6398  isSplit=true
+  D5 write=buildings/Hospital_meta.db expectedRead=buildings/Hospital_meta.db  MATCH
+  §CACHE_HIT Hospital_meta.db size=53.9MB (reload)
+  D6 THE ROUND TRIP — expected=2026-12-25 got=2026-12-25            PASS   8/8
+
+Clinic (130MB, split):    dataReadyMs=3041  activateMs=1404  isSplit=true
+  D5 write=buildings/Clinic_meta.db expectedRead=buildings/Clinic_meta.db      MATCH
+  §CACHE_HIT Clinic_meta.db size=15.1MB (reload)
+  D6 THE ROUND TRIP — expected=2026-12-25 got=2026-12-25            PASS   8/8
+
+Duplex (9MB, whole-db — §S70 non-regression check): dataReadyMs=1680  isSplit=false
+  D5 write=buildings/Duplex_extracted.db expectedRead=buildings/Duplex_extracted.db  MATCH
+  §CACHE_HIT Duplex_extracted.db size=9.9MB (reload)
+  D6 THE ROUND TRIP — expected=2026-12-25 got=2026-12-25            PASS   8/8
+```
+
+All three: 8/8, zero fails, real fleet DBs, real fresh-browser reload each time. Hospital and Clinic
+were the two buildings §S76 measured losing every edit; both now survive. Duplex confirms §S70's
+original (non-split) fix path is untouched by this change — same `_dbPersistUrl` field, just set to
+`A.DB_URL` verbatim in that branch.
+
+## Secondary fix, found while building the proof harness
+
+`scripts/probe_gantt_hospital_persist.js`'s own H5 check asserted a cache hit on `Hospital_extracted`
+specifically — which was never the right expectation (split mode bypasses extracted.db entirely, by
+design, for both A.db and the reload lookup). Corrected to assert a hit on `Hospital_meta` instead —
+the actual invariant that matters (a miss there means H6 passing wouldn't even be testing what it
+claims to). The probe still can't complete a live run on this machine (the WebGL/Chrome-version issue
+above), so this fix is unverified end-to-end here, but the assertion itself is correct per the fix's
+own mechanism and left corrected for whenever the harness runs clean.
+
+## Artefacts
+- `scripts/probe_splitmode_persist_direct.js` (new) — the working proof, data-level, all 3 buildings.
+- `scripts/_fast_static_server.js` (new) — a concurrent Node static server; `python3 -m http.server`
+  was ruled out as a cause during diagnosis (it ignores Range headers, returning full 200s instead of
+  206s — wasteful but not the actual blocker, confirmed by testing with both servers) but the fast
+  server is a strict improvement for any future large-DB probe in this lane, so kept.
+- `scripts/probe_gantt_hospital_persist.js` — H5 assertion corrected (see above), untouched otherwise.
+- `viewer/sw.js` `CACHE_VERSION` v1078 → v1079 (streaming.js/time_machine.js/kernel_ops.js all changed).
+
+**§S72's gap list, final status:** gap 1 ✅ (§S73), gap 2 ✅ (§S73), gap 3 narrowed not closed (§S77),
+**gap 4 ✅ (this section)**, gap 5 ✅ (§S73), gap 6 ✅ (§S73), gap 7 ✅ (§S76), gap 8 open (structural,
+not a witness gap — `time_machine.js` at 8834 lines, tracked separately in
+`prompts/SCRIPT_LENGTH_REFACTOR_SEAMS.md`).
