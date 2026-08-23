@@ -10,6 +10,10 @@
 #   fails on a pre-existing, unrelated browser-regime issue on the base branch itself (confirmed failing
 #   since 2026-07-17, still failing today) — not yours to fix, don't chase it, verify via `mergeStateStatus`
 #   + read the failure log before assuming a red check is caused by your change.
+# STANDING INTENT (user, 2026-08-24): close ANY gap in ERP — this is not scoped to the two items closed
+#   2026-08-23. Every gap named below is QUEUED WORK, not a menu to ask permission on. Rank by leverage/
+#   cost, distinguish bounded work from a multi-session campaign, but do not hold a named gap back
+#   waiting for a go-ahead. See `feedback_erp_close_all_gaps.md`.
 # Live iDempiere source for anything oracle-diffed against real Postgres: docker container `postgres`
 #   (0.0.0.0:5432, PG15, user/pass `adempiere`/`adempiere`, DBs `idempiere` + `idempiere_test`). **It gets
 #   stopped between sessions** (was down 4 weeks before this session) — `docker start postgres` first,
@@ -84,12 +88,23 @@ present) and the access boundary honest (proven live, not just headless) — nei
 parity needle. If the standing goal is genuinely "an iDempiere user feels at home," this is still the
 dominant remaining distance, by a wide margin, and nothing currently scheduled closes it.
 
-## Suggested next, in order
+## Queue, in order (all of this is in scope by the standing intent above — not a menu, a sequence)
 1. Item 6 (the dead witness citations) is cheap and prevents the next session from re-discovering the same
    confusion.
 2. Item 1 (enumerable ledger) is the highest-leverage T-0 remnant — it's the thing that makes every other
    claim in this file checkable instead of asserted.
 3. Item 4 (`gateRecordFor` wiring) is the natural next security-hardening step after this session's access
    work, same file family, same reviewer context still warm.
-4. The 454-proc corpus (the "restate every time" item above) is the real long pole — not a next session's
-   worth of work, a multi-session campaign. Don't start it casually; it needs its own scoped plan.
+4. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
+   field layout from `AD_Form`/`AD_Field` where declarable) plus per-Form logic for whichever Forms are
+   highest-traffic in real iDempiere use (Bank Statement matching, Payment Allocation, GL Journal
+   generator are the classic first three — verify against real usage, don't guess the order). Start with
+   ONE Form end-to-end (spec → witness → ship) before generalizing, same discipline as every other lane
+   in this project. `AD_Form`'s 49 rows and `erp/genesis.js`'s access-grant consumer are already there
+   (§8) — this item is the missing renderer + per-form behavior, not new data plumbing.
+5. **The 454-proc corpus — queued as a campaign, not deferred indefinitely.** Real long pole, genuinely
+   multi-session. Before writing code: triage the 454 by actual usage weight (which processes a real
+   GardenWorld-shaped tenant calls often vs. rarely-touched edge cases — the equivalence campaign's own
+   K=1/K=2 pattern already shows how thin the walked paths are), and sequence the highest-traffic slice
+   first. This is the next scoped-plan-writing task, not a "someday" — the standing intent means it gets
+   a plan, not silence.
