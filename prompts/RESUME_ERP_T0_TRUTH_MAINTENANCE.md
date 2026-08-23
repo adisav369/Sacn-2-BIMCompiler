@@ -88,17 +88,25 @@ to whatever's in the container today. Always bake additively into the existing `
 7. **Read-write-vs-read-only access is implemented and headless-proven, but not live-data-demonstrable** —
    the shipped seed carries zero `isreadwrite='N'` grant rows anywhere. Not a bug; just means the live
    witness can't currently show the RW distinction actually gating something, only the visibility gate.
-8. **NEW 2026-08-24 — AD_Field·DisplayLogic hiding is not exercised on the current default record view.**
-   `docs/internal/ERP_COVERAGE_MATRIX.md:24`'s ✅ COVERED row (W-AD-DISPLAYLOGIC-LIVE) is stale: re-running
-   `scripts/poc_ad_displaylogic_live.js` today shows the record route (`?window=143&record=100`) now
-   renders through `erp/crud_overlay.js`'s newer inline-edit overlay (`§INPLACE-EDIT … fields=8 mount=inline`,
-   `§AD-LOGIC-LIVE … withLogic=0`) instead of the original accordion/form path that actually hides fields
-   by AD DisplayLogic (`erp/idempiere.html:2901-2914` + `erp/ad_ui.js:183-195`, still present, tag
-   `§AD-DISPLAYLOGIC-LIVE` still emitted — just not reached by this route anymore). Same failure shape as
-   the access-gate finding this whole T-0 pass started from: a proven-live behavior silently superseded by
-   a newer code path, un-re-witnessed. Not yet root-caused further (which routes still reach the old path,
-   whether the inline overlay should also honor DisplayLogic, or whether the matrix row needs re-scoring)
-   — queued, not fixed.
+8. **NEW 2026-08-24 — AD_Field·DisplayLogic hiding is architecturally dead for every CRUD-enabled table.**
+   `docs/internal/ERP_COVERAGE_MATRIX.md:24`'s ✅ COVERED row (W-AD-DISPLAYLOGIC-LIVE) is stale. Root cause,
+   traced to the exact fork point (`erp/idempiere.html:2882` `buildForm`): a table with a registered CRUD
+   spec (`c_order` and presumably most commonly-used tables by now) takes the `canInline` branch → mounts
+   `crud_overlay.js`'s in-place editor (P2, `editInline`), which renders a **narrow curated field set** (8
+   for c_order) via `_inlineOptsFor`. Any table WITHOUT a CRUD spec falls back to `_appendReadonlyFields`
+   (`idempiere.html:2899-2917`) — the ORIGINAL 60-field accordion render that hides 27 fields by real AD
+   DisplayLogic (`ad_evaluator.js`, still correct, still wired, tag `§AD-DISPLAYLOGIC-LIVE` still emitted
+   there). **The evaluator isn't broken and the inline editor's own logic-application isn't broken either**
+   (`crud_overlay.js:483 applyAdLogic` correctly reads `f.displaylogic`/`readonlylogic`/`mandatorylogic` per
+   field via the same proven `CORE.effectiveFlags` and hides/shows in the DOM, confirmed by code read) — the
+   gap is that **the inline editor's 8-field curated set happens to contain zero DisplayLogic-bearing
+   columns** (e.g. `ChargeAmt[@HasCharges@='Y']` isn't one of the 8), so `withLogic=0` every time, on every
+   CRUD-enabled table. This is a real product-scope question, not a one-line fix: does the DisplayLogic
+   proof still apply to the app a live user actually uses (CRUD-enabled tables, i.e. most of them), or has
+   it quietly narrowed to only the no-CRUD-spec fallback path? Same failure shape as the access-gate finding
+   this whole T-0 pass started from — a proven-live behavior silently superseded by a newer, narrower code
+   path, un-re-witnessed. **Queued, not fixed** — needs a decision (widen the inline editor's field set to
+   include DisplayLogic-bearing columns, or re-scope/re-score the matrix row honestly) before coding.
 
 ### The one that dwarfs everything else — restate this every time someone reads this file
 **454 of 476 real iDempiere processes, ~200 beforeSave overrides, and 139 callout atoms remain

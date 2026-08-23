@@ -186,7 +186,11 @@ default render for this route, and its `§AD-LOGIC-LIVE` field-visibility pass r
 DisplayLogic-hiding behavior (`docs/internal/ERP_COVERAGE_MATRIX.md:24`'s ✅ `AD_Field·DisplayLogic
 W-AD-AD-DISPLAYLOGIC-LIVE` row) is **not exercised on the current default record view** — same failure shape
 as the access-gate finding this whole T-0 pass started from (`ERP_PROJECT_REVIEW.md` §2.1: a proven-live
-behavior silently superseded by a newer code path, nobody re-witnessed). **Queued as a new named gap** —
+behavior silently superseded by a newer code path, nobody re-witnessed). **Neither the evaluator nor its DOM
+wiring is broken** — `crud_overlay.js:483 applyAdLogic` correctly reads per-field displaylogic and calls the
+same proven `CORE.effectiveFlags`; the gap is that the inline editor's curated 8-field set for `c_order`
+happens to contain none of the 27 DisplayLogic-bearing columns the 60-field accordion form had. **Queued as
+a new named gap** —
 see `prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md` item 8.
 
 **For the re-witness protocol itself:** the 5 scripts ARE re-runnable exactly as written in §3 above — no
