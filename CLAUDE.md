@@ -139,7 +139,7 @@ Before ending, update PROGRESS.md with:
 - **OCI MIME Rule:** EVERY `oci os object put` MUST include `--content-type` — OCI does NOT infer it from the extension; omitting it → `X-Content-Type-Options: nosniff` block + silent script failure. Full MIME table: `deploy/OCI_UPLOAD.md §RULES`.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
 - **Tests expose issues:** Every test must name the issue it proves or disproves. A test that passes without revealing whether the issue is solved is not a test.
-- **Browser testing — §-log first, Playwright second:** Primary browser verification = whitebox `§`-tagged `console.log()` output. The coder reads `§` lines to confirm values, counts, and state are correct. Playwright is secondary — for wiring/deploy checks only (scripts load, buttons exist, DB returns data). Do NOT add Playwright tests for value verification — add a `§` log line instead. See `docs/TestArchitecture.md` §Browser Testing. Run `node deploy/dev/tests/audit_specs.js` after any Playwright changes — must exit 0.
+- **Browser testing — §-log first, Playwright second:** Primary browser verification = whitebox `§`-tagged `console.log()` output. The coder reads `§` lines to confirm values, counts, and state are correct. Playwright is secondary — for wiring/deploy checks only (scripts load, buttons exist, DB returns data). Do NOT add Playwright tests for value verification — add a `§` log line instead. See `docs/archive/TestArchitecture.md` §Browser Testing. Run `node deploy/dev/tests/audit_specs.js` after any Playwright changes — must exit 0.
 - **FUNDAMENTAL LAW — code and maths is the truth, never screenshots/visuals (hardened 2026-07-21,
   user had to repeat this after a prior-session warning was dropped):** For ANY continuous/geometric
   behavior — camera paths, orbits, motion over time, positions, angles, rates — the proof is the
@@ -154,7 +154,7 @@ Before ending, update PROGRESS.md with:
   ([[feedback_whitebox_deduce_not_browser]], [[feedback_whitebox_not_playwright]]) — those already said
   this; this entry exists because it was violated anyway (dispatched a screenshot-capturing agent for
   the §CINEMA_ORBIT_V2 live-trial check) and had to be corrected twice.
-- **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
+- **Anti-Drift Policy:** Read `docs/archive/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
@@ -232,5 +232,5 @@ confirmed clean + 100+ commits stale first). Rules going forward:
   mined artifacts (written by `run_RosettaStones.sh`/`onboard_ifc.sh` each gate run, applied by `rebuild_erp.sh`),
   not ledger migrations; in-place regeneration is their normal lifecycle (decided 2026-07-03).
 - `BuildingCompiler.java` — main orchestrator, many dependencies
-- `RosettaStoneGateTest.java` — defines G1-G6 gates (compiler-reconstruction truth). NOTE: no CI in this repo runs it — "GREEN before commit" is a LOCAL discipline (Anti-Drift #5), not automation. See `docs/TestArchitecture.md` §Truth Model (2026). The headless smoke subset runs via `.github/workflows/ci.yml` + `scripts/system_is_real.sh`.
+- `RosettaStoneGateTest.java` — defines G1-G6 gates (compiler-reconstruction truth). NOTE: no CI in this repo runs it — "GREEN before commit" is a LOCAL discipline (Anti-Drift #5), not automation. See `docs/archive/TestArchitecture.md` §Truth Model (2026). The headless smoke subset runs via `.github/workflows/ci.yml` + `scripts/system_is_real.sh`.
 - `X_M_BOM.java` / `X_M_BOMLine.java` — EntityType guards, GodMode bypass
