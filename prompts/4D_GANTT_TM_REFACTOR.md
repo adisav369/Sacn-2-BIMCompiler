@@ -5107,3 +5107,104 @@ raw logs: `/tmp/hospital_persist_run1.log` (crashed cleanly on the schema mismat
 to the diagnostic rewrite), `/tmp/hospital_persist_run2.log` (the full H0-H6 result quoted above) —
 scratchpad only, not committed (per this project's DB/binary discipline, a 507MB local fixture set is
 never committed either).
+
+---
+
+# §S77 — Gap 3 from §S72's list, partial: live-fired the ScheduleAuthor-missing refusal cluster (2026-08-23)
+
+Dispatched (concurrently with §S76) to attack the gap §S72 called "the big one": 216 of 344 `§` tags
+and 101 of 154 functions in `time_machine.js` referenced by no test, 25 of them refusal-shaped —
+"nothing checks that it still refuses." This lane's own recurring bug shape (§S68 painted-over cue,
+§S70 the cache-key defect, §S72's own E7 1970-dates) is a guard that LOOKS alive but has silently
+stopped firing. The job: prove each refusal still fires under its real trigger, live, not by reading
+the `if`. Per the brief, this does not attempt all 25 — it does the highest-value cluster properly,
+plus a reachability pass on the rest, rather than 25 thin one-off checks.
+
+## Re-deriving the 25, corrected
+
+§S72's own count is right but two of its named 12 examples are now closed by §S73's gesture work
+(`§GANTT_EDIT_CYCLE_BLOCKED`, `§GANTT_PROPS_REJECT` both now referenced by
+`witness_gantt_gesture_wiring.js` / `probe_gantt_gestures.js` / `witness_gantt_props_epoch.js`).
+Re-grepping today (`time_machine.js` now 8930 lines, up from 8834): **232 uncovered tags, 18 confirmed
+refusal/guard-shaped by reading the call site** (not just the tag name — several near-misses discarded
+on inspection: `§TM_SUN_INHERIT` is an informational state log, not a refusal; `§GANTT_SHIFT_HOURS_DESYNC`
+is a code comment on a variable, never actually logged).
+
+## Cluster A — ScheduleAuthor-missing (highest value: 6 tags share one precondition)
+
+`commitGanttDrag`, `undoLastGanttEdit`'s sibling paths, `linkGanttBars`, `setGanttBaseline`,
+`generateGanttSchedule`, and `_tmPersistEdit` all open with the same shape: `var SA = (typeof window
+!== 'undefined') && window.ScheduleAuthor; if (!app || !app.db || !SA || !SA.<method>) { console.log
+('§GANTT_..._REJECT reason=ScheduleAuthor_not_loaded'); return; }` — a defensive load-order guard, not
+a business rule. Live-fired by nulling `window.ScheduleAuthor` mid-session (simulating a script-load
+failure) and driving each real control (`scripts/probe_gantt_refusals.js`, new, bim-ootb PR **#1493**,
+real puppeteer, `SERVE_ROOT`=repo root per §S72's own lesson):
+
+```
+R1 §GANTT_EDIT_UNDO_REJECT reason=nothing_to_undo        — PASS (natural state, no SA tampering needed)
+R2 §GANTT_DRAG_REJECT reason=ScheduleAuthor_not_loaded   — PASS, via __tmGanttDrag hookReturned=false
+R3 §GANTT_SET_BASELINE_REJECT reason=ScheduleAuthor_not_loaded — PASS, real #tm-baseline click
+R5 (recovery) drag SUCCEEDS once ScheduleAuthor restored — PASS, hookReturned=true, §GANTT_RETIME fires
+R6 §GANTT_EDIT_PERSIST_SKIP what=drag reason=cache_disabled   — PASS, real _cacheDisabled precondition
+```
+
+R5 matters as much as the rejects: it proves the guard is transient, not corrupting — a script that
+fails to load and later recovers doesn't leave the edit engine wedged.
+
+**R4 (`§GANTT_LINK_REJECT`) is KNOWN_UNRESOLVED, not claimed as a product defect.** The positive
+control — link succeeding, `ScheduleAuthor` present, a fully isolated fresh page load, zero preceding
+interactions — ALSO produced no `§GANTT_LINK`/`§GANTT_EDIT_CYCLE_BLOCKED` output, using an event
+sequence byte-identical to `probe_gantt_gestures.js`'s own working G7 (confirmed by reading that file,
+not guessing). Ruled out before stopping: `_tmEditLocked` (measured not busy), `ScheduleAuthor`
+presence, viewport size (neither probe sets one — both default 800×600). The positive case failing
+the same way as the negative case is what makes this a harness question, not a guard question — but
+it was NOT resolved this session. **Next step, precisely scoped:** run the identical gesture through
+a real (non-headless) Chrome with a pointer-event trace, or instrument `ganttHit`/the pointerdown
+handler directly, to see whether `_drag` is even being set. Do not re-attempt by tweaking coordinates
+blind — that was tried (a corrected coordinate pick matching G7 exactly still failed identically).
+
+## Cluster B — reachability-tested against the real fleet, not synthesized
+
+- **`§SE_CPM_BAIL`** (computeCpm's dependency-cycle bail) — hypothesized reachable via the 2 fleet
+  buildings §MILESTONE names as still carrying cycles (JKR, LTU_AHouse, per `§SUPPORT_CYCLE` in
+  `4D_SCHEDULE_PERFECTION.md`). **Tested directly: JKR's Gantt drawer opens clean —
+  `§GANTT_CPM_ANNOTATE tasks=67 critical=31 (46%) ... datesWritten=0`, no BAIL.** The hypothesis was
+  wrong, not the test: `§SUPPORT_CYCLE` is the element support-DAG (physics, generation/buildup lane);
+  `computeCpm`'s cycle check is the TASK dependency graph (FS/SS links this lane's authoring creates) —
+  two different graphs that happen to share the word "cycle." No fleet building is currently known to
+  carry a task-dependency cycle; `§SE_CPM_BAIL` may be unreachable on any building today without an
+  artificial cyclic `linkGanttBars` call — which needs R4 resolved first to construct reliably.
+- **`§TM_TWIN_MISS`** — already live-verified by §S72 itself ("fires at activation... Not a defect").
+  No re-test needed.
+- **`§CLASS_UNMATCHED`** — zero occurrences across every probe run this session (Duplex, JKR) — the
+  fleet's classification rules currently cover every element class encountered. Consistent with
+  "working, just never exercised by a hostile input" rather than broken.
+- **`§GANTT_SCHEDULE_STALE_REGEN`** family (3 tags) — trigger is `sched.genVersion !== _GANTT_CACHE_VERSION`
+  (the schedule-generation code changed since this schedule was last materialized) AND `sched.safeToRegen`.
+  Real self-heal mechanism, correctly guarded against clobbering captured/baselined schedules. Not
+  live-fired: needs a fixture DB with a deliberately stale `genVersion` stamped into its `schedules`
+  row — a 10-minute follow-up, not attempted here.
+- **`§GANTT_STALE_CACHE`** — trigger is a cached Gantt-places entry surviving a DB swap that no longer
+  has a schedule. Needs a seeded stale IDB cache entry to reach; not attempted here.
+- **`§CPE_BUILDUP_SOURCE`** (3 reject reasons), **`§MAXQ_TIME_ABORT`** (3 reject reasons),
+  **`§GHOST_GROUND_TRIGGER_FAIL`** — all read and understood (Cinema Path Editor buildup-source and
+  MaxQ orbit preconditions, a defensive SQL-exec catch respectively) but out of THIS lane's core
+  edit-path scope (they're CPE/MaxQ features that happen to live in the same file) and not live-fired.
+- **`§GANTT_AUTHOR_ENTRY_FAIL`**'s second variant (`reason=materialize_failed`, both `materializeZones`
+  AND `materializeDefault` failing) and **`§TM_DURATION_SYNC_FALLBACK`** — real branches, but Duplex
+  (and every fleet building tested) already carries a materialized/authored schedule, so the natural
+  "generate from scratch" path isn't reachable without first deleting the existing schedule from a
+  fixture DB. Not attempted here.
+
+## What this leaves for the next session, in the order named above
+1. Resolve R4's harness question (real-browser trace) — the one item that could still be hiding a
+   real product gap behind a probe artefact, per §S72's own "rule out your own harness" discipline.
+2. `§GANTT_SCHEDULE_STALE_REGEN` and `§GANTT_STALE_CACHE` — both need one seeded fixture DB each, cheap
+   once someone sits down to build the seed.
+3. Everything in Cluster B's CPE/MaxQ rows — same treatment as this session gave Cluster A, if that
+   surface area is ever prioritized; not urgent, no defect found or suspected.
+
+**Gap 3 status after this session:** not closed (25 tags was never going to close in one pass), but
+narrowed with real evidence — 5 confirmed live, 1 honestly flagged unresolved, 2 hypotheses tested and
+one corrected (SE_CPM_BAIL), the rest triaged with a named, cheap next step instead of left as an
+undifferentiated pile of 216.
