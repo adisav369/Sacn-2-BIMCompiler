@@ -4660,11 +4660,30 @@ No `sw.js` bump: this PR changes only witnesses, no served runtime file.
 
 ---
 
-# ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
+# ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
 
-**Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
-**#1470** (§S63 witness reds), **#1472** (§S64 audit/gate asymmetry), **#1474** (§S67 redisplay).
-`CACHE_VERSION` **v1070**.
+**Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
+Four bim-ootb PRs merged 2026-08-23: **#1475** (§S68 CPM annotate), **#1477** (§S69 bake-lock 8/8),
+**#1479** (§S70 edit persistence + the cache-key defect), **#1480** (§S71 coherence witness).
+`CACHE_VERSION` **v1073**.
+
+**The one finding worth carrying forward, because it is bigger than this lane:** §S70 proved that
+`persistDb`, `kernel_ops.js` and the Editor were ALL writing the IDB cache under the raw url while
+`cachedFetch` reads `DbResolve.cacheKey(url)` — so on any profile that had loaded the building
+normally, every "survives a refresh" claim in this codebase was false. Fixed and gated here, but if
+anything else persists a db, check its key.
+
+**Suggested next, none of it blocking:** (a) the drag→CPM feature is annotate-only by decision — if
+the product ever wants a true re-solve, §S68 says what that costs; (b) `witness_gantt_lock_integrity`
+is RED on main (a name-slice picking up a comment containing `` `function _midairAudit(` ``, same
+class as G-COH-6) — cheap, named in §S68, not chased; (c) `DbResolve.cacheKey`'s K3 rule keys on a
+LEADING `/deploy/`, so a relative dev path folds onto the production key (§S70, harmless today).
+
+---
+
+### Historical (2026-08-22 session end)
+Three bim-ootb PRs merged that session: **#1470** (§S63 witness reds), **#1472** (§S64 audit/gate
+asymmetry), **#1474** (§S67 redisplay). `CACHE_VERSION` was **v1070**.
 
 `4D_SCHEDULE_PERFECTION.md` now carries a 🏁 §MILESTONE marking **generation + buildup SOLVED** at the
 user's call, with the numbers behind it (floating 0.136%, midair 0.50%, cycles 0 on 5 of 7, suite
