@@ -4874,6 +4874,40 @@ UI rather than a repair, so it waits for a go.
 
 ---
 
+
+## §S75 — §GANTT_CPM_LEGEND: the key for the float rail (2026-08-23, bim-ootb #1491)
+
+§S74 offered a legend and left it for the user's call. They said go. `CACHE_VERSION` **v1077**.
+
+**What shipped:** the Gantt drawer's lock bar carries `▬ 11 critical · ▬ 8 with float`, swatches drawn
+as thin bars — the same SHAPE as the rail — so the mapping reads without a caption. Tooltip carries
+the sentence: red = zero total float (cannot slip without moving the project end), green = has slack,
+plus project duration and float range, plus the standing fact that CPM reads the dates the drag
+produced and never changes one.
+
+**A legend has exactly two failure modes, and neither is closed by being careful:**
+1. **Drift** — the key explains a colour the bars stopped using. Killed by making the palette two
+   named constants (`CPM_COLOR_CRITICAL`/`CPM_COLOR_FLOAT`) that the canvas rail AND the swatches both
+   read. **W-CPM-7c asserts the legend contains no hex literal of its own.**
+2. **Disagreement** — the counts come from a second computation and diverge from the bars. Killed by
+   feeding the legend from the SAME annotate pass that paints them (W-CPM-7d), never a recount.
+
+Every `§GANTT_CPM_ANNOTATE_SKIP` path empties the strip (W-CPM-7f: 4 clears for 4 skip paths), and so
+does building deactivate. **A legend still showing the last building's counts after a cycle bail
+reports a critical path that was never computed — strictly worse than no legend.**
+
+**Verified live against all three surfaces at once, headless, numbers only:**
+```
+§GANTT_CPM_ANNOTATE tasks=19 critical=11 (58%) projectDuration=13d float=0..3
+LEGEND text "11 critical·8 with float"  swatches rgb(229,57,53) / rgb(38,166,154)
+LEGEND-vs-LOG  critical 11/11  float 8/8  → MATCH
+rail pixels: both rows on 18 of 19 bars, yellow frame over none
+```
+The key, the log and the painted pixels agree on the same numbers and the same two colours. W-CPM
+21 → 27 checks.
+
+---
+
 # ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
@@ -4886,6 +4920,11 @@ Four bim-ootb PRs merged 2026-08-23: **#1475** (§S68 CPM annotate), **#1477** (
 `cachedFetch` reads `DbResolve.cacheKey(url)` — so on any profile that had loaded the building
 normally, every "survives a refresh" claim in this codebase was false. Fixed and gated here, but if
 anything else persists a db, check its key.
+
+**2026-08-23 latest: the CPM cue is visible and self-explaining.** §S74 found the rail was being
+painted over by the yellow captured-frame (measured in canvas pixels on the live site, not eyeballed)
+and §S75 added the legend the user then asked for — key, log line and painted pixels now agree on the
+same numbers (#1486, #1491, `CACHE_VERSION` v1077).
 
 **2026-08-23 late: §S72 END-TO-END AUDIT ran and found a P1** — the typed properties panel (E7) was
 writing 1970 dates into `tasks.schedule_start` and §S70 was caching them. Fixed + gated (#1482,
