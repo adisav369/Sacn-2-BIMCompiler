@@ -4660,6 +4660,103 @@ No `sw.js` bump: this PR changes only witnesses, no served runtime file.
 
 ---
 
+## §S72 — TIME MACHINE END-TO-END AUDIT (2026-08-23). Measured, not surveyed.
+
+Commissioned by the user: *"audit the TM end to end and give me the gap list."* Method: run every
+witness that touches `time_machine.js`; count instrumentation vs gates; then drive the real viewer
+headless through every reachable TM control and read what it emits. **One P1 was found and fixed in
+the same session (bim-ootb #1482, below).**
+
+### Scale
+`time_machine.js` = **8834 lines, 154 named functions, 344 `§` tags**. Zero TODO/FIXME/HACK markers.
+
+### 1. Gate coverage — 37 witnesses touch TM, 36 PASS, 1 RED
+`witness_gantt_lock_integrity` is RED **on `origin/main`**, and the cause is a stale slice, not a
+regression: it calls `sliceFn(tmSrc, '_midairAudit')`, but §S58 MOVED that function to
+`support_sweep.js`. The only occurrence left in `time_machine.js:4154` is inside a comment —
+``gates on `function _midairAudit(` being present in this file`` — so the slice returns comment text
+and `vm` throws `SyntaxError: Unexpected template string`. Same family as G-COH-6: **a slice that
+cannot state its own dependencies.** Fix is to slice from `support_sweep.js`. Not done here.
+
+### 2. Instrumentation is far ahead of the gates
+| measure | covered | total | not referenced by any test/probe |
+|---|---|---|---|
+| `§` tags in `time_machine.js` | 128 | 344 | **216** |
+| named functions | 53 | 154 | **101** |
+
+Of the 216 uncovered tags, **25 encode a refusal, guard or failure** — behaviour, not diagnostics:
+`§GANTT_EDIT_CYCLE_BLOCKED`, `§GANTT_PROPS_REJECT`, `§GANTT_LINK_REJECT`, `§GANTT_EDIT_UNDO_REJECT`,
+`§GANTT_SET_BASELINE_REJECT`, `§SE_CPM_BAIL`, `§GANTT_SCHEDULE_STALE_REGEN*`, `§TM_TWIN_MISS`,
+`§GANTT_AUTHOR_ENTRY_FAIL`, `§LOAD_FAIL`, `§MAXQ_TIME_ABORT`, `§GANTT_SHIFT_HOURS_DESYNC`, … These are
+the lines that say the software refused something; nothing checks that it still refuses.
+(Reference-by-tag is a proxy — a few are covered by structural assertions instead, e.g.
+`§GANTT_CPM_ANNOTATE_SKIP` is gated through `_ganttCritical = {}` in W-CPM-1g.)
+
+### 3. Live end-to-end: 32 steps on Duplex, real viewer, **0 page errors**
+Working, with `§` evidence: activate · Gantt drawer + `§GANTT_CPM_ANNOTATE` · transport play/step/
+jump-end · `__tmSetCursor` · **drag move** · **drag resize** · **undo** · **ruler shift** ·
+**set baseline** · **edit-lock both ways** (`§GANTT_LOCK_BASELINE` / `§GANTT_LOCK_VERIFY`) ·
+**§TM_BAKE_LOCK refusal on BOTH drag and ruler shift** (§S69 confirmed live, not just in source) ·
+dashboard · what-if · X-ray · sun · LOD · `tmJumpToPhase` · `tmRefoldSchedule` · close ·
+**persistence round trip SURVIVED** (2026-09-07 held across a real reload, §S70 confirmed live).
+
+Then, driven correctly (see the probe-error note below): **E7 typed properties open + apply**,
+**E4 unlink**, **E3 link** — all three fire their verbs and persist.
+
+Silent but correct: the variance drawer emits nothing on Duplex because Duplex is not a folded ERP
+project — `§TM_TWIN_MISS` fires at activation and the ⚖ button is deliberately hidden (`§TM_VAR_GATE
+twin=no ⚖=hidden`). Not a defect.
+
+**Two "findings" were discarded as PROBE ARTEFACTS before reporting**, and are recorded so nobody
+re-raises them: (a) `TypeError: ...reading 'RoundingMode'` ×5 per load in `proj_fold/vo_fold/
+proj_control/whatif/proj_claim` — caused by serving `viewer/` without its sibling `erp/`, so
+`../erp/bigdecimal.js` 404'd; with a correct serve root the page throws **zero** errors. (b)
+`§TM_TWIN_ERR/§TM_SHOPFLOOR_ERR Failed to fetch ../erp/ad_seed.db: 404` — same cause; the file exists
+(27MB). **Lesson: a headless probe must serve the whole repo root, not just `viewer/` + `buildings/`.**
+
+### 4. 🔴 THE P1 THIS AUDIT FOUND — E7 wrote 1970 dates (FIXED, #1482)
+`openGanttProps` populated its Start/Finish inputs from `d(bar.startTs)`/`d(bar.endTs)` — the TM's own
+near-1970 playback clock — and passed whatever was typed straight to `moveTaskCascade`. §S22 fixed
+exactly this for `commitGanttDrag`; E7 was never brought along. Measured live, before:
+```
+§GANTT_PROPS_OPEN task=TASK_Substructure_T_FDN     → Start input showed 1970-01-01
+§GANTT_EDIT_MOVE  start=1970-01-05 clamped=false cascaded=0
+§GANTT_EDIT_PERSIST what=propsApply ok=true          ← §S70 then cached the corruption
+```
+After: panel shows `2026-08-23`, apply writes `2026-08-27`, **`cascaded` 0 → 18** (the 1970 target was
+collapsing the cascade too). The apply's move-vs-resize comparison had the same defect — `s !==
+d(bar.startTs) && f === d(bar.endTs)` was always true on the start half, so a pure FINISH edit was
+routed as a move. Gated by `witness_gantt_props_epoch.js` (10/10, red-proved on main at 7 fails).
+
+**Why it survived this long:** E7 is the one edit path with no node witness and no headless hook. It
+was also the path §S67 caught missing its resync and §S69 caught missing its bake-lock. Three
+independent defects on the same path is a pattern, not luck — see gap 2 below.
+
+### THE GAP LIST (ranked, all measured)
+1. **E3/E4/E7 have no permanent witness.** The three paths reachable only through canvas gestures
+   (link-drag, unlink button, dblclick panel) are gated only at source level. They have now produced
+   three defects. A headless gesture harness — the `probe_props.js` written for this audit — should
+   become a witness in `viewer/tests/`.
+2. **`witness_gantt_lock_integrity` RED on main** — stale slice of a function §S58 moved out. Cheap.
+3. **216 of 344 `§` tags, and 101 of 154 functions, are referenced by no test.** 25 of the uncovered
+   tags are refusals. The instrumentation is excellent and the gates trail it badly.
+4. **Persistence proven on Duplex (9MB) only.** Hospital is 252MB; `export()` measured at 86ms but
+   the IDB write + reload round trip has never been run on a big building.
+5. **`window.__tmGanttDrag` returns `true` even when `§TM_BAKE_LOCK` refuses** — a test hook that
+   reports success for a refused edit can mask exactly the regression the lock exists to catch.
+6. **Group shift (marquee) was never exercised live** — no hook, no DOM id, needs a drag-rectangle.
+   It is the only edit verb this audit could not drive at all.
+7. **`DbResolve.cacheKey` K3 keys on a LEADING `/deploy/`** so a relative `deploy/dev/buildings/X.db`
+   folds onto the production cache key (§S70). Harmless today, a trap later.
+8. **`time_machine.js` is 8834 lines.** §S53 extracted `gantt_model.js` (206 lines) and stopped.
+
+### Perf, measured
+Terminal drag `move+5d`: `§GANTT_RETIME tasks=7 rows=11674 ms=311`. Resize: `rows=10950 ms=285`.
+Whole-db `export()` for persistence: Duplex 3ms · Terminal 10ms · Clinic 47ms · JKR 70ms ·
+**Hospital (252MB) 86ms**. Nothing here is a bottleneck at fleet scale.
+
+---
+
 # ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
@@ -4672,6 +4769,12 @@ Four bim-ootb PRs merged 2026-08-23: **#1475** (§S68 CPM annotate), **#1477** (
 `cachedFetch` reads `DbResolve.cacheKey(url)` — so on any profile that had loaded the building
 normally, every "survives a refresh" claim in this codebase was false. Fixed and gated here, but if
 anything else persists a db, check its key.
+
+**2026-08-23 late: §S72 END-TO-END AUDIT ran and found a P1** — the typed properties panel (E7) was
+writing 1970 dates into `tasks.schedule_start` and §S70 was caching them. Fixed + gated (#1482,
+`CACHE_VERSION` **v1074**). The full gap list, all measured, is in §S72 above; the top of it is that
+E3/E4/E7 (link, unlink, typed panel) have no permanent witness and have now produced three defects
+between them.
 
 **Suggested next, none of it blocking:** (a) the drag→CPM feature is annotate-only by decision — if
 the product ever wants a true re-solve, §S68 says what that costs; (b) `witness_gantt_lock_integrity`
