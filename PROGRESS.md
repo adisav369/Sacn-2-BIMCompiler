@@ -4,41 +4,24 @@
 > ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
-## ▶ NEXT TASK ON RESTART (rewritten 2026-08-21 after the §S52.4 F-list was worked to zero)
+## ▶ NEXT TASK ON RESTART (rewritten 2026-08-23)
 
-**Lane: `prompts/4D_GANTT_TM_REFACTOR.md`. Read `§OBJECTIVE` → `§STATUS` → `§S50` → `§S51` → `§S53`
-→ `§S54` first. Do NOT re-walk §S23-§S49 — settled and archived in place.**
+**4D Gantt/TimeMachine lane (`prompts/4D_GANTT_TM_REFACTOR.md`) is CONCLUDED — the edit-path list is
+at zero (§RESUME 2026-08-23), a full witness-gap simulation was then run against it separately
+(§S76-§S78) and closed. Do not restart this lane without a new, specific reason — read that file's
+own §RESUME block first if one comes up.**
 
-**The §S52.4 F-list is DONE, all four:** F1 ✅ #1445 (witness baselines are data) · F2 ✅ #1447 (ERP
-twin loaders no longer default to Hospital) · F3 ✅ #1446, merged `a0885e2` (`gantt_model.js`
-extracted; `time_machine.js` 9,293 → 9,186) · F4 ✅ no change needed — the audit's premise was wrong,
-`mep_qto_populate.js` already takes `[db_path ...]` (§S54.1).
+**ERP is the live thread now.** Lane: `prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md` — read it first.
+T-0's access-gate and Forms/ValRules items closed 2026-08-23 (bim-ootb #1495/#1496, bim-compiler #91).
+Still open, ranked in that file: (1) the dead re-witness citations (cheap), (2) the enumerable
+52-ledger (highest leverage), (3) `gateRecordFor` CRUD wiring, (4) the 454/476-unported-process gap
+(the real long pole — don't start it casually, it needs its own scoped plan).
 
-**Both original symptoms stay closed:** float fleet 14,166 → 8,991 (−36.5%, §S50 / #1442); the Gantt
-reads the cell schedule, 0 wide cells on the three cell-path buildings (§S51 item d / #1444). The
-support graph is RETIRED as the live precedence carrier (user ruling) — ledger A1, refuse-at-creation,
-SCC contraction and the §S45-§S46 grain probes are **superseded, not parked**. Strict midair
-684/218/422 on the cell-path buildings is USER-ACCEPTED and locked in
-`viewer/tests/baselines/midair.json` — do not re-litigate it, do not build leg-4 enforcement.
+**Disk state:** both repos pushed, zero committed-but-unpushed, as of 2026-08-23 session end.
 
-**Pick up here:**
-1. **⛔ §S53.5 — two real reds, newly visible.** `witness_zone_display_authoring.js` had been dead
-   since 2026-08-17 (crashed on `ReferenceError: _tukeyBound is not defined` before its first
-   assertion; verified identical at pristine `a4932ee`, so NOT caused by F3). Fixed in #1446, and
-   alive it reads `pass=16 fail=2`: `W-ZDA-4a` floating Duplex 22→37, HHS 894→1839. Evidence both
-   ways is in §S53.5 — `outWindow` improves hard (13→0, 707→11) and W-ZDA-6 reads midair=0 on the
-   ops timeline in the same run. **Decide whether W-ZDA-4a's premise still holds post-§CPM_DISPLAY,
-   or whether skipping `_ogSupportSweep` has a real cost. Do not absorb the reds silently.**
-2. **The four low-representability buildings** (Duplex/HHS/LTU/JKR) still run the unchanged GRAPH
-   engine, below the 0.88 mark. §S46 measured that compiled rooms do NOT rescue LTU/Duplex
-   (1.25-5.61%); the broken axis is the `uniform3m` vertical. The wall-anchor level-grid idea is
-   named in §S50.2.e as a **user call, not built**.
-
-**Nothing is in flight.** Both PRs verified ANCESTOR-OF-MAIN, not just "MERGED" (#1439 showed MERGED
-while orphaned off an already-squashed branch): `origin/main` is at **`6dab2d1`** (#1447), with
-`a0885e2` (#1446) beneath it. Keep using `git merge-base --is-ancestor <sha> origin/main`.
-
-**Disk state:** both repos pushed, zero committed-but-unpushed.
+**Standing debt, not this session's to fix:** this file is still over its 80-line budget (~689 lines);
+the archiving pass on `## OPEN`'s oldest items is still owed to a session that can own the
+still-open-vs-DONE check per item.
 
 ## Session 2026-08-17 (Fable, marathon) — 4D Gantt lane S1-S22 all shipped+merged, closed
 Full trail in `prompts/4D_GANTT_TM_REFACTOR.md`. Root causes fixed, each independently verified
