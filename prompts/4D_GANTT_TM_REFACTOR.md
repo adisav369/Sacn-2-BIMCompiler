@@ -4757,6 +4757,73 @@ Whole-db `export()` for persistence: Duplex 3ms · Terminal 10ms · Clinic 47ms 
 
 ---
 
+## §S73 — the four canvas gestures are gated; the lock breach now names what broke (2026-08-23)
+
+User: *"AFAIR, editing Gantt Chart allows mouse selects multi bars to move them enbloc. If this is not
+conflicting, proceed."* Correct on both counts — the feature exists and it does not conflict. Closes
+§S72 gap 1 (no witness on the gesture paths), gap 2 (`witness_gantt_lock_integrity` RED) and gap 5
+(the drag hook reported success for refused edits). bim-ootb **#1484**, `CACHE_VERSION` **v1075**.
+
+### Marquee → en-bloc move, measured live
+```
+§GANTT_GROUP_SELECT count=5
+§GANTT_GROUP_SHIFT_COMMIT tasks=5 deltaDays=2
+§GANTT_EDIT_PERSIST what=groupShift url=/buildings/Duplex_extracted.db ok=true
+```
+
+### The precedence, stated because it looks like a conflict and is not
+A `pointerdown` on a bar that belongs to a multi-selection starts a **group drag**, and that branch is
+checked BEFORE the single-bar/link branch (`time_machine.js` ~:6581). While a selection is live the
+bar→bar **link** gesture is therefore shadowed by design — which is exactly what a user wants ("I
+selected five bars, dragging one moves five"), and it is why the first run of the new probe failed
+G7: it tried to link while five bars were still selected. A near-zero marquee on empty canvas clears
+the selection (`§GANTT_GROUP_SELECT count=0`) and the single-bar gestures come back. **W-GEST-2
+asserts the ordering by source index** so a refactor cannot invert it silently.
+
+### Gates added — the cheap half and the honest half
+- `viewer/tests/witness_gantt_gesture_wiring.js` — 15 checks, milliseconds, always runs: each gesture
+  is bound and reaches its verb; the precedence ordering; the link gesture's ≥14px vertical-travel
+  rule; the locked-gantt refusal; and **every gesture verb carries all four calls this lane added by
+  hand** (bake lock, resync, CPM re-annotate, persist).
+- `scripts/probe_gantt_gestures.js` — 13 checks, real browser, real pointer events: marquee →
+  en-bloc → dblclick → Apply → unlink → clear → link, each read back from its own `§` line.
+  **13/13, zero page errors.** Header records the §S72 lesson: `SERVE_ROOT` must be the repo root.
+
+### 🔴 `witness_gantt_lock_integrity` — RED on main, and it was three bugs deep
+1. **The slicer.** `sliceFn` used a plain `indexOf`, so `` `function _midairAudit(` `` matched a
+   COMMENT at `:4154` — one describing this very check — and the slice returned prose. `vm` threw
+   `SyntaxError: Unexpected template string`. Line-anchored now; the sandbox is handed the real
+   `SupportSweep` module the surviving one-line wrappers delegate to.
+2. **The append.** With the witness finally running, the bug §S20 Part B had named and deliberately
+   left red appeared: `verifyGanttIntegrity` built its sample from `auditFloating`'s collector and
+   appended midair offenders only `if (guids.length < 20)`.
+3. **The cap underneath it.** `SupportSweep._midairAudit` capped its OWN list at 20 **in scan order**.
+   With 173 midair elements the dragged element was never in it at all — measured `brokeGuid
+   inAll=false, allGuids=84`. So even fixing (2) could not have worked.
+
+Fixed at the layer that owns the data: the audit reports every offender (`allGuids=237`), and
+`verifyGanttIntegrity` ranks offenders **absent from the lock baseline** ahead of known ones before
+capping at 20 — so what the planner just broke leads the list instead of being buried under a tail
+they never touched. `captureLockBaseline` now remembers the offender SET, not just the counts.
+**G-LI-2e passes on its original assertion, 20/20, weakened nowhere.**
+
+**The operator-facing point:** before this, a refused lock said *"your edit broke physics"* and then
+listed twenty elements the planner had not touched. That is worse than no list.
+
+### The drag test hook was lying
+`window.__tmGanttDrag` returned `true` for a REFUSED edit — including a `§TM_BAKE_LOCK` refusal — so a
+probe watching it would report a mid-bake edit as successful, exactly the regression the lock exists
+to catch. `commitGanttDrag` now returns `true` only on commit; the hook reports that, and
+`'notFound'` stays distinguishable from a refusal.
+
+### §S72 gap list after this session
+✅ 1 gesture witnesses · ✅ 2 lock_integrity red · ✅ 5 dishonest hook · ✅ 6 marquee unexercised.
+Still open: **3** (216/344 `§` tags, 101/154 functions ungated — the big one), **4** (persistence
+proven on Duplex only, Hospital 252MB round trip unrun), **7** (`cacheKey` K3 leading slash),
+**8** (`time_machine.js` at 8834 lines).
+
+---
+
 # ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
