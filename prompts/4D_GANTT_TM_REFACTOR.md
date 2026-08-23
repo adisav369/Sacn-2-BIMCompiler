@@ -4495,6 +4495,115 @@ helper, not a stub, so the sandbox stays honest about what the guard does.
 
 ---
 
+## §S70 — SPEC: the TM edit path never persists. It is a GAP, not a design choice. RESUME item 3.
+
+### The question item 3 asks, answered from the code
+*"Decide whether that is intended (edits are scratch until the Editor tab saves) or a gap."*
+**It is a gap, and this project already ruled on the identical question once.** `schedule_editor_ui.js`
+:487 introduces its own persist with the comment: *"§SE-6: debounced write-back to the SAME IndexedDB
+cache slot the building was loaded from — **the gap that made every schedule edit vanish on tab
+close**."* The in-canvas Gantt has that same gap, unfixed, on the same DB, through the same
+`ScheduleAuthor.persistDb`.
+
+Three things verified before deciding, not assumed:
+1. **`retimeTaskElements` writes raw SQL** (`db.prepare("UPDATE kernel_ops SET timestamp = ?...")`,
+   `db.run('BEGIN')`/`COMMIT`) — it does NOT route through `KernelOps`' commit API, so kernel_ops.js's
+   own `_persistToIdb` debounce never fires for a Gantt edit. Nothing else persists it either.
+2. **The slot IS read back.** `schedule_author_ui.js:23` — the IDB slot keyed by `APP.DB_URL` is *"the
+   same slot cachedFetch reads"*. So persisting genuinely makes an edit survive a reload; it is not a
+   write into a hole.
+3. **The cost is small and already accepted here.** `persistDb` exports the whole DB. MEASURED with
+   real sql.js on the real fleet: Duplex 9MB/3ms, Terminal 27MB/10ms, LTU 68MB/26ms, HHS 72MB/28ms,
+   Clinic 124MB/47ms, JKR 194MB/70ms, **Hospital 252MB/86ms**. One dropped frame at the worst,
+   1200ms-debounced, on a path the Editor tab already runs against these same buildings.
+
+### The fix
+`_tmPersistEdit(what)` — resolves `APP.db` + `APP.DB_URL`, refuses loudly if either is missing or
+`APP._cacheDisabled` is set (incognito / low quota, the same guard `kernel_ops.js` uses), and calls
+`ScheduleAuthor.persistDb`, which owns the 1200ms debounce. Called from the seven real EDIT commit
+points: drag, ruler shift, group shift, undo, link, typed apply, unlink.
+
+**Deliberately NOT called from `buildTaskIndex`'s stale-schedule regen** (§S69's eighth path). That
+runs on a plain page load; persisting there would turn every ordinary visit to a 252MB building into a
+252MB IDB write. A regen is reproducible from the code that regenerated it — an edit is not. Stated so
+the asymmetry is a decision on record.
+
+### Witnesses — `viewer/tests/witness_gantt_edit_persist.js`
+- **W-PERS-1** source gate, brace-matched: every function that calls `retimeTaskElements(` also calls
+  `_tmPersistEdit(`; plus `undoLastGanttEdit` by name (it mutates by restoring rows directly).
+- **W-PERS-2** the exemption is real: `buildTaskIndex` does NOT call `_tmPersistEdit` — asserted, so
+  nobody "completes" the wiring later and puts a 252MB write on the cold path.
+- **W-PERS-3** behaviour in a `vm` sandbox: `_tmPersistEdit` calls `persistDb` with **`APP.db` and
+  `APP.DB_URL`** (not some other db — that exact mistake cost a P0 in `kernel_ops.js`,
+  §KRN_PERSIST_GUARD), and refuses when `DB_URL` is missing or `_cacheDisabled` is set.
+- **W-PERS-4** end-to-end, live headless: drag a task, wait for `§SCHED_PERSIST`, **reload the page**,
+  and assert the dragged task's `schedule_start` in the freshly-loaded DB is the NEW date. This is the
+  only check that proves the round trip; the gates above only prove the wiring.
+
+---
+
+
+### ✅ BUILT — §S70 shipped (2026-08-23), and the live round trip found a SECOND, bigger bug
+
+**The wiring went in as specified** (`_tmPersistEdit` on all seven edit commit points, exempt on the
+cold regen path; W-PERS 15/15 green; red-proved on `origin/main`). Then W-PERS-4 — the live
+drag→reload check — **failed**, and the failure is the finding:
+
+```
+[drag]   §SCHED_PERSIST url=/buildings/Duplex_extracted.db size=15264KB
+[drag]   §GANTT_EDIT_PERSIST what=drag ok=true
+         afterDrag   = 2026-08-30
+[reload] §CACHE_HIT Duplex_extracted.db size=14.3MB          ← a DIFFERENT blob
+         afterReload = 2026-08-23                            ← the edit is gone
+```
+
+The write succeeded and the read hit the cache, and they were **two different slots**.
+`scene.js`'s `cachedFetch` looks blobs up under `DbResolve.cacheKey(url)` (W-DB-CACHE-KEY:
+`/buildings/X.db` and `buildings/X.db?v=2` both fold to `buildings/X.db`), and reads the RAW url only
+as a **legacy fallback when the canonical key misses**. Every persist path wrote the raw url.
+
+**So on any profile that had ever loaded the building normally, every persisted edit was written
+somewhere nothing reads — and that was already true before this lane touched anything.** It silently
+broke `schedule_editor_ui.js`'s §SE-6 ("the gap that made every schedule edit vanish on tab close" —
+closed in name only) and `kernel_ops.js`'s "survive refresh" (§KRN_PERSIST_FIX, which had already been
+debugged once for a *different* cause and still didn't work). Three write paths, one shared defect.
+
+**Fixed in the writer, not per-caller:** `persistDb` derives the slot with `_cacheKeyFor()` (exported,
+so read and write cannot drift), `kernel_ops.js` derives the same, and `schedule_editor_ui.js`'s
+`_idbGetDb` now READS by that derivation too. Round trip after the fix:
+
+```
+[drag]   §SCHED_PERSIST url=/buildings/Duplex_extracted.db key=buildings/Duplex_extracted.db size=15264KB
+         afterDrag   = 2026-08-30
+[reload] §CACHE_HIT Duplex_extracted.db size=14.9MB   ← the edited blob
+         §GANTT_CACHE_HIT ops=1119                    ← no §GANTT_PREMATERIALIZE: a schedule now exists
+         afterReload = 2026-08-30                     ✅ PASS W-PERS-4
+```
+
+**Gated so it cannot come back:** W-PERS-5a/b/c assert all three paths use the canonical derivation;
+**W-PERS-5d** runs `persistDb`'s derivation against `DbResolve.cacheKey` on six real url shapes
+(prod, query-busted, absolute OCI, `/deploy/` dev tree, `import://`) and requires agreement;
+**W-PERS-5e** is the red control — the canonical key must actually DIFFER from the raw url for a
+normal viewer url, or 5d would pass trivially. Red-proved twice: once with main's `time_machine.js`
+(W-PERS-0 fails), once with the branch's `time_machine.js` over main's other three files, where
+exactly 5a/5b/5c fail and nothing else does.
+
+**Cost, measured before wiring anything** (whole-db `export()`, real sql.js, real fleet): Duplex
+9MB/3ms, Terminal 27MB/10ms, LTU 68MB/26ms, HHS 72MB/28ms, Clinic 124MB/47ms, JKR 194MB/70ms,
+**Hospital 252MB/86ms**. One dropped frame at the worst, behind persistDb's 1200ms debounce.
+
+**Regression sweep: 15/15 PASS.** `witness_gantt_edit_undo` needed a `_tmPersistEdit` stub — stubbed
+rather than sliced, deliberately, because the persist cannot change a row this witness asserts on
+(unlike `_tmEditLocked`, which can prevent the edit and so is sliced). `sw.js` v1072 → **v1073**.
+
+**Note for whoever picks up the DLOD/streaming lane:** `DbResolve.cacheKey`'s K3 rule keys on
+`/deploy/` with a LEADING slash, so a relative `deploy/dev/buildings/X.db` folds onto the production
+`buildings/X.db` key instead of keeping its own. Both reader and writer agree, so nothing is
+inconsistent today — but a dev-tree and prod-tree build of the same filename would share one cache
+slot. Not touched here; named so it is not re-discovered as a mystery.
+
+---
+
 # ▶ RESUME HERE (2026-08-22, session end — 4D GENERATION IS DONE, EDITING IS THE LANE)
 
 **Nothing in flight. Zero unpushed. Worktrees pruned.** Three bim-ootb PRs merged this session:
@@ -4515,9 +4624,11 @@ green=40/44). **That milestone explicitly does NOT cover editing. Editing is thi
    call one shared `_tmEditLocked()`, including a path nobody had listed (`buildTaskIndex`'s
    stale-schedule regen, which re-materializes the whole schedule mid-bake). W-TBL 17/17, red-proved
    on main, live-checked. Evidence in **§S69** above.
-3. **No persistence on the edit path.** `persistDb` has two callers, neither in `time_machine.js` —
-   an in-canvas drag lives only in the in-memory sql.js `app.db` and dies on reload. Decide whether
-   that is intended (edits are scratch until the Editor tab saves) or a gap, then witness the answer.
+3. **✅ DONE 2026-08-23 — a gap, not intent, and it hid a bigger one.** All seven edit paths now
+   persist. The live round trip then proved persistence had been broken for EVERY writer
+   (`persistDb`, `kernel_ops`, the Editor) since W-DB-CACHE-KEY: they wrote the raw url, `cachedFetch`
+   reads `DbResolve.cacheKey(url)` and only falls back to the raw url on a miss. Fixed in the writer,
+   gated on six url shapes. Evidence in **§S70** above.
 4. **`G-COH-6` is a false negative** — `witness_gantt_edit_coherence.js:117` slices a fixed 2200
    chars looking for a call now at offset 5073. Brace-match it like §S67's witness. Cheap, and it
    also moves that file into `viewer/tests/` where the runner can see it (§S66).
