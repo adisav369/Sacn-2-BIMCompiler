@@ -4908,18 +4908,156 @@ The key, the log and the painted pixels agree on the same numbers and the same t
 
 ---
 
-# ▶ RESUME HERE (2026-08-23, session end — THE EDIT-PATH LIST IS AT ZERO)
+# 🗺 DEBUG MAP — read this FIRST when anything in the Time Machine edit path misbehaves
 
-**Nothing in flight. Zero unpushed. Worktrees pruned.** Every item on the list below is `✅`.
-Four bim-ootb PRs merged 2026-08-23: **#1475** (§S68 CPM annotate), **#1477** (§S69 bake-lock 8/8),
-**#1479** (§S70 edit persistence + the cache-key defect), **#1480** (§S71 coherence witness).
-`CACHE_VERSION` **v1073**.
+Written 2026-08-24 after §S67–§S78 (eleven sections, nine merged PRs, five real defects). Every one of
+those defects was a *missing or misordered step in a pipeline nobody had written down in one place*.
+This is that place. **If a Gantt edit does the wrong thing, walk this list in order before forming a
+theory.**
 
-**The one finding worth carrying forward, because it is bigger than this lane:** §S70 proved that
-`persistDb`, `kernel_ops.js` and the Editor were ALL writing the IDB cache under the raw url while
-`cachedFetch` reads `DbResolve.cacheKey(url)` — so on any profile that had loaded the building
-normally, every "survives a refresh" claim in this codebase was false. Fixed and gated here, but if
-anything else persists a db, check its key.
+## 1. The edit pipeline — one gesture, seven obligatory steps
+Any of the 8 edit entry points (drag, resize, ruler shift, group shift, undo, link, unlink, typed
+apply) must do ALL of this, in this order. Each step below was a separate shipped bug at some point:
+
+| # | step | function | if missing you see | §  |
+|---|---|---|---|---|
+| 1 | refuse if the film is recording | `_tmEditLocked(verb)` | a bake desyncs mid-record | §S69 |
+| 2 | run the engine verb | `SA.moveTaskCascade` / `shiftSchedule` / `shiftTasks` / `addDependency` … | — | — |
+| 3 | re-time the elements | `retimeTaskElements` | bars move, model does not | §S67 |
+| 4 | resync the canvas | `_tmResyncAfterRetime()` | **the canvas plays the OLD times** | §S67 |
+| 5 | re-derive float/critical | `_tmAnnotateCpm(schedId)` | stale critical path painted | §S68 |
+| 6 | persist | `_tmPersistEdit(what)` | the edit dies on reload | §S70 |
+| 7 | repaint | `invalidateGanttModel(); computeDays(); drawGanttMini(); renderAtTime(_cursor)` | — | — |
+
+`witness_gantt_gesture_wiring.js` (W-GEST-3) asserts steps 1/4/5/6 exist in all four gesture verbs;
+`witness_gantt_retime_resync_wiring.js`, `witness_gantt_cpm_annotate.js` (W-CPM-1) and
+`witness_gantt_edit_persist.js` (W-PERS-1) each own one step across every path. **A new edit path that
+skips one of these will be caught by those gates — that is why they are derived, not hand-listed.**
+
+## 2. The four recurring bug classes on this lane
+Four traps produced every defect §S67–§S78. When debugging, ask which one you are in:
+
+**(a) Two clocks.** `bar.startTs`/`bar.endTs` are the TM's OWN playback clock — a kernel_ops-derived
+day-offset solve, **near 1970 by construction**. `tasks.schedule_start` is a real calendar date. Mixing
+them writes 1970 dates into the schedule. Bit `commitGanttDrag` (§S22) and again the typed panel
+(§S72, which wrote `1970-01-05` and cached it). **Rule: anything user-facing reads `tasks`, never the
+bar.** Gate: `witness_gantt_props_epoch.js`.
+
+**(b) Two keys.** The IDB slot a write lands in must equal the slot the loader reads.
+- `cachedFetch` reads `DbResolve.cacheKey(url)`, not the raw url (raw = legacy fallback only) — §S70.
+- **Split-mode buildings (`_meta.db` + `_geo.db`: Hospital, Clinic) load `A.db` from `metaUrl`, NOT
+  from `_extracted.db`.** Persisting under `A.DB_URL` there writes a slot nothing reads — §S76/§S78.
+- **The one source of truth is `A._dbPersistUrl`**, set by `streaming.js` at the exact point `A.db` is
+  assigned, in BOTH branches (`:2316` split, `:2485` whole). Every persist path reads
+  `app._dbPersistUrl || app.DB_URL`. Never re-derive split state anywhere else.
+Gates: `witness_gantt_edit_persist.js` (W-PERS-5), `witness_db_cache_key.js`.
+
+**(c) Draw order.** The Gantt canvas paints fill → yellow captured frame → orange cursor frame → cyan
+selection frame → **CPM float rail** → label. The rail is LAST because anything drawn after it covers
+it: §S74 shipped a 2px rail that rendered as 1px because the yellow 1px `strokeRect` owned its bottom
+row. **A source gate cannot see this** — the fix's gate (W-CPM-6) asserts source ORDER, and the proof
+reads canvas pixels back with `getImageData`. If a cue "isn't showing", check order before logic.
+
+**(d) Text slices in witnesses.** A witness that finds code with `indexOf('function NAME(')` will
+happily match a COMMENT mentioning that function, or slice a fixed byte window that the function has
+since outgrown. Both happened: G-COH-6 (2200-char window vs a call at offset 5073, §S71) and
+`witness_gantt_lock_integrity` (matched a comment, §S73). **Always brace-match, always line-anchor.**
+
+## 3. Where the truth is — the § tags to grep, by surface
+```
+edit committed      §GANTT_EDIT_MOVE / _RESIZE / §GANTT_DRAG_COMMIT / §GANTT_PROPS_APPLY
+                    §TM_RULER_SHIFT_COMMIT / §GANTT_GROUP_SHIFT_COMMIT / §GANTT_EDIT_UNDO
+                    §GANTT_EDIT_LINK / §GANTT_EDIT_UNLINK
+refused             §TM_BAKE_LOCK (mid-record) · §GANTT_*_REJECT · §GANTT_EDIT_CYCLE_BLOCKED
+elements re-timed   §GANTT_RETIME · §RETIME_OUTLIER_AUDIT (collapsed60s/inverted must be 0)
+clock translation   §S22_EPOCH_FIX / §S22_EPOCH_FIX_DETAIL
+critical path       §GANTT_CPM_ANNOTATE (tasks/critical/%/projectDuration/float, datesWritten=0)
+persistence         §GANTT_EDIT_PERSIST (what=, url=) then §SCHED_PERSIST (key=, size=)
+reload actually hit  §CACHE_HIT <file> — CHECK THE FILENAME, split mode must show *_meta.db
+lock gate           §GANTT_LOCK_BASELINE / §GANTT_LOCK_VERIFY / §GANTT_LOCK_BREACH
+selection           §GANTT_GROUP_SELECT count=N   (count=0 = cleared)
+```
+
+## 4. Running the probes — two traps that cost hours
+- **`SERVE_ROOT` must be the REPO ROOT, not `viewer/`.** The page loads `../erp/bigdecimal.js` and
+  `../erp/ad_seed.db`. Serving `viewer/` alone 404s them and manufactures five `RoundingMode`
+  TypeErrors plus `§TM_TWIN_ERR`/`§TM_SHOPFLOOR_ERR` that look exactly like product defects. §S72 lost
+  a cycle to this before discarding them as artefacts.
+- **Chrome version.** puppeteer@22's default Chrome 127 could not create a WebGL2 context under
+  `--use-angle=swiftshader` here: `§INIT_VIEWER_ERROR` cascaded into aborting sql.js, so `A.db` never
+  populated and `toggleTimeMachine` took **180s** to appear — for any building, on unmodified main.
+  Chrome 152 (`~/.cache/puppeteer/chrome/linux-152.0.7977.42/`) gives `A.db` ready in 1.7–4.4s. §S78.
+
+Available probes: `scripts/probe_gantt_gestures.js` (all four canvas gestures, gates),
+`scripts/probe_gantt_drag_outliers.js` (§RETIME_OUTLIER_AUDIT on Terminal), 
+`scripts/probe_splitmode_persist_direct.js <Building>` (drag→persist→**real second browser**→read back;
+data-level, never touches the canvas), `scripts/probe_gantt_hospital_persist.js` (the canvas version).
+
+## 5. Product decisions already settled — do not re-litigate without the user
+- **The drag does NOT run CPM, deliberately.** It runs a push-only cascade + predecessor clamp; CPM
+  runs after it in `fixedDates` mode to derive float/criticality FROM those dates and never writes
+  one. A true re-solve is a feature, not a bug fix (§S68). Measured: both modes agree on an unedited
+  schedule across all 8 buildings; they diverge only after an edit, which is exactly why the flag
+  matters. **The open product question is pull-back** (moving a task earlier does not pull successors
+  earlier, so a schedule never compresses) — advised as an explicit action, not an implicit drag effect.
+- **Marquee selection shadows the link gesture** (a pointerdown on a selected bar starts a group drag,
+  checked first). Clicking empty canvas clears the selection. Intended; W-GEST-2 pins the ordering.
+- **`setGanttBaseline` and `_materializeNativeSchedule` are exempt from the bake lock**, each for a
+  stated reason (writes no timeline row / can only write a building's FIRST schedule). W-TBL-5c/5d
+  assert the property that earns each exemption, not the name.
+- **`buildTaskIndex`'s stale-regen does NOT persist** — it runs on a plain page load and would put a
+  252MB IDB write on every ordinary visit (§S70).
+
+## 6. Known-not-done (so it isn't re-discovered as a surprise)
+- **Coverage (§S72 gap 3, narrowed by §S77, still the big one):** most `§` tags and named functions in
+  `time_machine.js` are referenced by no test. The refusal cluster is live-fired now; the rest is not.
+- **`time_machine.js` is ~8.8k lines** (§S72 gap 8). §S53 extracted `gantt_model.js` and stopped.
+- **The standalone Editor tab has no split-mode handling at all** — it always loads the extracted.db
+  url and never branches to `_meta.db`. Whether it even opens a split-mode building's task data
+  correctly is untested (named by §S78, deliberately out of that PR's scope).
+- **`erp/version.json`'s `build` field stamps `erp/sw.js`'s CACHE_VERSION, not the viewer's.** The
+  System Monitor Release row therefore does NOT tell you which viewer build you are on (§S74).
+
+---
+
+# ▶ RESUME HERE (2026-08-24 — LANE CLOSED. Read the 🗺 DEBUG MAP above before debugging anything here.)
+
+**Nothing in flight. Zero unpushed. Worktrees pruned. Every witness green on `origin/main`.**
+
+**Eleven sections, twelve merged bim-ootb PRs, five real defects found and fixed** across 2026-08-23/24.
+`CACHE_VERSION` **v1077** (viewer), deployed — GH Pages auto-deploys every push to `main`.
+
+| § | what | PR |
+|---|---|---|
+| S68 | drag → CPM **annotate** (float + critical path), never a re-solve | #1475 |
+| S69 | §TM_BAKE_LOCK: one shared refusal, **8 of 8** edit paths (was 2) | #1477 |
+| S70 | Gantt edits persist — **and the raw-url-vs-cacheKey defect under it** | #1479 |
+| S71 | G-COH-6 false negative; §RETIME_OUTLIER_AUDIT counters asserted | #1480 |
+| S72 | **end-to-end audit** — the gap list this lane then worked to near-zero | — |
+| S72 | 🔴 P1: the typed panel wrote **1970 dates** and cached them | #1482 |
+| S73 | four canvas gestures gated; **the lock breach that never named what broke** | #1484 |
+| S74 | 🔴 the CPM rail was **painted over** by the captured-frame | #1486 |
+| S75 | the float-rail **legend** (key, log and pixels agree) | #1491 |
+| S76 | cacheKey K3 no-leading-slash closed; **split-mode persistence P0 found** | #1492 |
+| S77 | gap 3 partial — the ScheduleAuthor-missing refusal cluster live-fired | #1493 |
+| S78 | 🔴 **split-mode P0 closed** — Hospital/Clinic edits survive reload | #1494 |
+
+**§S72's gap list, final:** 1 ✅ · 2 ✅ · 3 narrowed (§S77) · 4 ✅ (§S76 found the P0, §S78 closed it) ·
+5 ✅ · 6 ✅ · 7 ✅ · 8 open (structural: `time_machine.js` ~8.8k lines).
+
+**§S76/§S77/§S78 were written by a CONCURRENT session** that picked this lane's own gap list up and
+worked it. Its claims were re-verified against `origin/main` here on 2026-08-24: `A._dbPersistUrl` is
+set in both `streaming.js` branches (`:2316`, `:2485`), all three persist call sites read
+`app._dbPersistUrl || app.DB_URL`, K3 matches `(^|/)(deploy|modeller)/`, and the full witness sweep is
+green. **It did not weaken any gate this lane wrote.**
+
+**The finding that outlives this lane — persistence was broken twice, for two different reasons:**
+§S70 found every writer (`persistDb`, `kernel_ops.js`, the Editor) storing under the RAW url while
+`cachedFetch` reads `DbResolve.cacheKey(url)`. §S76 then found that even with the right derivation,
+**split-mode buildings load `A.db` from `_meta.db`**, so a write keyed to `_extracted.db` lands in a
+slot the reload never reads — Hospital and Clinic lost every edit, silently. Both fixed; the single
+source of truth is now `A._dbPersistUrl`. **If anything else in this codebase persists a db, check its
+key against what the loader reads — twice now that has been the bug.**
 
 **2026-08-23 latest: the CPM cue is visible and self-explaining.** §S74 found the rail was being
 painted over by the yellow captured-frame (measured in canvas pixels on the live site, not eyeballed)
