@@ -55,6 +55,13 @@ The verdicts above are **coverage** — does the engine *interpret* the surface?
 anchored on [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) (MOrder archetype + ~25 document deltas = the real
 denominator, not 496 classes / 735k LOC).
 
+> **Enumerable ledger + bundle runner:** [`ERP_EQUIVALENCE_LEDGER.md`](ERP_EQUIVALENCE_LEDGER.md) is the
+> numbered, mechanically-checkable version of the 49 rows below (script path verified to exist on disk per
+> row, `build/erp/run_bundle.sh` re-runs all 46 tally rows — last real run 2026-08-24: **46/46 PASS**). It
+> also reconciles the "52" headline against raw arithmetic and names an honest 1-row discrepancy (53
+> mechanically-summed vs 52 asserted) — read it before citing "52" as independently re-derived. The prose
+> rows below are the evidence/narrative; the ledger file is the count.
+
 | equivalence | status (2026-06-09) |
 |---|---|
 | ✅ **oracle-equivalent** | **Trial-balance / posting-read** — `test_report_fin.js` folds the **real GardenWorld `fact_acct`** (300 rows, client 11, captured from the Docker Postgres via `extract_fact_acct.sh`) → `ΣDr==ΣCr=46574.97`, **`maxDiff=0c`** vs the source. Our reporting reproduces iDempiere's posted journal to the cent. |

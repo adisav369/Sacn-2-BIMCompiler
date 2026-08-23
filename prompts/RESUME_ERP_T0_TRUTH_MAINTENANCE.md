@@ -57,8 +57,22 @@ to whatever's in the container today. Always bake additively into the existing `
 ## WHAT'S STILL OPEN
 
 ### From the original T-0 list (2026-08-12), not touched this session
-1. **Make the 52-oracle-equivalent ledger enumerable + bundle-re-runnable.** Still prose-increments
-   (41→42→43→49→52), not a numbered list; no `build/erp/run_bundle.sh`; CI runs exactly 1 of ~52 witnesses.
+1. ✅ **DONE (witness) 2026-08-24** — Enumerable ledger + bundle runner. New `docs/internal/
+   ERP_EQUIVALENCE_LEDGER.md`: all 49 raw `✅ oracle-equivalent` rows from `ERP_COVERAGE_MATRIX.md`'s
+   Second-axis section, numbered, each with a witness ID, script path (verified `[ -f ...]` on disk, all
+   49/49 found), log path, and tally Y/N (3 rows are evidence-only, explicitly marked in the source text).
+   New `build/erp/run_bundle.sh` runs every tally-row script via the existing `run_witness.sh` convention —
+   **actually run: 46/46 PASS, 0 FAIL, 0 MISSING** (`build/erp/run_bundle.log`, real log read, not just exit
+   code). **Reconciliation finding (new, not previously known):** raw mechanical arithmetic over the current
+   table — 46 tally rows, 2 of which bundle multiple surfaces (row 48 W-POST-B3 = 6, row 49 W-POST-TAIL = 3,
+   per the source's own `ledger N→M` annotations) — sums to **53 surfaces, not the headline 52**. The
+   doc's own `41→42→43→49→52` chain is internally consistent but rests on a "41" baseline
+   (`prompts/HARDEN_MATRIX.md:93`) that was never itself recounted from the table; the pre-B1 span of rows
+   mechanically counts to 42, not 41 — that's the exact 1-row source of the gap. Not inflation (per the
+   2026-08-12 review's own finding), but now a precisely quantified discrepancy instead of "cannot be
+   recounted." CI still runs exactly 1 of the 46 (`poc_morder_fsm.js`) — named as a follow-up (needs a
+   docker-PG / idempiere-checkout / bim-ootb-playwright CI runner most of these depend on), not wired this
+   pass. `ERP_COVERAGE_MATRIX.md` cross-references the new ledger as the count's source of truth.
 2. **Write back the lane index.** 39 "Project — ERP" memory lanes, most stale since mid-June, ~15
    done-but-not-buried, 4 self-contradicting, the ledger number reported as 14/20/41/52 across different
    files with no single source of truth. Untouched — this session deliberately scoped narrower (2 named
@@ -118,10 +132,9 @@ dominant remaining distance, by a wide margin, and nothing currently scheduled c
 
 ## Queue, in order (all of this is in scope by the standing intent above — not a menu, a sequence)
 1. ✅ Item 6 (the dead witness citations) — DONE 2026-08-24, see above.
-2. Item 8 (DisplayLogic-live regression) — same failure family as the access-gate fix that opened this
+2. ✅ Item 1 (enumerable ledger) — DONE 2026-08-24, see above.
+3. Item 8 (DisplayLogic-live regression) — same failure family as the access-gate fix that opened this
    whole T-0 pass, discovered as a direct byproduct of closing item 6, reviewer context still warm.
-3. Item 1 (enumerable ledger) is the highest-leverage T-0 remnant — it's the thing that makes every other
-   claim in this file checkable instead of asserted.
 4. Item 4 (`gateRecordFor` wiring) is the natural next security-hardening step after this session's access
    work, same file family, same reviewer context still warm.
 5. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
