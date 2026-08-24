@@ -1105,54 +1105,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" class="md-nav__link">
+  <a href="#authoring-editing-and-importing-the-4d5d-schedule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Author the 4D/5D schedule — build it up from the model (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Playing back a large building — the box-cube LOD toggle (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What-if schedule — slip a phase, watch the chain re-fold (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schedule Editor — the advanced Gantt, on its own surface (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import a Primavera / MS Project programme — adopt an existing plan (LIVE: P6)
+        Authoring, editing, and importing the 4D/5D schedule
       
     </span>
   </a>
@@ -1997,6 +1953,8 @@
       
         
       
+        
+      
     
     
     
@@ -2393,6 +2351,34 @@
     
   
     IFC Export Guide (for the BIM author)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TimeMachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time Machine (4D Scheduling & Editing)
   
 
     
@@ -3021,54 +3007,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" class="md-nav__link">
+  <a href="#authoring-editing-and-importing-the-4d5d-schedule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Author the 4D/5D schedule — build it up from the model (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Playing back a large building — the box-cube LOD toggle (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What-if schedule — slip a phase, watch the chain re-fold (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schedule Editor — the advanced Gantt, on its own surface (LIVE)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import a Primavera / MS Project programme — adopt an existing plan (LIVE: P6)
+        Authoring, editing, and importing the 4D/5D schedule
       
     </span>
   </a>
@@ -4203,227 +4145,12 @@ the cent</strong>, every phase <code>SeqNo</code> tracing to <code>sequence_rule
 <p>A sibling <strong><code>› VO</code></strong> button (in the model-diff panel) folds a model revision into a signed <code>C_Order</code>
 variation amendment against the same project.</p>
 </blockquote>
-<h3 id="author-the-4d5d-schedule-build-it-up-from-the-model-live">Author the 4D/5D schedule — build it up from the model <em>(LIVE)</em><a class="headerlink" href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" title="Permanent link">&para;</a></h3>
-<p>The <strong>Time Machine</strong> is not only for playback — it is where you <strong>author</strong> the construction schedule and
-its cost, building the 4D/5D <strong>up from a bare model</strong>. There is no separate scheduling tool and no
-re-linking step: every edit is written straight into the IFC-native schedule tables the viewer already
-reads, so the visual gesture and the system-of-record are the <em>same signed rows</em>.</p>
-<p><strong>Where the button is</strong> — in the viewer:</p>
-<ol>
-<li>Open a building and the <strong>Time Machine</strong> (the clock pill, or press <strong><code>t</code></strong>).</li>
-<li>On the panel, press <strong><code>✎</code></strong> (Author 4D Schedule) — the authoring wizard opens.</li>
-</ol>
-<p><strong>What you do:</strong></p>
-<ol>
-<li><strong>Generate first draft</strong> — folds the model's elements into <strong>organized phases</strong> (a WBS): Substructure,
-   Superstructure, MEP, Architecture, Finishes — grouped by the same trade rules the Time Machine plays.
-   Every element is assigned to a phase, contiguous dates are laid out, and the <strong>5D cost folds per phase</strong>.</li>
-<li><strong>Craft it up</strong> — rename a phase, expand it to list its elements (click one to light it in 3D), and
-   <strong>reassign</strong> an element to a different phase from its dropdown. Because the cost folds from the
-   assignments, <em>moving an element moves its cost between phases</em> — the WBS you author organizes the 5D.</li>
-<li><strong>Tune the dates</strong> — the <strong><code>−5d</code> / <code>+5d</code></strong> steppers and the <strong>Start</strong> date lay the phases out; on the
-   gantt you can also drag a bar directly (the shipped drag-to-slip).</li>
-<li><strong>Apply to 4D ▶</strong> — re-folds the Time Machine so the gantt and the playback show <em>your</em> schedule.</li>
-</ol>
-<p><img alt="The Author 4D Schedule wizard (the ✎ button on the Time Machine) on a real SampleHouse — **Generate first draft** folded 60 elements into three organized phases (Superstructure 28 · Architecture 15 · Finishes 17), each with its element count and 5D cost; the footer totals **5D 59,234** in the active rate pack. Rename a phase, reassign an element (it carries its cost with it), or tune the dates — every edit lands in the IFC-native schedule tables." src="../figs/author4d_wizard.png" /></p>
-<p><strong>Start from nothing.</strong> Tick <strong>Start blank (set the dates yourself)</strong> and the wizard organizes the phases
-and assignments but leaves them <strong>undated</strong> — nothing shows on the timeline until you set a <strong>Start</strong> and
-press <strong><code>Schedule now ▶</code></strong> to originate the dates yourself. The auto-draft is a <em>suggested start</em>, never
-the only path: you can accept it and finish fast, or build the schedule up by hand.</p>
-<p><img alt="Start blank — the same three phases are organized but **undated** (“unscheduled”); a banner prompts you to set a start and press **Schedule now** to originate the dates. The 5D cost still folds from the assignments (it does not depend on dates). This is the build-it-up-from-a-blank-model path." src="../figs/author4d_blank.png" /></p>
-<p>The link between an element and its phase is <strong>identity by construction</strong> — it survives renaming the phase
-or the element, where name-matching schedulers would re-bind or break.</p>
-<blockquote>
-<p><strong>Zoom-Across knows where the Time Machine is.</strong> When the Time Machine is open and you pinpoint an
-element (from <strong>Find</strong>, or a <strong>Zoom-Across</strong> from a record in the ERP), the timeline <strong>jumps to that
-element's construction moment</strong> instead of only lighting it in 3D — the Time Machine <em>consumes</em> the
-pinpoint. With the Time Machine closed, the pinpoint goes to <strong>Find</strong> as before (cost/location first).</p>
-</blockquote>
-<h3 id="playing-back-a-large-building-the-box-cube-lod-toggle-live">Playing back a large building — the box-cube LOD toggle <em>(LIVE)</em><a class="headerlink" href="#playing-back-a-large-building-the-box-cube-lod-toggle-live" title="Permanent link">&para;</a></h3>
-<p>On a big model (LTU-scale, 100K+ elements), scrubbing or playing the Time Machine forward keeps
-every already-built element rendered at full detail forever, even the parts nowhere near your
-camera — that's real GPU cost paid on every frame for geometry you can't currently see. The
-box-cube pill trims exactly that, without ever hiding or degrading anything you're actually
-looking at.</p>
-<p><strong>Where the button is:</strong></p>
-<ol>
-<li>Open a building with more than <strong>50,000 elements</strong> and open the <strong>Time Machine</strong> (the clock
-   pill, or press <strong><code>t</code></strong>).</li>
-<li>A small <strong>cube-wireframe pill</strong> appears in the panel's header row, next to the Day/Night and
-   Drone-Pilot icons — it only shows up at all on large buildings; smaller ones never need it.</li>
-<li>Click it to turn the proxy <strong>on</strong>. Click again to go back to today's full-detail rendering.</li>
-</ol>
-<p><strong>What it does:</strong></p>
-<ul>
-<li>Anything <strong>currently under construction</strong> (the active build) or <strong>just finished</strong> (the short
-  amber "just placed" glow) always renders in full — the toggle never touches those.</li>
-<li>Anything else that's already built stays <strong>full detail (LOD400)</strong> as long as it's <strong>close to the
-  camera and inside your view</strong> — so whatever you're actually looking at never loses quality.</li>
-<li>Anything already built that's <strong>far away or off to the side of what you're looking at</strong> collapses
-  to a lightweight <strong>wireframe box</strong> in its discipline's colour — the same "not yet detailed" visual
-  language the model already uses while a building is still streaming in.</li>
-</ul>
-<p><img alt="Time Machine mid-playback (Day 64/200) on a 122,000-element building with the box-cube LOD pill turned on — the storey directly in view stays full solid LOD400 geometry, while the surrounding structural frame and far bays, already built but outside the camera's immediate view, render as lightweight cyan wireframe boxes coloured by discipline." src="../img/viewer/time-machine-dlod-wireframe.png" /></p>
-<ul>
-<li>Boxes are <strong>never pickable</strong> as real elements — clicking one does nothing, the same as clicking
-  an ordinary loading placeholder.</li>
-<li>Turning it off is instant and exact: every element goes back to its normal full-detail rendering,
-  nothing about the model itself ever changes — it's a display choice only, made per-session, never
-  saved into the model or the schedule.</li>
-</ul>
-<h3 id="what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live">What-if schedule — slip a phase, watch the chain re-fold <em>(LIVE)</em><a class="headerlink" href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" title="Permanent link">&para;</a></h3>
-<p>Once a building is folded into a project, you can ask <strong>"what if this phase slips?"</strong> without touching the
-real plan.</p>
-<p><strong>Where the button is</strong> — on the <strong>Time Machine</strong> (the same hub that owns the 4D/5D):</p>
-<ol>
-<li>Open a building and the <strong>Time Machine</strong> (the clock pill, or press <strong><code>t</code></strong>).</li>
-<li>Press <strong><code>⑂</code></strong> (What-if) on the panel.</li>
-</ol>
-<p>It works out of the box — you do not even have to push a project first: with no project of your own yet, the
-panel opens on the built-in <strong>Hospital</strong> project (the 7-phase chain below). Push one from the viewer's
-<strong>Find</strong> panel with <strong><code>› ERP</code></strong> and it opens on <em>that</em> one instead.</p>
-<p><img alt="What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it." src="../figs/whatif_ripple.png" /></p>
-<p>The project's phases are a <strong>finish-to-start chain</strong> — each phase starts when the one before it finishes
-(that is exactly how the fold laid them out). So when you <strong>slip one phase</strong> with the <strong><code>−</code> / <code>+</code></strong> steppers,
-<em>every downstream phase re-folds with it</em>, in <strong>blue</strong>, beside the grey official plan:</p>
-<ul>
-<li><strong>Grey bars</strong> = the official planned schedule (untouched).</li>
-<li><strong>Blue bars</strong> = the what-if — the rippled schedule. Upstream phases (before your slip) stay put; the
-  slipped phase and everything after it shift together.</li>
-<li>The header reads the impact straight off the fold: the new <strong>finish date</strong> (and the day slip), and how
-  <strong>planned value (PV)</strong> moves. The <strong>budget (BAC) never changes</strong> — a slip moves <em>dates</em>, not scope.</li>
-</ul>
-<p>Then decide:</p>
-<ul>
-<li><strong>Accept — re-baseline</strong> writes the rippled dates back onto the project as the new official plan (and
-  saves it), so the schedule now reflects the slip.</li>
-<li><strong>Discard</strong> drops the what-if entirely — the official plan was never touched.</li>
-</ul>
-<p>This is the <strong><a href="#15-blue-future-the-speculative-branch-built-in-pre-release-test-harness">Blue Future</a></strong>
-branch model applied to the schedule: the what-if lives on a speculative blue branch over the same signed
-op-log, so it is real (not a mock) yet completely reversible until you accept it. The same engine that
-unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
-scheduling tool, no drift.</p>
-<h3 id="schedule-editor-the-advanced-gantt-on-its-own-surface-live">Schedule Editor — the advanced Gantt, on its own surface <em>(LIVE)</em><a class="headerlink" href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" title="Permanent link">&para;</a></h3>
-<p>The Time Machine's <strong><code>✎</code></strong> wizard and <strong><code>⑂</code></strong> what-if are the <em>intuitive</em> front — quick, visual, one
-gesture. When you want the <strong>serious planner</strong> — an expandable WBS, real dependencies, a critical path,
-and a draggable Gantt — press <strong><code>↗ Editor</code></strong> on the Time Machine (right beside ✎ Author and ⑂ What-if) to
-open the <strong>Schedule Editor</strong> in its own tab, loaded on the same model. <em>(You can also open it directly at
-<code>viewer/schedule_editor.html?db=…</code>.)</em> It is a separate, focused surface so the front visual stays light;
-both edit the <strong>same IFC-native schedule tables</strong>, so nothing forks.</p>
-<p><img alt="The Schedule Editor on a real SampleHouse — left: the **WBS outline** (Project → Superstructure · Architecture · Finishes, each with its element count and dates); right: the **dependencies** (a finish-to-start chain you author and retype); bottom: the **interactive Gantt**. **Compute CPM** has run — the critical path is red on the rail, in the dependency links, and along the timeline bars, and the header reads *project 90d · critical 3/3*. Drag a bar to reschedule; drag its ▸ handle onto another bar to link." src="../figs/sched_editor_gantt.png" /></p>
-<p>What it does, and how it earns each step:</p>
-<ol>
-<li><strong>Expandable WBS outline</strong> — the phases you authored render as a collapsible tree, each leaf showing
-   its element count and dates.</li>
-<li><strong>View &amp; edit dependencies</strong> — add a link between two phases, choose its type (<strong>FS / SS / FF / SF</strong>),
-   set a <strong>lag</strong>, or delete it. The graph is written to the IFC-native <code>task_sequences</code> table; a link
-   that would create a <strong>cycle</strong> is refused (a schedule cannot loop).</li>
-<li><strong>Compute CPM</strong> — a real <strong>critical-path forward/backward pass</strong> over the dependency graph computes
-   each task's early/late dates, <strong>total &amp; free float</strong>, and which tasks are <strong>critical</strong>. The critical
-   path lights up red across the outline, the links, and the bars; the readout shows the project duration
-   and how many tasks are critical. <em>(Editing the graph after a run clears the result until you recompute,
-   so a stale critical path is never shown.)</em></li>
-<li><strong>Interactive Gantt</strong> — <strong>drag a bar</strong> to reschedule it (snapped to whole days, duration preserved);
-   <strong>drag the ▸ handle</strong> from one bar onto another to <strong>link</strong> them. This is the MS-Project gesture, on
-   your signed schedule.</li>
-</ol>
-<p><strong>Live across tabs.</strong> Every edit is a signed op broadcast on one channel, so a second open surface
-<strong>re-folds it live</strong> — drag a bar in the editor and a Time Machine (or a second editor) open on the same
-model updates immediately, because both are folds of the <em>same</em> log. This is the difference from the
-field: open-source 4D (Bonsai) can build a schedule and run CPM but its Gantt is a generated picture you
-edit through side panels; MS Project gives you the interactive Gantt but has no model, no cost, and no
-ERP. The Schedule Editor is a real drag-on-the-chart editor <strong>on one signed op-log that the model, the
-4D playback, the 5D cost, and the ERP all fold from</strong> — so a date you drag here is the same fact the
-enterprise reads.</p>
-<blockquote>
-<p><strong>Where it stops — on purpose.</strong> The editor computes from the graph <em>you</em> author; it never
-auto-reschedules or "levels" resources for you. Automatic schedule optimisation is a decades-deep
-rabbit hole and a place for drift; the line here is deliberate — deterministic compute, your plan.</p>
-</blockquote>
-<hr />
-<h3 id="import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6">Import a Primavera / MS Project programme — adopt an existing plan <em>(LIVE: P6)</em><a class="headerlink" href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" title="Permanent link">&para;</a></h3>
-<p>You don't have to author from scratch. If the schedule already lives in <strong>Primavera P6</strong> or <strong>MS
-Project</strong>, bring it in: in the Schedule Editor press <strong><code>⤓ Import P6</code></strong>, pick the export file, and its
-<strong>WBS, dependencies and dates land straight into the same IFC-native tables</strong> the rest of the 4D/5D
-stack reads. The imported plan immediately gets the expandable WBS, the <strong>FS/SS/FF/SF</strong> dependency
-editor, <strong>Compute CPM</strong>, the drag-Gantt, What-if and the 5D cost fold — nothing special-cased.</p>
-<p><strong>How the two worlds meet.</strong> The 3D model comes from <strong>Autodesk</strong> (Revit/Navisworks → IFC → the BIM
-Viewer). The programme comes from <strong>Primavera / MS Project</strong>. The importer is a thin reader that turns
-either side's export into our one signed schedule — and the two are stitched together by <strong>binding</strong>:</p>
-<p><img alt="How the BIM model (Autodesk) and the construction programme (Primavera / MS Project) meet — the importer lands the plan into the IFC-native schedule; binding ties each task to a model element; the model, 4D playback, 5D cost and ERP all fold from one signed log." src="../figs/foreign_import_flow.svg" /></p>
-<p><strong>The formats</strong> — each is a separate reader behind one mapper, so the result is identical whichever you
-feed in:</p>
-<table>
-<thead>
-<tr>
-<th>Source</th>
-<th>File</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Primavera P6</td>
-<td><strong><code>.xer</code></strong> (the interchange planners email around)</td>
-<td><strong>LIVE</strong></td>
-</tr>
-<tr>
-<td>Primavera P6</td>
-<td><strong><code>.xml</code></strong> — P6 XML / <strong>PMXML</strong> (the open, structured export)</td>
-<td><strong>LIVE</strong></td>
-</tr>
-<tr>
-<td>MS Project</td>
-<td><strong><code>.xml</code></strong> — <strong>MSPDI</strong> (Project's XML export)</td>
-<td><strong>LIVE</strong></td>
-</tr>
-</tbody>
-</table>
-<p><em>(Both <code>.xml</code> flavours are auto-detected by content — you don't pick the format, just the file.)</em></p>
-<p><strong>The honest boundary — why import isn't yet 4D.</strong> A P6 or MS Project file carries the <em>plan</em> (tasks,
-logic, dates) but <strong>no model geometry</strong> — it has activity codes, not your building's element GUIDs. So a
-freshly imported schedule is a real, editable, CPM-computable programme, but its tasks aren't yet tied to
-anything you can see. You make it <strong>4D</strong> by <strong>binding</strong>: in the <strong><code>✎</code></strong> wizard you assign each task the
-elements it builds (rename-proof — the link survives a model re-export). Once bound, the 5D cost folds up
-from the assigned elements and the Time Machine scrubs the model along your imported dates. <em>This binding
-step is exactly the thing a P6 reporting tool cannot do — it has no model to bind to.</em></p>
-<p><strong>Auto-bind by convention — skip the manual first pass.</strong> Because the planner controls the activity
-<em>name</em> in P6/MS Project, they can write the binding <strong>into the file</strong> as a short token appended to the
-name:</p>
-<div class="highlight"><pre><span></span><code>@&lt;discipline&gt;:&lt;IfcClass&gt;[|&lt;IfcClass&gt;…][:&lt;storey&gt;]
-</code></pre></div>
-<p>For example <code>Columns @STR:IfcColumn</code>, <code>Structural Framing @STR:IfcMember|IfcBeam</code>, or
-<code>Internal Finishes @ARC:IfcCovering:Level 3</code>. On import, tick <strong>“auto-bind by convention”</strong> (next to the
-<strong>⤓ Import P6</strong> button) and the importer parses each token <strong>off</strong> the name (the WBS still shows the clean
-label, e.g. <code>Columns</code>), resolves it against your model — <em>all</em> elements whose <code>discipline</code>/<code>IfcClass</code>/<code>storey</code>
-match — and pre-binds the task. You get a reviewable first pass instead of clicking every task. It is
-<strong>coarse on purpose</strong>: <code>@STR:IfcColumn</code> binds <em>all</em> columns to one task; refine to per-level sub-tasks with
-<strong>break-down by storey</strong> in the editor. Two honest constraints make this safe, not a guess: the token is a
-<strong>declared predicate we execute</strong> — <em>not</em> an embedded GUID (which would rot the moment the model is
-re-exported) and <em>not</em> a fuzzy name match (which guesses). A selector survives a re-export where a baked
-GUID list would bind nothing; anything a selector can’t resolve is <em>reported</em> (“N selector(s) matched
-nothing — review”), never silently dropped. The pre-bind is the same signed, rename-proof <code>task_elements</code>
-link as a manual bind — you can adjust or clear it per task.</p>
-<blockquote>
-<p><strong>Demo files (self-binding).</strong> Alongside the plain demo programmes, the tokened variants
-<code>tests/fixtures/Hospital_GW_Programme.bound.xer</code> / <code>.bound.xml</code> carry the <code>@disc:class</code> tokens, so the
-import is self-binding with the checkbox on — no sidecar needed.</p>
-<p><strong>Demo files.</strong> The same ready GW-Hospital programme ships in all three formats —
-<code>tests/fixtures/Hospital_GW_Programme.xer</code> (P6 XER), <code>…/Hospital_GW_Programme.xml</code> (P6 PMXML) and
-<code>…/Hospital_GW_MSProject.xml</code> (MS Project MSPDI) — so you can try the import end-to-end on the sample
-model. Every format maps to the same rows, CPM reproduces the plan's 300-day critical path exactly, and
-525 real elements bind and fold to 5D cost.</p>
-</blockquote>
-<p><strong>Does it survive a <em>real</em> P6 file?</strong> The Hospital demo above is <em>ours</em> — useful to learn the flow, but it
-can't prove fidelity against quirks only a real export carries (a tool can't grade its own homework). So
-the import is also verified against a <strong>genuinely Primavera-emitted</strong> <code>.xer</code> (a public, cited sample, 52
-tasks / 61 links). The result: every record parses with <strong>zero unmapped links and zero dangling
-references</strong>, and our critical path
-<strong>exactly matches P6's own</strong> (<code>driving_path_flag</code>, 52/52). The one honest gap: the imported <em>dates</em> land a
-few days early on long chains because we count <strong>calendar days</strong> while P6 follows a <strong>working calendar</strong>
-(skipping weekends/holidays). We report that offset rather than hide it — it's a <strong>smaller, named gap</strong>
-than before, and modelling the working calendar is a clean follow-up for a later project.</p>
+<h3 id="authoring-editing-and-importing-the-4d5d-schedule">Authoring, editing, and importing the 4D/5D schedule<a class="headerlink" href="#authoring-editing-and-importing-the-4d5d-schedule" title="Permanent link">&para;</a></h3>
+<p>The Time Machine's own topic — authoring a schedule (<strong><code>✎</code></strong>), the box-cube LOD toggle for large
+buildings, What-if slips, direct Gantt editing (drag / resize / link / marquee-group-move /
+<strong>⏪ Pull Back</strong>), the standalone Schedule Editor, and Primavera P6 / MS Project import — is now
+documented on its own page:</p>
+<p><strong>→ <a href="../TimeMachine/">Time Machine — the 4D construction timeline</a></strong></p>
 <hr />
 <p><a id="hr-tenancy"></a></p>
 <h2 id="tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator">Tenancy — lease the actual geometry  <em>(ALPHA — HR_BIM_Asset demonstrator)</em><a class="headerlink" href="#tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator" title="Permanent link">&para;</a></h2>

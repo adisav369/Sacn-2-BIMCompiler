@@ -1053,6 +1053,8 @@
       
         
       
+        
+      
     
     
     
@@ -1449,6 +1451,34 @@
     
   
     IFC Export Guide (for the BIM author)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TimeMachine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time Machine (4D Scheduling & Editing)
   
 
     
@@ -2036,6 +2066,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#21-closed-the-access-gate-finding-wired-live-2026-08-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2.1 CLOSED — the access-gate finding, wired live (2026-08-23)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-2026-08-23-t-0-still-not-started-a-fresh-structural-triage-against-the-live-pg-found-a-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7 — 2026-08-23: T-0 still not started; a fresh structural triage against the live PG found a new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#showstopper-before-it-found-a-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        showstopper before it found a fix
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2339,6 +2402,203 @@ impossible.</p>
 highest-leverage target is the T-0 truth-maintenance pass of §5.1 — re-score/wire the access-gate rows, make
 the 52-ledger enumerable + bundle-re-runnable, write back the lane index — followed by the §RULE-EDIT grail
 witness as the next build keystone.</strong></p>
+<hr />
+<h2 id="21-closed-the-access-gate-finding-wired-live-2026-08-23">§2.1 CLOSED — the access-gate finding, wired live (2026-08-23)<a class="headerlink" href="#21-closed-the-access-gate-finding-wired-live-2026-08-23" title="Permanent link">&para;</a></h2>
+<p>11 days after this review, the T-0 pass had not started (0 ERP commits in that window — confirmed by
+<code>git log --since=2026-08-12 -- erp/</code>). Closed now, scoped to exactly the §2.1 finding, nothing else:</p>
+<ul>
+<li><code>erp/ad_access.js</code> shipped as a true twin of <code>build/erp/ad_access.js</code> (md5-identical, verified before AND
+  after a defensive bugfix described below — the twin was re-synced, not allowed to drift).</li>
+<li><code>erp/idmp_session.js</code>'s <code>accessibleWindows</code>/<code>accessibleProcesses</code>/<code>accessibleForms</code> now delegate to
+  <code>AdAccess.buildRole(...).gateWindow/gateProcess/gateForm</code> via a <code>db.prepare().get()/.all()</code> shim
+  (<code>toB3</code>, the same shape <code>idempiere.html</code>'s own <code>_b3w</code> and <code>erp/doc_cycle_validator.js</code>'s <code>mkAdapter</code>
+  already use for this exact node-shaped-code-on-sql.js problem — not a new pattern). External return
+  shape is unchanged (<code>{id: {rw:bool}}</code>, still truthy — every caller only tests presence); a loud
+  <code>§ACCESS_GATE_MISSING</code>/<code>§ACCESS_GATE_ERR</code> log + honest fallback fires if <code>AdAccess</code> fails to load, so a
+  future regression here is never silent. A <code>gateRecordFor</code> (record-level <code>canView</code> + org/client scope) is
+  now exposed but NOT wired into every CRUD call site — that is a whole-app integration, out of scope for
+  the 4 Role/Window/Process/Form rows this closes; named so it isn't mistaken for done.</li>
+<li><strong>A real bug found while wiring, not before:</strong> <code>ad_access.js:buildRole</code>'s entity-type query assumed
+  <code>ad_entitytype</code> exists; it doesn't in the browser's trimmed <code>ad_seed.db</code> (only in the full <code>ad_full.db</code>
+  dump) — the exact same class of gap the sibling Forms/ValRules fork found the same day. Fixed defensively
+  (try/catch → empty set, same idiom <code>idmp_session.js</code> already used for <code>isShowAcct</code>); re-verified the
+  headless oracle-equivalence witness (<code>poc_access_harden.js</code>, 15/15 maps diff=0, 42/42 canView combos)
+  still passes unchanged after the fix, and re-synced the twin's md5 after.</li>
+<li><strong>Live proof</strong> (<code>erp/tests/poc_access_gate_live.js</code>, new — the matrix's prior citations
+  <code>poc_ad_access_live.js</code>/<code>poc_ad_menu_prf_live.js</code> do not exist anywhere in bim-ootb, confirming they
+  never shipped either): <code>window.AdAccess</code> loads; <code>accessibleWindows</code> logs <code>source=AdAccess/...</code> not the
+  fallback path; role 103 (User) and 102 (Admin) differ on window 114 "Task" exactly as the real grant
+  rows say; a real <code>?login=</code> auto-login (the same production code path the click-through dialog calls)
+  shows <code>menu-visible=163/332</code> for User vs <code>294/332</code> for Admin from the live <code>§IDEMPIERE-LOGIN</code> log; window
+  114 cross-checked as a real tree-reachable <code>AD_Menu</code> leaf, not a synthetic fixture. 0 page errors.
+  <strong>Honest ⬜, not fabricated:</strong> this seed carries zero <code>isreadwrite='N'</code> grant rows across every
+  role/window/process/form — the read-write-vs-read-only distinction is implemented and exposed
+  (<code>{rw:bool}</code>) and already headless-oracle-proven, but cannot be demonstrated against live browser data
+  today; named rather than claimed.</li>
+<li>Regression check: <code>erp/tests/poc_client_switcher.js</code> fails 3/many pre-existing, unrelated to this fix —
+  its fixture assumes <code>ad_seed.db</code> starts with exactly 1 resident tenant, the live seed now carries 7 (the
+  same seed-drift class §2.5 already named). <code>test_idempiere_login.js</code> couldn't run in this worktree
+  (<code>Cannot find module 'sql.js'</code>, a pre-existing environment gap, not evaluated). Neither touches
+  <code>accessibleWindows</code>/<code>AdAccess</code>/<code>idmp_session.js</code>'s changed functions.</li>
+<li>CI: not wired in — <code>scripts/system_is_real.sh</code> runs exactly one headless ERP witness
+  (<code>ERP_WITNESS</code>/<code>poc_fold_complete.js</code>); this is a live-browser Playwright witness, a different class,
+  and there is still no bundle runner (§4, unchanged). Named, not silently skipped.</li>
+<li><code>docs/internal/ERP_COVERAGE_MATRIX.md</code>'s 4 access rows re-scored ✅ with the real witness cited, the
+  phantom <code>poc_ad_*_live.js</code> citations corrected in place.</li>
+<li>Ships: <code>sw.js</code> v767→v768 (new precached file <code>ad_access.js</code> + the delegation change to <code>idmp_session.js</code>).</li>
+</ul>
+<p><strong>What this does NOT close:</strong> §5.1's other two T-0 items (the 52-ledger enumerable list, the lane-index
+write-back) — untouched, still open. The §RULE-EDIT grail witness — untouched. This is exactly one
+finding, closed precisely, not a re-run of the whole T-0 pass.</p>
+<hr />
+<h2 id="7-2026-08-23-t-0-still-not-started-a-fresh-structural-triage-against-the-live-pg-found-a-new">§7 — 2026-08-23: T-0 still not started; a fresh structural triage against the live PG found a new<a class="headerlink" href="#7-2026-08-23-t-0-still-not-started-a-fresh-structural-triage-against-the-live-pg-found-a-new" title="Permanent link">&para;</a></h2>
+<h2 id="showstopper-before-it-found-a-fix">showstopper before it found a fix<a class="headerlink" href="#showstopper-before-it-found-a-fix" title="Permanent link">&para;</a></h2>
+<p>11 days after this review, <strong>T-0 had not been started</strong> (verified: 0 ERP commits since 2026-08-12, <code>ad_access.js</code>
+still doesn't exist in bim-ootb, <code>idmp_session.js</code> still has no <code>IsReadWrite</code>/<code>canView</code>/org-scope). The ERP lane
+had been fully code-dark the entire interval.</p>
+<p><strong>New structural finding (declarative/navigation layer, not the oracle-equivalence engine):</strong> the shipped
+<code>erp/ad_seed.db</code> carries 82-100% of the real iDempiere AD dictionary (Windows 375/458, Tabs 1135/1166, Fields
+20988/21432, Menus 590/826, Processes 476/476, References 604/606) — but <code>AD_Form</code> and <code>ad_val_rule</code> were
+<strong>entirely absent</strong> (0 rows / no table), against 53 and 332 real rows. <code>build/erp/ad_full.db</code> (the raw migration
+dump) has essentially perfect fidelity on all of these — the gap is specifically in what gets trimmed into the
+shipped seed, not in the migration capability.</p>
+<p><strong>Attempted fix, found a bigger gap instead.</strong> <code>scripts/ad_seed_manifest.json</code> was missing both tables (a prior
+substring-based scan wrongly credited <code>AD_Form</code> as present — it had matched <code>ad_form_access</code> instead; corrected
+here). Both were added with real PK/case/column contracts extracted from the live PG catalog (bim-compiler PR</p>
+<h1 id="91-and-verified-export_ad_seedjs-lands-ad_form49-53-real-4-inactive-exact-match-and">91) and verified: <code>export_ad_seed.js</code> lands <code>AD_Form=49</code> (53 real, 4 inactive, exact match) and<a class="headerlink" href="#91-and-verified-export_ad_seedjs-lands-ad_form49-53-real-4-inactive-exact-match-and" title="Permanent link">&para;</a></h1>
+<p><code>ad_val_rule=332</code> (exact match), zero errors, reproduced twice.</p>
+<p><strong>But re-running the full export against the CURRENT live docker PG (<code>postgres</code>/<code>idempiere</code>) regresses
+production, badly</strong>, not just for the 2 new tables:</p>
+<table>
+<thead>
+<tr>
+<th>table</th>
+<th>shipped <code>ad_seed.db</code> (2026-07-05)</th>
+<th>fresh export (2026-08-23)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ad_client</td>
+<td>6</td>
+<td>1</td>
+</tr>
+<tr>
+<td>ad_role</td>
+<td>14</td>
+<td>4</td>
+</tr>
+<tr>
+<td>C_BPartner</td>
+<td>113</td>
+<td>18</td>
+</tr>
+<tr>
+<td>ad_window_access</td>
+<td>4448</td>
+<td>1080</td>
+</tr>
+<tr>
+<td>fact_acct</td>
+<td>present</td>
+<td>not in the manifest at all</td>
+</tr>
+<tr>
+<td>HR_<em>, C_Subscription</em></td>
+<td>present</td>
+<td>not in the manifest at all</td>
+</tr>
+<tr>
+<td>kernel_ops</td>
+<td>present</td>
+<td>not a PG table — bim-ootb's own op-log, confirms the shipped seed is POST-PROCESSED, not a raw export</td>
+</tr>
+</tbody>
+</table>
+<p>Checked both live PG databases (<code>idempiere</code> AND <code>idempiere_test</code>, the posted-fact_acct oracle) — <strong>neither holds
+anywhere near the data state that built the shipped seed.</strong> <code>idempiere_test.c_bpartner=18</code> matches the fresh
+export exactly, not the shipped seed's 113. The container has drifted or been reset since July. <strong>This means:
+the shipped <code>erp/ad_seed.db</code> was never a straight <code>export_ad_seed.js</code> run — some further pipeline stage (likely
+<code>fact_acct</code> pulled from <code>idempiere_test</code> via <code>extract_fact_acct.sh</code> per <code>reference_idempiere_source.md</code>, plus HR/
+Subscription seeding, plus the §4 PK-reband/client-13-shard step from <code>prompts/archive/IDMP_FULLWIDTH_SEED.md</code>)
+folds additional sources in, and that stage's exact recipe is not identified anywhere checked so far.</strong></p>
+<p><strong>Not shipped, deliberately.</strong> The manifest fix (PR #91) is real and safe on its own — it's a correct, minimal,
+verified addition that costs nothing to merge. But regenerating and deploying the seed right now, even just to
+add Forms/ValRules, would silently wipe fact_acct, HR, Subscriptions, and most of the accumulated demo/shard
+data from production. That is a materially worse outcome than shipping nothing.</p>
+<p><strong>The real next step, named not guessed:</strong> before touching <code>erp/ad_seed.db</code> again, reconstruct (or find, if it
+already exists and is merely undocumented) the FULL pipeline recipe — base GardenWorld export → fact_acct fold
+→ HR/Subscription seed → client-13 shard reband → whatever else — and either automate it end-to-end or write
+down the manual steps precisely enough that Forms/ValRules can be folded in without regressing everything else.
+This is a genuinely different, larger task than "add 2 tables to a manifest," and this session's attempt to
+just re-run the proven exporter is the concrete falsifier proving that assumption wrong.</p>
+<p><strong>Access-gate fix:</strong> closed separately, same day — see §2.1 CLOSED above.</p>
+<hr />
+<h2 id="8-2026-08-23-formsvalrules-baked-additively-root-cause-found-four-named-witnesses-dont-exist">§8 — 2026-08-23: Forms/ValRules baked additively, root cause found, four named witnesses don't exist<a class="headerlink" href="#8-2026-08-23-formsvalrules-baked-additively-root-cause-found-four-named-witnesses-dont-exist" title="Permanent link">&para;</a></h2>
+<p>Closes the Forms/ValRules half of §7. Does NOT touch the access-gate finding (a sibling PR against
+<code>erp/idmp_session.js</code> + <code>erp/ad_access.js</code> owns that).</p>
+<p><strong>Root cause, confirmed:</strong> <code>bim-ootb/erp/ad_seed.db</code> was never reproducible from one pipeline run.
+<code>git log --oneline --follow -- erp/ad_seed.db</code> shows one full export (<code>fd09ad1</code>, PR #265) followed by
+<strong>~20 separate incremental "bake X into ad_seed.db" commits</strong> over a month (HBA IoT sirens, Payslip/
+Leave windows, Hospital cost variance, POSTING-CONFIG fact_acct linkage, etc.), each additively
+merging new rows into the shipped sqlite file — never re-deriving the whole thing from Postgres. This
+IS the "recipe": not a lost pipeline stage, but an established idempotent-bake pattern this repo has
+used ~15 times (see <code>git show 3773ff6</code> / <code>tests/bake_all_erps_seed.js</code> for the house convention).
+Regenerating from scratch was never the right move for adding 2 tables — appending was.</p>
+<p><strong>Fix shipped:</strong> <code>erp/tests/bake_forms_valrules_seed.js</code> (new, following the <code>bake_*_seed.js</code>
+convention, sql.js-based to match the repo's own available deps) — queries the live docker PG
+directly for <code>AD_Form</code> (canonical case, <code>IsActive='Y'</code>) and <code>ad_val_rule</code> (lower case, all rows) using
+the exact column/case/PK-derivation logic ported verbatim from <code>scripts/export_ad_seed.js</code> (the same
+proven machinery PR #265/#266 shipped with), <code>CREATE TABLE</code> for both (neither existed), <code>INSERT</code> the
+rows.</p>
+<div class="highlight"><pre><span></span><code>§BAKE_FV_BEFORE tables=399 bytes=27066368
+§BAKE_FV table=AD_Form rows=49 cols=19 pk=ad_form_id
+§BAKE_FV table=ad_val_rule rows=332 cols=14 pk=ad_val_rule_id
+§BAKE_FV_REGRESSION_CHECK other_tables=399 regressed=0
+§BAKE_FV_DONE new_tables=2 total_rows=381 bytes=27189248 (25.9MB)
+</code></pre></div>
+<p><strong>Zero regression on all 399 pre-existing tables</strong> (row-counted before/after, diffed programmatically
+— the exact proof that was missing before this fix and that a naive re-export would have failed).
+Size grew 27,066,368 → 27,189,248 bytes (+122,880 B, +0.45%) — nowhere near the historical size-gate
+concern (v14-fullwidth was 24.9MB at 200ms boot median; this lands at 25.9MB, well inside that budget,
+no boot-time regression plausible at this data volume).</p>
+<p><strong>Consumption verified, not assumed:</strong>
+- <code>ad_val_rule</code> has real, existing consumers today: <code>erp/crud_core.js</code> / <code>erp/crud_overlay.js</code> (the
+  field-validation engine — <code>effectiveFlags</code>/<code>validate</code>/<code>docPolicyFor</code>), <code>erp/ninja_stage.js</code>,
+  <code>erp/idempiere_agent/migrate_agent.js</code>, plus a dedicated headless twin <code>build/erp/ad_valrule.js</code>.
+  These were running against an always-empty table until this fix — the bake activates real,
+  previously-dead behavior, not just adds inert rows. Some rule types are expected to still legitimately
+  refuse (already-documented honest ⛔ for ruletype-Q SQL over empty referenced tables, per §2's
+  W-POST-TAIL-2 precedent) — that is correct behavior, not a new defect.
+- <code>AD_Form</code> has one real consumer: <code>erp/genesis.js</code>'s <code>grant('AD_Form', 'AD_Form_Access', ...)</code> — the
+  role-provisioning/access-grant machinery, directly relevant to the sibling access-gate work. <strong>Honest
+  gap named, not hidden:</strong> there is no dedicated Form-screen renderer anywhere in this codebase. Real
+  iDempiere Forms are bespoke coded screens (Bank Statement matching, GL Journal generator, etc.) —
+  this project's declarative Window/Tab/Field renderer does not and cannot render them without
+  per-form UI work that doesn't exist yet. AD_Form is now structurally present and feeds access-grant
+  provisioning; it is NOT yet a working "open a Form and use it" feature. Do not credit this as closing
+  that gap — it closes the <em>data</em> gap only.</p>
+<p><strong>Live regression proof:</strong> <code>poc_ad_displaylogic.js</code> (W-AD-DISPLAYLOGIC-LIVE, real Playwright browser,
+serves the modified <code>erp.html</code>/<code>ad_seed.db</code>) — <code>🟢 PASS</code>, DisplayLogic still correctly evaluates
+AD_Menu action-gating with the new tables present, zero page errors.</p>
+<p><strong>A finding that must be corrected, not just noted:</strong> the four other live witnesses named in
+<code>prompts/archive/IDMP_FULLWIDTH_SEED.md</code> §3 as the re-witness set for the last seed change
+(<code>poc_ad_docfsm_live.js</code>, <code>W-AD-ACCESS-LIVE</code>, <code>W-AD-MODELVAL-LIVE</code>, <code>W-AD-MENU-PRF-LIVE</code>) <strong>do not
+exist under those names anywhere in the current tree</strong> (<code>grep -rl</code> across <code>erp/</code> for both the file
+names and the <code>W-*-LIVE</code> code strings found nothing beyond <code>poc_ad_displaylogic.js</code>). Most likely:
+they were verification scripts local to that PR's branch, never intended as permanent repo files, and
+were not preserved after the PR merged. This is itself worth flagging to whoever owns the T-0
+truth-maintenance pass (§5.1) — a doc citing witnesses as the re-run protocol for future seed changes
+is not re-runnable if the witnesses it names don't exist. This session ran what actually exists and
+is relevant instead of fabricating a pass on witnesses that aren't there.</p>
+<p><strong>Deploy:</strong> <code>ad_seed_v16</code> → <code>ad_seed_v17</code> IndexedDB cache key (2 sites in <code>erp.html</code>, 8 in
+<code>idempiere.html</code>) so returning users' stale-cached seed gets replaced. <code>erp/sw.js</code> <code>CACHE_VERSION</code>
+v767→v768 (bim-ootb). <strong>Note for whoever merges next:</strong> a sibling PR (access-gate fix) also bumps
+bim-ootb's <code>sw.js</code> to v768 independently — whichever merges second will show the documented
+"sw.js is the conflict magnet" conflict; per this project's own rule, take the HIGHER number on
+rebase, keep both precache/version-comment additions, never drop one session's hunk for the other's.</p>
+<p><strong>Not done, sequenced correctly as a separate task:</strong> building an actual Form-screen renderer (UI
+work, not data work — a new task, not a regression of this one).</p>
 
 
 
