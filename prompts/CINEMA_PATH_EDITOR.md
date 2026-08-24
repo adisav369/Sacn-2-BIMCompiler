@@ -3429,3 +3429,40 @@ buildings (Hospital/Terminal) produce a BIT-IDENTICAL plan (no element below the
 unchanged); LTU pivot returns above ground (fence ≈ −4.3 → zMin −3.2 → pivot ≈ +3.9 m). The 17 DB
 rows themselves stay untouched (EXTRACT-only; presentation-layer exclusion per
 [[feedback_prime_rule_scope_presentation_layer]]).
+
+## §CPE_BUILDUP_ACTIVATE_POPS_PANEL — Alt+C's bake pops the Time Machine panel visibly open just to read its schedule (2026-08-24, found this session, NOT YET FIXED — RESUME HERE)
+
+**The gap, code-confirmed today.** `G-CPE-SOLE-OWNER` (§ above, `:1820`) already states the intended
+rule: *"only a real Play opens Time Machine."* But the bake path doesn't honour it. `cinema_maxq.js`
+calls `window.tmActivateForBake()` (`viewer/time_machine.js:8410`) to get the schedule ready before a
+preview/record bake. When TM isn't already active, that function calls `activate()` (`:8413`), and
+`activate()` (`:7824`) does two things it does not need to separate but currently bundles: it loads the
+schedule DATA (`_activateAsync` → `_ops`/`_projectStart`/`_projectEnd`) **and**, at `:7864-7865`,
+`setToolbarHighlight(true); _panel.style.display = 'flex';` — i.e. it makes the TM panel visibly pop
+open on screen. So today, pressing Alt+C to bake a movie — a pure camera/cinema action that only
+*consumes* the 4D schedule as data (§CPE_BUILDUP_FOLLOW_TM, `:8662-8667`, "Time Machine owns the build
+order, Alt+C owns the camera") — has the side effect of opening the TM editing UI the user never asked
+for. This was already spotted once in passing, `:1803-1804` ("`tmActivateForBake()` force-activates TM
+but nothing ever calls it back off"), but never turned into its own fix.
+
+**Why it matters more now than it did before:** this same session folded the P6/MS Project
+Import/Export/Diff-vs-Model surface INTO the TM panel itself (`feat/tm-editor-fold`, bim-ootb PR
+pending at session-end — check its merge state before resuming this), retiring the separate
+`schedule_editor.html` tab. `buildPanel()` (`time_machine.js:2715`, called once from `init()` at
+`:8159`) constructs the WHOLE panel's HTML unconditionally on every page load regardless of Alt+C — so
+that fold does not add weight to the bake path's construction cost (verified, not assumed: `buildPanel`
+runs once at init, `activate()` never rebuilds it, just toggles `display`). But it does mean the panel
+Alt+C now pops open, however briefly, carries more UI than it used to — sharpening the case for fixing
+this properly rather than leaving it as an accepted side effect.
+
+**Named fix (NOT built):** split `activate()`'s data-load from its visibility side effect. A new
+data-only entry point (e.g. `_activateDataOnly()` reusing `_activateAsync`'s cache/kernel_ops/recompute
+chain) that `tmActivateForBake()` calls instead of `activate()` when it only needs `_ops`/
+`_projectStart`/`_projectEnd` populated — never touching `_panel.style.display`/`setToolbarHighlight`.
+A real user Play (the clock pill, key `t`, `toggle()`/`activate()` directly) keeps opening the panel
+exactly as today — only the bake-triggered path goes silent. Acceptance witness: reproduce
+§CPE_BUILDUP_ARM_GATE's setup (a real timeline, TM not yet active), fire `tmActivateForBake()`, assert
+`_ops.length`/`_projectStart`/`_projectEnd` populate correctly (bake still works) AND `_panel.style.display`
+stays `'none'`/whatever it was before the call (no visible pop-open) — paired with a second case
+proving a direct `activate()` call (simulating the clock-pill Play) still sets `display:flex` as today,
+so the split doesn't regress the real-Play path `G-CPE-SOLE-OWNER` protects.
