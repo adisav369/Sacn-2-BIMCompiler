@@ -4,22 +4,33 @@
 > ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
-## ▶ NEXT TASK ON RESTART (rewritten 2026-08-23)
+## ▶ NEXT TASK ON RESTART (rewritten 2026-08-24)
 
-**4D Gantt/TimeMachine lane (`prompts/4D_GANTT_TM_REFACTOR.md`) is CONCLUDED — the edit-path list is
-at zero (§RESUME 2026-08-23), a full witness-gap simulation was then run against it separately
-(§S76-§S78) and closed. Do not restart this lane without a new, specific reason — read that file's
-own §RESUME block first if one comes up.**
+**ERP T-0 (`prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md`) — 5 of 7 items closed this session.** Items
+6 (dead witness citations — first pass was ITSELF wrong, corrected in the open), 1 (enumerable ledger,
+`docs/internal/ERP_EQUIVALENCE_LEDGER.md`), 8 (new: DisplayLogic-live regression, re-scored honestly),
+4 (`gateRecordFor` record-access gate, bim-ootb PR #1499 merged), and 2 (41-lane memory-index
+write-back) all ✅ DONE. Remaining, both genuinely multi-session, read that file before starting
+either: item 5 (Form-screen renderer) and item 7 (the 454/476-unported-process corpus).
 
-**ERP is the live thread now.** Lane: `prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md` — read it first.
-T-0's access-gate and Forms/ValRules items closed 2026-08-23 (bim-ootb #1495/#1496, bim-compiler #91).
-Still open, ranked in that file: (1) the dead re-witness citations (cheap), (2) the enumerable
-52-ledger (highest leverage), (3) `gateRecordFor` CRUD wiring, (4) the 454/476-unported-process gap
-(the real long pole — don't start it casually, it needs its own scoped plan).
+**4D Gantt/TimeMachine lane** (`prompts/4D_GANTT_TM_REFACTOR.md`) stays CONCLUDED per the prior note
+below — do not restart without a new specific reason. This session added a **brainstorm-only** spec,
+`prompts/TM_OFFICE_SNAPSHOT_LANE.md` (spec settled, no code): embed a TM snapshot (image + existing
+`tm` deep-link) into Word/Excel via plain picture+hyperlink — reuses `sitecam.js` canvas-capture +
+`share.js`'s `buildShareUrl`, no OOXML/OLE. Named substrate for two riders (daily site-today view,
+permit-checkpoint flagging), neither built. A P6/XML scheduler-interop thread from the same brainstorm
+was redirected to a bim-ootb session (out of scope here — most of it turned out to already be shipped,
+see that file's §0).
 
-**Disk state:** both repos pushed, zero committed-but-unpushed, as of 2026-08-23 session end.
+**⚠ Uncommitted, NOT this session's:** `docs/BIMUserGuide.md`, `docs/ERPUserGuide.md`, `mkdocs.yml`,
+untracked `docs/TimeMachine.md` — a `docs/time-machine-page` worktree exists at
+`/tmp/wt-docs-timemachine`, likely a concurrent session's in-progress docs work. Left untouched;
+verify who owns it before touching.
 
-**Standing debt, not this session's to fix:** this file is still over its 80-line budget (~689 lines);
+**Disk state:** `bim-compiler` `fable/meshdb-livewire` pushed, zero committed-but-unpushed, as of
+2026-08-24 session end. `bim-ootb` PR #1499 merged to main.
+
+**Standing debt, not this session's to fix:** this file is still over its 80-line budget (~700 lines);
 the archiving pass on `## OPEN`'s oldest items is still owed to a session that can own the
 still-open-vs-DONE check per item.
 
