@@ -4,8 +4,9 @@ land as an embeddable snapshot inside an ordinary **Word** or **Excel** document
 back to the live Viewer at that exact state. Nothing else — no new TM engine work, no P6/XML interop
 (that's a SEPARATE lane, see §0 below).
 **Read the log after every run.**
-**Status:** SPEC ONLY (2026-08-24). No code started. Idea originated this session, not extracted from
-existing code — flag open questions before building, don't guess the office-embed mechanics.
+**Status:** SPEC SETTLED (2026-08-24), no code started. §3's embed-mechanics question is answered —
+plain image + hyperlink, reuse `sitecam.js`'s existing canvas-capture + `share.js`'s existing `tm`
+deep-link, no OOXML/OLE. A fresh session can go straight to build; §3 does not need re-litigating.
 **Spec-first:** this file IS the spec.
 
 ---
@@ -39,24 +40,29 @@ storey/xray/clash) into a deep-link URL — confirmed live, `project_share_sheet
 of this feature is not new** — the new part is (a) rendering a snapshot IMAGE of that state (not just a
 link) and (b) packaging image+link into a Word/Excel-native embed, not a raw file download.
 
-## §3 — Word vs Excel, and what "reframed... adjust its frame and display grid" means (interpretation, CONFIRM before building)
+## §3 — Word vs Excel: SETTLED (2026-08-24) — plain image + link, no OOXML, no OLE
 The user's own words: *"a reframed snapshot... in excel format that user embeds readily and adjust its
-frame and display grid."* Read literally, this is NOT "export a picture" — it's an artifact the user can
-**resize/reposition inside the host document's own layout system** (Word's text-wrap frame, Excel's cell
-grid) the way a native chart or picture object behaves, not a flat image dropped in a fixed size.
-**Open questions, not yet answered — ask before building:**
-1. Word: a plain inline/floating image + a hyperlink (simplest, works everywhere) vs. an embedded
-   OLE/ActiveX object (richer, Windows-Word-only, much heavier to build and to keep working across
-   Word versions)? Lean image+hyperlink unless told otherwise — matches "embeds readily."
-2. Excel: same picture-anchored-to-a-cell-range question — does "adjust its frame and display grid"
-   just mean "an image that snaps to Excel's cell grid when resized" (native Excel picture behavior,
-   free once it's a normal image), or something that reads live cell data (a real embedded object)?
-   The former is cheap and standard; the latter is a much bigger, different feature (Excel add-in
-   territory) — don't build the bigger one without an explicit ask.
-3. One export format serving both hosts (e.g. a PNG + a `.url`/hyperlink, which both Word and Excel
-   accept identically via copy-paste or Insert-Picture) may satisfy the whole ask without touching
-   Office-specific file formats (`.docx`/`.xlsx`) at all — check whether that's enough before reaching
-   for OOXML generation.
+frame and display grid."* **Resolved: this describes Word's and Excel's OWN native picture handling,
+not a custom format we need to build.**
+- **Word:** a plain inserted picture already has drag-resize handles + text-wrap "frame" behavior
+  out of the box. That IS "adjust its frame" — no OLE/ActiveX object needed (rejected: Windows-Word-only,
+  heavy COM authoring, breaks across Word versions — wildly disproportionate to a DIY-user feature).
+- **Excel:** a plain inserted picture Alt-drags to snap to the cell grid by default. That IS "adjust its
+  display grid" — no live-cell-data embedded object needed (rejected: same OLE-class problem, and Excel
+  add-in territory, not a spec-doc-sized feature).
+- **One artifact serves both hosts:** a PNG image + the deep-link URL. Word and Excel both accept a
+  pasted/inserted image identically, and both let a user add a hyperlink onto an inserted picture
+  natively (Insert → Link). **No `.docx`/`.xlsx` generation, no OOXML authoring, at all.**
+
+**What this actually is to build, now that §3 is settled — small:**
+1. A snapshot-image renderer for the current TM state. **Don't build this from scratch** —
+   `viewer/sitecam.js` already does canvas→image capture twice (`A.canvas.toDataURL('image/png')` :91,
+   `mc.toBlob(resolve,'image/jpeg',0.92)` :445) for the existing photo/share feature. Reuse that pattern.
+2. The deep-link — already done, `buildShareUrl()`'s `tm` param (§2).
+3. A "Copy TM Snapshot" affordance (a pill/button) that puts BOTH the image (clipboard image write,
+   `navigator.clipboard.write` with a `ClipboardItem`) and the link on the clipboard (or offers them as
+   two explicit actions — Copy Image / Copy Link — if a combined clipboard write proves unreliable
+   across browsers). User then just pastes into Word or Excel; Office does the rest.
 
 ## §4 — Scope boundaries
 - **In:** a snapshot-image renderer for a given TM state (date/phase + camera) + the deep-link (reuse
@@ -66,5 +72,7 @@ grid) the way a native chart or picture object behaves, not a flat image dropped
   real OOXML"; any P6/XML work (§0).
 
 ## §5 — Before writing code
-Confirm §3's open questions with the user. This is a genuinely new idea (not extracted from existing
-code or docs) — don't guess the office-embed mechanics and build the wrong one.
+§3 is settled — no need to re-confirm the embed mechanics. Still worth a quick check with the user
+before starting: which TM state fields belong in the snapshot beyond the image+link (a cost number? a
+phase name/date label baked into the image itself?) — that's a small styling call, not an architecture
+one, and reasonable to make and show rather than ask first.
