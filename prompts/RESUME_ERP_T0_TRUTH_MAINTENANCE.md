@@ -73,10 +73,18 @@ to whatever's in the container today. Always bake additively into the existing `
    recounted." CI still runs exactly 1 of the 46 (`poc_morder_fsm.js`) — named as a follow-up (needs a
    docker-PG / idempiere-checkout / bim-ootb-playwright CI runner most of these depend on), not wired this
    pass. `ERP_COVERAGE_MATRIX.md` cross-references the new ledger as the count's source of truth.
-2. **Write back the lane index.** 39 "Project — ERP" memory lanes, most stale since mid-June, ~15
-   done-but-not-buried, 4 self-contradicting, the ledger number reported as 14/20/41/52 across different
-   files with no single source of truth. Untouched — this session deliberately scoped narrower (2 named
-   fixes + the showstopper investigation the user asked for), not a full lane-index cleanup.
+2. ✅ **DONE (witness) 2026-08-24** — Wrote back the lane index. Audited all 41 "Project — ERP" memory
+   lanes via 4 parallel read-only forks (one per ~10 lanes), spot-checked their PR-merge-state claims
+   directly (4/4 spot checks confirmed accurate — e.g. PR #972 claimed-open was actually MERGED 2026-07-22;
+   PR #203 claimed-shipped is actually still OPEN 2.5 months later), then applied fixes: rewrote MEMORY.md's
+   "Project — ERP" index line-by-line with corrected status; merged 2 genuinely duplicate files
+   (`project_pos_killer_demo.md` → `project_pos_lens.md`, same PR/date content told twice) and deleted the
+   redundant one, fixing the 2 dangling `[[wikilink]]` references it left; clarified 1 same-topic-different-
+   lane false-positive (`project_plugin_arch.md` vs `project_plugin_system.md` — different scopes, not a
+   dup); appended dated correction notes to ~15 individual memory files whose body text was stale/wrong
+   (DONE-NOT-MARKED, SELF-CONTRADICTING, or citing pre-ERP_EQUIVALENCE_LEDGER.md ledger counts). MEMORY.md
+   stayed at 59 lines (≤80 budget held). Full per-lane verdict tables are in the fork transcripts, not
+   re-copied here — MEMORY.md's index is now the source of truth per the project's own "links only" rule.
 3. **The §RULE-EDIT grail witness** (`docs/HolyGrail.md:159-172`) — edit one validation row → K records
    re-fold live, signed, reversible. The project's stated differentiator. Still doesn't exist.
 
@@ -154,14 +162,15 @@ dominant remaining distance, by a wide margin, and nothing currently scheduled c
 3. ✅ Item 8 (DisplayLogic-live regression) — DONE 2026-08-24, see above (re-scored honestly, UI widening
    named as a separate follow-on).
 4. ✅ Item 4 (`gateRecordFor` wiring) — DONE 2026-08-24, see above.
-5. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
+5. ✅ Item 2 (lane-index write-back) — DONE 2026-08-24, see above.
+6. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
    field layout from `AD_Form`/`AD_Field` where declarable) plus per-Form logic for whichever Forms are
    highest-traffic in real iDempiere use (Bank Statement matching, Payment Allocation, GL Journal
    generator are the classic first three — verify against real usage, don't guess the order). Start with
    ONE Form end-to-end (spec → witness → ship) before generalizing, same discipline as every other lane
    in this project. `AD_Form`'s 49 rows and `erp/genesis.js`'s access-grant consumer are already there
    (§8) — this item is the missing renderer + per-form behavior, not new data plumbing.
-6. **The 454-proc corpus — queued as a campaign, not deferred indefinitely.** Real long pole, genuinely
+7. **The 454-proc corpus — queued as a campaign, not deferred indefinitely.** Real long pole, genuinely
    multi-session. Before writing code: triage the 454 by actual usage weight (which processes a real
    GardenWorld-shaped tenant calls often vs. rarely-touched edge cases — the equivalence campaign's own
    K=1/K=2 pattern already shows how thin the walked paths are), and sequence the highest-traffic slice
