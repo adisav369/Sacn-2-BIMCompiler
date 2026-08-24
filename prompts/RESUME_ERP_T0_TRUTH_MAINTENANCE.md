@@ -81,9 +81,28 @@ to whatever's in the container today. Always bake additively into the existing `
    re-fold live, signed, reversible. The project's stated differentiator. Still doesn't exist.
 
 ### New, found this session
-4. **`gateRecordFor` (record-level `canView` + org/client scope) is exposed but not wired into every CRUD
-   call site.** The access-gate fix closed the 4 Role/Window/Process/Form rows; record-level gating is a
-   separate, whole-app integration task.
+4. ✅ **DONE (witness) 2026-08-24** — `gateRecordFor` (record-level `canView` + org/client scope) is now
+   wired into the ONE real chokepoint: `crud_overlay.js`'s `commitCrud` (confirmed via code read — EVERY
+   CRUD_CREATE/CRUD_UPDATE/CRUD_DELETE funnels through it via `applyOp`, not a per-call-site sprawl).
+   `idempiere.html`'s `applySession` sets `window.APP.gateRecordFor` (same "the page may set it" seam as
+   `sessionActor`/`sessionClientId`/`sessionOrgId`, absent on no-login hosts like `glassbowl.html` → PASS,
+   never a hard dependency); `crud_core.js` gains `recordAccessGate` (AD_Table.AccessLevel lookup + the
+   gate call); the check runs for UPDATE/DELETE (CREATE is a named residual — the new row is stamped with
+   the actor's own scope, inherently self-consistent). **New witness `scripts/poc_record_gate_live.js`**
+   (bim-compiler) proves it against REAL seed data: role 1300103 (GardenWorld User, client 13) editing a
+   client-12 (Odoo-tenant) `c_bpartner` is REJECTED (`reason=wrong-client`, no `§CRUD-PERSIST`) before the
+   seal; the same edit on the role's own tenant still commits. **Two real bugs found+fixed while building
+   this** (worth knowing for next time): (1) `_gateRecordAccess`'s first draft mirrored the existing
+   owner/CAS gate's no-explicit-id `getRecord(op.key, cb)` call, which resolves the record via `curChain`
+   (ambient "currently open form" state) — correct for a real UI click, but a host-triggered write
+   (`hostUpdate`) never updates `curChain`, so the gate silently checked the WRONG record and let an
+   out-of-scope write through; fixed by passing `op.id` explicitly. (2) `c_order` was the first table tried
+   for the REJECT case but EVERY client-12 order fails an unrelated pre-existing beforeSave invariant
+   (`MOrder.warehouseMandatory` — the Odoo-migrated tenant's orders have no warehouse in this seed), masking
+   the gate entirely; switched to `c_bpartner` (no `ad_modelval` hook) to isolate exactly this gate.
+   **Regression-checked** against the 9 existing live CRUD-path witnesses — 2 pre-existing failures
+   confirmed identical on an unmodified control worktree at the same base commit, not caused by this change.
+   Shipped bim-ootb PR #1499 (auto-merge armed, `sw.js` v769→v770).
 5. **`AD_Form` data exists now; no Form-screen renderer does.** Real iDempiere Forms are bespoke coded
    screens (Bank Statement matching, GL Journal generator, etc.), not declarative Window/Tab/Field data.
    The data gap is closed; the feature isn't — don't conflate the two if this comes up again.
@@ -134,8 +153,7 @@ dominant remaining distance, by a wide margin, and nothing currently scheduled c
 2. ✅ Item 1 (enumerable ledger) — DONE 2026-08-24, see above.
 3. ✅ Item 8 (DisplayLogic-live regression) — DONE 2026-08-24, see above (re-scored honestly, UI widening
    named as a separate follow-on).
-4. Item 4 (`gateRecordFor` wiring) is the natural next security-hardening step after this session's access
-   work, same file family, same reviewer context still warm.
+4. ✅ Item 4 (`gateRecordFor` wiring) — DONE 2026-08-24, see above.
 5. **Item 5, the Form-screen renderer — queued, not held.** Real scope: a generic Form-shell (title bar,
    field layout from `AD_Form`/`AD_Field` where declarable) plus per-Form logic for whichever Forms are
    highest-traffic in real iDempiere use (Bank Statement matching, Payment Allocation, GL Journal
