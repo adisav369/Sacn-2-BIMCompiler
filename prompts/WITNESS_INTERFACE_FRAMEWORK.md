@@ -13,79 +13,95 @@
 ---
 
 ## 🔴 CRISIS — 2026-08-25, read this section FIRST, new session starts here
-User's own words: "This is a shocking crisis." Treat it as one. Do not resume from the §🗺 RESUME
-HERE block or §0 deploy-gotcha section below without reading this first — they are real but this is
-more urgent, and explains why those sections' own confidence should be discounted.
+User's own words: "This is a shocking crisis." Treat it as one. Everything below §1-9 in this file
+is real but SUPERSEDED in priority by this section — do not trust any "done"/"CLOSED"/"proven" claim
+anywhere in this file, including PRs #1511-#1524, until the lessons here are actually applied, not
+just read.
 
-### LAW (user's own words, verbatim, not a paraphrase — this governs every session on this lane
-### from now on, not just this bug)
-**"WITNESS precedes human visual as law!"** — a human (the user) noticing a defect live, before a
-witness caught it, is not an acceptable QA step or a lucky save. It is a WITNESS FAILURE, full stop,
-logged as one. Nothing ships on this lane because "it looked right" or "the user will test it live" —
-it ships because a witness, run against real data at real scale, already proved it. If that discipline
-cannot be restored, the user's own words: **"if WITNESS cannot be fixed, the project is doomed."**
-Read that as the actual stakes, not rhetoric — this project's entire working method for the last
-several weeks (§1-9 of this file, the whole `witness_kit` effort) rests on witnesses being trustworthy
-ahead of a human looking at the screen. Twice in 90 minutes today, that ordering inverted — a witness
-was green, and only the user's own live re-test found the real defect. Restoring the LAW is the actual
-deliverable of whatever session picks up §CRISIS below — not just the one CELL-path/HHS-scale gap
-named in it, though that is the concrete first instance to close.
+### LAW (user's own words, verbatim — governs every session on this lane from now on)
+**"WITNESS precedes human visual as law!"** A human noticing a defect live, before a witness caught
+it, is not an acceptable QA step. It is a WITNESS FAILURE, logged as one. Nothing ships because "it
+looked right" — it ships because a witness, at real scale, already proved it. Stakes, user's own
+words: **"if WITNESS cannot be fixed, the project is doomed."**
 
-### What actually happened, plainly
-In roughly 90 minutes, on the SAME "1970 dates" bug, TWO fixes shipped to production, both green on
-their own witnesses at ship time, and BOTH turned out wrong or unconfirmed on live re-test:
-1. PR #1520 (hard per-element clamp) — fixed the epoch, but collapsed 6880 elements' timestamps onto
-   a handful of boundary instants. `witness_tm_element_window_bind.js` was green the whole time — it
-   only checked "inside the real window," never "spread out sensibly within it."
-2. PR #1523 (proportional rescale, the fix for #1) — fixes the MATH (proven, real `_cap` data, a
-   redControl that reproduces #1's exact collapse) but has NEVER been run against the actual
-   building the bug happened on, at the actual scale, on the actual code path. The user reported
-   "still same hell — stacked elements at once" after #1523/#1524 (the second CACHE_VERSION miss)
-   were both live. Whether that report is the ALREADY-DIAGNOSED #1 collapse re-surfacing (possible —
-   confirm CACHE_VERSION v1086 actually reached that browser) or a THIRD, undiagnosed failure mode is
-   **not yet known** — this was not chased down before this doc update, on the user's explicit
-   instruction to write it up for a new session instead of continuing to patch live.
+### TIMELINE — what shipped, what it actually was (condensed; the full blow-by-blow is in git history
+### and earlier revisions of this doc, not repeated here)
+1. **PR #1520** (hard per-element clamp) — fixed the date epoch, but collapsed 6880 elements onto a
+   handful of boundary instants. Its own witness stayed green — it checked "inside the window," never
+   "spread out inside it."
+2. **PR #1521** — `CACHE_VERSION` bump for #1520 (missed in the same PR, caught by a live re-test).
+3. **PR #1523** (proportional rescale, replacing #1520's clamp) — math verified on 5 synthetic
+   elements + Duplex's 1122 real elements. Never run on the real building, real scale, or the CELL
+   code path the bug actually used.
+4. **PR #1524** — `CACHE_VERSION` bump for #1523 — the SAME miss as #1521, repeated one PR later,
+   despite the first miss being freshly documented as a standing rule minutes earlier.
+5. **Live re-test after #1523/#1524**, on `HHS_Office_Federated`: dates are real (`8/25/2026 →
+   10/6/2026`), `GANTT_OPS_FIRST20` is varied (not collapsed), `floating` improved (14→7 vs. the
+   original baseline). By every metric checked so far, this run is healthy. **The user still reports
+   the same "tiny bars, stacked" hell, visually, on this exact run.** Not resolved — see §UNRESOLVED.
 
-Also in the same session: `sw.js`'s `CACHE_VERSION` was missed TWICE — once for #1520 (caught by a
-live re-test), and then AGAIN for #1523, the very next fix, despite the first miss being freshly
-documented as a "standing lesson, no exceptions, checked every time" minutes earlier. A written rule
-was not enough to stop the second occurrence.
+### LESSONS — organized, in priority order, so the next witness gets built once, not three times
+1. **A witness proves ONLY the exact claim it makes — nothing broader.** Three genuinely different
+   claims got conflated as "the fix is witnessed" this session, and each one had to be built
+   separately after the previous one turned out insufficient:
+   - BOUNDS (`witness_tm_element_window_bind.js` v1): is the value inside the real window. Passed
+     through the collapse.
+   - DISTRIBUTION (`witness_tm_element_window_bind.js` v2): do multiple elements stay distinct/
+     ordered. Passed, on synthetic data — never checked against what §UNRESOLVED describes.
+   - VISUAL/RENDERED SHAPE (the actual 17 task-level Gantt bars' widths and positions on screen): has
+     **never been checked by any witness, at any point today.** This is very likely where "tiny bars"
+     actually lives — `kernel_ops` (6880 element ops, what every witness today touched) and `tasks`
+     (17 rows, what the Gantt DRAWER actually renders bars from — `buildGanttTasks()`/
+     `drawGanttMini()`) are different layers. A correct element-level fix says nothing about whether
+     the 17 task bars have sane widths relative to the 42-day axis.
+   **Rule going forward: name which of these three (or a fourth, if one exists) a witness is proving,
+   explicitly, in the witness's own header — and don't claim the bug is fixed until all layers that
+   could visibly manifest it are named and checked, not just the one that was easiest to reach
+   headlessly.**
+2. **Coverage must be a hard, structural requirement — not left to author judgment.** Every numeric
+   proof this session ran on Duplex (6-1200 elements, GRAPH path) or synthetic 5-element cases, never
+   on `HHS_Office_Federated` (~6880 elements) or the CELL path (`solveCells()` in `cpm_schedule.js`)
+   — the actual building and the actual path the live bug happened on. `witness_kit` currently has no
+   mechanism to force this. Proposed, not built: a required piece (`.coverage(fixtures)` or a
+   framework-enforced minimum) that REFUSES to register a witness touching `kernel_ops`/`injectGantt`
+   unless `HHS_Office_Federated` is literally in its population.
+3. **The CELL/GRAPH path itself is unexplained and needs its own answer before anything is trusted.**
+   The SAME building has been observed taking `path=CELL` (`repr=97.06%`) and `path=GRAPH`
+   (`repr=85.47%`) across different loads. Nobody has explained why the representability percentage
+   moved, or which path a "real" load actually takes. Every fix today was only proven on GRAPH.
+4. **Deploy/precache discipline is a SEPARATE failure domain from data correctness, and "remember the
+   rule" already failed twice in 90 minutes.** `CACHE_VERSION` was missed for #1520, documented as a
+   standing lesson, then missed again for #1523. Build the mechanical check (does a PR touch a
+   `PRECACHE_ASSETS` file without touching `CACHE_VERSION`) instead of trusting the written rule a
+   third time.
+5. **Self-verification has a structural blind spot: the same reasoning pass that writes a fix writes
+   the test that's supposed to catch problems with it.** `.coverage()` (lesson 2) doesn't fully close
+   this — it still relies on someone's judgment to declare what's adequate. The two concrete
+   mitigations available: (a) hardcode known-critical fixtures/paths into the framework itself, not
+   into any one witness's judgment call, so no author can under-declare by habit; (b) treat a live
+   re-test as ALWAYS still required before "done," never optional once a witness is green — not
+   because witnesses don't matter, but because today's witnesses have already been shown to have
+   blind spots a live check caught twice.
+6. **"Not yet contradicted" is not "proven."** Every witness that passed today passed on its own
+   narrow definition of success. Don't extend a green witness's claim past exactly what it checked —
+   this is the single sentence that would have prevented both regressions from being called "fixed"
+   prematurely.
 
-### Why the witnesses didn't catch it — the honest structural gap, not a fixable typo
-Every witness built today tests a FUNCTION IN ISOLATION, at SMALL OR SYNTHETIC scale:
-- `witness_tm_schedule_output_of_truth*.js` — the `tasks` table (6-17 rows). Never the layer that broke.
-- `witness_gantt_props_epoch.js` — source-text pattern presence/absence. Runs nothing.
-- `witness_tm_element_window_bind.js` — the rescale math, correct on 5 hand-picked synthetic elements
-  and on Duplex's 1122 real elements. **Never on HHS_Office_Federated. Never at 6880 elements. Never
-  through the CELL path** (`solveCells()` in `cpm_schedule.js`) — every numeric proof all session used
-  GRAPH-shaped data, and the real building has been observed taking EITHER path (`repr=97.06%` vs
-  `85.47%` on the SAME building across two different loads — a borderline, possibly non-deterministic
-  threshold nobody has explained).
-What caught the real regression was the USER eyeballing `§GANTT_OPS_FIRST20` and counting 18 duplicate
-entries by hand. No witness does that count. That is the concrete, buildable gap, not a vague one.
-
-### What a new session must do, in order — do not skip ahead
-1. **Confirm what's actually live right now**, first, before any more code: `curl` the deployed
-   `viewer/sw.js` for the real `CACHE_VERSION` and `viewer/time_machine.js` for
-   `_tmRescaleToTaskWindow` occurrence count (2 = present and wired, per the pattern already used
-   twice today). If `CACHE_VERSION` isn't `v1086` yet, that is the first and only thing to fix —
-   do not touch product code until it is confirmed live.
-2. **Build the missing integration witness** — drives the REAL `injectGantt()` path (or as close as
-   headlessly reachable) against `HHS_Office_Federated`, not Duplex, at its real ~6880-element scale,
-   through WHICHEVER path (`GRAPH`/`CELL`) it actually takes that run — do not assume, log which path
-   fired and treat a path-flip itself as a finding. Reads the REAL resulting `kernel_ops` table (not
-   a synthetic `_disp`) and computes the aggregate check nobody built: distinct-timestamp count among
-   the first N ops, or per-task distinct-count vs. element-count ratio — the day0-fanout idea, but for
-   `kernel_ops`, not `tasks`.
-3. **Explain the CELL/GRAPH path flip** on the same building across different loads before trusting
-   any fix that was only proven on one path.
-4. **Only after 1-3**: re-open the "is #1523 actually working live" question the user raised. Don't
-   guess from source reading — get a real, executed number, the same discipline this whole session
-   was supposed to enforce and twice failed to apply to its own deploy step.
-5. **Consider, don't assume**: is a per-PR manual `CACHE_VERSION` bump reliable at all, given it was
-   missed twice in 90 minutes with a written rule in between? A mechanical check (does this PR touch
-   a `PRECACHE_ASSETS` file without touching `CACHE_VERSION`, fail if so) was offered and not yet
-   built. Given the repeat, treat "remember to check" as already falsified as a strategy.
+### ⛔ UNRESOLVED, as of this doc revision — start here, don't re-derive
+The live re-test in TIMELINE item 5 shows healthy numbers at the `kernel_ops`/element layer AND a
+user-reported "same hell" at the visual layer, on the SAME run. These are not yet reconciled. Next
+session, in order:
+1. **Check the layer nothing has checked**: the 17 real `tasks` rows' actual `schedule_start`/
+   `schedule_finish` durations and positions — are any of them near-zero width, or bunched at the
+   same start, relative to the 42-day axis `§GANTT_AXIS` reports? This is a `tasks`-table query, not
+   a `kernel_ops` one — fast, and untried.
+2. **If task-level bars are genuinely fine**, the defect is somewhere in `buildGanttTasks()`/
+   `drawGanttMini()`'s own rendering math (canvas pixel positions from real dates) — not in anything
+   this session touched. Trace that function fresh, don't assume it inherits correctness from
+   `tasks`/`kernel_ops` being correct.
+3. **Confirm what's actually live** before any of the above: `curl` the deployed `viewer/sw.js` for
+   `CACHE_VERSION` (expect `v1086`) and `viewer/time_machine.js` for `_tmRescaleToTaskWindow` (expect
+   2 occurrences) — cheap, and rules out a THIRD deploy-cache miss before chasing a code explanation.
 
 ## 0. The question that motivated this, stated precisely
 Everything `WITNESS_CONTRACT_AUDIT.md` read today checks a *derived* property — a span, an inversion
