@@ -560,3 +560,17 @@ In order. Do not wire anything live until 1–3 are done.
 ## §10.4 THE ONE THING NOT TO REPEAT
 Do not report a number to the user without knowing which judge produced it and whether that judge
 shares a predicate with the thing it is judging. Every wrong claim this session passed a green gate.
+
+## §10.5 ⚠ A SQUASH-MERGE ORPHANED A FIX. CHECK FOR THIS BEFORE TRUSTING ANY "MERGED" PR.
+**PR #1539 (the bearing/below split) never reached `main`.** It was based on `feat/bar-needs`; that
+branch was squash-merged into main as #1538, so #1539 then merged into a branch main had already
+absorbed. `gh pr view 1539` says **MERGED**. It was not, where it counts.
+**Verified by reading main directly:** `origin/main viewer/bar_needs.js:190` still carried
+`addEdge(S.guid, E.guid, 'support')` — the pre-split form. Restored on this branch.
+
+CLAUDE.md already records this hazard verbatim — *"a squash-merge + a late push ORPHANS the new
+commit … after a branch is squash-merged, start the follow-up off fresh `origin/main` — never re-use
+it"* — and this session stacked on the feature branch anyway.
+
+**Rule for this lane: a PR's MERGED status is not evidence its content is in `main`. Grep main for
+the actual line.** Same discipline as §10.1 rule 1: read the source of truth, do not trust a report.
