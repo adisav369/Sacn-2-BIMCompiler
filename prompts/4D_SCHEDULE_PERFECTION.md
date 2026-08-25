@@ -4943,3 +4943,82 @@ step. Never add a commit to a branch that already has an open PR — start it of
 **Final state of §S65:** STAGE 1 ✅ diagnosed (unification NOT wired — see open item 1 above) ·
 STAGE 2 ✅ · STAGE 3 ✅ · STAGE 4 NOT claimed (nothing witnesses the canvas; the screen is not
 evidence). Five PRs: #1526 #1527 #1528 #1529 #1530.
+
+---
+
+# §S66 — THE CORE PROGRAMME TEMPLATE. START A NEW SESSION HERE. (2026-08-25)
+
+## The correction that matters more than any fix in §S65
+**The user asked for a core programme-template JSON MONTHS ago and was repeatedly told it existed.
+It did not.** Scanned all 96 JSON files in `bim-ootb`: zero contain tasks, durations or dependencies.
+**`4D_SCHEDULE_PERFECTION.md:1751` — this file — states "sequence_rules.json IS that template and it
+does work". That sentence is FALSE and it is why every session since could report the template as
+done.** `sequence_rules.json` is an `ifc_class → phase/sequence/trade` lookup. It answers *which phase
+does this element belong to*. It cannot answer *what is the programme*. Do not repeat that claim.
+
+**Shipped:** `viewer/rates/programme_template.json` (bim-ootb PR #1531) + `witness_programme_template.js`
+(pass=10 fail=0). **Artifact and gate only — NO LOADER WIRED. Nothing consumes it yet.**
+
+## PRIMAL ROLE — one sentence
+**It is the only place in the 4D chain where a fact is AUTHORED rather than DERIVED from the layer
+before it.**
+
+Everything else is a derivation: template classification → element solve → zone windows → task
+dates → dependency edges → CPM → drawn bars. Each layer takes the previous layer's output as its
+input, so **every layer always agrees with its neighbour, nothing can ever be contradicted, and the
+whole chain is 4.4× off the work it contains while reporting itself green.** That is not a bug in any
+one link. It is the absence of an anchor. This file is the anchor.
+
+## HOW IT DISSOLVES EACH HELL — mapped to the measured symptom, not to a theory
+Every number below is from ONE live `HHS_Office_Federated` console log, 2026-08-25, v1089.
+
+| measured symptom | why it happens now | what the template changes |
+|---|---|---|
+| `§CREW_DAY_CLOCK rawDays=185.2` vs `§GANTT_AXIS axisDays=42.0` — **4.4× contradiction inside one log** | duration = elapsed span of the geometry placement solve. The solve ORDERS elements; it never PRICES the work | `duration_rule.basis="work_content"` — `days = ceil(Σ installSecs / (shift × crews))`. The programme is as long as the work in it |
+| `§GANTT_CPM_ANNOTATE critical=17 (100%) float=0..0` — every task critical, no critical PATH | `schedule_author.js` derives each FS lag from the dates it is meant to validate (`succ.start = pred.finish + lag EXACTLY`). Every edge tight by construction | `dependencies` are construction logic with no date, no start, no day number. Float becomes a DISCOVERED quantity; CPM can finally contradict the schedule |
+| `§GANTT_ROW_ORDER phases=[Superstructure,Architecture,MEP Rough-in,MEP Final,Finishes]` — **no Substructure at all** | phases exist only if geometry produced elements for them. An absent phase is silently absent | template declares all 6 phases; `within_level` chain must reach every one. Absent is REPORTED (`_empty_ok` + its `_why`), never silent |
+| 17 tasks for a 6880-element, 3-storey building | tasks = whatever `deriveZones` grouped, i.e. `(phase, storey)` | phases × real storeys, declared, with `replicate_per_level` explicit. The shape is authored, not emergent |
+| `§CREW_DAY shift=24h/24h` — no week, no weekends | `SHIFT_HOURS` alone carried the calendar; nothing stated the week | `calendar` block states hours AND days_per_week AND holidays. 24/7 carried VERBATIM (standing 2026-08-13 ruling) — made visible and editable, deliberately NOT changed here |
+| trades at 0.1–42% utilisation | crew caps never meet a duration derived from demand | duration derives from demand ÷ capacity, so utilisation becomes a real, checkable output |
+
+## HOW THE OTHER JSON RELATES TO IT — two files, one set of phases, gated relationship
+- **`sequence_rules.json` = the LOOKUP.** Per `ifc_class`: phase, sequence, trade, productivity, crew
+  caps. Answers *what is this element and how fast does its trade work*.
+- **`programme_template.json` = the SHAPE.** Phases, per-level replication, dependency logic,
+  calendar, duration rule. Answers *what is the programme*.
+- **The template DERIVES its phase set from the lookup and must never re-type it.** `phases[].sequence`
+  = that phase's MIN sequence in `SEQUENCE_RULES`; `phases[].trades` = the union of its classes'
+  resources. Gated by `phases-match-classification-order` + `trades-match-classification`.
+  **This is not tidiness** — `gantt_model.js`'s own header records `_VAR_ORDER` as a THIRD stale copy
+  of the phase order that PR #1165 missed, still reading MEP rough-in BEFORE the envelope.
+- **The template must never carry a productivity number, a rate, or a class name.** Those live in the
+  lookup, once. The template must never carry a date. Those come from instantiation.
+- **One clock:** `calendar.hours_per_shift` must equal the executed `rates.js SHIFT_HOURS`. Gated
+  (`calendar-matches-engine`) — `§GANTT_SHIFT_HOURS_DESYNC` was exactly two files disagreeing about
+  the working day, and bars were authored 3× slower than the canvas played.
+
+## ⛔ RESUME HERE — the next step, and why it is deliberately NOT done yet
+**Instantiation: make `materializeZones` copy the template instead of inventing the shape.**
+1. Read `programme_template.json`; for each phase, emit one task per real storey where
+   `replicate_per_level`, one per building otherwise.
+2. Duration per task from `duration_rule` (work content ÷ crew capacity), **not** from the solve span.
+3. Write `task_sequences` from the template's `dependencies` — **never** from the emitted dates.
+   Delete the `lagDays = sd.s - pd.e` derivation (`schedule_author.js`, search the comment "FS lag
+   straight off the persisted day numbers"). That line is the tautology.
+4. Let CPM run on real logic and report real float.
+
+**This was NOT started in the same session on purpose.** It changes every number on every building.
+Baselines must be **RE-DERIVED, not re-locked** — `baselines/midair.json` (`float_after_cpm`,
+`zda_display_float`), `witness_midair_zero`, `witness_zone_display_authoring`,
+`§CROSSTASK_JUDGE_PARITY`. Expect the programme to get LONGER (42 → order-of-186 days) and that is
+the fix, not a regression: the current 42 is the contradiction.
+
+**Also still open from §S65:** `viewer.html:865` still never calls `loadSequenceRules()`, so the
+executed table remains the `rates.js` literal and Settings edits reach nothing (the
+`mirror-matches-executed` gate keeps the two honest, but the split remains).
+
+## ⚠ THE LAW, restated because it was broken by the session that documented it
+**No visual. Ever.** Do not ask the user what they see, do not offer to have them look, do not treat
+a screenshot as evidence — including a PIXEL THRESHOLD in a witness, which is a screenshot with extra
+steps (see §ZONE_WINDOW_COVERS_WORK's gate lesson). Derive the defect from `§`-log values and numbers
+computed from real state. This session asked "tell me what you see" after writing that rule down.
