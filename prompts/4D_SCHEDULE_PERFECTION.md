@@ -4956,7 +4956,7 @@ does work". That sentence is FALSE and it is why every session since could repor
 done.** `sequence_rules.json` is an `ifc_class → phase/sequence/trade` lookup. It answers *which phase
 does this element belong to*. It cannot answer *what is the programme*. Do not repeat that claim.
 
-**Shipped:** `viewer/rates/programme_template.json` (bim-ootb PR #1531) + `witness_programme_template.js`
+**Shipped:** `viewer/rates/4D_template.json` (bim-ootb PR #1531) + `witness_4d_template.js`
 (pass=10 fail=0). **Artifact and gate only — NO LOADER WIRED. Nothing consumes it yet.**
 
 ## PRIMAL ROLE — one sentence
@@ -4984,7 +4984,7 @@ Every number below is from ONE live `HHS_Office_Federated` console log, 2026-08-
 ## HOW THE OTHER JSON RELATES TO IT — two files, one set of phases, gated relationship
 - **`sequence_rules.json` = the LOOKUP.** Per `ifc_class`: phase, sequence, trade, productivity, crew
   caps. Answers *what is this element and how fast does its trade work*.
-- **`programme_template.json` = the SHAPE.** Phases, per-level replication, dependency logic,
+- **`4D_template.json` = the SHAPE.** Phases, per-level replication, dependency logic,
   calendar, duration rule. Answers *what is the programme*.
 - **The template DERIVES its phase set from the lookup and must never re-type it.** `phases[].sequence`
   = that phase's MIN sequence in `SEQUENCE_RULES`; `phases[].trades` = the union of its classes'
@@ -4999,7 +4999,7 @@ Every number below is from ONE live `HHS_Office_Federated` console log, 2026-08-
 
 ## ⛔ RESUME HERE — the next step, and why it is deliberately NOT done yet
 **Instantiation: make `materializeZones` copy the template instead of inventing the shape.**
-1. Read `programme_template.json`; for each phase, emit one task per real storey where
+1. Read `4D_template.json`; for each phase, emit one task per real storey where
    `replicate_per_level`, one per building otherwise.
 2. Duration per task from `duration_rule` (work content ÷ crew capacity), **not** from the solve span.
 3. Write `task_sequences` from the template's `dependencies` — **never** from the emitted dates.
@@ -5022,3 +5022,95 @@ executed table remains the `rates.js` literal and Settings edits reach nothing (
 a screenshot as evidence — including a PIXEL THRESHOLD in a witness, which is a screenshot with extra
 steps (see §ZONE_WINDOW_COVERS_WORK's gate lesson). Derive the defect from `§`-log values and numbers
 computed from real state. This session asked "tell me what you see" after writing that rule down.
+
+---
+
+## §S66.1 — RENAMED `4D_template`, AND THREE REAL DEFECTS IN THE ANCHOR ITSELF (2026-08-25, review pass)
+
+**User directive: "first rename programme_template to 4D_template to remove ambiguity."** Done —
+bim-ootb PR #1532, rename only, no content/invariant/gate change. `viewer/rates/4D_template.json` ·
+`viewer/tests/witness_4d_template.js` · `witness_kit/invariants/4d_template.js` ·
+`witness_kit/schemas/4d_template.js`; `meta.id`→`4d_template`, storageKey→`json_4d_template`, log tag
+`§PT_`→`§4DT_`, export `ProgrammePhaseRow`→`PhaseRow4D`. Re-run after rename:
+`§WITNESS_4D_TEMPLATE pass=10 fail=0 ran=6`; suite discovery `green=1 new_red=0`. Zero stale refs
+repo-wide (`grep -rn programme_template` → 0).
+
+The name mattered: `sequence_rules.json` is ALSO called "the template" throughout §S65, and
+`gantt_model.js` carries a third phase-order copy. Three things called "the template" is how §S65's
+STAGE 1 confusion started.
+
+### The §S66 write-up overclaims one thing. Corrected.
+"The only place in the chain where a fact is AUTHORED rather than DERIVED" is **not true as written**,
+and the file's own `provenance` field contradicts it: `phases[].id/name/sequence` and `phases[].trades`
+are **EXTRACTED from `sequence_rules.json`** and gated against drift
+(`phases-match-classification-order`, `trades-match-classification`). `sequence_rules.json` authors
+plenty of facts of its own — productivity, `rate_per_day`, `crew_size`, `max_crews`, class→phase.
+
+**What `4D_template.json` actually authors is exactly three things: `calendar`, `duration_rule`,
+`dependencies`.** That is still the right claim to make — those three are precisely the anchor the
+chain lacked — but state it as the three, not as "the only authored layer". The overclaim invites the
+same rot §S66 was written to stop.
+
+### ⛔ DEFECT 1 (real, in the shipped file) — the crew formula treats trades as fungible
+`duration_rule.formula`: *"crews = sum of max_crews over the trades the activity's own elements
+actually use"*, applied to `days = ceil(Σ installSecs / (hours_per_shift × 3600 × crews))`.
+
+**Σ over trades is arithmetically wrong.** Work content is PER TRADE — an electrician's seconds cannot
+be worked off by a plumber's crew. Duration is `max` over trades of (that trade's own secs ÷ that
+trade's own capacity), never (all secs ÷ all capacity). Measured from `sequence_rules.json`
+`LABOR_RATES` against the template's own declared trade lists:
+
+| phase | declared trades | Σ max_crews (formula) | max max_crews (any one trade) | duration understated by up to |
+|---|---|---|---|---|
+| Substructure | CONCRETE_GANG | 3 | 3 | 1.00× |
+| Superstructure | CONCRETE_GANG, STEEL_ERECTOR | 6 | 3 | **2.00×** |
+| Architecture | CARPENTER, CONCRETE_GANG, MASON, ROOFER | 8 | 3 | **2.67×** |
+| MEP Rough-in | ELECTRICIAN, HVAC_TECH, PLUMBER | 6 | 2 | **3.00×** |
+| MEP Final | ELECTRICIAN, HVAC_TECH, PLUMBER | 6 | 2 | **3.00×** |
+| Finishes | FINISHER | 2 | 2 | 1.00× |
+
+`max_crews` DOES exist on all 10 trades (verified) so the formula is well-formed — it is the wrong
+formula, not a dangling reference. **This is the same class of error the file exists to kill**: it
+would replace HHS's 4.4× duration contradiction with a new understatement of up to 3× on the two MEP
+phases, and it would do so with all 10 invariants green, because nothing gates the formula's
+arithmetic — only that `basis === 'work_content'`.
+
+**Fix (do this before instantiation, not after):** restate as
+`days = ceil( max over trades t of ( Σ installSecs(t) / (hours_per_shift × 3600 × max_crews(t)) ) )`
+and add an invariant that the formula's divisor is per-trade, not a sum.
+
+### ⛔ DEFECT 2 (gate hole) — MIN-sequence ordering cannot see band interleave
+`phasesMatchClassificationOrder` compares `phases[].sequence` to each phase's **MIN** sequence in
+`SEQUENCE_RULES` and checks the mins strictly increase. Measured bands today:
+
+`Substructure 1–1 · Superstructure 2–4 · Architecture 5–6 · MEP Rough-in 7–7 · MEP Final 9–9 · Finishes 10–11`
+
+Clean right now — §S65 defect #7 (IfcRoof at seq 8, after all MEP rough-in) was fixed by PR #1527. But
+**the gate would not catch its return.** Move any Architecture class back to seq 8 and Architecture's
+min stays 5, the mins still increase, `pass=10 fail=0`. The exact defect §S65 named is invisible to the
+witness written to prevent it.
+
+**Fix:** gate `max(sequence of phase[i]) < min(sequence of phase[i+1])` — non-overlapping bands, not
+just ordered mins.
+
+### ⛔ DEFECT 3 (undefined at instantiation) — building-scope phase meets level-scope phase
+`substructure` is `replicate_per_level: false` AND `_empty_ok: true`, and it is the head of the
+`within_level` chain. Two things the file does not say:
+1. **Which level's superstructure does the single Substructure activity precede?** The
+   `substructure → superstructure` edge is declared `within_level`, but its predecessor has no level.
+   Instantiation has no rule; it will invent one.
+2. **When Substructure is dropped for empty population — HHS_Office_Federated, the file's own worked
+   example — `superstructure` has no predecessor and the chain is broken.**
+   `withinLevelChainCoversAllPhases` runs against the TEMPLATE, never against the instantiated graph,
+   so the drop is unwitnessed. This is `§S66`'s own "absent must be REPORTED" requirement failing at
+   the one moment it applies.
+
+**Fix:** declare edge scope explicitly (`building→level` edges attach to level 1) and carry the
+cover-invariant forward onto the instantiated task graph, not only the template.
+
+### Verdict on §S66 as written
+`8/10 — the diagnosis is right and the artifact is real · the primal-role claim overstates by one
+notch · the duration formula it anchors on is arithmetically wrong (up to 3×) and ungated · band
+interleave and instantiation-scope are both unguarded.` The RESUME step (instantiation) should NOT
+start until Defect 1 is fixed — instantiation is what turns that formula into every number on every
+building.
