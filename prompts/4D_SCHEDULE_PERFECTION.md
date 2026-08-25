@@ -5381,3 +5381,80 @@ nothing reads. `sw.js` `CACHE_VERSION` + `PRECACHE_ASSETS` must include the JSON
 element solve, while the bars now come from the template. Those are two timelines again — the exact
 shape `§ZONE_DISPLAY_AUTHORING` was written for. Either remap elements into their task's window, or
 measure the disagreement and decide. **Do not assume they agree; nothing has checked it yet.**
+
+---
+
+# §S70 — THE MOVIE vs THE BARS: MEASURED FIRST, THEN BOUND (2026-08-25)
+
+**User: "go, measure the movie vs bars disagreement first."** Done, and the measurement changed the
+plan: **§S69 alone was not shippable.** bim-ootb **PR #1536**, witness 7/7 on 71,140 played elements.
+
+## The measurement — and why the legacy path looked fine
+A legacy bar was an **envelope** over the element solve (`deriveZones` took each group's
+min-start/max-end), so an element was inside its own bar **by construction**. §S69 makes the bar an
+**independent statement** authored from `4D_template.json` — and the pair immediately went wrong.
+
+| building | LEGACY inside its own bar | **§S69 TEMPLATE** inside its own bar |
+|---|---|---|
+| Hospital | 62,494/63,182 = **98.9%**, worst 0.5d | 34,438/63,182 = **54.5%**, worst **274.3d late** |
+| Terminal | 46,125/48,428 = **95.2%**, worst 0.5d | 17,153/48,428 = **35.4%**, worst **123.9d late** |
+| Duplex | 971/1,119 = **86.8%**, worst 0.5d | 210/1,119 = **18.8%**, **81.1% start BEFORE their bar** |
+| HHS_Office_Federated | — | 4,169/6,839 = **61.0%**, 26.3% start before their bar |
+
+The legacy 0.5d worst case is pure day-rounding. **Shipping §S69 on its own would have made the
+user's reported hell — things appearing when no bar says they should — dramatically worse.**
+This is the answer to "is the 4D_template a deal breaker": **the template is necessary and correct,
+and the template ALONE is a regression.** Both halves or neither.
+
+## The bind
+Per task, an **order-preserving affine map** of that task's own solve envelope `[minStart, maxEnd]`
+onto its authored window `[s, e]`. Monotone, so **every ordering the solve was expensive to win
+survives untouched** — support-before-supported, host-before-hosted, §4D_BAND_MONOTONIC — because a
+monotone map cannot swap two times. Relative widths survive (uniform scale per task). A degenerate
+task (every member solved at one instant — the **"zero minute stacking"** shape reported by name) is
+spread evenly across its window instead, which is the one case an affine map cannot handle.
+
+Same seam `§ZONE_DISPLAY_AUTHORING` used, run the other way: that authored windows FROM the display
+timeline; this authors the display timeline FROM the windows. Only one can be the source, and after
+§S68 it is the template.
+
+## After
+**100.0% inside on all four buildings.** 0 early, 0 late, worst offset **0.0d**, movie span == bars
+span exactly (1.00× on all four), **0 order inversions** vs the raw solve (0/63147, 0/48356, 0/6822,
+0/1101). Better than the legacy path ever was, with the template's phase discipline on top.
+
+## A REAL WITNESS BUG, caught on its first run
+`remap-preserves-solve-order` FAILED. **Cause was the witness, not the remap:** task ids are
+phase+storey derived, so `TASK_SUPERSTRUCTURE_LEVEL_1` exists in Hospital, HHS *and* Duplex, and
+grouping on `taskId` alone pooled three buildings into one "task" and manufactured inversions.
+Now keyed by `building|taskId`; `movieSpanEqualsBarsSpan` had the same collision and is per-building
+too. **Worth recording as a pattern: a fleet witness that groups by an id derived from phase/storey
+must key on the building as well.**
+
+## WHAT "FLOAT EXISTS" MEANS — plain English
+**Float = how many days a task can slip before it delays the whole job.** Zero float means "move
+this by one day and the finish date moves with it" — that task is on the *critical path*.
+
+Before, `schedule_author.js` wrote each edge's lag as `lagDays = sd.s - pd.e` — the gap it *observed*
+between two tasks' dates, stored as the *rule* those tasks must obey. Every edge was therefore
+exactly tight, so **every task had zero float and CPM reported 17 of 17 tasks critical**. That is not
+a finding, it is a tautology: the constraint was copied from the answer, so it can never disagree
+with it. A schedule where everything is critical tells you nothing about what to worry about.
+
+Now the lags come from the template (all FS+0, declared), independent of the dates. Levels run in
+parallel under the ladder while each level's own chain is packed, so **some tasks genuinely have
+slack and some do not** — the critical path becomes a real, discovered subset instead of "everything".
+That is what makes the Gantt worth reading: it can finally tell you *which* delay costs you the job.
+
+## ⛔ RESUME HERE — one wiring job, unchanged from §S69, now with both halves ready
+Still **dark**: no call site passes `opts.template`. To flip it live, in ONE PR:
+1. Pass `template` (and use the returned `displaySchedule` as the movie timeline) at
+   `time_machine.js:6858`, `:6900`, `:5287` and `schedule_author_ui.js:284`.
+2. **Make `viewer.html` actually LOAD `rates/4D_template.json`.** `viewer.html` never calls
+   `loadSequenceRules()` (§S65 STAGE 1) — do not repeat that. Add `load4DTemplate()` beside it and
+   call it, or the file stays a document nothing reads.
+3. `sw.js` `CACHE_VERSION` + `PRECACHE_ASSETS` must include the JSON in the same PR, or existing
+   users never get it.
+
+Fleet effect on flip: Hospital 356d→318d (−11%), Terminal 132d→96d (−27%), HHS 47→49, Duplex 10→12;
+phase overlap → 0 everywhere; every element inside its own bar.
