@@ -5114,3 +5114,110 @@ notch · the duration formula it anchors on is arithmetically wrong (up to 3×) 
 interleave and instantiation-scope are both unguarded.` The RESUME step (instantiation) should NOT
 start until Defect 1 is fixed — instantiation is what turns that formula into every number on every
 building.
+
+---
+
+# §S67 — HHS OFFICE WALKED THROUGH THE MOTION, HOP BY HOP. ONE LIVE DEFECT FOUND AND STOPPED. (2026-08-25)
+
+**User directive:** *"start implementing that very first file, review that its following 4D rules, then
+slowly systematically apply HHS Office as a sample thru the motion and see how it begins to deviate and
+stop it at its tracks."*
+
+**Shipped:** bim-ootb PR #1532 (rename) + **PR #1533** (`4D_template` v1.1.0 + `§CREW_CAP_FINAL`).
+Instrument kept: **`viewer/tests/probe_4d_motion.js`** — `node viewer/tests/probe_4d_motion.js [Building]`.
+It is a PROBE, not a witness: it prints what the template declares beside what the engine produces at
+each hop. The suite runner ignores `probe_*`.
+
+## Do I agree the missing template was the grail? Yes, with one correction.
+The template is the anchor, and building it is what made every number below findable — before it there
+was no declared quantity for any layer to be measured against. But **the anchor alone is not the grail**:
+a declaration nothing compares against is another file. The grail is anchor **+ a per-hop comparison**,
+which is what the probe is. The first defect fell out within minutes of having both, after weeks of
+downstream chasing.
+
+**And the anchor as first written was itself wrong in three places** (§S66.1), which is the strongest
+argument for the pairing: an unchecked anchor propagates its own error with every layer agreeing.
+
+## THE MOTION — HHS_Office_Federated, 6839 elements, 4 storeys, 24h shift
+| hop | what the template declares | what the engine produces | verdict |
+|---|---|---|---|
+| **0** classify | 6 phases exist | 6839 els, 4 storeys, **0** zero-minute floors, **0** unmatched classes | ✅ clean — PR #1527's §S65 fixes hold |
+| **1** phases | all 6 declared, absence REPORTED | **Substructure = 0 elements.** Superstructure 1981 · Architecture 1422 · MEP Rough-in 2666 · MEP Final 727 · Finishes 43 | ⚠ absent, and silently so |
+| **1** duration | per-trade work content | serial 182.5d · **Σcrews 40.1d · per-trade 69.8d** | ⛔ the shipped Σ form understates 1.74× |
+| **2** solve | FS-serial chain ⇒ 69.8d | span **46.9d** | ⚠ engine overlaps phases; template says serial. Nothing reconciles them |
+| **2b** capacity | no trade exceeds `max_crews`, ever | **CARPENTER peak 8 vs cap 2 (4.0×)**; 7 other trades exactly legal | ⛔ **LIVE DEFECT — fixed, below** |
+| **3** zones | 6 phases × 4 levels = 20 tasks | **17** — MEP Final 3/4 levels, Finishes 2/4 | ⚠ silently short |
+| **4** windows | window ≥ its own work | 0/17 over-committed (per-trade rule) | ✅ PR #1529 holds |
+| **5** edges | 6 LOGIC edges, no dates | 25 edges, **25/25 lag == the observed gap between the two zones' own dates** | ⛔ 100% restatement, 0% logic — the tautology, confirmed |
+
+**Correction to §S66's headline.** "rawDays=185.2 vs axisDays=42.0, a 4.4× contradiction" compares
+unlike things: 182.5 is ONE crew doing everything serially, 46.9 is many trades in parallel. That is
+not a contradiction on its own. **The real, defensible contradiction is HOP 2b**, and it is a physical
+one, not an arithmetic framing.
+
+## ⛔ THE LIVE DEFECT — §CREW_CAP_FINAL. The crew cap only bound PLACEMENT.
+`schedule_gate.js` `claimCrew` enforces `LABOR_RATES[trade].max_crews` correctly — at the moment an
+element is first placed. The **`§DEQ_REPAIR` sweep** then moves elements forward to satisfy geometry
+gates by writing `o.start`/`o.end` **directly, never re-claiming a crew**. Its biggest shifter is
+`hostGate`, whose entire population is hosted openings (`IfcDoor`/`IfcWindow` = **CARPENTER**), so they
+pile onto the same instants.
+
+**Measured on the FINAL emitted times (24h shift), and isolated by A/B with the repair loop disabled:**
+
+| building | trade | cap | peak, repair ON | peak, repair OFF | span ON | span OFF |
+|---|---|---|---|---|---|---|
+| Terminal (48,428 els) | CARPENTER | 2 | **20 (10.0×)** | 2 | 131.6d | 131.6d |
+| HHS_Office_Federated | CARPENTER | 2 | **8 (4.0×)** | 2 | 46.9d | 46.9d |
+| Duplex | CARPENTER | 2 | **3 (1.5×)** | 2 | 9.9d | 9.9d |
+
+Every other trade legal on every building. **The breach never shortened the programme** — identical
+spans either way. It authored work no crew exists to do.
+
+**Fix:** a crew re-pack over the CURRENT times, inside the SAME convergence loop as the geometry sweep,
+so the two constraints settle together instead of one undoing the other. Both only ever push an element
+later ⇒ monotone ⇒ terminates. `§CREW_CAP_FINAL crewRepacked=` 202 (Terminal) / 342 (HHS) / 20 (Duplex),
+**spans unchanged**. Witness `viewer/tests/witness_4d_capacity_honoured.js` — red on all three before,
+green on all three after.
+
+**Why weeks of work missed it:** every existing witness reads zones, tasks, bars or dates. **Nothing
+swept the emitted element times per trade.** The layer had no witness, exactly as §S65 found for the
+template itself.
+
+## The same Σ-crews error, three shipped sites
+`4D_template.json` v1.0.0's formula was only the newest copy. Also fixed:
+- `schedule_author.js` `§ZONE_WINDOW_COVERS_WORK` — `_wCrews` summed across trades.
+- `witness_kit/generators/gantt_bars.js` `crewDaysOf` — same sum, so
+  `witness_gantt_bar_is_its_task.js` was **measuring the lenient rule**. Under the strict per-trade
+  rule it went 0/135 → **1/135**.
+- That one red (Clinic "Superstructure — Roof - Main", 11% over) was a **harness bug, not a product
+  bug**: the generator never passed `nameOverrides` to `materializeZones`, so windows were authored
+  from UNOVERRIDDEN classification and measured against OVERRIDDEN elements. The browser is unaffected
+  (`window.SEQUENCE_NAME_OVERRIDES` supplies it); node is not. Fixed → **0/136** under the strict rule,
+  and Clinic gained a bar (32→33) because the classification finally matches production.
+  *This is the second appearance of the drift the generator's own header already warns about — a
+  mirrored predicate diverging from the real one, at a second call site.*
+
+## Suite
+`node tests/run_witness_suite.js` → **`green=57 new_red=1 known_red=7 total=65`**, both new witnesses
+discovered and green. The one `new_red` (`witness_cpe_buildup_require_tm_first.js`) is **byte-identically
+red with and without this change** — baselined by stashing the diff and re-running. Pre-existing and
+unrelated (its own output: *"WITNESS IS BLIND — shipped source unexpectedly already has this gate"*).
+
+⚠ **Harness note that cost a full false alarm:** a `/tmp/wt-*` worktree has **no `node_modules`**, so
+5 witnesses died with `Cannot find module 'sql.js'` and the runner reported them as `new_red`.
+`ln -s /home/red1/bim-ootb/node_modules node_modules` in the worktree before trusting any suite run
+there. A crash is not a red.
+
+## ⛔ RESUME HERE — three declared-vs-actual gaps remain OPEN, none of them started
+The template now declares the right rules and the engine no longer breaches capacity. **Instantiation
+is still not wired — nothing consumes `4D_template.json` at runtime.** In priority order:
+
+1. **Phases/levels that silently vanish** (HOP 1 + HOP 3): Substructure absent entirely; MEP Final on
+   3 of 4 levels; Finishes on 2 of 4. The template says absence must be REPORTED. Nothing reports it.
+   Cheapest real win — a §-log at `deriveZones`, before any instantiation work.
+2. **The tautological edges** (HOP 5): 25/25 lags are restatements of the dates they are meant to
+   validate. Delete the `lagDays = sd.s - pd.e` derivation in `schedule_author.js` and write
+   `task_sequences` from the template's `dependencies` instead. This is what makes CPM float real.
+3. **Serial template vs overlapping engine** (HOP 2): 69.8d declared, 46.9d produced. Needs a user
+   decision, not a guess — either the template declares the real overlaps (SS/lead edges, each with
+   its `_why`) or the engine is made to honour the serial chain. **Do not pick one silently.**
