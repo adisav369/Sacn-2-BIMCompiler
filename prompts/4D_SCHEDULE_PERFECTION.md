@@ -5313,3 +5313,71 @@ next step, which subsumes §S67's items 1-3:
 
 Everything else on the open list (silent absent phases, tautological edges, serial-vs-overlap) is
 a consequence of that one inversion, not a separate job.
+
+---
+
+# §S69 — THE INVERSION IS BUILT AND TESTED ON HOSPITAL. NOT YET LIVE. (2026-08-25)
+
+**User: "Proceed and test on Hospital."** Done — bim-ootb **PR #1535**, witness 11/11 on
+Hospital + HHS_Office_Federated + Duplex.
+
+`materializeZones(db, rules, {…, template})` now runs **phases → elements**: one task per
+(phase × real level) the template declares, priced by `duration_rule` (per-trade work content),
+placed by `dependencies` (FS+0 within a level + the §4D_BAND_MONOTONIC ladder across levels),
+levelled against `capacity_rule`, with elements **assigned** to tasks instead of defining them.
+`instantiateTemplate()` is pure and node-testable — no DB, no globals.
+
+**⚠ OPT-IN, DARK.** No call site passes `opts.template`, so every existing path is byte-identical.
+Suite: `green=58 new_red=1 known_red=7` (the +1 green is the new witness; the red is the same
+pre-existing unrelated one baselined in §S67).
+
+## Measured — legacy vs template, same DBs, 24h shift
+| building | legacy | template | delta | levelling |
+|---|---|---|---|---|
+| **Hospital** (63,182 els, 8 levels) | 356d · 36 tasks · 58 edges | **318d · 35 · 55** | **−11%** | 7 tasks delayed, +81d |
+| **Terminal** (48,428 els) | 132d · 73 · 107 | **96d · 71 · 98** | **−27%** | 11 tasks delayed, +226d |
+| HHS_Office_Federated | 47d · 17 · 25 | 49d · 17 · 25 | +4% | none needed |
+| Duplex | 10d · 19 · 27 | 12d · 18 · 26 | +20% (2 days) | none needed |
+
+**Shorter on the two big buildings, two days longer on the two small ones** — and every quality
+number moves one way only:
+
+| gate | before | after |
+|---|---|---|
+| same-level phase overlap | HHS 10/29 (34%), Duplex 7/38, Terminal 18/109 | **0/65, 0/29, 0/33** |
+| persisted lags | `lagDays = sd.s - pd.e` — 25/25 the answer restated as its own constraint | **every lag = 0, the template's declared value** |
+| CPM float | 17/17 critical, float 0..0 | **slack exists on real edges** |
+| absence | silent | **§TPL_PHASE_COVERAGE / §TPL_PHASE_ABSENT / §TPL_PHASE_GAP** |
+| crew capacity | breached until the §CREW_CAP_FINAL repair | **legal by construction + levelling** |
+| element loss | unchecked | **63,182 / 63,182 on Hospital, gated** |
+
+## TWO REAL DEFECTS THE WITNESS CAUGHT IN MY OWN INSTANTIATOR — both fixed here
+1. **Hospital breached PLUMBER: peak 3.26 vs cap 2.** The ladder stops a phase overtaking *itself*;
+   it does **not** stop MEP Rough-in on level 5 and MEP Final on level 2 sharing one plumber pool.
+   Fixed by applying `capacity_rule` as ordinary **delay-only resource levelling** in topological
+   order. **HHS and Duplex never showed it — it takes 8 levels to expose.** This is the argument for
+   testing on Hospital rather than the small buildings.
+2. **A building-scope phase silently dropped elements.** Substructure emits its one task on the
+   lowest level and my first cut *skipped its own cells on every other level* — 63,181 of 63,182
+   elements assigned on Hospital. **Invisible in tasks, edges, days and phase coverage; only the
+   element count caught it.** Now the building-scope task collects its elements from every level,
+   gated by `every-element-lands-in-a-task`.
+
+New §-logs: `§AUTHOR_TPL` · `§TPL_PHASE_COVERAGE` · `§TPL_PHASE_ABSENT` · `§TPL_PHASE_GAP` ·
+`§TPL_CAPACITY_LEVEL` · `§TPL_ELEMENT_ORPHAN`.
+
+## ⛔ RESUME HERE — ONE DECISION, THEN ONE WIRING JOB
+**The decision (user's, not a session's):** flip the live generation path to the template.
+Concretely: pass `template` at `time_machine.js:6858`, `:6900`, `:5287` and `schedule_author_ui.js:284`.
+That changes every building's Gantt on the next generate — Hospital −11%, Terminal −27%,
+HHS +4%, Duplex +2 days, and phases stop overlapping anywhere.
+
+**The wiring that goes with it:** the viewer must actually LOAD `rates/4D_template.json`.
+`viewer.html` never calls `loadSequenceRules()` (§S65 STAGE 1) — do **not** repeat that here.
+Add a `load4DTemplate()` beside it and call it from `viewer.html`, or the file stays a document
+nothing reads. `sw.js` `CACHE_VERSION` + `PRECACHE_ASSETS` must include the JSON in the same PR.
+
+**Not yet examined, and it is the next real question after the flip:** the movie still plays the
+element solve, while the bars now come from the template. Those are two timelines again — the exact
+shape `§ZONE_DISPLAY_AUTHORING` was written for. Either remap elements into their task's window, or
+measure the disagreement and decide. **Do not assume they agree; nothing has checked it yet.**
