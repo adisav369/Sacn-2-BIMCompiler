@@ -465,3 +465,98 @@ target is to pay less of it without giving up the ladder.
 test, not yet tried: the ladder currently chains whole level TASKS; chain the TRADE across levels
 instead (the actual §4D_BAND_MONOTONIC wording is per-trade, not per-task), which may hold
 inversions near zero while leaving elements freer to follow their contacts.
+
+---
+
+# §10 — WITNESS ACCURACY IS THE WHOLE JOB NOW. START A NEW SESSION HERE.
+
+**User standing constraint, stated three times across 2026-08-25: there is NO visual check. The
+`§` logs are the only channel. A number that is wrong is worse than no number, because it gets
+believed.** This session produced one full retraction (§9.4) and two near-misses. Every one came
+from the witness, not the code.
+
+## §10.1 THE FIVE RULES THIS SESSION PAID FOR
+
+**1. The judge is SLICED, never re-derived.**
+`census()` comes out of `witness_midair_zero.js` by balanced-brace slice. §9.4: a hand-written inline
+judge testing only `supportPool`-filtered BEARING reported midair `0/4/0/0`; the real judge — which
+accepts bearing OR carrier OR embedded over EVERY element — reported `18/129/124/697`. **A judge
+built from the scheduler's own predicate cannot contradict the scheduler.** Same error, same day,
+cost `4,706` support edges instead of `716` (§S26.2's already-rejected definition, re-derived by hand).
+→ *Any probe or witness in this lane that measures floating and does not slice `census()` is invalid
+on its face.*
+
+**2. Every gate carries its own red control, committed.**
+The contract allows ONE `.redControl()`, which proves the WITNESS can fail — not that each GATE can.
+`witness_4d_template.js` carries 10 per-gate controls, `witness_bar_composite.js` 4,
+`witness_bar_schedule.js` 3. A gate verified once in a throwaway console is not verified.
+
+**3. A gate that checks two of your own fields agree is a DELETION REQUEST.**
+`4D_template.json` v1.2.0 had `scope` and `replicate_per_level` saying the same thing, with an
+invariant written to check they matched. 123 lines / 146 keys, of which 4 were genuinely authored.
+See `feedback_extract_dont_author_then_gate.md`.
+
+**4. A fleet witness must key on the BUILDING as well.**
+`witness_4d_movie_binds_bars.js` failed on its first run: task ids are phase+storey derived, so
+`TASK_SUPERSTRUCTURE_LEVEL_1` exists in Hospital, HHS *and* Duplex. Grouping on `taskId` alone pooled
+three buildings into one "task" and manufactured order inversions that did not exist.
+
+**5. A crash is not a red, and a red is not a regression.**
+A `/tmp/wt-*` worktree has NO `node_modules` — 5 witnesses died `Cannot find module 'sql.js'` and the
+runner reported them `new_red`. `ln -s /home/red1/bim-ootb/node_modules <wt>/node_modules` first.
+And BASELINE every `new_red` by stashing your own diff and re-running before calling it yours:
+`witness_cpe_buildup_require_tm_first.js` has been byte-identically red all session and is nobody's.
+
+## §10.2 WHERE THE NUMBERS STAND — judged by the sliced `census()`
+
+| | shipping | Bar model | gated by |
+|---|---|---|---|
+| midair | 17 / 147 / 139 / 226 | **12 / 70 / 92 / 513** | `witness_bar_schedule` |
+| band inversions | 64 / 654 / 29,013 / 30,318 | **1 / 0 / 4 / 0** | same |
+| phase stacking | 18% / 34% / — / 17% | **0 everywhere** | same |
+| zero-minute · outside-bar · crew | — | **0 / 0 / 0** | same + `witness_bar_composite` |
+
+Order is Duplex / HHS_Office_Federated / Hospital / Terminal. **All four are mandatory** — §S69's
+PLUMBER breach needed 8 levels to appear, §S71's midair needed Terminal.
+
+PRs: **#1537** core (MERGED) · **#1538** providers · **#1539** bearing/below split · **#1542** this
+lane's semantics, upward edge, geometry levels, trade ladder, granularity dial.
+
+## §10.3 ⛔ RESUME — HARDEN THE WITNESS UNTIL THE LOGS CAN BE TRUSTED ALONE
+
+In order. Do not wire anything live until 1–3 are done.
+
+1. **Kill the scratchpad probes.** Every number quoted in §9 came from `/tmp` scripts that no suite
+   runs and nothing gates. `integrate.js`, `judge.js`, `granularity.js`, `band.js`, `coarse.js`,
+   `gap.js`, `labels.js`, `terminal.js`, `outside.js`, `why.js`, `phaseonly.js` are all gone with the
+   session. **Fold what matters into `witness_bar_schedule.js` or lose the ability to detect a
+   regression at all.** This is the single highest-value task in the lane.
+
+2. **Audit every existing witness in this lane against §10.1 rule 1.** Grep for any predicate that
+   duplicates a shipped one instead of calling or slicing it. That is the error that produced the
+   only retraction so far, and it produced it twice in one day.
+
+3. **`witness_bar_needs.js` is the agent's, and its anti-re-derivation gate compares against
+   `computeSchedule`'s own `§GEO_ORDER edges=` count — verify that claim directly** rather than
+   trusting the agent's report. §10.1 rule 1 applies to subagent output too.
+
+4. **Terminal midair 513 vs a shipping 226** — the only axis where the model loses. §9.5 proved it is
+   the level-boundary cost and not the graph (same graph unpartitioned: `0/1/1/0`). Note it rose from
+   336 when `correctLevelsByGeometry` landed, which adds two bars on Terminal.
+
+5. **The extractor, not the scheduler.** `IfcBuildingStorey.Elevation` is VERIFIED ABSENT from all
+   four shipped DBs — Duplex and Hospital have no `spatial_structure` table at all; HHS and Terminal
+   have one with no `elevation` column. So §S18 `deriveStoreyMergeMap` has never once run, and
+   Terminal carries `Ceiling Level 04`, `Aras Tanah` and `04 THIRD FLOOR LEVEL` as three separate
+   floors. **`level_bands` is the interim control; fixing extraction is the real fix.**
+
+6. **§8 DELETE LIST — still untouched.** `deriveZones` · `_writeTemplateSchedule` ·
+   `remapSolveToTasks` · `§DEQ_REPAIR` · `§CREW_CAP_FINAL` · `_midairAudit`. **Until these go, this
+   lane has ADDED a sixth translator, not removed five**, and §1's whole argument is unspent.
+
+7. **Nothing is wired.** No call site passes the Bar model. P6/XML interop and the editable bars are
+   untouched and verified green (`witness_tm_p6_interop_fold` 42/42).
+
+## §10.4 THE ONE THING NOT TO REPEAT
+Do not report a number to the user without knowing which judge produced it and whether that judge
+shares a predicate with the thing it is judging. Every wrong claim this session passed a green gate.
