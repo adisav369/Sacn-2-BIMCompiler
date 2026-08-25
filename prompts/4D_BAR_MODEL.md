@@ -511,8 +511,8 @@ And BASELINE every `new_red` by stashing your own diff and re-running before cal
 
 | | shipping | Bar model | gated by |
 |---|---|---|---|
-| midair | 17 / 147 / 139 / 226 | **12 / 70 / 92 / 513** | `witness_bar_schedule` |
-| band inversions | 64 / 654 / 29,013 / 30,318 | **1 / 0 / 4 / 0** | same |
+| midair | 17 / 147 / 139 / 226 | **12 / 70 / 92 / 336** | `witness_bar_schedule` |
+| band inversions | 64 / 654 / 29,013 / 30,318 | **1 / 0 / 4 / 4** | same |
 | phase stacking | 18% / 34% / — / 17% | **0 everywhere** | same |
 | zero-minute · outside-bar · crew | — | **0 / 0 / 0** | same + `witness_bar_composite` |
 
@@ -540,15 +540,21 @@ In order. Do not wire anything live until 1–3 are done.
    `computeSchedule`'s own `§GEO_ORDER edges=` count — verify that claim directly** rather than
    trusting the agent's report. §10.1 rule 1 applies to subagent output too.
 
-4. **Terminal midair 513 vs a shipping 226** — the only axis where the model loses. §9.5 proved it is
-   the level-boundary cost and not the graph (same graph unpartitioned: `0/1/1/0`). Note it rose from
-   336 when `correctLevelsByGeometry` landed, which adds two bars on Terminal.
+4. **Terminal midair 336 vs a shipping 226** — the only axis where the model still loses.
+   §9.5 proved it is the level-boundary cost and not the graph (same graph unpartitioned: `0/1/1/0`).
+   *Was 513 until `correctLevelsByGeometry` was deleted 2026-08-26 (§10.6).*
 
-5. **The extractor, not the scheduler.** `IfcBuildingStorey.Elevation` is VERIFIED ABSENT from all
-   four shipped DBs — Duplex and Hospital have no `spatial_structure` table at all; HHS and Terminal
-   have one with no `elevation` column. So §S18 `deriveStoreyMergeMap` has never once run, and
-   Terminal carries `Ceiling Level 04`, `Aras Tanah` and `04 THIRD FLOOR LEVEL` as three separate
-   floors. **`level_bands` is the interim control; fixing extraction is the real fix.**
+5. **⚠ CORRECTED 2026-08-26 — see `4D_SCHEDULE_PERFECTION.md` §S72.2. Everything the earlier version
+   of this item said was wrong.** The mechanism is NOT missing and needs NO source IFC and NO
+   extractor change. `viewer/lib/room_walker.js` `writeRooms()` already injects storey rows from the
+   DB alone — `STC_` guid, `object_type='COMPILED'`, `center_z` = mean wall centre-Z
+   (`room_walker.js:1191`), idempotent, version-stamped via `rooms_meta`. **It has already run on
+   Terminal: all six of Terminal's storey rows are its output — Terminal has ZERO real extracted
+   storeys.** §S18 `deriveStoreyMergeMap` DOES run; it merges 0 because the injector emits a storey
+   row **only where it compiled a room** (`room_walker.js:1352`), so 17 of Terminal's 23
+   `elements_meta.storey` labels get none. **The gap is that one line**, in the room lane's file, not
+   in extraction and not in the scheduler. Predicted payoff (SIMULATED, §S72.1): Terminal midair
+   **336 → 48**, span 126 → 105d — a simulation of 6 bands, NOT a measurement of the fix.
 
 6. **§8 DELETE LIST — still untouched.** `deriveZones` · `_writeTemplateSchedule` ·
    `remapSolveToTasks` · `§DEQ_REPAIR` · `§CREW_CAP_FINAL` · `_midairAudit`. **Until these go, this
@@ -574,3 +580,43 @@ it"* — and this session stacked on the feature branch anyway.
 
 **Rule for this lane: a PR's MERGED status is not evidence its content is in `main`. Grep main for
 the actual line.** Same discipline as §10.1 rule 1: read the source of truth, do not trust a report.
+
+
+## §10.6 CONSOLIDATION — what is TRUE as of 2026-08-26, after the retractions
+
+This file records its own corrections in place. Reading it linearly will hand you withdrawn claims,
+so this section is the settled state. **Where §9 and §10.6 disagree, §10.6 wins.**
+
+### Numbers, judged by `census()` sliced from `witness_midair_zero.js`
+| | Duplex | HHS | Hospital | Terminal |
+|---|---|---|---|---|
+| shipping midair | 17 | 147 | 139 | 226 |
+| **Bar model midair** | **12** | **70** | **92** | **336** |
+| shipping band inversions | 64 | 654 | 29,013 | 30,318 |
+| **Bar model band inversions** | **1** | **0** | **4** | **4** |
+| phase stacking · zero-min · outside-bar · crew | **0** | **0** | **0** | **0** |
+
+`witness_bar_schedule` 13/13 · `witness_bar_composite` 12/12 · `witness_bar_needs` 15/15 ·
+suite `green=62 new_red=1 known_red=7` (the red is the long-standing unrelated
+`witness_cpe_buildup_require_tm_first`).
+
+### WITHDRAWN — do not act on these, they are still in the text above
+- **§9.5's recommendation** (partition by phase only) — withdrawn by §9.6. Phase-only is WORSE than
+  shipping on band inversions: Hospital 48,589 vs 4. §9.5's *law* stands; its conclusion does not.
+- **§9.4's superseded numbers** — the integration probe's `0/4/0/0` midair. Real judge: `18/129/124/697`.
+- **§10.3 item 5's original text** — "elevation VERIFIED ABSENT / fix the extractor". Wrong on both.
+- **`correctLevelsByGeometry`** — added and DELETED the same session. It was a symptom patch for the
+  storey gap: 1,986 fires on Terminal, 0 once levels are right. Removing it is free on three
+  buildings and takes Terminal 513 → 336.
+
+### The three open items, in order
+1. **`room_walker.js:1352`** — emit a `COMPILED` storey row for every distinct `elements_meta.storey`,
+   not only room-bearing ones; widen `stZ` to match. Room lane's file. Predicted Terminal 336 → 48.
+2. **Fold the scratchpad probes into `witness_bar_schedule`** (§10.3 item 1) — every §9 number came
+   from `/tmp` scripts that no longer exist. Without this there is no regression detection.
+3. **§8 DELETE LIST** — untouched. Until it is done this lane has ADDED a translator, not removed five.
+
+### Still true and unchanged
+The five policy lines each earn their place by a measured margin (§9.6). The design law (§9.5) holds:
+midair and discipline trade at an exchange rate set by how the partition cuts across gravity. The
+composite rule (§2.1, only leaves store time) holds — 119,565 rows, gated.
