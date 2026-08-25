@@ -4789,3 +4789,59 @@ is its working prototype (all six gates implemented, currently 7 failures).
 
 **Separate, and it must be fixed with the above: make the 120s floor LOUD.** A silent duration collapse at
 three sites is what let this survive weeks of "fixes." Add a §-log at each site naming cls + resource.
+
+### STAGE 3 — THE DRAWER. A bar's span was never derived from the schedule. (2026-08-25, PR #1528)
+
+**User's framing, which was the correct diagnosis:** *"a human gantt chart maker will easily arrange
+with zero such hell."* A human writes ~17 bars and assigns elements to them. The drawer did the
+INVERSE — it computed each bar's outline as a Tukey fence over its MEMBER ELEMENTS
+(`gantt_model.js buildTasks`). When a task's elements bunch (routine under the crew/CPM solve: one
+storey's steel goes up in a burst inside a window sized for the whole storey), the fence collapses
+onto the bunch and the bar becomes a sliver.
+
+**The window was never unknown.** `buildTaskIndex()` already put `start`/`finish` on every entry of
+`idx.tasks` (`time_machine.js:5295`); `buildTasks()` read only `.name`. The drawer computed a worse
+answer than the one it was already holding.
+
+**Measured — HHS_Office_Federated, 6839 ops, 17 bars, every one carrying a real `task_id`**
+(`probe_bar_vs_task.js`, `§BVT_*`):
+
+| bar | before | its own task | after |
+|---|---|---|---|
+| Superstructure — Roof Level | **0.6px** | 101.4px | 100.0% |
+| Architecture — Roof Level | 0.6px | 58.0px | 100.0% |
+| Architecture — Level 3 | 46.9px, start off **22.03d** | 202.9px | 100.0% |
+| mean abs start / end error | **5.33d / 1.61d** | — | **0.00 / 0.00** |
+| bars < 3px | 2 | — | **0** |
+
+**⚠ THE LAYER LESSON, stated plainly so it is not re-learned a fourth time:** STAGE 2's template fix
+moved 1217 zero-width ELEMENTS to 114 and changed these bars by EXACTLY NOTHING. #1520's clamp and
+#1523's rescale are the same story. All three are element-layer; the bar's geometry was never derived
+from the schedule at all. **Fixing a layer that does not feed the symptom cannot move the symptom, no
+matter how real the defect you fixed was.**
+
+**Fix:** an AUTHORED group (real task_id + parseable window) takes its span from that window.
+Un-authored groups (`storey|phase`, cell) keep the Tukey rule byte-identically — no window to prefer.
+Member envelope still returned as `opsStartTs`/`opsEndTs` for fill/progress (§TIER_DAG_WINS: counted,
+never hidden). `computeDays()` gained an optional `taskWins` so the display axis covers every authored
+window. New `§GANTT_BAR_SPAN_SOURCE` log line reports `spanFromTask` vs `spanFromOps` per rebuild.
+
+**Witness:** `witness_gantt_bar_is_its_task.js` — 135 bars, 4 buildings, worst window error 0.000
+days, `spanFromOps=0`. `HHS_Office_Federated` is a REQUIRED fixture (fails rather than reporting a
+narrower run green — §CRISIS LESSON 2). Gates assert EQUALITY to the window, never "inside" it.
+
+**⛔ STILL OPEN, and deliberately left RED rather than tuned away** — `no-hairline-bars-3px`: Clinic
+ships 6+ zone tasks with exactly **1.00-day windows on a 156-day axis** (2.2px), including
+`MEP Rough-in — Roof - Mech` with **139 elements** and `Substructure — TOF Footing` with 58. Cause is
+UPSTREAM and predates this work: `schedule_author.js:517` floors a zone whose SOLVED span rounds below
+a day at exactly one day, so a zone's window comes from the element solve's span and NEVER from its
+work content. **This is the already-named §CPM_GENERATOR_UPSTREAM_SPEC / "window derivation from work
+content" item — it is now the top remaining lever on this lane, and it is the last known source of
+thin bars.** Registered in `KNOWN_RED` with the full cause.
+
+### ⚠ PROCESS: auto-merge orphaned a commit TWICE in this one session
+#1526 squash-merged the witness commit while the fix commit was still being written → fix orphaned,
+re-landed as #1527. Then #1527 merged while the STAGE 3 commit was in flight → orphaned again,
+re-landed as #1528. `CLAUDE.md` already names this (PR #138, 2026-06-05). **Working rule: create the
+branch, push, and open the PR in ONE go, and never add a second commit to a branch that already has a
+PR with auto-merge enabled — start the next commit off fresh `origin/main` instead.**
