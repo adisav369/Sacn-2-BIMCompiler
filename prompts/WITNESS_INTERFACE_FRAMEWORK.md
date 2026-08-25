@@ -183,3 +183,29 @@ verified against the real generated output, not assumed.
 Confirmed directly: `.run()` throws if `.redControl()`/`.schema()`/`.population()` is omitted; a
 no-op `.redControl()` (one that doesn't actually break anything) is caught as `fail>0`, not silently
 green; an empty population is caught the same way. The contract enforces itself, not just decorates.
+
+## 6. Follow-on — 2026-08-25, bim-ootb PR #1513: multi-building black-box sweep (incl. HHS Office)
+User ask: test the witness on a real HHS Office DB, as a **separate, reusable script**, not a one-off
+inline check — checked first whether an equivalent multi-building test already existed.
+`witness_support_invariant_all_buildings.js` is the one real precedent in this codebase, but it checks
+a different, ephemeral thing (`ScheduleGate.computeSchedule`'s support invariant, never persisted) —
+nothing already swept the real *persisted* `tasks` table across more than one building. Built:
+- `witness_kit/generators/schedule_4d.js` — the §5 generation call (materialize→contiguous→CPM),
+  factored out so the single-building witness and the new multi-building one share one source instead
+  of a hand-copy (exactly the drift class §2.2 exists to prevent).
+- `viewer/tests/witness_tm_schedule_output_of_truth_all_buildings.js` — same contract, looped over
+  **Duplex, Hospital, Clinic, JKR, HHS_Office_Federated**. All 5 green (HHS Office: 6 real generated
+  tasks, real 2026 CPM dates). `Terminal`/`LTU_AHouse` named-SKIPPED — both ship split meta/geo DBs
+  with no `tasks`/`schedules` tables in either half; real follow-on scope, not attempted here.
+
+**Real bug found in the shared runner while proving this "reusable," not just runnable standalone:**
+`run_witness_suite.js`'s `spawnSync` uses Node's default 1MB stdout+stderr `maxBuffer`. Looping 5
+buildings' worth of `schedule_author.js`'s own diagnostics (`§CLASS_UNMATCHED` is one `console.warn`
+line per unmatched element — Hospital's 64k `elements_meta` rows alone produced 1MB+ on stderr)
+overflowed it: the runner SIGTERM'd the child (`status: null`, reported RED) even though the script
+exits 0 standalone. A witness that only passes when run directly and fails under the real suite runner
+is exactly the kind of gap this whole framework exists to catch — caught here by actually running it
+through `run_witness_suite.js --filter`, not trusting the standalone exit code alone. Fixed by muting
+`console.log`/`warn`/`error` locally around each building's generation call (not the shared generator,
+not the runner itself). Both witness files also adopted the house `BLD_DIR` env convention
+(`witness_door_window_host_wall.js` etc.) instead of a hardcoded path.
