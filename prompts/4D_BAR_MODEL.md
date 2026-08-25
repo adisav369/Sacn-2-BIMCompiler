@@ -408,3 +408,60 @@ inheriting storey strings.
 **⛔ RESUME: rebuild the tree as Project > Phase > Level > Element** (level as a derived group, not a
 task), re-run the full fleet on `census()`, and gate it in `witness_bar_schedule.js`. Spans grow
 against phase×level (Hospital 521d vs 395d) — price that before shipping.
+
+### §9.6 ⛔ §9.5's RECOMMENDATION IS WITHDRAWN — level bars are load-bearing (2026-08-25)
+
+**User: "Will this break our 4D template principle?"** Yes. Measured before acting, and it reverses
+§9.6's predecessor.
+
+§9.5 recommended partitioning by PHASE ONLY because it minimised midair. That optimised the one
+number being watched and destroyed the one that was not. **§4D_BAND_MONOTONIC** — *"a trade may not
+run ahead of ITSELF on the floor below"*, from the user's own report *"upper floors gets walled
+first"* — counted as elements on storey rank r+1 starting before that trade's last element on rank r
+finishes:
+
+| building | shipping (raw solve) | **phase × level** | phase only |
+|---|---|---|---|
+| Duplex | 64 | **1** | 118 |
+| HHS_Office_Federated | 654 | **1** | 3,857 |
+| Hospital | 29,013 | **7** | **48,589** |
+| Terminal | 30,318 | **14** | 29,993 |
+
+**Phase-only is worse than the shipping engine**, by 48,589 on Hospital. `level_link: self` holds
+inversions at 7 instead of 48,589 — **four orders of magnitude**. It is not a decorative policy line
+and it cannot be dropped.
+
+#### The trade is THREE-WAY, not two
+| configuration | midair | band inversions |
+|---|---|---|
+| shipping | 17 / 147 / 139 / 226 | 64 / 654 / 29,013 / 30,318 |
+| **phase × level** | 14 / 86 / 228 / 413 | **1 / 1 / 7 / 14** |
+| phase only | **0 / 43 / 22 / 0** | 118 / 3,857 / 48,589 / 29,993 |
+| no partition | **0 / 1 / 1 / 0** | (all phases day 0 — hell #1) |
+
+**§9.5's LAW STANDS, its CONCLUSION DOES NOT.** Midair and discipline do trade against each other at
+an exchange rate set by how the partition cuts gravity — but "discipline" is TWO constraints, not
+one: phase order AND band monotonicity. Level bars cost midair and buy band monotonicity. §9.5
+priced only half the purchase.
+
+#### VERDICT — the 4D policy is VALIDATED, not broken
+All five lines earn their place, each by a measured margin:
+
+| policy line | what it buys | measured without it |
+|---|---|---|
+| `phase_link: serial` | phase order | every phase starts day 0, 15/15 pairs overlap |
+| `level_link: self` | band monotonicity | 7 → **48,589** inversions (Hospital) |
+| `ceiling_link: frame_above` | fit-out after the slab it hangs from | 9,911 → 1,765 premature placements |
+| `building_scope` | Substructure once, elements not lost | 1 of Hospital's 63,182 silently dropped |
+| `days_per_week` | the calendar | — |
+
+**Keep `phase × level`.** It beats shipping on band inversions by four orders of magnitude and on
+midair for the two smaller buildings; it is worse on midair for Hospital (228 vs 139) and Terminal
+(413 vs 226). **That midair gap is the remaining work** — and §9.5 proved it is not the graph's
+fault, since the same graph unpartitioned scores 0/1/1/0. It is the level-boundary cost, and the
+target is to pay less of it without giving up the ladder.
+
+**⛔ RESUME:** close the Hospital/Terminal midair gap WITHOUT weakening `level_link`. First idea to
+test, not yet tried: the ladder currently chains whole level TASKS; chain the TRADE across levels
+instead (the actual §4D_BAND_MONOTONIC wording is per-trade, not per-task), which may hold
+inversions near zero while leaving elements freer to follow their contacts.
