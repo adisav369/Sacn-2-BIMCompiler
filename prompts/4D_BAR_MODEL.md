@@ -776,3 +776,55 @@ when. Until that is done, no midair number from anyone means anything.
 2. **§12.2.** Re-baseline every midair number against `_displayTimeline`, not raw `computeSchedule`.
 3. Only then: is the Bar model better or worse than what ships? **Assume WORSE until measured.**
 4. `#1543` — do not merge it on the strength of anything in §1–§11.
+
+
+---
+
+# §13 — THE DELETE LIST WAS WRONG. GO FORWARD, BUT FIX THE INSTRUMENT FIRST. (2026-08-26)
+
+**User directive:** *"we should not fall back but go forward. Let things break. Fixing will happen."*
+Adopted. §8's list is corrected here — it lumped six things together as "translators" and three of
+them are not translators at all.
+
+## 13.1 DELETE NOW, no conditions — dead code, zero risk
+| | what it actually is |
+|---|---|
+| `_writeTemplateSchedule` (§S69) | mine. No call site has ever passed `opts.template`. Pure dead weight. |
+| `remapSolveToTasks` (§S70) | mine. Superseded outright by the composite — a group's span IS its children's, so there is nothing to remap. |
+| `deriveZones` | a genuine translator: rolls the solve up into an envelope. Delete the moment `§BAR_LIVE` is confirmed in a real console. |
+
+Also delete `correctLevelsByGeometry` — already done 2026-08-26, and it was mine too. **Three of the
+four dead things in this lane were added by this lane.** That is the honest pattern: the fastest way
+to a delete list is to stop writing the entries.
+
+## 13.2 ⛔ NOT TRANSLATORS — §8 mislabelled these. They do real work.
+`§DEQ_REPAIR` · `§CREW_CAP_FINAL` · `_midairAudit`
+
+`_midairAudit` is what produces `§CPM_DISPLAY … midair=0` in the user's live log — the chain that
+takes HHS from a raw 147 to 0–8 floating (§12.2). `§DEQ_REPAIR` closes real geometry-gate violations;
+`§CREW_CAP_FINAL` closes a measured 10× carpenter breach on Terminal. **Deleting these is not
+removing a fallback, it is removing the current product quality.** §8's framing — "until these go,
+the lane has added a sixth translator" — was rhetorically satisfying and factually wrong about half
+the list.
+
+## 13.3 THE ORDER, and the reason is instrumentation, not caution
+"Let it break, fixing will happen" requires the break to be **visible**. §12.3 established that it is
+not: **the log says `midair=0` while the screen shows a hanging pipe.** Delete the repair chain today
+and the log will still say `midair=0`. You would have broken it and been told everything is fine.
+
+> **Fix the instrument first (§12.3 — reproduce one floating GUID numerically), then delete forward
+> freely.** One task, not a phase. This is not "verify before deleting" — it is "you cannot practise
+> break-and-fix with an instrument that cannot see the break."
+
+## 13.4 THE FORWARD ORDER
+1. **§12.3** — one visibly floating GUID at DAY 0 HR 3: what does the judge think supports it, and
+   when? Make the metric agree with the eye, or replace the metric.
+2. **Delete §13.1's three** — no ceremony, no flag, no fallback branch.
+3. **§12.2** — re-baseline against `_displayTimeline`. Then decide whether the Bar model ships or is
+   abandoned. **Assume it is worse until measured** — it may be that its real contribution was the
+   phase discipline and the policy, not the midair number.
+4. **Delete §13.2's three only after step 1 proves the instrument can see them go.** Then it is a
+   real experiment instead of a blind one.
+
+**No `barModel` feature flag.** When the Bar model wins on a judge that matches the eye, it becomes
+the only path and the old one goes. A permanent opt-in is the same hedge under a nicer name.
