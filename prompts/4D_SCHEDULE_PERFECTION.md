@@ -4613,3 +4613,179 @@ inventing an order.
 - **JKR + LTU_AHouse cycle counts are open** and are the single biggest remaining 4D number. Terminal
   proved cycles can go 37,927 → 0 with a geometry rule; nobody has done that analysis for these two.
 - 4 known-red witnesses remain in the suite, and the suite itself sees 44 of ~346 witness files (§S66).
+
+---
+
+# ⛔ REGRESSION FOUND + BISECTED (2026-08-24) — hell #1 ("Gantt Chart overstacked") is back, uncaught
+
+User asked for a witness-only re-check of both named hells (no visual). Ran the three witnesses that
+speak to them, fresh, on `bim-ootb` `main` HEAD:
+
+| witness | hell | result |
+|---|---|---|
+| `viewer/tests/witness_midair_zero.js` (fleet, 7 buildings) | #2 non-correlation | **pass=49 fail=0** — every W-MZ-2 number matches this milestone's own table exactly (Terminal 684, Hospital 218, Clinic 422, rest 0) |
+| `viewer/tests/witness_bake_plays_schedule.js` | #2 (needle IS the schedule) | **pass=16 fail=0**, Hospital + Clinic |
+| `witness_4d_band_monotonic.js` (repo root) | #1 overstacked | **T2a fails: 0 → 14,267/43,000** non-structure cross-storey inversions (Hospital), still true after correcting a harness bug below |
+
+**Why nobody caught it:** the witness still lived in the repo ROOT, never `git mv`'d into
+`viewer/tests/` the way §S71 did for `witness_gantt_edit_coherence.js` — so per §S66 it "does not exist
+as far as the suite runner is concerned." **Fixed as part of this finding**: `git mv`'d to
+`viewer/tests/witness_4d_band_monotonic.js`, require paths re-pathed, registered in
+`tests/run_witness_suite.js`'s `KNOWN_RED` (cause C) so it now shows up honestly as `known_red`, not a
+silent gap. Confirmed via `--filter` that the suite discovers and correctly classifies it, and a full
+`run_witness_suite.js` sweep afterward shows the other 44 files unaffected (see PROOF below).
+
+**A second bug was caught and corrected before it became a false claim.** The witness's own
+`computeSchedule()` call never passed `shiftHours`, silently taking the module's internal 8h/day
+default — while the real product runs at 24h/day (`§SHIFT_HOURS`, user ruling "24hr is our default",
+this file, 2026-08-13) — **the exact same trap already named and fixed once before as
+`§GANTT_SHIFT_HOURS_DESYNC` (#1355, viewer/sw.js v1027)**, just never ported to this one witness. Under
+the wrong 8h default the witness read `span 176d → 594d` (a false "3.4× blowup", T4 FAIL). Passing the
+correct `shiftHours=24` (now the witness's default call) gives `span 176d → 198d` — **T4 now PASSES**,
+1.12×, no blowup. **The span claim in the first version of this section was wrong and is retracted.**
+T2a's inversions count is unaffected by shiftHours either way (ordering, not duration) and remains a
+real, reproducible regression: **5/6, only T2a red.**
+
+### Bisected — two commits, both real defect fixes, both reintroduce band inversions as a side effect
+`fc58210..HEAD -- viewer/schedule_gate.js` is 24 commits. Ran the witness's own `inversions()` judge
+against each historical `schedule_gate.js` in isolation (same Hospital elements, `shiftHours=24`
+throughout — script: `bisect_band_regression.js`, not kept, ad-hoc):
+
+| commit | change | T2a non-struct inversions | spanDays |
+|---|---|---|---|
+| `fc58210` | shipped baseline (#1129, this file's own §MILESTONE claim) | **0**/43,000 | 176.3 |
+| `c972778` #1319 §HOSTED_BEFORE_HOST | hosted element inherits host's floor | **9,171**/43,000 | 201.8 |
+| `a2c30ee` #1345 §STAIR_FLIGHT_GRID_VISIBILITY | stair flights become real geoGate/DAG supports | **14,267**/43,000 (= HEAD) | 198.3 |
+
+No other commit in the 24 moved either number. **`a2c30ee` is independently implicated by a completely
+different investigation for a different symptom** — `4D_SCHEDULE_PERFECTION.md` §S63 bisected Terminal's
+`auditFloating` tail (8→12) to this exact same commit, for the same root mechanism (`isStairFlight()`
+added to `supportPool()`, changing what `geoGate` treats as already-placed). Two independent judges,
+two different metrics, two different buildings, same commit — strong corroboration this is a real,
+mechanical side effect of that commit's `geoGate` change, not noise.
+
+**Mechanism, consistent with `GANTT_ACCURACY.md` §ROOT CAUSE (written BEFORE the midair work landed):**
+"the support invariant needs carriers placed first (z-major); the band gate needs lower ranks placed
+first (rank-major); walls do both, so they demand conflicting sort orders" — and that section already
+concludes **"no gate-only change can resolve this."** `§HOSTED_BEFORE_HOST` and
+`§STAIR_FLIGHT_GRID_VISIBILITY` both extend the geometry-DAG support/host relationships the scheduler
+reads, each fixing a real, separately-proven defect (hosted-before-host correctness, stair-flight
+floating count) — and each, as an uninspected side effect, pulls more elements into z-major geometry
+order at the expense of the rank-major band order this witness locks. This is the SAME structural
+tension already named, now shown to also apply to fixes that landed AFTER the tension was written down.
+
+**Scope note:** this is the GENERATION engine (`schedule_gate.js`), not the edit path — separate from
+everything in `4D_GANTT_TM_REFACTOR.md`'s debug map. Per the other session's own note, it does not touch
+the Gantt UI/TM cleanup work in flight elsewhere.
+
+**Not fixed here, deliberately.** `GANTT_ACCURACY.md` already tried and rejected three designs for this
+exact conflict, and both root-cause commits are real, wanted, already-proven fixes — reverting either
+to "solve" T2a would reopen a different named defect (hosted-element floor inheritance /
+`witness_tm_geo_order_cycles`'s stair-flight floating count). This needs the user's own design call, not
+a session's guess. **Not attempted** so nothing currently green (midair=0, `auditFloating`, floating
+counts) is put at risk chasing this.
+
+### PROOF — full suite sweep after the witness move, nothing else disturbed
+`node tests/run_witness_suite.js` (no filter), bim-ootb `main`, worktree `/tmp/wt-4d-band-regression`:
+```
+§SUITE_SUMMARY green=47 new_red=0 known_red=4 fixed=1 flaky=0 total=52
+```
+**`new_red=0`** — the relocation + `KNOWN_RED` registration cost nothing else. `known_red` stays at 4
+(this witness's slot exactly replaces one drained the same run — see next line — net zero). Total rose
+44→52 from unrelated witnesses other sessions added since the 2026-08-22 milestone count, not from this
+change (this change added exactly one file). **Unrelated, noted not acted on:** the same run reports
+`witness_gantt_lock_integrity.js` — a pre-existing `KNOWN_RED` entry, not one this session touched — now
+passes (`FIXED ... Drain it from KNOWN_RED`). Not this session's fix and not drained here; likely the
+other concurrently-running TM session's work, left for whoever actually fixed it to claim and clean up.
+
+### Left for next pickup
+1. **Done here:** witness relocated + `shiftHours` bug fixed + registered `KNOWN_RED` — cannot silently
+   regress further uncaught.
+2. **Open, needs the user:** which of `§HOSTED_BEFORE_HOST` / `§STAIR_FLIGHT_GRID_VISIBILITY`'s behavior
+   to trade off against band-monotonicity, or whether a genuinely new design (not one of the 3 already
+   rejected in `GANTT_ACCURACY.md`) exists. Not investigated further here.
+
+---
+
+## §S65 — THE PRESET TEMPLATE IS ITSELF WRONG, AND HAS NEVER HAD A WITNESS (2026-08-25)
+
+**User directive that produced this section, verbatim:** *"we talked about before of the inbuilt preset
+gantt chart template that will always be correct already having all the types and arranged proper
+sequence - no zero minute stacking, no midair MEPs or beams. We just retrofit the metadata into it. U
+said last session this is done. But i dont think so as none worked but got worse. First establish the
+setting result or the source template be in the same JSON file. Then look at that file to be correct,
+lock that, then populate as such, look at it again, lock before next ie presenting on TM panel"* — plus
+*"WITNESS follows each inch of those"* and *"I have to reject all your conjecture as useless and do this
+way strictly."*
+
+**The staging is now the law for this lane. Do not skip a stage, do not present a downstream theory
+before the current stage's file is locked by a witness:**
+
+    STAGE 1  establish: template + setting result live in ONE JSON file
+    STAGE 2  look at THAT FILE alone → correct? → LOCK (witness)
+    STAGE 3  populate (retrofit building metadata into it) → look again → LOCK (witness)
+    STAGE 4  only then present on the TM panel
+
+### STAGE 1 — ESTABLISHED: they are NOT in one file. One missing call is the whole cause.
+- `viewer.html:865` loads `rates.js?v=7` and **never calls `loadSequenceRules()`** → the EXECUTED table
+  is the JS literal in `rates.js`, not the JSON. Already self-documented at `rates.js:107-110`
+  (§RULES_TABLE_SOURCE): *"THIS TABLE, NOT THE JSON, IS WHAT THE VIEWER RUNS ... rates/sequence_rules.json
+  is a MIRROR."*
+- `loadSequenceRules()` has exactly ONE caller — `initRateTemplate()` (`rates.js:609`), used only by
+  `mep_report.html` / `boq_charts.html`.
+- The Settings-editor result key `json_sequence_rules` is read **only inside `loadSequenceRules()`**
+  (`rates.js:546`) → **user settings edits never reach the 4D at all.**
+- **The sync-load objection that would justify this does not exist:** all six viewer-side reads of
+  `window.SEQUENCE_RULES` are at CALL time inside functions (`time_machine.js:3656/4408/5277/5657/
+  6839/6881`), and `loadSequenceRules()` mutates the globals IN PLACE (`rates.js:558-573`).
+  `find_erp_push.js:33` states the same property explicitly. Wiring the call is safe.
+- **Content drift TODAY (measured, `probe_template_drift.js`): 0 functional, 1 doc-only** — the JSON
+  carries a `reason` field per NAME_OVERRIDE that the JS literal omits. SEQUENCE_RULES 58/58 identical,
+  LABOR_RATES 10/10 identical, SEQUENCE_DEFAULT identical.
+- **Do NOT wire the JSON in yet.** Wiring it before STAGE 2 passes would promote an unverified table to
+  single source. Order is: fix + lock the file, THEN unify.
+
+### STAGE 2 — THE FILE IS NOT CORRECT. 7 defects, `verdict=NOT LOCKABLE`.
+Measured by calling the REAL duration function (`ScheduleAuthor._installSecs`, `schedule_author.js:62-75`)
+against every rule in the file — not a mirrored copy. Probe: `probe_template_correct.js`.
+
+**Why nobody saw it: the failure mode is silent by construction.** `_installSecs` returns a bare `120`
+(seconds) when the resource is missing OR the class has no productivity entry — three sites
+(`schedule_author.js:64`, `:70`, `time_machine.js:4457`), **zero §-log, zero warn, at any of them**.
+`§CLASS_UNMATCHED` warns about PHASE fallback only and says nothing about the duration collapse. On a
+45-day axis a 120s element is a zero-width bar. That is the user's "zero minute stacking", at its source.
+There is also **no witness anywhere on this file** — the closest, `witness_gantt_native_generate.js`,
+tests generation output, never the template.
+
+| # | Gate | Defect | Blast radius (measured) |
+|---|------|--------|--------------------------|
+| 1 | F-ZERO | `SEQUENCE_DEFAULT.resource = null` → 120s | EVERY class with no rule, EVERY building |
+| 2 | C-ZERO | `IfcBuildingElementProxy` `resource: null` → 120s | HHS_Office_Federated's dominant class — the same one §GANTT_OPS_FIRST20 showed 18 identical entries of during the CRISIS |
+| 3 | C-ZERO | `IfcSpace` `resource: null` → 120s | every building with spaces |
+| 4 | E-ZERO | `glazed_curtainwall_facade` moves `IfcPlate`/`IfcMember` STEEL_ERECTOR(12/10) → **CARPENTER (has neither)** | Hospital 2211 IfcPlate + 7122 IfcMember, HHS 438 IfcPlate — the override fixes their PHASE and silently destroys their DURATION |
+| 5 | E-ZERO | `furniture_generic_bucket` moves `IfcBuildingElementPart` MASON(15) → **FINISHER (has none)**; `IfcBuildingElementProxy` has none anywhere | every furniture-named proxy/part |
+| 6 | (named) | `LABORER.productivity = {}` — empty map | any future rule pointing at it = 120s |
+| 7 | D-OVERLAP | phase bands interleave: Architecture spans seq **5–8**, MEP Rough-in sits at **7** → `IfcRoof` (Architecture, seq 8) sequences AFTER all MEP rough-in | "midair MEP" visible in the template, before any geometry |
+
+**Productivity coverage, measured across all 10 trades** (this is what makes 4/5 extractable and 2 not):
+`IfcPlate`→STEEL_ERECTOR 12 · `IfcMember`→STEEL_ERECTOR 10 · `IfcBuildingElementPart`→MASON 15 ·
+`IfcBuildingElementProxy`→**NONE anywhere** · `IfcSpace`→**NONE anywhere**.
+
+### ⛔ BLOCKED — the ONE fact that cannot be extracted
+Defects 1 and 2 need a productivity figure that exists nowhere in the rate table. **Question for the
+user: what trade + daily productivity should a generic/unclassified element carry (`IfcBuildingElementProxy`,
+and `SEQUENCE_DEFAULT` for any unmatched class)?** `LABORER` is the obvious trade slot but ships an empty
+productivity map, so it needs a number too. Any value invented here would violate the Prime Directive.
+Defects 3–7 are fixable without it (3 = same question if a space should have duration at all; 4/5 = the
+value already exists under the class's canonical trade; 7 = a sequence-band decision).
+
+### What STAGE 2's LOCK must be (the witness, not yet built)
+A witness over the TEMPLATE FILE ALONE — no building, no geometry, no kernel_ops — asserting:
+A shape (every rule has phase+sequence+resource) · B every resource resolves in LABOR_RATES · **C no rule
+and no NAME_OVERRIDE lands on the 120s floor** · D phase bands do not interleave · E overrides valid +
+their own classes keep a real duration · F `SEQUENCE_DEFAULT` yields a real duration. Red control: flip one
+resource to `null` and prove C fails. This is the gate that has never existed; `probe_template_correct.js`
+is its working prototype (all six gates implemented, currently 7 failures).
+
+**Separate, and it must be fixed with the above: make the 120s floor LOUD.** A silent duration collapse at
+three sites is what let this survive weeks of "fixes." Add a §-log at each site naming cls + resource.
