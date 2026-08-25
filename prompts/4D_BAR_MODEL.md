@@ -689,3 +689,90 @@ inside their own persisted task window, 0 outside, 0 unassigned.
 - **No witness exercises the LIVE call sites.** Every schedule witness calls `materializeZones`
   directly without `barModel`, so the suite green above proves the legacy path is intact — NOT that
   the wiring works. The end-to-end check was a scratchpad script. **That is the next gap to close.**
+
+---
+
+# §12 — ⛔ STOP. THE BASELINE WAS WRONG AND THE METRIC DOES NOT MATCH THE EYE. (2026-08-26)
+
+**Read this before acting on ANY number in §1–§11.** A live console log from the user's own device,
+`HHS_Office_Federated`, GitHub Pages build, changed the picture twice.
+
+## 12.1 The build was not live — expected, but check it FIRST every time
+The log contains `§SCHEDULE_AUTHOR_LOADED v8` and `§AUTHOR_ZONES schedule=SCH_AUTHORED zones=17
+edges=23` — the LEGACY path. It contains **no** `§BAR_MODEL_LOADED`, **no** `§4D_POLICY`, **no**
+`§BAR_LIVE`, and `§PRECACHE-TRIM install set=162` (not v1090). PR #1543 was still open.
+
+**Before concluding anything from a user screenshot, grep their log for `§BAR_LIVE`.** If it is
+absent you are looking at the old engine and the screenshot says nothing about your work.
+
+## 12.2 ⛔ MY "SHIPPING" BASELINE WAS THE RAW SOLVE, NOT WHAT SHIPS
+Every comparison in §1–§11 used **`ScheduleGate.computeSchedule`'s raw output** as "shipping":
+`midair 17 / 147 / 139 / 226`. **That is not what plays.** The live chain runs
+`_displayTimeline` → `CpmSchedule.run` → `_midairAudit` → `§CROSSTASK_JUDGE_PARITY`, and the user's
+own log reports, on the SAME building where I claimed shipping was 147:
+
+```
+§CPM_DISPLAY on — one-DAG schedule authored the display timeline midair=0 orphans=36 stragglers=3246
+§SUPPORT_CHECK floating=4/6880 (ALL classes, bearing-below + hang-carrier) gated=6880
+§CROSSTASK_JUDGE_PARITY pushed=67 sweeps=3 maxShiftDays=10.0 floating=8/6880 windowBlocked=8
+```
+
+**Live HHS is 0–8 floating. I measured 147 and called it the thing to beat. The Bar model's 70 is
+very likely WORSE than the engine it was going to replace.**
+
+This is the §9.4 error a second time in a different costume: not a hand-written judge this time, but
+**the right judge pointed at the wrong stage of the pipeline.** RAW is an intermediate; the display
+timeline is the product.
+
+**⛔ EVERY midair comparison in this file is now UNSAFE. Re-baseline against `_displayTimeline`
+output — the same times `kernel_ops` is written from — before any of it is quoted again.**
+
+## 12.3 THE DEEPEST FINDING — the metric says 0 and the user sees floating
+The same log that says `§CPM_DISPLAY … midair=0` accompanies a photograph of MEP pipes hanging in
+the air with nothing beneath them, at `DAY 0 | HR 3`, `73 placed`.
+
+**So `midair=0` is not measuring what the user is looking at.** Every number this lane produced —
+mine and the shipped engine's — comes from that same family of contact-graph judge. The user's
+acceptance bar is the screen. **A judge that reports 0 while the screen shows a hanging pipe is the
+real defect, and it outranks every scheduling improvement in this file.**
+
+Candidate explanations, NONE verified — do not pick one without measuring:
+- the judge's contact test (`bearing` + `carrier` + `embedded`, XY-overlap + Z-band) may accept a
+  "support" that is metres away in XY within the same CELL bucket;
+- `§CELL_GATE … REFUSED=990 repr=85.47%` and `§CPM_RUN … stragglers=3246 cycleDrops={member:2000}` —
+  a third of the model is not represented in the DAG at all, and a straggler cannot be judged;
+- `§SUPPORT_UNCHECKED_SUMMARY n=20/6880 … warn-only — reported not gated`;
+- the thing hanging may be a `ghost`/x-ray element the judge excludes but the eye does not.
+
+**First task of the next session: reproduce the photograph numerically.** Take one visibly floating
+element's GUID from the live model at DAY 0 HR 3, and print what the judge thinks supports it and
+when. Until that is done, no midair number from anyone means anything.
+
+## 12.4 What the live log ALSO confirms, unchanged
+- `§GANTT_CPM_ANNOTATE … critical=17 (100%) … float=0..0` — the tautology, exactly as §S67 measured.
+- `§S18_STOREY_MERGE_FAIL no such column: elevation` — §S72's gap, live.
+- `§ZONE_INDEX … noStorey=2120 (30.8% — zone is a median-Z INFERENCE, not IFC truth)` and
+  `§GANTT_STOREY_Z reassigned=2120`. Nearly a third of HHS has no storey at all.
+- `§LOC_AXIS … elementsInCompiledRoom=1522 (22.12%) levelOnly=5358 (77.88%)`.
+- `§CREW_DAY_CLOCK rawDays=185.2 … projectDays=186` beside `§GANTT_AXIS axisDays=42.0`.
+
+## 12.5 LEARNING RETAINED — the full list, all of it paid for
+1. **Slice the judge, never re-derive it** (§9.4 — cost a full retraction; also 4,706-vs-716 edges).
+2. **Point the judge at the stage the USER sees** (§12.2 — this one; the right judge, wrong stage).
+3. **Every gate carries its own committed red control**; a console check is not a check.
+4. **A gate that checks two of your own fields agree is a deletion request.**
+5. **A fleet witness must key on the BUILDING as well** — task ids collide across buildings.
+6. **A crash is not a red; a red is not a regression.** Symlink `node_modules` into `/tmp/wt-*`;
+   baseline every `new_red` by stashing your own diff.
+7. **A logged number no invariant reads defends nothing** — midair was printed, not gated, until §11.
+8. **A PR's MERGED status is not evidence its content is in `main`** (§10.5, PR #1539 orphaned).
+9. **Never `rm` a file then `git add -A`** — it deleted `bar_needs.js` and a fix already lost once.
+10. **Wiring finds what witnesses cannot** — `require is not defined`, and day-rounding putting 295
+    elements outside their own bar. Both invisible to a green suite.
+11. **Check the user's log for your own `§` tag before believing a screenshot is about your work.**
+
+## ⛔ RESUME — in this order, nothing else first
+1. **§12.3.** Reproduce the photograph numerically. One GUID, one timestamp, what supports it and when.
+2. **§12.2.** Re-baseline every midair number against `_displayTimeline`, not raw `computeSchedule`.
+3. Only then: is the Bar model better or worse than what ships? **Assume WORSE until measured.**
+4. `#1543` — do not merge it on the strength of anything in §1–§11.
