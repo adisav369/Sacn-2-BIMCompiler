@@ -4,6 +4,138 @@
 
 ---
 
+# INDEX — what is settled, what is open (added 2026-08-26)
+
+**How to use this index.** This file is 5,600+ lines of session logs, appended in place since
+2026-08-03. Corrections are written IN PLACE, later in the file — never by editing the earlier wrong
+text — so reading linearly hands you claims that were later withdrawn. This index is (1) a one-line
+map of every major section with a SETTLED / SUPERSEDED / OPEN call, and (2) a ledger of every
+correction found by grepping RETRACTION / WITHDRAWN / CORRECTED / "was wrong" / "is withdrawn" /
+"supersed". Nothing below was deleted or rewritten — only indexed.
+
+**⚠ The "▶ CURRENT STATE" block immediately below this index is itself stale.** It is dated
+2026-08-15 and has not been updated since — everything from §S63 onward (2026-08-22 → 2026-08-26,
+including the 🏁 §MILESTONE and the storey-elevation fix in §S72.2) postdates it and is not
+reflected in it. **The true latest state is the tail of the file, §S72.2 (line ≈5622).** For the
+ACTIVE spec that succeeds this file's generation work, see `prompts/4D_BAR_MODEL.md` (its own
+predecessor analysis cites this file's §S68–§S71) — read that file's own "SETTLED STATE — READ THIS
+FIRST" section first.
+
+## Section map
+
+### Top matter (lines 1–4368) — 2026-08-12 → 2026-08-16 sessions
+| line | section | status |
+|---|---|---|
+| 7 | ▶ CURRENT STATE (2026-08-15 close) | SUPERSEDED by §S63 onward (below); still a correct record of the 2026-08-13→15 PR ledger |
+| 102 | ▶ SUPERSEDED — 2026-08-13 "NEXT SESSION" block | self-labeled superseded; kept only for the still-unverified "3rd level hanging doors" thread |
+| 599 | §GROUNDED_OVERRIDE_FIX | SETTLED — shipped PR #1338 |
+| 632 | §TIER2_PER_ELEMENT_CLAMP + §SHIFT_HOURS | SETTLED — shipped PR #1333 |
+| 688 | ▶ THE ACCEPTANCE BAR (user's own words) | SETTLED — still the standing spec |
+| 698 | ▶ RESUME — START HERE (2026-08-12, 4th pass) | SUPERSEDED — stale resume pointer; later ones exist (§S65/§S66/§S71/§S72.2) |
+| 735 | THE ARCHITECTURE (code map) | SETTLED as written 2026-08-12 — re-verify before trusting; code has moved (§S66 template, `4D_BAR_MODEL.md` lane) |
+| 759 | §STRUCT_POOL_UNGATED | SETTLED — covered at display layer by §MIDAIR_REPAIR |
+| 779 | LANDMINES | SETTLED — standing operational rules |
+| 795 | SHIPPED LEDGER | SETTLED — historical PR record |
+| 819 | SETTLED (closed rulings) | SETTLED |
+| 830 | OPEN THREADS (2026-08-12 punch list) | mostly absorbed by later work; the file's own VERIFY-BEFORE-TRUST note (866) already flags this |
+| 866 | VERIFY-BEFORE-TRUST | the file's own caveat — everything above it was true only "as of 2026-08-12" |
+| 871 | ▶ §MIDAIR_REPAIR (closes the acceptance bar) | SETTLED — shipped, 0/7 buildings floating on its own judge; a DIFFERENT axis regressed later, see REGRESSION FOUND (4619) |
+| 1029 | §ARCH_START_TEMPO | OPEN — studied/measured, deliberately not built; 2 levers need a user call |
+| 1170 | §GANTT_PHASE_CLOBBER | SETTLED — fixed |
+| 1221–1710 | §DAY_GAP lane (§DAY_GAP_WIP · §DAY_GAP_PHASE_OCC · §TIER_SERIAL_BY_ZONE · §ZONE_KEY · §ZONE_INDEX · §DAY_GAP_TAIL*) | SETTLED — resolved to zero (line 1573); §DAY_GAP_WIP (1266) specifically SUPERSEDED by §DAY_GAP_PHASE_OCC (1333) — see ledger #1 |
+| 1711 | §BIM_USABILITY_REVIEW + §HOSTED_ZONE_SUSPECT | mixed — usability scores SETTLED (self-corrected inline); §HOSTED_ZONE_SUSPECT's claim that `sequence_rules.json` is a programme template (line 1751) is WRONG — see ledger #2 |
+| 1869 | §TIER1_HANDOFF | SETTLED — 3 verdicts reached; one OPEN sub-item (cache-version bump unwitnessed, 1955) |
+| 1971 | §UNIVERSAL_HOST_BUFFER | OPEN — proposed, not built |
+| 1998 | §CURTAIN_WALL_OPENING | SETTLED — fixed + post-merge reverified |
+| 2065 | §DOOR_WINDOW_HOST_WALL_DISPLAY | SETTLED — fixed, witnessed |
+| 2165 | §PHASE_WINDOW_IDLE | OPEN — mechanism found, blocked on a ruling (2271) |
+| 2298 | §TIER_REGATE_WORKLIST | SETTLED — shipped PR #1348 |
+| 2439 | §GATE_GUARD_BODY_TM | SETTLED — shipped |
+| 2457 | §DAY37_HOSPITAL_HANGING | superseded by §OG_HANG_BAND below (real driver found there) |
+| 2513 | §CPE_DISCIPLINE_REVEAL topout gap | OPEN — named in passing, untouched |
+| 2528 | §GANTT_SHIFT_HOURS_DESYNC | SETTLED — shipped PR #1355 (same bug class recurred in one witness, see REGRESSION FOUND 4619 — fixed there too) |
+| 2604 | §GANTT_SCHEDULE_STALE | SETTLED — shipped PR #1359 |
+| 2673–2929 | §HOSPITAL_LIGHTING_STILL_FLOATING (4 sessions) | SUPERSEDED — real driver not found until §OG_HANG_BAND (2930); read that instead |
+| 2930 | §OG_HANG_BAND | SETTLED — shipped PR #1375 |
+| 3028 | §TIME_MACHINE_CONSOLIDATION_SPEC | OPEN — scoping only, deferred |
+| 3132 | §SCHEDULE_CLASSIFY_DEDUP | SETTLED — shipped PR #1374 |
+| 3209 | §GANTT_WINDOW_FIDELITY_AND_SPREAD | SETTLED — regression found+fixed same session |
+| 3333 | §GANTT_GAP_CLAMP_SPREAD | SETTLED — shipped PR #1377; Terminal-shape residual left OPEN (see top block's own open item 6, line ≈76) |
+| 3405 | §CPM_GENERATOR_UPSTREAM_SPEC | OPEN when written (candidate #2 never built) — the residual floating it targeted was later chased to ~0 without it (🏁 §MILESTONE, 4562); treat as SUPERSEDED-by-outcome, not confirmed closed by name |
+| 3519 | §CARRIER_DEDUP_DERISK_STUDY | OPEN/parked deliberately — now code-quality only, not correctness-blocking |
+| 3648 | §FLOATING_TIMING_ROOT_CAUSE | SETTLED — root cause identified, feeds next row |
+| 3716 | §MEP_PROXY_PHASE_RECLASS | OPEN — built+measured, explicitly NOT SHIPPED (net worse), blocked on §CPM_GENERATOR_UPSTREAM_SPEC |
+| 3905 | §OG_HANG_UNBOUND | SETTLED — shipped PR #1382 |
+| 3962 / 4004 | §CROSSTASK_JUDGE_PARITY (SPEC → BUILT) | SETTLED — shipped PR #1387 |
+| 4062 | §CHASE_TO_ZERO_WINDOW_AUTHORING | SETTLED — resolved via §ZONE_DISPLAY_AUTHORING (4128); EXP5's 2 candidates (4097) REJECTED |
+| 4171 / 4201 | §STOREY_ORDER_REPORT | OPEN — corruption localized to `_twoTierRemap`/`_tier1Serialize`, root cause traced one level deeper, next lever NAMED not built |
+| 4252 | §TIER1_PER_ELEMENT_CLAMP EXP | SUPERSEDED — measured, REJECTED fleet-wide |
+| 4310 | §CJP_DAY_ROUNDING_TOL | SETTLED — shipped, fleet floating −49.8% |
+| 4368 | ▶ NEXT SESSION START HERE (2026-08-16 close) | SUPERSEDED — stale pointer, superseded by §S63 onward |
+
+### The live edge of the file (lines 4408–5656) — 2026-08-22 → 2026-08-26
+| line | section | status |
+|---|---|---|
+| 4408 | §S63 | SETTLED — bisected/isolated/measured/re-locked; one named OPEN sub-item (4475) |
+| 4484 | §S64 | SETTLED — fleet-wide decomposition; "still open after this study" list (4554) |
+| 4562 | 🏁 §MILESTONE — generation SOLVED 95%+ | SETTLED-BUT-QUALIFIED — see the very next section: one of its two named "hells" reopened 2 days later on a different judge |
+| 4619 | ⛔ REGRESSION FOUND + BISECTED (2026-08-24) | **OPEN** — `witness_4d_band_monotonic.js` (T2a) fails 14,267/43,000 on Hospital; real, reproducible, unresolved; needs a user design call between two already-shipped, independently-correct fixes |
+| 4710 | §S65 | mixed — STAGE 1–3 SETTLED (✅), STAGE 4 explicitly NOT claimed; close-out (4903) names 2 process failures a filtered witness run caused |
+| 4949 | §S66 — CORE PROGRAMME TEMPLATE | mixed — artifact SETTLED (shipped PR #1531); its "only authored layer" framing is OVERCLAIMED — see ledger #5; instantiation OPEN (RESUME, 5000) |
+| 5028 | §S66.1 | SETTLED (rename shipped PR #1532) + 3 real OPEN defects found in the template itself (crew formula / gate hole / instantiation scope); instantiation must not start until Defect 1 is fixed |
+| 5120 | §S67 | SETTLED — one live defect (§CREW_CAP_FINAL) found+stopped; 3 declared-vs-actual gaps left OPEN (5211) |
+| 5227 | §S68 | SETTLED as diagnosis (no phase concept in the solver) — this is why `4D_BAR_MODEL.md` exists; the actual fix is OPEN here (RESUME, 5303) |
+| 5319 | §S69 | OPEN — inversion built+tested on Hospital, NOT YET LIVE |
+| 5387 | §S70 | OPEN — movie-vs-bars bound built; one wiring job left, unchanged from §S69 |
+| 5464 | §S71 | SETTLED (an honest proven/not-proven scorecard) — and itself found midair got WORSE under the template path (Terminal +230, doubled); the resulting OPEN design decision (5523) is what `4D_BAR_MODEL.md`'s `needs()` providers now address |
+| 5537 | §S72 | SETTLED, self-corrected in place ("what I got wrong, twice") — further refined by §S72.2 |
+| 5589 | §S72.1 | SETTLED (what-if simulation: Terminal 513→48) — its "extracted" label for the 6 storey rows is imprecise, corrected by §S72.2 (banner added in place) |
+| 5616 | §S72.2 | **SETTLED — the current, correct word on the storey-elevation gap.** The fix is ONE LINE inside the existing `room_walker.js` injector; no source IFC, no extractor change. This is the section `4D_BAR_MODEL.md` §10.3/§10.6 point to. |
+
+## Corrections ledger — every claim later withdrawn, with both section numbers
+
+1. **§DAY_GAP_WIP (line 1266)** → corrected by **§DAY_GAP_PHASE_OCC (line 1333)**, titled "TWO
+   CORRECTIONS TO THE SECTION ABOVE, and the real defect."
+2. **§HOSTED_ZONE_SUSPECT (line 1751)** claimed *"`sequence_rules.json` IS that template and it does
+   work."* **FALSE — corrected by §S66 (line 4949–4957):** `sequence_rules.json` is only an
+   `ifc_class → phase/sequence/trade` lookup, never a programme template. §S66's own words: *"The user
+   asked for a core programme-template JSON MONTHS ago and was repeatedly told it existed. It did
+   not."* No programme template existed until `4D_template.json` shipped 2026-08-25 (PR #1531).
+3. **🏁 §MILESTONE (line 4562)** declared hell #1 ("Gantt Chart overstacked") closed via
+   `deriveBandRanks` + the band-monotonic ladder. **⛔ REGRESSION FOUND (line 4619, 2026-08-24)**
+   found `witness_4d_band_monotonic.js` (T2a) now fails 14,267/43,000 on Hospital — caused by two
+   later shipped, independently-correct fixes (`§HOSTED_BEFORE_HOST` #1319,
+   `§STAIR_FLIGHT_GRID_VISIBILITY` #1345) that each pull elements toward z-major geometry order at the
+   expense of the rank-major band order this witness locks. **Unresolved as of this file's last
+   entry** — needs a user design call, not a session's guess.
+4. **REGRESSION FOUND's own first draft (same section, line 4619)** self-corrected in place: its
+   initial "span 176d → 594d, a 3.4× blowup" reading used the witness's wrong 8h/day default instead
+   of the product's real 24h/day; the corrected reading is 176d → 198d (1.12×, no blowup). *"The span
+   claim in the first version of this section was wrong and is retracted"* (line 4645).
+5. **§S66 (line 4962, "PRIMAL ROLE")** claimed `4D_template.json` is *"the only place in the 4D chain
+   where a fact is AUTHORED rather than DERIVED."* **Corrected by §S66.1 (line 5042, "The §S66
+   write-up overclaims one thing"):** `sequence_rules.json` also authors facts (productivity, crew
+   size, class→phase). What `4D_template.json` actually authors is exactly three things: `calendar`,
+   `duration_rule`, `dependencies`.
+6. **§S72 (line 5537) + §S72.1 (line 5589)** — §S72 already flags itself in place: *"What I got wrong,
+   twice: 1. Reported the elevations ABSENT. They are not. 2. Proposed synthesising elevations.
+   Forbidden … Withdrawn."* (line 5545). **§S72.2 (line 5616) goes one step further:** the "extracted"
+   storey rows §S72/§S72.1 measured are not extracted `IfcBuildingStorey` data — they are
+   `room_walker.js`'s own COMPILED (injected) output. **Terminal has ZERO real extracted storeys.**
+   The midair payoff numbers (513 → 48) are unaffected; only the word "extracted" was wrong. A
+   correction banner was added at the head of §S72.1 pointing here.
+7. **Cross-file:** `prompts/4D_BAR_MODEL.md` §10.3 item 5 originally said the storey elevations were
+   "VERIFIED ABSENT" and that the fix was "fix the extractor" — both wrong, already corrected in place
+   in that file once §S72.2 landed; see that file's own §10.6 WITHDRAWN list.
+
+## Contradiction found, not resolved by re-deriving — flagged instead
+None outstanding. One residual inconsistency was fixed with a one-line correction banner rather than
+left standing or silently re-derived: §S72.1 (line 5589) still called Terminal's 6 storey rows
+"extracted" after §S72.2 (line 5616) established they are compiled/injected, not extracted. The banner
+points there; the numbers themselves were not touched.
+
+---
+
 # ▶ CURRENT STATE — 2026-08-15 session close. START HERE. Supersedes the "▶ NEXT SESSION" block
 # immediately below (that block is 2026-08-13, now stale — kept for its still-relevant "3rd level
 # hanging doors" thread, see the note at the end of this block, not as the active task list).
@@ -5587,6 +5719,11 @@ Cross-ref: `prompts/ROOM_INJECTION_CONSOLIDATED_REVIEW.md` (same mechanism, same
 elevations were already half-present.
 
 ## §S72.1 WHAT-IF MEASURED — the injection IS the Terminal fix, and it retires one adjustment
+
+> ⚠ CORRECTED by §S72.2 below — this section's "EXTRACTED" label for Terminal's 6 storey rows is
+> imprecise. §S72.2 found those rows are `room_walker.js`'s own COMPILED (injected) output, not real
+> extracted `IfcBuildingStorey` data — Terminal has ZERO real extracted storeys. The midair numbers
+> (513 → 48) and the fix direction are unaffected; only the word "extracted" is wrong here.
 
 Simulated the post-injection world: Terminal's 23 element storey labels assigned to its 6 EXTRACTED
 storey bands (band edges from `spatial_structure.center_z` — extracted placement, never an elevation

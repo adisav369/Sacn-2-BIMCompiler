@@ -12,6 +12,51 @@ Predecessor analysis: `4D_SCHEDULE_PERFECTION.md` §S68–§S71.
 
 ---
 
+# SETTLED STATE — READ THIS FIRST
+*(formerly §10.6 CONSOLIDATION — moved to the top of this file 2026-08-26, retitled, so a fresh
+session sees the settled position before the history in §1–§10.5 below, which records its corrections
+IN PLACE and will hand you withdrawn claims if read linearly. The label "§10.6" stays live — every
+cross-reference elsewhere in this file or in `4D_SCHEDULE_PERFECTION.md` that cites "(§10.6)" still
+means this section. A one-line stub sits at its old position, end of file.)*
+
+**Where §1–§10.5 and this section disagree, this section (§10.6) wins.**
+
+### Numbers, judged by `census()` sliced from `witness_midair_zero.js`
+| | Duplex | HHS | Hospital | Terminal |
+|---|---|---|---|---|
+| shipping midair | 17 | 147 | 139 | 226 |
+| **Bar model midair** | **12** | **70** | **92** | **336** |
+| shipping band inversions | 64 | 654 | 29,013 | 30,318 |
+| **Bar model band inversions** | **1** | **0** | **4** | **4** |
+| phase stacking · zero-min · outside-bar · crew | **0** | **0** | **0** | **0** |
+
+`witness_bar_schedule` 13/13 · `witness_bar_composite` 12/12 · `witness_bar_needs` 15/15 ·
+suite `green=62 new_red=1 known_red=7` (the red is the long-standing unrelated
+`witness_cpe_buildup_require_tm_first`).
+
+### WITHDRAWN — do not act on these, they are still in the text below (§1–§10.5)
+- **§9.5's recommendation** (partition by phase only) — withdrawn by §9.6. Phase-only is WORSE than
+  shipping on band inversions: Hospital 48,589 vs 4. §9.5's *law* stands; its conclusion does not.
+- **§9.4's superseded numbers** — the integration probe's `0/4/0/0` midair. Real judge: `18/129/124/697`.
+- **§10.3 item 5's original text** — "elevation VERIFIED ABSENT / fix the extractor". Wrong on both.
+- **`correctLevelsByGeometry`** — added and DELETED the same session. It was a symptom patch for the
+  storey gap: 1,986 fires on Terminal, 0 once levels are right. Removing it is free on three
+  buildings and takes Terminal 513 → 336.
+
+### The three open items, in order
+1. **`room_walker.js:1352`** — emit a `COMPILED` storey row for every distinct `elements_meta.storey`,
+   not only room-bearing ones; widen `stZ` to match. Room lane's file. Predicted Terminal 336 → 48.
+2. **Fold the scratchpad probes into `witness_bar_schedule`** (§10.3 item 1) — every §9 number came
+   from `/tmp` scripts that no longer exist. Without this there is no regression detection.
+3. **§8 DELETE LIST** — untouched. Until it is done this lane has ADDED a translator, not removed five.
+
+### Still true and unchanged
+The five policy lines each earn their place by a measured margin (§9.6). The design law (§9.5) holds:
+midair and discipline trade at an exchange rate set by how the partition cuts across gravity. The
+composite rule (§2.1, only leaves store time) holds — 119,565 rows, gated.
+
+---
+
 ## §1 WHY — the four hells are one defect
 
 `prompts/4D_SCHEDULE_PERFECTION.md` §S68 established that **the solver has no concept of a phase**
@@ -253,6 +298,11 @@ without touching the same files.
 wiring · **§8 DELETE LIST**. Until §8 is done this lane has added a sixth translator, not removed five.
 
 ### §9.2 NEEDS PROVIDERS — DONE, plus two integration findings the providers alone could not show
+> ⛔ WITHDRAWN by §10.6 — this section's INTEGRATED RESULT midair numbers (Duplex/HHS/Hospital/
+> Terminal `0/25/10/16`) came from a hand-derived judge, not the real `census()`. Re-judged with the
+> project's own sliced judge: `18/129/124/697` (§9.4). The structural findings (a) any-of vs all-of
+> needs and (b) bearing-vs-support relation still stand — only the numbers below are wrong.
+
 `viewer/bar_needs.js` (bim-ootb PR #1538, Sonnet agent) — `support · host · carrier · opening · wall`,
 every provider lifted from a shipped predicate by balanced-brace slicing or by calling the exported
 function. `§WITNESS_BAR_NEEDS pass=15 fail=0 ran=964091`; its anti-re-derivation gate matches the
@@ -339,6 +389,11 @@ carrier relations, which the model treats as ALL-OF hard needs and which `census
 probe's judge did not. Suspect the `ceiling_link` upward edge interacting with Terminal's 22 levels.
 
 ### §9.5 THE DESIGN LAW — midair and phase discipline are in direct tension (2026-08-25)
+
+> ⛔ WITHDRAWN by §10.6 — phase-only is worse than shipping on band inversions (Hospital 48,589 vs 4).
+> §9.5's *law* (midair and phase discipline trade against each other) stands; its §6 *recommendation*
+> ("partition by PHASE, derive levels") does not — corrected by §9.6, which found level bars are
+> load-bearing for band monotonicity.
 
 **User: "Explore this design property issue. See what we can learn."** Held the graph, the crews and
 the judge (`census()`, sliced) fixed; varied ONLY how elements are cut into bars.
@@ -582,41 +637,10 @@ it"* — and this session stacked on the feature branch anyway.
 the actual line.** Same discipline as §10.1 rule 1: read the source of truth, do not trust a report.
 
 
-## §10.6 CONSOLIDATION — what is TRUE as of 2026-08-26, after the retractions
+## §10.6 CONSOLIDATION — moved to the top of this file (2026-08-26)
 
-This file records its own corrections in place. Reading it linearly will hand you withdrawn claims,
-so this section is the settled state. **Where §9 and §10.6 disagree, §10.6 wins.**
-
-### Numbers, judged by `census()` sliced from `witness_midair_zero.js`
-| | Duplex | HHS | Hospital | Terminal |
-|---|---|---|---|---|
-| shipping midair | 17 | 147 | 139 | 226 |
-| **Bar model midair** | **12** | **70** | **92** | **336** |
-| shipping band inversions | 64 | 654 | 29,013 | 30,318 |
-| **Bar model band inversions** | **1** | **0** | **4** | **4** |
-| phase stacking · zero-min · outside-bar · crew | **0** | **0** | **0** | **0** |
-
-`witness_bar_schedule` 13/13 · `witness_bar_composite` 12/12 · `witness_bar_needs` 15/15 ·
-suite `green=62 new_red=1 known_red=7` (the red is the long-standing unrelated
-`witness_cpe_buildup_require_tm_first`).
-
-### WITHDRAWN — do not act on these, they are still in the text above
-- **§9.5's recommendation** (partition by phase only) — withdrawn by §9.6. Phase-only is WORSE than
-  shipping on band inversions: Hospital 48,589 vs 4. §9.5's *law* stands; its conclusion does not.
-- **§9.4's superseded numbers** — the integration probe's `0/4/0/0` midair. Real judge: `18/129/124/697`.
-- **§10.3 item 5's original text** — "elevation VERIFIED ABSENT / fix the extractor". Wrong on both.
-- **`correctLevelsByGeometry`** — added and DELETED the same session. It was a symptom patch for the
-  storey gap: 1,986 fires on Terminal, 0 once levels are right. Removing it is free on three
-  buildings and takes Terminal 513 → 336.
-
-### The three open items, in order
-1. **`room_walker.js:1352`** — emit a `COMPILED` storey row for every distinct `elements_meta.storey`,
-   not only room-bearing ones; widen `stZ` to match. Room lane's file. Predicted Terminal 336 → 48.
-2. **Fold the scratchpad probes into `witness_bar_schedule`** (§10.3 item 1) — every §9 number came
-   from `/tmp` scripts that no longer exist. Without this there is no regression detection.
-3. **§8 DELETE LIST** — untouched. Until it is done this lane has ADDED a translator, not removed five.
-
-### Still true and unchanged
-The five policy lines each earn their place by a measured margin (§9.6). The design law (§9.5) holds:
-midair and discipline trade at an exchange rate set by how the partition cuts across gravity. The
-composite rule (§2.1, only leaves store time) holds — 119,565 rows, gated.
+Retitled **"SETTLED STATE — READ THIS FIRST"** and placed immediately after the `⚠ DO NOT REMOVE`
+block, so a fresh reader sees the settled position before wading through §1–§10.5's withdrawn claims.
+Content relocated, not duplicated — see the top of this file. **"Where §1–§10.5 and §10.6 disagree,
+§10.6 wins"** still applies to every cross-reference elsewhere in this file (or in
+`4D_SCHEDULE_PERFECTION.md`) that cites "(§10.6)".
