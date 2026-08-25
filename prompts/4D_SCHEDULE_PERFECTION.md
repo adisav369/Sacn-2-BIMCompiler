@@ -5458,3 +5458,76 @@ Still **dark**: no call site passes `opts.template`. To flip it live, in ONE PR:
 
 Fleet effect on flip: Hospital 356d→318d (−11%), Terminal 132d→96d (−27%), HHS 47→49, Duplex 10→12;
 phase overlap → 0 everywhere; every element inside its own bar.
+
+---
+
+# §S71 — NO. THE WITNESSES DO NOT PROVE "IT ALL WORKS". HERE IS EXACTLY WHAT THEY PROVE. (2026-08-25)
+
+**User: "are u saying your WITNESS logging is proving it is all working?"** No. That question was
+right to ask, and asking it produced a red result within minutes. Scorecard, honestly:
+
+## ✅ What IS proven — named layer, real data, committed witness
+| witness | what it actually proves | scope |
+|---|---|---|
+| `witness_4d_template.js` 29/29 | the template FILE is self-consistent, derived from `sequence_rules.json`, and **each gate can fail** | a document, **not behaviour** |
+| `witness_4d_capacity_honoured.js` 4/4 | no trade exceeds `max_crews` in the emitted element times | HHS · Duplex · Terminal |
+| `witness_4d_template_instantiation.js` 11/11 | persisted task grid: 0 phase overlap · lags from the template · float exists · ladder holds · window covers work · grid crew-legal · **63,182/63,182 elements assigned** · absence reported | Hospital · HHS · Duplex |
+| `witness_4d_movie_binds_bars.js` 7/7 | 71,140 played elements inside their own bar · order preserved · no zero-width · span match | Hospital · HHS · Duplex |
+| `run_witness_suite.js` | `green=59 new_red=1 known_red=7` | fleet |
+
+## ❌ What is NOT proven — and one of these just came back RED
+1. **⛔ MIDAIR GOT WORSE. Measured this session (§S71 probe).** The user's own acceptance bar —
+   *"all i want is not to see a single item hanging in midair that is all"* — judged by `census()`
+   sliced verbatim out of `witness_midair_zero.js`:
+
+   | building | RAW solve | **TEMPLATE+REMAP** | delta |
+   |---|---|---|---|
+   | **Terminal** | 226 (0.47%) | **456 (0.94%)** | **+230, doubled** |
+   | Hospital | 139 (0.22%) | 159 (0.25%) | +20 |
+   | Duplex | 17 (1.52%) | 21 (1.88%) | +4 |
+   | HHS_Office_Federated | 147 (2.15%) | 150 (2.19%) | +3 |
+
+   Worst on Terminal: `IfcLightFixture`/MEP Final starts **34.3 days before** the thing it touches.
+   **Cause is structural, not incidental:** §S70's map is order-preserving *within* a task and says
+   nothing *across* tasks, while the template moves whole tasks relative to each other. A support
+   relation spanning two tasks — a fixture in MEP Final hanging off a ceiling in Architecture on
+   another level — is honoured by the raw solve's geometry gates and **discarded** when each task is
+   rescaled into its own window independently.
+   **Baseline caveat, stated so nobody over-reads it:** the comparison above is against the RAW
+   solve, *not* against what users see today. The live movie runs `_displayTimeline` →
+   `CpmSchedule.run` → `_midairAudit`, which repairs midair to the W-MZ-2 locked baselines. **The
+   template path bypasses that repair entirely — it currently has NO midair repair at all.** A
+   live-vs-template comparison has not been run and must not be inferred from these numbers.
+
+2. **None of it is live.** No call site passes `opts.template`. Every number above describes a code
+   path no user reaches.
+3. **The drawn bars are unchecked under the template.** `witness_gantt_bar_is_its_task.js`'s
+   generator calls `materializeZones` *without* a template (verified: `witness_kit/generators/gantt_bars.js:77`),
+   so it exercises the LEGACY path only. The hell was reported **visually** — bars overstacked. The
+   DATA behind them is now clean; the DRAWING of that data has never been tested.
+4. **Nothing has run in a browser.** All node. The viewer's real load path (fetching the JSON,
+   ordering against generation, `sw.js` caching) is untested — and §S65 STAGE 1 is precisely that
+   failure: a correct JSON that nothing ever loads.
+5. **A witness cannot tell you the programme is RIGHT.** 24h shifts, six phases, FS+0, these trades
+   — all *authored*. The gates prove self-consistency and physical legality on crew capacity. They
+   cannot prove the plan matches how anyone actually builds.
+
+## The honest summary
+The witnesses prove **specific, named, layer-scoped claims** — and they are strong enough that they
+caught **four real defects in my own work this session**: the PLUMBER cap breach on Hospital, the
+building-scope phase silently dropping elements (63,181 of 63,182), the cross-building task-id
+collision inside the witness itself, and now the midair regression. **That is what they are for.**
+What they do not do is add up to "it works". Item 1 above is a live open defect and item 2 means
+none of it has reached a user.
+
+## ⛔ RESUME HERE — one design decision, and it is not a session's to make
+Midair under the template needs one of:
+- **(a) repair after the remap**, constrained to keep every element inside its own bar — may be
+  infeasible where the support genuinely sits in a later task;
+- **(b) feed cross-task support relations back into the template's dependency graph**, so a task
+  cannot precede a task its members physically rest on;
+- **(c) accept a bounded midair count** as the price of authored phases.
+
+**(b) is the only one that fixes the cause rather than the symptom, and it changes what the template
+means** — the template would stop being purely authored logic and start absorbing geometry. That is
+the user's call, not a guess to make while wiring.
