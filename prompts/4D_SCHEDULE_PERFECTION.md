@@ -5612,3 +5612,45 @@ stays valid but stops being the primary control once levels are real.
 
 `bandInv` rises 0 → 28. Small, and expected: 6 genuine floors give real adjacency to violate where 22
 naming variants gave almost none. Judge it on real floors, not on label count.
+
+## §S72.2 CORRECTION — the injector EXISTS, has already RUN, and skips one case (2026-08-26)
+
+**User: "Room Injection as done under find panel needs source IFCs? Clarify. AFAIK, it's all
+extracted from building DB."** Correct. I briefed a subagent to hunt for source IFCs — wrong premise,
+and the agent died on an API error before acting on it. Nothing was built on it.
+
+**`viewer/lib/room_walker.js` `writeRooms()` already injects storey rows**, from the DB alone:
+`guid='STC_<name>'`, `object_type='COMPILED'`, `center_z = stZ[st]` (mean wall centre-Z for that
+storey, `room_walker.js:1191`), idempotent on the `STC_` prefix, with its own `§APPROX` comment.
+`rooms_meta` carries `ROOM_WALKER_V` — the §15 version stamp. Node-runnable (`module.exports`).
+
+**This also settles the doctrine tension I raised in §S72.** §S64's *"never inferred from element Z"*
+forbids SILENT inference. The shipped injector derives storey Z from wall centres and LABELS it
+`COMPILED` — the `≈` convention of WalkerDoctrine §14. Labelled is sanctioned; silent is not.
+
+### And it has already run on Terminal — all six storey rows are its output
+```
+STC_Aras_01 … STC_Aras_Bumbung   object_type = COMPILED
+```
+**Terminal has ZERO real extracted storeys.** What §S72 called "extracted elevations" is compiled
+output. Ran the walker on a copy to confirm: 54 rooms compiled, 7 storeys in `stZ`, **6 rows written,
+`deriveStoreyMergeMap` merged 0, 6 distinct bands** — unchanged.
+
+### THE GAP IS ONE LINE, inside the existing injector
+`room_walker.js` `writeRooms()`:
+```js
+if (!allrooms.some(function (r) { return r.storey === st; })) return;
+```
+A storey row is emitted **only where a room was compiled**. Terminal has 23 distinct
+`elements_meta.storey` values; rooms compiled on 6; the other 17 (`GROUND FLOOR LEVEL`,
+`Ceiling Level 01-04`, `Aras Kedai`, `Aras Jalan`, `00 Aras Asas` …) get no row, so §S18 has nothing
+to merge and 4D schedules Terminal as 22 levels instead of 6.
+
+**⛔ FIX — inside the existing mechanism, no new one:** emit a `COMPILED` storey row for EVERY
+distinct `elements_meta.storey`, not only room-bearing ones. Same `STC_` prefix, same label, same
+idempotency, same version stamp. `stZ` must widen correspondingly (it is currently built only from
+storeys that have walls). Payoff already measured in §S72.1: **Terminal midair 513 → 48**, span
+126 → 105d.
+
+**⚠ Belongs to the ROOM lane's file, not this one** — `room_walker.js` is theirs. Cross-referenced
+in `prompts/ROOM_INJECTION_CONSOLIDATED_REVIEW.md`; 4D is the consumer that exposed it.
