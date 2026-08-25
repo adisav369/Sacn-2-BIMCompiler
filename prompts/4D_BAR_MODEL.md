@@ -14,9 +14,13 @@ Predecessor analysis: `4D_SCHEDULE_PERFECTION.md` §S68–§S71.
 
 # SETTLED STATE — READ THIS FIRST
 
-> **🚀 LIVE as of 2026-08-26, bim-ootb PR #1543 (`sw.js` v1090).** The Bar model is the live 4D
-> authoring path — `opts.barModel` at all four call sites, `viewer.html` calls `loadFourDPolicy()`.
-> Everything below describing it as unwired predates that. §11 is the ship record.
+> **⛔ NOT LIVE. BUILT, NOT SHIPPED — corrected 2026-08-26 (§15.1).** bim-ootb PR #1543
+> (`§BAR_LIVE`, `sw.js` v1090) is **OPEN / mergeStateStatus BLOCKED, `mergedAt: null`**.
+> `git grep barModel origin/main` and `git grep BAR_LIVE origin/main` both return **nothing** —
+> `origin/main` is at `44f42dd` (#1542, the Bar model CORE) and the live 4D authoring path is still
+> the legacy one. The wiring (`opts.barModel` at all four call sites, `viewer.html` calling
+> `loadFourDPolicy()`) exists **only on the unmerged #1543 branch**. §11's title says SHIPPED; read
+> it as BUILT. **Every midair number below is UNSAFE — see §14.5 and §15.2.**
 *(formerly §10.6 CONSOLIDATION — moved to the top of this file 2026-08-26, retitled, so a fresh
 session sees the settled position before the history in §1–§10.5 below, which records its corrections
 IN PLACE and will hand you withdrawn claims if read linearly. The label "§10.6" stays live — every
@@ -829,94 +833,6 @@ and the log will still say `midair=0`. You would have broken it and been told ev
 **No `barModel` feature flag.** When the Bar model wins on a judge that matches the eye, it becomes
 the only path and the old one goes. A permanent opt-in is the same hedge under a nicer name.
 
-
----
-
-# §14 — WATCHDOG REVIEW OF §11–§13 (2026-08-26, independent session)
-
-Read against `origin/main` + live `gh` state, not the local checkout (which was **12 commits stale**
-— see finding 5). §13.2 and §13.3 hold. Four things below do not.
-
-## 14.1 ⛔ THE TOP OF THIS FILE IS FALSE. FIX IT BEFORE ANYTHING ELSE.
-`SETTLED STATE` (line ~17) says **"🚀 LIVE as of 2026-08-26, bim-ootb PR #1543"** and §11 is titled
-**SHIPPED**. Measured now:
-
-```
-gh pr view 1543 → {"state":"OPEN","mergedAt":null,"mergeStateStatus":"BLOCKED"}
-git grep BAR_LIVE origin/main → (nothing)
-git grep barModel  origin/main → (nothing)
-```
-
-**Nothing shipped.** §12.1 notices this in passing ("PR #1543 was still open") but only about the
-user's console log, and neither §12 nor §13 corrects the block a fresh session reads FIRST. The file
-currently hands a new session "LIVE" as settled truth, 680 lines above the retraction.
-This is §10.5's own lesson inverted: there, MERGED was not evidence of landing; here, SHIPPED was
-claimed for a PR that never merged at all.
-
-## 14.2 ⛔ §12.2 COMPARES THREE DIFFERENT JUDGES AND CALLS IT A RE-BASELINE
-The retraction rests on `147` (mine) vs `floating=4` / `midair=0` (live log). Those are **not the
-same instrument**:
-
-| number | judge | where |
-|---|---|---|
-| `midair 17/147/139/226` | `census()` — *independent by design*, re-derives contact geometry | `witness_midair_zero.js:308` |
-| `§SUPPORT_CHECK floating=4/6880` | `ScheduleGate.auditFloating` | `schedule_gate.js:1122` |
-| `§CPM_DISPLAY … midair=0` | `SupportSweep.midairAudit` via `_midairAudit` | `time_machine.js:4196` |
-
-§12.2 asserts they are "the same family of contact-graph judge" without measuring it. That is
-**§10.1 rule 1 in its cross-judge form** — the exact error §12.2 is diagnosing. The stage point
-(raw solve ≠ what plays) is valid and worth keeping; the conclusion **"the Bar model's 70 is very
-likely WORSE"** is not supported by the evidence given. Correct status is UNKNOWN, not WORSE.
-
-## 14.3 §12.2's PREMISE IS HALF WRONG — `census()` ALREADY JUDGES THE DISPLAY TIMELINE
-`witness_midair_zero.js` header, verbatim: *"This witness judges the DISPLAY timeline — the times
-`kernel_ops` is written from, i.e. what the movie plays"*, authored via *"`_displayTimeline`'s CPM
-success branch (`CpmSchedule.run`)"*. And `W-MZ-1` is explicitly **"the RAW `computeSchedule`
-output, before `_displayTimeline` authors anything… the before-number"**; `W-MZ-2` is the post-CPM
-locked one.
-
-So the table in `SETTLED STATE` quoted **W-MZ-1** when W-MZ-2 was sitting in the same run.
-**§12.2's re-baseline is not a project — it is reading the other line the witness already prints.**
-
-## 14.4 ⛔ §12.3's REAL LEAD IS ALREADY DOCUMENTED AND IS NOT IN ITS CANDIDATE LIST
-Directly above `census()` in `witness_midair_zero.js`, already `⛔ OPEN`, already measured:
-
-> *"it no longer encodes the same rule as the shipped judge: it mirrors `_contactGraph`'s symmetric
-> carrier clause, while `SupportSweep.midairAudit` went DIRECTIONAL in #1435. Measured 2026-08-22:
-> breaking the shipped judge by 86,400,000x leaves this witness at pass=49 fail=0 — **the lock does
-> not track the engine**."* (tracked at `4D_GANTT_TM_REFACTOR.md` §S58.5)
-
-And `auditFloating`'s blind spot, same file's header: *"its support pools are seq<=4 + promoted
-slabs + walls, so an element whose only neighbours are outside those pools … is reported clean while
-hanging in plain sight."* **A hanging MEP pipe is precisely that element.** §12.3 lists four
-candidate explanations and neither of these is among them. Start here — the divergence is measured,
-not hypothetical.
-
-## 14.5 §13.1's "zero risk" IS OVERSTATED (the claim is right, the grading is not)
-"No call site has ever passed `opts.template`" is **true for production** — verified, all four sites
-(`time_machine.js` :5287/:6858/:6900, `schedule_author_ui.js`:284) omit it. But **three test files
-pass it**: `witness_4d_template_instantiation.js:67`, `witness_4d_movie_binds_bars.js:66`,
-`probe_4d_movie_vs_bars.js:44`. `remapSolveToTasks` is reached only from inside
-`_writeTemplateSchedule` (`schedule_author.js:1005`) plus its export at :2325.
-
-Deleting the pair is still correct — but budget **two new reds**, one of them
-`witness_4d_movie_binds_bars`, which guards movie-vs-bars, a hell in this lane's own scope. Delete
-the witnesses in the same commit or the next session will read them as a regression.
-
-## 14.6 PROCESS — the local `~/bim-ootb` checkout was 12 commits stale
-Every claim above was re-checked against `origin/main` via `git grep origin/main` / `git show`.
-A first pass against the stale local tree reported `_writeTemplateSchedule` and `remapSolveToTasks`
-as *already absent* — i.e. it would have marked §13.1 done. `CLAUDE.md` Session Startup step 0
-exists for exactly this. **Fetch before reading this repo as canon.**
-
-## ⛔ REVISED ORDER (supersedes §13.4 steps 1–3 only; step 4 unchanged)
-1. **Fix `SETTLED STATE` + §11's title** — s/LIVE/OPEN, s/SHIPPED/BUILT, PR #1543 unmerged. One edit.
-2. **§14.4** — chase the measured `census()`-vs-`midairAudit` divergence (#1435 directional change)
-   and `auditFloating`'s pool blind spot, before inventing new hypotheses for §12.3.
-3. **§14.3** — re-read W-MZ-2 (post-CPM) from an existing witness run; do NOT re-baseline by hand.
-4. Only then re-open "better or worse". Status is **UNKNOWN**, not WORSE (§14.2).
-
-
 ---
 
 # §14 — THE INSTRUMENT IS BROKEN IN TWO PLACES. BOTH MEASURED. (2026-08-26)
@@ -1058,3 +974,128 @@ honest baseline is `kernel_ops.start_ts`**, the thing the HUD counts and the fra
    it a gate. Expect it to go red at 783 on HHS immediately — that is the point.
 2. Re-run `probe_floating_guid_audit.js` across the fleet (`ONLY=` env) — HHS is one building.
 3. Only then re-baseline (§12.2 as amended by §14.3) and decide the Bar model's fate.
+
+---
+
+# §15 — WATCHDOG REVIEW (2026-08-26, independent session). TWO ITEMS §14 DID NOT COVER.
+
+*(Written before §14 as a review of §11–§13; renumbered 14→15 and moved here 2026-08-26 after a
+collision — both sections were called "§14". See §15.7 for how that happened.)*
+
+## 15.0 §14 VERIFIED, AND IT CORRECTS ME
+§14's code claims were re-checked independently against `origin/main` @ `44f42dd`. **All hold:**
+`support_sweep.js:417` (`grounded[i] = (lowest < T.bz - GAP) ? 0 : 1` — footprint-local, altitude-
+blind, exactly as claimed) · `:466` (`if (bestCls === 2 && G.grounded[i]) continue`) · `:508`
+(`var sIdx = des[i]; if (sIdx < 0) continue`) · `time_machine.js:4843` `_tmRescaleToTaskWindow`,
+applied at `:4870` (`var bound = _tmRescaleToTaskWindow(el.guid, s)`) **after** `_midairAudit` and
+before the `kernel_ops` write. `scripts/probe_floating_guid_audit.js` is on
+`origin/probe/floating-guid-audit`. The judge is required from `support_sweep.js`, not re-derived —
+§10.1 rule 1 honoured.
+
+**⛔ §15.3 below is WRONG and §14.3 is why.** I wrote that §12.2's re-baseline was "not a project —
+just read W-MZ-2." W-MZ-2 is the post-CPM number, and the post-CPM timeline is **still rescaled
+again** by `_tmRescaleToTaskWindow` before anything is played. `census()` judging `_displayTimeline`
+is one transform short of the movie, exactly as the shipped judge is. §14.3's `0 → 783` is the
+proof. **The only honest baseline is `kernel_ops.start_ts`** — §14's conclusion, not mine.
+
+**Still standing after §14: §15.1, §15.4, §15.5.** §15.2's stage critique is absorbed and extended
+by §14.3; its cross-judge point (three different instruments quoted as one) still stands as a
+reading rule.
+
+## 15.1 ⛔ STILL OPEN → **FIXED 2026-08-26.** The top of this file was false.
+`SETTLED STATE` (line ~17) says **"🚀 LIVE as of 2026-08-26, bim-ootb PR #1543"** and §11 is titled
+**SHIPPED**. Measured now:
+
+```
+gh pr view 1543 → {"state":"OPEN","mergedAt":null,"mergeStateStatus":"BLOCKED"}
+git grep BAR_LIVE origin/main → (nothing)
+git grep barModel  origin/main → (nothing)
+```
+
+**Nothing shipped.** §12.1 notices this in passing ("PR #1543 was still open") but only about the
+user's console log, and neither §12 nor §13 corrects the block a fresh session reads FIRST. The file
+currently hands a new session "LIVE" as settled truth, 680 lines above the retraction.
+This is §10.5's own lesson inverted: there, MERGED was not evidence of landing; here, SHIPPED was
+claimed for a PR that never merged at all.
+
+## 15.2 ⛔ §12.2 COMPARES THREE DIFFERENT JUDGES AND CALLS IT A RE-BASELINE
+The retraction rests on `147` (mine) vs `floating=4` / `midair=0` (live log). Those are **not the
+same instrument**:
+
+| number | judge | where |
+|---|---|---|
+| `midair 17/147/139/226` | `census()` — *independent by design*, re-derives contact geometry | `witness_midair_zero.js:308` |
+| `§SUPPORT_CHECK floating=4/6880` | `ScheduleGate.auditFloating` | `schedule_gate.js:1122` |
+| `§CPM_DISPLAY … midair=0` | `SupportSweep.midairAudit` via `_midairAudit` | `time_machine.js:4196` |
+
+§12.2 asserts they are "the same family of contact-graph judge" without measuring it. That is
+**§10.1 rule 1 in its cross-judge form** — the exact error §12.2 is diagnosing. The stage point
+(raw solve ≠ what plays) is valid and worth keeping; the conclusion **"the Bar model's 70 is very
+likely WORSE"** is not supported by the evidence given. Correct status is UNKNOWN, not WORSE.
+
+## 15.3 ⛔ RETRACTED by §14.3 — `census()` judges the display timeline, but the movie plays a LATER one
+`witness_midair_zero.js` header, verbatim: *"This witness judges the DISPLAY timeline — the times
+`kernel_ops` is written from, i.e. what the movie plays"*, authored via *"`_displayTimeline`'s CPM
+success branch (`CpmSchedule.run`)"*. And `W-MZ-1` is explicitly **"the RAW `computeSchedule`
+output, before `_displayTimeline` authors anything… the before-number"**; `W-MZ-2` is the post-CPM
+locked one.
+
+So the table in `SETTLED STATE` quoted **W-MZ-1** when W-MZ-2 was sitting in the same run.
+**§12.2's re-baseline is not a project — it is reading the other line the witness already prints.**
+
+## 15.4 ⛔ §12.3's REAL LEAD IS ALREADY DOCUMENTED AND IS NOT IN ITS CANDIDATE LIST
+Directly above `census()` in `witness_midair_zero.js`, already `⛔ OPEN`, already measured:
+
+> *"it no longer encodes the same rule as the shipped judge: it mirrors `_contactGraph`'s symmetric
+> carrier clause, while `SupportSweep.midairAudit` went DIRECTIONAL in #1435. Measured 2026-08-22:
+> breaking the shipped judge by 86,400,000x leaves this witness at pass=49 fail=0 — **the lock does
+> not track the engine**."* (tracked at `4D_GANTT_TM_REFACTOR.md` §S58.5)
+
+And `auditFloating`'s blind spot, same file's header: *"its support pools are seq<=4 + promoted
+slabs + walls, so an element whose only neighbours are outside those pools … is reported clean while
+hanging in plain sight."* **A hanging MEP pipe is precisely that element.** §12.3 lists four
+candidate explanations and neither of these is among them. Start here — the divergence is measured,
+not hypothetical.
+
+## 15.5 §13.1's "zero risk" IS OVERSTATED (the claim is right, the grading is not)
+"No call site has ever passed `opts.template`" is **true for production** — verified, all four sites
+(`time_machine.js` :5287/:6858/:6900, `schedule_author_ui.js`:284) omit it. But **three test files
+pass it**: `witness_4d_template_instantiation.js:67`, `witness_4d_movie_binds_bars.js:66`,
+`probe_4d_movie_vs_bars.js:44`. `remapSolveToTasks` is reached only from inside
+`_writeTemplateSchedule` (`schedule_author.js:1005`) plus its export at :2325.
+
+Deleting the pair is still correct — but budget **two new reds**, one of them
+`witness_4d_movie_binds_bars`, which guards movie-vs-bars, a hell in this lane's own scope. Delete
+the witnesses in the same commit or the next session will read them as a regression.
+
+## 15.6 PROCESS — the local `~/bim-ootb` checkout was 12 commits stale
+Every claim above was re-checked against `origin/main` via `git grep origin/main` / `git show`.
+A first pass against the stale local tree reported `_writeTemplateSchedule` and `remapSolveToTasks`
+as *already absent* — i.e. it would have marked §13.1 done. `CLAUDE.md` Session Startup step 0
+exists for exactly this. **Fetch before reading this repo as canon.**
+
+## 15.7 PROCESS — two §14s, and an uncommitted append swept into someone else's commit
+This section was appended to the working tree while another session was working the same file. That
+session ran `git add -A` and committed it inside `b52e2dd9f` under **its own** commit message, so the
+file carried two sections numbered §14 with colliding sub-numbers 14.1–14.6. Renumbered to §15 and
+moved below §14 here. **`bim-compiler` has no shared-tree hook** (`CLAUDE.md` says so explicitly) —
+this is the predicted collision, and §12.5 lesson 9 is the same lesson in a different costume.
+**Before committing in this checkout, `git status` and stage by path, never `-A`.**
+
+## ⛔ WHAT IS STILL OPEN AFTER §14 — two items, neither covered by it
+1. **The `census()`-vs-`midairAudit` divergence (§15.4).** `git grep` over §14: no mention of #1435,
+   "directional", `census`, or §S58.5. §14's defects 2 and 3 are inside the **shipped** judge
+   (`grounded`, `des = -1`). The separate, already-measured fact is that the **witness lock** does
+   not track that judge: `census()` mirrors `_contactGraph`'s *symmetric* carrier clause while
+   `SupportSweep.midairAudit` went **directional** in #1435, and breaking the shipped judge by
+   86,400,000× still leaves `witness_midair_zero` at `pass=49 fail=0`.
+   **This lands directly on §14's RESUME step 1.** Gating `_midairAudit` on post-rescale
+   `kernel_ops` times is right — but the witness that is supposed to protect that gate is already
+   known not to track it. Fix the lock in the same commit as the gate, or the gate is unguarded the
+   day it goes green.
+2. **§15.5 — deleting §13.1's pair breaks three test files.** §14.5 declares §13.4 step 2
+   "unblocked"; that is fine, but `witness_4d_template_instantiation.js:67`,
+   `witness_4d_movie_binds_bars.js:66` and `probe_4d_movie_vs_bars.js:44` all pass `template:`.
+   Budget two new reds, one of them guarding movie-vs-bars. Delete them in the same commit.
+
+**Not open any more:** §15.1 (banner corrected above), §15.3 (retracted, §15.0).
