@@ -5585,3 +5585,30 @@ have no `spatial_structure` at all, so this is a fleet-wide extraction gap, not 
 Cross-ref: `prompts/ROOM_INJECTION_CONSOLIDATED_REVIEW.md` (same mechanism, same doctrine) and
 `prompts/4D_BAR_MODEL.md` §10.3 item 5 — which named "fix the extractor" without knowing the
 elevations were already half-present.
+
+## §S72.1 WHAT-IF MEASURED — the injection IS the Terminal fix, and it retires one adjustment
+
+Simulated the post-injection world: Terminal's 23 element storey labels assigned to its 6 EXTRACTED
+storey bands (band edges from `spatial_structure.center_z` — extracted placement, never an elevation
+derived from element Z). **What-if only; the real path is the §14/§15 injection.**
+
+| Terminal | levels | bars | midair | bandInv | levelCorrected | forced | span |
+|---|---|---|---|---|---|---|---|
+| current (22 labels) | 22 | 74 | **513** | 0 | 1,986 | 5,779 | 126d |
+| **6 extracted storeys** | 6 | 31 | **48** | 28 | **0** | 1,703 | 105d |
+
+**Midair 513 → 48 — 4.7× better than the shipping engine's 226, and 21 days shorter.** The Bar
+model's only remaining regression is a data gap, not a scheduler gap, as §S72 suspected.
+
+### ⚠ DRIFT FOUND IN MY OWN WORK — `correctLevelsByGeometry` is a symptom patch
+It fired **1,986 times on Terminal and 0 times once the storeys are right**. It was compensating for
+wrong storey labels, nothing more. On the real data it also COST midair (Terminal 336 → 513 when it
+landed). **Demote it to a silent safety net or delete it** — do not carry it forward as if it models
+something. `prompts/4D_BAR_MODEL.md` §8's delete list should gain it.
+
+Still earning their place, unchanged by this: the contact gate (§BAR_CONTACT), ANY-OF vs ALL-OF
+needs, `ceiling_link` (the upward edge), and the per-trade ladder (§BAND_BY_TRADE). `level_bands`
+stays valid but stops being the primary control once levels are real.
+
+`bandInv` rises 0 → 28. Small, and expected: 6 genuine floors give real adjacency to violate where 22
+naming variants gave almost none. Judge it on real floors, not on label count.
