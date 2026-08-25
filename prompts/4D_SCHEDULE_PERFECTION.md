@@ -5531,3 +5531,57 @@ Midair under the template needs one of:
 **(b) is the only one that fixes the cause rather than the symptom, and it changes what the template
 means** — the template would stop being purely authored logic and start absorbing geometry. That is
 the user's call, not a guess to make while wiring.
+
+---
+
+# §S72 — THE STOREY-ELEVATION INJECTION GAP, MEASURED (2026-08-26)
+
+**User: "in deriving storey or elevation for buildings since you said Terminal doesn't? It injects
+such metadata one time first time if absent."** Correct, and this file already carries the rule it
+depends on — §S64's close-out names `deriveStoreyMergeMap` (§S18) as *"storey bands merged from
+EXTRACTED `IfcBuildingStorey.Elevation`, never inferred from element Z"*. The Bar-model lane
+(`prompts/4D_BAR_MODEL.md`) passed `storeyMergeMap = null` in every probe and never questioned it.
+
+## What I got wrong, twice
+1. Reported the elevations **ABSENT**. They are not: `spatial_structure` carries `center_z` on the
+   storey rows — the storey entity's own extracted placement. I grepped for a column named
+   `elevation`, did not find one, and stopped. `center_z` IS extracted data and qualifies.
+2. Proposed **synthesising** elevations from element Z. Forbidden — this file's own §S64 line and
+   §PATHS NOT TO TAKE #7 both rule it out. Withdrawn.
+
+## Wired it as the code intends. It is a NO-OP, and the reason is the real finding.
+
+| building | storey rows in `spatial_structure` | distinct element storey labels | merged by §S18 |
+|---|---|---|---|
+| **Terminal** | **6** | **23** | **0** |
+| HHS_Office_Federated | 3 | 4 | 0 |
+| **Hospital** | **0** — no `spatial_structure` table at all | 8 | cannot run |
+| **Duplex** | **0** — no table | 4 | cannot run |
+
+`deriveStoreyMergeMap` is correct. It has nothing to merge because **extraction never emitted a
+storey row for 17 of Terminal's 23 storey names** — `GROUND FLOOR LEVEL`, `03 SECOND FLOOR LEVEL`,
+`Ceiling Level 01/02/03/04`, `Aras Kedai`, `Aras Jalan`, `00 Aras Asas` … Terminal is FEDERATED: each
+discipline file names the same six physical floors differently, and only the ARC file's six reached
+`spatial_structure`.
+
+**And 33,848 of Terminal's 48,428 elements (70%) carry `storey = 'Unknown'`**, reassigned at runtime
+by `_buildScheduleElements`' `assignStoreyByZ` to the nearest real storey by median centre-Z.
+
+## Why this is load-bearing for 4D, not a rooms-lane detail
+Terminal is scheduled as **22 levels when it has 6 floors**. `prompts/4D_BAR_MODEL.md` §9.5 measured
+level granularity as the exchange rate between midair and band monotonicity — Terminal at 22 bands
+gives midair 336, at 6 bands **86**. The Bar model's one remaining regression against the shipping
+engine (Terminal midair 513 vs 226) is very likely this and not the scheduler.
+
+## The remedy is the one already written, not a new mechanism
+`WalkerDoctrine.md` **§14** (auto-infuse if absent, label `≈`, never presented as real) + **§15**
+(version-stamped, self-healing on compiler change). §14's own words: *"carry `spatial_structure`
+through every strip/consolidate step, same as any other ARC table"* — for storeys as well as rooms.
+The injection must emit an `IfcBuildingStorey` row, with its EXTRACTED elevation, for **every** storey
+the elements reference — including the federated discipline files' own names.
+
+**⛔ NOT BUILT. Do not schedule Terminal's granularity as settled until it is.** Two buildings of four
+have no `spatial_structure` at all, so this is a fleet-wide extraction gap, not a Terminal quirk.
+Cross-ref: `prompts/ROOM_INJECTION_CONSOLIDATED_REVIEW.md` (same mechanism, same doctrine) and
+`prompts/4D_BAR_MODEL.md` §10.3 item 5 — which named "fix the extractor" without knowing the
+elevations were already half-present.
