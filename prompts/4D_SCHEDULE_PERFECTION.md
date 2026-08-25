@@ -4899,3 +4899,47 @@ witness covers the rendered canvas, and per the user's standing law the screen i
    `mirror-matches-executed` gate keeps them honest, but the split remains.
 2. **`§CPM_GENERATOR_UPSTREAM_SPEC`** — window derivation from work content as the RULE, not a floor.
 3. The 114 remaining sub-120s elements (real productivity math, min 14s) — smaller, unexamined.
+
+### §S65 CLOSE-OUT — the two process failures this session actually paid for (2026-08-25)
+
+Both are worth more than any of the five fixes, because both are the mechanism by which "all green"
+kept coexisting with a broken product.
+
+**1. A FILTERED SUBSET IS NOT A REGRESSION RUN. This session shipped a real baseline break on it.**
+PR #1527 was merged after `run_witness_suite.js --filter gantt` (green=17) and `--filter tm_`
+(green=12). `witness_zone_display_authoring.js` matches NEITHER filter, and #1527 broke its locked
+HHS floating baseline. Bisected green 18/18 at `bf62a7b`, red from #1527 on.
+**Rule: a change to `rates.js` / `schedule_author.js` / `schedule_gate.js` / `gantt_model.js` — anything
+in the solve or authoring path — requires the FULL headless suite before merge, never a `--filter`
+subset. `--filter` is for iteration only.** The full sweep is ~20 min; the miss cost more.
+
+**A/B, NOT ATTRIBUTION, once it was found.** #1527 changed two things that feed the solve, so both
+were separated instead of blaming the obvious one:
+| variant | HHS raw → display |
+|---|---|
+| before #1527 (old lock) | 894 → 1839 |
+| **duration fixes only, sequences reverted** | **891 → 1815** (raw 3 BETTER) |
+| full #1527 | **979** → 1815 |
+| + #1529 zone-window floor | 977 → **1727** |
+The DURATION fixes cost nothing — they improved both sides. The entire +88 raw regression is the two
+SEQUENCE moves (`IfcRoof` 8→6, `glazed_curtainwall_facade` 7→6 — the user's weather-tight ruling),
+and they leave the DISPLAY timeline byte-unchanged at 1815: the movie is unaffected, only the raw
+generative audit moves. Re-locked to 977→1727 (PR #1530) with that A/B written INTO
+`baselines/midair.json`, per its own "a re-lock is a data edit with a named cause" discipline.
+**Net vs the old lock: raw +83, display −112.**
+
+**2. NEVER MUTATE A WORKTREE A SUITE IS RUNNING IN.** The first full sweep returned `new_red=6` and
+was entirely invalid: `rm -f node_modules` was run in that same worktree mid-sweep, which fails every
+sql.js-dependent witness. Four of the six "reds" were that. Re-run clean: **green=55, new_red=1,
+known_red=7, total=63** — the one new red (`witness_cpe_buildup_require_tm_first.js`) reproduces on
+pristine `origin/main` and says so itself ("WITNESS IS BLIND — shipped source unexpectedly already
+has this gate"), i.e. a stale red control whose fix shipped long ago. Not this lane's.
+
+**3. Auto-merge orphaned a commit FOUR times in one session** (#1526→#1527, #1527→#1528,
+#1528→#1529, #1529→#1530). Each time the PR squash-merged within ~1 minute while the next commit was
+still being written. **Working rule: build the branch COMPLETE, then push and open the PR in one
+step. Never add a commit to a branch that already has an open PR — start it off fresh `origin/main`.**
+
+**Final state of §S65:** STAGE 1 ✅ diagnosed (unification NOT wired — see open item 1 above) ·
+STAGE 2 ✅ · STAGE 3 ✅ · STAGE 4 NOT claimed (nothing witnesses the canvas; the screen is not
+evidence). Five PRs: #1526 #1527 #1528 #1529 #1530.
