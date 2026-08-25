@@ -322,3 +322,40 @@ independently re-verified with the same rigor as §7's fix — this is a census,
   display-timeline cache one level earlier." Given §7 found the FIRST cache's shift logic correct
   under test, this SECOND, structurally-identical cache is unconfirmed either way — not tested here,
   named so it isn't lost.
+
+## 🗺 RESUME HERE — open items, 2026-08-25 (bim-ootb main = merge of #1520; witness suite GREEN,
+## 1 correctly-triaged known_red, re-verified `node tests/run_witness_suite.js --filter gantt` = 17/18)
+The core bug (§7) is CLOSED — clamp shipped, merged, witnessed twice with real data. What's below is
+what's genuinely still open, in WORK-TO-ZERO order — pick the top item, don't re-derive §1-9's trail:
+
+1. ⛔ **CELL-path mechanism still unconfirmed** (§7 item 3). `HHS_Office_Federated` (the building
+   that showed the live bug) uses `path=CELL`; the headless test harness only reached GRAPH
+   (`LocationAxis`/`db` didn't resolve in `CpmSchedule.run`'s check — not debugged). Doesn't block
+   the fix (the clamp is path-agnostic), but the root-cause story is incomplete without it. To chase:
+   get `witness_midair_zero.js`'s own harness pattern (it DOES reach CELL on real fleet buildings —
+   check its `§CELL_GATE ... path=CELL` lines) and re-run §7's two-call sequence through THAT path
+   specifically.
+2. ⛔ **W-PE-5/6/7 — 4 display sites still read the raw internal clock directly**
+   (`updateStatus()`, `_finishActivate()`, `§TM_PINPOINT_JUMP`, `§TM_ORDER_JUMP` in `time_machine.js`).
+   Mitigated (the clamp guarantees the VALUE is real) but the PATTERN itself is still there — a
+   future refactor that touches the clamp without touching these 4 sites could silently reopen the
+   gap. Fix: make each read the real project range from `tasks`/`_cap` directly, matching the
+   established §S22/§S72 precedent — NOT a second clamp, a display-layer fix. Witness already exists
+   and is already RED-by-design for exactly this (`witness_gantt_props_epoch.js` W-PE-5/6/7) — when
+   this is fixed, those 3 checks should flip to PASS; remove the `KNOWN_RED` entry in
+   `run_witness_suite.js` at that point, not before.
+3. ⛔ **`witness_crew_demand.js` shift-hours claim — looked improved, never confirmed via diff.**
+   Audit (`WITNESS_CONTRACT_AUDIT.md` Batch A) found it reimplementing crew/cost math against a
+   stale 8h `SHIFT_MS` instead of live 24h `SHIFT_HOURS`. A later run (2026-08-25, "verify the
+   WITNESS logging" pass) showed real-looking per-class numbers and a NEW gate name
+   (`G-CREW-FIXED` vs the audited `G-HR-INVARIANT`), suggesting a fix landed — but no source diff was
+   read to confirm. To chase: `git log -p -- viewer/tests/witness_crew_demand.js` around the shift
+   from the audited shape to the current one, confirm `SHIFT_MS`/`SHIFT_HOURS` are the same constant
+   now.
+4. ⛔ **`_rawScheduleRemember` — same reuse-cache shape as the one just proven correct, untested.**
+   §9's own finding. To chase: repeat §7's exact two-call-same-context technique
+   (`sliceFn`-extract, real `_cap`/elements, two `computeSchedule` calls at different anchors) against
+   whatever consumes `_rawScheduleRemember`'s cache instead of `_displayTimeline`'s.
+
+Session end for THIS lane = each of 1-4 is ✅ or gets its own `⛔ BLOCKED: <question>` if it hits a
+wall — don't loop on one, move to the next, per this project's WORK-TO-ZERO rule.
