@@ -295,3 +295,45 @@ Shipping today: midair 17 / 147 / 139 / 226 (raw solve) · elements outside thei
 **15.7% of its elements**, force-placed because a hard need was unplaceable inside their task. This
 is the §6 caveat 2 that the spec said must be explained, and it is bigger now that host/carrier/
 opening are edges. **No Hospital number is trustworthy until it is explained.** Next task in this lane.
+
+### §9.4 ⛔ RETRACTION — the integration probe's midair numbers were WRONG (2026-08-25)
+
+**User: "Again without visual check, how sure are the WITNESS logging?" — asked twice. The second
+asking caught a real error.**
+
+`scratchpad/integrate.js` reported midair **0 / 4 / 0 / 0** (Duplex/HHS/Hospital/Terminal). Re-judged
+with `census()` **sliced verbatim from `witness_midair_zero.js`** — the project's own judge, the one
+the fleet baselines were set with:
+
+| building | shipping (raw solve) | **Bar model, real judge** | probe claimed |
+|---|---|---|---|
+| Duplex | 17 | **18** | 0 |
+| HHS_Office_Federated | 147 | **129** | 4 |
+| Hospital | 139 | **124** | 0 |
+| **Terminal** | 226 | **697** | 0 |
+
+**Terminal is 3× worse than what ships. The Bar model is NOT yet better than the current engine.**
+Every midair claim in §9.2 and §9.3 from the integration probe is withdrawn.
+
+**Cause — the same mirrored-predicate error twice in one session.** `census()` counts a contact as
+**bearing OR carrier OR embedded**, over **every** element. The probe's inline judge tested only
+`supportPool`-filtered **bearing** — the exact relation the scheduler gates on. A judge built from
+the scheduler's own predicate cannot contradict the scheduler. `probe_4d_midair_under_template.js`
+(§S70) sliced the real `census()` and was right; when `integrate.js` was written the judge was
+re-derived by hand instead.
+
+This is `feedback_extract_dont_author_then_gate.md` in its other form: **re-deriving a predicate you
+could have called is how a wrong result gets certified.** It cost 4,706-vs-716 support edges earlier
+in the same session, and it cost this.
+
+**Standing rule for this lane, from here:** the midair judge is `census()`, sliced from
+`witness_midair_zero.js`, never reimplemented. Any probe or witness in this lane that measures
+floating and does not slice it is invalid on its face.
+
+**What survives:** `witness_bar_composite.js` (119,748 pairs) — it tests tree arithmetic, which is
+self-contained and needs no external judge. The composite rule (only leaves store time) holds.
+
+**⛔ RESUME: Terminal 697.** Find why the Bar model triples Terminal's midair while improving HHS and
+Hospital. Worst cases are `IfcPipeSegment`/MEP Rough-in hanging 41d and `IfcValve`/MEP Rough-in 24d —
+carrier relations, which the model treats as ALL-OF hard needs and which `census()` counts but the
+probe's judge did not. Suspect the `ceiling_link` upward edge interacting with Terminal's 22 levels.
