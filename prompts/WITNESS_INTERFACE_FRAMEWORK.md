@@ -209,3 +209,12 @@ through `run_witness_suite.js --filter`, not trusting the standalone exit code a
 `console.log`/`warn`/`error` locally around each building's generation call (not the shared generator,
 not the runner itself). Both witness files also adopted the house `BLD_DIR` env convention
 (`witness_door_window_host_wall.js` etc.) instead of a hardcoded path.
+
+## 🏁 CLOSED — 2026-08-25
+Independently re-verified from another session: PRs merged, `HHS_Office_Federated_extracted.db` intact,
+doc trail pushed, re-run numbers match exactly. §1-6 done, no open items on this lane.
+
+Not this lane's problem, named here only so it isn't lost: same verification pass found 3 new_red on
+`main` untouched by #1511/#1512/#1513 — `witness_cpe_buildup_activate_silent.js`, `witness_midair_zero.js`,
+`witness_s50_cell_engine.js`. Drift from unrelated concurrent work landing on `main`, not this framework
+or these witnesses. Belongs to whoever owns those files, not re-opened here.
