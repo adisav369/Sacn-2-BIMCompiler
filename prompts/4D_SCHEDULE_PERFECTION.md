@@ -4845,3 +4845,57 @@ re-landed as #1527. Then #1527 merged while the STAGE 3 commit was in flight →
 re-landed as #1528. `CLAUDE.md` already names this (PR #138, 2026-06-05). **Working rule: create the
 branch, push, and open the PR in ONE go, and never add a second commit to a branch that already has a
 PR with auto-merge enabled — start the next commit off fresh `origin/main` instead.**
+
+### §ZONE_WINDOW_COVERS_WORK — the last known source of thin bars, closed (2026-08-25, PR #1529)
+
+**Found BY the STAGE 3 fix, not despite it.** Once bars were drawn at their real task windows, the
+witness could ask a question that was previously unaskable: *is the window itself long enough for the
+work it contains?* Measured across Duplex/Clinic/JKR/HHS_Office_Federated — 135 zone tasks, **5
+windows shorter than their own members' crew-days**:
+
+| task | crew-days | window | over | elements |
+|---|---|---|---|---|
+| JKR — MEP Final — 02 1st Floor Level | 1.744 | 1.00d | **74%** | 126 |
+| Clinic — Finishes — Level 1 | 1.333 | 1.00d | 33% | 64 |
+| JKR — MEP Rough-in — 03 Water Tank Floor | 3.405 | 3.00d | 14% | 404 |
+| Clinic — Substructure — TOF Footing | 1.074 | 1.00d | 7% | 58 |
+| HHS — MEP Rough-in — Level 2 | 9.508 | 9.00d | 6% | 976 |
+
+**Now 0/135.** Cause: `schedule_author.js` derived a zone's window from the SOLVE'S SPAN alone, so a
+zone whose elements happened to be solved into a tight cluster got a window shorter than its own
+contents. Fix is a **FLOOR, not a re-derivation** — the solve's span still wins when larger, so the
+130 already-honest zones and all dead-air/gap behaviour stay byte-identical. Crew-days come from the
+elements' OWN `installSecs` over the same `max_crews` the solve used; nothing invented. Replacing the
+span rule outright is still the separate `§CPM_GENERATOR_UPSTREAM_SPEC` item.
+
+**⚠ THE GATE LESSON — a pixel threshold is not a truth test.** The first cut of this gate was
+`no-hairline-bars-3px`, and it was measuring the wrong thing: of Clinic's 9 one-day windows, **7 were
+HONEST work** (`MEP Rough-in — Roof - Mech` = 139 elements in 0.817 crew-days at 24h × 4 crews). A
+genuine one-day task on a 156-day chart SHOULD be thin — P6 draws it thin. A pixel threshold flags
+real work as a defect AND can be silenced by nudging the number. **Gate on the quantity that is
+actually true or false about the artifact (crew-days vs window), never on how it looks at some
+assumed canvas width.** This is the same law as "no visual on screen", one level down: a pixel gate is
+a screenshot with extra steps.
+
+**⚠ A WITNESS DEFECT, caught on this witness's first real run.** The generator re-derived each
+element's trade from `SEQUENCE_RULES[cls]`, which IGNORES `NAME_OVERRIDES`, so it disagreed with the
+engine about crew count and produced a phantom 6th red (JKR water-tank zone). It now reads the
+element's own `installSecs`/`resource` — the exact values the engine uses. **A witness must consume
+the producer's own output, never re-derive it** — this is the mirrored-predicate drift class
+`witness_kit` exists to prevent, and it still happened, in a brand-new witness, written by someone who
+had just finished documenting that exact failure mode.
+
+**§S65 lane state:** STAGE 1 ✅ (established, one missing `loadSequenceRules()` call — the unification
+itself is still NOT wired, see below) · STAGE 2 ✅ (template fixed + locked, 1217→114 zero-width
+elements) · STAGE 3 ✅ (bar = its task window, 0.00-day error on 135 bars; zone windows cover their
+work, 0/135 over-committed). **STAGE 4 (present on the TM panel) is deliberately NOT claimed — no
+witness covers the rendered canvas, and per the user's standing law the screen is not evidence.**
+
+**⛔ STILL OPEN on this lane, in priority order:**
+1. **STAGE 1's unification was diagnosed but never wired.** `viewer.html:865` still never calls
+   `loadSequenceRules()`, so the executed table is still the `rates.js` literal, `rates/
+   sequence_rules.json` is still a hand-synced mirror, and the Settings-editor key
+   `json_sequence_rules` still reaches nothing. `witness_sequence_template_lock.js`'s
+   `mirror-matches-executed` gate keeps them honest, but the split remains.
+2. **`§CPM_GENERATOR_UPSTREAM_SPEC`** — window derivation from work content as the RULE, not a floor.
+3. The 114 remaining sub-120s elements (real productivity math, min 14s) — smaller, unexamined.
