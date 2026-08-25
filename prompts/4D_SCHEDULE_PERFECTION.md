@@ -5221,3 +5221,95 @@ is still not wired — nothing consumes `4D_template.json` at runtime.** In prio
 3. **Serial template vs overlapping engine** (HOP 2): 69.8d declared, 46.9d produced. Needs a user
    decision, not a guess — either the template declares the real overlaps (SS/lead edges, each with
    its `_why`) or the engine is made to honour the serial chain. **Do not pick one silently.**
+
+---
+
+# §S68 — WHY PHASE STACKING COULD NEVER BE REINED IN: THERE IS NO PHASE IN THE SOLVER (2026-08-25)
+
+**User:** *"It is strange why all this while we cannot rein in phases stacking."*
+**Answer, verified in code, not inferred:** because a phase has never been a thing the scheduler
+constrains. It is not a tuning failure. There was nothing to tune.
+
+## The proof — `schedule_gate.js` `placeNonst`, line 893-895
+```js
+var ph = collapsePhase(el.storey);          // ← el.STOREY, not el.phase
+var pt = phaseTrade[ph] || {}, tg = baseMs, s;
+for (s in pt) if (+s < el.seq && pt[s] > tg) tg = pt[s];
+```
+**`phaseTrade` is keyed by STOREY.** `collapsePhase()` (line 404) takes a *storey* and strips
+`Ceiling`/`TOS`/`Soffit` suffixes off its name — it is a storey-name normaliser with a
+phase-sounding name. Inside it, the second key is `el.seq`, a CLASS sequence number. So the only
+thing in the engine named after a phase is `storey → seq → end`. There is no phase in it.
+
+Every gate the solver actually applies:
+| gate | what it constrains |
+|---|---|
+| `geoGate` / `wallGate` / `hangGate` / `openingGate` / `hostGate` | one ELEMENT vs the geometry below/around it |
+| `claimCrew` | one TRADE's crew count |
+| `bandGate` (§4D_BAND_MONOTONIC) | one TRADE across floors |
+| `tg` via `phaseTrade` | lower `seq` on the SAME STOREY, incrementally |
+
+**Not one of them says "MEP Rough-in on Level 2 waits for Architecture on Level 2".** And `tg` is a
+running maximum over *elements placed so far*, so the first Architecture element on a storey meets a
+nearly empty `phaseTrade` and starts immediately. `placeStruct` (PASS A) has no `tg` at all.
+
+Then `deriveZones` (line 1190) **creates** the phases afterwards, by grouping already-placed
+elements into `(phase, storey)` and taking each group's min-start/max-end. A phase bar is an
+ENVELOPE over what the elements did. **An envelope cannot constrain what drew it.** That is the
+loop, and it is the same loop §S67 HOP 5 measured from the other end: 25/25 zone edges are
+restatements of the dates they are meant to validate.
+
+## The symptom, measured (§HOP3B_PHASE_STACK, probe_4d_motion.js)
+Same-level phase pairs that overlap, against a template that declares FS+0 (zero overlap):
+
+| building | overlapping pairs | inverted start order | worst |
+|---|---|---|---|
+| HHS_Office_Federated | **10/29 (34%)** | 1 | Level 1 **Architecture sits entirely inside Superstructure, 13.4d** |
+| Clinic | 13/65 (20%) | 3 | Second Floor Substructure vs Superstructure |
+| Duplex | 7/38 (18%) | 3 | Level 2 Superstructure vs Architecture |
+| Terminal | 18/109 (17%) | 1 | Aras 01 MEP Final vs Finishes 1.4d |
+
+## Two reported causes that did NOT reproduce — checked, so they stop being suspects
+- **"contaminated with MEP elements in there"** → `§HOP0B_CONTAMINATION` = **0 across all six
+  buildings** (HHS/Duplex/Terminal/Clinic/JKR/LTU_AHouse). No MEP class sits in Substructure or
+  Superstructure anywhere. The reclassifications that do occur (438 HHS, 469 Terminal, 699 Clinic)
+  are all `IfcPlate` Superstructure→Architecture, the curtain-wall `NAME_OVERRIDE`, which is correct.
+- **"HR 0 truly stacked"** → `§HOP2C_DAY0_STACK`: five of six buildings start structural-only. HHS
+  is the lone exception and it is **2 Architecture elements out of 6839**. Real, but not the cause
+  of what is being seen.
+
+**The stacking is the phase-envelope problem above, not classification and not day 0.**
+
+## The fix is the user's own ruling, and it is CHEAPER than today (§S66 RESUME step 2, now priced)
+User: *"we make phases packed but sequential — user can then just drag them overlap if they want."*
+Adopted as `4D_template.json` **v1.2.0** (PR #1534). Measured on HHS before adopting:
+
+| plan | length | crew-legal? |
+|---|---|---|
+| packed+sequential, ladder on superstructure only (v1.1.0) | 41d | **NO** — PLUMBER 3.67 vs cap 2 (1.84×), HVAC_TECH 3.48 (1.74×) |
+| **packed+sequential, ladder on EVERY level phase (v1.2.0)** | **49d** | **YES — zero breaches, every trade** |
+| today's overlapping engine | 46.9d | only after the §CREW_CAP_FINAL repair |
+
+**+4%. Two days.** The long-standing fear that serialising costs a much longer film is not supported
+on this building. v1.2.0 declares §4D_BAND_MONOTONIC as programme logic for every level-scope phase
+— a trade may not overtake ITSELF up the building; different trades still overlap across floors,
+which is what a trade train is.
+
+## Witness hardening (the user checks nothing visually — witness logs are the only channel)
+The contract allows ONE `.redControl()`, which proves the witness can fail but **not that each gate
+can**. Every gate added since v1.0.0 now carries a committed per-gate red control that injects that
+gate's own real defect and asserts rejection. `§WITNESS_4D_TEMPLATE pass=29 fail=0` (was 15, was 10).
+
+## ⛔ RESUME HERE
+`4D_template.json` is now correct AND provably self-gating, and the engine no longer breaches crew
+capacity. **Instantiation is still not wired — nothing reads the template at runtime.** The single
+next step, which subsumes §S67's items 1-3:
+
+> **Make `materializeZones` emit tasks FROM the template instead of grouping the solve.**
+> Phases become first-class tasks with authored durations (`duration_rule`, per-trade) and authored
+> FS+0 edges (`dependencies`, both ladders). The element solve then FILLS each task instead of
+> defining it — which inverts today's `elements → phases` into `phases → elements` and is the only
+> change that can make a phase constraint exist at all.
+
+Everything else on the open list (silent absent phases, tautological edges, serial-vs-overlap) is
+a consequence of that one inversion, not a separate job.
