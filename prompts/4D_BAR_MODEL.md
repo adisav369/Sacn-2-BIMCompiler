@@ -828,3 +828,233 @@ and the log will still say `midair=0`. You would have broken it and been told ev
 
 **No `barModel` feature flag.** When the Bar model wins on a judge that matches the eye, it becomes
 the only path and the old one goes. A permanent opt-in is the same hedge under a nicer name.
+
+
+---
+
+# §14 — WATCHDOG REVIEW OF §11–§13 (2026-08-26, independent session)
+
+Read against `origin/main` + live `gh` state, not the local checkout (which was **12 commits stale**
+— see finding 5). §13.2 and §13.3 hold. Four things below do not.
+
+## 14.1 ⛔ THE TOP OF THIS FILE IS FALSE. FIX IT BEFORE ANYTHING ELSE.
+`SETTLED STATE` (line ~17) says **"🚀 LIVE as of 2026-08-26, bim-ootb PR #1543"** and §11 is titled
+**SHIPPED**. Measured now:
+
+```
+gh pr view 1543 → {"state":"OPEN","mergedAt":null,"mergeStateStatus":"BLOCKED"}
+git grep BAR_LIVE origin/main → (nothing)
+git grep barModel  origin/main → (nothing)
+```
+
+**Nothing shipped.** §12.1 notices this in passing ("PR #1543 was still open") but only about the
+user's console log, and neither §12 nor §13 corrects the block a fresh session reads FIRST. The file
+currently hands a new session "LIVE" as settled truth, 680 lines above the retraction.
+This is §10.5's own lesson inverted: there, MERGED was not evidence of landing; here, SHIPPED was
+claimed for a PR that never merged at all.
+
+## 14.2 ⛔ §12.2 COMPARES THREE DIFFERENT JUDGES AND CALLS IT A RE-BASELINE
+The retraction rests on `147` (mine) vs `floating=4` / `midair=0` (live log). Those are **not the
+same instrument**:
+
+| number | judge | where |
+|---|---|---|
+| `midair 17/147/139/226` | `census()` — *independent by design*, re-derives contact geometry | `witness_midair_zero.js:308` |
+| `§SUPPORT_CHECK floating=4/6880` | `ScheduleGate.auditFloating` | `schedule_gate.js:1122` |
+| `§CPM_DISPLAY … midair=0` | `SupportSweep.midairAudit` via `_midairAudit` | `time_machine.js:4196` |
+
+§12.2 asserts they are "the same family of contact-graph judge" without measuring it. That is
+**§10.1 rule 1 in its cross-judge form** — the exact error §12.2 is diagnosing. The stage point
+(raw solve ≠ what plays) is valid and worth keeping; the conclusion **"the Bar model's 70 is very
+likely WORSE"** is not supported by the evidence given. Correct status is UNKNOWN, not WORSE.
+
+## 14.3 §12.2's PREMISE IS HALF WRONG — `census()` ALREADY JUDGES THE DISPLAY TIMELINE
+`witness_midair_zero.js` header, verbatim: *"This witness judges the DISPLAY timeline — the times
+`kernel_ops` is written from, i.e. what the movie plays"*, authored via *"`_displayTimeline`'s CPM
+success branch (`CpmSchedule.run`)"*. And `W-MZ-1` is explicitly **"the RAW `computeSchedule`
+output, before `_displayTimeline` authors anything… the before-number"**; `W-MZ-2` is the post-CPM
+locked one.
+
+So the table in `SETTLED STATE` quoted **W-MZ-1** when W-MZ-2 was sitting in the same run.
+**§12.2's re-baseline is not a project — it is reading the other line the witness already prints.**
+
+## 14.4 ⛔ §12.3's REAL LEAD IS ALREADY DOCUMENTED AND IS NOT IN ITS CANDIDATE LIST
+Directly above `census()` in `witness_midair_zero.js`, already `⛔ OPEN`, already measured:
+
+> *"it no longer encodes the same rule as the shipped judge: it mirrors `_contactGraph`'s symmetric
+> carrier clause, while `SupportSweep.midairAudit` went DIRECTIONAL in #1435. Measured 2026-08-22:
+> breaking the shipped judge by 86,400,000x leaves this witness at pass=49 fail=0 — **the lock does
+> not track the engine**."* (tracked at `4D_GANTT_TM_REFACTOR.md` §S58.5)
+
+And `auditFloating`'s blind spot, same file's header: *"its support pools are seq<=4 + promoted
+slabs + walls, so an element whose only neighbours are outside those pools … is reported clean while
+hanging in plain sight."* **A hanging MEP pipe is precisely that element.** §12.3 lists four
+candidate explanations and neither of these is among them. Start here — the divergence is measured,
+not hypothetical.
+
+## 14.5 §13.1's "zero risk" IS OVERSTATED (the claim is right, the grading is not)
+"No call site has ever passed `opts.template`" is **true for production** — verified, all four sites
+(`time_machine.js` :5287/:6858/:6900, `schedule_author_ui.js`:284) omit it. But **three test files
+pass it**: `witness_4d_template_instantiation.js:67`, `witness_4d_movie_binds_bars.js:66`,
+`probe_4d_movie_vs_bars.js:44`. `remapSolveToTasks` is reached only from inside
+`_writeTemplateSchedule` (`schedule_author.js:1005`) plus its export at :2325.
+
+Deleting the pair is still correct — but budget **two new reds**, one of them
+`witness_4d_movie_binds_bars`, which guards movie-vs-bars, a hell in this lane's own scope. Delete
+the witnesses in the same commit or the next session will read them as a regression.
+
+## 14.6 PROCESS — the local `~/bim-ootb` checkout was 12 commits stale
+Every claim above was re-checked against `origin/main` via `git grep origin/main` / `git show`.
+A first pass against the stale local tree reported `_writeTemplateSchedule` and `remapSolveToTasks`
+as *already absent* — i.e. it would have marked §13.1 done. `CLAUDE.md` Session Startup step 0
+exists for exactly this. **Fetch before reading this repo as canon.**
+
+## ⛔ REVISED ORDER (supersedes §13.4 steps 1–3 only; step 4 unchanged)
+1. **Fix `SETTLED STATE` + §11's title** — s/LIVE/OPEN, s/SHIPPED/BUILT, PR #1543 unmerged. One edit.
+2. **§14.4** — chase the measured `census()`-vs-`midairAudit` divergence (#1435 directional change)
+   and `auditFloating`'s pool blind spot, before inventing new hypotheses for §12.3.
+3. **§14.3** — re-read W-MZ-2 (post-CPM) from an existing witness run; do NOT re-baseline by hand.
+4. Only then re-open "better or worse". Status is **UNKNOWN**, not WORSE (§14.2).
+
+
+---
+
+# §14 — THE INSTRUMENT IS BROKEN IN TWO PLACES. BOTH MEASURED. (2026-08-26)
+
+**§13.4 step 1 / §12.3 — DONE.** The photograph is reproduced numerically. Probe:
+`bim-ootb scripts/probe_floating_guid_audit.js` (branch `probe/floating-guid-audit`, pushed), run
+against `origin/main` @ `44f42dd` — i.e. **without** PR #1543, exactly the engine the user's log came
+from. Log: every number below is a `§FGA_*` line from that run, nothing eyeballed, no screenshot.
+
+## 14.0 The replay is faithful — check this before quoting anything else
+The probe replays the live chain in node, stage for stage, each mirroring a named live function:
+`materializeZones` → `_tmDisplayRemap` (Tukey clip) → `_displayTimeline`/`CpmSchedule.run` →
+`deriveZones` → `_tmRescaleToTaskWindow` → **`kernel_ops.start_ts`, which is what the DAY/HR HUD
+counts.** The judge is `require`d from `viewer/support_sweep.js` — never re-derived (§10.1 rule 1).
+
+| | user's live console | probe |
+|---|---|---|
+| `§AUTHOR_ZONES` zones / edges | 17 / 23 | **17 / 23** |
+| `§CPM_DISPLAY` midair | 0 | **0** |
+| `§CPM_DISPLAY` orphans | 36 | **36** |
+| stragglers | 3246 | 3249 |
+| placed at DAY 0 HR 3 | 73 | 83 |
+
+The last two gaps are one known thing, not noise: **schedule_author's element recipe builds 6839,
+time_machine's builds 6880** (`§SUPPORT_CHECK … gated=6880` in the user's own log) — the
+`§CPM_DISPLAY_ONE_TRUTH` split. The schedule is authored on the 6839 set; the extra 41 are written
+to `kernel_ops` off the cached map. Nothing here depends on which of the two you count.
+
+## 14.1 THE ANSWER TO §12.3 — at DAY 0 HR 3 the eye sees 15 hanging, the judge counts 0
+```
+§FGA_CURSOR          DAY=0 HR=3 placed=83/6839
+§FGA_EYE_FLOATING    floatingToEye=15  byClass={IfcBuildingElementProxy:12, IfcStairFlight:2, IfcWallStandardCase:1}
+§FGA_JUDGE_ON_SAME_POP  judgeCallsFloating=0  eyeCallsFloating=15  DELTA=15
+```
+"Floating to the eye" is NOT a second physics — it is `_contactGraph`'s own contact list and its own
+three clauses, asked one question the judge never asks: *of the things holding this up, is a single
+one on screen yet?* For all 15 the answer is none.
+
+**Correction to §12.3's wording, and it matters for what gets fixed:** the hanging elements at that
+instant are **not MEP**. `§FGA_PLACED_CENSUS` — the whole on-screen population at DAY 0 HR 3 is
+`{Wall:33, Slab:14, Proxy:13, Door:10, Column:9, StairFlight:4}`. **No MEP-classed element is on
+screen at all in the first 72 hours** (`§FGA_HOUR` h=0..72, `ofWhichMEP=0` at every hour). The 12
+proxies that ARE hanging are `Stahlbalkon:…` steel-balcony elements — bbox `0.09m × 1.00m` wide and
+**7.07m tall**, base at `Z=3.74`, `8.44m above the model ground`. Thin, vertical, at height: on
+screen they read as pipes. The photograph is real, the diagnosis of *what* was hanging was not.
+
+## 14.2 BLIND SPOT 1 — 63 elements the judge can never count, at any time, on any timeline
+```
+§FGA_JUDGE_BLIND total=63/6839  orphan(noContactAnywhere)=39  groundedExempt(carrier-above-only)=24
+                 ofThoseAboveGround=62  maxHeightOrphan=16.20m  maxHeightGrounded=7.09m
+```
+`_midairAudit`'s first statement is `if (sIdx < 0) continue`. 63 elements have
+`_designatedSupport = -1`, so they are skipped unconditionally. **62 of the 63 are above ground.**
+Two separate causes, and only one of them is the documented "orphans are reported, never moved":
+
+1. **39 orphans** — `_contactGraph` found zero contacts anywhere in the model
+   (`{Proxy:28, IfcFlowTerminal:10, IfcFlowSegment:1}`). Genuinely an extraction fact.
+2. **24 grounded-exempt** — these have real contacts, all of them *above*, and
+   `_designatedSupport`'s last line `if (bestCls === 2 && G.grounded[i]) continue` throws the
+   carrier-above edge away. `grounded` is **footprint-local**: `grounded[i] = (lowest < T.bz - GAP) ? 0 : 1`
+   over things whose XY bbox overlaps mine. Nothing below me *in my own footprint* ⇒ I am declared
+   the ground layer — **at any altitude.**
+
+### The specimen — a real MEP element, fully dumped
+```
+§FGA_SUBJECT      guid=00szGmqsL8Tv_ErgPOhgVh  cls=IfcFlowFitting  phase=MEP Rough-in  storey=Level 1
+                  name="M_Rectangular Duct Elbow - Mitered:Standard:Standard:479112"  resource=PLUMBER
+§FGA_SUBJECT_BBOX x=[49.44,49.87] y=[-2.91,-2.49] baseZ=2.385 topZ=2.735
+                  heightAboveModelGround=7.085m  (groundZ=-4.700)
+§FGA_SUBJECT_TIME opStart=2026-01-16T04:41:27Z = DAY 15 HR 4   task=TASK_MEP_Rough_in_Level_1
+§FGA_SUBJECT_EYE  {bearingPlaced:0, embeddedPlaced:0, carrierPlaced:0, carrierAny:8, onGround:false, floatingToEye:true}
+§FGA_JUDGE_GROUNDED grounded=1
+§FGA_JUDGE_CONTACTS n=8 — ALL EIGHT ARE carrier-above:
+   IfcFlowSegment  dz=+0.09m  DAY 15 HR 14      IfcFlowSegment  dz=+0.09m  DAY 15 HR 15
+   IfcFlowSegment  dz=+3.64m  DAY 23 HR 12      IfcFlowFitting  dz=+3.64m  DAY 23 HR 12
+   IfcFlowSegment  dz=+3.64m  DAY 23 HR 14      IfcFlowSegment  dz=+7.19m  DAY 40 HR 04
+   IfcFlowFitting  dz=+7.19m  DAY 40 HR 04      IfcFlowSegment  dz=+7.19m  DAY 40 HR 04
+§FGA_JUDGE_SUPPORT designatedSupport = -1
+```
+A mitered duct elbow, **7.09m in the air**, with eight neighbours, **every one of them above it**,
+and the judge's verdict is *this element depends on nothing.* It appears at DAY 15 HR 4; the nearest
+thing it touches appears ten hours later; the rest, eight and twenty-five days later. It hangs from
+the moment it appears until the end of the film and the metric is 0 the whole way.
+`§FGA_MEP_BLIND n=13` — this class of blindness covers 10 recessed lighting fixtures at 14.42m, a
+mitered duct elbow at 14.29m, this one, and a pipe at ground.
+
+## 14.3 BLIND SPOT 2 — ⛔ THE JUDGE READS A TIMELINE THE MOVIE DOES NOT PLAY. 0 → 783.
+**This is bigger than §12.2 and it is a different error.** §12.2 said the *baseline* was pointed at
+the raw solve. This says the **judge itself, on the display path, still is.**
+```
+§FGA_TIMELINE_MISMATCH  judgedOnCPMtimes=0   judgedOnPLAYEDtimes(kernel_ops)=783
+                        becameFloatingOnlyWhenPlayed=783   fixedByTheRescale=0
+```
+Same judge. Same graph. Same `_designatedSupport` edges. The *only* change is which `.s` it reads.
+
+`_displayTimeline` runs `_midairAudit(items)` and prints `midair=0` — then `injectGantt` takes those
+same items and runs them through **`_tmRescaleToTaskWindow`** (§TM_ELEMENT_WINDOW_BIND, 2026-08-25)
+before writing `kernel_ops`. That is a **per-task affine rescale**: each task maps its own raw CPM
+span onto its own authored window, so **every task gets a different scale factor** and any support
+edge crossing a task boundary is re-ordered. Nothing re-audits after it.
+
+```
+§FGA_MISMATCH guid=3XrBtx9eX7mQE6EqWHPf6F cls=IfcPlate   task=TASK_Architecture_Level_1   scale=0.275
+              support=3XrBtx9eX7mQE6EqWHPf59 cls=IfcMember task=TASK_Superstructure_Level_1 scale=1.024
+              cpmGapDays=+0.02  →  playedGapDays=-16.33
+§FGA_MISMATCH guid=3XrBtx9eX7mQE6EqWHPfKr cls=IfcRailing task=TASK_Architecture_Level_1   scale=0.275
+              support=3XrBtx9eX7mQE6EqWHPk0u cls=IfcSlab   task=TASK_Superstructure_Level_3 scale=0.460
+              cpmGapDays=+0.00  →  playedGapDays=-16.18
+```
+A plate that the CPM put 0.02 days *after* its member plays **16.33 days before it** — 0.275 against
+1.024, a 3.7× scale disagreement between two tasks. 783 elements do this. Every one of them is
+`midair=0` in the log the user reads.
+
+**Note what this does to §12.2's own instruction.** §12.2 said "re-baseline against `_displayTimeline`."
+That is still not far enough — `_displayTimeline`'s output is rescaled again after it. **The only
+honest baseline is `kernel_ops.start_ts`**, the thing the HUD counts and the frames are drawn from.
+
+## 14.4 THE INSTRUMENT'S THREE DEFECTS, RANKED
+1. **The judge runs before the last transform.** `_midairAudit` at `_displayTimeline`; the rescale
+   after it. 0 vs 783 on HHS. Cheapest real fix in the lane: run the existing judge once more on the
+   written `kernel_ops` times and gate on it. No new physics, no new definition — one more call.
+2. **`grounded` is footprint-local and altitude-blind.** A duct elbow 7m up with eight contacts, all
+   above, is classified as ground. 24 elements on HHS. `§GROUNDED_OVERRIDE_FIX` (2026-08-13) already
+   fought this exact clause once and only narrowed it; the altitude case survived.
+3. **`des = -1` is silently uncountable.** 63 on HHS, 62 above ground, max 16.20m. Orphans being
+   unmovable is real; being *invisible to the metric that names this lane* is not the same thing.
+   They should be reported in the same breath as `midair`, not in a separate line nobody totals.
+
+## 14.5 WHAT DOES NOT CHANGE
+- **#1543 stays unmerged.** Nothing here evaluates it.
+- **Every midair number in §1–§11 stays UNSAFE**, and §12.2's replacement baseline is now also known
+  to be one transform short. Do not quote 17/147/139/226, do not quote 70, do not quote 0–8.
+- **§13.4 step 2 (delete §13.1's three) is now unblocked** — §13.3's condition was "fix the instrument
+  first," and the instrument is now at least *legible*: 783 and 63 are numbers a deletion can move.
+  §13.2's three still wait on defect 1 being closed, per §13.4 step 4.
+
+## ⛔ RESUME — in this order
+1. **Close defect 1** (§14.4). Re-run `_midairAudit` on the post-rescale `kernel_ops` times and make
+   it a gate. Expect it to go red at 783 on HHS immediately — that is the point.
+2. Re-run `probe_floating_guid_audit.js` across the fleet (`ONLY=` env) — HHS is one building.
+3. Only then re-baseline (§12.2 as amended by §14.3) and decide the Bar model's fate.
