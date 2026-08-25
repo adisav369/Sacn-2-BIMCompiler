@@ -13,6 +13,10 @@ Predecessor analysis: `4D_SCHEDULE_PERFECTION.md` §S68–§S71.
 ---
 
 # SETTLED STATE — READ THIS FIRST
+
+> **🚀 LIVE as of 2026-08-26, bim-ootb PR #1543 (`sw.js` v1090).** The Bar model is the live 4D
+> authoring path — `opts.barModel` at all four call sites, `viewer.html` calls `loadFourDPolicy()`.
+> Everything below describing it as unwired predates that. §11 is the ship record.
 *(formerly §10.6 CONSOLIDATION — moved to the top of this file 2026-08-26, retitled, so a fresh
 session sees the settled position before the history in §1–§10.5 below, which records its corrections
 IN PLACE and will hand you withdrawn claims if read linearly. The label "§10.6" stays live — every
@@ -615,7 +619,7 @@ In order. Do not wire anything live until 1–3 are done.
    `remapSolveToTasks` · `§DEQ_REPAIR` · `§CREW_CAP_FINAL` · `_midairAudit`. **Until these go, this
    lane has ADDED a sixth translator, not removed five**, and §1's whole argument is unspent.
 
-7. **Nothing is wired.** No call site passes the Bar model. P6/XML interop and the editable bars are
+7. **⛔ SUPERSEDED 2026-08-26 — IT IS NOW WIRED AND SHIPPED (bim-ootb PR #1543). See §11.** Was: Nothing is wired. No call site passes the Bar model. P6/XML interop and the editable bars are
    untouched and verified green (`witness_tm_p6_interop_fold` 42/42).
 
 ## §10.4 THE ONE THING NOT TO REPEAT
@@ -644,3 +648,44 @@ block, so a fresh reader sees the settled position before wading through §1–�
 Content relocated, not duplicated — see the top of this file. **"Where §1–§10.5 and §10.6 disagree,
 §10.6 wins"** still applies to every cross-reference elsewhere in this file (or in
 `4D_SCHEDULE_PERFECTION.md`) that cites "(§10.6)".
+
+
+---
+
+# §11 — SHIPPED (2026-08-26, bim-ootb PR #1543)
+
+`sw.js` **v1090**. `schedule_author.js` `_writeBarSchedule` runs whenever `opts.barModel` is present;
+all four call sites pass it (`time_machine.js` :5287/:6858/:6900, `schedule_author_ui.js`:284).
+`rates.js` holds `FOURD_POLICY` as a literal AND `loadFourDPolicy()`, and **`viewer.html` calls it** —
+the thing `loadSequenceRules()` never got, which is why `sequence_rules.json` is a dead mirror
+(§S65 STAGE 1). The literal carries the same five values, so a generation that races the fetch is
+identical rather than broken, and drift between the two is a witness failure.
+
+**The movie and the bars are the same numbers.** `_writeBarSchedule` returns `displaySchedule` = the
+leaf times of the tree the bars came from. No remap, because there is no second timeline — §S70
+dissolved, not patched. End-to-end: HHS **6,839/6,839** and Hospital **63,182/63,182** elements
+inside their own persisted task window, 0 outside, 0 unassigned.
+
+## Two real defects that only appeared on wiring
+1. **`require is not defined`.** `bar_needs.js` read `schedule_gate.js`'s SOURCE at load and sliced
+   predicates out of `computeSchedule`'s closure — node-only, and it broke the instant the live path
+   met a browser (`witness_real_placement_resolver.js` caught it). **Fixed properly:**
+   `isPromotedSlab`, `edgeBelow`, `edgeContained`, `edgeBearing`, `wallCarries`, `edgeCarrier` are
+   LIFTED to module scope in `schedule_gate.js` and EXPORTED with `cellsOf`/`overlap`/`bboxVol` —
+   the same move and the same reason as §S26.2's `supportPool`. `bar_needs` now holds the engine's
+   own function objects instead of a copy of its text, so there is nothing left to drift.
+   `contactClauses()` likewise stops reading a TEST FILE at runtime; `witness_bar_needs` still
+   slices `census()` in node and asserts behavioural equality on all four buildings.
+2. **Day rounding** put 295 HHS / 693 Hospital elements outside their own bar — §S70 returning as an
+   off-by-a-fraction. Fixed with §ZONE_ENVELOPE_DAYS' own rule: floor the start, ceil the finish.
+
+## ⛔ STILL OPEN after the ship
+- **§8 DELETE LIST untouched.** `deriveZones` · `_writeTemplateSchedule` · `remapSolveToTasks` ·
+  `§DEQ_REPAIR` · `§CREW_CAP_FINAL` · `_midairAudit`. They are now DEAD on the live path but still
+  present. **Do not delete them until the live path has been seen working on a real device** —
+  deleting the fallback before the replacement is observed is how a bad day happens.
+- **`room_walker.js:1352`** — one line; Terminal 336 → 48 predicted (a SIMULATION, not a measurement).
+- **Fold the scratchpad probes into `witness_bar_schedule`** (§10.3 item 2). Still true.
+- **No witness exercises the LIVE call sites.** Every schedule witness calls `materializeZones`
+  directly without `barModel`, so the suite green above proves the legacy path is intact — NOT that
+  the wiring works. The end-to-end check was a scratchpad script. **That is the next gap to close.**
