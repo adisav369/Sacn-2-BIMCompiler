@@ -323,6 +323,20 @@ independently re-verified with the same rigor as §7's fix — this is a census,
   under test, this SECOND, structurally-identical cache is unconfirmed either way — not tested here,
   named so it isn't lost.
 
+## ⚠ 0. DEPLOY GOTCHA CAUGHT LIVE, 2026-08-25 (real, not hypothetical — READ FIRST)
+#1520 merged, fix confirmed on the server (direct fetch), but a LIVE RE-TEST still showed the 1970
+bug. Cause: `time_machine.js` is in `viewer/sw.js`'s `PRECACHE_ASSETS`, and #1520 didn't bump
+`CACHE_VERSION` — an already-installed service worker keeps serving its OLD cached copy regardless
+of what the server has. This is a KNOWN, already-documented house rule
+([[feedback_sw_version]]/`PHOTOREAL_STILL_RENDER.md`'s "sw.js CACHE_VERSION bump is MANDATORY
+same-PR") that got violated here anyway. Fix: bim-ootb PR #1521 (`v1084 -> v1085`), **OPEN, NOT YET
+MERGED** as of this writing — merge it, then a genuinely fresh load (or an already-open tab's next
+natural SW update check) should show real dates. If you land here and the bug still reproduces LIVE,
+check `git log -1 -- viewer/sw.js` / the live `§BUILD_VERSION` line BEFORE re-opening the root-cause
+investigation — 9 times out of 10 from here on it'll be a cache issue, not a new code defect.
+**Standing lesson for every future PR touching a precached file on this lane: bump `CACHE_VERSION`
+in the SAME PR, not a follow-up.** No exceptions, checked every time.
+
 ## 🗺 RESUME HERE — open items, 2026-08-25 (bim-ootb main = merge of #1520; witness suite GREEN,
 ## 1 correctly-triaged known_red, re-verified `node tests/run_witness_suite.js --filter gantt` = 17/18)
 The core bug (§7) is CLOSED — clamp shipped, merged, witnessed twice with real data. What's below is
