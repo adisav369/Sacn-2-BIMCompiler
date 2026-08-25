@@ -335,8 +335,13 @@ scrubbed — they're the actual value of doing this via witness instead of visua
    one the live-bugged building (`HHS_Office_Federated`, `path=CELL`) actually used. Could not get it
    running headlessly (`LocationAxis`/`db` resolution gap in the test harness, not debugged further).
 
-**The fix shipped (bim-ootb PR #1520, `fix/tm-element-window-clamp`) does not depend on resolving
-#3.** `injectGantt()`'s `_tmClampToTaskWindow()` binds every element's `kernel_ops` write into its
+**⚠ SUPERSEDED — the paragraph below describes PR #1520's `_tmClampToTaskWindow()` (the hard clamp),
+which caused the collapse regression in §CRISIS TIMELINE item 1 and was REPLACED by PR #1523's
+`_tmRescaleToTaskWindow()` (proportional rescale). Left here for history, not as current fact — read
+§CRISIS for what's actually shipped and what's still unconfirmed.**
+
+~~The fix shipped (bim-ootb PR #1520, `fix/tm-element-window-clamp`) does not depend on resolving
+#3.~~ `injectGantt()`'s `_tmClampToTaskWindow()` binds every element's `kernel_ops` write into its
 owning task's REAL window (`_cap.win[taskId]`, already proven correct on 5 buildings) at the one
 place every path converges — the write itself. No solver, known or undiscovered, GRAPH or CELL, can
 push a value outside real calendar time past that point. Verified two ways: `witness_gantt_props_epoch.js`
@@ -415,40 +420,40 @@ independently re-verified with the same rigor as §7's fix — this is a census,
   under test, this SECOND, structurally-identical cache is unconfirmed either way — not tested here,
   named so it isn't lost.
 
-## ⚠ 0. DEPLOY GOTCHA CAUGHT LIVE, 2026-08-25 (real, not hypothetical — READ FIRST)
+## ⚠ 0. DEPLOY GOTCHA CAUGHT LIVE, 2026-08-25 — SUPERSEDED, kept for history
+**PR #1521 (below) merged. So did its sequel, PR #1524 — the identical miss repeated for PR #1523
+one PR later, despite this section's own "no exceptions, checked every time" being written minutes
+before it happened again. See §CRISIS TIMELINE items 2/4 and LESSON 4 for the current, corrected
+state — a written rule alone has now failed twice; don't treat this section's confidence as current.**
+Original note, left as-is below for the record:
+
 #1520 merged, fix confirmed on the server (direct fetch), but a LIVE RE-TEST still showed the 1970
 bug. Cause: `time_machine.js` is in `viewer/sw.js`'s `PRECACHE_ASSETS`, and #1520 didn't bump
 `CACHE_VERSION` — an already-installed service worker keeps serving its OLD cached copy regardless
 of what the server has. This is a KNOWN, already-documented house rule
 ([[feedback_sw_version]]/`PHOTOREAL_STILL_RENDER.md`'s "sw.js CACHE_VERSION bump is MANDATORY
-same-PR") that got violated here anyway. Fix: bim-ootb PR #1521 (`v1084 -> v1085`), **OPEN, NOT YET
-MERGED** as of this writing — merge it, then a genuinely fresh load (or an already-open tab's next
-natural SW update check) should show real dates. If you land here and the bug still reproduces LIVE,
-check `git log -1 -- viewer/sw.js` / the live `§BUILD_VERSION` line BEFORE re-opening the root-cause
-investigation — 9 times out of 10 from here on it'll be a cache issue, not a new code defect.
-**Standing lesson for every future PR touching a precached file on this lane: bump `CACHE_VERSION`
-in the SAME PR, not a follow-up.** No exceptions, checked every time.
+same-PR") that got violated here anyway. Fix: bim-ootb PR #1521 (`v1084 -> v1085`), merged. If you
+land here and the bug still reproduces LIVE, check `git log -1 -- viewer/sw.js` / the live
+`§BUILD_VERSION` line BEFORE re-opening the root-cause investigation — it may be a THIRD cache miss,
+not a new code defect; confirm before assuming otherwise.
 
-## 🗺 RESUME HERE — open items, 2026-08-25 (bim-ootb main = merge of #1520; witness suite GREEN,
-## 1 correctly-triaged known_red, re-verified `node tests/run_witness_suite.js --filter gantt` = 17/18)
-The core bug (§7) is CLOSED — clamp shipped, merged, witnessed twice with real data. What's below is
-what's genuinely still open, in WORK-TO-ZERO order — pick the top item, don't re-derive §1-9's trail:
+## 🗺 RESUME HERE — open items, 2026-08-25 — ⚠ NOT the priority order, §CRISIS/§UNRESOLVED supersede
+**Do NOT start here.** This list predates §CRISIS and its own confidence language ("doesn't block the
+fix," "the clamp guarantees the VALUE is real") is now stale — read §CRISIS's UNRESOLVED block first
+and work that before returning to this list. Kept below because items 3-4 are still real and still
+unaddressed, just not the current top priority.
 
-1. ⛔ **CELL-path mechanism still unconfirmed** (§7 item 3). `HHS_Office_Federated` (the building
-   that showed the live bug) uses `path=CELL`; the headless test harness only reached GRAPH
-   (`LocationAxis`/`db` didn't resolve in `CpmSchedule.run`'s check — not debugged). Doesn't block
-   the fix (the clamp is path-agnostic), but the root-cause story is incomplete without it. To chase:
-   get `witness_midair_zero.js`'s own harness pattern (it DOES reach CELL on real fleet buildings —
-   check its `§CELL_GATE ... path=CELL` lines) and re-run §7's two-call sequence through THAT path
-   specifically.
+1. ⛔ **CELL-path mechanism still unconfirmed** (§7 item 3, §CRISIS LESSON 3). `HHS_Office_Federated`
+   uses `path=CELL` on some loads and `path=GRAPH` on others (`repr=97.06%` vs `85.47%`, unexplained)
+   — the headless test harness only ever reached GRAPH. To chase: get `witness_midair_zero.js`'s own
+   harness pattern (it DOES reach CELL on real fleet buildings — check its `§CELL_GATE ...
+   path=CELL` lines) and re-run §7's two-call sequence through THAT path specifically.
 2. ⛔ **W-PE-5/6/7 — 4 display sites still read the raw internal clock directly**
    (`updateStatus()`, `_finishActivate()`, `§TM_PINPOINT_JUMP`, `§TM_ORDER_JUMP` in `time_machine.js`).
-   Mitigated (the clamp guarantees the VALUE is real) but the PATTERN itself is still there — a
-   future refactor that touches the clamp without touching these 4 sites could silently reopen the
-   gap. Fix: make each read the real project range from `tasks`/`_cap` directly, matching the
-   established §S22/§S72 precedent — NOT a second clamp, a display-layer fix. Witness already exists
-   and is already RED-by-design for exactly this (`witness_gantt_props_epoch.js` W-PE-5/6/7) — when
-   this is fixed, those 3 checks should flip to PASS; remove the `KNOWN_RED` entry in
+   Fix: make each read the real project range from `tasks`/`_cap` directly, matching the
+   established §S22/§S72 precedent — NOT a second clamp/rescale, a display-layer fix. Witness already
+   exists and is already RED-by-design for exactly this (`witness_gantt_props_epoch.js` W-PE-5/6/7) —
+   when this is fixed, those checks should flip to PASS; remove the `KNOWN_RED` entry in
    `run_witness_suite.js` at that point, not before.
 3. ⛔ **`witness_crew_demand.js` shift-hours claim — looked improved, never confirmed via diff.**
    Audit (`WITNESS_CONTRACT_AUDIT.md` Batch A) found it reimplementing crew/cost math against a
