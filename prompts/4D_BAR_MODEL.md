@@ -251,3 +251,47 @@ without touching the same files.
 ### §9.3 NOT STARTED
 `witness_bar_schedule.js` (the fleet hell measurements — needs §9.2) · `witness_bar_cycles.js` ·
 wiring · **§8 DELETE LIST**. Until §8 is done this lane has added a sixth translator, not removed five.
+
+### §9.2 NEEDS PROVIDERS — DONE, plus two integration findings the providers alone could not show
+`viewer/bar_needs.js` (bim-ootb PR #1538, Sonnet agent) — `support · host · carrier · opening · wall`,
+every provider lifted from a shipped predicate by balanced-brace slicing or by calling the exported
+function. `§WITNESS_BAR_NEEDS pass=15 fail=0 ran=964091`; its anti-re-derivation gate matches the
+real `computeSchedule`'s own `§GEO_ORDER edges=` count on all four buildings.
+Agent-reported caveat, verified: `wall=0` on all four because `_buildScheduleElements` never runs
+`_promoteRoofLoadPath()`, so `isPromotedSlab()` never fires on this element source —
+`materializeZones` has the identical gap. Lift verified against a synthetic fixture.
+
+**Integration then exposed two defects neither the core nor the providers could show alone.**
+
+**(a) `needs()` is ANY-OF and ALL-OF, not one flat list** (PR #1540). An element's edges do not all
+mean the same thing:
+- `support`/`bearing` — **any-of**. Something must be under me. A slab on twelve columns starts when
+  the first few are up; requiring all twelve serialises the frame and is not how anything is built.
+- `host`, `carrier`, `opening`, `wall` — **all-of**. There is one host and you need it.
+
+Flattened into a single `min()`: **HHS midair 609** — the soft support edge finished early and
+satisfied the gate, releasing hosted and hanging elements before their host.
+
+**(b) The scheduler must gate on the relation the JUDGE measures** (PR #1539). The provider emitted
+geoGate's `below` — anything overlapping underneath, contact or not — while
+`witness_midair_zero.js` `census()` tests **bearing contact** (`S.top_z >= E.base_z - GAP`).
+Different sets, so the two could never agree: the any-of `min()` released an element on a distant
+slab far below it while its real bearing neighbour was unbuilt. Provider now tags `bearing` vs
+`support`; the model prefers bearing when present. Same edges, one more bit of information.
+
+**INTEGRATED RESULT — `bar_model` + `bar_needs`, four buildings, real DBs:**
+
+| building | midair | zero-min | outside-bar | stacking | crew | span | ms |
+|---|---|---|---|---|---|---|---|
+| Duplex | **0** | 0 | 0 | 0/29 | 0 | 8.8d | 5 |
+| HHS_Office_Federated | **25** | 0 | 0 | 0/29 | 0 | 46.7d | 17 |
+| Hospital | **10** | 0 | 0 | 0/60 | 0 | 294.7d | 105 |
+| Terminal | **16** | 0 | 0 | 0/100 | 0 | 84.2d | 62 |
+
+Shipping today: midair 17 / 147 / 139 / 226 (raw solve) · elements outside their own bar up to
+**81%** (§S70) · phase stacking 18% / 34% / — / 17% (§S68).
+
+**⛔ OPEN, reported not hidden: cycles are high — 329 / 2,716 / 9,911 / 3,668.** Hospital's 9,911 is
+**15.7% of its elements**, force-placed because a hard need was unplaceable inside their task. This
+is the §6 caveat 2 that the spec said must be explained, and it is bigger now that host/carrier/
+opening are edges. **No Hospital number is trustworthy until it is explained.** Next task in this lane.
