@@ -218,3 +218,107 @@ Not this lane's problem, named here only so it isn't lost: same verification pas
 `main` untouched by #1511/#1512/#1513 — `witness_cpe_buildup_activate_silent.js`, `witness_midair_zero.js`,
 `witness_s50_cell_engine.js`. Drift from unrelated concurrent work landing on `main`, not this framework
 or these witnesses. Belongs to whoever owns those files, not re-opened here.
+
+## 7. REOPENED — 2026-08-25, live bug found: the "1970 dates" this whole framework was named after
+A fresh `HHS_Office_Federated` load printed `§TIME_MACHINE ON — 6881 ops, 43 days, project:
+1/1/1970 → 2/12/1970`, live, in the same session where `§4D_COVERAGE window=2026-08-25..2026-10-06`
+proved `tasks.schedule_start/finish` was already correct. The witness suite this whole file built
+(§1-6) checks `tasks` — correctly, per §6 — but never checked `kernel_ops`, the SEPARATE table that
+actually drives the Gantt bars and the TM scrubber. Two unconnected systems; proving one correct did
+nothing for the other. Full root-cause trail, honestly including two disproven hypotheses (kept, not
+scrubbed — they're the actual value of doing this via witness instead of visual inspection):
+
+1. **First hypothesis (wrong):** `CpmSchedule.run` drops the real epoch anchor. Read the whole file
+   — zero references to `baseMs`/anchor anywhere, a pure relative CPM solver. Looked like the smoking
+   gun. **Disproven by real execution**: drove the actual function against real Duplex elements
+   (GRAPH path — `LocationAxis` unavailable headlessly, CELL path never reached) and its real output
+   was `2026-01-16`, correctly anchored. The solver doesn't drop the anchor; it was never fed one it
+   needed to drop, for this path.
+2. **Second hypothesis (wrong):** `_displayTimeline`'s cache-reuse re-anchoring shift (the mechanism
+   meant to correct exactly this) is broken. First test showed a stale 1970 cached value surviving
+   the second call untouched — alarming. **Re-run 3× for reproducibility**: the shift works
+   correctly every time (`2026-01-01T20:16:00.000Z`, real, reproducible). The first result was a bug
+   in the test harness, not the product — caught before it became a false claim.
+3. **What's still genuinely unconfirmed:** the CELL path (`solveCells()` in `cpm_schedule.js`) — the
+   one the live-bugged building (`HHS_Office_Federated`, `path=CELL`) actually used. Could not get it
+   running headlessly (`LocationAxis`/`db` resolution gap in the test harness, not debugged further).
+
+**The fix shipped (bim-ootb PR #1520, `fix/tm-element-window-clamp`) does not depend on resolving
+#3.** `injectGantt()`'s `_tmClampToTaskWindow()` binds every element's `kernel_ops` write into its
+owning task's REAL window (`_cap.win[taskId]`, already proven correct on 5 buildings) at the one
+place every path converges — the write itself. No solver, known or undiscovered, GRAPH or CELL, can
+push a value outside real calendar time past that point. Verified two ways: `witness_gantt_props_epoch.js`
+W-PE-8 (the clamp exists, wired before the INSERT, has a no-invent fallback) and the new
+`witness_tm_element_window_bind.js` (real `_cap` from a real generated schedule, 1122 real elements,
+a redControl proving the bug reproduces without the clamp — `pass=5 fail=0`).
+
+W-PE-5/6/7 (`updateStatus`/`_finishActivate`/the two jump diagnostics) stay red on purpose — they
+still literally format the internal clock as a date — triaged in `run_witness_suite.js`'s
+`KNOWN_RED` as mitigated-not-eliminated. Fixing those 4 sites to read from `tasks` directly (the
+established §S22/§S72 pattern) closes the PATTERN, not just today's values; named as a real
+follow-up, not done here.
+
+## 8. DOCTRINE — Unreconciled Parallel Systems (the general shape, not just this bug)
+Named per user request (2026-08-25) so this class of gap gets checked FOR, not just fixed once it's
+found. The concrete mechanism above is one instance of a general shape:
+
+**Two independent computations silently claim to represent the same real-world fact, and nothing
+proves one derives from — or is reconciled with — the other.** Each computation can be locally
+correct (tested, verified, green) while the PAIR is wrong, because nothing ever checks the
+relationship between them. This is not a coding mistake in either computation — it's an architecture
+gap that no per-function witness can catch, because per-function witnesses check ONE function's
+internal consistency, never a cross-system agreement.
+
+**How this one arose (concrete, not abstract):** `tasks` answers "what phase, what date" (WBS-level,
+~6-17 rows, template-driven off `SEQUENCE_RULES`). `kernel_ops` answers "what exact moment does THIS
+element get placed" (element-level, thousands of rows, contact-graph/CPM-driven). Genuinely different
+questions, correctly built by different engines — the gap wasn't building two engines, it was that
+nothing enforced they describe ONE calendar. Every incident on this lane (§S22, §S72, this one) was
+the SAME gap resurfacing at a new consumer of the ungoverned side.
+
+**The checklist, for future witness/architecture work on this codebase:**
+1. When two functions/tables/caches both compute or store what LOOKS like the same real-world fact
+   (a date, a quantity, a version, an identity) — ask: is one PROVEN to derive from the other, or do
+   they just usually happen to agree?
+2. If "usually happen to agree" — that's this doctrine's exact shape. Name it, even if nothing is
+   visibly broken yet (§S22/§S72 each individually looked like "one function is wrong," not "there
+   are two clocks" — the pattern was only visible in hindsight, across three incidents).
+3. The fix that actually closes it is a BINDING at the one place the two systems' outputs converge
+   (this bug's clamp, at the `kernel_ops` write) — not a patch at each individual CONSUMER of the
+   ungoverned side. A per-consumer patch (§S22, §S72, and almost a third time here) treats the
+   symptom and lets the next consumer rediscover the same gap.
+4. A witness for this doctrine checks the RELATIONSHIP, not either side alone: not "is `tasks`
+   correct" (yes) and not "is `kernel_ops`'s solver internally consistent" (also yes, per #7's two
+   disproven hypotheses) — it checks "does what `kernel_ops` actually persists agree with what
+   `tasks` already proved real." `witness_tm_element_window_bind.js` is the first witness built to
+   this doctrine specifically.
+
+## 9. Codebase sweep — other candidate "two clocks" shapes (2026-08-25, first pass, not exhaustive)
+Searched for the same general shape elsewhere, per user request. Reporting honestly by confidence —
+some already fixed (real precedent this doctrine isn't hypothetical), some genuinely open, none
+independently re-verified with the same rigor as §7's fix — this is a census, not a second fix pass.
+
+- **Already fixed, same shape, worth knowing it happened before:** `_installSecs` duration math used
+  to be hand-duplicated between `materializeDefault`/`scheduleContiguous` (schedule_author.js) and
+  `injectGantt`'s own `getInstallSecs` (time_machine.js) — §TM_DURATION_SYNC's own comment names the
+  exact same failure shape ("a hand-duplicated copy of the per-unit-rate formula") and the fix was
+  identical in spirit: single-source call, not two recipes. Precedent that this doctrine is real, not
+  invented for this one bug.
+- **Named, open, not chased further here:** `witness_crew_demand.js`'s audit finding
+  (`WITNESS_CONTRACT_AUDIT.md` Batch A) — crew/cost math reimplemented against a stale 8h `SHIFT_MS`
+  instead of the live 24h `SHIFT_HOURS`. Two representations of "how long is a work shift" that drifted
+  — same doctrine, different fact. Status per that audit: looked improved on a fresh run (§ result:
+  "Verify the WITNESS logging" pass, 2026-08-25) but not confirmed fixed via a source diff.
+- **Structural, already named and mitigated elsewhere in this project (not re-litigated here):** the
+  split-DB architecture (`_meta.db`+`_geo.db` vs `_extracted.db` — "which file is the real building")
+  is this same doctrine at the FIXTURE-RESOLUTION level, not the data-computation level. Already has
+  a house rule (`resolveDbFile()`'s "prefer meta, fall back to extracted, LOG the choice" pattern,
+  `witness_midair_zero.js`'s own header) and a named landmine memory
+  (`project_split_db_live_vs_probe_landmine.md`). Cited here only to show the doctrine recurs at more
+  than one layer, not as a new finding.
+- **Candidate, unconfirmed, flagged for whoever picks this up next:** `_rawScheduleRemember`
+  (§S4_RAW_SCHEDULE_REUSE, `time_machine.js`) is explicitly modeled on the SAME reuse-cache shape as
+  `_displayTimeline._last` (§7's second hypothesis) — "mirrors the EXISTING §CPM_DISPLAY_ONE_TRUTH
+  display-timeline cache one level earlier." Given §7 found the FIRST cache's shift logic correct
+  under test, this SECOND, structurally-identical cache is unconfirmed either way — not tested here,
+  named so it isn't lost.
