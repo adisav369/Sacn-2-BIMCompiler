@@ -337,3 +337,74 @@ self-contained and needs no external judge. The composite rule (only leaves stor
 Hospital. Worst cases are `IfcPipeSegment`/MEP Rough-in hanging 41d and `IfcValve`/MEP Rough-in 24d —
 carrier relations, which the model treats as ALL-OF hard needs and which `census()` counts but the
 probe's judge did not. Suspect the `ceiling_link` upward edge interacting with Terminal's 22 levels.
+
+### §9.5 THE DESIGN LAW — midair and phase discipline are in direct tension (2026-08-25)
+
+**User: "Explore this design property issue. See what we can learn."** Held the graph, the crews and
+the judge (`census()`, sliced) fixed; varied ONLY how elements are cut into bars.
+
+| building (raw solve) | no partition | **phase only** | level only | phase × level |
+|---|---|---|---|---|
+| Duplex (17) | **0** | 17 | 47 | 14 |
+| HHS_Office_Federated (147) | **1** | **43** | 899 | 86 |
+| Hospital (139) | **1** | **22** | 2,885 | 228 |
+| Terminal (226) | **0** | **0** | 1,558 | 413 |
+
+Spans move the same way: unpartitioned 8/35/277/88d, phase×level 11/55/395/132d.
+
+#### 1. The graph was never the problem
+**Unpartitioned midair is 0/1/1/0 on the real judge.** One graph + the judge's own contact relation
++ crew caps schedules 63,182 Hospital elements with ONE floater. Every hell this lane chased came
+from a layer above the graph.
+
+#### 2. But unpartitioned has NO phase discipline at all
+Derived phase bars from that same run: **every phase starts on day 0 and 15/15 phase pairs overlap.**
+Terminal — Superstructure 0-88d, Architecture 0-52d, MEP Rough-in 0-88d, MEP Final 0-88d,
+simultaneously. **That is hell #1, the overstacked Gantt, in its purest form.**
+
+#### 3. A priority cannot fix that — measured, not assumed
+Tried phase order as an RCPSP-style priority rule on the ready set instead of a barrier
+(§BAR_PHASE_PRIORITY). **No effect: still 15/15 overlapping, still all day 0.** The reason is
+resources, not ordering — **different trades have INDEPENDENT crew pools**, so a ground-floor pipe
+crew is free to start on day 1 beside the frame crew, and no geometric constraint forbids it.
+Priority orders the ready set; it cannot stop parallel trades starting in parallel.
+
+**Therefore a phase TIME BARRIER is necessary. Discipline cannot emerge from physics.**
+
+#### 4. The barrier's cost scales with how badly the partition cuts VERTICAL contact chains
+Contacts are overwhelmingly vertical — a column meets the slab above, a wall meets the slab below.
+- **A level boundary cuts straight across them** → catastrophic (Hospital 2,885, Terminal 1,558).
+- **A phase boundary runs WITH gravity** (structure → envelope → services already respects it) → cheap.
+- `contactsCutByBars` does NOT predict the damage (Duplex phase×level cuts 89.1% for 14 midair;
+  Hospital level-only cuts 74.2% for 2,885). It is not how many are cut, it is WHICH.
+
+#### 5. THE LAW
+> **Midair and phase discipline trade against each other, and the exchange rate is set by how much
+> the partition cuts across gravity. Partition along gravity (phases) and it is nearly free.
+> Partition across it (levels) and it is ruinous.**
+
+This is why every fix in this lane's history re-broke the other side, and why §S68's diagnosis
+("the solver has no phase in it") was correct but incomplete: adding the phase necessarily costs
+midair. The question was never whether to pay, only where.
+
+#### 6. WHAT TO BUILD — partition by PHASE, derive levels
+**Schedule on 6 phase bars.** Measured against the shipping engine:
+
+| | shipping | phase-bar model |
+|---|---|---|
+| Duplex | 17 | 17 |
+| HHS | 147 | **43** |
+| Hospital | 139 | **22** |
+| Terminal | 226 | **0** |
+
+zero-minute 0 · elements outside their bar 0 · crew breaches 0 · phase order perfect.
+**Levels become DERIVED children of the phase bar** — 19/17/36/73 reporting sub-bars, spans computed
+by the composite, never gated. Free, because a GroupBar's span already IS its children's.
+
+This also reconciles with LBMS: locations stay a reporting and production dimension, but they are
+not a scheduling barrier — which is exactly why LBMS defines locations deliberately rather than
+inheriting storey strings.
+
+**⛔ RESUME: rebuild the tree as Project > Phase > Level > Element** (level as a derived group, not a
+task), re-run the full fleet on `census()`, and gate it in `witness_bar_schedule.js`. Spans grow
+against phase×level (Hospital 521d vs 395d) — price that before shipping.
