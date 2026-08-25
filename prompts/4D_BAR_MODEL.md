@@ -210,3 +210,44 @@ it has added a sixth translator.
 
 ## ⛔ RESUME HERE
 Spec written 2026-08-25. Build not started. Next: §9 build log, appended below as work lands.
+
+---
+
+## §9 BUILD LOG
+
+### §9.1 CORE — DONE (bim-ootb PR #1537, 2026-08-25)
+`viewer/bar_model.js` + `viewer/rates/4D_policy.json` + `witness_bar_composite.js`. Additive only,
+nothing wired, no existing file touched.
+
+`§WITNESS_BAR_COMPOSITE pass=12 fail=0 ran=119748` over all four mandatory buildings:
+
+| | Duplex | HHS | Hospital | Terminal |
+|---|---|---|---|---|
+| elements | 1,119 | 6,839 | 63,182 | 48,428 |
+| tasks / levels | 18 / 4 | 17 / 4 | 35 / 8 | 72 / 22 |
+| span | 8.7d | 44.4d | 287.1d | 84.1d |
+
+**`group-contains-every-child`: 119,748 / 119,748.** That is the number that was 54.5% Hospital /
+35.4% Terminal / 18.8% Duplex under the pre-Bar code (§S70). It is now a **tautology, not a
+measurement** — a group's span IS min/max of its children, so the check cannot fail without someone
+reintroducing a stored group time, which `group-time-is-a-getter` catches in SOURCE.
+
+Gates carry **4 per-gate red controls** plus the contract's own, per
+`feedback_extract_dont_author_then_gate.md` — a gate added without proof it can fail is decoration.
+
+Two §6 prototype caveats CLOSED here rather than inherited:
+- a building-scope `TaskBar` hangs off `ProjectBar`, never a `LevelBar` (was 2/34 false stacking pairs)
+- building-scope tasks collect elements from EVERY level (dropping upper ones lost 1 of Hospital's
+  63,182, invisible in every other number)
+
+Suite after: `green=60 new_red=1 known_red=7 total=68` — the one red is the long-standing unrelated
+`witness_cpe_buildup_require_tm_first.js`, baselined in §S67.
+
+### §9.2 NEEDS PROVIDERS — in flight
+`viewer/bar_needs.js` (support · host · carrier · opening · wall), dispatched to a Sonnet agent with
+§3.1's extraction rule as the hard constraint. Core takes `needs()` by injection, so the two compose
+without touching the same files.
+
+### §9.3 NOT STARTED
+`witness_bar_schedule.js` (the fleet hell measurements — needs §9.2) · `witness_bar_cycles.js` ·
+wiring · **§8 DELETE LIST**. Until §8 is done this lane has added a sixth translator, not removed five.
