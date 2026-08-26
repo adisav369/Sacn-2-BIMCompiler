@@ -250,7 +250,8 @@ REFERENCE_SCHEMA = """
         name TEXT,
         parent_guid TEXT,
         object_type TEXT,
-        predefined_type TEXT
+        predefined_type TEXT,
+        elevation REAL
     );
     CREATE TABLE IF NOT EXISTS elements_meta (
         id INTEGER PRIMARY KEY,
@@ -524,9 +525,23 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude, guid_prefix=
     buildings = ifc_file.by_type("IfcBuilding")
     for s in ifc_file.by_type("IfcBuildingStorey"):
         parent = buildings[0].GlobalId if buildings else None
+        # §STOREY_DATUM (2026-08-27) — IfcBuildingStorey.Elevation is THE level datum, and until now
+        # it was never extracted. viewer/schedule_gate.js deriveStoreyMergeMap() reads
+        # spatial_structure.elevation and has therefore NEVER RUN on any shipped building (measured
+        # 2026-08-27: 0 of 4 DBs carry the column). Its failure prints as §S18_STOREY_MERGE_FAIL
+        # "no elevation data, bands unmerged", whose wording implies older DBs simply predate a
+        # fixed extractor -- there was no fixed extractor, the column was never written. Consequence
+        # measured on Terminal: 6 declared storeys, 22 scheduled bands, and "06 ROOF LEVEL" -- named
+        # by 10 elements -- collecting 10,950. Elevation is read verbatim off the IFC; a storey that
+        # declares none stores NULL (absent is reported as absent, never inferred here).
+        _elev = getattr(s, "Elevation", None)
+        try:
+            _elev = float(_elev) if _elev is not None else None
+        except (TypeError, ValueError):
+            _elev = None
         conn.execute(
-            "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
-            "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+            "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid, elevation) "
+            "VALUES (?, 'IfcBuildingStorey', ?, ?, ?)", (s.GlobalId, s.Name, parent, _elev))
 
     # ── Infrastructure facilities (IFC4X3): IfcRoad, IfcBridge, IfcRailway ──
     FACILITY_TYPES = ["IfcRoad", "IfcBridge", "IfcRailway"]
@@ -818,10 +833,18 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
     if "type" in src_cols:
         # Reference-style: hierarchical (type, name, parent_guid)
         try:
-            for row in src.execute("SELECT guid, type, name, parent_guid, object_type, predefined_type FROM spatial_structure"):
-                conn.execute(
-                    "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid, object_type, predefined_type) "
-                    "VALUES (?,?,?,?,?,?)", row)
+            # §STOREY_DATUM — carry `elevation` through the split when the source has it; the
+            # fallbacks below drop to progressively older schemas, so an older source still copies.
+            try:
+                for row in src.execute("SELECT guid, type, name, parent_guid, object_type, predefined_type, elevation FROM spatial_structure"):
+                    conn.execute(
+                        "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid, object_type, predefined_type, elevation) "
+                        "VALUES (?,?,?,?,?,?,?)", row)
+            except sqlite3.OperationalError:
+                for row in src.execute("SELECT guid, type, name, parent_guid, object_type, predefined_type FROM spatial_structure"):
+                    conn.execute(
+                        "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid, object_type, predefined_type) "
+                        "VALUES (?,?,?,?,?,?)", row)
         except sqlite3.OperationalError:
             for row in src.execute("SELECT guid, type, name, parent_guid FROM spatial_structure"):
                 conn.execute(
