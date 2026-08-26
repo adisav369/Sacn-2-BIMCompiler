@@ -322,10 +322,122 @@ PR because #1548 was SQUASH-merged and this work landed after, which orphans it 
 - Suite matches clean `main`; ZDA baseline re-locked with its justification.
 
 ## G.3 ⛔ OPEN, IN THEIR PRIORITY ORDER
-1. **`IfcMember` at DAY 0** — the entire remaining sub/super residue on all four buildings is this
-   one class. Start here.
+1. ~~**`IfcMember` at DAY 0**~~ — **WRONG CLASS. Corrected 2026-08-26 by measurement, see §H.**
+   The residue is **`IfcColumn`, 21 of 21, zero `IfcMember`**, and it is not a scheduling defect.
 2. **Hospital `stillInverted=778`** inside tasks — cause not established.
 3. The default bucket is mid-programme (§D) — blocked on a measured productivity.
 4. Their two untested leads in G.1.
+
+---
+
+# §H THE DAY-0 RESIDUE, RE-MEASURED 2026-08-26 — §G.3 item 1 was the wrong class
+
+**Probe: `bim-ootb scripts/probe_day0_unsupported.js`** (branch `feat/day0-unsupported-probe`,
+commits `f48cf56` + `d1e585b`, pushed). §G's headline was measured once and never committed as a
+script, so it could not be re-run. It is now a script, and the script disagrees with it.
+
+| building | judged | unsupported | class |
+|---|---|---|---|
+| Duplex | **0** | 0 | — `§D0_VACUOUS`: all 11 in-scope elements are seq-1 |
+| HHS_Office_Federated | 126 | **0** | — |
+| Hospital | 566 | **13** | `IfcColumn` x13 |
+| Terminal | 158 | **6** | `IfcColumn` x6 (4 of them never held at all) |
+
+**21 of 21 are `IfcColumn`. Zero `IfcMember`.** Do not start on `IfcMember`.
+
+## H.1 A 0 FROM AN EMPTY POPULATION IS NOT A PASS — the probe now says so itself
+The first draft of this probe sampled ONE cursor (DAY 0 HR 3, §G's own) and read **0 on all four
+buildings**. Not because the model was right — because at that instant every in-scope element on
+screen was ground-exempt and **the judge had nothing to judge**. That is the green-witness-over-a-
+bad-construct failure this whole file exists to kill, reproduced from inside the file's own lane.
+Two changes make it impossible to repeat:
+- **`§D0_VACUOUS`** fires when `judged === 0`, and the verdict prints `INCONCLUSIVE`, never `PASS`.
+  Duplex is vacuous today and reads that way.
+- **The answer is an INTERVAL, not a sample.** Element *i* is unsupported over
+  `[start_i, firstSupportStart_i)` — empty when a support is already up, unbounded when there is no
+  support at all. Peak concurrency comes from a sweep-line over the endpoints. No cursor to pick,
+  so no cursor to pick wrongly.
+
+Also: the exemption is the **SHIPPED** one — `schedule_gate.js:1210` `T.seq !== 1` — not a
+re-derived one. An earlier draft used only `G.grounded[i]` and so flagged Duplex's 2
+`Floor:150mm Exterior Slab on Grade` (bz -0.137): their only neighbour is an `IfcFooting` whose
+**top is 1.113 m below them** (fill in between), so nothing bears them AND `grounded` is 0.
+`rates.js` §SLAB_ON_GRADE_RECLASS already names exactly that population.
+
+## H.2 CAUSE — both sub-causes are rows in §E's own table of proxies
+Measured element by element; the probe prints every one.
+
+**(a) THE SUPPORT TOP IS UNBOUNDED — §E row 2, verbatim, still live in the shipped judge.**
+Hospital column `0Qqamdk$17GhXBxDp5aFcc` (bz 166.445) has as its only "bearing" contacts elements
+whose tops are at **177.811 and 170.611 — 11.4 m and 4.2 m ABOVE its own base**. Meanwhile the pile
+cap actually under it (`IfcFooting`, top 165.511, **0.933 m** below) and the slab (top 165.811,
+**0.633 m** below) are both **rejected**, because `GAP = 0.5`. The judge admits a support 11 m too
+high and rejects the footing 0.63 m too low.
+
+> **The two shipped copies of "S bears T" disagree on the upper bound:**
+> `support_sweep.js:411` — `S.bz < T.bz - EPS && S.tz >= T.bz - GAP` — **no top bound**
+> `schedule_gate.js:1195` (§S64) — same, plus `S.top_z <= T.base_z + GAP`
+> §S64's own comment says the wall pool needed that bound or "a wall carries a promoted slab AT ITS
+> TOP, never one embedded metres below its crown" — 73 fleet-wide false verdicts. `_contactGraph`
+> never got it.
+
+**MEASURED blast radius (`§D0_TOPBOUND`, always on):** of the in-scope bearing contacts,
+**Hospital 941 / 2944 = 32.0 %** are supports whose top sits above the base they carry;
+Terminal 106 / 987 = 10.7 %; HHS 0.0 %. Applying §S64's bound **removes false supports, so the
+count RISES**: Hospital 13 -> **30**, Terminal 6 -> **7**. *The current number is flattered by
+contacts that are not carrying anything.* ⛔ Not shipped — changing `_contactGraph` moves the
+scheduler, the lock gate and the audit together, and is not done from inside a probe.
+
+**(b) REAL VERTICAL VOIDS — a data defect, not a schedule defect.**
+Terminal's 4 "never held" columns (bz 34.768, *05 FOURTH FLOOR LEVEL (OBSERVATORY DECK)*) have
+**nothing below them within 4.000 m** — nearest structure is a slab topping at 30.768. Their only
+contact is a CARRIER above (the `Kubah` dome proxy). No ordering can hold these. Report as a model
+defect; never reschedule around it. Terminal's other 2 rest on an `IfcWall` classified *Architecture
+Envelope* (seq 5, starting **237 h later**) — §F's "148 rest on something on their own level
+classified into a later phase", confirmed again.
+
+## H.3 ⛔ `§TPL_LAYER_ORDER` MAKES THE NUMBER WORSE, AND ITS OWN WITNESS SAYS PASS
+Deliberate A/B, same probe, same DBs, one `viewer/` checkout apart, both reproduced:
+
+| viewer | Hospital | Terminal |
+|---|---|---|
+| `origin/main` @ `6b12783` (no layer pass) | **13** | 6 |
+| `fix/tpl-layer-order` @ `50a4cfe` (with it) | **15** | 6 |
+
+**`§TPL_LAYER_SELFCHECK` reports PASS on that run**, because it only counts inversions where support
+and supported are **in the same task** (`if (_taskOf[_S.guid] !== _taskOf[_T.guid]) continue;`). The
+2 extra Hospital columns are held from a *different* task, so the self-check is structurally unable
+to see the regression it introduced. This is the opening table's *"wrote passes that could not tell
+it they had failed"*, one commit after the pass was written to prevent exactly that.
+**`fix/tpl-layer-order` (50a4cfe) is NOT merged. Measure this before it lands.**
+
+## H.4 SHARED-WORKTREE HAZARD — hit live, this session
+`/tmp/wt-fga-judge` was occupied by a **concurrent session**. `git status` was clean and no `/proc`
+cwd pointed at it, so a `git checkout -B` was run there — which **moved that session's working tree
+out from under it** mid-task (its reflog: `21:31 commit 50a4cfe` -> `21:32 checkout: moving from
+fix/tpl-layer-order`). Nothing was lost only because that session had already committed *and
+pushed*. Two measurements taken across the switch silently disagreed (Hospital 15 vs 13) and cost a
+determinism hunt — no `Math.random`, no time budget, no DB change; the input was a **different
+`viewer/` checkout**.
+**Rule: a clean `git status` and zero `/proc` occupants do NOT mean a worktree is free.** A shared
+`/tmp/wt-*` may belong to a session that is simply between commands. Make your own
+(`git worktree add /tmp/wt-<your-topic> <branch>`) and never `checkout` inside someone else's.
+
+## H.5 ONE STALE NUMBER IN §G.2
+`probe_enclosure_geometry.js` re-run confirms §E exactly (Duplex fullyEnclosed 1026/1119 = 91.7 %,
+HHS 5217/6839 = 76.3 %; `des=-1` Duplex 28 -> 26 enclosed / 2 open, HHS 63 -> 53 / 10). But §G.2's
+*"HHS's 209 floating to 18 genuinely open"* is one commit stale: on the current template schedule it
+is **245 floating -> 20 genuinely open**. §TPL_WIRED landed after that measurement.
+That script was also living **only on one disk, unversioned**, while §E and §G.2 both cite it as
+their source. It is now committed (`f48cf56`).
+
+## H.6 ⛔ NEXT
+1. **Decide the top bound on `_contactGraph`'s bearing clause** (§H.2a). One line, 32 %-of-contacts
+   blast radius on Hospital, and it makes the number worse before better. A construct decision —
+   §A's kind of question, not a witness's.
+2. **Re-measure `fix/tpl-layer-order` against §D0 before merging it** (§H.3), and widen
+   `§TPL_LAYER_SELFCHECK` to cross-task pairs or it will keep passing on regressions.
+3. Terminal's 4 void-standing columns (§H.2b) belong in a **data-defect report**, not the scheduler.
+4. Duplex is **vacuous** for this metric — it proves nothing either way today.
 
 **Do not open with a summary of this file. Open with a number.**
