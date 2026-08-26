@@ -969,11 +969,50 @@ honest baseline is `kernel_ops.start_ts`**, the thing the HUD counts and the fra
   first," and the instrument is now at least *legible*: 783 and 63 are numbers a deletion can move.
   §13.2's three still wait on defect 1 being closed, per §13.4 step 4.
 
+## 14.6 ⛔ AMENDED 2026-08-26 — DELETE THE RESCALE FIRST, THEN GATE. The 783 is a MODEL defect.
+The first cut of this RESUME said "gate the judge on post-rescale `kernel_ops` times" as step 1.
+**Reordered after an independent review, and the reason survived my own re-verification against
+`origin/feat/bar-live` — not taken on report:**
+
+| claim | verified |
+|---|---|
+| `_disp` still comes from `CpmSchedule.run` on `feat/bar-live` | `time_machine.js` §TM_ELEMENT_WINDOW_BIND comment, unchanged, verbatim |
+| `_tmRescaleToTaskWindow` still fires unconditionally at the `kernel_ops` write | same file, `var bound = _tmRescaleToTaskWindow(el.guid, s);` inside `elements.forEach` |
+| `_writeBarSchedule` persists windows through `dayFloor`/`dayCeil` | `schedule_author.js` §ZONE_ENVELOPE_DAYS — so `realSpan ≠ rawSpan` ⇒ **`scale ≠ 1` by construction, per task** |
+| **the Bar leaves already carry a real epoch** | `_writeBarSchedule` calls `BM.schedule(tree, { … baseMs: Date.parse(start) … })`; `bar_model.js` `schedule()` seeds `crews[tr]` slots and `gate` with `baseMs`. **Leaf times are absolute ms from the real project start.** |
+
+That last row is the whole argument. `_tmRescaleToTaskWindow` exists for one stated reason — its own
+header: *"`CpmSchedule.run()`, a pure relative CPM solver with **NO epoch concept anywhere** in
+`cpm_schedule.js`."* **The Bar model does not have that problem.** So the rescale is not a stage to
+audit around; it is a **workaround for a defect the Bar model deletes**, and §14.3's 783 is produced
+*downstream* of the Bar model and survives it untouched.
+
+**Consequences to record:**
+- **`_tmRescaleToTaskWindow` is a SIXTH translator.** §8 counted five. It belongs on §13's list.
+- **§11's "the movie and the bars are the same numbers — no remap, because there is no second
+  timeline" is true inside `bar_model.js` and FALSE at `kernel_ops`.** The claim was made one layer
+  above where it stops being true.
+- **§11's `dayFloor`/`dayCeil` may be a symptom, not a fix.** It was added for "295 HHS / 693
+  Hospital elements outside their own bar" — patched at the far end of the same rescale. If the
+  rescale goes, revisit whether the envelope can go back to being purely a display envelope.
+- **Gating first would lock in the workaround**: a gate that sits red at 783 forever, guarding a
+  stage that should not exist. Deleting takes 783 → 0 structurally.
+
 ## ⛔ RESUME — in this order
-1. **Close defect 1** (§14.4). Re-run `_midairAudit` on the post-rescale `kernel_ops` times and make
-   it a gate. Expect it to go red at 783 on HHS immediately — that is the point.
-2. Re-run `probe_floating_guid_audit.js` across the fleet (`ONLY=` env) — HHS is one building.
-3. Only then re-baseline (§12.2 as amended by §14.3) and decide the Bar model's fate.
+1. **Make `injectGantt` read the Bar leaf times instead of `CpmSchedule.run()`, then delete
+   `_tmRescaleToTaskWindow`** (§14.6). The leaves already carry the epoch the rescale was written to
+   supply. Target: 783 → 0 structurally, not a permanently-red gate.
+2. **Then** gate `_midairAudit` on the written `kernel_ops` times (§14.4 defect 1) — now it guards a
+   real invariant instead of a workaround. **Fix the `census()`/`midairAudit` #1435 divergence in the
+   SAME commit** (§15.4 / §S58.5): breaking the shipped judge by 86,400,000× still leaves
+   `witness_midair_zero` at `pass=49 fail=0`, so the lock does not track the judge and the new gate
+   would ship unguarded the day it goes green.
+3. Defects 2 and 3 (§14.4 — footprint-local `grounded`, silently-uncountable `des = -1`) are inside
+   the judge and are unaffected by either of the above. Still open, still 63 elements on HHS.
+4. Re-run `probe_floating_guid_audit.js` across the fleet (`ONLY=` env) — HHS is one building.
+5. Only then re-baseline (§12.2 as amended by §14.3) and decide the Bar model's fate.
+6. Deleting §13.1's pair: on the CORRECTED premise (§15.5) — `opts.template` IS passed by three test
+   files. Delete those in the same commit; budget two new reds, one guarding movie-vs-bars.
 
 ---
 
@@ -1076,11 +1115,22 @@ exists for exactly this. **Fetch before reading this repo as canon.**
 
 ## 15.7 PROCESS — two §14s, and an uncommitted append swept into someone else's commit
 This section was appended to the working tree while another session was working the same file. That
-session ran `git add -A` and committed it inside `b52e2dd9f` under **its own** commit message, so the
-file carried two sections numbered §14 with colliding sub-numbers 14.1–14.6. Renumbered to §15 and
-moved below §14 here. **`bim-compiler` has no shared-tree hook** (`CLAUDE.md` says so explicitly) —
-this is the predicted collision, and §12.5 lesson 9 is the same lesson in a different costume.
-**Before committing in this checkout, `git status` and stage by path, never `-A`.**
+session committed it inside `b52e2dd9f` under **its own** commit message, so the file carried two
+sections numbered §14 with colliding sub-numbers 14.1–14.6. Renumbered to §15 and moved below §14
+here. **`bim-compiler` has no shared-tree hook** (`CLAUDE.md` says so explicitly) — this is the
+predicted collision, and §12.5 lesson 9 is the same lesson in a different costume.
+
+**⛔ CORRECTED 2026-08-26 — the first version of this section blamed `git add -A` and prescribed
+"stage by path, never `-A`". Both wrong, and the prescription does not work.** Measured:
+`git show --stat b52e2dd9f` → **`1 file changed, 230 insertions(+)`**, and both `# §14` headings are
+inside that single diff (`+38` and `+125`). The command was `git add prompts/4D_BAR_MODEL.md` — a
+path, not `-A`. **`git add <path>` stages the whole file, appends from every session included**, so
+path-staging could never have prevented this: the collision was two appends to the SAME FILE, which
+is the one case path-staging does not separate.
+**The real preventive, in order:** (a) work in a `/tmp/wt-*` worktree — `CLAUDE.md` already says so
+for `bim-compiler` precisely because there is no hook here; (b) failing that, `git diff <file>`
+before committing in a shared tree and read what you are about to author under your own name.
+A lesson that names the wrong mechanism is worse than no lesson — it gets followed and still fails.
 
 ## ⛔ WHAT IS STILL OPEN AFTER §14 — two items, neither covered by it
 1. **The `census()`-vs-`midairAudit` divergence (§15.4).** `git grep` over §14: no mention of #1435,
