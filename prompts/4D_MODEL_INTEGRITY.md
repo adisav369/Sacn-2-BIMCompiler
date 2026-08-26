@@ -649,3 +649,100 @@ threshold in this lane has been measured wrong). Runs off the cache in seconds.
 Dials **not** swept, named rather than faked because each needs a pipeline re-run per setting:
 `§STOREY_DATUM` mode, the §S64 support top bound (§H.2a — 32.0 % of Hospital's bearing contacts),
 and `bar_model.js` `§BAR_LEVEL_BANDS` granularity.
+
+---
+
+# §K THOROUGH REVIEW — SPEC vs MODEL vs PLAN (2026-08-27, user-requested)
+
+## §K.1 THE MODEL IN THIS FILE IS NOT THE MODEL THAT RUNS
+§A states the model: `Node { children[], work }`, a tree **Building → Level → Phase → Layer →
+Element**, and — explicitly — ***"No edges emitted — sibling order IS the order."***
+
+| | implements §A? | runs? |
+|---|---|---|
+| **`bar_model.js` `buildTree()`** — `GroupBar('Project')` → level → task → `ElementBar` leaves | **YES. This IS §A's tree.** | **NO — dead code (§J.3)** |
+| **`schedule_author.js` `instantiateTemplate()`** — per-(phase × level) tasks + `edges.push()` ×2 | **NO. It is a task GRAPH with explicit edges**, the thing §A says the model does not have | **YES — this is production** |
+
+**That single row explains the whole lane.** Every §H/§J fix, including `§TPL_LADDER_BRIDGE`, was a
+repair to *edge* wiring in a model whose own spec says there are no edges. The spec and the running
+code have been describing two different machines, and the reason §J.2's metrics kept being invented
+is that they were being invented against a model that is not the one executing.
+
+⛔ **Before any further scheduling work: decide which of the two is the target.** They are not
+complementary — §J.1's `§STOREY_DATUM` and `bar_model.js`'s `correctLevelsByGeometry` are two
+independent answers to one question, in two modules, one of which cannot run.
+
+## §K.2 THE PLAN ALREADY EXISTS AND I DID NOT FOLLOW IT
+**`prompts/4D_BAR_MODEL.md` §10.3** is the written plan, in order, and it opens with
+***"Do not wire anything live until 1–3 are done."***
+
+1. **Kill the scratchpad probes** — fold them into `witness_bar_schedule.js`. Called *"the single
+   highest-value task in the lane."*
+2. **Audit every witness in the lane against §10.1 rule 1** (any predicate that duplicates a shipped
+   one instead of calling it). *"That is the error that produced the only retraction so far, and it
+   produced it twice in one day."*
+3. Verify `witness_bar_needs.js`'s anti-re-derivation gate directly.
+4. Terminal midair **336 vs a shipping 226** — the only axis where the model still loses.
+5. The storey-injection gap (below).
+
+**Measured against that plan, this session did none of 1–3** and instead re-derived item 5's
+diagnosis by a different route. §J.2's three retractions are precisely what item 2 exists to prevent.
+
+## §K.3 ⛔ ITEM 5 ALREADY NAMED THE FIX — AND SAID MY EXTRACTOR CHANGE WAS NOT NEEDED
+§10.3 item 5, **corrected 2026-08-26, the day before this session**:
+
+> *"The mechanism is NOT missing and needs NO source IFC and NO extractor change.
+> `viewer/lib/room_walker.js` `writeRooms()` already injects storey rows from the DB alone …
+> It has already run on Terminal: **all six of Terminal's storey rows are its output — Terminal has
+> ZERO real extracted storeys.** §S18 `deriveStoreyMergeMap` DOES run; it merges 0 because the
+> injector emits a storey row **only where it compiled a room** (`room_walker.js:1352`) …
+> **The gap is that one line**, in the room lane's file, not in extraction and not in the scheduler."*
+
+**VERIFIED DIRECTLY this review** (the doc is right): every Terminal `IfcBuildingStorey` row is
+`guid='STC_…'`, `object_type='COMPILED'` — the injector's own stamp. This is the "room injection"
+the user named; it is `writeRooms()`, which is why grepping for "room injection" found nothing.
+
+So `tools/extract.py`'s `elevation` write (§J.1) is **not wrong, but it is not the gap** — the spec
+said so a day earlier and I did not read it. It helps only future extractions.
+
+## §K.4 NEW, MEASURED IN THIS REVIEW — THE INJECTED DATUM IS MID-WALL, NOT A FLOOR
+`room_walker.js:1191` — `stZ[st] = mean(w[2])`, and `w[2]` is a wall's **centre**-z. A storey datum
+must be its FLOOR. Measured against Terminal's own slabs:
+
+| storey | injected datum | median slab top | error |
+|---|---|---|---|
+| Aras Tanah | 17.927 | 14.768 | **+3.159 m** |
+| Aras 01 | 24.717 | 22.768 | +1.949 |
+| Aras 02 | 28.577 | 26.768 | +1.809 |
+| Aras 03 | 32.537 | 30.768 | +1.769 |
+| Aras 04 | 37.142 | 34.768 | +2.374 |
+| Aras Bumbung | 39.779 | 39.141 | +0.638 |
+
+⛔ **Consequence for what §J.1 shipped:** `§STOREY_DATUM` bands by `base_z ∈ [datum_i, datum_i+1)`.
+An element standing on the Aras 03 floor has `base_z ≈ 30.77` against an Aras 03 datum of 32.537, so
+it lands in the **Aras 02** band. **Every element on every floor is assigned one level DOWN,
+systematically.** The §W_D0 claims still pass because the bands stay disjoint and monotone — the
+offset is uniform — which is exactly why a passing witness did not catch it. *A green suite over a
+shifted datum is §J.0's square peg wearing a rosette.*
+
+**The data for the correct value is already in hand:** the walker's wall row is
+`[cx, cy, cz, bx, by, bz]`, so a wall's base is `w[2] - w[5]/2`. The floor is the base, not the centre.
+
+## §K.5 ⛔ PLAN — IN THIS ORDER, AND IT IS NOT MINE
+Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions are §K.1 and §K.4.
+
+0. **Decide the target model (§K.1)** — Bar model or template path. Everything else forks on it.
+   This is the one item that is a *decision*, not work.
+1. §10.3 #1 — fold the scratchpad probes into `witness_bar_schedule.js`. `scripts/knob_sweep.js`
+   and `scripts/probe_day0_unsupported.js` from this session are in the repo and gated by nothing;
+   they are the same debt.
+2. §10.3 #2 — audit every witness in the lane for a re-derived predicate (§I.1 lists three live
+   copies of "S bears T"; two of them disagree with the third).
+3. **§K.4 first, then §10.3 #5** — the injected datum must be the FLOOR (`room_walker.js:1191`),
+   and a storey row must be emitted for every storey the walker walked, not only those where a room
+   compiled (`:1353`). Two one-line changes, same function, data already present.
+   Predicted payoff for the second alone (SIMULATED in §S72.1, **not measured**): Terminal midair
+   **336 → 48**, span 126 → 105 d.
+4. §10.3 #4 — Terminal midair 336 vs shipping 226, the only axis where the Bar model still loses.
+5. Only then re-baseline, and only then judge the 6,734 (§J.4) — which still has no rule to be
+   judged against.
