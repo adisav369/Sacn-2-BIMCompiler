@@ -767,11 +767,28 @@ Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions a
 **Read §G.0 (regain context) → §I (ownership table) → §K (this review). Then §K.5 is the plan.**
 There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5 supersedes all of them.**
 
-## The one decision that gates everything
-**Which model is the target — `bar_model.js` (§A's tree, dead) or `schedule_author.js`
-(task graph with edges, live)?** §K.1. They are two answers to one question and only one runs.
-Do not do more scheduling work before this is settled; every fix so far has gone into the one the
-spec says is not the model.
+## ✅ The decision that gated everything is MADE
+**USER RULING 2026-08-27: the canonical model is the TEMPLATE PATH — `schedule_author.js`
+`instantiateTemplate()`.** See the banner at §A.
+- `bar_model.js` / `bar_needs.js` are **not the target**. Their measured findings still read well;
+  their code is not where work goes.
+- **§K.1 is superseded.** It said the fixes went into the wrong model; with the ruling they went
+  into the right one, and it was the SPEC (§A) that was stale. §A now carries that correction.
+- **`4D_BAR_MODEL.md` §10.3 items 1-4 are no longer the plan** - they are Bar-model work. Item 5
+  stands (it is about `room_walker.js`, which feeds the template path too).
+- The "no edges emitted" line in §A describes the dead model. The canonical model emits edges and
+  that is correct by ruling. Do not re-litigate it.
+
+## ⛔ Therefore the plan is now, in order
+1. **§K.4 - fix the datum before trusting any level-based number.** `room_walker.js:1191` must write
+   the FLOOR, not mean wall centre-z (a wall's base is `w[2] - w[5]/2`); and `:1353` must emit a
+   storey row for every storey walked, not only where a room compiled. Two one-line changes, one
+   function, data already in hand. This is also `4D_BAR_MODEL.md` §10.3 item 5.
+2. **Re-baseline `§W_D0` after 1** - the current 14 PASS sits on a datum that is uniformly ~2m high.
+3. **Write the sequence rule (§J.4)** - granularity of precedence, what may legitimately overlap,
+   which relation carries it. Until it exists the 6,734 cannot be judged, and inventing a metric to
+   judge it is what produced §J.2's three retractions.
+4. Only then re-open anything else.
 
 ## State, honestly
 - ✅ **DAY 0 is at zero.** `§W_D0` **14 PASS / 0 FAIL / 2 INCONCLUSIVE** (`bim-ootb
