@@ -235,6 +235,49 @@ do not implement it as specified.
 
 ---
 
+## S8. ⛔ THE DIRECTION GUARD, MEASURED ON BOTH COPIES — NECESSARY, NOT SUFFICIENT (2026-08-26)
+One line, both copies, clean baseline `origin/main` @ `7c8c599` (PR #1545 merged; no pool change):
+```js
+if (poolJ >= 0 && poolCls <= bestCls) { bestJ = poolJ; bestCls = poolCls; }
+```
+`support_sweep.js:465` + `cpm_schedule.js:159`. Probe: `scripts/probe_floating_guid_audit.js`.
+
+| metric | Duplex | HHS | Terminal |
+|---|---|---|---|
+| `§FGA_TIMELINE_MISMATCH` played-floating | 104 → **76** ✅ | 783 → **813** ⛔ **worse** | 2355 → **1883** ✅ |
+| `§FGA_JUDGE_BLIND` des=-1 | 28 → **12** ✅ | 63 → **53** ✅ | 354 → **273** ✅ |
+| `§CPM_RUN` stragglers | 639 → 354 ✅ | 3249 → 2328 ✅ | 9941 → **11970** ⛔ worse |
+
+**Read it correctly.** `judgedOnCPMtimes=0` in EVERY run, before and after — all movement is in the
+played column, i.e. downstream of `_tmRescaleToTaskWindow`. The guard measurably improves the support
+graph itself (des=-1 down 57%/16%/23% — the class winner now survives instead of being replaced by a
+carrier-above that the grounded clause then discards). **HHS's 783→813 is not the guard failing; it is
+the rescale redistributing a different set of elections.** You cannot score a support fix through a
+transform that re-orders across task boundaries.
+
+**Conclusion: ship the guard, but not first, and not alone.** §14.6's ordering is confirmed by
+measurement — delete the rescale, THEN re-measure the guard. Anyone quoting 783→813 as evidence the
+guard is wrong has repeated §14.3's error (right change, wrong stage).
+
+## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
+`_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
+this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
+only because its top is 0.00 vs the pipes' −0.45 — invert those and a pipe is elected), and des=-1
+(S1.3). It is also duplicated in two files that must be hand-mirrored.
+
+`bar_model.js` already does the right thing — `contact` / `bearing` / `needs` / `hardNeeds` are
+**lists**, and `attachContacts` (§BAR_CONTACT) installs the judge's own contact relation as the any-of
+set. The scheduler already works with sets; only the judge collapses to one.
+
+**Judge on the set:** *at time t, is at least one of my below-contacts placed?* No election → no
+direction bug, no tie-break luck, no pool question, and no exemption (an element with an empty
+below-set above ground is FLOATING, not uncountable). This is already written and already running:
+it is `eyeFloating()` in `probe_floating_guid_audit.js` / `probe_enclosure_rule.js`. **The better
+judge was built as an instrument and never adopted as the metric.** Promote it, root it at the ground
+datum (D1), and `_designatedSupport` can be deleted rather than guarded in two places forever.
+
+---
+
 # INSTRUMENTS (do not rebuild these)
 - `bim-ootb scripts/probe_floating_guid_audit.js` — replays the live chain to `kernel_ops`; judge
   REQUIRED from `support_sweep.js`, never re-derived. Produces §FGA_EYE_FLOATING / §FGA_JUDGE_BLIND /
