@@ -287,6 +287,67 @@ uses no election at all, and there the guard is a real win on all three (**7→1
 both copies. One open item: **Terminal stragglers +20% (9941→11970)** — almost certainly the source
 of the 74 band inversions on `fix/support-pool-walls`. Explain that before merging, not after.
 
+## S10. ⛔ WHY BAR/TEMPLATE SEPARATION CANNOT SOLVE IT ALONE — THE FUNDAMENTAL LAYER (2026-08-26)
+User: *"isn't each bar containing the element sets... why not position them as the template already
+cleanly separated them?"* Measured — `bim-ootb scripts/probe_intrabar.js`, branch
+`probe/intrabar-share`. BEARING-BELOW pairs only (real gravity), asking whether the support sits in
+the element's OWN (phase × storey) bar:
+
+| | Duplex | HHS | Terminal |
+|---|---|---|---|
+| support in the **SAME bar** — template has no authority | **10.2%** | **28.9%** | **69.3%** |
+| support in a different bar — template/ladder DOES order it | 89.8% | 71.1% | 30.7% |
+| … different PHASE | 81.6% | 57.4% | 23.0% |
+| … different STOREY | 50.8% | 38.6% | 22.1% |
+| elements with **NO bearing-below at all** | 15.5% | 21.7% | 8.9% |
+
+**The instinct is right and already working — for the cross-bar share.** That is why Duplex is 17
+midair and not 4,706: 89.8% of its gravity crosses a phase or storey boundary and the template orders
+it for free.
+
+**It cannot work intra-bar, and that is the whole problem on Terminal (69.3%).** Inside one bar the
+template has said everything it has to say; the leaves still need an order, and that order is the
+support relation. This is why Terminal is worst in every table in this lane (513 vs Duplex's 17) —
+not size, but that its physics lives *inside* its bars. Confirms `bar_model.js:436` directionally.
+
+**Third row kills the fallback:** 8.9–21.7% of elements have NO bearing-below contact at all. Nothing
+beneath them can order them; bar containment is the only thing positioning them.
+
+### The law
+> **A bar is a CONTAINMENT constraint. The support graph is a PRECEDENCE constraint. Both necessary,
+> neither sufficient.** They nearly coincide on a duplex — which is why the intuition is reasonable,
+> and why it fails first on the biggest building.
+
+**Do not "spread evenly inside the bar."** It randomizes the 69% Terminal gets right today, and
+collapsing to the bar start is the `§TPL_ZERO_MINUTE` pile-up already on record (18 identical
+`§GANTT_OPS_FIRST20` entries when everything clamped to one instant).
+
+## S11. THE BOM-INJECTION ROUTE — right shape, one blocker (2026-08-26)
+User: *"or use the BOM hierarchy which requires the Java-era mechanism to inject first, similar to
+room space?"*
+
+**Using EXISTING BOM depth does not help.** BOM depth is containment (building→floor→room→set→leaf),
+the same *kind* of relation a bar already encodes. It helps exactly where bars help (cross-bucket)
+and is silent exactly where bars are silent (intra-bucket, S10). A wall standing on a wall is two
+SIBLINGS at one depth.
+
+**INJECTING a support level is the right idea, and it is the established doctrine here.** Rooms are
+compiled from geometry (`build/room_walker.js`, `scripts/compile_rooms.py`) precisely because IFC did
+not carry them usefully; S7 measured that IFC does not carry "stands on" either. Same problem, same
+answer: compile the relation, don't look for it. And it matches the paper's own thesis — if the
+PARENT is the supporting element then `child.start = parent.finish + lag`, the tack convention
+applied to time, and the BOM walk IS the schedule.
+
+**⛔ The blocker: support is a DAG, a BOM line is a tree.** An element rests on several things.
+Forcing one parent re-creates the election — the exact defect in S2/S9. Plus measured backwards-
+support (Terminal 27, Hospital 38, HHS 35, Duplex 8) are cycles a tree cannot hold, and 8.9–21.7%
+of elements have no parent at all.
+
+**Resolution:** inject the relation as a **graph beside the BOM, not a level inside it** — the same
+injection mechanism and the same "compile what IFC didn't author" doctrine, typed as a DAG because
+the physics is a DAG. Keep the set (S9), root it at the ground datum (D1). Cycles get NAMED as data
+defects per `4D_BAR_MODEL.md` §5.1, never scheduled around.
+
 ## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
 `_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
 this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
