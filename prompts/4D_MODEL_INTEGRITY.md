@@ -751,9 +751,13 @@ Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions a
    they are the same debt.
 2. §10.3 #2 — audit every witness in the lane for a re-derived predicate (§I.1 lists three live
    copies of "S bears T"; two of them disagree with the third).
-3. **§K.4 first, then §10.3 #5** — the injected datum must be the FLOOR (`room_walker.js:1191`),
-   and a storey row must be emitted for every storey the walker walked, not only those where a room
-   compiled (`:1353`). Two one-line changes, same function, data already present.
+3. ✅ **§K.4 DONE (witness) 2026-08-27 — bim-ootb PR #1552.** Datum is now the FLOOR
+   (`room_walker.js:1191` → `mean(w[2] - w[5]/2)`) and a storey row is emitted for every storey
+   walked (`:1353` guard removed). Fleet 22/22 storeys match mean wall base-z, 0/22 centre-z;
+   Terminal max datum error 3.072 m → 0.511 m; rows recovered Terminal 6→7, Hospital 7→8.
+   **Full evidence + the two carried-forward ⛔ items (shipped DBs/baked patches still hold the old
+   datum; `compile_rooms.py` py/js lockstep still unfixed) are in §L item 1 — read it there.**
+   Then §10.3 #5.
    Predicted payoff for the second alone (SIMULATED in §S72.1, **not measured**): Terminal midair
    **336 → 48**, span 126 → 105 d.
 4. §10.3 #4 — Terminal midair 336 vs shipping 226, the only axis where the Bar model still loses.
@@ -780,10 +784,34 @@ There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5
   that is correct by ruling. Do not re-litigate it.
 
 ## ⛔ Therefore the plan is now, in order
-1. **§K.4 - fix the datum before trusting any level-based number.** `room_walker.js:1191` must write
-   the FLOOR, not mean wall centre-z (a wall's base is `w[2] - w[5]/2`); and `:1353` must emit a
-   storey row for every storey walked, not only where a room compiled. Two one-line changes, one
-   function, data already in hand. This is also `4D_BAR_MODEL.md` §10.3 item 5.
+1. ✅ **DONE (witness) 2026-08-27 — §K.4 datum fixed.** bim-ootb **PR #1552**, branch
+   `fix/room-walker-storey-datum`, one file (`viewer/lib/room_walker.js`) + `scripts/probe_storey_datum.js`.
+   - `:1191` now writes `mean(w[2] - w[5]/2)` — the FLOOR. `§STOREY_DATUM_FLOOR` logs centre and
+     base side by side so the pair is never hand-re-derived again.
+   - `:1353` guard removed; `§STOREY_ROW_EMIT walked/withRooms/withoutRooms` reports what the old
+     guard would have dropped, and prints VACUOUS when nothing passed the >=3-wall gate.
+   - **MEASURED** (`scripts/probe_storey_datum.js`, datum vs that storey's own median slab top).
+     Terminal: Aras Tanah +3.072→+0.511 · Aras 01 +1.947→+0.146 · Aras 02 +1.779→+0.102 ·
+     Aras 03 +1.770→**+0.001** · Aras 04 +2.374→+0.200 · Bumbung +0.638→−0.000. Fleet **22/22**
+     storeys now equal mean wall BASE-z, **0/22** equal mean centre-z (was 22/22 centre).
+   - Rows recovered: Terminal 6→7 (`GROUND FLOOR LEVEL`), Hospital 7→8 (`Level 7A`, a mezzanine at
+     196.470 that had NO band between Level 6 @192.159 and Level 7 @199.814).
+   - Guard removal verified safe: it keyed on ROOMS, not on DB presence, so it never prevented
+     duplicates (Terminal already ships 6 same-name real rows per storey); those real rows carry
+     `center_z` NULL on every shipped DB so the consumer's `center_z IS NOT NULL` filter never sees
+     them. `stZ` only holds storeys past the >=3-wall gate, so no unwalked storey can be emitted.
+   - Regression: `witness_s50_cell_engine` bad=0 · `witness_s55_identity_vs_cell` 6/0 ·
+     `witness_stair_flight_assembly_merge` 4/0 · `witness_midair_zero` **10 pass/3 fail BOTH before
+     and after** (run on unmodified main to confirm) with judged numbers byte-identical — those 3
+     locks are item 2's re-baseline, not a regression.
+   - ⛔ **Still carrying the OLD datum:** the shipped `buildings/*_meta.db` and the baked
+     `buildings/patches/Terminal_meta.db.sql` (6 rows: 10.066/13.838/17.819/22.629/25.126/3.049, no
+     `GROUND FLOOR LEVEL`). This PR fixes the GENERATOR only — regenerating those is a DB-content
+     change and needs the patch + self-heal-loader flow.
+   - ⛔ **py/js lockstep diverged:** `scripts/compile_rooms.py:1232` (bug 1) + `:1267` (bug 2) and
+     the stale `build/room_walker.js:1169`/`:1253` still carry BOTH bugs. They stay in lockstep with
+     *each other*, so `build/witness_room_walker_parity.js` (which compares those two, not the
+     bim-ootb file) is unaffected today — but they should be mirrored, with a `ROOM_WALKER_V` bump.
 2. **Re-baseline `§W_D0` after 1** - the current 14 PASS sits on a datum that is uniformly ~2m high.
 3. **Write the sequence rule (§J.4)** - granularity of precedence, what may legitimately overlap,
    which relation carries it. Until it exists the 6,734 cannot be judged, and inventing a metric to
@@ -795,10 +823,12 @@ There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5
   viewer/tests/witness_day0_integrity.js`). It refuses to print GREEN because two claims judged an
   empty population — both Hospital, both honest unknowns, not hidden failures.
 - ✅ **0 of 718 `IfcColumn`** start before the slab/footing that bears them.
-- ⚠ **§K.4 — a defect in what shipped yesterday.** The injected storey datum is mean wall
-  CENTRE-z, 0.64–3.16 m above the floor, so `§STOREY_DATUM` assigns every element one level DOWN,
-  uniformly. The witness passes anyway because the offset is uniform. **Fix before trusting any
-  level-based number.**
+- ✅ **§K.4 FIXED 2026-08-27 (bim-ootb PR #1552)** — was: injected storey datum = mean wall
+  CENTRE-z, 0.64–3.16 m above the floor, so `§STOREY_DATUM` assigned every element one level DOWN,
+  uniformly (the witness passed anyway *because* the offset was uniform). Now mean wall BASE-z;
+  fleet 22/22 storeys match base-z, Terminal max error 3.072 → 0.511 m. **The CODE is fixed but the
+  SHIPPED DBs and baked patches still carry the old datum** — see §L item 1's two ⛔ sub-items
+  before trusting any level-based number read off a shipped DB.
 - ❓ **6,734 bearing-order violations / 106,027 pairs** — REPORTED, not judged. No rule exists
   saying what a correct sequence must satisfy beyond DAY 0 (§J.4). **Do not invent one to make the
   number mean something** — that is what produced §J.2's three retractions.
