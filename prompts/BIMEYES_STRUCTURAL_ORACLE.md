@@ -393,6 +393,48 @@ no election (S9)**. Judge is any-of: *at my start, is at least one thing I rest 
 - The `noSupportAnywhere` population (167 / 1483 / 4081) is excluded from the judge by definition.
   Hangers and orphans are untouched; only bar containment positions them.
 
+## S13. ⛔ WIRED INTO `CpmSchedule` AND MEASURED AGAINST THE USER'S OWN BAR (2026-08-26)
+User's acceptance bar, verbatim: *"the holy grail is not perfection yet but usability and editable
+correct start of ARCH, not stack issue and no MEP dangling before ARCH completes."*
+
+`bim-ootb` branch **`feat/support-set-e1`**. `cpm_schedule.js` `buildGraph`: `SUPPORT_SET=1`
+replaces the single `designatedSupport` E1 edge with **one edge per bearing-below contact**;
+`SUPPORT_FS=1` makes them finish-to-start. Default path unchanged. Probe:
+`scripts/probe_grail_criteria.js`.
+
+| | Duplex BASE→SET_FS | HHS BASE→SET_FS | Terminal BASE→SET_FS |
+|---|---|---|---|
+| midair (any-of) | 21 → **0** ✅ | 117 → **0** ✅ | 1195 → **0** ✅ |
+| **ARCH starts before its structure finishes** | 6/101 → **2** ✅ | 331/1422 → **111** ✅ | 466/1259 → **55** ✅ |
+| **MEP starts before what it rests on finishes** | 99/904 → **2** ✅ | 39/3393 → **27** ✅ | 3468/11850 → **1466** ✅ |
+| **band inversions** | 522 → **346** ✅ | 2949 → **1635** ✅ | 22757 → **17945** ✅ |
+| makespan days | 7.6 → 7.6 | 41.8 → **29.5** ✅ | 80.6 → 84.8 (+5%) |
+| **STACK max at one minute** | 15 → 12 ✅ | 11 → **255** ⛔ | 11 → **901** ⛔ |
+
+### Four of five grail criteria met; one hard regression
+- **Band inversions IMPROVE, on all three.** This is the number that killed the last three attempts
+  (`fix/support-pool-walls` went 0→74 on Terminal). Removing the election **reduces** them 21–41%.
+  The support relation and the band ladder were never in tension — the ELECTION was.
+- **FS beats SS on every criterion** (HHS ARCH_early 164 SS vs 111 FS). *"Nothing appears before what
+  it rests on has FINISHED"* is the right semantic, and it is the user's own sentence.
+- ⛔ **STACKING is the blocker.** 381 (HHS) / 2,277 (Terminal) elements in piles ≥20 at one instant.
+  Cause: with all-of edges many elements share one latest predecessor and land on the same minute;
+  the single elected edge used to spread them by accident. **This is `§TPL_ZERO_MINUTE` returning.**
+  Fix before merge — stagger inside the crew pass, not by jitter.
+
+### ⚠ One metric of mine is bad — do not use it
+`MEP_before_ARCH_complete` (measured against the LAST architecture element project-wide) rises
+1127 → 3392 on HHS. That metric demands global serialisation — MEP on level 1 waiting for
+architecture on level 3 — and the rise is an artifact of a SHORTER, more parallel schedule
+(41.8 → 29.5 days). **`MEP_early` is the metric that matches the concern**, and it improves.
+
+### Order from here
+1. Fix the stacking regression (`§TPL_ZERO_MINUTE` pattern), re-measure all five.
+2. Run the existing witness suite on `feat/support-set-e1` — S4's three reds must be re-checked
+   against this, since the election is now gone rather than guarded.
+3. Then the guard (§S8) becomes moot: with no election there is nothing to guard, and
+   `_designatedSupport` can be deleted from BOTH copies instead of mirrored forever (§S9).
+
 ## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
 `_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
 this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
