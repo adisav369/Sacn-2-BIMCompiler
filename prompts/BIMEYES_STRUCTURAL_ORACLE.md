@@ -62,7 +62,7 @@ but Terminal bandInversions 0→74, Clinic drops off the CELL path, Duplex zone-
 by improving a proxy while four consumers are fitted to its errors. **Do not chase Terminal's 74
 until S5 is answered** — that tunes the app to guess-v2.
 
-## S5. ⛔ THE ROOT CAUSE IS PROVENANCE, NOT PERCEPTION. START HERE.
+## S5. ⛔ PARTIALLY RETRACTED 2026-08-26 — see S7. Provenance is real, but it does NOT solve support.
 Three layers of discarded truth, all measured 2026-08-26:
 1. **Authored topology never read.** `tools/extract.py` reads `IfcRelAssociatesMaterial`,
    `IfcRelDefinesByType`, `IfcRelVoidsElement`/`FillsElement`, `IfcRelAggregates`, containment.
@@ -78,7 +78,54 @@ Three layers of discarded truth, all measured 2026-08-26:
    An AABB cannot express contact, bearing direction, or enclosure.
 
 **The renderer draws meshes. The judge computes over boxes. Two models, one screen.** That is the
-blindness — plumbing, not epistemics.
+blindness for CONTACT. But see S7: the support RELATION is not authored in IFC at all, so extraction
+cannot supply it. S5 items 1-3 remain true as facts; the conclusion drawn from them was wrong.
+
+---
+
+## S7. ⛔ POC RESULT — EXTRACTION DOES NOT SOLVE THE HELL. MEASURED, NOT ARGUED. (2026-08-26)
+`scripts/poc_ifc_support_provenance.py`, run on the traced Duplex wall's own source
+(`Ifc2x3_Duplex_Federated.ifc`, IFC2X3) plus `SampleHouse_ARC.ifc` and `Clinic.ifc`.
+
+**1. IFC has no vertical support relation. Any building, any schema.**
+```
+Duplex        IfcRelConnectsElements=82  PathElements=82  VERTICAL=0
+SampleHouse   IfcRelConnectsElements= 8  PathElements= 8  VERTICAL=0
+Clinic                                 0               0  VERTICAL=0
+Duplex connection types: ATEND/ATSTART 22 · ATPATH/ATSTART 21 · ATPATH/ATEND 16 ·
+                         ATSTART/ATEND 16 · ATEND/ATEND 4 · ATEND/ATPATH 2 · ATSTART/ATPATH 1
+```
+`IfcRelConnectsPathElements` is **planar wall-end joining only**. The traced wall has 5 authored
+connections — all to walls on its own level — and **the wall it stands on is NOT among them.**
+There is no `IfcRelSupports` in the schema. "Stands on" is never authored; it must be computed.
+
+**2. `LoadBearing` would elect the SAME wrong element.**
+```
+target  2O2Fr$t4X7Zf8NOew3FNhv  IfcWallStandardCase  LoadBearing=False  "Exterior - Brick on Block"
+below   2O2Fr$t4X7Zf8NOew3FK80  IfcWallStandardCase  LoadBearing=True   "Foundation - Concrete 417mm"
+elected 1hOSvn6df7F8_7GcBWlRqU  IfcSlab              LoadBearing=True   "Wood Joist with Subfloor"
+```
+A `LoadBearing` pool contains **both** the wall below and the slab above. With no direction guard the
+slab overhead still wins. **`LoadBearing` changes eligibility, not direction.** Coverage is 54.1% on
+Duplex anyway (35 true / 50 false / 72 absent of 157); 71.7% on SampleHouse.
+
+**3. The deepest finding: 4D is not asking a structural question.**
+The target wall is `LoadBearing=False` — a non-structural exterior partition — and it still must be
+built after the foundation wall beneath it. **"What carries load" and "what must be built first" are
+different questions.** Even perfect provenance answers the wrong one.
+
+### What S7 changes
+- ⛔ **The coverage probe (old step 1) is DONE and the answer is "absent."** Do not re-run it.
+- The fix is **geometric, not archival**: the direction guard on both election copies, then
+  ground-reachability (D1) over mesh contact (D2). Provenance is not on the critical path.
+- S5's items 1-3 stay true and stay worth fixing — `rel_fills_host` ABSENT ×8 is still a real
+  regression, and host/opening IS authored. It is just not the midair fix.
+- Whoever reasons about this next: **the temptation to reach for IFC metadata is now closed by
+  measurement.** The building never wrote down what holds what.
+
+---
+
+## S5-ORIGINAL (kept for the facts, conclusion superseded by S7)
 
 ## S6. The user's ENCLOSURE rule — measured, and it holds with one guard
 *"Midair is all OK as long as it is within walls, floor slab and a roof."* Probe:
@@ -125,7 +172,10 @@ closes the divergence disease — 4D_BAR_MODEL §9.4 (re-derived judge), §14.3 
 
 # ⛔ ORDER OF WORK
 
-1. **COVERAGE PROBE ON THE SOURCE IFCs — do this first, it is hours not weeks.**
+0. ~~COVERAGE PROBE ON THE SOURCE IFCs~~ — **DONE 2026-08-26, answer = ABSENT. See S7.**
+   Superseded text kept below for the method; do not re-run it.
+
+1. ~~COVERAGE PROBE ON THE SOURCE IFCs — do this first, it is hours not weeks.~~ (DONE, see S7)
    For every fleet IFC (locations: `MEMORY.md` → `reference_source_ifc_locations.md`), count
    `IfcRelConnectsElements` + `IfcRelConnectsPathElements` edges and the fraction of elements
    carrying `Pset_*.LoadBearing`. Three outcomes, all decisive:
