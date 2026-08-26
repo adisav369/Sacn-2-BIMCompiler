@@ -348,6 +348,51 @@ injection mechanism and the same "compile what IFC didn't author" doctrine, type
 the physics is a DAG. Keep the set (S9), root it at the ground datum (D1). Cycles get NAMED as data
 defects per `4D_BAR_MODEL.md` §5.1, never scheduled around.
 
+## S12. ⛔ THE INJECTED SUPPORT DAG — BUILT AND MEASURED. ZERO MIDAIR IS REACHABLE. (2026-08-26)
+`bim-ootb scripts/probe_support_dag.js`, branch `probe/support-dag`, base `origin/main` @ `7c8c599`.
+Support relation COMPILED from geometry (S7: IFC carries no "stands on"), **full set kept per element,
+no election (S9)**. Judge is any-of: *at my start, is at least one thing I rest on already started?*
+
+| floating (any-of judge) | Duplex | HHS | Terminal |
+|---|---|---|---|
+| base — `CpmSchedule`, one elected edge | 21 (intra 3 / cross 18) | 117 (38 / 79) | 1195 (158 / 1037) |
+| per-bar topo layering | 255 ⛔ | 777 ⛔ | 4189 ⛔ |
+| **ONE GLOBAL pass, full set, bar window as LOWER BOUND** | **0** | **0** | **0** |
+
+| cost | Duplex | HHS | Terminal |
+|---|---|---|---|
+| makespan days, base → global | 7.6 → 5.9 | 41.8 → 24.3 | 80.6 → 79.3 |
+| elements outside their OWN bar window | 0/1119 | 5/6839 | 10/48428 |
+| intra-bar support **cycles** | 0 | 0 | 0 |
+
+### What this settles
+1. **Intra-bar ordering by the DAG works perfectly — 3/38/158 → 0.** S10's intra-bar share is fully
+   solvable. Answered.
+2. **⛔ Doing it PER BAR is worse than doing nothing** (21→255, 117→777, 1195→4189). Redistributing
+   inside a bar breaks the cross-bar relations the template was already getting right (S10: 30–90%
+   of gravity crosses bars). **A bar-local optimisation cannot be correct** — this is the measured
+   refutation of "just position them inside their bar."
+3. **Zero midair is REACHABLE on real data at 48k elements.** This is the real finding. It
+   contradicts `4D_BAR_MODEL.md` §9.5's "design law" that midair and phase discipline trade at an
+   exchange rate — with the full set and the window as a LOWER BOUND rather than a redistribution
+   target, the exchange rate is **zero**.
+4. **Every intra-bar support subgraph is acyclic on all three buildings.** The recorded backwards-
+   support (Terminal 27, Hospital 38, HHS 35, Duplex 8) is a CROSS-bar phase-order problem, not an
+   intra-bar one.
+5. **The fix is not a new pass.** `CpmSchedule` already does a global forward pass. It is fed ONE
+   elected edge per node instead of the full set. **Feed it the set and the election disappears** —
+   with it, S2's direction bug, S3's pool question, the tie-break, and `des = -1`.
+
+### ⚠ What this does NOT prove — read before quoting
+- **`floating=0` is partly by construction.** The pass places each element after one of its supports
+  finishes, which is what the judge tests. What it genuinely proves is **satisfiability**: no
+  contradiction exists between the bar envelope and gravity. That was not known.
+- **Crews are NOT levelled.** The makespan improvement (41.8 → 24.3 on HHS) is mostly unlimited
+  crews, not a real gain. **The next measurement is what crew capping costs this schedule** — that
+  decides whether this is a scheduler or a feasibility proof.
+- The `noSupportAnywhere` population (167 / 1483 / 4081) is excluded from the judge by definition.
+  Hangers and orphans are untouched; only bar containment positions them.
+
 ## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
 `_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
 this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
