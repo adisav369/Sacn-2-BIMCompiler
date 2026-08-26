@@ -4,6 +4,26 @@
 > ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
+## ▶ NEW LANE 2026-08-26 — BIMEyes STRUCTURAL ORACLE (the 4D judge)
+
+`prompts/BIMEYES_STRUCTURAL_ORACLE.md` (S1–S14). Owns the JUDGE; `4D_BAR_MODEL.md` owns the
+SCHEDULER. Handed to the dev session for second opinion 2026-08-26.
+**Read §S14 FIRST — it withdraws §S13's headline as self-certifying.**
+Settled by measurement this session: IFC carries no vertical support relation (§S7, POC on the
+source IFCs) · 100% of played-timeline floating is manufactured by `_tmRescaleToTaskWindow` (§S8b)
+· intra-bar gravity is 10.2/28.9/**69.3**% (Duplex/HHS/Terminal) so bar separation alone cannot
+work (§S10) · removing the election REDUCES band inversions 21–41% (§S13) · the stacking fix
+already exists in `remapSolveToTasks:884`, which §13.1 marks "delete, zero risk" (§S14).
+bim-ootb branches: `probe/intrabar-share`, `probe/support-dag`, `feat/support-set-e1` (env-gated,
+default path untouched). PR #1545 (both probes) MERGED.
+⛔ Next is D1 — ONE reachability judge rooted at the ground datum. Until it exists every scheduler
+change produces two numbers and an argument.
+
+Also 2026-08-26: the Spatial Compilation paper is PUBLISHED at
+https://red1oon.github.io/BIMCompiler/SpatialCompilationPaper/ with a Provenance section
+(priority date 2026-03-30 04:48:48 +0800, tags `paper-spatial-compilation-v1`,
+`paper-first-published`, Wayback snapshot taken).
+
 ## ▶ NEXT TASK ON RESTART (rewritten 2026-08-24)
 
 **ERP T-0 (`prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md`) — 5 of 7 items closed this session.** Items
