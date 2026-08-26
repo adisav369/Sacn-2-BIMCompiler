@@ -1149,3 +1149,97 @@ A lesson that names the wrong mechanism is worse than no lesson — it gets foll
    Budget two new reds, one of them guarding movie-vs-bars. Delete them in the same commit.
 
 **Not open any more:** §15.1 (banner corrected above), §15.3 (retracted, §15.0).
+
+
+---
+
+# §16 — DEFECT 4: THE POOL OVERRIDE BEATS DIRECTION. A WALL IS TOLD IT HANGS FROM THE CEILING. (2026-08-26)
+
+Raised by the review session, **re-verified here by running it, not by reading it.** Probe:
+`probe_floating_guid_audit.js`, `ONLY=Duplex_extracted GUID='2O2Fr$t4X7Zf8NOew3FNhv'`, against
+`origin/main` @ `44f42dd`. Every number below is a `§FGA_*` line.
+
+## 16.1 The traced element — confirmed, exactly as reported
+`2O2Fr$t4X7Zf8NOew3FNhv` · `IfcWallStandardCase` "Basic Wall:Exterior - Brick on Block:138310" ·
+Architecture · Level 1 · `seq=5` · MASON · `z[-0.195 → 2.905]`. A ground-floor wall standing on a
+basement wall. Pure ARCH/STR — **no MEP anywhere in the causal chain**, unlike §14.2's duct elbow.
+
+```
+§FGA_JUDGE_CONTACTS n=36
+§FGA_JUDGE_SUPPORT  guid=1hOSvn6df7F8_7GcBWlRqU cls=IfcSlab bz=2.79 tz=3.10 dz=+2.99m  ◄ DESIGNATED
+   …the real wall below: 2O2Fr$t4X7Zf8NOew3FK80 IfcWallStandardCase z[-1.25,0.00] pool=FALSE, DAY 0 HR 6
+§FGA_JUDGE_TEST     support.s > self.s + 1 ?  FALSE     (clean pass)
+§FGA_SUBJECT_EYE    bearingPlaced:0 embeddedPlaced:0 carrierPlaced:12 → floatingToEye TRUE
+```
+**The wall's designated support is a slab three metres over its head.** It is modelled as hanging
+from the second-floor ceiling. And six `IfcFlowSegment` pipes at `z[-0.69…-0.45]` are classified
+**bearing-below** — the contact graph believes a wall can rest on a pipe.
+
+The mechanism, verified line by line:
+- `schedule_gate.js:1312` `supportPool(e) = e.seq <= 4 || (IfcSlab && seq>4) || IfcStairFlight`.
+  **No walls.** Every Architecture wall is invisible *as a support*.
+- `support_sweep.js:465` `if (poolJ >= 0) { bestJ = poolJ; bestCls = poolCls; }` — **no class guard.**
+  The cls-0 (bearing-below) winner is discarded for a cls-2 (carrier-above) pool member.
+- `cpm_schedule.js:193` `addEdge(des[i], i, SS, 1, 'e1')`. `SS` = *"T cannot start until S **starts**"*
+  (:9). One edge, start-to-start: 36 contacts collapse to one, and it never says "after it finishes".
+
+## 16.2 ⛔ THIS IS THE FOURTH DEFECT, AND THE RESCALE DELETION DOES NOT TOUCH IT
+`§FGA_JUDGE_TEST` is **false on the CPM timeline AND on the played `kernel_ops` timeline** — the
+designated slab starts *earlier* than the wall, so no comparison can flag it, at any stage.
+
+**Read §14.6 with this correction: "783 → 0 structurally" means the RESCALE defect goes to zero. It
+does NOT mean floating goes to zero.** §16 survives the deletion completely untouched. Four
+independent defects now, each producing `midair=0`:
+
+| # | defect | fixed by deleting the rescale? |
+|---|---|---|
+| 1 (§14.3) | judge runs before the last transform — 783 on HHS | **yes, structurally** |
+| 2 (§14.2) | `grounded` footprint-local, altitude-blind — duct elbow 7m up | no |
+| 3 (§14.2) | `des = -1` silently uncountable — 63 on HHS | no |
+| 4 (§16)   | pool override beats direction — a wall hangs from its ceiling | **no** |
+
+## 16.3 I MEASURED THE PROPOSED GUARD. IT IS RIGHT, AND IT IS BIGGER THAN "SMALLEST FIX".
+Proposed: `if (poolJ >= 0 && poolCls <= bestCls)` — a pool member may replace the winner only if it
+is at least as good a *direction*. Applied to the **judge only** and re-run:
+
+| | shipped | with guard |
+|---|---|---|
+| HHS `§CPM_DISPLAY midair` | **0** | **316** |
+| Duplex `§CPM_DISPLAY midair` | **0** | **88** |
+| HHS judge-vs-eye DELTA at DAY 0 HR 3 | 15 | 14 |
+| HHS `judgedOnPLAYEDtimes` | 783 | 886 |
+
+**That 0 → 316 is the measurement of how much the pool override is currently hiding.** It is the
+strongest single argument the guard is correct — and it is also the reason it cannot ship casually.
+
+### ⛔ TWO THINGS THE PROPOSAL MISSES
+1. **There are TWO copies of the override, and the proposal names one.**
+   `support_sweep.js:465` (**the judge**) and `cpm_schedule.js:159` (**the scheduler**, which builds
+   the E1 DAG). The 0 → 316 above is judge-side only — the scheduler still elected the ceiling. Patch
+   one and the two judges disagree by 316 elements: that is precisely the `§CPM_PARITY` drift
+   `probe_cpm_schedule.js` was written to catch (`_designatedSupport`'s own header says it "mirrors
+   cpm_schedule.js's designatedSupport EXACTLY … a diverging edit here fails that witness loudly").
+   **Both copies, one commit, or nothing.**
+2. **The guard rescues this wall partly by tie-break luck.** Among cls-0 candidates the score is
+   `-S.tz` — highest top wins. The basement wall tops at `0.00`; the pipes top at `-0.45`. The wall
+   wins **because it happens to be taller**, not because a pipe cannot bear a wall. Invert those two
+   numbers and the pipe is elected again. So the guard is **necessary and not sufficient**: the
+   review's own root cause #1 — *`supportPool` contains no walls, so a wall standing on a wall is
+   unrepresentable* — is untouched by it. Fixing the pool is the real repair; the guard stops the
+   worst symptom.
+
+## 16.4 RESUME — §16 slots in, it does not reorder §14.6
+§14.6's ordering stands: the rescale deletion is still first, because defect 1 is the only one it
+fixes and it fixes it structurally. §16 is **parallel work on the judge**, not a competitor:
+1. (unchanged) delete the rescale — defect 1 → 0.
+2. (unchanged) gate `_midairAudit` on `kernel_ops` times **+ fix the #1435 `census()` lock in the
+   same commit**.
+3. **NEW — §16.** Guard the pool override **in both copies**, then measure: expect the judge to go
+   loudly red (HHS 316, Duplex 88) and expect the scheduler to actually re-time those elements.
+   Then re-check §S26.2's own motivating number (Duplex 761-vs-1 physics-vs-phase contradictions) —
+   the guard partially un-restricts what §S26.2 restricted, and that is exactly the thing to measure
+   rather than assert.
+4. Then the pool itself: walls as support candidates. And `SS` → whether E1 should ever be `FS`.
+5. Defects 2 and 3 (§14.4) still open, 63 elements on HHS.
+
+**Do not quote `midair=0` from anywhere as evidence of anything. Four separate mechanisms produce it.**
