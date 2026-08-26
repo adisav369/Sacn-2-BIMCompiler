@@ -13,6 +13,14 @@
 
 **This ranks with the PRIME RULE. It is not advice and it is not scoped to geometry.**
 
+**0a. RE-READ THE SPEC BEFORE EACH THINKING PASS, not once at session start (user, 2026-08-27:
+*"Update the specs first, review each time u set out to think."*).** Reading `4D_MODEL_INTEGRITY.md`
+at startup and then working from memory produced THREE retractions in one session — every one of
+them an error that file already listed (§J.2). Before each new measurement or claim, re-open §E
+(the table of proxies measured wrong) and §I (the ownership table) and check what you are about to
+compute against them. **If the needle has not moved, stop and review the model, don't invent
+another metric** — a metric invented to fill a hole where a RULE should be is the square peg.
+
 **0. BEFORE you compute any 4D relation, read the OWNERSHIP TABLE — `prompts/4D_MODEL_INTEGRITY.md`
 §I.** It says which function owns each question (support, ground exemption, level, phase, duration,
 solve, audit, on-screen) and flags the three that have DUPLICATE, DISAGREEING implementations.

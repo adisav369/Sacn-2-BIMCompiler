@@ -538,3 +538,114 @@ bands unmerged"`, which reads like benign degradation and is not: it is the leve
 A relation belongs here the moment a **second** caller needs it. The shape to copy is
 `bar_model.js attachContacts` — take the computed relation as a **parameter**; never recompute it
 because the module boundary made it inconvenient to pass. Both §I.1 copies exist for that reason.
+
+---
+
+# §J SESSION 2026-08-27 — WHAT IS ZERO, WHAT WAS RETRACTED, AND THE ONE GAP THAT KEEPS PRODUCING FICTION
+
+## §J.0 ⛔ REVIEW THIS SPEC BEFORE EACH THINKING PASS — NOT ONCE AT SESSION START
+**USER RULING 2026-08-27: *"Update the specs first, review each time u set out to think."***
+
+Reading this file once and then working from memory is what produced §J.2's three retractions —
+all three are errors this file ALREADY listed, and it had been read that same morning. The rule is
+therefore not "read the spec at startup". It is: **before each new measurement or claim, re-open
+§E and §I and check the thing you are about to compute against them.** A proxy you are about to
+invent is almost certainly already in §E's table of proxies that were measured wrong.
+
+Corollary, the user's own words: ***"If the needle has not moved, then stop and review the model
+again and again. Dont put square pegs in round holes."*** A metric invented on the spot to fill a
+hole where a RULE should be is the square peg. Write the rule first.
+
+## §J.1 ✅ WHAT IS AT ZERO, AND HOW IT IS CHECKED
+Witness: **`bim-ootb viewer/tests/witness_day0_integrity.js`** (§W_D0), run off the persisted cache.
+Fleet verdict went **4 PASS / 9 FAIL / 3 INCONCLUSIVE → 14 PASS / 0 FAIL / 2 INCONCLUSIVE.**
+
+| claim | what it asserts | result |
+|---|---|---|
+| C1 BAND MODEL | bands used == storeys the IFC declares | PASS Duplex 4/4 · HHS 3/3 · Terminal 6/6 · Hospital INCONCLUSIVE |
+| C2 SUB FIRST | nothing starts before the Substructure it sits on finishes | PASS ×4 |
+| C3 DAY0 SUPPORT | nothing on screen is unheld — **split ORDER vs MODEL** | **ORDER = 0 on all four** |
+| C4 NO EARLY MEP | no MEP phase on DAY 0 | PASS ×4 |
+
+Plus, measured directly off the shipped contact graph: **of 718 `IfcColumn` that rest on a real
+`IfcSlab`/`IfcFooting`, ZERO start before that support finishes** (Duplex 0/0, HHS 0/221,
+Hospital 0/378, Terminal 0/119).
+
+**The two INCONCLUSIVE are honest unknowns, not hidden failures**, and the verdict refuses to print
+GREEN because of them: Hospital has no `spatial_structure` table (nothing to check bands against),
+and all 87 of its DAY-0 elements are seq-1 ground-bearing footings (nothing for C3 to judge).
+
+**Fixes that got there** (all on `feat/day0-unsupported-probe`, pushed):
+- **`§STOREY_DATUM`** — a level is a DECLARED datum, band *i* = `[datum_i, datum_i+1)`, element
+  assigned by its own BASE. Replaced nearest-median-Z-of-elements over a pool of raw labels
+  (unbounded, and the inference §PATHS NOT TO TAKE #7 forbids). Terminal **22 bands → 6**.
+  No declared storeys ⇒ unchanged, and the §-line says so.
+- **`tools/extract.py`** now writes `IfcBuildingStorey.Elevation` — it never did, which is why
+  `deriveStoreyMergeMap` has NEVER RUN on any shipped building (§I.3).
+- **`§TPL_LADDER_BRIDGE`** — the across_levels ladder now bridges past dropped phases, as
+  `_empty_phase_rule` already required for the within_level chain. Duplex's
+  `Superstructure @ Level 1` had been starting at h0.0 **in parallel with** `Substructure @ T/FDN`.
+- Three name overrides, each MEASURED fleet-wide before the pattern was written:
+  `foundation_wall_substructure` (Duplex 7, Hospital 28), `finish_floor_finishes` (Duplex 14),
+  `stair_member_architecture` (Duplex 4 of 4; **0 of 9,019** `IfcMember` elsewhere).
+- **`scripts/cache_4d_run.js`** — run the pipeline ONCE per building, persist `witness.log` +
+  `run.json`, key on the DB *and* the content of every input module. 119,568 elements read back in
+  **0.43 s**. Every probe reads the cache.
+
+## §J.2 ⛔ THREE RETRACTIONS IN ONE SESSION — ALL THREE ALREADY IN §E
+Recorded because the pattern matters more than any one of them.
+
+| I claimed | reality | §E row it violated |
+|---|---|---|
+| "column before slab by 506.3h", ~80 fleet type-order inversions | **fiction** — the type buckets were filled by the bbox rule, so Hospital's 33,324 `IfcPlate` metal deck and its `IfcCovering` ceilings landed in "slab". I was timing ceilings. Hospital L1 really has 3 `IfcSlab` @293.3h vs 254 `IfcColumn` @300.3h — correctly ordered | *a proxy will be wrong on some building* |
+| 92,397 bearing violations | counted every bearing PAIR as a constraint; any-of gives 6,734 | **row 4** — "an element needs ONE support, not all — 1961 → 95" |
+| ground exemption = `grounded[i]` | shipped rule is `seq !== 1` (`schedule_gate.js:1210`) | §I.2 — they answer different questions |
+
+**The common cause is not carelessness.** Each time, a number was needed and no RULE existed that
+said what the number should be, so a metric was invented on the spot. An invented metric is a proxy,
+and §E's whole point is that proxies here are wrong.
+
+## §J.3 ⛔ THERE ARE TWO MODELS AND ONLY ONE RUNS
+Verified 2026-08-27, not inferred:
+- **`bar_model.js` + `bar_needs.js` are DEAD CODE.** No HTML loads them, `sw.js` does not precache
+  them, and nothing outside their own three witnesses calls `BarModel.*`. PR **#1542 is MERGED**.
+- They already contain the answers this lane keeps re-deriving: the trade ladder, `phaseOrder`
+  ("EXTRACTED, never authored" — a phase's rank is the min sequence its own classes carry),
+  `§BAR_LEVEL_FROM_GEOMETRY` ("the IFC storey STRING is not the location … geometry wins"), and
+  `§BAR_LEVEL_BANDS`, the granularity **dial** — "a knob, not a defect".
+- **`schedule_author.js` is what actually runs**, and it is what §J.1 fixed.
+
+This is §G.2's failure repeating: *"the whole template path shipped, was witnessed, and was NEVER
+CALLED — green and dead at the same time."* It happened again, with the Bar model.
+⛔ **Establish which model is the target BEFORE touching either.** §J.1's `§STOREY_DATUM` and the
+Bar model's `correctLevelsByGeometry` are two independent answers to the same question, in two
+modules, one of which cannot run.
+
+## §J.4 ⛔ THE GAP THAT PRODUCES THE FICTION — THE ONE THING NOT IN THIS REPO
+**There is no stated rule for what a correct construction sequence must satisfy beyond DAY 0.**
+
+DAY 0 has four written claims, so DAY 0 could be driven to zero. Past DAY 0 there is nothing, so
+every measurement becomes a fresh modelling problem and §J.2 is the result.
+
+Concretely unknown, and therefore unjudgeable today: **6,734 bearing-order violations over 106,027
+judged pairs** (`scripts/knob_sweep.js`, any-of, off the shipped contact graph). That number is
+REPORTED, not called a defect and not called a residue — nothing says which it is.
+
+What the rule has to fix, in the terms it must be written in:
+1. **At what granularity does precedence bind** — element, trade, task, or level?
+2. **What may legitimately run concurrently** — when is an overlap a real crew working two fronts,
+   and when is it a defect?
+3. **Which relation carries it** — the bearing graph, the declared phase order, or the trade ladder?
+   (`§KNOB_SWEEP` shows the *type* order is an EXPRESSION of the support relation, not a separate
+   fact — a column stands on the slab because the slab bears it.)
+
+Until 1–3 are written here, every number past DAY 0 is a metric someone invented, and §J.2 says what
+those are worth. **Write the rule, then measure.** Not the other way round.
+
+## §J.5 THE SWEEP HARNESS EXISTS AND IS CHEAP
+`scripts/knob_sweep.js` — turn a variant into a dial, run the whole fleet at every setting, and look
+for a PLATEAU where the buildings agree, instead of hand-picking a constant (every hand-typed
+threshold in this lane has been measured wrong). Runs off the cache in seconds.
+Dials **not** swept, named rather than faked because each needs a pipeline re-run per setting:
+`§STOREY_DATUM` mode, the §S64 support top bound (§H.2a — 32.0 % of Hospital's bearing contacts),
+and `bar_model.js` `§BAR_LEVEL_BANDS` granularity.
