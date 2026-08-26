@@ -117,6 +117,7 @@ nav:
       - "Geometry as a Signed-Log Fold": ModellerKernelFold.md
 
   - Papers & Positioning:
+      - "Deterministic Spatial Compilation (academic paper)": SpatialCompilationPaper.md
       - "Construction Economy / ERP Wave": BIMERPPaper.md
       - "Enterprise Authentication (security)": EnterpriseAuthentication.md
       - "Strategic Positioning": StrategicIndustryPositioning.md
