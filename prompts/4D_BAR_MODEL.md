@@ -1,5 +1,11 @@
 # 4D BAR MODEL — SPEC
 
+> **⚠ READ `prompts/4D_MODEL_INTEGRITY.md` FIRST (opened 2026-08-26).** It carries the model
+> construct, the separation-of-concerns table every defect in this file violates, the
+> addressing/default-bucket findings, and the geometry rules — including the measurement that
+> §14.2's *63 uncountable elements* are really **10** once enclosure is applied. A witness
+> cannot rescue a poor construct; check the design there before adding a gate here.
+
 ## ⚠ DO NOT REMOVE
 **Scope:** replace the 4D scheduling chain with ONE model: a `Bar` base type, a composite tree, and a
 single resource-constrained pass. **Read the output log after every run — exit code is not evidence.**
