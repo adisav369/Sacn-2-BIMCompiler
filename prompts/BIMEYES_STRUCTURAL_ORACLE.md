@@ -435,6 +435,69 @@ architecture on level 3 — and the rise is an artifact of a SHORTER, more paral
 3. Then the guard (§S8) becomes moot: with no election there is nothing to guard, and
    `_designatedSupport` can be deleted from BOTH copies instead of mirrored forever (§S9).
 
+## S14. ⛔ STOP — §S13 IS PARTLY SELF-CERTIFYING, AND THE STACK FIX ALREADY EXISTS (2026-08-26)
+User: *"Why are we going in circles... didn't we already solve stacking with the 4D_template model?"*
+Re-examined. Three corrections, one of them to §S13's headline.
+
+### 14.1 ⛔ §S13's `midair → 0` IS SELF-CERTIFYING. The shipped judge says 3154.
+`§FGA_TIMELINE_MISMATCH`, HHS, `feat/support-set-e1`:
+```
+BASE     judgedOnCPMtimes=0     judgedOnPLAYEDtimes=783
+SET_FS   judgedOnCPMtimes=3154  judgedOnPLAYEDtimes=3492
+```
+§S13's table used the **any-of judge over bearing-below** — the *same relation the scheduler was
+built from*. A schedule built to satisfy a predicate satisfies it. **That is §9.4's error, committed
+here.** The independent instrument — the shipped `_designatedSupport` + `_midairAudit` — goes
+**0 → 3154** on the same data.
+
+That number is not automatically damning (the shipped judge elects a slab 3m overhead, §S2, so its
+verdict is suspect too). But **two judges now disagree by 3154 and neither is trusted.** No midair
+claim from §S13 may be quoted until they are reconciled. Reconciling them IS the lane (D1).
+
+### 14.2 The stacking regression is REAL — not a wrong-stage artifact
+Checked at both stages, HHS:
+```
+BASE    rawCPM max=11  piles>=20=0   |  kernel_ops(played) max=12   piles>=20=0
+SET_FS  rawCPM max=255 piles>=20=376 |  kernel_ops(played) max=139  piles>=20=315
+```
+The rescale halves it (255→139) and does not remove it. 315 elements still land in piles of ≥20 on
+the timeline that actually plays.
+
+### 14.3 ⛔ I MISLABELLED IT, AND THE FIX ALREADY EXISTS IN CODE SCHEDULED FOR DELETION
+`§TPL_ZERO_MINUTE` (§S65) is about **duration** — `resource:null`, missing `default_productivity`,
+CARPENTER/FINISHER productivity gaps, `IfcRoof` 8→6 — elements falling to the 120s floor and drawing
+a zero-WIDTH bar. **It is not about simultaneous starts.** Calling my regression "§TPL_ZERO_MINUTE
+returning" was wrong and is exactly the kind of stale-label reuse that makes a lane feel circular.
+
+**The thing that DID solve stacking is `remapSolveToTasks` (`schedule_author.js:884`)** — the
+template path's remap:
+```js
+if (span <= 0) {   // Degenerate: everything solved at one instant.
+  // Spread evenly, in a deterministic order, so the bar shows work progressing
+  // instead of one silent stack at its left edge.
+  var step = (wE - wS) / Math.max(1, ordered.length); ...
+}
+...
+if (ne <= ns) ne = ns + 1;   // never a zero-width element
+```
+**`4D_BAR_MODEL.md` §13.1 lists `remapSolveToTasks` as "DELETE NOW, no conditions — dead code, zero
+risk."** It is dead only because no production caller passes `opts.template` (verified). The circle
+is: the template solved stacking → the template was never wired → it was ruled dead → the election
+was removed → stacking returned → "fix it in the crew pass," i.e. rebuild what is about to be deleted.
+
+### 14.4 "Apply the template back at the end" — right instinct, ONE PART ONLY
+User, same turn. Correct, but take only **two clauses**, not the function:
+- ✅ the **degenerate spread** (`span <= 0` → even, deterministic order)
+- ✅ the **never-zero-width** clamp (`if (ne <= ns) ne = ns + 1`)
+- ⛔ **NOT the affine branch** (`scale = (wE - wS) / span`). That is `_tmRescaleToTaskWindow` in
+  another costume, and §S8b measured that the affine per-task remap manufactures **100%** of
+  played-timeline floating (104/783/2355 → 0 when removed). Re-applying it at the end re-imports
+  the defect §14.6 exists to delete.
+
+**So: extract the spreader, do not re-adopt the remap.** Before deleting `remapSolveToTasks`, lift
+those two clauses out — otherwise the deletion loses a real fix, which is what §13.1's "zero risk"
+grading missed a second time (§S15.5 caught the first).
+
 ## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
 `_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
 this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
