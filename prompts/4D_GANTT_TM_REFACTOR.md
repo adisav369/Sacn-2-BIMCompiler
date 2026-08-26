@@ -5008,7 +5008,12 @@ data-level, never touches the canvas), `scripts/probe_gantt_hospital_persist.js`
 - **`buildTaskIndex`'s stale-regen does NOT persist** — it runs on a plain page load and would put a
   252MB IDB write on every ordinary visit (§S70).
 
-## 5b. ✅ PERSISTENCE RE-PROVEN NUMERICALLY 2026-08-27 — AND W-PERS's BLIND SPOT NAMED
+## 5b. PERSISTENCE — day-1 ✅ RE-PROVEN NUMERICALLY, day-2 ✅ W-PERS BLIND SPOT CLOSED (PR #1554)
+> ⚠ **Read the day-2 addendum at the end of this section before citing the table below.** The
+> Duplex row still reproduces; **the Hospital row does NOT** — `probe_splitmode_persist_direct.js
+> Hospital` is RED at D6 as of 2026-08-27 (day-2 re-run). The §S78 key fix it was written to prove
+> is still holding (D5 green); what fails is the round trip itself, for a newly-found and separate
+> reason (a ~56MB `persistDb` reports `ok=true` and empties the store).
 **The day-1 question "does a bar edit persist and round-trip?" is ANSWERED: YES, both modes.**
 `scripts/probe_splitmode_persist_direct.js` (needs `PUPPETEER=/home/red1/bim-compiler/node_modules/puppeteer`
 and `SERVE_ROOT=/home/red1/bim-ootb` — the DBs are gitignored, so a worktree cannot serve them):
@@ -5024,25 +5029,95 @@ and `SERVE_ROOT=/home/red1/bim-ootb` — the DBs are gitignored, so a worktree c
 `db.export().buffer` → IndexedDB store `'dbs'` under `_cacheKeyFor(url)`. `4D_template.json` is a
 read-only INPUT (the declared programme) — an edit writing back into it would itself be a defect.
 
-### ⛔ FINDING — `witness_gantt_edit_persist.js` (W-PERS) cannot see any of the above
-Audited against PRIMAL LAW clause 4. **Reported, deliberately NOT patched** (out of the day-1 scope).
+### ✅ FIXED 2026-08-27 (day-2, PR #1554) — W-PERS's split-mode blind spot is CLOSED
+Audited against PRIMAL LAW clause 4 on day-1, **patched on day-2**. What the gap was:
 - **SCOPE-BLIND, by its own header:** *"no fixtures, no DB, no browser"* and *"The round trip itself
   … is proven live by the headless probe recorded in §S70, **not here**."* It brace-matches
   `time_machine.js` source to assert the CALL to `_tmPersistEdit` exists. A call that fires and
-  writes a slot nothing reads still passes.
-- **VACUOUS for split mode — the case that actually broke.** W-PERS-3c drives a hand-built
-  `{db, DB_URL:'buildings/Hospital_extracted.db'}` with **no `_dbPersistUrl`**, then asserts the url
-  handed to `persistDb` is `DB_URL`. **The file contains ZERO references to `_dbPersistUrl`**, while
-  shipped `_tmPersistEdit:6332` reads `app._dbPersistUrl || app.DB_URL` and §2(b) above calls
-  `A._dbPersistUrl` "the ONE source of truth". So W-PERS pins as CORRECT the exact behaviour
-  §S76/§S78 identified as the bug, and would stay green if `_dbPersistUrl` were deleted from
-  `_tmPersistEdit` tomorrow. Hospital is a split building; its fixture cannot exhibit the case.
-- **NO third verdict:** `assert()` (`:39`) only increments `pass`/`fail` — it can never print
-  INCONCLUSIVE, so "I judged nothing real" is indistinguishable from "I judged it and it was fine".
-- **Right fix when it is picked up:** EXTEND W-PERS to set `_dbPersistUrl` in its `drive()` fixture
-  and assert the split-mode routing, and have it call the probe's data-level round trip rather than
-  a second copy of it. Do NOT write a new witness — the round-trip check is already owned by
-  `probe_splitmode_persist_direct.js`.
+  writes a slot nothing reads still passes. **Unchanged by design** — see "shape chosen" below.
+- **VACUOUS for split mode — the case that actually broke.** W-PERS-3c drove a hand-built
+  `{db, DB_URL:'buildings/Hospital_extracted.db'}` with **no `_dbPersistUrl`**, then asserted the url
+  handed to `persistDb` is `DB_URL`. The file contained ZERO references to `_dbPersistUrl`, while
+  shipped `_tmPersistEdit:6332` reads `app._dbPersistUrl || app.DB_URL`.
+  **ROOT CAUSE (established, not guessed):** W-PERS was born in PR #1479 (§S70), when
+  `_tmPersistEdit` really *did* pass `APP.DB_URL` and nothing else — 3c was CORRECT then. PR #1494
+  (§S78) changed the line and **never touched the witness** (`git log --follow` on the witness lists
+  only `4ee5a7d` #1479 and `a515081` #1509 — not `408d9d1` #1494). Not a schema reason, not
+  deliberate: a feature PR that left its own gate behind.
+
+**RED-PROVED, the load-bearing evidence.** Simulated the pre-§S78 line verbatim from `408d9d1^`
+(`SA.persistDb(app.db, app.DB_URL, {})`) and ran BOTH witnesses against that same broken file:
+
+| witness | verdict on the pre-§S78 bug | exit |
+|---|---|---|
+| OLD (`origin/main`) | `pass=14 fail=0` → **"PASS — every Gantt edit path persists"** | 0 |
+| NEW (this PR) | `pass=17 fail=1` → **FAIL W-PERS-3f**, `got buildings/Hospital_extracted.db` | 1 |
+
+Restored the fix → `pass=18 fail=0 inconclusive=0`. So the old witness was *fully green on the bug
+it exists to catch*; the new one is not.
+
+**What was added** (`viewer/tests/witness_gantt_edit_persist.js`):
+- **W-PERS-3f** split mode: `persistDb` receives `APP._dbPersistUrl`, **not** `APP.DB_URL`.
+- **W-PERS-3g** split mode: still `APP.db` itself under that url (3b's §KRN_PERSIST_GUARD P0, split side).
+- **W-PERS-3h** legacy: a build with no `_dbPersistUrl` still falls back to `DB_URL` — the `||` is a
+  live branch, not dead code, and must not lose its persist entirely.
+- **W-PERS-5f RED CONTROL:** the two urls canonicalise to DIFFERENT cache keys
+  (`buildings/Hospital_meta.db` vs `buildings/Hospital_extracted.db`), so 3f is a real slot
+  difference rather than theatre.
+- **W-PERS-3c** now sets `_dbPersistUrl = DB_URL`, the shape `streaming.js:2485` really writes.
+- **The fixture is EXTRACTED, not invented (PRIME RULE).** The two `metaUrl` derivation statements
+  are lifted verbatim out of `streaming.js` (`:2199`/`:2202`) and executed, yielding
+  `buildings/Hospital_meta.db` — which matches the live app (`§S78_STATE
+  persistUrl=/buildings/Hospital_meta.db splitHasMeta=true`). Hard-coding the string would pin the
+  witness to a url shape the loader is free to stop producing.
+- **NO third verdict → FIXED.** `inconc()` joins `assert()`; if the extraction ever fails,
+  W-PERS-3f/3g/5f print `INCONCLUSIVE`, the summary prints
+  `INCONCLUSIVE — … this is not a PASS`, and it exits **2** (distinct from both 0 and 1).
+  Red-proved by renaming the derivation in `streaming.js`: `derivStmts=0` →
+  `pass=15 fail=0 inconclusive=2`, exit 2.
+
+**Shape chosen, and why (step 4 of the brief).** The witness does **not** invoke the probe. Different
+runtimes — W-PERS is a pure-node source/sandbox gate that runs in ~0.2s with no browser, the probe
+needs puppeteer, a static server and a 300s Hospital load. Wiring one into the other would make the
+fast gate un-runnable and would put a browser in a file whose header promises none. **Division of
+ownership, one verification each:** the probe owns the round trip (D6: write → IDB → reload → read
+back), W-PERS owns the **routing decision** the probe can only observe on the one building it was
+pointed at — *which url `_tmPersistEdit` chooses*. Both are now named in the witness header so the
+next session does not re-derive the split.
+
+### 🔴 NEW FINDING (day-2, NOT acted on — out of the assigned scope) — Hospital D6 no longer reproduces
+Re-running the probe today to confirm the precondition: **Duplex still passes 8/0. Hospital does
+NOT** — D0–D5 pass (the §S78 key fix is holding: `writeKey == readKeySplit ==
+buildings/Hospital_meta.db`), but **D6 dies** with `no such column: schedule_start`, because the
+reload re-fetched the pristine 24.4MB network `_meta.db` (`§CACHE_MISS_READ url=Hospital_meta.db`),
+whose `tasks` table still has the `start_date/finish_date` shape.
+**Measured mechanism** (scratchpad diagnostics, viewer's own `APP.openCacheDB()`):
+
+| step | `dbs` store contents |
+|---|---|
+| on load | `buildings/Hospital_meta.db=24.4MB`, `buildings/Hospital_positions.bin=1.4MB` |
+| after `persistDb` → **`ok=true`**, `§SCHED_PERSIST … size=55888KB`, **zero** `§SCHED_PERSIST_ERR` | **`[]` — EMPTY** |
+| after browser restart | **`[]` — EMPTY** |
+
+So a ~56MB persist **reports success and silently empties the entire object store**, destroying the
+24.4MB entry that was already there. Quota is not the stated cause (`§QUOTA available=10253MB
+used=13MB`); the profile is best-effort (`§PERSIST granted=false — cache is best-effort, browser may
+evict`), which is `scene.js:509`'s already-documented failure mode. Duplex (10MB) is unaffected —
+this is **size-related, not split-mode-related**, and it is NOT a §S78 regression.
+**Eviction is the LIKELY-WRONG explanation.** Re-ran the identical diagnostic with
+`persistent-storage` granted (`browser.defaultBrowserContext().overridePermissions(origin,
+['persistent-storage'])`) — **byte-identical outcome**: `ok=true`, `size=55888KB`, no
+`§SCHED_PERSIST_ERR`, store `[]` after the write and after restart. ⚠ Caveat for whoever picks this
+up: the override was applied but `navigator.storage.persisted()` was **not** re-asserted inside that
+run, so this is strong evidence against the best-effort-eviction hypothesis, **not** proof against
+it. Confirm `persisted()===true` first before ruling eviction out entirely.
+**Not this task's mandate; flagged, not chased.** However framed, `persistDb` returning `ok=true`
+and logging `§SCHED_PERSIST` with the correct key while the store is left EMPTY is itself a
+§CRISIS-class "the log says green, the data is gone" defect — and it is invisible to W-PERS by
+construction (W-PERS gates the routing decision; the round trip is the probe's claim D6). Nothing
+in this PR touches it. **`scripts/probe_splitmode_persist_direct.js Hospital` is currently RED at
+D6 — do not cite §5b's Hospital 8/0 row above as current; it was measured on day-1 and does not
+reproduce on day-2.**
 
 ## 6. Known-not-done (so it isn't re-discovered as a surprise)
 - **Coverage (§S72 gap 3, narrowed by §S77, still the big one):** most `§` tags and named functions in
