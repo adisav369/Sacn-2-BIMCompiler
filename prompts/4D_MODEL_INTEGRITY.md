@@ -39,7 +39,20 @@ this file's §A–§E, not in a new gate.
 
 ---
 
-## §A THE MODEL — one type, two rules
+## §A ⛔ SUPERSEDED 2026-08-27 (user decision) — THIS MODEL IS DEAD CODE, DO NOT WIRE AGAINST IT
+**Canonical model going forward: the TEMPLATE PATH — `schedule_author.js:425 instantiateTemplate(...)`**,
+an explicit edge-based task graph. §I already named it as the owner of "what is the task grid?" the
+day this table was built — it was never reconciled with the tree model below, which is why a later
+session (2026-08-27 review, §K) re-derived the same contradiction as if new and burned three fix
+cycles wiring edges into a model whose own text says "No edges emitted." Every past fix aimed at the
+tree below (incl. `bar_model.js buildTree()` and its consumers) was aimed at code that does not run.
+**Next work: rewrite this section to describe `instantiateTemplate()` as-built — task grid, edges,
+sequencing — not retrofit the tree onto it.** The invariants below (no election / no cycles / no
+edges emitted / no stacking) are the OLD model's properties; do not assume any of them hold for the
+template path without re-deriving from `schedule_author.js` + `schedule_gate.js` directly. Left
+in place, unedited, only as the historical record of what was designed vs. what was verified to run.
+
+## §A [SUPERSEDED — see banner above] THE MODEL — one type, two rules
 Reference implementation: **`poc4d/Poc4D.java`** (oracle) and **`poc4d/poc4d.js`** (port).
 `poc4d/parity.sh` gates them byte-identical. Run `java -cp . Poc4D coherent` — must be 0/0.
 
@@ -746,3 +759,43 @@ Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions a
 4. §10.3 #4 — Terminal midair 336 vs shipping 226, the only axis where the Bar model still loses.
 5. Only then re-baseline, and only then judge the 6,734 (§J.4) — which still has no rule to be
    judged against.
+
+---
+
+# §L ⛔ START HERE — SESSION HANDOFF 2026-08-27
+
+**Read §G.0 (regain context) → §I (ownership table) → §K (this review). Then §K.5 is the plan.**
+There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5 supersedes all of them.**
+
+## The one decision that gates everything
+**Which model is the target — `bar_model.js` (§A's tree, dead) or `schedule_author.js`
+(task graph with edges, live)?** §K.1. They are two answers to one question and only one runs.
+Do not do more scheduling work before this is settled; every fix so far has gone into the one the
+spec says is not the model.
+
+## State, honestly
+- ✅ **DAY 0 is at zero.** `§W_D0` **14 PASS / 0 FAIL / 2 INCONCLUSIVE** (`bim-ootb
+  viewer/tests/witness_day0_integrity.js`). It refuses to print GREEN because two claims judged an
+  empty population — both Hospital, both honest unknowns, not hidden failures.
+- ✅ **0 of 718 `IfcColumn`** start before the slab/footing that bears them.
+- ⚠ **§K.4 — a defect in what shipped yesterday.** The injected storey datum is mean wall
+  CENTRE-z, 0.64–3.16 m above the floor, so `§STOREY_DATUM` assigns every element one level DOWN,
+  uniformly. The witness passes anyway because the offset is uniform. **Fix before trusting any
+  level-based number.**
+- ❓ **6,734 bearing-order violations / 106,027 pairs** — REPORTED, not judged. No rule exists
+  saying what a correct sequence must satisfy beyond DAY 0 (§J.4). **Do not invent one to make the
+  number mean something** — that is what produced §J.2's three retractions.
+
+## Where the work is
+`bim-ootb` branch **`feat/day0-unsupported-probe`** (pushed): `witness_day0_integrity.js`,
+`cache_4d_run.js`, `knob_sweep.js`, `probe_day0_unsupported.js`, `probe_enclosure_geometry.js`,
+`§STOREY_DATUM`, `§TPL_LADDER_BRIDGE`, 3 name overrides, `buildings/patches/Duplex_extracted.db.sql`.
+`bim-compiler` **`fable/meshdb-livewire`**: this file, `CLAUDE.md` PRIMAL LAW + §I, `tools/extract.py`.
+
+## Two habits this session paid for — keep them
+1. **`node scripts/cache_4d_run.js`** runs the pipeline ONCE per building and persists
+   `witness.log` + `run.json`. 119,568 elements read back in **0.43 s**. Never re-run
+   `materializeZones` to answer a question a persisted run already answers, and **never wrap it to
+   silence `console.log`** — the shipped `§`-log is the evidence (PRIMAL LAW clause 3).
+2. **Re-read §E and §I before each new measurement**, not once at startup (§J.0). Three retractions
+   in one session were all errors already listed in this file, which had been read that morning.
