@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const RATES = path.join(os.homedir(), 'bim-ootb', 'viewer', 'rates');
+const RATES = process.env.RATES_DIR || path.join(os.homedir(), 'bim-ootb', 'viewer', 'rates');
 const TEMPLATE = JSON.parse(fs.readFileSync(path.join(RATES, '4D_template.json'), 'utf8'));
 // NOTE: sequence_rules.json is the MIRROR of rates.js's executed literal (rates.js says so, and
 // they drifted once — resynced 2026-08-13). A viewer-side port must read the EXECUTED table.

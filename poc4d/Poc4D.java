@@ -96,7 +96,9 @@ public class Poc4D {
   static double SHIFT_HOURS;
 
   static void loadShipped() throws IOException {
-    Path base = Paths.get(System.getProperty("user.home"), "bim-ootb", "viewer", "rates");
+    String env = System.getenv("RATES_DIR");
+    Path base = env != null ? Paths.get(env)
+        : Paths.get(System.getProperty("user.home"), "bim-ootb", "viewer", "rates");
     TEMPLATE = Json.o(Json.parse(Files.readString(base.resolve("4D_template.json"))));
     // NOTE: sequence_rules.json is the MIRROR of rates.js's executed literal (rates.js says so, and
     // they drifted once — resynced 2026-08-13). The JS port must read the EXECUTED table.
