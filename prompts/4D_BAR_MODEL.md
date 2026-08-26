@@ -1243,3 +1243,84 @@ fixes and it fixes it structurally. §16 is **parallel work on the judge**, not 
 5. Defects 2 and 3 (§14.4) still open, 63 elements on HHS.
 
 **Do not quote `midair=0` from anywhere as evidence of anything. Four separate mechanisms produce it.**
+
+
+---
+
+# §17 — THE POOL IS THE WRONG PREDICATE. MEASURED, AND IT BEATS THE GUARD. (2026-08-26)
+
+The review asked the right question — *"is `supportPool` the wrong predicate?"* — so I measured it
+instead of arguing it. Four pool variants × two election rules, judge `require`d from
+`support_sweep.js`, the guarded variant a **sed'd copy of that same file** (never a hand-written
+election — §10.1 rule 1). `origin/main` @ `44f42dd`.
+
+## 17.1 §S26.2's OWN NUMBERS — half reproduce EXACTLY, half do not reproduce at all
+`schedule_gate.js:1310`: *"support = anything below gives 4,706 bearing relations and 761
+physics-vs-phase contradictions; support = load-bearing classes gives 702 and 1."*
+
+```
+Duplex_extracted  n=1119
+  ALL contact pairs                = 19550
+  BEARING-BELOW pairs (anything)   =  4706   ◄ §S26.2's 4,706, EXACT
+  BEARING pairs, shipped pool      =   716   ◄ §3.1's 716, EXACT (the comment says 702 — stale by 14)
+  BEARING pairs, structural classes =  1807
+```
+So **"bearing relations" means all bearing-below CONTACT PAIRS**, not designated supports — worth
+knowing, because every other number in this lane counts designated supports (one per element).
+**The contradiction half does not reproduce.** Under the obvious reading (support's `seq` later than
+the element's) I get 2,170 / 8 on pairs and 152 / 16 on designated — never 761 / 1. ⛔ **Do not
+re-quote 761-vs-1 until someone finds the definition that produces it.** It is the number the pool
+is justified by, and it is currently unreproducible from the code as shipped.
+
+## 17.2 THE POOL VARIANTS, on designated supports
+`STRUCT = /^Ifc(Wall|Column|Beam|Slab|Footing|Pile|Member|StairFlight|Plate|Roof)/` — structure by
+CLASS, independent of the phase-sequence number. That is §S26.2's own phrase, "load-bearing
+classes", taken literally.
+
+| pool | Duplex bearing / contra / des=-1 | HHS bearing / contra / des=-1 |
+|---|---|---|
+| A none (anything below) | 945 / 152 / 12 | 5355 / 2066 / 53 |
+| **B shipped** (`seq<=4 ∪ slab ∪ stair`) | **348 / 16 / 28** | **3332 / 974 / 63** |
+| **C structural CLASS** | **789 / 31 / 27** | **3825 / 1299 / 56** |
+| D union (B ∪ C) | 789 / 31 / 27 | 3825 / 1299 / 56 |
+
+**`D === C`, exactly, on both buildings.** The `seq <= 4` filter contributes nothing the class filter
+does not already provide — its extra members never win an election. **It is replaceable, not merely
+supplementable.** That is the empirical form of the review's point: `seq <= 4` means *"scheduled in
+an early phase"*, not *"can carry weight"*, and nothing is lost by saying what was meant.
+
+The class pool **doubles real bearing supports** (Duplex 348 → 789, +127%; HHS 3332 → 3825, +15%)
+and also **reduces the uncountable population** (`des = -1`: Duplex 28 → 27, HHS 63 → 56), so it
+nibbles at §14.4 defect 3 as a side effect. Cost: contradictions roughly double (16 → 31, 974 →
+1299) — under *my* metric, which is not §S26.2's. **That trade must be re-measured with the real
+metric once §17.1 is resolved, not with mine and not by assertion.**
+
+## 17.3 ⛔ THE CLASS POOL FIXES §16's WALL. THE GUARD IS NOT NEEDED FOR IT.
+Same element, same graph, only the pool swapped:
+```
+B_shipped (seq<=4|slab|stair)  -> des = IfcSlab            1hOSvn6df7F8_7GcBWlRqU  dz = +2.99m  ABOVE  ✗
+C_structClass (by CLASS)       -> des = IfcWallStandardCase 2O2Fr$t4X7Zf8NOew3FK80  dz = -1.05m  BELOW  ✓
+```
+The basement wall is `IfcWallStandardCase seq=5` — **excluded from the shipped pool purely by its
+phase number.** Make the pool structural and it is eligible, wins cls-0 outright, and the ceiling
+never enters the election. **No guard, no tie-break luck, no override to reason about.**
+
+This reverses §16.3's recommendation. The guard treats the symptom — *"don't let a pool member
+outrank a better direction"* — and §16.3 already showed it works partly by accident (the wall wins
+on `-S.tz` because it happens to be taller than the pipes). The pool fix removes the cause: the
+right support was never in the running.
+
+## 17.4 AMENDED ORDER for §16.4 step 3
+Was: *guard both copies, then measure.* **Now: fix the pool first, then ask whether the guard is
+still needed.**
+1. Resolve §17.1 — find the definition that yields 761-vs-1, or mark the comment unreproducible.
+   The pool's entire justification rests on it.
+2. Change `supportPool` (`schedule_gate.js:1312`) to structural classes. **One definition, one
+   place** — `cpm_schedule.js:159` and `support_sweep.js:465` both call it, so unlike the guard this
+   fix has **no second copy to keep in parity**. That is a further argument for it over §16.3.
+3. Re-measure §S26.2's real metric, `midair` on both timelines, and the §16 wall.
+4. **Only then** decide on the direction guard. It may be redundant; if it is not, it lands in both
+   copies in one commit (§16.3).
+
+**Unchanged:** §14.6's ordering (rescale first), and the standing rule that `midair=0` proves
+nothing — four mechanisms produce it.
