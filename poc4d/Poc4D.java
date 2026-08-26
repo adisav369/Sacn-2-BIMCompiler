@@ -299,6 +299,42 @@ public class Poc4D {
     return defects;
   }
 
+  // ── PROJECTIONS. One walk, one visitor per consumer. WRITE-ONLY: no visitor reads another's
+  // output and none recomputes order. An edit moves a node and every projection is RECOMPUTED,
+  // never patched — which is why _tmRescaleToTaskWindow cannot come back.
+  interface Visitor { default void group(Group g, int depth) {} default void leaf(Leaf l, Group parent) {} }
+
+  static void fold(Node n, Group parent, int depth, Visitor v) {
+    if (n instanceof Leaf l) { v.leaf(l, parent); return; }
+    Group g = (Group) n; v.group(g, depth);
+    for (Node k : g.kids) fold(k, g, depth + 1, v);
+  }
+
+  /** OpsVisitor — leaves become kernel_ops ELEMENT_PLACE rows. The movie is exactly the leaves in
+   *  start order; there is no second timeline to reconcile against. */
+  static final class OpsVisitor implements Visitor {
+    final List<String> rows = new ArrayList<>();
+    public void leaf(Leaf l, Group parent) {
+      rows.add("{\"guid\": \"" + l.e.guid + "\", \"start_ts\": " + String.format("%.4f", l.s)
+        + ", \"end_ts\": " + String.format("%.4f", l.f) + ", \"task\": \"" + Json.esc(parent.id)
+        + "\", \"cls\": \"" + l.e.cls + "\", \"trade\": \"" + l.e.trade + "\"}");
+    }
+  }
+
+  /** TasksVisitor — composites become tasks; leaf->parent becomes task_elements. task_sequences is
+   *  NOT emitted: sibling order is the order, so an edge list would restate what the tree says. */
+  static final class TasksVisitor implements Visitor {
+    final List<String> tasks = new ArrayList<>(), links = new ArrayList<>();
+    public void group(Group g, int depth) {
+      tasks.add("{\"task_id\": \"" + Json.esc(g.id) + "\", \"kind\": \"" + g.kind
+        + "\", \"depth\": " + depth + ", \"start\": " + String.format("%.4f", g.start())
+        + ", \"finish\": " + String.format("%.4f", g.finish()) + ", \"lanes\": " + g.lanes + "}");
+    }
+    public void leaf(Leaf l, Group parent) {
+      links.add("{\"task_id\": \"" + Json.esc(parent.id) + "\", \"guid\": \"" + l.e.guid + "\"}");
+    }
+  }
+
   static void collect(Node n, List<Leaf> out) {
     if (n instanceof Leaf l) { out.add(l); return; }
     for (Node k : n.children()) collect(k, out);
@@ -319,6 +355,14 @@ public class Poc4D {
     for (int i = 0; i < defects.size(); i++)
       b.append(i > 0 ? ",\n    " : "\n    ").append('"').append(Json.esc(defects.get(i))).append('"');
     b.append(defects.isEmpty() ? "" : "\n  ").append("],\n");
+    OpsVisitor ops = new OpsVisitor(); fold(building, null, 0, ops);
+    TasksVisitor tv = new TasksVisitor(); fold(building, null, 0, tv);
+    b.append("  \"kernel_ops\": [\n    ").append(String.join(",\n    ", ops.rows)).append("\n  ],\n");
+    b.append("  \"tasks\": [\n    ").append(String.join(",\n    ", tv.tasks)).append("\n  ],\n");
+    b.append("  \"task_elements\": [\n    ").append(String.join(",\n    ", tv.links)).append("\n  ],\n");
+    b.append("  \"task_sequences\": \"derived — sibling order IS the order\",\n");
+    System.out.println("§POC_PROJECTIONS kernel_ops=" + ops.rows.size() + " tasks=" + tv.tasks.size()
+        + " task_elements=" + tv.links.size() + " task_sequences=0 (derived)");
     b.append("  \"tree\":\n");
     node(building, 2, b);
     b.append("\n}\n");

@@ -134,6 +134,39 @@ function cellNode(id, cell, report) {
   return g;
 }
 
+// ── PROJECTIONS. One walk, one visitor per consumer. WRITE-ONLY: no visitor reads another's
+// output and none recomputes order. An edit moves a node and every projection is RECOMPUTED,
+// never patched — which is why _tmRescaleToTaskWindow cannot come back.
+function fold(n, parent, depth, v) {
+  if (n instanceof Leaf) { if (v.leaf) v.leaf(n, parent); return; }
+  if (v.group) v.group(n, depth);
+  for (const k of n.kids) fold(k, n, depth + 1, v);
+}
+
+// OpsVisitor — leaves become kernel_ops ELEMENT_PLACE rows. The movie is exactly the leaves in
+// start order; there is no second timeline to reconcile against.
+function opsVisitor() {
+  const rows = [];
+  return { rows, leaf(l, parent) {
+    rows.push('{"guid": "' + l.e.guid + '", "start_ts": ' + l.s.toFixed(4) +
+      ', "end_ts": ' + l.f.toFixed(4) + ', "task": "' + esc(parent.id) +
+      '", "cls": "' + l.e.cls + '", "trade": "' + l.e.trade + '"}');
+  } };
+}
+
+// TasksVisitor — composites become tasks; leaf->parent becomes task_elements. task_sequences is
+// NOT emitted: sibling order is the order, so an edge list would restate what the tree says.
+function tasksVisitor() {
+  const tasks = [], links = [];
+  return { tasks, links,
+    group(g, depth) {
+      tasks.push('{"task_id": "' + esc(g.id) + '", "kind": "' + g.kind + '", "depth": ' + depth +
+        ', "start": ' + g.start().toFixed(4) + ', "finish": ' + g.finish().toFixed(4) +
+        ', "lanes": ' + g.lanes + '}');
+    },
+    leaf(l, parent) { links.push('{"task_id": "' + esc(parent.id) + '", "guid": "' + l.e.guid + '"}'); } };
+}
+
 function collect(n, out) {
   if (n instanceof Leaf) { out.push(n); return; }
   for (const k of n.children()) collect(k, out);
@@ -196,6 +229,14 @@ function emitJson(building, defects, coherent) {
   o.push('  "defects": [');
   defects.forEach((d, i) => o.push((i > 0 ? ',\n    ' : '\n    ') + '"' + esc(d) + '"'));
   o.push((defects.length ? '\n  ' : '') + '],\n');
+  const ops = opsVisitor(); fold(building, null, 0, ops);
+  const tv = tasksVisitor(); fold(building, null, 0, tv);
+  o.push('  "kernel_ops": [\n    ' + ops.rows.join(',\n    ') + '\n  ],\n');
+  o.push('  "tasks": [\n    ' + tv.tasks.join(',\n    ') + '\n  ],\n');
+  o.push('  "task_elements": [\n    ' + tv.links.join(',\n    ') + '\n  ],\n');
+  o.push('  "task_sequences": "derived — sibling order IS the order",\n');
+  console.log('§POC_PROJECTIONS kernel_ops=' + ops.rows.length + ' tasks=' + tv.tasks.length +
+    ' task_elements=' + tv.links.length + ' task_sequences=0 (derived)');
   o.push('  "tree":\n');
   nodeJson(building, 2, o);
   o.push('\n}\n');
