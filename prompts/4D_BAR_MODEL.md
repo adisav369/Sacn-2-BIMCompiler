@@ -1324,3 +1324,82 @@ still needed.**
 
 **Unchanged:** §14.6's ordering (rescale first), and the standing rule that `midair=0` proves
 nothing — four mechanisms produce it.
+
+
+---
+
+# §18 — §17 WAS WRONG. `seq<=4` IS NOT ARBITRARY, AND MY CLASS LIST WAS AN INVENTION. (2026-08-26)
+
+The review's third point — *"replacing `seq<=4` with a hand-written class list moves the
+arbitrariness from a phase number to a regex; a glass panel as a load-bearing support is a claim,
+not an extraction"* — is correct, and chasing it down reverses §17.4.
+
+## 18.1 THERE IS NO EXTRACTABLE LOAD-BEARING SIGNAL. Checked, not assumed.
+```
+sqlite3 Duplex_extracted.db ".schema elements_meta"
+  → guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building
+```
+**No `LoadBearing`, no Pset table, no property table** — in any shipped building DB. And
+`material_name` is not a material: HHS carries `≈ White` / `≈ Purple` / `≈ Cyan` — colour
+placeholders. **So "is this structural?" cannot be extracted from the data we ship today.** Every
+candidate predicate is a proxy. The only question is which proxy has a written derivation.
+
+## 18.2 ⛔ `seq <= 4` IS THE CLASSIFIER'S OUTPUT, NOT A PHASE NUMBER STANDING IN FOR STRUCTURE
+Measured — the classifier already splits `IfcPlate` into structure and cladding **by name**:
+```
+HHS_Office_Federated   IfcPlate seq=4 phase=Superstructure  n=  191   inShippedPool=TRUE
+                       IfcPlate seq=6 phase=Architecture    n=  438   inShippedPool=false
+                       IfcMember seq=3 phase=Superstructure n= 1450   inShippedPool=TRUE
+Terminal               IfcPlate seq=4 phase=Superstructure  n=33324   inShippedPool=TRUE
+```
+That split is `rates.js SEQUENCE_NAME_OVERRIDES.glazed_curtainwall_facade` (§4D_FACADE_ORDER,
+`pattern: glaz|glass|verglas|vitrage|vidrio|curtain|mullion` → `sequence: 6`), whose own comment
+says it exists because *"ifc_class alone cannot tell curtain-wall glazing/framing from genuinely
+structural plates/members (e.g. Terminal's Metal Deck IfcPlate, seq 4 is correct there) — name is
+the only extracted signal."*
+
+**So `seq <= 4` carries a cited derivation after all, and §17's regex would have deleted it.**
+`/^Ifc(…|Plate|…)/` puts all 438 HHS curtain-wall glass panels back in the pool as load-bearing
+supports — re-breaking a shipped, documented, deliberate fix. §17.2's *"the `seq<=4` filter
+contributes nothing"* was measured on `bearing / contradictions / des=-1` and those three numbers
+did not see it. **A metric that cannot see the thing you are about to delete is not a licence to
+delete it** — the §14.3 lesson (right judge, wrong stage) in a third costume.
+
+## 18.3 THE MINIMAL FIX, MEASURED — `E = shipped ∪ IfcWall*`
+§16's defect is specific: **a wall standing on a wall is unrepresentable**, because
+`IfcWallStandardCase seq=5` is excluded. Nothing in the codebase claims an architectural wall cannot
+carry load — unlike glazing, which §4D_FACADE_ORDER explicitly separates. So add exactly walls:
+
+| pool | Duplex bearing / contra / des=-1 | HHS bearing / contra / des=-1 |
+|---|---|---|
+| B shipped | 348 / 16 / 28 | 3332 / 974 / 63 |
+| C structural CLASS (§17, **rejected**) | 789 / 31 / 27 | 3825 / 1299 / 56 |
+| **E shipped ∪ `IfcWall*`** | **789 / 31 / 27** | **3761 / 1181 / 57** |
+
+**E === C on Duplex** (its `C\B` was only walls anyway) and on HHS **E captures 87% of C's bearing
+gain for 118 fewer contradictions** — because the 438 glass panels are the difference. And it fixes
+the traced element:
+```
+B_shipped                 -> des = IfcSlab             dz = +2.99m  ABOVE  ✗
+C_structClass (rejected)  -> des = IfcWallStandardCase dz = -1.05m  BELOW  ✓
+E_shipped+walls           -> des = IfcWallStandardCase dz = -1.05m  BELOW  ✓
+```
+E is still a proxy and still needs its own written justification — but it is **one class, one
+sentence, one measured defect**, not a ten-class regex nobody derived.
+
+## 18.4 THE CONTRADICTION RISE IS STILL UNJUDGED, AND IT IS NOW THE GATING QUESTION
+E moves HHS contradictions `974 → 1181` (+207). That is the number §S26.2 built the pool to
+suppress, and §17.1 established **the pool's justifying figure (761-vs-1) does not reproduce.** So:
+1. **Resolve §17.1 first.** Either 761-vs-1 reproduces under a stated definition, or §S26.2's
+   conclusion is recorded as having no reproducible basis. **Do not change the pool before this** —
+   the rise from 974 → 1181 cannot be judged against a number nobody can recompute.
+2. Then decide whether the rise is a defect or a disclosure. Bar spec §5.1 (*"cycles are data
+   defects — name them, never schedule around them"*) argues a rise can be correct: it surfaces bad
+   classification instead of hiding it. **That is a judgment, and it has not been made.**
+3. Then `E`, not `C`. And record its one-sentence justification in `supportPool`'s own comment.
+
+## 18.5 AMENDS §17.4
+~~"Change `supportPool` to structural classes."~~ **Retracted.** Replaced by §18.3's `E`, gated on
+§18.4 step 1. §17.1 (the unreproducible 761-vs-1), §17.2's table, and §17.3's demonstration that the
+pool — not the override — is the lever all stand unchanged. §16.3's direction guard stays deferred:
+decide it after `E`, since `E` may make it redundant.
