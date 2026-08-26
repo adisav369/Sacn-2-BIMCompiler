@@ -301,7 +301,14 @@ two silent no-op bugs before a single number could be trusted. Do not defend any
 - Their lead, not yet chased: *"everything was going fine until the gantt editor"*, and
   *"u not even creating any new geometry, just playback"*.
 
-## G.2 WHAT IS DONE (bim-ootb PR #1548, branch feat/arch-envelope-closeup)
+## G.2 WHAT IS DONE
+**bim-ootb PR #1548 — MERGED** (squash, 2026-08-26 11:58Z): ARCH split, `§TPL_WIRED`,
+`witness_4d_template_reached`, the probes, the ZDA re-lock.
+**bim-ootb PR #1549 — OPEN**: `§TPL_LAYER_ORDER` + `§TPL_LAYER_SELFCHECK`. ⚠ It exists as a separate
+PR because #1548 was SQUASH-merged and this work landed after, which orphans it on the old branch —
+§10.5's exact pattern. **Start any follow-up off fresh `origin/main`, never off
+`feat/arch-envelope-closeup`.**
+
 - Architecture split into **Envelope (5-6)** and **Closeup (8)**; bands contiguous, sequence 8 was free.
 - **All four production call sites now reach the template** (`§TPL_WIRED`); `witness_4d_template_reached`
   gates it, 6/0. It was dead code shipped 2026-08-25 and never called.
