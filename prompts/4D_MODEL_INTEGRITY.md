@@ -441,3 +441,100 @@ their source. It is now committed (`f48cf56`).
 4. Duplex is **vacuous** for this metric — it proves nothing either way today.
 
 **Do not open with a summary of this file. Open with a number.**
+
+---
+
+# §I OWNERSHIP TABLE — WHO OWNS EACH RELATION (built 2026-08-27, from the code)
+
+**Why this exists.** The single most expensive failure in this lane is re-deriving a relation the
+codebase already owns — §G.0 counts four times in one session, and a fifth happened the day after
+(the ground exemption re-derived as `grounded[i]` when the shipped rule is `seq !== 1`). The cause
+is not carelessness, it is that **nothing said who owns what**. This table says it.
+
+**How to use it: find your question, call the owner, do not write a second copy.** If the answer you
+need is not in this table, that is a finding — add the row rather than inventing the relation inline.
+
+Paths are `~/bim-ootb/viewer/` unless stated. Line numbers are `origin/main` @ `6b12783`.
+
+| the question | OWNER — call this | never |
+|---|---|---|
+| **does S support T?** (bearing-below ∪ carrier-above ∪ embedded) | `support_sweep.js:384` `_contactGraph(items)` → `{contacts, grounded, orphans, ok}` | write a bbox/Z-band test inline. ⚠ **2 more copies exist — see §I.1** |
+| **does T rest on soil?** (ground exemption) | `schedule_gate.js:1210` — `T.seq !== 1`. Substructure legitimately rests on unmodeled soil | use `grounded[i]` for this. It is **footprint-local** and answers a *different* question — see §I.2 |
+| **which ONE thing supports T?** | `support_sweep.js:432` `_designatedSupport(items, G)` | elect a support yourself. §A: the election is the defect |
+| **what phase/trade is this element?** | `schedule_author.js` `matchNameOverride()` → `matchRule()`, tables in **`rates.js`** | read `rates/sequence_rules.json` — it is a MIRROR, never executed (§G.0) |
+| **how long does it take?** | `schedule_author.js:78` `_installSecs(cls, rule, laborRates, realQty, lengthRatio)` | hand-roll it. `time_machine.js:4494` `getInstallSecs` already delegates here; its local fallback is documented as a divergence risk |
+| **what is the task grid?** | `schedule_author.js:425` `instantiateTemplate(...)` from **`rates/4D_template.json`** | derive phases from what the elements did. §B: an envelope cannot constrain what drew it |
+| **when does each element happen?** | `schedule_gate.js:421` `computeSchedule(...)`, then `cpm_schedule.js:796` `run(...)` | re-solve. The template path ends at `schedule_author.js:884` `remapSolveToTasks` |
+| **where inside its task?** | `schedule_author.js:884` `remapSolveToTasks(solve, tasks, startISO)` | ⚠ a 4th arg `layerOf` exists only on unmerged `fix/tpl-layer-order` — see §H.3 |
+| **what level is it on?** | `schedule_gate.js:404` `collapsePhase(storey)` → `:338` `deriveBandRanks(...)` | ⚠ **this is the broken one — see §I.3.** Do not build on it without reading that section |
+| **are two storey names one floor?** | `schedule_gate.js:382` `deriveStoreyMergeMap(spatialStructure)` | ⚠ **has never once run on any shipped building — §I.3** |
+| **is this slab ground-bearing?** | `schedule_gate.js:201` `groundworkSlabs(els)`, one shared definition | reclassify slabs inline in a recipe |
+| **is anything floating?** | `support_sweep.js:500` `_midairAudit(items)` (movie) · `schedule_gate.js:1122` `auditFloating(...)` (gate) | ⚠ these two disagree on the support top bound — §I.1 |
+| **is an edit legal?** (🔓→🔒) | `verifyGanttIntegrity()` → `_midairAudit` | re-score with your own physics |
+| **is it on screen at cursor?** | `time_machine.js:169` — `placed` = `start_ts <= cursor && end_ts <= cursor`; `frontier` = `start_ts <= cursor < end_ts` | invent a visibility rule. A probe using `s <= cursor` is counting placed **+** frontier |
+| **what did the run actually say?** | the persisted `witness.log` — `bim-ootb scripts/cache_4d_run.js` | re-run `materializeZones`, and **never** wrap it to silence `console.log` (PRIMAL LAW clause 3) |
+
+## §I.1 ⛔ "S supports T" HAS THREE IMPLEMENTATIONS AND THEY DISAGREE
+Verified 2026-08-27, not inferred — all three carry the same comment text, so they were copied:
+
+| # | where | upper bound on the support |
+|---|---|---|
+| 1 | `support_sweep.js:410` — **the owner** | `S.bz < T.bz - EPS && S.tz >= T.bz - GAP` — **none** |
+| 2 | `cpm_schedule.js:81` — a full independent copy, *not* a delegation (`function contactGraph` at `:54` re-implements the grid, the cells, the clauses) | **none** |
+| 3 | `schedule_gate.js:1195` `auditFloating` wall pool (§S64) | **`S.top_z <= T.base_z + GAP`** |
+
+Copy 3 got the bound because without it "a wall carries a promoted slab AT ITS TOP, never one
+embedded metres below its crown" — 73 fleet-wide false verdicts. Copies 1 and 2 never got it.
+**MEASURED consequence (§H.2a): 32.0 % of Hospital's in-scope bearing contacts (941/2944) are
+"supports" whose top sits above the base they carry.** `cpm_schedule.js`'s copy is the one the
+solve runs on, so this is not academic.
+`bar_model.js:345` `attachContacts(leaves, contacts, grounded)` is **not** a fourth copy — it is a
+consumer, it takes the graph as a parameter. That is the correct shape; the other two should be it.
+
+## §I.2 `grounded[i]` AND `seq === 1` ARE DIFFERENT QUESTIONS
+`support_sweep.js:417` — `grounded[i] = (lowest < T.bz - GAP) ? 0 : 1`, where `lowest` is the min
+`bz` of everything overlapping T in XY. It means **"nothing is beneath me in my own column"**.
+- ✅ Correct for: *is this element resting directly on soil in its footprint?*
+- ❌ Wrong for: *is this element allowed to be unsupported?* — that is `seq === 1`.
+
+The gap between them is real and measured: Duplex's 2 `Floor:150mm Exterior Slab on Grade` (bz
+−0.137) sit over an `IfcFooting` whose top is **1.113 m below** them (fill in between). Something
+*is* beneath them, so `grounded = 0`; nothing *touches* them, so no bearing contact. Only
+`seq === 1` exempts them, and `rates.js` §SLAB_ON_GRADE_RECLASS exists to give them that seq.
+
+## §I.3 ⛔ THE LEVEL RELATION IS THE ONE THAT IS ACTUALLY BROKEN
+This row has no trustworthy owner, and it is the root of the DAY-0 defects in §H/§W_D0.
+
+**`elements_meta.storey` is mostly absent** (measured 2026-08-27, fleet-wide):
+
+| building | storey NULL/Unknown | declared `IfcBuildingStorey` | bands the schedule uses |
+|---|---|---|---|
+| Duplex | **86.0 %** (1026/1193) | *no `spatial_structure` table* | 4 |
+| Terminal | **69.9 %** (33848/48428) | **6** | **22** |
+| HHS_Office_Federated | 30.8 % | 3 | 4 |
+| Hospital | 15.9 % | *no `spatial_structure` table* | 8 |
+
+So `collapsePhase`/`deriveBandRanks` are running on a **median-Z inference for 70 % of Terminal**.
+Result: the IFC declares 6 storeys, the schedule invents 22, and `06 ROOF LEVEL` — declared by
+**10** elements — collects **10,950**. Three naming systems coexist in one federated model: Malay
+`Aras *`, English `0N … FLOOR LEVEL`, and `Ceiling Level *` reference planes.
+
+**`deriveStoreyMergeMap` — the function whose whole job is to collapse those — has NEVER RUN.**
+It reads `spatial_structure.elevation`; **0 of 4 shipped DBs have that column** (Duplex and Hospital
+have no such table at all). Its failure prints as `§S18_STOREY_MERGE_FAIL … "no elevation data,
+bands unmerged"`, which reads like benign degradation and is not: it is the level model being wrong.
+⚠ **A log line that understates is the same defect as one that lies.**
+
+**What has been ruled out, so nobody re-walks it:**
+- `bim-compiler scripts/normalize_storey.py` — run on a Terminal copy it renames 5 `Ceiling Level N`
+  bands to `Level N` and reports **`storey rows merged: 0`**; 23 distinct in, 23 out. Does not close it.
+- **Room injection does not carry better storey data.** `TermRooms_extracted.db` and
+  `Terminal_meta.db` both hold **byte-identical** coverage: 33,848 Unknown, 22 names.
+- The datum IS recoverable for 2 of 4: `spatial_structure.center_z` is populated for Terminal (6
+  storeys, 17.9–39.8 m) and HHS (3), with `size_z = 0` — a placement point, so `center_z` *is* the
+  elevation. `deriveStoreyMergeMap` looks for a column named `elevation` and never sees it.
+
+## §I.4 HOW TO ADD A ROW
+A relation belongs here the moment a **second** caller needs it. The shape to copy is
+`bar_model.js attachContacts` — take the computed relation as a **parameter**; never recompute it
+because the module boundary made it inconvenient to pass. Both §I.1 copies exist for that reason.

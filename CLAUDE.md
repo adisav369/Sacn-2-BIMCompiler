@@ -13,6 +13,12 @@
 
 **This ranks with the PRIME RULE. It is not advice and it is not scoped to geometry.**
 
+**0. BEFORE you compute any 4D relation, read the OWNERSHIP TABLE — `prompts/4D_MODEL_INTEGRITY.md`
+§I.** It says which function owns each question (support, ground exemption, level, phase, duration,
+solve, audit, on-screen) and flags the three that have DUPLICATE, DISAGREEING implementations.
+Re-deriving an owned relation is this lane's single most expensive recurring defect — five times in
+two sessions. Find your question in the table and call the owner; if it is not there, add the row.
+
 **1. The user's eyes are never the test instrument.** Never ask them to look, open, scroll, click,
 confirm "does this look right", or report what they see. Never offer a screenshot as evidence.
 If a claim cannot be stated as a `§`-tagged value a witness asserts, the claim is not ready — say
