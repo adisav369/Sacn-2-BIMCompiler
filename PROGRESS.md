@@ -1,5 +1,34 @@
 # PROGRESS — Current Development State
 
+## Current State — 2026-08-27 (4D MODEL INTEGRITY)
+**DAY-0 integrity is at ZERO.** `§W_D0` (`bim-ootb viewer/tests/witness_day0_integrity.js`)
+**14 PASS / 0 FAIL / 2 INCONCLUSIVE**, from 4/9/3. It refuses to print GREEN: two claims judged an
+empty population (both Hospital — no `spatial_structure`, and 87 DAY-0 elements all seq-1 exempt).
+Measured directly: **0 of 718 `IfcColumn`** start before the slab/footing that bears them.
+
+**⚖ USER RULING 2026-08-27 — canonical model is the TEMPLATE PATH (`instantiateTemplate`).**
+`bar_model.js`/`bar_needs.js` are dead code and NOT the target (PR #1542 merged, nothing loads them).
+`4D_BAR_MODEL.md` §10.3 items 1–4 are therefore no longer the plan; item 5 stands.
+
+**Shipped:** bim-ootb **#1550 MERGED** (probes, cache, witness) · **#1551 OPEN**
+(`§STOREY_DATUM` Terminal 22 bands→6, `§TPL_LADDER_BRIDGE`, 3 measured name overrides, Duplex datum
+patch, `knob_sweep.js`). bim-compiler `fable/meshdb-livewire`: `4D_MODEL_INTEGRITY.md` §H–§L,
+`CLAUDE.md` PRIMAL LAW + ownership table, `tools/extract.py` writes `IfcBuildingStorey.Elevation`.
+
+**⚠ NEXT, in order (`4D_MODEL_INTEGRITY.md` §L):**
+1. `room_walker.js:1191` must write the FLOOR, not mean wall centre-z (a wall's base is
+   `w[2] - w[5]/2`), and `:1353` must emit a storey row for every storey walked. The injected datum
+   is 0.64–3.16m high, so **every element is banded one level DOWN** — uniformly, which is why the
+   witness passes anyway. Fix before trusting any level-based number.
+2. Re-baseline `§W_D0` against the corrected datum.
+3. Write the sequence rule (§J.4) — granularity, legitimate overlap, which relation carries it.
+   6,734 bearing-order violations / 106,027 pairs are REPORTED and cannot be judged without it.
+
+**Habits that paid:** `scripts/cache_4d_run.js` runs the pipeline once per building and persists
+the `§`-log + run (119,568 elements read back in 0.43s) — never re-run `materializeZones`, never
+wrap it to silence `console.log`. Re-read §E/§I before each measurement, not once at startup:
+three retractions this session were all errors those sections already listed.
+
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
 > ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
