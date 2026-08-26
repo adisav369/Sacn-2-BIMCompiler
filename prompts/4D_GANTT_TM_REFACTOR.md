@@ -5008,6 +5008,42 @@ data-level, never touches the canvas), `scripts/probe_gantt_hospital_persist.js`
 - **`buildTaskIndex`'s stale-regen does NOT persist** — it runs on a plain page load and would put a
   252MB IDB write on every ordinary visit (§S70).
 
+## 5b. ✅ PERSISTENCE RE-PROVEN NUMERICALLY 2026-08-27 — AND W-PERS's BLIND SPOT NAMED
+**The day-1 question "does a bar edit persist and round-trip?" is ANSWERED: YES, both modes.**
+`scripts/probe_splitmode_persist_direct.js` (needs `PUPPETEER=/home/red1/bim-compiler/node_modules/puppeteer`
+and `SERVE_ROOT=/home/red1/bim-ootb` — the DBs are gitignored, so a worktree cannot serve them):
+
+| building | mode | `_dbPersistUrl` | write key == reload read key | `TASK_ROOT.schedule_start` before → after reload | verdict |
+|---|---|---|---|---|---|
+| Duplex | whole-db | `/buildings/Duplex_extracted.db` | `buildings/Duplex_extracted.db` ✅ | `2026-08-26` → **`2026-12-25`** (+121 d) | 8/0, 0 page errors |
+| Hospital | **split** | `/buildings/Hospital_meta.db` | `buildings/Hospital_meta.db` ✅ | `2026-08-26` → **`2026-12-25`** (+121 d) | 8/0, 0 page errors |
+
+`§SCHED_PERSIST` wrote 10,196 KB / 56,432 KB respectively; the reload's `§CACHE_HIT` names
+`Duplex_extracted.db` / **`Hospital_meta.db`** — so §S76/§S78's split-mode key fix is holding.
+**There is NO JSON file in this path.** `persistDb` (`schedule_author.js:2430`) does
+`db.export().buffer` → IndexedDB store `'dbs'` under `_cacheKeyFor(url)`. `4D_template.json` is a
+read-only INPUT (the declared programme) — an edit writing back into it would itself be a defect.
+
+### ⛔ FINDING — `witness_gantt_edit_persist.js` (W-PERS) cannot see any of the above
+Audited against PRIMAL LAW clause 4. **Reported, deliberately NOT patched** (out of the day-1 scope).
+- **SCOPE-BLIND, by its own header:** *"no fixtures, no DB, no browser"* and *"The round trip itself
+  … is proven live by the headless probe recorded in §S70, **not here**."* It brace-matches
+  `time_machine.js` source to assert the CALL to `_tmPersistEdit` exists. A call that fires and
+  writes a slot nothing reads still passes.
+- **VACUOUS for split mode — the case that actually broke.** W-PERS-3c drives a hand-built
+  `{db, DB_URL:'buildings/Hospital_extracted.db'}` with **no `_dbPersistUrl`**, then asserts the url
+  handed to `persistDb` is `DB_URL`. **The file contains ZERO references to `_dbPersistUrl`**, while
+  shipped `_tmPersistEdit:6332` reads `app._dbPersistUrl || app.DB_URL` and §2(b) above calls
+  `A._dbPersistUrl` "the ONE source of truth". So W-PERS pins as CORRECT the exact behaviour
+  §S76/§S78 identified as the bug, and would stay green if `_dbPersistUrl` were deleted from
+  `_tmPersistEdit` tomorrow. Hospital is a split building; its fixture cannot exhibit the case.
+- **NO third verdict:** `assert()` (`:39`) only increments `pass`/`fail` — it can never print
+  INCONCLUSIVE, so "I judged nothing real" is indistinguishable from "I judged it and it was fine".
+- **Right fix when it is picked up:** EXTEND W-PERS to set `_dbPersistUrl` in its `drive()` fixture
+  and assert the split-mode routing, and have it call the probe's data-level round trip rather than
+  a second copy of it. Do NOT write a new witness — the round-trip check is already owned by
+  `probe_splitmode_persist_direct.js`.
+
 ## 6. Known-not-done (so it isn't re-discovered as a surprise)
 - **Coverage (§S72 gap 3, narrowed by §S77, still the big one):** most `§` tags and named functions in
   `time_machine.js` are referenced by no test. The refusal cluster is live-fired now; the rest is not.
