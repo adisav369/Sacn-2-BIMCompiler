@@ -774,6 +774,14 @@ when. Until that is done, no midair number from anyone means anything.
 10. **Wiring finds what witnesses cannot** — `require is not defined`, and day-rounding putting 295
     elements outside their own bar. Both invisible to a green suite.
 11. **Check the user's log for your own `§` tag before believing a screenshot is about your work.**
+12. **A NULL RESULT IS ONLY AS STRONG AS THE METRIC'S ABILITY TO SEE THE EFFECT** (§18.6 — the third
+    costume of #2). Before concluding "X contributes nothing", state what a contribution would have
+    looked like *in the number you are reading*. §17.2 measured "the `seq<=4` filter contributes
+    nothing" on bearing/contradictions/`des=-1` — three metrics structurally blind to glazing — and
+    nearly deleted §4D_FACADE_ORDER on the strength of it.
+13. **Deterministic ≠ true. A witness proves what it asserts, not what is real** (§18.7). `midair=0`
+    was reproducible for months while FOUR mechanisms produced it. Logging frees you from the
+    screenshot; it cannot validate the predicate being measured.
 
 ## ⛔ RESUME — in this order, nothing else first
 1. **§12.3.** Reproduce the photograph numerically. One GUID, one timestamp, what supports it and when.
@@ -1403,3 +1411,43 @@ suppress, and §17.1 established **the pool's justifying figure (761-vs-1) does 
 §18.4 step 1. §17.1 (the unreproducible 761-vs-1), §17.2's table, and §17.3's demonstration that the
 pool — not the override — is the lever all stand unchanged. §16.3's direction guard stays deferred:
 decide it after `E`, since `E` may make it redundant.
+
+## 18.6 THE LESSON — a null result is only as strong as the metric's ability to see the effect
+§17.2 concluded *"the `seq<=4` filter contributes nothing the class filter does not already give"*
+from `D === C` on three numbers: bearing relations, phase contradictions, `des = -1`. All three are
+**structurally blind to the thing `seq<=4` was doing**, which was keeping 438 window panes out of
+the support pool. Confirmed by name, not inferred:
+```
+HHS IfcPlate by element_name:   Verglasung (glazing) = 438      other = 191
+HHS IfcPlate by assigned seq:   seq=6 Architecture   = 438      seq=4 Superstructure = 191
+```
+Exact correspondence. The classifier is doing precisely what §4D_FACADE_ORDER says it does, and the
+metrics I chose could not register it either way.
+
+**The rule: before concluding "X contributes nothing", state what a contribution would have looked
+like in the number you are reading.** If you cannot answer that, the null result is not evidence —
+it is an unmeasured question wearing the costume of a measured one. This is §14.3's right-judge-
+wrong-stage applied to *negative* findings, and it is now the third time this lane has paid for the
+same mistake in a different disguise (§9.4 re-derived judge → §14.3 wrong stage → §17.2 blind metric).
+
+## 18.7 AND THE ANSWER TO THE QUESTION THAT STARTED IT
+*"Can witness logging free us from probabilistic visual proof? We want deterministic geometry in
+maths truth."*
+
+**For WHETHER something floats: yes, and it already has.** `§FGA_EYE_FLOATING` is a per-instant,
+geometry-derived predicate — contact list ∩ placement times. Same DB, same code, same 15 floaters,
+forever. The photograph's only remaining job was to make someone *ask*; once the question became an
+invariant the image was disposable, and no screenshot has been needed since.
+
+**For WHAT COUNTS AS SUPPORT: no, and no amount of logging will.** `midair=0` was deterministic and
+reproducible for months while four separate mechanisms produced it. The predicate underneath —
+`supportPool`, `grounded`, `designatedSupport` — is where the physics actually lives, and §18.1
+established there is **no extractable load-bearing signal in any shipped DB** (no `LoadBearing`, no
+Pset table, `material_name` = colour placeholders). Every pool is a proxy.
+
+**So the standard is not "is the number deterministic" but "does the predicate have a written,
+cited derivation."** `seq <= 4` has one (§4D_FACADE_ORDER). My class regex had none. That is the
+entire difference between the two, and it is invisible to every metric in §17.2's table.
+**Where no derivation exists, the correct output is a flagged unknown, not a confident number** —
+which is what §17.1's unreproducible 761-vs-1 is, and the one thing in this lane that must not ship
+as "flagged."
