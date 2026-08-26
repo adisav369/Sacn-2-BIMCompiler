@@ -7,6 +7,44 @@
 
 ---
 
+## Provenance and Priority
+
+This paper is timestamped in a public git history. Every claim of precedence below resolves to a
+commit in [`red1oon/BIMCompiler`](https://github.com/red1oon/BIMCompiler).
+
+**Priority date: 2026-03-30 04:48:48 +0800 (2026-03-29 20:48:48 UTC).**
+
+| Event | Timestamp (UTC+8) | Commit |
+|---|---|---|
+| Paper first committed — `docs/SPATIAL_COMPILATION_PAPER.md`, 303 lines | 2026-03-30 04:48:48 | [`28634f9`](https://github.com/red1oon/BIMCompiler/commit/28634f93894555b1aefc63c202880bc6867d7eec) |
+| Cross-domain impact analysis added | 2026-03-30 | [`ad05849`](https://github.com/red1oon/BIMCompiler/commit/ad0584998) |
+| §5.4 The Unifying Problem — all three fields are isomorphic | 2026-03-30 | [`8ae09f3`](https://github.com/red1oon/BIMCompiler/commit/8ae09f37f) |
+| §5.4 diagrams — forward kinematics vs BOM Walk vs protein folding | 2026-03-30 | [`72d66a3`](https://github.com/red1oon/BIMCompiler/commit/72d66a3e3) |
+| §5.5 Generative Construction — verification without a source | 2026-03-30 | [`efbf8aa`](https://github.com/red1oon/BIMCompiler/commit/efbf8aa03) |
+| §5.6 Dimensional folding — 4D–8D as projections | 2026-03-30 | [`cf2d44c`](https://github.com/red1oon/BIMCompiler/commit/cf2d44cdf) |
+| **First published to the public site** — `SPATIAL_COMPILATION_PAPER/index.html`, +4,426 lines | 2026-03-30 08:24:26 | [`5d94559`](https://github.com/red1oon/BIMCompiler/commit/5d945594dbd15365448e2f49788d590f320f7aa3) |
+| §2.5–2.7 design pattern languages / Rosetta Stone comparison | 2026-04-29 | [`1f7b086`](https://github.com/red1oon/BIMCompiler/commit/1f7b0864c) |
+| Moved to `internal/` by a housekeeping pass — taken off the public site | 2026-06-30 08:16:53 | [`87bc56b`](https://github.com/red1oon/BIMCompiler/commit/87bc56b47f583fc1ebd71338de35a9a62b36ce1a) |
+| Re-published at the current URL | 2026-08-26 | [`ff473d4`](https://github.com/red1oon/BIMCompiler/commit/ff473d401) |
+
+The AlphaFold and robotic-forward-kinematics cross-references (§2.1, §2.2, §5.1, §5.2, §5.4) are
+present from the first day, not added later. The paper was publicly live for three months
+(2026-03-30 → 2026-06-30) at the former URL, which now returns 404; it was unpublished by a
+site-tidying commit, not withdrawn.
+
+**Annotated git tags anchoring the above:**
+[`paper-spatial-compilation-v1`](https://github.com/red1oon/BIMCompiler/releases/tag/paper-spatial-compilation-v1)
+→ the first commit ·
+[`paper-first-published`](https://github.com/red1oon/BIMCompiler/releases/tag/paper-first-published)
+→ the first public deploy.
+
+Full file history:
+[`git log --follow docs/SpatialCompilationPaper.md`](https://github.com/red1oon/BIMCompiler/commits/master/docs/SpatialCompilationPaper.md)
+
+---
+
+---
+
 ## Abstract
 
 We present a method for decomposing real three-dimensional structures into hierarchical spatial recipes (Bills of Materials with tack offsets), recompiling them through deterministic arithmetic, and verifying every element's position against the original source with per-element identity tracing. Applied to 35 real buildings extracted from Industry Foundation Classes (IFC) files, the method achieves **zero positional drift** across 1,653 element pairs in a 58-element residential building, with a worst-case error of 0.002mm. Each compiled element carries its original IFC GloballyUniqueId through the entire decomposition-compilation chain, enabling per-element provenance that neither protein structure prediction nor robotic forward kinematics currently achieves. We further demonstrate that the construction industry's 4D-8D dimensions (scheduling, costing, carbon, facility management, compliance) are not separate analyses but **projections of the same hierarchical BOM** — analogous to how protein tertiary structure determines function, binding affinity, and degradation pathway. The spatial recipe that produces verified 3D geometry simultaneously encodes construction sequence (BOM depth), cost (leaf quantities × prices), and standards compliance (constraint rules on the fold). We argue that spatial compilation from learned recipes represents a general-purpose approach to verified multi-dimensional reconstruction, with applications beyond construction to any domain where physical assemblies can be decomposed into hierarchical spatial relationships governed by standards.
