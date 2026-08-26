@@ -10,19 +10,32 @@ Measured directly: **0 of 718 `IfcColumn`** start before the slab/footing that b
 `bar_model.js`/`bar_needs.js` are dead code and NOT the target (PR #1542 merged, nothing loads them).
 `4D_BAR_MODEL.md` §10.3 items 1–4 are therefore no longer the plan; item 5 stands.
 
-**Shipped:** bim-ootb **#1550 MERGED** (probes, cache, witness) · **#1551 OPEN**
+**Shipped:** bim-ootb **#1550, #1552 MERGED** · **#1553 OPEN** (`§TPL_MODEL` — the model fork now
+names which model ran, `4D_template.json` precached, edit witness judges the canonical model) ·
+**#1551 OPEN**
 (`§STOREY_DATUM` Terminal 22 bands→6, `§TPL_LADDER_BRIDGE`, 3 measured name overrides, Duplex datum
 patch, `knob_sweep.js`). bim-compiler `fable/meshdb-livewire`: `4D_MODEL_INTEGRITY.md` §H–§L,
 `CLAUDE.md` PRIMAL LAW + ownership table, `tools/extract.py` writes `IfcBuildingStorey.Elevation`.
 
+**✅ TM WIRING TRACED AND SOUND (2026-08-27, bim-ootb PR #1553 — `4D_MODEL_INTEGRITY.md` §L).**
+The canonical model DOES reach the Gantt editor: `instantiateTemplate:425` → `_writeTemplateSchedule
+:965` persists tasks/task_elements/task_sequences → `time_machine.js buildTaskIndex:5290` reads them
+back → `gantt_model.js buildTasks:96` draws each bar at its task window. §G.2's "shipped, witnessed,
+NEVER CALLED" is CLOSED (`§TPL_REACHED` green). **Do not re-trace this.**
+Three SILENT model-swap holes found and fixed: the fork at `schedule_author.js:715` logged nothing
+(now `§TPL_MODEL`) · `rates/4D_template.json` was never precached, so one failed fetch dropped the
+canonical model for a whole session · `witness_gantt_edit_coherence` judged the DEAD model.
+MEASURED (Duplex): legacy zones=21/edges=30, edit cascaded=**8** → canonical tasks=20/edges=29,
+cascaded=**16**, 11 pass/0 fail, with a red control that fails when the template is absent.
+
 **⚠ NEXT, in order (`4D_MODEL_INTEGRITY.md` §L):**
-1. `room_walker.js:1191` must write the FLOOR, not mean wall centre-z (a wall's base is
-   `w[2] - w[5]/2`), and `:1353` must emit a storey row for every storey walked. The injected datum
-   is 0.64–3.16m high, so **every element is banded one level DOWN** — uniformly, which is why the
-   witness passes anyway. Fix before trusting any level-based number.
+1. ✅ DONE — datum is the FLOOR (PR #1552 MERGED). Shipped DBs/baked patches still carry the OLD
+   datum; regenerating them is a DB-content change needing the patch + self-heal-loader flow.
 2. Re-baseline `§W_D0` against the corrected datum.
 3. Write the sequence rule (§J.4) — granularity, legitimate overlap, which relation carries it.
    6,734 bearing-order violations / 106,027 pairs are REPORTED and cannot be judged without it.
+4. **24 of 35 witnesses/probes calling `materializeZones` pass no `template:`** — they judge the
+   dead model. §K.2 item 2's audit, now with a concrete population (§L).
 
 **Habits that paid:** `scripts/cache_4d_run.js` runs the pipeline once per building and persists
 the `§`-log + run (119,568 elements read back in 0.43s) — never re-run `materializeZones`, never

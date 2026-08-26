@@ -485,6 +485,7 @@ Paths are `~/bim-ootb/viewer/` unless stated. Line numbers are `origin/main` @ `
 | **is anything floating?** | `support_sweep.js:500` `_midairAudit(items)` (movie) · `schedule_gate.js:1122` `auditFloating(...)` (gate) | ⚠ these two disagree on the support top bound — §I.1 |
 | **is an edit legal?** (🔓→🔒) | `verifyGanttIntegrity()` → `_midairAudit` | re-score with your own physics |
 | **is it on screen at cursor?** | `time_machine.js:169` — `placed` = `start_ts <= cursor && end_ts <= cursor`; `frontier` = `start_ts <= cursor < end_ts` | invent a visibility rule. A probe using `s <= cursor` is counting placed **+** frontier |
+| **WHICH MODEL produced this schedule?** | `schedule_author.js:715` — the `§TPL_MODEL` line. `model=template` = CANONICAL, `model=legacy-deriveZones` = the dead model (PR #1553) | assume the canonical model ran because the code *can* pass `template:`. 24 of 35 witnesses pass none, and the fork was SILENT until 2026-08-27 |
 | **what did the run actually say?** | the persisted `witness.log` — `bim-ootb scripts/cache_4d_run.js` | re-run `materializeZones`, and **never** wrap it to silence `console.log` (PRIMAL LAW clause 3) |
 
 ## §I.1 ⛔ "S supports T" HAS THREE IMPLEMENTATIONS AND THEY DISAGREE
@@ -817,6 +818,66 @@ There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5
    which relation carries it. Until it exists the 6,734 cannot be judged, and inventing a metric to
    judge it is what produced §J.2's three retractions.
 4. Only then re-open anything else.
+
+## ✅ THE TM WIRING IS SOUND — TRACED 2026-08-27, bim-ootb PR #1553
+**The question "does the canonical model reach the Gantt editor?" is ANSWERED: yes. Do not
+re-trace it.** `instantiateTemplate` (`schedule_author.js:425`) → `_writeTemplateSchedule` (`:965`)
+persists `tasks`/`task_elements`/`task_sequences` (`:1040-1055`) → `time_machine.js
+buildTaskIndex()` (`:5290`) reads those same rows back (`:5341`, `:5347`) → `gantt_model.js
+buildTasks()` (`:96`) draws each bar at its **task** window (`:167-176`, `spanFrom='task'`).
+The hand-off is a DB round-trip, not an object hand-off — TM never sees `instantiateTemplate`'s
+return value, and it does not need to.
+
+**§G.2's "shipped, witnessed and NEVER CALLED" is CLOSED** — `§TPL_REACHED` is green on `main`
+(all four production call sites pass `template:`, replay confirms `instantiateTemplateRan=true`).
+`§TPL_WIRED` (PR #1548) fixed it. Do not re-open that contradiction; it is historical.
+
+**What was actually wrong: three holes that let the canonical model be swapped for the dead one
+SILENTLY.** All three fixed in PR #1553.
+1. **`schedule_author.js:715` — the fork was silent.** Falsy `opts.template` fell through to
+   `SG.deriveZones` with no log line, so no downstream number was attributable to a construct.
+   Both branches now emit **`§TPL_MODEL model=template|legacy-deriveZones`**. *Grep this tag
+   before trusting any 4D number — it is now the cheapest way to know which model you are reading.*
+2. **`rates/4D_template.json` was NOT in `sw.js PRECACHE_ASSETS`** while `rates/sequence_rules.json`
+   — which §I calls "a MIRROR, never executed" — was. Offline/cold-SW, `_load4DTemplate()`'s fetch
+   fails, `_4dTemplate` stays null, dead path runs; `_4dTemplateTried` is one-shot so **one failed
+   fetch drops the canonical model for the whole session.** Precached; `CACHE_VERSION` → v1090.
+3. **`witness_gantt_edit_coherence.js:189` passed no `template:`** — the flagship editor witness,
+   the one CLAUDE.md names first, measured all 10 claims on the DEAD model. Now builds its fixture
+   from the template; new claim **G-COH-10** asserts from the shipped `§TPL_MODEL` line that the
+   canonical model is what was judged.
+
+**MEASURED (Duplex) — the two models genuinely differ under an edit:**
+
+| | model | grid | move cascaded | result |
+|---|---|---|---|---|
+| before | `§AUTHOR_ZONES` | zones=21 edges=30 | **8** | 10 pass / 0 fail |
+| after | `§AUTHOR_TPL` v=1.2.0 | tasks=20 edges=29 (withinLevel=16 acrossLevels=13) | **16** | 11 pass / 0 fail |
+
+The canonical model's DECLARED edges propagate an edit to twice as many downstream tasks.
+**RED CONTROL:** template moved aside → `model=legacy-deriveZones`, G-COH-10 FAILS (10/1, exit 1)
+while the other ten still pass. That asymmetry is precisely why this was invisible for a session.
+
+### ⛔ OPEN, found by this trace — do NOT re-discover
+- **24 of 35 witnesses/probes that call `materializeZones` still pass no `template:`**, so they
+  judge the dead model. Only `witness_gantt_edit_coherence` (this PR), the four template-specific
+  tests, and 4 scripts are canonical. This is §K.2 item 2's audit with a concrete population — run
+  the census with: `grep -rl materializeZones viewer/tests/*.js ./witness_*.js scripts/*.js` and
+  check each for `template:`. Some may legitimately pin legacy behaviour; that is a judgement per
+  file, which is why this PR did not convert them wholesale.
+- **`witness_zone_cpm_duplex.js:40` hardcodes an absolute path to a DEAD scratchpad dir** from an
+  old session, so it fails on unmodified `main`. Pre-existing, same bug class as the
+  `38-offline-pwa.spec.js` `VIEWER_URL` item in CLAUDE.md.
+- **`schedule_author_ui.js:288` reads `window._4dTemplate`**, published ONLY by `time_machine.js
+  :4128` inside `_load4DTemplate()`. The author drawer is TM-owned (`time_machine.js:2912`) so the
+  normal flow is safe, but the drawer opening while the template fetch is still in flight is an
+  unguarded race that would silently author the dead model. Not fixed — needs a decision on whether
+  the author UI should await the load or refuse.
+- **`_writeTemplateSchedule`'s `displaySchedule` return (`:1144`, the `remapSolveToTasks` output)
+  has NO production consumer.** The live movie re-derives its own element times via
+  `_tmRescaleToTaskWindow` (`time_machine.js:4913`). Two implementations of one idea; only the DB
+  task windows are shared. §B calls that rescale "PROJECT rewriting SOLVE's times" — it is still
+  live on the element path, and §S8b measured it as manufacturing 100% of played floating.
 
 ## State, honestly
 - ✅ **DAY 0 is at zero.** `§W_D0` **14 PASS / 0 FAIL / 2 INCONCLUSIVE** (`bim-ootb
