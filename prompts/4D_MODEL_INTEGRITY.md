@@ -231,6 +231,50 @@ the election that caused all of this.
 **Hospital 0 · HHS 1 · Duplex 2 · Terminal 5** at HR 3 (all remaining are `IfcMember`); stacking 0
 everywhere; MEP does not appear on DAY 0 on any of the four.
 
+
+## G.0 ⛔ REGAIN CONTEXT FIRST. YOU KEEP FORGETTING THINGS CENTRAL TO THE FEATURE.
+**User, 2026-08-26.** This is the standing complaint across weeks, not one session. The facts below
+are load-bearing and were each re-discovered the hard way after being forgotten. Read them before
+you touch anything; do not re-derive them.
+
+**Where the feature actually lives**
+- The scheduler is **JS in `~/bim-ootb/viewer/`** — `schedule_author.js`, `schedule_gate.js`,
+  `cpm_schedule.js`, `support_sweep.js`, `time_machine.js`. `bim-compiler/viewer/` is nearly empty
+  and every PR number in these prompts is a **bim-ootb** PR.
+- **`git -C ~/bim-ootb fetch && merge --ff-only origin/main` BEFORE reading anything as canon.**
+  A 14-commit-stale checkout made this session conclude `4D_template.json` was lost. It was not.
+- Work in a `/tmp/wt-*` worktree and **use absolute paths**. A `cd` into the worktree put files in
+  the wrong repo three times in one session, once deleting 33 tracked files.
+
+**The three files that define the programme, and which one executes**
+- `viewer/rates/4D_template.json` — phases, calendar, `duration_rule`, `capacity_rule`, dependencies.
+- `viewer/rates/sequence_rules.json` — a **MIRROR**. Not executed.
+- **`viewer/rates.js` IS the executed table.** `viewer.html` never calls `loadSequenceRules()`.
+  **Edit both in the same commit** — they have drifted before and it cost real measurements.
+
+**Facts that were forgotten and re-paid for**
+- `supportPool` is `seq<=4 ∪ IfcSlab ∪ IfcStairFlight ∪ IfcWall*`. `seq<=4` is **not** a bare phase
+  number — it is the classifier's OUTPUT, and `SEQUENCE_NAME_OVERRIDES.glazed_curtainwall_facade`
+  is why. HHS `IfcPlate` splits **191 structural / 438 Verglasung glazing**. Any class-based
+  "structural" pool re-admits the 438 as load-bearing.
+- `support_sweep.js` owns the contact relation: **bearing-below ∪ carrier-above ∪ embedded**.
+  Require it. Re-deriving it was wrong four times this session alone.
+- `_contactGraph.grounded[i]` is footprint-local — which is **correct** for the ground-bearing
+  exemption (nothing beneath me in my own column ⇒ I rest on soil) and **wrong** as an altitude test.
+- `min(bz)` over all elements is **not** the ground datum. One deep outlier put every HHS
+  ground-floor column 4.70m "in the air".
+- This module's IIFE parameter is named `global` and is `self||this` — **in node that is NOT
+  globalThis.** A bare `global.SupportSweep` silently returns null. `_writeBarSchedule`'s `_reg()`
+  documents this trap; it was walked into anyway.
+- `_tmRescaleToTaskWindow` runs **after** `_midairAudit`, so the judge scores a timeline the movie
+  does not play. 783 of HHS's floating is manufactured there.
+
+**What is settled and must not be re-litigated**
+- Tree shape is **LEVEL-major, phases inside**. Phase-over-level was measured wrong (17 violations).
+- `within_level` and `across_levels` are the **same rule at two depths**.
+- No edges are emitted — sibling order IS the order.
+- Lanes are `LABOR_RATES[trade].max_crews`, a capacity, never a headcount.
+
 ## G.1 ⚠ THE USER IS DEEPLY FRUSTRATED. READ THIS BEFORE YOU TYPE ANYTHING.
 Their words, this session, verbatim:
 
