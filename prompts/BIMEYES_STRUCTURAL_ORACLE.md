@@ -259,6 +259,34 @@ transform that re-orders across task boundaries.
 measurement — delete the rescale, THEN re-measure the guard. Anyone quoting 783→813 as evidence the
 guard is wrong has repeated §14.3's error (right change, wrong stage).
 
+## S8b. ⛔ RESCALE DELETED FIRST — THEN THE GUARD IS UNAMBIGUOUS. (2026-08-26)
+Same baseline `7c8c599`. `NORESCALE=1` in `probe_floating_guid_audit.js` short-circuits stage 5, i.e.
+simulates `_tmRescaleToTaskWindow` being deleted and `kernel_ops` taking the CPM leaf times directly.
+
+| | Duplex | HHS | Terminal |
+|---|---|---|---|
+| played-floating, rescale ON, no guard | 104 | 783 | 2355 |
+| **played-floating, rescale OFF** | **0** | **0** | **0** |
+| played-floating, rescale OFF + guard | 0 | 0 | 0 |
+| `floatingToEye` @DAY0 HR3, rescale OFF | 7 | 4 | 12 |
+| **`floatingToEye`, rescale OFF + guard** | **1** | **3** | **3** |
+| des=-1, rescale OFF | 28 | 63 | 354 |
+| **des=-1, rescale OFF + guard** | **12** | **53** | **273** |
+| stragglers, rescale OFF | 639 | 3249 | 9941 |
+| stragglers, rescale OFF + guard | **354** | **2328** | **11970** ⛔ |
+
+**100% of played-timeline floating is manufactured by the rescale.** Not most — all of it, on all
+three buildings. §14.3 is confirmed to the element.
+
+⚠ **That 0 is partly tautological** and must not be quoted as "no elements float": with the rescale
+gone, played == CPM, and CPM is 0 *by the judge's own election*. It proves the rescale is the sole
+source of THAT metric's failures — nothing more. The independent metric is `floatingToEye`, which
+uses no election at all, and there the guard is a real win on all three (**7→1, 4→3, 12→3**).
+
+**Verdict: the sequencing is correct and now measured.** Delete the rescale, then ship the guard on
+both copies. One open item: **Terminal stragglers +20% (9941→11970)** — almost certainly the source
+of the 74 band inversions on `fix/support-pool-walls`. Explain that before merging, not after.
+
 ## S9. THE DESIGN ANGLE — do not guard the election, DELETE it
 `_designatedSupport` reduces 36 contacts to 1 so the DAG gets one edge per node. **Every defect in
 this file lives in that reduction:** direction (S2), eligibility (S3), tie-break (the traced wall wins
