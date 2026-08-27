@@ -5680,6 +5680,94 @@ investigated or fixed yet, don't assume any of these are closed by today's other
    (`§ZONE_DISPLAY_AUTHORING`/`§TPL_MOVIE_BINDS_BARS` territory per §B's PROJECT layer) — it must not
    change the underlying task windows, dates, crew capacity, or cost numbers, only how elements are
    revealed *within* an already-correct bar. Do not touch `bar_model.js` (hook-blocked, unrelated).
+
+   **2026-08-27 — RED/before measurement done (bim-ootb PR #1558, merged). Two findings, one
+   correction, one open question — do not restart from "find `degenerateTasksSpreadEvenly`" above,
+   that description is now stale.**
+
+   - **Correction: the "where to start" text above describes CODE THAT NO LONGER EXISTS.** Read
+     `schedule_author.js` `remapSolveToTasks` (bim-ootb `origin/main` @ `e63fa5d`, current as of
+     today) directly — `§TPL_LAYER_ORDER` (2026-08-26, already merged) replaced the old two-branch
+     structure ("even spread only if degenerate, affine only if not") with ONE rule for every task:
+     members are bucketed into support-order layers, each layer gets a contiguous band of the
+     window sized by its member count, and *within* a band elements are either affine-mapped
+     (`gspan>0`) or evenly spread (`gspan<=0`) — degenerate or not. `degenerateTasksSpreadEvenly`
+     still increments (whole-task span<=0 count) but no longer gates whether spreading happens; it
+     happens for every task now. `4D_MODEL_INTEGRITY.md` §I's own ownership-table row for "where
+     inside its task?" is *also* stale the same way — it says the `layerOf` 4th arg "exists only on
+     unmerged `fix/tpl-layer-order`" at `6b12783`; that branch is merged into current `main`. Fix
+     that row next time §I is touched.
+   - **Measured (Hospital, `bim-ootb scripts/probe_tpl_reveal_spread.js Hospital`, reads the cache
+     — `cache_4d_run.js` extended to persist `res.tasks` so this didn't need re-deriving, PR #1558):
+     `§TPL_REVEAL_SPREAD n=63182 skipped=0 decilePct=[12.8,9.7,10.0,9.7,9.4,10.4,9.0,8.8,10.0,10.3]`
+     — roughly UNIFORM across all 42 tasks pooled (first-decile 1.28x uniform, "mild skew"). This
+     contradicts the item's premise of bulk cramming — at the aggregate level `remapSolveToTasks`
+     already spreads elements across the bar.**
+   - **But `§TPL_REVEAL_SPREAD_WORST` shows real localized cramming**, concentrated in short,
+     dense tasks: `TASK_MEP_Final_Level_4` (n=499, 3-day window) had 42.7% of its elements in the
+     FIRST DECILE (i.e. first ~7.2h of 3 days); `TASK_MEP_Final_Level_5` (n=564, 3 days) had 38.8%.
+     Both are MEP Final phase — many small fixtures, short declared duration. This is the closest
+     match to the user's "whole task springs into existence" complaint, and it is scoped to a
+     specific phase shape (short window + high element count), not the general case.
+   - **Open, unresolved caveat before either closing this or fixing it:** the measurement above ran
+     `remapSolveToTasks` on the RAW `computeSchedule` output — the probe (like `cache_4d_run.js`)
+     passes no `opts.displayRemap`. Every REAL UI call site (`time_machine.js:5330,6910,6952`) DOES
+     pass `displayRemap: _tmDisplayRemap`, which runs the CPM two-tier remap
+     (`_displayTimeline`) + a per-`(phase,storey)` Tukey-fence clamp BEFORE handing `schedule` to
+     the same `remapSolveToTasks` call (`§ZONE_DISPLAY_AUTHORING`, schedule_author.js ~line 699).
+     Task WINDOW bounds (`t.sDays`/`t.eDays`) come from the template regardless, so this can't
+     change *that*, but it can change the per-element positions this probe measured. Tukey clamping
+     only reins in tail outliers, so it probably doesn't overturn "roughly uniform" — but that is an
+     assumption, not yet verified. **Next step, in this order:** (1) replicate `_tmDisplayRemap`
+     faithfully (or run the real browser call site under `§`-logging) and re-run the same probe —
+     confirm the MEP-Final-shape skew survives it; (2) if it does, the fix is scoped narrowly to
+     short/dense tasks, not a rewrite of `remapSolveToTasks`'s general case; (3) only then re-check
+     item 3's folded hypothesis ("too fast" = perceptual effect of cramming) against the *specific*
+     MEP-Final-shaped tasks, since the general population already reads as spread.
+
+   **2026-08-27, same day, user redirect: the BARS THEMSELVES are squashed — different, more
+   upstream bug than reveal-distribution-within-a-bar. User pointed at `Pictures/Screenshots/4D.png`
+   (live Gantt panel) + the newest `Downloads/BIM_MaxQ_Hospital_*.mp4` bake. NOT FIXED — "let me
+   agree first" — this is the impact study only.**
+
+   Root cause traced to `instantiateTemplate`'s `priceCell()` (schedule_author.js ~line 465):
+   `days = ceil(bottleneck-trade-secs / (shiftSecs × max_crews))`, `min_days=1` floor. Two compounding
+   effects, both verified against Hospital's persisted cache, not invented:
+   1. **A real 3x unit mismatch already inside the shipped formula.** `_installSecs`'s
+      `secsPerUnit = 28800/prod` is calibrated to an 8-HOUR reference shift (28800s), but `priceCell`
+      divides by the ACTUAL `shiftSecs` = shiftHours(**24**, the standing "24hr is our default" ruling,
+      `time_machine.js` ~line 8294, already shrank Hospital 2019.6d→369.2d) × 3600. Every task's day-
+      count is computed on a clock 3x faster than the rate table's own calibration — not just the short
+      ones, all 42.
+   2. **`min_days=1` is a hard floor** that a naturally low-element-count (phase,level) cell hits fast.
+      Measured, Hospital: 7/42 tasks land at EXACTLY 1 day (`Superstructure_L7A`, `Architecture_
+      Closeup_L6`, `_L7`, `Architecture_Envelope_L7`, `MEP_Rough_in_L7`, `Finishes_L5`, `_L6`); 20/42
+      are under 5 days (covering only 2821/63182 elements — the bulk of elements sit in the long,
+      correctly-wide MEP Rough-in / Architecture Envelope bars, 14-64 days each). Verified NOT a
+      `§TPL_ZERO_MINUTE` floor artifact (didn't fire) and NOT a fragmented-class pricing bug
+      (`IfcCovering`, the Finishes-phase class, has real avg area 62.4m² on Hospital — well above the
+      1.0m² fragmentation floor, so per-element pricing is the CORRECT mode for it, per
+      `_classFragmentation`'s own documented rule). Against a 313-318-day total project, a 1-day task
+      is 0.31% of the axis width — an unavoidable sliver no matter how correct its own math is.
+
+   **Impact of "lengthening," each option's ripple, none applied:**
+   - **Revert 24h→8h shift globally:** wrong lever — would 3x EVERY building's total days (undoing an
+     already-standing user ruling), and the 7 tasks already floored at `min_days=1` mostly WON'T even
+     grow (their true crewDays are under 1.0 even at 8h) — doesn't fix what it targets.
+   - **Raise `min_days`:** simple, but invents a duration with no labor-content backing it — against
+     PRIME RULE. Ripples: `§4D_BAND_MONOTONIC` ladder chains same-phase-next-level off `eDays`, so
+     lengthening one task pushes the same phase on the level above later, compounding across 42 tasks;
+     crew-capacity levelling (`fits()`) would need to re-run against the new spans; totalDays grows
+     project-wide, not just for the edited task.
+   - **Real-quantity basis per short phase:** check whether Finishes/MEP-Final/Architecture-Closeup
+     classes are priced by raw count where a real m²/m³/lm quantity would represent them better
+     (extract-driven). `IfcCovering` already checked clean (see above) — the other classes in these
+     three phases are not yet checked.
+   - **Rendering-only minimum bar width** (touch only the Gantt canvas draw, not the schedule dates):
+     closest to the ORIGINAL item-2 boundary ("must not change task windows... only how elements are
+     revealed"), but would desync the visible bar from `§TPL_MOVIE_BINDS_BARS`'s own reveal-time
+     mapping — the movie would then finish an element before its visually-stretched bar ends, reopening
+     the exact disagreement that tag was built to close.
 4. **Editor full-cycle review.** Whether the standalone Schedule Editor (`schedule_editor_ui.js`)
    actually supports a complete edit cycle end-to-end is *already* named as unverified above, in this
    same file (persist-fix section, "Deliberately NOT touched" — split-mode task-data loading was never
