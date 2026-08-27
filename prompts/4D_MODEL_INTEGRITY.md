@@ -732,9 +732,9 @@ those rows without it makes each look like an isolated inconsistency.
 | §I.5a support pool — copy 4 (`auditFloating`) | ✅ **DONE** — bim-ootb **PR #1562** | floating **+204 fleet-wide**, `nowClean=0` everywhere; 797 bearing relations were invisible; 2 locked baselines re-locked with per-class attribution |
 | §I.5a support pool — copy 5 (`_buildXraySupportCache`) | ⛔ **HELD** | applying it fails `W-OGB-3a` Terminal `staged=0 → 14`; isolated (9/0 without, 8/1 with). Real guard/judge asymmetry — needs a decision on `_ogSupportSweep`, not a re-baseline |
 | §I.5a copy 7 (`witness_og_guard_bearing_bound:140`) — **NEW, §I.5a counted six** | ✅ **DONE** — PR #1562 | the witness asserting pool parity enforced it by *re-typing* the pool; now calls `supportPool()` |
-| §I.5c `§TPL_LAYER_ORDER` narrowed predicate | ⛔ **HELD — STOP CONDITION TRIGGERED** — bim-ootb **PR #1563** (probe only) | self-check blind to **88–100%** of real inversions (HHS reports `PASS` on 138); fix cures 84–93% **but** reorders **86–98%** of elements across **70–90%** of tasks, max shift **63.5 d** |
-| §I.5d edit-legality ANDs two disagreeing judges | ⏸ **NOT STARTED** | held behind §I.5c's stop condition |
-| §I.5e/f/g/h/i (four floating judges, storey-suffix rules, third task-grid producer, `SEQUENCE_DEFAULT`×7, EPS/GAP×3) | ⏸ **NOT STARTED** | held behind §I.5c's stop condition |
+| §I.5c `§TPL_LAYER_ORDER` narrowed predicate | ✅ **APPROVED TO PROCEED** (user, 2026-08-27) — not yet applied | self-check blind to **88–100%** of real inversions (HHS reports `PASS` on 138); fix cures 84–93% **but** reorders **86–98%** of elements across **70–90%** of tasks, max shift **63.5 d**. Task windows/total project days UNCHANGED on all three — approved on that basis. ➡ Bundled into `4D_GANTT_TM_REFACTOR.md` §FUTURE item 7, which requires posing a plan before commencing |
+| §I.5d edit-legality ANDs two disagreeing judges | ⏸ **NOT STARTED** | bundled into §FUTURE item 7, Stage 4 |
+| §I.5e/f/g/h/i (four floating judges, storey-suffix rules, third task-grid producer, `SEQUENCE_DEFAULT`×7, EPS/GAP×3) | ⏸ **NOT STARTED** | bundled into §FUTURE item 7, Stage 5 |
 
 **Two measurement traps cost real time here and are now guarded in the probes — read before writing
 another one.** (1) **Field-name shape.** `auditFloating` reads `base_z`/`top_z` and `sched[g].start/.end`;
@@ -1530,23 +1530,24 @@ future session into thinking it's still live work.
 
 ## ⛔ Explicitly NOT done, don't assume otherwise
 - **The Schedule Editor (`viewer/schedule_editor_ui.js`) has had ZERO commits and zero verification
-  all day** (`git log --since` confirms it). Whether it supports a full edit cycle end-to-end is
-  exactly as unverified now as it was this morning — this is the oldest unanswered item in this
-  whole file, not a new one.
-- **The build-up/reveal-distribution fix (dead-air gaps in `remapSolveToTasks`, MEP-Final cramming)
-  was diagnosed and a direction recommended, but NEVER DISPATCHED.** Do not confuse this with the
-  duration/calibration thread below, which IS closed (rejected, correctly, #1560 proves why). These
-  are two different bugs in the same function — don't let one's closure imply the other is done.
-- **The 4D-ownership-table design-review fixes are IN PROGRESS, not finished** — a staged agent is
-  resolving 10 defects found by a systematic audit (§I.5): PRIMAL LAW witness-blindness in `§TPL_MODEL`
-  logging, a stair-flight gap in 2 of 5 support-pool copies (false-negative floating), `§TPL_LAYER_ORDER`
-  silently narrowing the bearing relation (~32% of Hospital's contacts dropped) with its own self-check
-  sharing the blind spot, and an edit-legality gate that ANDs two already-known-disagreeing copies
-  instead of picking the correct one. Check `git log`/open PRs for its actual landing state before
-  assuming any of §I.5's ten items are resolved — this note will be stale the moment that agent reports.
+  all day.** Still the oldest unanswered item in this whole file.
+- **Live editor test (2026-08-27, HHS_Office_Federated) confirmed the INLINE TM Gantt editor works**
+  (drag/clamp/cascade/persist all verified in real `§`-logs) — do not confuse this with the standalone
+  Editor above, which remains untouched. One gap found and queued (not fixed): `blockedBy=TASK_X(FS)`
+  is computed and logged on every clamp but never shown on screen — `4D_GANTT_TM_REFACTOR.md` §FUTURE
+  item 6.
+- **§I.5's design-review audit: Stage 1 and Stage 2 DONE and merged** (bim-ootb PR #1561 — the PRIMAL
+  LAW witness-blindness; PR #1562 — the stair-flight support-pool gap, +204 floating fleet-wide).
+  **Stage 3 hit its own stop condition** (reorders 86–98% of elements, most tasks) **and the user has
+  since approved proceeding** — task windows/total days are unchanged on all three measured buildings,
+  which is why. **Stages 3 (apply), 4, and 5 are NOT yet done** — they, plus the dead-air/
+  reveal-distribution fix (also user-approved) and item 6 above, are all bundled into ONE task:
+  ➡ **`4D_GANTT_TM_REFACTOR.md` §FUTURE item 7 — read that file, not this note, for the actual plan.**
+  It requires posing a plan before any code, on purpose — don't skip that step because this note
+  makes the scope sound settled.
 
 **Read §G.0 (regain context) → §I (ownership table, now includes §I.5's audit) → §K (the mid-session
-review). §K.5 is superseded by this block for sequencing, but its individual findings still stand.**
+review) → `4D_GANTT_TM_REFACTOR.md` §FUTURE item 7 (the actual next task, plan-first).**
 
 ## ✅ The decision that gated everything is MADE
 **USER RULING 2026-08-27: the canonical model is the TEMPLATE PATH — `schedule_author.js`

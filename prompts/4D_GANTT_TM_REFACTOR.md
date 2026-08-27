@@ -6099,3 +6099,51 @@ The same session's log shows `§RETIME_OUTLIER_AUDIT outsideOldWindow=2 ... outl
 their bar` on a real edit — the log line itself says this is "the §S7 edit-path defect." Already
 tracked elsewhere in this lane's history under §S7; recorded here only so a reader of this live test
 doesn't mistake it for a new finding. Not re-opened, not re-scoped.
+
+## §FUTURE item 7 — ⛔ CONSOLIDATED NEXT TASK (user-approved 2026-08-27), everything currently
+queued from today's audit + build-up-animation threads, bundled for one properly-planned session
+
+**MANDATORY STEP 0, before writing any code or running any dispatch: regain full context, then STOP
+and pose a written plan for user confirmation before commencing anything below.** This is not
+optional scaffolding — the whole reason this is bundled into one task instead of five scattered ones
+is so the picking-up session sees the full shape before touching code. Read, in this order:
+`4D_MODEL_INTEGRITY.md` §I.5 (the ownership-table audit and its evidence), the Stage 1/Stage 2
+completion evidence (bim-ootb PRs #1561, #1562 — read the actual diffs, not just this summary), the
+Stage 3 probe (PR #1563, not yet applied), and this file's §FUTURE items 2 and 6. Then write out: the
+order you intend to do the items below in, which ones depend on which, and what witness/probe proves
+each one before moving to the next. Post that plan and wait — do not proceed past it in the same
+turn it's written.
+
+### What's approved and ready to execute, once the plan above is posed
+1. **Apply the §I.5c self-check predicate fix** (Stage 3, PR #1563 has the probe already — extend it
+   to the real fix). Confirmed: cures 84–93% of real support-order inversions the self-check is
+   currently 88–100% blind to. Task windows and total project duration do NOT change on any of the
+   three measured buildings — only element order *inside* already-correct windows moves (86–98% of
+   elements, 70–90% of tasks). **User-approved despite the scale**, on the reasoning that this is a
+   real correctness fix with an unchanged schedule envelope, not a schedule-breaking one. Also fix, in
+   the same pass: `§TPL_LAYER_ORDER` doesn't run at all in the node test harness unless `SupportSweep`
+   is registered — every witness score on this pass may never have exercised the real code. Register
+   it in the harness before trusting any before/after number here.
+2. **Fix the dead-air gaps in `remapSolveToTasks`'s reveal distribution** (§FUTURE item 2's
+   recommended direction, user-approved). `TASK_Architecture_Envelope_Level_5` has real gaps — days
+   inside its own window where zero elements start. This is independent of item 1 above (item 1 is a
+   support-ORDER question; this is a reveal-TIMING gap-filling question) but both touch the same
+   function, so sequence them, don't run in parallel — measure whether fixing #1 changes the dead-air
+   picture before assuming they're additive.
+3. **Stage 4 — edit-legality investigation** (not yet started): `verifyGanttIntegrity()` ANDs two
+   already-known-disagreeing "does S support T" copies instead of using the one with the later
+   false-positive fix. Investigate which is more correct; recommend, do not silently pick one.
+4. **Stage 5 — bundle if straightforward** (not yet started): floating judged by 4 disagreeing
+   implementations (name them, consolidate only what's clearly safe); 3 rival storey-suffix rules
+   where the merge map and elements disagree; tag the untagged 3rd task-grid producer
+   (`materializeDefault`); consolidate re-typed `SEQUENCE_DEFAULT`/`EPS`/`GAP` constants where
+   mechanically safe.
+5. **§FUTURE item 6 — CPM-clamp on-screen feedback** (queued, low risk, independent of 1-4): surface
+   `blockedBy=TASK_X(FS)` as a `_tmSay` toast when `§GANTT_EDIT_CLAMP` fires. Can be done any time
+   relative to the others — no shared code path with items 1-4.
+
+### Standing constraints, apply to every item above
+Numeric before/after proof, never visual. Stop and report — do not push through — if any item's
+measured scope turns out bigger than described here (same rule that already worked twice today).
+Commit/PR per item, not one giant batch. Update this section in place marking each item done with
+evidence when it lands.
