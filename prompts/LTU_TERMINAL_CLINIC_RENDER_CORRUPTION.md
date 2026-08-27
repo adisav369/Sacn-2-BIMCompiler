@@ -44,27 +44,25 @@ can't explain the 16th specifically, it isn't the answer yet, keep looking.
   patching" objection is about data-value patches specifically; this fix was never part of that
   rejection.
 
-### Where to actually look for the cause — concrete, not yet done
-1. **`viewer/streaming.js` / `viewer/scene.js` / `viewer/import_db_builder.js` git history around
-   2026-08-15 → 2026-08-18.** Started, not finished, this session (`git log --since=2026-08-15
-   --until=2026-08-18 -- viewer/streaming.js viewer/scene.js` returned 5 commits — photo/triplanar/
-   cache-revalidation work, `d9a9201`/`6a0f89a`/`0050d1c`/`32a39a6`/`4f8a5c5` — none of them read
-   or analyzed yet for a connection to element_transforms/position handling before the session was
-   stopped). Do this first.
-2. **Reconcile the "well before the 16th" claim against the raw file timestamps.** LTU's raw
-   `_meta.db`/`_geo.db` on OCI: `Last-Modified Aug 10`. Terminal's: `Last-Modified Jun 5-6`. Both
-   predate the 16th by weeks/months on OCI's own object timestamp — yet the user says things were
-   fine before the 16th. Two ways to reconcile, both unexplored: (a) the file was corrupt all along
-   but nothing in the app *surfaced* it as a visible symptom until a code change around the 16th
-   started reading/rendering it differently — check (1) above for this; (b) the OCI timestamp is
-   not actually the moment of corruption (e.g. a metadata-only touch, a re-upload of identical
-   bytes) and the real corrupting write happened later, closer to the 16th — re-verify the
-   timestamps mean what they're assumed to mean before trusting them again.
-3. **No git-tracked provenance exists for the raw DB uploads** (only `.sql` patches get a
-   `oci_patch_gate.js` manifest) — this is a real, permanent gap, not something more searching will
-   fix. If (1) and (2) don't find it, say plainly that the origin is unrecoverable from available
-   history, per this doc's own standing instruction (§0's original text, kept below) — don't keep
-   searching past the point where the evidence runs out.
+### Where to actually look for the cause — §R6a found, origin still open
+**FOUND, mechanism for "why visible only after the 16th" — reconciles the timestamps below with
+"all were well before the 16th":** `bim-ootb` commit `d9a9201` (**§R6a, 2026-08-17 01:08**,
+`viewer/scene.js` `cachedFetch`). Before this commit, a cache hit was trusted **forever**, no
+freshness check, ever. After it, a cache hit gets an ETag HEAD-check against the currently-served
+object before being trusted. **This means: anyone with LTU/Terminal cached from before the
+underlying file was corrupted kept seeing the clean cached copy indefinitely — the app never
+checked freshness before this commit.** Only once §R6a shipped did a cache hit start comparing
+against live OCI bytes at all — the first point at which a stale-vs-corrupted mismatch could ever
+surface. Matches the user's own live A/B test earlier this session (warm/cached = fine,
+cleared/fresh = corrupt) exactly — same mechanism, not a contradiction.
+
+**Still open: §R6a explains VISIBILITY, not ORIGIN.** It didn't corrupt anything — the raw files
+were already bad before §R6a existed (LTU raw `Last-Modified Aug 10`, Terminal `Jun 5-6`, both
+before Aug 17). It only removed the thing that had been masking the corruption for existing users.
+**The actual write that first corrupted the raw files is still unfound.** No git-tracked
+provenance exists for either raw DB upload (only `.sql` patches get an `oci_patch_gate.js`
+manifest) — if nothing further is found, say plainly the origin write is unrecoverable from
+available history; don't keep searching past where the evidence runs out.
 
 ### Explicit rules for the new session, carried over, still binding
 - No further data-value patches ("custom patching") without the user's explicit go — this
@@ -118,12 +116,18 @@ can't explain the 16th specifically, it isn't the answer yet, keep looking.
    user to identify "which elements look wrong" — read that memory file before ever asking the
    user to check/confirm/identify anything again, worded any way).
 
-**Handoff prompt for a new session** (the user asked for a one-liner to paste):
-> Resume `bim-compiler/prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` — read §0v2 first (the
-> session-close block), it supersedes the "solved" claims below it. User's facts: everything was
-> well before 2026-08-16, no custom data-patching, PR #1566 (Terminal) is rejected pending review.
-> Next step: find what changed in `viewer/streaming.js`/`scene.js` around 2026-08-15→18 (was
-> mid-search when stopped) instead of re-patching data.
+**Handoff prompt for a new session** (final, supersedes the §0v2 one above):
+> Resume `bim-compiler/prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` — read §0v3 first, it's
+> the authoritative state. Facts: everything was well before 2026-08-16 (user's own words, twice).
+> Terminal is patched and working (PR #1566) but the patch is a rejected methodology ("custom
+> patching") and does NOT explain why those rows were wrong — cause still unknown. LTU is NOT
+> solved — earlier "0 deviating" checks were self-referential (rtree vs itself), never checked
+> against an independent fresh extraction. `§R6a` (commit d9a9201, 2026-08-17) explains why the
+> corruption only became VISIBLE after the 16th (cache stopped trusting hits forever, started
+> revalidating) — it does not explain the ORIGINAL corrupting write, which is still unfound and
+> has no git-tracked provenance. Job: find that origin. Do not patch data further, do not touch
+> LTU's data, do not creep into adjacent findings (a bbox tangent was chased and disputed by the
+> user this session — dead end, don't repeat it) — stay on the one question.
 
 ## §0 RESUME HERE (if picking this up in a new session — read this block first, then §A-§F below)
 **§J ANSWERS the origin question — read §J for the full trace.** Short version: NOT a code bug.
