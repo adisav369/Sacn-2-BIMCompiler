@@ -2011,6 +2011,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The Toolchain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#capability-snapshot-dated-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability Snapshot — Dated Baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2658,6 +2675,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The Toolchain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#capability-snapshot-dated-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability Snapshot — Dated Baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3253,7 +3287,7 @@
 <tbody>
 <tr>
 <td><strong>Agent</strong> (parallel subprocesses)</td>
-<td>4 research threads simultaneously — codebase search, spec verification, test runs in parallel</td>
+<td>4 research threads simultaneously — codebase search, spec verification, test runs in parallel. As of 2026-08-23: also dispatches fully autonomous dev-agent sessions in parallel (write code, prove via witness, commit, push, open PR) — see <a href="#capability-snapshot-dated-baseline">Capability Snapshot</a> below</td>
 </tr>
 <tr>
 <td><strong>Bash</strong> (unrestricted shell)</td>
@@ -3273,6 +3307,33 @@
 </tr>
 </tbody>
 </table>
+<h3 id="capability-snapshot-dated-baseline">Capability Snapshot — Dated Baseline<a class="headerlink" href="#capability-snapshot-dated-baseline" title="Permanent link">&para;</a></h3>
+<p>A living comparison point, not a one-time claim. <strong>Each revisit adds a new row below — never edit or delete a prior one.</strong> The model roster is pulled from this repo's own commit history (<code>git log --format="%H" --grep="Claude &lt;name&gt;"</code>, oldest/newest <code>%ai</code>), not from memory — this project's own no-invent rule applies to its own documentation.</p>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Model roster active in this repo</th>
+<th>What was demonstrated</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-08-23</td>
+<td>Sonnet 5 (active since 2026-07-02) · Opus 5 (since 2026-07-25) · Fable 5 (since 2026-06-11) — all three were <em>already</em> active before this doc's prior 2026-08-09 update. No new model generation shipped in that 2-week window, per this repo's own git history.</td>
+<td>6 parallel, fully autonomous dev-agent sessions (not read-only research threads) — each independently wrote code, ran before/after witness proof, committed, pushed, and opened a PR, across 2 repos. 3 of the 6 hit a mid-task session limit and resumed cleanly with zero rework once it reset. One caught a real bug on its own (a <code>sql.js</code> instance-aliasing trap in a memory-leak fix) that the original spec's naive fix would have shipped. A separate review pass caught an ESLint regression in one PR before merge.</td>
+<td>bim-ootb PRs #1487, #1488, #1489 · bim-compiler PRs #87, #88, #89, #90 — all reviewed, CI-checked, and squash-merged in the same session</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>Same roster as 2026-08-23 (Sonnet 5, Opus 5, Fable 5) — no new model generation. What changed was the <strong>working pattern</strong>, not the model.</td>
+<td>A 4D-scheduling lane had produced three retractions of the same finding in one session the day before, entirely from an unforced habit: a long-running session re-deriving answers its own spec already contained, with no external checkpoint. The fix was not a smarter prompt — it was making the <em>coordinator</em> (this session) hold the plan and verify, while every actual code change went to a fresh, single-purpose Opus dispatch with an explicit stop-and-report condition, required to prove its result as a numeric before/after diff of real persisted state, never a screenshot. Six such dispatches ran end-to-end in one sitting: a wrong storey-elevation datum fixed and measured fleet-wide; a safety check proven to have gone stale by reverting the real bug and watching the <em>old</em> check stay green on it while the <em>extended</em> one correctly failed; a genuine silent-data-loss bug traced to an unrelated cache-eviction module racing against a save (not the save path itself, which is why two earlier sessions searching inside the save path never found it); a broken level-relation swapped for an already-correct one that had been running unused two files away — shipped behind a flag, and correctly left off when its own precondition data was found missing; and a closing audit that caught the coordinator's own blind spot — none of the day's new checks were actually wired into CI, so "green" had been an unrelated smoke suite the whole time. Two of the six also caught the coordinator being wrong: a proposed reuse of an existing UI module's storey logic was refuted with cited evidence before any code was written on it, and a wrong file citation in a dispatch brief was corrected by the agent that received it. A <code>PreToolUse</code> hook was also added mid-session to mechanically block edits to the retired code path fleet-wide — proven live with a real blocked <code>Edit</code> call, not just documented. Machine/checkout-local only, not portable — the hook lives in <code>.claude/settings.local.json</code>, which is gitignored, so it protects every session rooted at this checkout but neither a fresh clone nor a session rooted elsewhere.</td>
+<td>bim-ootb PRs #1552, #1554, #1555, #1556, #1557 · bim-compiler <code>prompts/4D_MODEL_INTEGRITY.md</code> §A/§I/§L · <a href="../4DGenerator/">4D Generator</a> · hook at <code>bim-compiler/.claude/hooks/block_bar_model.sh</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>How to compare next time:</strong> re-run the model-roster query per name; note whether a new model name appears in the git history since the last row. Describe the largest capability jump as an <em>actual demonstrated task</em> from that session's own work — not a benchmark figure pulled from memory, which this doc has no way to verify. <strong>2026-08-27 adds a second axis worth tracking even when the roster doesn't change: did the <em>working pattern</em> — bounded dispatch, numeric proof, an audited coordinator — get better, worse, or stay the same?</strong></p>
 <p>The workflow:</p>
 <div class="highlight"><pre><span></span><code>Architect writes spec (what to build, why, constraints)
      ↓
