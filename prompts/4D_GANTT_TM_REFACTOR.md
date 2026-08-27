@@ -6073,3 +6073,29 @@ largest 4D prompt files (`4D_SCHEDULE_ARCHITECTURE_REDESIGN.md`, `TM_4D5D_VARIAN
 themselves now overlap enough to merge) — on the user's own hypothesis that file bloat is a
 contributing cause of drift. See whichever of those files carries the 2026-08-27 consolidation
 commit for the result; not duplicated here.
+
+## §FUTURE item 6 — ⛔ NEW (user, 2026-08-27, live editor test on HHS_Office_Federated): CPM-block
+reason is computed and logged but never shown on screen
+
+**The inline TM Gantt editor itself is confirmed working** — this is not a bug report about the
+editor being broken. Live test evidence: dragging `TASK_Superstructure_Level_2` correctly clamps
+against its dependency (`§GANTT_EDIT_CLAMP task=TASK_Superstructure_Level_2 requested=2026-09-04
+clampedTo=2026-09-07 blockedBy=TASK_Superstructure_Level_1(FS)`), cascades ripple downstream
+correctly (`cascaded=12`+ observed), and every edit persists (`§GANTT_EDIT_PERSIST ... ok=true`).
+
+**The gap**: `blockedBy=TASK_X(FS)` is computed and printed to the console `§`-log every time a drag
+gets clamped — but nothing surfaces it on screen. A user dragging a bar just sees it snap back with
+no visible reason. Same shape as the day's earlier persist-fail fix (`§GANTT_EDIT_PERSIST_FAIL` went
+from silent to a `_tmSay` toast, PR #1555) — this needs the identical treatment: when
+`§GANTT_EDIT_CLAMP` fires, show the user the `blockedBy` reason (which task, which dependency type)
+as an on-screen message, not just a log line. Find the `§GANTT_EDIT_CLAMP` call site (`time_machine.js`,
+near the other `GANTT_EDIT_*` tags) and add the same toast mechanism already proven for the persist
+failure — do not invent a new notification pattern, reuse `_tmSay`.
+
+Not dispatched yet — queued alongside items 1-5.
+
+## Note, same live test — a pre-existing named defect surfaced again, not new
+The same session's log shows `§RETIME_OUTLIER_AUDIT outsideOldWindow=2 ... outliers ride outside
+their bar` on a real edit — the log line itself says this is "the §S7 edit-path defect." Already
+tracked elsewhere in this lane's history under §S7; recorded here only so a reader of this live test
+doesn't mistake it for a new finding. Not re-opened, not re-scoped.
