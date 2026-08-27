@@ -7,6 +7,22 @@
 
 ---
 
+> ℹ **"But `TM_4D5D_VARIANCE_LANE.md` says CPM is THE TRAP — do NOT build it." BOTH ARE TRUE. Read
+> this before treating either as a contradiction** (cross-note added 2026-08-27; it was reconciled
+> only in a memory file until now, so each session rediscovered the apparent clash).
+> `TM_4D5D_VARIANCE_LANE.md:210` reads: *"THE TRAP (explicitly DO NOT build): CPM / resource leveling
+> / calendars / critical-path. That is out-P6-ing P6 — a loss."* **That is a PRODUCT-SCOPE rule for
+> ONE product surface — the QS/commercial ERP cockpit (its §WEDGE-STRATEGY persona) — and it says so
+> in its own closing clause: *"Gaps to close are the WEDGE's, NOT the scheduler's."*** It forbids
+> growing the ERP variance/EVM cockpit into a rival scheduler; it does **not** forbid CPM in the BIM
+> viewer's 4D engine, which is *"the scheduler"* that clause explicitly carves out. This file IS the
+> scheduler's architecture record (`cpm_schedule.js` shipped and live). The variance lane keeps the
+> minimal F-S what-if (`viewer/whatif.js`, §S6 ✅ 2026-06-22) and does not grow one.
+> ➡ **What WOULD violate the trap:** adding resource leveling, calendars or critical-path *to the ERP
+> cockpit's forecast/claim loop* (W1–W3). **What does NOT:** anything in this file.
+
+---
+
 # Purpose
 
 **User's own framing, verbatim (2026-08-16), after a session that shipped a real fix (fleet floating

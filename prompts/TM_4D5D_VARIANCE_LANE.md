@@ -209,6 +209,15 @@ claim/forecast is a signed op-group = a defensible audit trail ("git for your cl
 to the model (no spreadsheet drift); EVM to-the-cent; what-if = forecast scenarios, reversible.
 THE TRAP (explicitly DO NOT build): CPM / resource leveling / calendars / critical-path. That is out-P6-ing P6 — a
 loss. Keep the minimal F-S what-if; say so in writeups. Gaps to close are the WEDGE's, not the scheduler's.
+  ℹ **SCOPE OF THE TRAP — cross-note 2026-08-27, so it stops reading as a contradiction of a shipped engine.**
+  This is a PRODUCT-SCOPE rule for **THIS lane's surface** (the QS/commercial ERP cockpit, W0–W3), not a repo-wide
+  ban on CPM code — the final clause above draws the line itself: *"not the scheduler's."* The BIM viewer's 4D CPM
+  engine (`viewer/cpm_schedule.js`) **is that scheduler**, it is SHIPPED and LIVE, and its architecture record is
+  `prompts/4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` — which now carries the reciprocal note. Building/refining CPM
+  there does NOT breach this trap. **What WOULD breach it:** growing THIS lane's forecast/claim loop into a
+  scheduler — resource leveling, calendars or critical-path in W1–W3. This lane keeps the minimal F-S what-if only
+  (`viewer/whatif.js`, §S6 ✅ DONE/LIVE 2026-06-22). *(Previously reconciled only in a memory file, so each session
+  rediscovered the clash.)*
 
 ## W0 (keystone) = S5 EARN THE ACTUAL — do FIRST. Without real AC the whole cockpit is seeded → not defensible.
 (See S5 above: CommittedAmt = Σ real C_ProjectIssue + overhead via M_CostElement; EVM PV/EV/AC honest. W-PC-EARN.)
