@@ -5008,7 +5008,7 @@ data-level, never touches the canvas), `scripts/probe_gantt_hospital_persist.js`
 - **`buildTaskIndex`'s stale-regen does NOT persist** — it runs on a plain page load and would put a
   252MB IDB write on every ordinary visit (§S70).
 
-## 5b. PERSISTENCE — day-1 ✅ RE-PROVEN NUMERICALLY, day-2 ✅ W-PERS BLIND SPOT CLOSED (PR #1554)
+## 5b. PERSISTENCE — day-1 ✅ RE-PROVEN NUMERICALLY, day-2 ✅ W-PERS BLIND SPOT CLOSED (PR #1554), day-3 ✅ THE DATA-LOSS DEFECT ROOT-CAUSED + FIXED (2026-08-27)
 > ⚠ **Read the day-2 addendum at the end of this section before citing the table below.** The
 > Duplex row still reproduces; **the Hospital row does NOT** — `probe_splitmode_persist_direct.js
 > Hospital` is RED at D6 as of 2026-08-27 (day-2 re-run). The §S78 key fix it was written to prove
@@ -5104,20 +5104,83 @@ So a ~56MB persist **reports success and silently empties the entire object stor
 used=13MB`); the profile is best-effort (`§PERSIST granted=false — cache is best-effort, browser may
 evict`), which is `scene.js:509`'s already-documented failure mode. Duplex (10MB) is unaffected —
 this is **size-related, not split-mode-related**, and it is NOT a §S78 regression.
-**Eviction is the LIKELY-WRONG explanation.** Re-ran the identical diagnostic with
-`persistent-storage` granted (`browser.defaultBrowserContext().overridePermissions(origin,
-['persistent-storage'])`) — **byte-identical outcome**: `ok=true`, `size=55888KB`, no
-`§SCHED_PERSIST_ERR`, store `[]` after the write and after restart. ⚠ Caveat for whoever picks this
-up: the override was applied but `navigator.storage.persisted()` was **not** re-asserted inside that
-run, so this is strong evidence against the best-effort-eviction hypothesis, **not** proof against
-it. Confirm `persisted()===true` first before ruling eviction out entirely.
-**Not this task's mandate; flagged, not chased.** However framed, `persistDb` returning `ok=true`
-and logging `§SCHED_PERSIST` with the correct key while the store is left EMPTY is itself a
-§CRISIS-class "the log says green, the data is gone" defect — and it is invisible to W-PERS by
-construction (W-PERS gates the routing decision; the round trip is the probe's claim D6). Nothing
-in this PR touches it. **`scripts/probe_splitmode_persist_direct.js Hospital` is currently RED at
-D6 — do not cite §5b's Hospital 8/0 row above as current; it was measured on day-1 and does not
-reproduce on day-2.**
+### ✅ DONE 2026-08-27 — ROOT-CAUSED AND FIXED (bim-ootb PR: `fix/tm-persist-idb-dataloss`)
+
+**It WAS eviction — but not the browser's. It was our own LRU evictor, firing on an abort it had
+never read the reason for.** The day-2 note above was right that best-effort browser eviction is not
+the cause, and wrong to conclude eviction as a class was ruled out. The `persistent-storage` result
+was a true negative pointing at the wrong suspect.
+
+**The measured chain** (`scripts/probe_tm_persist_dataloss.js`, an IDB mutation spy installed via
+`evaluateOnNewDocument` before any app script runs — it records every `put`/`delete`/`clear`/
+transaction-abort with its call site):
+
+1. `scene.js` `cachedFetch` tries to cache **`Hospital_geo.db` = 239,702,016 bytes**. The write
+   aborts. The real error — which the shipped code **never read** — is:
+   `UnknownError: The serialized keys and/or value are too large (size=239702104 bytes, max=133169152 bytes)`
+   i.e. **Chrome's hard ~127 MiB cap on a single IndexedDB value**. Not quota: `§QUOTA` reported
+   10,264 MB available / 24 MB used at that exact moment.
+2. `tx.onabort` was `function() { resolve(false); }` — **`tx.error` discarded**. So every caller
+   downstream assumed "quota".
+3. The retry ladder (`scene.js:1334`) therefore ran `A._evictOldest(cacheDb, 4)` — *drop the 4
+   oldest entries* — for a write that **no amount of eviction could ever satisfy**. The store held
+   only 2 entries, so "drop the 4 oldest" dropped **everything**, including
+   `buildings/Hospital_meta.db` — the slot the Time Machine had just persisted the user's edit into.
+4. Retry → aborts again (still oversized) → loop until nothing is left to delete.
+5. `§CACHE_EVICT_WRITE_FAIL … quota too small even after LRU eviction` — an assertion with no
+   evidence behind it, and the reason this went unexplained for two sessions.
+6. Next reload: `§CACHE_MISS` → pristine `_meta.db` refetched → **the edit is gone, silently**.
+
+`persistDb` was never at fault: it wrote correctly, under the right key, and `ok=true` was honest at
+the moment it resolved. **The bytes were deleted out from under it afterwards, by a different
+module, on a later load.** That is why every attempt to find the bug inside the persist path failed.
+
+**Amplifier found in the same pass:** `persistDb` wrote the `dbs` store **only**, never
+`timestamps`. So an edited slot kept whatever LRU timestamp `cachedFetch` left at first download —
+making the one entry holding unsaved user work the **oldest** entry, i.e. the **first** thing the
+evictor takes. Editing your schedule moved your data to the front of the deletion queue. (Measured:
+after three persists the Hospital meta slot had no timestamp of its own at all.)
+
+**The fix (3 files, surgical — no architecture change):**
+- `viewer/scene.js` — `_attemptWrite` now resolves `{ok, name, err}` and `tx.onabort` **reads
+  `tx.error`**. The evict-and-retry ladder runs **only for a genuine `QuotaExceededError`**
+  (`§CACHE_EVICT_ONLY_ON_QUOTA`); any other abort logs `§CACHE_WRITE_UNFIXABLE … cache left INTACT`
+  and deletes nothing.
+- `viewer/schedule_author.js` — `persistDb` stamps `timestamps` in the **same transaction** as the
+  blob (`§SCHED_PERSIST_LRU_TOUCH`), and gained a `tx.onabort` handler
+  (`§SCHED_PERSIST_ERR abort …`). It had **none**: an aborted persist settled *no* promise, so
+  `_tmPersistEdit`'s `.then()` never ran and a failed save logged nothing at all.
+- `viewer/time_machine.js` — `_tmPersistEdit` on `ok=false` now warns `§GANTT_EDIT_PERSIST_FAIL` and
+  shows the user `⚠ Could not save this edit — it will be lost on reload`. Previously silent.
+
+**Before → after, same probe, same profile, real Hospital data:**
+
+| | before | after |
+|---|---|---|
+| `DELETE` ops on the `dbs` store | **6** | **0** |
+| `dbs` after persist | `[]` — **EMPTY** | `Hospital_meta.db` **54.00MB** + 2 others |
+| edited slot has own LRU timestamp | ✗ (`timestamps=[ad_seed.db]`) | ✓ |
+| read-back of persisted blob | n/a — nothing there | `match:true` (new date in the bytes) |
+| edit after 1 reload | evicted | present |
+| **edit after 2 reloads** | **`(no tasks table)`** | **`2026-12-13`** |
+| probe verdict | 9 pass / **5 fail** | **14 pass / 0 fail** |
+
+Repeated writes covered: 3 sequential persists to the same key, all three verified by read-back —
+this is not a first-write-only fix.
+
+**Regression, both buildings, `scripts/probe_splitmode_persist_direct.js`:** Duplex **8/0**
+(whole-db), Hospital **8/0** (split) — Hospital's reload now logs
+`§CACHE_HIT Hospital_meta.db size=55.1MB`, the edited blob. The day-2 "currently RED at D6" note is
+**superseded: it is GREEN.**
+
+⚠ **Known and deliberately NOT fixed** (out of this task's scope, named so it isn't re-discovered):
+`Hospital_geo.db` (228.6MB) and any other single value over ~127 MiB **can never be cached in
+Chrome**. It now fails loudly and harmlessly instead of destructively. Whether geo data should be
+chunked to become cacheable is a separate perf question.
+⚠ Also latent, untouched: under a *genuine* `QuotaExceededError` the evictor can still delete a slot
+holding local edits. A hard "never evict a locally-edited key" guard needs a persistent marker (new
+store + version bump) and was judged out of scope; the LRU-touch above makes the edited slot the
+*newest* rather than the oldest, which mitigates it.
 
 ## 6. Known-not-done (so it isn't re-discovered as a surprise)
 - **Coverage (§S72 gap 3, narrowed by §S77, still the big one):** most `§` tags and named functions in
