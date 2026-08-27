@@ -29,6 +29,19 @@
    --content-type application/octet-stream --content-encoding gzip`. Verify with
    `curl -s --compressed <url> | md5sum` == md5 of the raw local file. A local backup of a
    downloaded object is the gzip bytes — `zcat` it before sqlite3, or "file is not a database".
+9. **`_extracted.db` and its `_meta.db`/`_geo.db` split pair are ONE UNIT — never upload one half
+   without the other, from the SAME build run.** Root-caused 2026-08-27 (`prompts/
+   LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` §J): LTU_AHouse and Terminal shipped for weeks with a
+   `_meta.db` that silently disagreed with `_extracted.db` on ~8-27% of `element_transforms` rows
+   (up to 291m off) — not a bug in `split_db.sh` or `import_db_builder.js` (both are provably
+   faithful copies, verified line-by-line), but the two files having been uploaded at DIFFERENT
+   times from DIFFERENT build runs that had since diverged. Each file was internally consistent;
+   the pair wasn't. Before uploading a `_meta.db`/`_geo.db` split pair, verify it was split from
+   the SAME `_extracted.db` currently live on OCI (or that you are re-uploading `_extracted.db` in
+   the same session) — a quick `elements_meta` row-count + a handful of `element_transforms`
+   sample-row diff against the currently-served `_extracted.db` is enough to catch this before it
+   ships. `split_db.sh`'s own "Upload all three files to bucket" is a comment, not an enforced
+   check — treat it as one.
 
 ## Strategy
 
