@@ -91,8 +91,14 @@ tier 2 (*this model's derived 4D*). Never "a construction programme" for tier 2.
 > CPE lane to state it, not this file to infer it.** Recorded so the next session does not repeat
 > the search; **no successor was invented to close Task 2.**
 
-**Read first:** `prompts/CINEMA_PATH_EDITOR.md` §CPE_BE_HERE_WHEN (the full section), plus §CPE_WHEN_HERE
-(item 7 in `prompts/CINEMA_DELIGHT_BATCH.md` — the READ direction this inverts) and §CPE_SPEED_RAMP.
+**Read first:** ~~`prompts/CINEMA_PATH_EDITOR.md` §CPE_BE_HERE_WHEN (the full section)~~ ⛔ **BROKEN
+POINTER — CORRECTED 2026-08-27. That section is NO LONGER in `CINEMA_PATH_EDITOR.md`** (verified: zero
+`# §CPE_BE_HERE_WHEN` headings there; only the one-line status entry at `:284` quoted in the block
+above). **The full section text is at
+`prompts/archive/CINEMA_PATH_EDITOR_full_history_2026-07-26_to_2026-08-03.md:4162`** — *"the shot the
+demo caught by ACCIDENT, made authorable (user, 2026-07-29)"*, running ~`:4162-4204`.
+Still valid: **§CPE_WHEN_HERE** (item 7 in `prompts/CINEMA_DELIGHT_BATCH.md:303` — the READ direction
+this inverts, confirmed present) and §CPE_SPEED_RAMP.
 
 **The origin:** the user's published demo caught the façade panelling going on and a glimpse of inner-room
 services *by accident* — two clocks coincided. Drag one band and it is gone. Task 2 makes that
