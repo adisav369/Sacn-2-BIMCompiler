@@ -1874,6 +1874,20 @@ else for warm interior light. **Named fix:** shift `CAM_LIGHT_COLOR` toward the 
 mechanism), verify live that interior walk shots read warmer without over-saturating exterior/daylit
 frames the same light also touches.
 
+**Item 2 SHIPPED 2026-08-27 — bim-ootb PR #1575 (`fix/photo-envmap-retune`, OPEN, NOT merged — held
+for live visual confirm, per the user's own caution "be careful... not to fall off to the dark
+side").** `PHOTO_ENVMAP_BOOST` stepped 3.0→2.0 (one controlled increment, matching `§PHOTO_AO_EDGE`'s
+own single-step precedent above) — the room probe now supplies part of the reflection that 3.0 was
+calibrated for before the probe existed. New witness `witness_envmap_retune.js`. Verified on Clinic
+(the building "whitewash" was originally reported on), real GPU, apples-to-apples before/after (both
+room-probe-applied): `meanBoostRatio` 3.0000→2.0000, `meanBoostedEnvMapIntensity` 1.8000→1.2000
+(track the constant exactly), frame `meanLuma` 174.19→178.02, `stdLuma` 69.65→66.57 —
+**not darker, less extreme contrast, zero clipping either side.** Hospital's material-level numbers
+confirmed the change reaches its real 17-19 glossy materials the same way, but a clean frame-level
+before/after there was blocked by unrelated environment flakiness (a hang, then a puppeteer crash) —
+flagged honestly, not claimed as verified. **Items 1 (brightness/PL-scale re-measure) and 3 (warm
+camera fill) deliberately NOT touched in this pass** — single-variable discipline, per spec.
+
 **Order, and why:** items 1+2 first (both are literally "step back an already-known-overtuned
 constant," lowest risk, most likely source of "too bright/shiny" exactly as reported) — verify those
 live before touching item 3, since a warmer camera light on TOP of still-too-bright/too-reflective
