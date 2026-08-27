@@ -941,10 +941,13 @@ mid-session; the items below happened LATER the same day and are not reflected i
   `spatial_structure` didn't exist yet — that blocker is now gone (see previous bullet), so flipping
   the flag is a live, reconsiderable decision, not a closed one. Whether `LevelDeriver`'s higher tiers
   actually activate correctly on real declared storeys is a **separate verification, not yet done.**
-- **TM edit persistence is verified clean** (bim-ootb PR #1552/#1554/#1555): the storey-datum fix
-  shipped, a real witness blind spot closed (`witness_gantt_edit_persist`, proven by reverting the bug
-  and watching the old witness stay green on it), and a genuine silent data-loss bug root-caused to
-  `scene.js`'s cache evictor (not the persist path) and fixed.
+- **TM edit persistence is verified clean** (bim-ootb PR #1552/#1554/#1555). The storey-datum half
+  (#1552) is a MODEL fact and stays in this file — §K.4 and §L item 1 below.
+  ➡ **For persistence itself, read `prompts/4D_GANTT_TM_REFACTOR.md` §5b — it OWNS this and records
+  it measured** (day-1 round-trip table, day-2 the W-PERS split-mode blind spot with its RED control,
+  day-3 the IDB evictor root cause). *Pointer replaced a shallower duplicate account here,
+  2026-08-27, consolidation L2 — two grains of one fact in two files is how a session ends up citing
+  the shallower one.* ⚠ Live code cites that section as both `§5b` and `§S5b`; grep both.
 - **Four new items queued, not started**: late residual midair elements, build-up elements crammed to
   the start of their bar instead of spread across its duration, whether resource/effort timing is
   masked by that same crowding, and whether the standalone Schedule Editor supports a full edit cycle
@@ -1022,14 +1025,17 @@ SILENTLY.** All three fixed in PR #1553.
    `SG.deriveZones` with no log line, so no downstream number was attributable to a construct.
    Both branches now emit **`§TPL_MODEL model=template|legacy-deriveZones`**. *Grep this tag
    before trusting any 4D number — it is now the cheapest way to know which model you are reading.*
-2. **`rates/4D_template.json` was NOT in `sw.js PRECACHE_ASSETS`** while `rates/sequence_rules.json`
-   — which §I calls "a MIRROR, never executed" — was. Offline/cold-SW, `_load4DTemplate()`'s fetch
-   fails, `_4dTemplate` stays null, dead path runs; `_4dTemplateTried` is one-shot so **one failed
-   fetch drops the canonical model for the whole session.** Precached; `CACHE_VERSION` → v1090.
-3. **`witness_gantt_edit_coherence.js:189` passed no `template:`** — the flagship editor witness,
-   the one CLAUDE.md names first, measured all 10 claims on the DEAD model. Now builds its fixture
-   from the template; new claim **G-COH-10** asserts from the shipped `§TPL_MODEL` line that the
-   canonical model is what was judged.
+2. **`rates/4D_template.json` was NOT in `sw.js PRECACHE_ASSETS`** — one failed fetch of the template
+   silently drops the canonical model for a whole session. Precached; `CACHE_VERSION` → v1090.
+   ➡ **FULL ACCOUNT MOVED 2026-08-27 (consolidation L2) to `prompts/4D_GANTT_TM_REFACTOR.md` §5c.**
+   It is a precache/**delivery** fact; that file's 🗺 DEBUG MAP owns delivery and witness wiring.
+3. **`witness_gantt_edit_coherence.js:189` passed no `template:`** — the flagship editor witness, the
+   one CLAUDE.md names first, measured all 10 claims on the DEAD model. Now builds its fixture from
+   the template; new claim **G-COH-10** asserts the canonical model is what was judged.
+   ➡ **FULL ACCOUNT MOVED 2026-08-27 (consolidation L2) to `prompts/4D_GANTT_TM_REFACTOR.md` §5c** —
+   **witness-wiring**, same reason. ⚠ **This pointer is load-bearing:**
+   `viewer/tests/witness_gantt_edit_coherence.js:190` cites **this file's §L** in a live code comment,
+   so the trace stays here deliberately; it is not orphaned prose.
 
 **MEASURED (Duplex) — the two models genuinely differ under an edit:**
 

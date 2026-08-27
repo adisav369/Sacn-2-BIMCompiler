@@ -4992,6 +4992,7 @@ persistence         §GANTT_EDIT_PERSIST (what=, url=) then §SCHED_PERSIST (key
 reload actually hit  §CACHE_HIT <file> — CHECK THE FILENAME, split mode must show *_meta.db
 lock gate           §GANTT_LOCK_BASELINE / §GANTT_LOCK_VERIFY / §GANTT_LOCK_BREACH
 selection           §GANTT_GROUP_SELECT count=N   (count=0 = cleared)
+WHICH MODEL ran     §TPL_MODEL model=template|legacy-deriveZones  — grep FIRST, see §5c
 ```
 
 ## 4. Running the probes — two traps that cost hours
@@ -5025,6 +5026,16 @@ data-level, never touches the canvas), `scripts/probe_gantt_hospital_persist.js`
   252MB IDB write on every ordinary visit (§S70).
 
 ## 5b. PERSISTENCE — day-1 ✅ RE-PROVEN NUMERICALLY, day-2 ✅ W-PERS BLIND SPOT CLOSED (PR #1554), day-3 ✅ THE DATA-LOSS DEFECT ROOT-CAUSED + FIXED (2026-08-27)
+> ⚠ **THIS SECTION IS CITED BY LIVE CODE UNDER TWO DIFFERENT NAMES — grep BOTH `§5b` AND `§S5b`.**
+> Verified 2026-08-27: `viewer/time_machine.js:6335`, `viewer/scene.js:1335`,
+> `viewer/schedule_author.js:2695` and `scripts/probe_tm_persist_dataloss.js:2` say **`§5b`**;
+> `viewer/tests/witness_gantt_edit_persist.js:28`/`:179` say **`§S5b`**. A grep for one misses four or
+> two files. **Do not renumber this section** — six live bim-ootb files hard-cite it by name.
+> 📌 **This section is the OWNER of TM edit-path persistence status.** `4D_MODEL_INTEGRITY.md` §L
+> carries a one-line pointer here rather than a second, shallower account (consolidation L2,
+> 2026-08-27). Day-3's fix is the PR §L records as **#1555** — this section had only the branch name
+> `fix/tm-persist-idb-dataloss`; the number is carried across from §L, which lists the day's
+> persistence PRs as #1552 (datum) / #1554 (witness blind spot) / #1555 (data loss).
 > ⚠ **Read the day-2 addendum at the end of this section before citing the table below.** The
 > Duplex row still reproduces; **the Hospital row does NOT** — `probe_splitmode_persist_direct.js
 > Hospital` is RED at D6 as of 2026-08-27 (day-2 re-run). The §S78 key fix it was written to prove
@@ -5197,6 +5208,34 @@ chunked to become cacheable is a separate perf question.
 holding local edits. A hard "never evict a locally-edited key" guard needs a persistent marker (new
 store + version bump) and was judged out of scope; the LRU-touch above makes the edited slot the
 *newest* rather than the oldest, which mitigates it.
+
+## 5c. THE CANONICAL MODEL CAN BE SWAPPED FOR THE DEAD ONE BY DELIVERY OR BY WITNESS WIRING (bim-ootb PR #1553)
+> **MOVED HERE 2026-08-27 (consolidation L2) from `prompts/4D_MODEL_INTEGRITY.md` §L**, which keeps a
+> pointer at the original location. Rationale: these two are **precache/delivery** and
+> **witness-wiring** facts — this DEBUG MAP's subject — not model facts. The **third** hole from the
+> same PR, `§TPL_MODEL model=template|legacy-deriveZones` (*which* model ran), correctly **STAYS** in
+> §L; §I's OWNERSHIP TABLE carries it as a row. §L also keeps the MEASURED before/after table and its
+> RED CONTROL — **deliberately not duplicated here**, read it there.
+
+**Both holes let the canonical template model be replaced by the dead `deriveZones` model SILENTLY.**
+
+1. **`rates/4D_template.json` was NOT in `sw.js PRECACHE_ASSETS`** while `rates/sequence_rules.json`
+   — which §I calls "a MIRROR, never executed" — was. Offline/cold-SW, `_load4DTemplate()`'s fetch
+   fails, `_4dTemplate` stays null, dead path runs; `_4dTemplateTried` is one-shot so **one failed
+   fetch drops the canonical model for the whole session.** Precached; `CACHE_VERSION` → v1090.
+2. **`witness_gantt_edit_coherence.js:189` passed no `template:`** — the flagship editor witness,
+   the one CLAUDE.md names first, measured all 10 claims on the DEAD model. Now builds its fixture
+   from the template; new claim **G-COH-10** asserts from the shipped `§TPL_MODEL` line that the
+   canonical model is what was judged.
+   ⚠ **That witness's own code comment (`viewer/tests/witness_gantt_edit_coherence.js:190`) cites
+   `4D_MODEL_INTEGRITY.md` §L**, verified 2026-08-27. That pointer is NOT stale — §L keeps the trace
+   and owns `§TPL_MODEL` — but the fuller account of G-COH-10 is here. **G-COH-10 was cited nowhere
+   outside §L before this move**, while G-COH-2..4/6/9 of the same witness are all documented in this
+   file and `WITNESS_CONTRACT_AUDIT.md`. That scatter is the leak L2 was raised to close.
+
+**Why this belongs on the DEBUG MAP:** both are the §2(b) "two keys" failure shape one level up — the
+code is right and the **delivery** or the **judge** is pointed at the wrong construct, so every
+downstream number is measured against a model nobody chose. `§TPL_MODEL` is now in §3's grep list.
 
 ## 6. Known-not-done (so it isn't re-discovered as a surprise)
 - **Coverage (§S72 gap 3, narrowed by §S77, still the big one):** most `§` tags and named functions in
