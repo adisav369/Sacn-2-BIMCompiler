@@ -1757,6 +1757,8 @@
       
         
       
+        
+      
     
     
     
@@ -1985,6 +1987,34 @@
     
   
     Vibe Programming — AI + Domain Expertise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4DGenerator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The 4D Generator — Failure Catalogue & AI Findings
   
 
     
@@ -2277,7 +2307,9 @@
 <h1 id="time-machine-the-4d-construction-timeline">Time Machine — the 4D construction timeline<a class="headerlink" href="#time-machine-the-4d-construction-timeline" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>See also:</strong> <a href="../4D5DAnalysis/">4D/5D Analysis</a> (the cost/analytics dashboard) ·
-<a href="../ERPUserGuide/">Kernel-ERP User Guide</a> · <a href="../BIMUserGuide/">BIM Viewer Guide</a></p>
+<a href="../ERPUserGuide/">Kernel-ERP User Guide</a> · <a href="../BIMUserGuide/">BIM Viewer Guide</a>
+<strong>How the schedule behind this page gets generated:</strong> <a href="../4DGenerator/">The 4D Generator</a> — the failure
+catalogue and AI-agent process findings behind the generator that produces the timelines you see here.</p>
 </blockquote>
 <p>The <strong>Time Machine</strong> (the clock pill in the viewer, or press <strong><code>t</code></strong>) is where a building's
 construction schedule lives — playback, authoring, editing, and the link back into the ERP's
@@ -2466,6 +2498,7 @@ gap to close. Like every other edit here, it is gated by the same edit lock, und
 <p><strong>This is not the same kind of action as the row above it.</strong> Drag / resize / marquee-group-move
 are all "<strong>you</strong> choose what moves and how far." Pull Back is "the tool computes what's <strong>allowed</strong>
 to move, and moves all of it" — no selection needed.</p>
+<p><img alt="The Time Machine mid-construction on a real steel-framed structure, Gantt drawer and dashboard both open at once — left: the **locked** Gantt (padlock icon), per-level rows across phases, critical path in red (3 critical), float in teal (39 with float), **Undo edit / Set Baseline / Pull Back** on the transport row; right: the dashboard reading **Day 33 | Hr 10, $63K / 39% spent**, **Phase Progress** (Substructure 100%, Superstructure 58%, MEP Rough-in 6%, Architecture 67%, MEP Final 0%, Finishes 0%), **Site Resources** (Steel Erector, HVAC Tech, Pipefitter, one Mobile Crane 20 Tonne — 7 workers / 1 machine), and the **S-Curve**, footer *Day 33/313 — 12% complete*; the 3D view shows the steel frame mid-build with green MEP rough-in ducting/piping threaded through it and a **&quot;Now building · 7 items · MEP Rough-in&quot;** callout. **Known residual, shown plainly, not cropped out:** a few diagonal/vertical steel members near the top-right of the frame read as disconnected — floating above the slab/frame below them instead of visibly landing on it. This is the support-relation edge case tracked in 4D_MODEL_INTEGRITY.md (a handful of elements whose true physical support isn't yet detected by the sequencing pass) — a known, minor, already-named limitation still being tracked, not a rendering bug and not hidden here." src="../figs/time_machine_steel_playback.png" /></p>
 <h2 id="schedule-editor-the-advanced-gantt-on-its-own-surface-live">Schedule Editor — the advanced Gantt, on its own surface <em>(LIVE)</em><a class="headerlink" href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" title="Permanent link">&para;</a></h2>
 <p>The Time Machine's <strong><code>✎</code></strong> wizard, <strong><code>⑂</code></strong> what-if, and direct-drag Gantt above are the <em>intuitive</em>
 front — quick, visual, one gesture. When you want the <strong>serious planner</strong> — an expandable WBS,
