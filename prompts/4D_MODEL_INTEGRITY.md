@@ -1660,7 +1660,14 @@ while the other ten still pass. That asymmetry is precisely why this was invisib
   live on the element path, and §S8b measured it as manufacturing 100% of played floating.
 
 ## State, honestly
-- ✅ **DAY 0 is at zero.** `§W_D0` **14 PASS / 0 FAIL / 2 INCONCLUSIVE** (`bim-ootb
+- ⛔ **STALE 2026-08-27 (§FUTURE item 7 stage 2, bim-ootb PR #1568) — this "DAY 0 is at zero" line no
+  longer holds against current `origin/main`.** Re-run with a fresh cache: `§W_D0` now scores
+  `claims=13 PASS=4 FAIL=5 INCONCLUSIVE=4 RED` — reproduces identically on unmodified `origin/main`
+  (isolated in a clean baseline worktree), so nothing PR #1567/#1568 did caused it; something between
+  whatever commit this 14/0/2 line was measured against and `a2e582b` regressed it. The "14 PASS"
+  below is what this line ORIGINALLY reported and is being kept for the trail, not re-derived —
+  whoever owns this lane next needs to re-baseline `§W_D0` for real (bisect the regression, don't
+  assume the old table). ~~DAY 0 is at zero.~~ `§W_D0` **14 PASS / 0 FAIL / 2 INCONCLUSIVE** (`bim-ootb
   viewer/tests/witness_day0_integrity.js`). It refuses to print GREEN because two claims judged an
   empty population — both Hospital, both honest unknowns, not hidden failures.
 - ✅ **0 of 718 `IfcColumn`** start before the slab/footing that bears them.

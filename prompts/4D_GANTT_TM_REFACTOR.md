@@ -6130,12 +6130,27 @@ turn it's written.
    `origin/main` (isolated in a clean throwaway baseline worktree, then removed) — zero regressions
    caused by this change. `probe_tpl_layer_bearing_scope.js` (PR #1563) now throws its own designed
    guard ("the predicate moved") — retired by the fix landing, not deleted.
-2. **Fix the dead-air gaps in `remapSolveToTasks`'s reveal distribution** (§FUTURE item 2's
-   recommended direction, user-approved). `TASK_Architecture_Envelope_Level_5` has real gaps — days
-   inside its own window where zero elements start. This is independent of item 1 above (item 1 is a
-   support-ORDER question; this is a reveal-TIMING gap-filling question) but both touch the same
-   function, so sequence them, don't run in parallel — measure whether fixing #1 changes the dead-air
-   picture before assuming they're additive.
+2. ✅ **DONE (bim-ootb PR #1568, stacked on #1567) — dead-air gaps in `remapSolveToTasks` closed.**
+   Sequenced after item 1 as required: re-measured dead-air post-item-1 first (still present,
+   3-4/20 bins on Hospital/HHS's widest overlaps — item 1 didn't remove it, confirming the two are
+   independent as predicted). Replaced the per-layer affine map with duration-weighted contiguous
+   tiling (real solve order kept via sort, but each element's WIDTH in the band is its own duration
+   weight, not raw solve-magnitude) — tiles every populated band edge-to-edge, so dead air is
+   structurally impossible. MEASURED (`scripts/probe_tpl_parallel_reveal.js`, 3 buildings): dead-air
+   slices in the 3 widest cross-level overlaps dropped 3-4/20 → **0/20 everywhere**. Task grid
+   membership/`totalDays` unchanged (42/67/318, 20/30/50, 20/29/13). Found+fixed one real regression
+   in the same pass (`witness_4d_movie_binds_bars`'s `remap-preserves-solve-order` — needed the same
+   guid tie-break the witness itself uses for `solveStart` ties). Full suite: 58 green, 7 new_red,
+   all 7 verified pre-existing (isolated against a clean `origin/main` baseline) — **including
+   `witness_day0_integrity.js`, which surfaces a real, pre-existing DAY-0 regression unrelated to
+   this fix or item 1**: it reproduces the identical `claims=13 PASS=4 FAIL=5 INCONCLUSIVE=4` on
+   unmodified `origin/main` with a fresh cache. The "PASS" the FIRST full-suite sweep (item 1's own,
+   see item 1 above) showed for this witness was a cache-miss artifact, not a real baseline — its
+   cache for Hospital/HHS/Duplex didn't exist yet at that point in the session. **This means
+   `4D_MODEL_INTEGRITY.md`'s "DAY-0 integrity is at ZERO / 14 PASS 0 FAIL 2 INCONCLUSIVE" headline
+   is now STALE against current `origin/main`** (something between that measurement's commit and
+   `a2e582b` regressed it) — flagged here for whoever next owns that lane; NOT fixed, NOT re-derived
+   further, out of scope for §FUTURE item 7 stages 1-2.
 3. **Stage 4 — edit-legality investigation** (not yet started): `verifyGanttIntegrity()` ANDs two
    already-known-disagreeing "does S support T" copies instead of using the one with the later
    false-positive fix. Investigate which is more correct; recommend, do not silently pick one.
