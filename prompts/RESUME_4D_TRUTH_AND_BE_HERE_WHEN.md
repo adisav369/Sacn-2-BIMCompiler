@@ -74,6 +74,22 @@ tier 2 (*this model's derived 4D*). Never "a construction programme" for tier 2.
 > pointed at it). Recorded per the same "flag a doc discrepancy, don't re-litigate" precedent as
 > `prompts/CPM_FLOAT_GAP.md:30`. Found by a citation sweep during the 2026-08-27 prompt-consolidation
 > pass, which is also why §DIAGNOSIS below is now archived.
+>
+> **2026-08-27 (later, same pass) — ONE CANDIDATE SUCCESSOR FOUND. It is a LEAD, NOT A RULING.**
+> A full search of `CINEMA_PATH_EDITOR.md` for the fold still finds **no statement anywhere that
+> names a successor to `§CPE_BE_HERE_WHEN`** — so the fold remains unestablished and Task 2 is still
+> not closed here. The one section covering the identical question is
+> **`prompts/CINEMA_PATH_EDITOR.md:834-884` — Part F, `§CPE_STICK_TIME_SYNC`, F2** (*"sync a pin's
+> timing to when the selected element is actually built"*, user 2026-08-04, i.e. **later** than
+> §CPE_BE_HERE_WHEN's 2026-07-29 spec — consistent with "the later family", but nothing says so).
+> ⚠ **F2 does not close Task 2 even if it IS the successor:** F2 is itself headed *"open question, do
+> NOT guess"* and turns on an unmade design call — **(a)** retime the path to force arrival at
+> `F × totalSec` vs **(b)** read-only comparison; its own gate `G-TIME-SYNC-1` is written as
+> *"once F2's question is settled"*. F2 does name the primitive as already built and witnessed
+> (`_ghostGroundArm`, `cinema_maxq.js` ~L211-217, rank→film-fraction, gated by G-GG-12).
+> ➡ **Whoever resolves this: start at Part F, not from scratch — but the successor claim needs the
+> CPE lane to state it, not this file to infer it.** Recorded so the next session does not repeat
+> the search; **no successor was invented to close Task 2.**
 
 **Read first:** `prompts/CINEMA_PATH_EDITOR.md` §CPE_BE_HERE_WHEN (the full section), plus §CPE_WHEN_HERE
 (item 7 in `prompts/CINEMA_DELIGHT_BATCH.md` — the READ direction this inverts) and §CPE_SPEED_RAMP.
@@ -337,7 +353,16 @@ consumers and one silent no-op:**
 
 **Precondition for Task 2 (`§CPE_BE_HERE_WHEN`) is now met** — the timeline no longer installs a
 window before its wall, so pinning a camera arrival to "when this is being built" now aims at a
-correct moment. Task 2 itself is untouched by this session; still open.
+correct moment. Task 2 itself is untouched by this session.
+
+> ⛔ **CORRECTED 2026-08-27 — this line used to end "still open". THAT CLAIM IS STALE; DO NOT ACT ON
+> IT.** It was written 2026-07-31. `prompts/CINEMA_PATH_EDITOR.md:284` — the file this task names as
+> its own authority, edited *later* — records `§CPE_BE_HERE_WHEN` as *"spec, not built — folded into
+> the later 'be here when' family, superseded."*
+> **The true current status is UNRESOLVED, and is deliberately not asserted either way here.** See the
+> full ⚠ DOC DISCREPANCY block at the head of Task 2 above, which owns this question. Resolve it in
+> `CINEMA_PATH_EDITOR.md` (that lane owns the tag; this file only ever pointed at it) — do not close
+> Task 2 on one changelog line, and do not start building it on this file's stale word.
 
 **Lesson for next session touching `rates.js`/`sequence_rules.json`:** editing the JSON alone proves
 nothing about what the live viewer does — check whether the consuming page actually calls
