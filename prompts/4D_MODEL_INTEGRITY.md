@@ -480,7 +480,7 @@ Paths are `~/bim-ootb/viewer/` unless stated. Line numbers are `origin/main` @ `
 | **when does each element happen?** | `schedule_gate.js:421` `computeSchedule(...)`, then `cpm_schedule.js:796` `run(...)` | re-solve. The template path ends at `schedule_author.js:884` `remapSolveToTasks` |
 | **where inside its task?** | `schedule_author.js:884` `remapSolveToTasks(solve, tasks, startISO)` | ⚠ a 4th arg `layerOf` exists only on unmerged `fix/tpl-layer-order` — see §H.3 |
 | **what level is it on?** | **OWNER: `viewer/lib/level_deriver.js` `LevelDeriver.derive/levelFor`** (T1 containment → T2 declared name → T3 geometry grid → T4 counted). Two callers: `location_axis.js` (display) and, **flag-gated**, the task grid — `schedule_author.js` `_deriverLevelAxis()` behind `opts.levelSource === 'deriver'`, **default OFF**, see §I.3a | re-derive it from `e.storey`. The OLD path (`schedule_gate.js:404` `collapsePhase` → `:338` `deriveBandRanks`) is still what runs by default and is **broken — see §I.3**; do not build new work on it |
-| **are two storey names one floor?** | `schedule_gate.js:382` `deriveStoreyMergeMap(spatialStructure)` | ⚠ **has never once run on any shipped building — §I.3** |
+| **are two storey names one floor?** | `schedule_gate.js:382` `deriveStoreyMergeMap(spatialStructure)` | ✅ **RUNS as of 2026-08-27** (Terminal 23 names → 15 bands) — the elevation patches were never uploaded to OCI, not never written; §I.3 §CLOSED. ⚠ still throws for `HHS_Office_Federated` |
 | **is this slab ground-bearing?** | `schedule_gate.js:201` `groundworkSlabs(els)`, one shared definition | reclassify slabs inline in a recipe |
 | **is anything floating?** | `support_sweep.js:500` `_midairAudit(items)` (movie) · `schedule_gate.js:1122` `auditFloating(...)` (gate) | ⚠ these two disagree on the support top bound — §I.1 |
 | **is an edit legal?** (🔓→🔒) | `verifyGanttIntegrity()` → `_midairAudit` | re-score with your own physics |
@@ -538,6 +538,71 @@ It reads `spatial_structure.elevation`; **0 of 4 shipped DBs have that column** 
 have no such table at all). Its failure prints as `§S18_STOREY_MERGE_FAIL … "no elevation data,
 bands unmerged"`, which reads like benign degradation and is not: it is the level model being wrong.
 ⚠ **A log line that understates is the same defect as one that lies.**
+
+### ✅ CLOSED 2026-08-27 — IT WAS A DEPLOY GAP, NOT A DATA GAP (bim-ootb PR #1557)
+
+**The paragraph above was right about the symptom and wrong about the cause. Read this before
+acting on it.** Nothing needed re-extracting and no elevation value was missing. The data had been
+extracted, committed and wired days earlier — `buildings/patches/Hospital_meta.db.sql` (56 real
+`IfcBuildingStorey` rows, 2026-08-17) and `Terminal_meta.db.sql` (67 rows) — and
+`viewer/scene.js` `A._applyPendingPatch` already fetches `buildings/patches/<dbFile>.sql` from the
+same directory the db came from. **The patches were never uploaded to the OCI bucket the viewer
+actually fetches from.** The repo copy and the served copy disagreed in silence:
+
+| object | served | repo | `elevation` in served |
+|---|---|---|---|
+| `patches/Hospital_meta.db.sql` | 1,382,739 B | 2,592,837 B | **0 mentions** |
+| `patches/Terminal_meta.db.sql` | 569,945 B | 4,723,739 B | **0 mentions** |
+
+**Nothing in the repo could see this, because nothing in the repo read the served bytes.** This
+machine's local `buildings/Hospital_meta.db` already carried an `elevation` column the served
+object did not — so every local check agreed the fix was in, and the fleet stayed broken.
+⚠ **`buildings/*.db` is a dev artifact. It is not evidence about production.**
+
+**Why the live log said `no such column` and not `no such table`** (the detail that made this look
+like a stale-extractor problem): the served `Hospital_meta.db` has no `spatial_structure` at all,
+and the stale served patch never mentions one — but `viewer/lib/room_walker.js` `writeRooms()`
+**CREATEs the table client-side without an `elevation` column** (`:1338`), and its `ADD COLUMN`
+list omits `elevation` (`:1342`). The client manufactures the table, then §S18 asks it for a
+column it does not have. It only deletes `STC_`/`RM_` rows, so real storey rows do survive it.
+
+**Measured against the DOWNLOADED SERVED BYTES** (`bim-ootb scripts/probe_s18_elevation_deploy.js`,
+the check that was missing; it asserts BEFORE reproduces the live failure, AFTER answers §S18, the
+rows SURVIVE `writeRooms`' schema pass, and the **shipped** `deriveStoreyMergeMap` runs on the
+result — and it reports `VACUOUS`/`NO-OP`, never a bare PASS on an empty population):
+
+| object | BEFORE | AFTER | bands |
+|---|---|---|---|
+| `Hospital_meta.db` | threw `no such table: spatial_structure` | **56 datums** | 8 |
+| `Terminal_meta.db` | threw `no such column: elevation` | **67 datums** | **23 names → 15** |
+| `Duplex_extracted.db` | threw `no such column: elevation` | **4 datums** | 4 |
+
+**`deriveStoreyMergeMap` now runs** — Terminal collapses 23 storey names into 15 bands. The
+OWNERSHIP TABLE row "are two storey names one floor?" is no longer flagged never-run.
+
+**A second defect, caught by that probe and never shipped.** Duplex's `§STOREY_DATUM` block
+(authored in PR #1551) opened with `CREATE TABLE IF NOT EXISTS spatial_structure (… elevation
+REAL)`. Green against the LOCAL `Duplex_extracted.db`, which has no such table. The SERVED object
+**has** one, elevation-less — so the CREATE no-ops and every INSERT throws. `_applyPendingPatch`
+swallows exec failures and returns the ORIGINAL buffer, so that would have **silently discarded
+the entire Duplex patch**, including the working `§NOGEO_COMPOSE` `rel_aggregates` rows, while
+still logging only the `§S18_STOREY_MERGE_FAIL` it was written to cure. Rewritten to the
+DROP+CREATE convention the other patches already use. ⚠ **`oci_patch_gate.js` alone would NOT have
+caught it** — it applies patches with `sqlite3 <db> < patch`, and the CLI without `-bail` continues
+past a failing statement, so a half-applied patch reads green there and is wholly discarded live.
+
+**No elevation value is computed.** Hospital's are unit-resolved **per `IfcProject`** across its 7
+discipline IFCs: the **SPR sprinkler file declares `FOOT`** where the other six declare
+`MILLI.METRE`, so its Level 2/3/4/5 land at **6.096 / 10.9728 / 15.8496 / 20.7264 m** beside the mm
+files' 6 / 11 / 16 / 21 — 0.096 m apart, correctly merged under `GAP`. Duplex's four are identical
+across three independent source files. Sources: `internal/UNMERGED/` and
+`~/Projects/bim-compiler/DAGCompiler/lib/input/IFC/UNMERGED/` (byte-identical archives, all present).
+
+⛔ **STILL OPEN — `HHS_Office_Federated`.** It has `spatial_structure` with 3 storeys and populated
+`center_z` (`size_z = 0`, a placement point) but **no `elevation` column and no patch that adds
+one**, so §S18 still throws for it. `elevation := center_z` is plausible but is a DERIVATION, not
+an extraction — closing it honestly means reading HHS's own source IFCs the way Hospital's were.
+Not attempted here rather than guessed.
 
 **What has been ruled out, so nobody re-walks it:**
 - `bim-compiler scripts/normalize_storey.py` — run on a Terminal copy it renames 5 `Ceiling Level N`
@@ -652,8 +717,11 @@ and all 87 of its DAY-0 elements are seq-1 ground-bearing footings (nothing for 
   assigned by its own BASE. Replaced nearest-median-Z-of-elements over a pool of raw labels
   (unbounded, and the inference §PATHS NOT TO TAKE #7 forbids). Terminal **22 bands → 6**.
   No declared storeys ⇒ unchanged, and the §-line says so.
-- **`tools/extract.py`** now writes `IfcBuildingStorey.Elevation` — it never did, which is why
-  `deriveStoreyMergeMap` has NEVER RUN on any shipped building (§I.3).
+- **`tools/extract.py`** now writes `IfcBuildingStorey.Elevation` — it never did. ⚠ **That was not
+  what kept `deriveStoreyMergeMap` from running on the shipped fleet**, and the extractor fix does
+  not by itself reach any shipped building: the patches carrying that datum existed already and had
+  never been UPLOADED to OCI. Fixed + verified against the served bytes 2026-08-27 — see §I.3
+  §CLOSED. The extractor fix still matters for the NEXT extraction; it is not the live path.
 - **`§TPL_LADDER_BRIDGE`** — the across_levels ladder now bridges past dropped phases, as
   `_empty_phase_rule` already required for the within_level chain. Duplex's
   `Superstructure @ Level 1` had been starting at h0.0 **in parallel with** `Substructure @ T/FDN`.
