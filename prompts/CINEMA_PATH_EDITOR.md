@@ -3636,3 +3636,56 @@ same day).
 Spec-First already satisfied by this section, FUNDAMENTAL LAW — §-log/numeric witness only, no
 screenshots — and CPE's own protected-lane caution apply). See the dispatch note below for exactly
 what was handed off.
+
+**Built 2026-08-27 — bim-ootb PR #1572 (`feat/cpe-cone-orient-adjust`, OPEN, not merged/auto-merged —
+user wants to review the interaction personally before it ships).** `effects.js` gained a new
+`_cpeCorrections` plan field (same `A.cinemaPathPlan` wrapper pattern as `_cpeBands`/`_cpeHose`/
+`_cpeReveal`); each correction's world anchor resolves to an arc-fraction via the SAME nearest-point-
+on-`flowWp` technique `_buildPinZones` already uses for bands — a deliberately SEPARATE code path from
+the pin mechanism (not band-indexed), checked inside `_beat3Pose` AFTER the existing pin/§CPE_AIM_DEPTH
+chain. `cinema_path_editor.js` wired cone hit-test/focus/drag/commit into the existing `h.down`/
+`h.move`/`h.up` pipeline — screen-space proximity (`_screenOf`), not a raycast, same `depthTest:false`
+reasoning `_handleGrabPx` already gives for band handles; one grab split by movement (click=focus,
+drag past `CLICK_SLOP_PX`=rotate+commit), reusing the §CPE_STICK/§CPE_HOSE "one grab" convention rather
+than requiring two separate clicks. Interaction is gated to the walk beat's own `_walkWindow()` — outside
+it the cone's position collapses onto a fixed per-beat point (e.g. `settle` throughout the whole spin),
+so a correction anchored there would silently snap onto the wrong end of the walk. `§CPE_UNDO` reused
+verbatim (`_undoPush` before every commit), corrections threaded through `_buildOverride`/`_isEdited`/
+undo-redo/`_pathsApply`/`open()` the same seam bands already ride. `sw.js` CACHE_VERSION v1095→v1096.
+
+**Open questions flagged for the user's sign-off (none silently settled):**
+1. VF panel auto-show on release: built as "stays open until the eye toggle is used" (spec's own
+   recommended default) — not confirmed.
+2. Envelope constants `CPE_CONE_CORR_RAMP_M=2` / `HOLD_M=5` / `DECAY_M=4` (arc-length metres) are
+   first-guess defaults, not settled.
+3. Click-then-drag built as ONE gesture (§CPE_STICK/§CPE_HOSE precedent) rather than two separate
+   clicks, even though the spec's own prose numbers them as two steps — a judgment call.
+4. Overlapping corrections: nearest anchor wins outright (no blending); re-dragging within
+   `CPE_CONE_CORR_MERGE_M=3` of an existing anchor updates it in place rather than stacking — both
+   first-guess MVP behaviour, not user-decided.
+5. A correction is applied AFTER the existing pin, so it can override even a pinned zone's gaze —
+   not confirmed with the user.
+
+**Witness: `witness_cpe_cone_orient.js` (new), 17/17 PASS (Duplex)** — real click/drag pointer events
+via `THREE.Vector3.project`-computed screen coordinates (same technique `witness_cpe_drag.js` already
+uses for band handles), not synthetic hooks: click focuses/creates no correction; click outside clears
+focus and spawns no stick; a real drag commits one correction with a real unit direction;
+**`bands.length` and every `band.c`/`band.d` are byte-identical before/after the drag (maxDelta=0)** —
+the acceptance criterion this feature exists to satisfy; the VF panel auto-shows during the drag though
+never toggled on; the envelope shape sampled via a new `A._cpeBeat3PoseDebug` witness hook (mirrors
+`A._cpePinZonesDebug`) shows 0.00° error at the anchor/through mid-hold vs. 147.85° well past the decay
+window — the taper actually decays, does not pin forever; real Ctrl+Z/Ctrl+Shift+Z undo/redo the
+correction, bands untouched throughout. Hospital timed out opening the editor in this environment
+(>9 min, twice) — a pre-existing, already-documented environment limitation in this exact repo (PR
+#1570's own test plan hit the identical timeout); Duplex-only matches several sibling witnesses'
+own defaults.
+
+**Regression suite re-run unmodified, 90/92 across 9 files**: `witness_cpe_buildup_tempo.js` 3/3,
+`witness_cpe_ghost_ground.js` 15/15, `witness_cpe_aim_pin.js` 7/7, `witness_cpe_drag.js` 8/8
+(Duplex+Terminal), `witness_cpe_undo.js` 12/12 (Duplex+Terminal), `witness_cpe_pov_marker.js` 6/6,
+`witness_cpe_click_slop.js` 6/6, `witness_cpe_scrub_viewfinder.js` 33/33 all clean.
+`witness_cinema_bands.js`: Duplex 4/6 (B5/B7 fail), Terminal 6/6 — **confirmed PRE-EXISTING via a
+`git stash` baseline diff** (re-ran the identical witness against pristine `origin/main` with this
+PR's changes stashed away: byte-identical failure numbers, band1 aimErr=171.8°, peak=84.6°/frame at
+t=0.157, with or without this change). Not a regression. The disabled §CPE_AIM_PIN click trigger
+(`cinema_path_editor.js` ~line 3018) is grep-confirmed untouched.
