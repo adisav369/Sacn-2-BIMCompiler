@@ -61,6 +61,20 @@ tier 2 (*this model's derived 4D*). Never "a construction programme" for tier 2.
 ---
 
 ## Task 2 — §CPE_BE_HERE_WHEN: be HERE when THAT is being built
+
+> ⚠ **DOC DISCREPANCY — FLAGGED 2026-08-27, NOT RESOLVED. Check this before starting Task 2.**
+> This file still calls Task 2 open (see its closing line, written 2026-07-31). **The file it names
+> as its own authority disagrees.** `prompts/CINEMA_PATH_EDITOR.md:284` — committed, and that file
+> was git-touched 2026-08-24, i.e. *after* this one's last edit — records:
+> *"§CPE_BE_HERE_WHEN (spec, not built — folded into the later 'be here when' family, superseded)."*
+> It names **no successor tag**, so what "the later family" is has NOT been established, and the CPE
+> lane's own current open item is `§CPE_AIM_DEPTH_BUILDUP`, not this.
+> **Do not start building Task 2 on this file's word, and do not close it on that one line either** —
+> resolve which is true first, in `CINEMA_PATH_EDITOR.md` (that lane owns the tag; this file only ever
+> pointed at it). Recorded per the same "flag a doc discrepancy, don't re-litigate" precedent as
+> `prompts/CPM_FLOAT_GAP.md:30`. Found by a citation sweep during the 2026-08-27 prompt-consolidation
+> pass, which is also why §DIAGNOSIS below is now archived.
+
 **Read first:** `prompts/CINEMA_PATH_EDITOR.md` §CPE_BE_HERE_WHEN (the full section), plus §CPE_WHEN_HERE
 (item 7 in `prompts/CINEMA_DELIGHT_BATCH.md` — the READ direction this inverts) and §CPE_SPEED_RAMP.
 
