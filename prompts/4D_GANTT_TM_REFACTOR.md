@@ -5792,3 +5792,45 @@ investigated or fixed yet, don't assume any of these are closed by today's other
    actually supports a complete edit cycle end-to-end is *already* named as unverified above, in this
    same file (persist-fix section, "Deliberately NOT touched" — split-mode task-data loading was never
    confirmed). Folding the user's ask into that same open question rather than treating it as new.
+5. **⛔ NEW (user, 2026-08-27): feature-wide audit — which scheduling constants live in code vs.
+   `rates/sequence_rules.json` / `rates/4D_template.json`, and should they.** Trigger: the 8h/24h
+   shift-calibration constant (`28800` in `_installSecs`, item 2 above) turned out to be a hardcoded
+   JS literal, not a rate-file value — despite `sequence_rules.json` already being the declared home
+   for trade rates and crew counts. The user's concern is systemic: **are there other constants like
+   this scattered through the JS that should be data, and isn't**, and is the prompt-file bloat this
+   whole file has been fighting today a contributing cause of that kind of thing going unnoticed.
+
+   **This is a READ-ONLY INVENTORY task, not an implementation task — say that explicitly to whoever
+   picks it up.** Deliverable: a table of every scheduling-relevant numeric/behavioral constant found
+   hardcoded in `schedule_author.js`/`schedule_gate.js`/`time_machine.js`'s scheduling path (grep for
+   bare numeric literals near `secs`/`days`/`shift`/`crew`/`rate` identifiers, cross-check each
+   against whether an equivalent already exists in either JSON file), for each: what it is, where
+   it lives now, whether the two JSON files are the natural home for it, and — **only as a
+   recommendation, never applied in this pass** — whether moving it there is safe (does anything
+   assume it's a compile-time constant vs. a runtime-read value; would a bad/missing JSON value need
+   a sane fallback).
+
+   **Safeguards, because this exact kind of task is what's been going wrong (verbatim user words:
+   "such idiocy... don't trash around"):**
+   - No code changes. No JSON edits. This session's job ends at a written inventory + recommendation
+     table, committed to this file (in place, don't append yet another dated section — add it as a
+     new subsection under this item).
+   - Spec-First: before touching any file, state which files/functions are in scope
+     (`schedule_author.js`, `schedule_gate.js`, `time_machine.js`'s scheduling calls only — not the
+     whole viewer) and how "scheduling-relevant constant" is being defined, so the boundary is fixed
+     before the grep starts, not discovered by how far the session happened to wander.
+   - Every claim cited by file:line, verified by reading the actual code, not inferred from a
+     variable name.
+   - If the investigation surfaces something that looks like an active bug (like item 2's 3x
+     mismatch) rather than a config-location question, name it and stop — do not fix it in the same
+     pass, hand it back as a separate finding.
+   - Read `4D_MODEL_INTEGRITY.md` §I (the ownership table) and this file's own §FUTURE items 1-4
+     first — if a constant this audit finds is already the subject of a tracked item, cross-reference
+     it, don't re-open it as new.
+
+**Separately, same day, same user concern:** a parallel task was dispatched to consolidate the
+largest 4D prompt files (`4D_SCHEDULE_ARCHITECTURE_REDESIGN.md`, `TM_4D5D_VARIANCE_LANE.md`,
+`RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`, and re-checking whether this file and `4D_MODEL_INTEGRITY.md`
+themselves now overlap enough to merge) — on the user's own hypothesis that file bloat is a
+contributing cause of drift. See whichever of those files carries the 2026-08-27 consolidation
+commit for the result; not duplicated here.
