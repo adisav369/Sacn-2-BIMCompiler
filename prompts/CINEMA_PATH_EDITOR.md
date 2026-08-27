@@ -3416,6 +3416,10 @@ the new 3-arg cursor on both buildings — opacity floor held exactly until the 
 
 **sw.js `CACHE_VERSION` bumped same PR. Scope held exactly as directed** — §FUTURE item 2 not touched.
 
+**Live user sign-off (2026-08-27, real Terminal building, 48,428 elements, captured schedule):** initial
+report ("no buildup at all", "too short") traced to user error (TM not opened first) — withdrawn.
+Confirmed after: **"the days onset seems better."** CLOSED.
+
 ## §LTU_SUBSURFACE_BBOX — movie path dives underground on LTU_AHouse (2026-08-16) — ✅ SHIPPED same day, PR bim-ootb#1386 MERGED (user GO)
 **Fix shipped exactly as named below: `_bboxZFenced()` shared by both helpers, rows outside
 `p01 ± 0.25·(p99−p01)` excluded (whole row), skipped for n<100/degenerate span, effects.js?v=19,
