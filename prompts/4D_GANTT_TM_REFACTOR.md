@@ -6115,15 +6115,21 @@ each one before moving to the next. Post that plan and wait — do not proceed p
 turn it's written.
 
 ### What's approved and ready to execute, once the plan above is posed
-1. **Apply the §I.5c self-check predicate fix** (Stage 3, PR #1563 has the probe already — extend it
-   to the real fix). Confirmed: cures 84–93% of real support-order inversions the self-check is
-   currently 88–100% blind to. Task windows and total project duration do NOT change on any of the
-   three measured buildings — only element order *inside* already-correct windows moves (86–98% of
-   elements, 70–90% of tasks). **User-approved despite the scale**, on the reasoning that this is a
-   real correctness fix with an unchanged schedule envelope, not a schedule-breaking one. Also fix, in
-   the same pass: `§TPL_LAYER_ORDER` doesn't run at all in the node test harness unless `SupportSweep`
-   is registered — every witness score on this pass may never have exercised the real code. Register
-   it in the harness before trusting any before/after number here.
+1. ✅ **DONE (bim-ootb PR #1567, merged branch pushed 2026-08-27) — §I.5c self-check predicate fix.**
+   Both narrowing clauses dropped (`schedule_author.js:1345`,`:1412` — the `S.tz <= T.bz+GAP` upper
+   bound that belonged only to `auditFloating`'s wall pool, applied here to every contact). Also
+   registered `SupportSweep` in `witness_4d_template_instantiation.js`, which never ran the pass at
+   all before this (`§TPL_LAYER_ORDER_FAIL`, silent no-op — confirmed live: baseline run showed
+   `applied=0 moved=0 stillInverted=0 FAIL pass did not run` on all three buildings). MEASURED via
+   the real witness, matching PR #1563's probe exactly: `stillInverted` Duplex 5, HHS 9, Hospital
+   794 (cures 84–93% of real inversions). Task grid membership and `totalDays` byte-identical on all
+   three (13/13, 50/50, 318/318) — confirmed both via the witness and a direct `materializeZones`
+   membership check, not assumed. `witness_gantt_edit_coherence` (doesn't register `SupportSweep`)
+   stayed 11/0, unaffected — confirms the change is inert wherever it isn't wired in. Full
+   72-witness headless suite: 59 green, 6 new_red, all 6 verified pre-existing on unmodified
+   `origin/main` (isolated in a clean throwaway baseline worktree, then removed) — zero regressions
+   caused by this change. `probe_tpl_layer_bearing_scope.js` (PR #1563) now throws its own designed
+   guard ("the predicate moved") — retired by the fix landing, not deleted.
 2. **Fix the dead-air gaps in `remapSolveToTasks`'s reveal distribution** (§FUTURE item 2's
    recommended direction, user-approved). `TASK_Architecture_Envelope_Level_5` has real gaps — days
    inside its own window where zero elements start. This is independent of item 1 above (item 1 is a
