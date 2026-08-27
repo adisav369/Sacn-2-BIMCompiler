@@ -709,6 +709,446 @@ A relation belongs here the moment a **second** caller needs it. The shape to co
 `bar_model.js attachContacts` — take the computed relation as a **parameter**; never recompute it
 because the module boundary made it inconvenient to pass. Both §I.1 copies exist for that reason.
 
+## §I.5 AUDIT OF EVERY REMAINING ROW (2026-08-27, read-only sweep)
+
+**Method, and why it is the only one that works.** Today's two deep rows (support §I.1, level §I.3)
+were not found by inventing new checks — they were found by taking ONE relation, grepping for every
+place that could answer the same question (similar variable names, similar comments, similar
+threshold constants — *not* just callers of the owner), reading all of them, and diffing what each
+actually does. This section applies that to the other twelve rows. Every `file:line` below was read
+directly at `bim-ootb` `origin/main` @ `676a71b` (`11ba2e3` is one probe-only commit ahead; zero
+diff to shipped viewer code, so line numbers hold). `bar_model.js`/`bar_needs.js` excluded — dead
+lane, `bar_needs.js` has no consumer outside `bar_model.js` and its own witness.
+
+**⚠ Read §I.5a FIRST.** It is a cross-cutting defect that damages four separate rows, and reading
+those rows without it makes each look like an isolated inconsistency.
+
+### CLEAN — single-sourced, no rival implementation found
+
+| the question | verdict |
+|---|---|
+| **are two storey names one floor?** | `schedule_gate.js:382` `deriveStoreyMergeMap` is the **only** implementation of elevation-based storey merging. Called from exactly one place (`schedule_author.js:720`). ⚠ but see §I.5f — the NAME normalisation it depends on has three rival rules. |
+| **where inside its task?** (the remap itself) | `schedule_author.js:924` `remapSolveToTasks` is single-sourced and takes `layerOf` as a **parameter** — §I.4's correct shape. ⚠ the `layerOf` it is *fed* is defective — §I.5c. |
+| **which ONE thing supports T?** | Two copies (`support_sweep.js:432`, `cpm_schedule.js:126`) but they are **byte-identical** modulo the module-resolution line — verified by mechanical diff of both bodies with comments/whitespace stripped. A real parity witness diffs them per element (`scripts/probe_cpm_schedule.js:145`, `§CPM_PARITY_SUPPORT elementMismatch`). The same holds for the `contactGraph` pair (`:384` vs `:54`, diff clean, `§CPM_PARITY` at `:131`). **The §I row should name the second copy** — it currently reads as single-owner — but the code is not drifting. |
+| **is it on screen at cursor?** | The ~15 inline `start_ts`/`end_ts` comparisons across `time_machine.js` all agree: *placed* = `end_ts <= cursor` (`:1232`, `:8022`, `:8122`, `:8173`, `:8228`), *frontier* = `start_ts <= cursor < end_ts` (`:2111`, `:2578`, `:8052`). No `<`/`<=` divergence found. The sites that `break` early (`:1227`, `:2576`, `:3282`) depend on `_ops` being start-sorted, which is an enforced invariant (`:29`, re-sorted at `:6176`, `:9179`, `:9421`). ⚠ **the row's cited owner `time_machine.js:169` is a doctrine COMMENT, not code** — the implementation is the `renderAtTime` loop at `:1225`. Stale citation, correct doctrine. |
+| **how long does it take?** | `schedule_author.js:78` `_installSecs` is the single formula owner. `time_machine.js:4494` `getInstallSecs` genuinely delegates (`:4500`). Its local fallback diverges exactly as the row already warns (drops `realQty`/`lengthRatio`, `:4503`) — **the row is accurate**. One small addition, §I.5g. The `28800`-vs-`SHIFT_HOURS=24` question is NOT a duplicate-owner defect: `rates.js:19-20` names them as two concepts (rate-table crew-day vs calendar clock) and `11ba2e3` §TPL_CALIB_SAMELEVER already measured them as **one lever** (`tasksDiffering=0/42`). Do not re-open it. |
+
+---
+
+### §I.5a ⛔ THE SUPPORT POOL HAS FIVE INLINE DEFINITIONS AND ONE OF THEM DROPS STAIR FLIGHTS
+
+**This is §I.1's disease one level down, and it is LIVE.** `schedule_gate.js:1312` `supportPool(e)`
+is exported, and its own header (`:1304-1308`) says it is *"the SUPPORT POOL, expressed once and
+exported … so `designatedSupport()` in cpm_schedule.js and `_designatedSupport()` in time_machine.js
+can ask the same question instead of treating every touching box as structure."* It is not expressed
+once. Five inline copies decide the same membership question, and they do not agree:
+
+| # | where | the test | stair flight? |
+|---|---|---|---|
+| 1 | `schedule_gate.js:1312` `supportPool()` — **the exported one** | `seq<=4 ∪ (IfcSlab && seq>4) ∪ IfcStairFlight` | ✅ in |
+| 2 | `schedule_gate.js:570` `place()` support grid | `el.seq<=4 \|\| isPromotedSlab(el) \|\| isStairFlight(el)` | ✅ in |
+| 3 | `schedule_gate.js:787` `structIdxGrid` | `P.seq<=4 \|\| isPromotedSlab(P) \|\| isStairFlight(P)` | ✅ in |
+| 4 | `schedule_gate.js:1125` `auditFloating` `structGrid` | `e.seq<=4 \|\| (e.cls==='IfcSlab' && e.seq>4)` | ⛔ **OUT** |
+| 5 | `time_machine.js:3739` `_buildXraySupportCache` | `e.seq<=4 \|\| (e.cls==='IfcSlab' && e.seq>4)` | ⛔ **OUT** |
+| 6 | `schedule_gate.js:203` `groundworkSlabs.isStructBearing` | `seq<=4 ∪ **IfcWall\*** ∪ (IfcSlab && seq>4) ∪ IfcStairFlight` | ✅ in, **plus walls** |
+
+`IfcStairFlight` carries `sequence: 6` (`rates.js:259`), so `seq<=4` is false for it, and copies 4/5
+route it to neither grid — their `else if` branch only catches `IfcWall*`. **A stair flight is
+invisible AS SUPPORT to the floating audit and to the x-ray staging cache**, while the scheduler
+that produced the times treats it as structure.
+
+**This is the exact bug `§STAIR_FLIGHT_GRID_VISIBILITY` fixed in the scheduler on 2026-08-14** —
+`schedule_gate.js:550-555` names it verbatim: *"a flight is real structure but routes through
+placeNonst (seq=6), so it was never inserted into structIdxGrid/grid — invisible AS SUPPORT to
+anything resting on it (a mid-landing, a floor above)."* The audit twin never got that fix.
+
+**The `§S64` repair was PARTIAL and its own comment says the opposite.** `schedule_gate.js:1164-1171`
+records that #1345 added `isStairFlight()` to the scheduler's pools *"without touching the audit twin
+here"* and cost 17 fleet-wide false verdicts — but the fix landed only on the **target** side
+(`tPool`, `:1172`, "a stair flight does not hang from what it sits below"). The **support-membership**
+side, `:1125`, was left alone. Worse, `:1154-1155` asserts *"structGrid (p===0) is unbounded here as
+before: that pool's bearing test is edgeBearing's exact twin and already agrees with the gate."*
+**It does not agree with the gate** — `:787` includes stair flights and `:1125` does not, 338 lines
+apart in one file.
+
+**Direction of the error (opposite to §S64's):** a target resting on a stair flight finds no bearing
+candidate, `se` stays 0, and `:1204`'s `if (se > 0 && …)` can never fire — so this is a **false
+NEGATIVE**, floating under-reported, not over-reported. Copy 6 additionally admits `IfcWall*` as a
+bearer with no top bound while `auditFloating` admits walls only to promoted slabs and only under
+`S.top_z <= T.base_z + GAP` (`:1156`) — the §I.1 copy-3 bound. Whether `groundworkSlabs` genuinely
+needs walls in its disqualifying pool is a **construct question, not settled here**; its header
+(`:190-191`) claims the list is *"the module's own bearing definition"*, which it is not.
+
+⛔ **Not fixed here (audit-only).** Fixing 4/5 changes floating counts fleet-wide and moves the lock
+gate — same blast-radius class as §H.6 item 1.
+
+### §I.5b ⛔ EPS AND GAP ARE RE-TYPED AS LITERALS IN THE FILES THE EXPORT COMMENT NAMES
+
+`schedule_gate.js:1298-1300` exports EPS/GAP with an explicit reason: *"EPS/GAP exported alongside
+CELL so a consumer of the same geometry (time_machine.js §MIDAIR_REPAIR) can test contact with THIS
+module's measured constants instead of re-typing them — **a second copy is a second thing to
+drift**."* Three **production** sites re-type them anyway:
+
+| where | code | note |
+|---|---|---|
+| `time_machine.js:3722` | `var CELL = 4, EPS = 0.05, GAP = 0.5;` | all three re-typed |
+| `time_machine.js:4967` | `var _rgCELL = (ScheduleGate.CELL \|\| 4), _rgEPS = 0.05, _rgGAP = 0.5;` | CELL read from the module, **EPS/GAP typed by hand in the same statement** |
+| `support_sweep.js:61` | `var _ogEPS = 0.05, _ogGAP = 0.5;` | in the same 620-line module whose `_contactGraph` (`:387`) reads `SG.EPS`/`SG.GAP` with the comment *"the shipped constants, never re-typed here"* |
+| `time_machine.js:3500` | `var LP_GAP = 0.5;  // m — same "tops out at this level" tolerance schedule_gate.js uses (GAP)` | the comment states the duplication outright |
+
+**All four currently equal the canonical `schedule_gate.js:38-39` values, so nothing is disagreeing
+today — this is a latent drift hazard, reported as such, not inflated into a live defect.** It is
+named because §I.1's three copies became three *different* predicates the same way, and because a
+one-line change to `GAP` (which §H.6 item 1 is actively considering) would silently move three of
+these and not the other four. Test/probe copies exist too (`witness_gantt_og_grid_perf.js:74`,
+`witness_og_guard_bearing_bound.js:126`, `witness_door_window_host_wall.js:69`,
+`scripts/gen_meta_transform_patch.js:42`, `scripts/audit_split_pairs.js:28`) — the last two label
+themselves "mirrored", which is the honest form.
+
+**OPEN QUESTION, not asserted:** `viewer/lib/level_deriver.js:49` `var EPS = 0.05; // metres of
+slack on the extent/band intersection` carries the same *value* for what reads as a genuinely
+different *concern* (band intersection, not bearing contact). I did not establish whether these are
+one constant or two that coincide. Do not "unify" it without deciding that first.
+
+### §I.5c ⛔ `§TPL_LAYER_ORDER` NARROWS THE BEARING RELATION, AND ITS OWN SELF-CHECK SHARES THE NARROWING
+
+**This supplies the mechanism §H.3 recorded but did not explain.** §H.3 found that the layer pass
+makes Hospital worse (13 → 15) while `§TPL_LAYER_SELFCHECK` says PASS, and correctly identified ONE
+scope-blindness: the same-task filter (`_taskOf[_S.guid] !== _taskOf[_T.guid]`). **There is a second,
+and it is upstream of the first.**
+
+`schedule_author.js:1307` announces the pass as *"topological layers of the SHIPPED contact graph's
+bearing relation"*, and `:921` claims `layerOf` is *"computed once from the SHIPPED contact graph
+(never re-derived)"*. It calls the real `SupportSweep.contactGraph` (`:1326`) — and then **re-filters
+its output with a bearing predicate the shipped graph does not use**:
+
+```
+schedule_author.js:1334   if (S2.bz < T2.bz - EPSl && S2.tz >= T2.bz - GAPl && S2.tz <= T2.bz + GAPl) b2.push(...)
+support_sweep.js:410      if ((S.bz < T.bz - EPS && S.tz >= T.bz - GAP) || …          ← no upper bound
+support_sweep.js:453      if (S.bz < T.bz - EPS && S.tz >= T.bz - GAP) { cls = 0; … } ← no upper bound
+```
+
+The extra `S2.tz <= T2.bz + GAPl` clause is §I.1 **copy 3's** upper bound — which §I.1 records as
+existing *only* on `auditFloating`'s wall pool — applied here to **every contact**. So the graph is
+the shipped one; the relation read off it is not.
+
+**Blast radius is already measured, in this very file.** §H.2a: *"of the in-scope bearing contacts,
+Hospital 941 / 2944 = **32.0 %** are supports whose top sits above the base they carry."* Those are
+precisely the edges `:1334` discards. The Kahn layering at `:1341-1352` therefore runs on a graph
+missing roughly a third of Hospital's bearing edges, and elements whose only support is one of them
+land in layer 0 — laid out first inside their task, which is the inversion the pass exists to remove.
+
+**And the self-check cannot see it, because it re-types the SAME narrowed predicate:**
+
+```
+schedule_author.js:1395   if (!(_S.bz < _T.bz - SG.EPS && _S.tz >= _T.bz - SG.GAP && _S.tz <= _T.bz + SG.GAP)) continue;
+```
+
+`§TPL_LAYER_SELFCHECK stillInverted` counts inversions **only among pairs both the pass and the
+judge already agree to look at**. A pair the owner's graph calls bearing and this narrowing drops is
+outside the judge's population entirely — it cannot be counted, so `stillInverted` cannot rise
+because of it. That is PRIMAL LAW clause 4's **scope-blind** verdict, and combined with §H.3's
+same-task filter the pass has two independent reasons to report PASS on a run it degraded.
+
+⛔ The predicate at `:1334`/`:1395` is written out twice, ~60 lines apart, so a fix must touch both.
+
+### §I.5d ⛔ THE EDIT-LEGALITY ROW IS WRONG: IT RUNS **BOTH** DISAGREEING JUDGES AND ANDs THEM
+
+The §I row reads `verifyGanttIntegrity() → _midairAudit`. Read the function
+(`time_machine.js:4258-4331`): it calls **both**.
+
+- `:4282` `var n = ScheduleGate.auditFloating(audited, sched, null, guids);` ← §I.1 **copy 3** (wall pool bounded by `S.top_z <= T.base_z + GAP`, stair flights absent from `structGrid` per §I.5a)
+- `:4294` `var ma = _midairAudit(mrItems);` ← §I.1 **copy 1** (no top bound, full contact graph, all classes)
+- `:4327` `return { ok: n <= base.floating && ma.midair <= base.midair, … }`
+
+**So the lock gate is the one place in the codebase where §I.1's two disagreeing implementations are
+run over the same population in the same call and their verdicts conjoined.** That is not
+necessarily wrong — the `:4283-4288` comment argues for it deliberately (*"auditFloating's support
+pools … cannot see an element whose real neighbours are outside them"*) — but the ownership row
+naming only one of them is a stale row, and anyone reading it will re-derive the wrong physics for
+an edit check. The two also receive **different data shapes** for the same elements (`audited`
+carries `base_z`/`top_z`; `mrItems` is remapped to `bz`/`tz` at `:4291`).
+
+**Correct row:** `verifyGanttIntegrity()` → `ScheduleGate.auditFloating` **AND** `_midairAudit`,
+delta-gated against `_lockBaseline` (`:4326`), never absolute zero.
+
+### §I.5e ⛔ "IS ANYTHING FLOATING?" HAS FOUR JUDGES, AND THE ONE THAT GATES CI HAS DRIFTED
+
+The §I row names two (`_midairAudit`, `auditFloating`) and flags one disagreement (the top bound).
+There are four, and the drift is in the one the row does not mention.
+
+| # | where | shape | agrees? |
+|---|---|---|---|
+| 1 | `support_sweep.js:500` `_midairAudit` | directional: `des[i] >= 0 && items[des[i]].s > items[i].s + 1` | — the reference |
+| 2 | `schedule_gate.js:1122` `auditFloating` | pool-scoped, `se > 0 && start < se - 1` | differs by design (§I.1) |
+| 3 | `viewer/tests/witness_zone_display_authoring.js:121` + `witness_crosstask_judge_parity.js:74` + `scripts/probe_cpm_schedule.js:56` `census/floatingCensus` | call the **real** `contactGraph`/`designatedSupport`, reproduce #1's 3-line loop verbatim | ✅ agrees |
+| 4 | `viewer/tests/witness_midair_zero.js:308` `census` | **fully independent**, symmetric ("earliest contact of ANY kind"), own grid, own `isGround` | ⛔ **DIVERGED** |
+
+Copy 4 is the judge `witness_midair_zero` locks the lane's headline metric with. Its own code says so
+(`:301-307`): *"it mirrors `_contactGraph`'s symmetric carrier clause, while `SupportSweep.midairAudit`
+went DIRECTIONAL in #1435. Measured 2026-08-22: breaking the shipped judge by 86,400,000x leaves this
+witness at pass=49 fail=0 — the lock does not track the engine. Green here is not evidence that
+midairAudit works."* The matching note sits at `support_sweep.js:489-499`.
+
+**This is already tracked in `4D_GANTT_TM_REFACTOR.md` §S58.5 — the finding here is that §I's own
+row does not carry it**, so a reader who obeys §I's instruction ("find your question, call the
+owner") is told the floating relation has two owners that disagree on one clause, when it actually
+has four and the CI lock is on the stale one. **Do not delete copy 4** — both code notes say it is a
+deliberately independent judge; the open question is whether the two describe one physics.
+
+### §I.5f ⛔ THREE RIVAL RULES FOR "STRIP THE SUB-STOREY SUFFIX", AND THE MERGE MAP KEYS OFF A DIFFERENT ONE THAN THE ELEMENTS DO
+
+`collapsePhase` (`schedule_gate.js:404`) is the §I-implied owner of storey-name normalisation. Two
+others exist:
+
+| # | where | rule | strips |
+|---|---|---|---|
+| 1 | `schedule_gate.js:406` `collapsePhase` | `/\s+(Ceiling\|TOS\|Top of Steel\|Soffit\|Slab)\b.*$/i` — strips the token **and everything after it** | Ceiling, TOS, Top of Steel, Soffit, **Slab** |
+| 2 | `import_worker.js:276` `normalizeStorey` (§STOREY_NORMALIZE) — runs at IMPORT and **writes `elements_meta.storey`** | case-insensitive `endsWith` over a literal list | Ceiling, TOS, **T.O.S.**, Top of Steel, Soffit — *no Slab* |
+| 3 | `panels.js:2042` `collapseLevel` | `/^(Level\s*\S+?)(?:\s+(?:Ceiling\|TOS\|Top of Steel))?$/i` — **anchored on a `Level` prefix**, returns the name unchanged otherwise | Ceiling, TOS, Top of Steel — *no Soffit, no Slab, no T.O.S.* |
+
+**Why it matters structurally, not just cosmetically.** `deriveStoreyMergeMap` builds its keys from
+`collapsePhase(spatial_structure.name)` (`:386`) — the **raw extracted** IFC storey name. The lookup
+that consumes those keys, `deriveBandRanks`, applies `collapsePhase(e.storey)` (`:341-342`) to a name
+that **rule 2 already rewrote at import**. Verified: `normalizeStorey` is applied only to `storeyMap`
+→ `elements_meta.storey` (`import_worker.js:289`); `spatial_structure` is written separately
+(`lib/room_walker.js:1363`) and is not normalised there. **For any name where rules 1 and 2 disagree,
+the merge map's key never matches the element's band key and the merge silently no-ops for that
+storey** — with no log, because §S18 only reports `names=` and `merged=` counts.
+
+**The single divergent token is `T.O.S.`** — rule 2 strips it, rule 1's `\bTOS\b` does not match it.
+**MEASURED, and it is LATENT not live:** querying the two shipped DBs that carry `spatial_structure`,
+`Hospital_meta.db` has `Level 2 TOS … Level 7A TOS` / `Level N Ceiling` (both rules agree) and
+`Terminal_meta.db` has `Ceiling Level Kedai, Ceiling Level 01…04`. **No `T.O.S.` form exists in the
+current fleet.** Reported as a real code divergence with an empty population today — the honest
+statement, not a manufactured defect.
+
+**Separately, and this one IS live:** Terminal's `Ceiling Level NN` is the **prefix** form, and
+*none* of the three rules strips it (rule 1 needs `\s+` before the token; rule 2 needs it at the end;
+rule 3 needs a `Level` prefix). Those 5 names survive as distinct bands through name-collapse and are
+only rescued by `deriveStoreyMergeMap`'s **elevation** merge — which is why §I.3's §CLOSED block
+reports 23 names → 15 bands only *after* the patches landed. On a building with names but no
+elevations, the prefix form is unmergeable by any rule in the codebase.
+
+Rule 3 is arguably a **different concern** — it collapses `tasks.name` while walking a WBS tree, not
+`elements_meta.storey` — and `phaseOf` (`panels.js:2046`) gates it on `/^Level\b/i` anyway, so it
+never sees Terminal's Malay `Aras *` names at all. **Stated as an open question rather than asserted
+as one relation.**
+
+### §I.5g THE TASK GRID AND THE MODEL TAG BOTH HAVE A THIRD PRODUCER THE ROW DOES NOT NAME
+
+Both rows present a two-way fork. There are three generators, all writing the same `SCH_AUTHORED`
+schedule id:
+
+| generator | task grid from | `§TPL_MODEL` line? |
+|---|---|---|
+| `schedule_author.js:435` `instantiateTemplate` (via `materializeZones` + `opts.template`) | `rates/4D_template.json` | ✅ `model=template` (`:741`) |
+| `SG.deriveZones` (via `materializeZones`, no template) | grouped out of what the solve did | ✅ `model=legacy-deriveZones` (`:746`) |
+| `schedule_author.js:1417` `materializeDefault` | phases from `SEQUENCE_RULES`, widths from labor workload | ⛔ **none — no attribution line at all** |
+
+`materializeDefault` is **live UI**, two call sites in `schedule_author_ui.js` `generateDraft()`:
+`:276` (the "Start blank" checkbox) and `:293` (the fallback when `materializeZones` returns
+`!ok`). Neither emits `§TPL_MODEL`; `:293` logs only `§AUTHOR_UI_DRAFT mode=dated-fallback`. So the
+row's `never` ("assume the canonical model ran because the code *can* pass `template:`") has a third
+state it cannot express: a schedule that came from neither model.
+
+**The concrete mechanism by which the canonical path is missed** is at `schedule_author_ui.js:288`:
+`var _tpl = (typeof window !== 'undefined' && window._4dTemplate) || null;` — `window._4dTemplate` is
+set by `time_machine.js`'s `_load4DTemplate()`. Open the authoring UI without the Time Machine
+having loaded the template and `_tpl` is `null`, so `materializeZones` takes the **dead**
+`legacy-deriveZones` branch. The comment at `:286-287` states this plainly.
+
+✅ **Credit where due:** `witness_gantt_edit_coherence.js:210-218` reads the shipped `§TPL_MODEL`
+line rather than re-deriving it and reports `INCONCLUSIVE — no §TPL_MODEL line was emitted` when it
+is absent. That is PRIMAL LAW clause 4 done right, and it is why the third producer is detectable at
+all.
+
+**Also small, on the duration row:** `getInstallSecs`'s fallback (`time_machine.js:4503-4513`) drops
+the `§TPL_ZERO_MINUTE` floor report as well as the weighting. `_installSecs` calls `_reportFloor` on
+both floor paths (`:80`, `:90`); the fallback just `return 120`. §S65's own comment says the defect
+*"survived weeks of downstream fixes because this function reached the floor SILENTLY — no §-log, at
+any of its sites, ever."* The fallback re-creates that silence on the path where ScheduleAuthor
+failed to load. The `:4510-4511` comment remembers to keep `default_productivity` in step and does
+not mention the log.
+
+### §I.5h SMALLER, VERIFIED, LOW-SEVERITY
+
+- **Ground exemption — the "owner" is an observability branch, not a gate.** `schedule_gate.js:1210`
+  `T.seq !== 1` guards only the `§SUPPORT_UNCHECKED` **warn-only** log (`:1205-1217`, *"Does NOT
+  touch v / the floating flag"*). The floating verdict at `:1204` is `se > 0 && start < se - 1` —
+  an element with **no** support (`se === 0`) is never counted floating regardless of `seq`. So the
+  exemption never actually exempts anything from the verdict; it filters a log line. The row is
+  literally correct and reads as more load-bearing than it is. One inline re-type of the same
+  predicate exists at `time_machine.js:4979` (`_e.cls !== 'IfcSlab' && _e.seq !== 1 && …`) and one
+  of the `buildingModelsSubstructure` test at `:4949` vs the owner's `:1138` — both agree today.
+- **Two name-regex answers to "is this slab ground-bearing?"** live alongside the geometric owner:
+  `rates.js:334` `slab_on_grade_substructure` (`pattern: 'slab[ _-]?on[ _-]?grade'` → `sequence: 1`)
+  and `rates.js:312` `foundation_pile_misclassified_slab` (`'str-fo|\bpile\b'` → `sequence: 1`).
+  These are **deliberate and documented** (§SLAB_ON_GRADE_RECLASS, `rates.js:319-332`) and answer a
+  different question (they set `seq`, which feeds the exemption; `groundworkSlabs` sets `phase`).
+  Not a defect — but the §I row says "one shared definition", and a reader chasing a groundwork
+  misclassification needs to know the name-override table can reach the same element first.
+- **Stale line citations in §I's own table** (all functions found, offsets only): `§TPL_MODEL` is at
+  `schedule_author.js:741`/`:746`, not `:715`. `instantiateTemplate` is at `:435`, not `:425`.
+  `remapSolveToTasks` is at `:924`, not `:884`. `supportPool` is at `schedule_gate.js:1312`, and the
+  §S64 comment at `:1166` cites it as `:1246`. `time_machine.js:169` is a comment, not the owner.
+- **Latent witness-harness landmine.** `tests/_schedule_gate_main.js` is a frozen `origin/main` fork
+  of the whole gate module; at `:202` it does `global.ScheduleGate = API` with a **5-key** API
+  (`computeSchedule, collapsePhase, elementsInPhase, auditFloating, CELL`) — **no `EPS`, no `GAP`,
+  no `supportPool`**. `witness_4d_band_monotonic.js:21-22` requires the real module first and this
+  one second, so `globalThis.ScheduleGate` ends up pointing at the fork. That witness never touches
+  `SupportSweep`, so nothing breaks **today** — but `_contactGraph` (`support_sweep.js:386-387`)
+  guards only on `SG.CELL`, then reads `SG.EPS`/`SG.GAP` as `undefined`, making every comparison
+  `NaN` and returning a **silently empty contact graph**. Any future `require` of SupportSweep or
+  CpmSchedule in that process would read green on zero contacts.
+
+### §I.5i ⛔ `SEQUENCE_DEFAULT` IS RE-TYPED SEVEN TIMES AND EVERY COPY IS THE PRE-§S65 VALUE
+
+The declared home is `rates.js:276`:
+
+```
+var SEQUENCE_DEFAULT = {phase:'Architecture Envelope',sequence:6,resource:'MASON'};
+   // §S65: was resource:null -> every unmatched class floored at 120s
+```
+
+**Its own trailing comment is the reason this matters.** §S65 changed `resource: null` to `'MASON'`
+*because* null routed every unmatched class into `_installSecs`' `no-resource` branch
+(`schedule_author.js:80`) and floored it at 120 s — the zero-width-bar / "zero minute stacking"
+defect. Seven fallback literals still carry the **pre-§S65** object:
+
+| where | literal |
+|---|---|
+| `schedule_author.js:19` (`matchRule`'s own `dflt` default) | `{ phase: 'Architecture', sequence: 6, resource: null }` |
+| `schedule_author.js:306`, `:1422`, `:1695` | same |
+| `schedule_diff.js:203` | same |
+| `time_machine.js:3662`, `:4458` | same |
+
+Two things are wrong with each copy, not one: `resource: null` is the value §S65 removed, and
+`phase: 'Architecture'` is a name `rates.js:415` explicitly marks *"legacy key — ops/DBs written
+before the 2026-08-26 split still carry it"*, superseded by `Architecture Envelope` /
+`Architecture Closeup`.
+
+**Severity, stated honestly: LATENT, and that is the whole difference from §I.5b.** §I.5b's EPS/GAP
+copies still *equal* their source; **these have already diverged from theirs** and are held back only
+by `||` ordering. Six of the seven read `opts.defaultRule || global.SEQUENCE_DEFAULT || <literal>`,
+and every production caller supplies one of the first two (verified: `schedule_author.js:358`,
+`:1480`, `:1719`, `time_machine.js:3553` all pass `dflt`; in a browser `rates.js`'s top-level `var`
+*is* `window.SEQUENCE_DEFAULT`). The seventh, **`schedule_author.js:19`, is the exception worth
+watching**: `matchRule(cls, rules, dflt)` falls to the literal without ever consulting
+`global.SEQUENCE_DEFAULT`, so any future caller that omits the third argument silently re-acquires
+the exact pre-§S65 120-second floor. In node, where `rates.js` is loaded through
+`new Function(ratesSrc + …)` and its `var`s never reach `global`, `defaultRule` **must** be passed —
+most probes do, and one that forgets gets the stale object with no log.
+
+### §I.5j ⛔ "WHAT DID THE RUN ACTUALLY SAY?" — PRIMAL LAW CLAUSE 3 IS VIOLATED IN 16 FILES, AND CLAUSE 5's CACHE HAS 2 READERS
+
+This row's `never` is *"re-run `materializeZones`, and **never** wrap it to silence `console.log`
+(PRIMAL LAW clause 3)."* Both halves are being done, at scale.
+
+**(a) 16 files install a full-silence `console.log = () => {}` wrapper**, most of them directly
+around a pipeline call. Verified by reading two of them:
+
+```
+scripts/probe_template_hells.js:131   const _l = console.log, _w = console.warn;
+                             :132     console.log = () => {}; console.warn = () => {};
+                             :135     res = ScheduleAuthor.materializeZones(db, R.SEQUENCE_RULES,
+                             :136       mode === 'template' ? Object.assign({}, base, { template: T }) : base);
+```
+
+That probe exists to compare the **template** model against the **legacy** model — and it silences
+the `§TPL_MODEL` line that names which one ran. `scripts/probe_enclosure_geometry.js:102-110` does
+the same and additionally swallows the exception (`} catch (e) {}`).
+
+Full list (`console.log = () => {}` / `console.log = console.warn = console.error = …`):
+`viewer/tests/` — `witness_bar_schedule.js`, `probe_4d_motion.js`, `witness_door_window_host_wall.js`,
+`witness_s50_cell_engine.js`, `witness_4d_capacity_honoured.js`,
+`witness_tm_schedule_output_of_truth_all_buildings.js` (its helper is literally named
+`generateQuietly`), `witness_kernel_ops_sched_version.js`, `witness_midair_zero.js`,
+`witness_s55_identity_vs_cell.js`, `witness_hosted_before_host.js`, `witness_bar_composite.js`,
+`probe_4d_movie_vs_bars.js`, `witness_bar_needs.js`; `scripts/` — `probe_day0_unsupported.js`
+(a named `quiet()` helper), `probe_template_hells.js`, `probe_enclosure_geometry.js`.
+The honest form exists too and should be the pattern: `witness_big_element_support_coverage.js:194`
+and `witness_tm_geo_order_cycles.js:129` **tee** (`return origLog.apply(console, arguments)`).
+
+**(b) THE FORK'S TWO BRANCHES ARE ON DIFFERENT STREAMS, AND THE TEMPLATE WITNESS MUTES THE FAILURE
+ONE.** This is the sharpest instance and it ties §I.5g shut:
+
+```
+schedule_author.js:741   console.log ('§TPL_MODEL model=template …')            ← canonical branch
+schedule_author.js:746   console.warn('§TPL_MODEL model=legacy-deriveZones …')  ← the DEAD-model branch
+```
+
+```
+witness_4d_template_instantiation.js:62   console.log = (...a) => { … if (s.indexOf('§TPL_') === 0 || s.indexOf('§AUTHOR_TPL') === 0) logs.push(s); };
+                                    :63   console.warn = () => {};
+```
+
+The filter keeps the canonical branch and the **total `console.warn` mute deletes the legacy one**.
+That witness always passes `template: T` (`:67`) so the branch should not fire today — but the same
+mute also deletes, on every run: `§CLASS_UNMATCHED` (`schedule_author.js:29`), `§TPL_ZERO_MINUTE`
+(`:75` — **which matches the `§TPL_` filter and is discarded anyway purely because it is a warn**),
+and `§TM_DURATION_SYNC_FALLBACK` (`time_machine.js:4480`). The `console.log` filter separately drops
+`§S18_STOREY_MERGE_FAIL` (`:725`), `§ZONE_DISPLAY_AUTHORING_FAIL` (`:706`), `§AUTHOR_ZONES_FAIL` and
+`§SUPPORT_UNCHECKED`. **A `§`-tag is not enough: which STREAM a line uses now decides whether a
+witness can see it.** Either put both `§TPL_MODEL` branches on one stream or make every wrapper tee.
+
+**(c) Clause 5's persisted cache is bypassed almost universally.** `scripts/cache_4d_run.js` has
+exactly **two** consumers — `viewer/tests/witness_day0_integrity.js:37` and
+`scripts/probe_tpl_reveal_spread.js:11`, both of which do it correctly (the former even prints
+`§W_D0 CACHE_MISS … INCONCLUSIVE` rather than a bare pass). Roughly **60** other scripts/witnesses
+call `materializeZones` / `_buildScheduleElements` / `computeSchedule` / `CpmSchedule.run` directly.
+Most predate the cache and re-running is not itself wrong — **but §I's row states the cache as the
+owner, and 2-of-62 is not an owner.** Either the row is aspirational and should say so, or the
+migration is an open work item; today the row reads as settled and is not.
+
+**(d) Four other persisted "what the run said" artifacts exist**, surfaced by sweep and **not
+individually re-read by me — treat as leads, verify before citing**:
+`viewer/analysis_sidecar.js:149` `get4D` (OPFS, keyed on **building name only** — `boq_charts.html:1305`
+already documents that it "cannot tell authored from generated"), `schedule_author.js:2643`/`:2680`
+(IndexedDB `bim_ootb_cache`), `time_machine.js:3985-4021` (`_displayTimeline._last`, a 99.9%-coverage
+in-memory fingerprint), and `schedules.gen_version` / `_GANTT_CACHE_VERSION` (`:5325`). Four
+staleness keys, four different derivations.
+
+### §I.5k SURFACED BY SWEEP, **NOT** INDIVIDUALLY VERIFIED — LEADS ONLY
+
+Recorded so they are not rediscovered, explicitly **not** asserted as findings. Each needs the
+file:line read before it is cited or acted on.
+
+- **Phase/trade classification is the most duplicated relation in the codebase.** Besides
+  §I.5i, the sweep reports ~13 further production classifiers answering "what phase/trade is this":
+  `rates.js:373` `getPhase`, `rates.js:393` `WORK_PACKAGES`, `export_5d.js:371` (its own
+  class→phase map, still using the legacy `'Architecture'`), `config.js:74` `PHASE_MAP`,
+  `panels.js:2047` `phaseOf`, `schedule_read_4d.js:52` `discOfResource`, `proj_fold.js:150`,
+  `boq_charts.html:477`/`:908`, `ghostglass.js:19` `PHASE_HEX` (missing the Envelope/Closeup split),
+  plus **four hardcoded phase-order arrays that are not in the same order**
+  (`time_machine.js:5414`, `:8017`, `gantt_model.js:62`). Also four substitution paths into the
+  table (`rates.js` literal, `rates/sequence_rules.json`, 18 rate-pack `sequence` blocks merged at
+  `rates.js:491`, locale `labor_rates` merged at `locale_loader.js:207`).
+- **Duration:** ~13 further production formulas, including **four different crew-day divisors inside
+  `schedule_author.js` itself** (`:472`, `:844`, `:1534`, `:1728`).
+- **Task grid:** further builders at `gantt_model.js:96`, `boq_charts.html:435`/`:882`,
+  `panels.js:2029`/`:2089`, `proj_fold.js:148`, `foreign_schedule.js:389`.
+- **Floating / visibility:** the sweep counts 23 floating re-implementations and 20 visibility ones.
+  I verified the four floating judges in §I.5e and found the `viewer/` visibility sites consistent;
+  the sweep's `<`-vs-`<=` split is concentrated in `scripts/` and `tests/` (`witness_day0_integrity.js:108`,
+  `probe_floating_guid_audit.js:146`, `probe_enclosure_rule.js:216` use **start-only** for "placed",
+  where the owner requires `end_ts <= cursor`) plus `time_machine.js:7753`/`:7873`, which use `<=`
+  on the END for Gantt-bar "active", where the element frontier uses `<`. **Whether bar-active and
+  element-frontier are the same relation is an open question** — a bar legitimately includes its
+  own finish instant. Do not "fix" that without deciding it.
+
+### ⛔ ROWS NOT REACHED
+
+**"when does each element happen?"** (`schedule_gate.js:421` `computeSchedule` → `cpm_schedule.js:796`
+`run`) was not audited to depth. `computeSchedule` alone is ~700 lines of two-pass gating and
+`cpm_schedule.js` `run/buildGraph/solve` is a second full solver; establishing whether they encode
+one precedence model or two needs its own session, not the tail of this one. **Do not read its
+absence here as "clean."** The two things already known and NOT re-derived: `cpm_schedule.js` carries
+its own `contactGraph`/`designatedSupport` (verified byte-identical above), and `_displayTimeline`
+(`time_machine.js`, §CPM_DISPLAY) is a third timeline producer feeding the movie.
+
+**"what did the run actually say?"** WAS reached — see §I.5j. It is the worst row in the table.
+
 ---
 
 # §J SESSION 2026-08-27 — WHAT IS ZERO, WHAT WAS RETRACTED, AND THE ONE GAP THAT KEEPS PRODUCING FICTION
