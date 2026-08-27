@@ -723,6 +723,32 @@ lane, `bar_needs.js` has no consumer outside `bar_model.js` and its own witness.
 **⚠ Read §I.5a FIRST.** It is a cross-cutting defect that damages four separate rows, and reading
 those rows without it makes each look like an isolated inconsistency.
 
+### 📋 §I.5 REMEDIATION STATUS — updated in place 2026-08-27 (do not append a rival dated section)
+
+| item | status | evidence |
+|---|---|---|
+| §I.5j(b) `§TPL_MODEL` split across two streams + witness mutes the failure one | ✅ **DONE** — bim-ootb **PR #1561** (merged) | `probe_tpl_model_stream.js`: BEFORE `legacy-branch-visible=NO VERDICT=BLIND`, AFTER `YES / VISIBLE`, on a run where `legacy-branch-actually-ran=YES`. Witness 11/0 → **12/0**; red control (force the dead branch) → `FAIL the-CANONICAL-template-model-ran` |
+| §I.5j(a) 16 files install a full-silence console wrapper | 🟡 **CATEGORIZED, 9 real** — see §I.5j-STATUS below | 9 bucket-A (structurally blind), 4 bucket-B (noise-only), 3 dead-lane, 2 also swallow exceptions |
+| §I.5a support pool — copy 4 (`auditFloating`) | ✅ **DONE** — bim-ootb **PR #1562** | floating **+204 fleet-wide**, `nowClean=0` everywhere; 797 bearing relations were invisible; 2 locked baselines re-locked with per-class attribution |
+| §I.5a support pool — copy 5 (`_buildXraySupportCache`) | ⛔ **HELD** | applying it fails `W-OGB-3a` Terminal `staged=0 → 14`; isolated (9/0 without, 8/1 with). Real guard/judge asymmetry — needs a decision on `_ogSupportSweep`, not a re-baseline |
+| §I.5a copy 7 (`witness_og_guard_bearing_bound:140`) — **NEW, §I.5a counted six** | ✅ **DONE** — PR #1562 | the witness asserting pool parity enforced it by *re-typing* the pool; now calls `supportPool()` |
+| §I.5c `§TPL_LAYER_ORDER` narrowed predicate | ⛔ **HELD — STOP CONDITION TRIGGERED** — bim-ootb **PR #1563** (probe only) | self-check blind to **88–100%** of real inversions (HHS reports `PASS` on 138); fix cures 84–93% **but** reorders **86–98%** of elements across **70–90%** of tasks, max shift **63.5 d** |
+| §I.5d edit-legality ANDs two disagreeing judges | ⏸ **NOT STARTED** | held behind §I.5c's stop condition |
+| §I.5e/f/g/h/i (four floating judges, storey-suffix rules, third task-grid producer, `SEQUENCE_DEFAULT`×7, EPS/GAP×3) | ⏸ **NOT STARTED** | held behind §I.5c's stop condition |
+
+**Two measurement traps cost real time here and are now guarded in the probes — read before writing
+another one.** (1) **Field-name shape.** `auditFloating` reads `base_z`/`top_z` and `sched[g].start/.end`;
+the persisted cache is `bz`/`tz` + `{s,e}`; `displaySchedule` is `{start,end}`. Feed the wrong shape and
+every comparison is `undefined < undefined` = false, so the run returns **0 and reads as a clean PASS**.
+This happened TWICE in one session — once in §I.5a's probe (both sides returned floating=0 on all 7
+buildings) and once in §I.5c's (`startChanged=0`, 1 distinct start instant per task). Both probes now
+carry a guard that refuses to report rather than report nothing. This is §I.5d's "different data shapes
+for the same elements" biting the measurement instead of production. (2) **`SupportSweep` must be
+registered on the right global or `§TPL_LAYER_ORDER` DOES NOT RUN AT ALL** — it logs
+`§TPL_LAYER_ORDER_FAIL` and returns null. The node witness harness does not register it, so **every
+template witness has been scoring runs in which that pass never executed.** Surfaced only when #1561
+stopped muting the log.
+
 ### CLEAN — single-sourced, no rival implementation found
 
 | the question | verdict |
@@ -781,6 +807,49 @@ needs walls in its disqualifying pool is a **construct question, not settled her
 
 ⛔ **Not fixed here (audit-only).** Fixing 4/5 changes floating counts fleet-wide and moves the lock
 gate — same blast-radius class as §H.6 item 1.
+
+### ✅ COPY 4 FIXED 2026-08-27 (bim-ootb PR #1562) · ⛔ COPY 5 HELD · ⚠ THERE IS A COPY 7
+
+**Copy 4 (`auditFloating`) now calls the exported `supportPool()`** instead of re-typing the test —
+so it cannot drift from the scheduler again by construction (§I.4). MEASURED over the persisted
+cache, 7 buildings, `viewer/tests/probe_stair_flight_support_pool.js`:
+
+| building | floating | delta | newlyVisible | nowClean | blind-spot (bearing relations) |
+|---|---|---|---|---|---|
+| Duplex | 5 → 15 | +10 | 10 | 0 | 14 |
+| HHS | 231 → 246 | +15 | 15 | 0 | 56 |
+| Hospital | 172 → 172 | +0 | 0 | 0 | 5 (**1** stair flight) |
+| Terminal | 350 → 408 | +58 | 58 | 0 | 174 |
+| Clinic | 31 → 33 | +2 | 2 | 0 | 19 |
+| LTU_AHouse | 2486 → 2549 | +63 | 63 | 0 | 397 |
+| JKR | 882 → 938 | +56 | 56 | 0 | 132 |
+
+**+204 fleet-wide, `nowClean=0` on every building** — strictly additive, the only direction a
+false-negative repair may move. The blind-spot column is asked of the OWNER (`contactGraph`):
+**797 bearing relations fleet-wide are carried by a stair flight** and this audit could not see one.
+
+`witness_big_element_support_coverage` fired as designed (it locks `unchecked` and says "a move
+EITHER way is a real behavior change"): **HHS 17→14, LTU_AHouse 626→624**, and that is a COVERAGE
+GAIN — `unchecked` counts elements with ZERO candidates, which can only fall when a pool widens.
+Attributable by class: HHS = `IfcStairFlight` 4→2 (**a flight resting on a flight had no candidate
+at all** — the self-referential case the old pool excluded) + `IfcSlab` 5→4; LTU =
+`IfcWallStandardCase` 355→353; the other five buildings byte-identical. Re-locked per §S64's
+precedent.
+
+⛔ **COPY 5 (`time_machine.js:3739` `_buildXraySupportCache`) IS HELD, and the reason is a real
+finding, not caution.** Applying the identical fix there makes `witness_og_guard_bearing_bound`
+`W-OGB-3a` fail with **Terminal `staged=0 → 14`** (isolated by reverting only that file: 9/0 without
+it, 8/1 with it). Those 14 are real Terminal elements starting before a stair-flight carrier. They
+appear because the x-ray **JUDGE** would then see flights as carriers while the **GUARD**
+(`_ogSupportSweep`) repairs against **WALL carriers only** — so guard and judge genuinely would not
+be "one physics" for this class, which is the very thing W-OGB-3a exists to forbid. **The open
+question is whether `_ogSupportSweep` must repair stair-flight carriers too. That is a construct
+decision; do not close it by re-baselining the 14.**
+
+⚠ **THE POOL HAS A SEVENTH COPY the table above does not list:**
+`viewer/tests/witness_og_guard_bearing_bound.js:140` — inside the witness whose entire subject is
+pool parity. It asserted "guard and judge are one physics" by RE-TYPING the guard's pool, which two
+copies of the same mistake also satisfy. Now calls `supportPool()` (PR #1562).
 
 ### §I.5b ⛔ EPS AND GAP ARE RE-TYPED AS LITERALS IN THE FILES THE EXPORT COMMENT NAMES
 
@@ -851,6 +920,43 @@ because of it. That is PRIMAL LAW clause 4's **scope-blind** verdict, and combin
 same-task filter the pass has two independent reasons to report PASS on a run it degraded.
 
 ⛔ The predicate at `:1334`/`:1395` is written out twice, ~60 lines apart, so a fix must touch both.
+
+### ⛔ MEASURED 2026-08-27 (bim-ootb PR #1563, probe only) — CONFIRMED, AND **HELD**. DO NOT APPLY WITHOUT A RULING.
+
+`viewer/tests/probe_tpl_layer_bearing_scope.js` runs three variants: `narrow` (shipped),
+`widejudge` (**shipped pass, OWNER's judge** — changes no behaviour, only widens what the judge is
+allowed to look at), `wide` (the candidate fix, owner's predicate on both sides).
+
+| building | shipped judge | OWNER's judge, same run | OWNER's judge, after fix | self-check blind to | fix cures |
+|---|---|---|---|---|---|
+| Duplex | 4 | **32** | 5 | 87.5 % | 84.4 % |
+| HHS | **0 — reports `PASS`** | **138** | 9 | **100.0 %** | 93.5 % |
+| Hospital | 778 | **6618** | 794 | 88.2 % | 88.0 % |
+
+**§I.5c is confirmed and quantified: the self-check is blind to 88–100 % of the real inversions.**
+HHS is the sharpest scope-blind instance in this lane — `stillInverted=0 PASS` on a run the owner's
+own predicate scores at **138 violations**. The fix is also demonstrably CORRECT: it cures 84–93 %.
+
+**AND IT IS HELD, because the blast radius is SWEEPING — this is the stop condition, met:**
+
+| building | in-task rank changed | tasks touched | max element shift | task membership | totalDays |
+|---|---|---|---|---|---|
+| Duplex | 966/1119 (**86.33 %**) | 14/20 (70.0 %) | 2.11 d | **0** | 13 → 13 |
+| HHS | 6499/6839 (**95.03 %**) | 18/20 (90.0 %) | 6.36 d | **0** | 50 → 50 |
+| Hospital | 61796/63182 (**97.81 %**) | 36/42 (85.7 %) | **63.50 d** | **0** | 318 → 318 |
+
+Not a targeted subset — 86–98 % of elements across 70–90 % of tasks, one Hospital element moving
+**63.5 days**. **What does NOT move, and should weigh in the ruling:** task MEMBERSHIP is unchanged
+(0 on all three) and `totalDays` is identical, so the task grid and the schedule envelope hold — the
+entire change is element placement INSIDE tasks. That makes it a model decision (how should a task's
+interior be ordered?), not a defect fix, and it is the same "bigger than it looks" shape as the
+duration-calibration finding of the same day.
+
+⚠ **`§TPL_LAYER_ORDER` DOES NOT RUN AT ALL UNLESS `SupportSweep` IS REGISTERED ON THE RIGHT GLOBAL.**
+It logs `§TPL_LAYER_ORDER_FAIL` and returns null. **The node witness harness does not register it**,
+so every template witness has been scoring runs in which this pass never executed. Invisible until
+PR #1561 stopped muting the log. Any future measurement of this pass MUST register SupportSweep
+first or it is measuring the pass not happening.
 
 ### §I.5d ⛔ THE EDIT-LEGALITY ROW IS WRONG: IT RUNS **BOTH** DISAGREEING JUDGES AND ANDs THEM
 
@@ -1091,6 +1197,42 @@ and `§TM_DURATION_SYNC_FALLBACK` (`time_machine.js:4480`). The `console.log` fi
 `§S18_STOREY_MERGE_FAIL` (`:725`), `§ZONE_DISPLAY_AUTHORING_FAIL` (`:706`), `§AUTHOR_ZONES_FAIL` and
 `§SUPPORT_UNCHECKED`. **A `§`-tag is not enough: which STREAM a line uses now decides whether a
 witness can see it.** Either put both `§TPL_MODEL` branches on one stream or make every wrapper tee.
+
+### ✅ (b) FIXED 2026-08-27 (bim-ootb PR #1561) · 🟡 (a) CATEGORIZED — 9 OF 16 ARE REAL
+
+**(b) is closed.** Both `§TPL_MODEL` branches now log on `console.log`, and
+`witness_4d_template_instantiation` TEES both streams instead of muting `warn`. Measured cost of
+forwarding: **25 lines per building, every one `§`-tagged, zero non-`§` noise** — there was nothing
+the mute was protecting. A new invariant `the-CANONICAL-template-model-ran` reads the shipped line
+and scores **absence as FAIL**, not pass. Witness 11/0 → **12/0**; red control (drop `template:` to
+force the dead branch) → `FAIL … §4DTI_MODEL_FAIL judged the DEAD model`, exit 1.
+
+**(a) categorized, all 16 read.** They are NOT one defect — split them before fixing:
+
+| bucket | n | meaning | files |
+|---|---|---|---|
+| **A — structurally blind** | **9** | mutes a stream that carries a `§` line the file's own verdict depends on | `probe_enclosure_geometry`, `probe_template_hells`, `probe_4d_movie_vs_bars`, `probe_4d_motion`, `witness_hosted_before_host`, `witness_midair_zero`, `witness_4d_capacity_honoured`, `witness_door_window_host_wall`, `probe_day0_unsupported` |
+| **B — noise-only** | 4 | verdict computed entirely from return values; no `§` read | `witness_s50_cell_engine`, `witness_kernel_ops_sched_version`, `witness_s55_identity_vs_cell`, `witness_tm_schedule_output_of_truth_all_buildings` |
+| **C — also swallows exceptions** | 2 | empty `catch` on top of the mute | `probe_enclosure_geometry` (around the pipeline call — **worst of the set**), `probe_template_hells` (around a `db.exec`) |
+| **D — dead lane, out of scope** | 3 | `bar_model.js`/`bar_needs.js` only | `witness_bar_schedule`, `witness_bar_composite`, `witness_bar_needs` |
+
+Worked examples of bucket A: `witness_hosted_before_host` mutes the `computeSchedule` that emits
+`§HOSTED_BEFORE_HOST` — *the exact metric it is named for and gates on* — then hand-re-derives it.
+`witness_door_window_host_wall` mutes `§CURTAIN_WALL_OPENING`, whose own header calls it *"the no-op
+proof"* for the gate that witness asserts is wired. `probe_enclosure_geometry` mutes AND swallows,
+so a thrown pipeline leaves `floatIdx=[]` and it prints `GENUINELY OPEN=0` — a green zero
+indistinguishable from "nothing was judged".
+
+⚠ **ONE CONSTRAINT ANY FIX MUST RESPECT — a raw tee will turn some witnesses RED for a bad reason.**
+`tests/run_witness_suite.js:141` auto-discovers every `viewer/tests/witness_*.js` and `:164` runs it
+through `spawnSync` **with no `maxBuffer`** (Node default **1 MB**). Any `witness_*` whose mute spans
+`_buildScheduleElements` emits one `§CLASS_UNMATCHED` per element (Hospital ≈ 64 k) and a raw
+passthrough re-creates the SIGTERM-read-as-RED failure that
+`witness_tm_schedule_output_of_truth_all_buildings.js:25-30` documents. Those need a **filtered or
+counting** tee. `scripts/probe_*` and `viewer/tests/probe_*` are unaffected (not matched by `^witness_`).
+Fix effort: **11 mechanical, 3 need judgment** (`witness_4d_capacity_honoured`,
+`witness_tm_schedule_output_of_truth_all_buildings`, `probe_enclosure_geometry` — the last also needs
+a vacuity guard), 3 dead-lane skipped.
 
 **(c) Clause 5's persisted cache is bypassed almost universally.** `scripts/cache_4d_run.js` has
 exactly **two** consumers — `viewer/tests/witness_day0_integrity.js:37` and
