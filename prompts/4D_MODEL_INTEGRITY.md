@@ -617,6 +617,39 @@ Not attempted here rather than guessed.
 Per §I.4 ("a relation belongs here the moment a **second** caller needs it") the level relation now
 has two callers, so it gets a real owner instead of a warning. bim-ootb PR `feat/tpl-level-deriver`.
 
+### ⬅ ORIGIN — this owner was RULED and BUILT by `4D_GANTT_TM_REFACTOR.md` §S31–§S38 (2026-08-19)
+**Read that trail before re-deriving anything below.** It is the build history; this section is the
+current owner. Cross-reference added 2026-08-27 (consolidation L3) — until then the two accounts of
+the same relation did not cite each other, which is this lane's signature defect (§I's own preamble).
+
+- **§S34.3 is THE RULING, and it is not re-litigated here:** *declared wins where the element
+  physically reaches the storey it claims; geometry wins where it does not.* The band a declared
+  storey owns is `[Z_i, Z_i+1)` extended DOWN by the **local** storey gap — taken from the data, not
+  tuned (§S34.1's tolerance sweep knees at ~3 m = one storey height on every building). Scope
+  measured there: **98.37 %** of declared elements keep their declared value; the genuine
+  contradiction population is **1,260 elements = 0.47 % of the fleet** (§S34.2), overwhelmingly pipe
+  fittings/proxies whose declared storey is a SYSTEM label rather than a location. Falsifiability was
+  established in the same pass (§S34.2's shuffle control: real labels beat shuffled ones **3.9×–36.9×**),
+  so "discard declared, use geometry" is **already ruled out by measurement — do not re-derive it.**
+- **§S35 BUILT the module** (`build/level_deriver.js` → `viewer/lib/level_deriver.js`) against **14
+  hand-computed fixtures** written before the engine ran (`scripts/witness_level_derive.js`,
+  `§W_LEVEL_FIXTURES pass=14 fail=0`). §S35.3 records the real bug they caught: extended bands
+  deliberately OVERLAP, so they may validate a DECLARED value (`declaredBandOf()`) but must never
+  PLACE a geometry-only element (`geomIdx()`, plain `[Z_i, Z_i+1)`). **Two intervals, two questions**
+  — a re-implementation that collapses them puts an element at z=0.2 on level 4.
+- **§S38 is where T2 (the declared NAME ladder) comes from** — the storey name carries the ladder
+  where `spatial_structure.center_z` is absent (LTU: 99.43 % of elements have a name, 0 have an
+  elevation). §S35.5 already recorded the uniform-3m fallback as **a reported fallback, not a result.**
+
+⚠ **ONE UNRESOLVED DISAGREEMENT BETWEEN THE TWO SECTIONS — do not average them, and do not assume
+either is stale.** §S35.2 and the table below cover the **same 63,182 Hospital elements** yet report
+different grid sources: §S35.2 says `declared, k=7`; below says `uniform3m`. Each names a different
+DB file — `Hospital_meta` there, `Hospital_extracted.db` here (§I.3a verified the latter has no
+`spatial_structure` at all, `PRAGMA table_info` empty). Whether the filename fully explains it is
+**NOT established here** and was not guessed; §I.3's §CLOSED block is about exactly this class of
+split (repo copy vs served copy, `_meta` vs `_extracted`). **Check WHICH DB a level number came from
+before comparing it against either table.**
+
 **Why `LevelDeriver` is immune to the §I.3 corruption — verified in code, not assumed.**
 `assignStoreyByZ` (`schedule_author.js:342`) is a **pure local function**: it returns a string that
 is stored only into the in-memory element literal's `storey:` field (`:368`). It issues **no

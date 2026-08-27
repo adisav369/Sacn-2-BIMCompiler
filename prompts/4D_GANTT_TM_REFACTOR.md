@@ -1234,6 +1234,18 @@ ordered." **Until that separation is measured, §S30.1's 5/7 must not be quoted 
 ---
 # §S31 — THE EXTRACTION CHAIN: what is actually lost, and where (2026-08-19)
 
+> ➡ **§S31–§S38 IS THE BUILD TRAIL FOR THE LEVEL RELATION. IT IS NO LONGER THE CURRENT OWNER.**
+> **Current owner: `prompts/4D_MODEL_INTEGRITY.md` §I.3a** (`viewer/lib/level_deriver.js`
+> `LevelDeriver.derive/levelFor`), with §I's OWNERSHIP TABLE row *"what level is it on?"* above it.
+> **Read §I.3a for the live status** — what is wired, what is flag-gated, what the shipped DBs
+> actually carry today. **Read this band (§S31–§S38) for WHY it is shaped that way** — §S34.3's
+> ruling, §S35's 14 fixtures and the two-intervals bug, §S38's name ladder. Both are load-bearing;
+> neither replaces the other. **Nothing here is deleted or archived** — a closed measurement trail is
+> the record that stops a fourth re-derivation.
+> ⚠ §I.3a carries **one unresolved disagreement with §S35.2** (same 63,182 Hospital elements,
+> `declared, k=7` here vs `uniform3m` there, on differently-named DB files). It is flagged in §I.3a,
+> not resolved in either file. *(Cross-reference added 2026-08-27, consolidation L3.)*
+
 **Recorded late, and that is the finding to note first.** Everything below was measured across
 2026-08-19 and existed only in conversation for several hours while `§S29` sat unwritten in a
 scratchpad. The user's correction — *"this is repetition! already done a few posts ago. Why don't
@@ -1821,6 +1833,10 @@ levels at all and the declared NAME is the only thing that can — evidence FOR 
 the one building where the instrument admits it failed.
 
 ## §S34.3 — ⚖ THE RULING
+
+> ➡ **This ruling is CITED AS ORIGIN by `prompts/4D_MODEL_INTEGRITY.md` §I.3a**, which now owns the
+> level relation. It STANDS — §I.3a does not overturn it, it implements it. Do not re-derive the
+> tie-break; if you think it needs changing, change it in both places. *(2026-08-27, L3.)*
 
 **Declared wins where the element physically reaches the storey it claims; geometry wins where it
 does not. The band a declared storey owns is `[Z_i, Z_i+1)` extended DOWN by the local storey gap.**
