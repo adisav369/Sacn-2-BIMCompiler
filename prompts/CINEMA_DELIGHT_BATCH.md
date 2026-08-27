@@ -145,6 +145,10 @@ bbox (assert containment, not appearance).
 and making the ghosts readable without cluttering the pipe.**
 
 ## 4. §CPE_FILM_AUDIO — ⛔ DECLINED BY THE USER 2026-07-29. Do not re-propose.
+**Re-declined 2026-08-27** — re-surfaced by the assistant during an unrelated brainstorm ("the
+cheapest item, not the dearest"), missing that the header two lines below already forbids reviving it
+on cost grounds. User: *"Audio is a dropped idea."* Third strike risk — read this whole block, not
+just the cost table, before ever mentioning audio again.
 > User: *"the reason I asked to drop the audio is because I could dub it in my Facebook with a scorpion
 > song the smoke under. I have a knack of finding the right bit."*
 
