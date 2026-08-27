@@ -5788,6 +5788,86 @@ investigated or fixed yet, don't assume any of these are closed by today's other
    4. **Elements reveal progressively across the corrected bar duration**, verified through the real
       `_tmDisplayRemap` path (not just the raw solve schedule the earlier probe used) — closing the
       open caveat from the RED measurement above before calling the MEP-Final skew confirmed.
+
+   ### ⛔ STEP 1 DONE — MEASURED, AND IT TRIPPED ITS OWN STOP CONDITION (bim-ootb PR #1560)
+
+   **Step 1's own escape clause fired: the effect is NOT confined to the 7 floored tasks, so step 2
+   was NOT implemented.** Measurement only — `git diff --stat origin/main` on `viewer/` is EMPTY.
+   Shipped as two probes: `scripts/probe_tpl_calibration_scope.js` (`§TPL_CALIB_SCOPE`) and
+   `scripts/probe_tpl_parallel_reveal.js` (`§TPL_PARALLEL_REVEAL`). Both read the persisted
+   `cache_4d_run.js` run and push it through the SHIPPED `instantiateTemplate`/`deriveBandRanks`;
+   the baseline arm is asserted against the cached run's own `§AUTHOR_TPL totalDays` before any
+   comparison is believed (Hospital 318 MATCH, HHS 50 MATCH), INCONCLUSIVE + exit 2 otherwise.
+
+   - **`§TPL_CALIB_SAMELEVER` — the chosen fix and the rejected option are ONE LEVER, not two.**
+     Recalibrating the numerator (`_installSecs` 28800 → 86400) and the already-rejected
+     `shiftHours 24→8` revert give `tasksDiffering=0/42` and identical `totalDays` (Hospital 940 vs
+     940, HHS 137 vs 137). `priceCell` is `days = ceil(secs / (shiftSecs × crews))`, so tripling the
+     numerator and dividing the denominator by 3 cannot produce different answers. Step 2 as written
+     ("fix the calibration at its source … do not revert the 24h shift ruling") asks for two things
+     that are the same arithmetic. **This is the decision that now needs the user, and it is the
+     reason nothing was built.**
+   - **`§TPL_CALIB_SCOPE` — NOT CONFINED.** Hospital `totalDays 318→940` (**×2.96**), 38/42 tasks
+     change, **35 of 35 non-floored tasks lengthen**, 63153/63182 elements (**100.0%**) sit in a bar
+     that grows. Spot-check HHS_Office_Federated `50→137` (×2.74), 15/15 non-floored. The 369-day
+     project total moves by ~3x — exactly the "materially bigger decision" step 1 named.
+   - **`§TPL_CALIB_AXIS_FRACTION` — the lever makes the reported complaint WORSE.** A bar is
+     "squashed" as a fraction of the DRAWN AXIS, not in days, and the project total grows faster
+     than the short bars do: **26/42** Hospital bars end up RELATIVELY NARROWER
+     (`Architecture_Closeup_Level_6` 1→1 day = 0.314%→0.106% of axis; `Superstructure_Level_7A`
+     1→2 days = 0.314%→0.213%; `Finishes_Level_1` 2→4 days = 0.629%→0.426%). 4 of the 7 floored
+     tasks do not grow at all — confirming the prediction already in the option table above.
+   - **The "3x unit mismatch" framing above is itself wrong, and that matters.** `rates.js`
+     `SHIFT_HOURS`' own header already says 8 is "the rate table's own crew-day length" and that 24
+     was chosen deliberately because 8 "tripled every building's display span (Hospital ~2020d) —
+     the user judged that too slow". `_installSecs` returns real crew-SECONDS (a labor-content
+     quantity, correct at any shift length); dividing by a 24h shift is the standing 3-shift ruling,
+     not a calibration bug. There is no free lengthening hiding in this formula.
+
+   **`§TPL_PARALLEL_REVEAL` — step 4's addendum (parallel series) ANSWERED, and it PASSES.**
+   - Reveal timestamps are **absolute project-timeline instants**: 63182/63182 Hospital elements
+     inside their own task's `[sDays,eDays]` window, worst offset **0.000 days**. Structural reason,
+     read off the code: `remapSolveToTasks` computes `wS = base + t.sDays*86400000` per task
+     independently (`cursor` resets to `wS` each task), so overlapping windows overlap by
+     construction — there is no per-task-exclusive animation sequence to serialise them.
+   - **Overlapping tasks genuinely interleave.** Hospital: 44 cross-level overlapping task pairs,
+     same-level 0 (the invariant). On the 3 widest overlaps, `alternations` = 949 / 684 / 1009 where
+     a serialised (two back-to-back blocks) pair gives exactly **1**; mean same-task run 5.7–9.1
+     elements out of thousands.
+   - **`displayRemap` cannot change this, and here is why** (closing part of the RED measurement's
+     open caveat): in the template path `opts.displayRemap` rewrites the RAW SOLVE **before**
+     `instantiateTemplate`, but `instantiateTemplate` never reads the schedule — task windows are
+     priced from `duration_rule` alone. So the remap can only move fine positions INSIDE a band; it
+     cannot move a task window, and therefore cannot affect whether two tasks overlap. The
+     MEP-Final within-band skew still needs the real remap to confirm; the interleaving does not.
+   - **New, precisely located finding for whoever fixes item 2: intra-task DEAD AIR.**
+     `TASK_Architecture_Envelope_Level_5` has **zero element starts on days 166–168 and 173** of its
+     own [137,180] window. Cause: `remapSolveToTasks` gives each support layer a band sized by
+     member COUNT, then affine-maps that layer's own solve range onto it — a layer whose solve range
+     is narrow relative to its band bunches at the band's start and leaves the band's tail empty.
+     That is the same defect as the MEP-Final cramming, seen from the other side, and it is
+     independent of bar length: **lengthening the bar does not fill the gap, it stretches it.**
+   - ⚠ Two invented-threshold traps hit while writing this probe, both corrected in the shipped
+     version — worth not repeating: (a) scoring interleaving against a made-up `ratio > 0.5` vs a
+     random mix called a CORRECT schedule FAIL (same-task clumping is `§TPL_LAYER_ORDER` working as
+     designed; the ratio is now printed as descriptive only); (b) counting an element as revealing
+     only at its START instant under-reported every band tail. A one-task slice is now ATTRIBUTED
+     (serialisation vs the other task's dead air), never blamed on parallelism by default.
+
+   **Invariant, before and after: `witness_4d_template_instantiation.js` pass=11 fail=0 ran=82,
+   `no-same-level-phase-overlap` PASS** (Hospital `sameLevelPhaseOverlaps=0/98`). Unchanged by
+   construction — no shipped code was touched.
+
+   **⛔ OPEN, needs the user — do NOT pick step 2 up as written.** The direction as stated is
+   arithmetically the option the same decision rejected. Real remaining levers, none of them
+   "invent a duration": (a) accept the 3x and re-rule `SHIFT_HOURS` to 8 knowingly (it is the same
+   change, honestly named — but note it makes the short-bar complaint WORSE, per
+   `§TPL_CALIB_AXIS_FRACTION`); (b) leave durations alone and fix the actual visual defect, which
+   the parallel-reveal probe just localised to intra-task dead air in `remapSolveToTasks`' band
+   sizing — extraction-based, no duration invented, and it does not move the 318-day total;
+   (c) the still-unchecked real-quantity-basis pass for the remaining Finishes/MEP-Final/
+   Architecture-Closeup classes (`IfcCovering` already clean at 62.4m² avg) — this is the only
+   part of step 2 that survives step 1's result, and it was NOT started.
 4. **Editor full-cycle review.** Whether the standalone Schedule Editor (`schedule_editor_ui.js`)
    actually supports a complete edit cycle end-to-end is *already* named as unverified above, in this
    same file (persist-fix section, "Deliberately NOT touched" — split-mode task-data loading was never
