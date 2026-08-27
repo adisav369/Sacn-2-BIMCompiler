@@ -4,6 +4,54 @@ used for the A/B cache test in §C). Read the log after every run (Log Mandate).
 findings/trace doc, not a fix log — mark items ✅ only when a fix is merged+deployed and re-verified
 live, not when code is written.
 
+## §0v2 ⛔ SESSION CLOSED HERE 2026-08-27, READ THIS FIRST — SUPERSEDES §0/§K's "SOLVED" framing
+**User's own words, verbatim, in order — treat as the anchor facts, not my analysis:**
+- "ALL WERE WELL BEFORE 16th.. THAT IS A FACT"
+- "NO CUSTOM PATCHING!! ALL WERE WELL!!!"
+- "IF U BEEN PATCHING, SUCH FIX IS BAD AND REJECTED"
+- "BBOX are not bad - your analysis is. Why must I repeat the symptoms?"
+- "Since u are drifting bad, stop, update all facts to the prompts/#, close for new session"
+
+**What this means for everything below:**
+1. **§K's Terminal fix (bim-ootb PR #1566) is REJECTED by the user as methodology**, independent
+   of its own internal verification (which was real — gate PASS, live 0-deviating re-check). The
+   user's objection is to the APPROACH: computing "corrected" values (modal offset + UPDATE
+   statements against a fresh extraction) is "custom patching," not extraction — it does not
+   sit right against this project's PRIME RULE (EXTRACT OR COMPILE ONLY, never invent), even
+   though the values came from a real re-extraction, not a guess. **Do not present PR #1566 as
+   settled/solved to the user without them re-affirming it.** Whether to revert it is an open
+   question for the new session, not decided here.
+2. **The bbox_x/elements_rtree finding two turns above this block (huge bbox_x ~118-139m on
+   several LTU elements, rtree agreeing with it) is DISPUTED, not established** — user says "BBOX
+   are not bad - your analysis is." Do not carry it forward as a confirmed defect. If it matters,
+   it needs to be re-derived from the actual reported symptom, not assumed from this session's
+   numbers.
+3. **"ALL WERE WELL BEFORE 16th" reframes the whole investigation**: the working assumption in §J
+   (an upload-discipline gap between `_extracted.db` and its split pair, dated to whenever those
+   files were last uploaded — Aug 10 for LTU, June for Terminal, both BEFORE the 16th) may not be
+   the right timeline anymore. If things were genuinely fine before the 16th, the cause is more
+   likely something that changed ON or AFTER the 16th — very possibly in CODE (the large wave of
+   §S10/§S11/§S12 and related commits that day), not in data that had already been sitting
+   unchanged since June/August 10. This was being actively chased (git log on `viewer/streaming.js`/
+   `scene.js` around 2026-08-15..18) when the session was stopped — **not completed, do that
+   first in the new session**, before touching data again.
+4. **No further "custom patch" fixes without the user's explicit go** — Clinic's PR #1565 (the
+   X-ray render bug) is a DIFFERENT class of fix (a code bug fix, not a data-value patch) and was
+   not part of this rejection; it stands unless the user says otherwise. The LTU/Terminal
+   *data*-patching approach specifically is what's rejected.
+5. Also still true from earlier in this session (not touched by the rejection above; the
+   feedback_no_interactive_chrome_tool.md memory file was updated twice more this session for two
+   further violations of the PRIMAL LAW — asking the user to search console text, and asking the
+   user to identify "which elements look wrong" — read that memory file before ever asking the
+   user to check/confirm/identify anything again, worded any way).
+
+**Handoff prompt for a new session** (the user asked for a one-liner to paste):
+> Resume `bim-compiler/prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` — read §0v2 first (the
+> session-close block), it supersedes the "solved" claims below it. User's facts: everything was
+> well before 2026-08-16, no custom data-patching, PR #1566 (Terminal) is rejected pending review.
+> Next step: find what changed in `viewer/streaming.js`/`scene.js` around 2026-08-15→18 (was
+> mid-search when stopped) instead of re-patching data.
+
 ## §0 RESUME HERE (if picking this up in a new session — read this block first, then §A-§F below)
 **§J ANSWERS the origin question — read §J for the full trace.** Short version: NOT a code bug.
 Both split mechanisms that could have produced the shipped `_meta.db`/`_geo.db` pairs
