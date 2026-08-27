@@ -3689,3 +3689,28 @@ own defaults.
 PR's changes stashed away: byte-identical failure numbers, band1 aimErr=171.8°, peak=84.6°/frame at
 t=0.157, with or without this change). Not a regression. The disabled §CPE_AIM_PIN click trigger
 (`cinema_path_editor.js` ~line 3018) is grep-confirmed untouched.
+
+**Tuning follow-up, same day — bim-ootb PR #1573 (`fix/cpe-corr-hold-tune`).** User, after first
+live use: *"the easing forward... should be more further... usually when user rotates it, is
+because it is pointing wrong way for some length."* Tried the literal ask first (hold 5→12m, decay
+4→6m) and it broke: the shared gaze rate limiter (`_gazeRateBuild`, `CINEMA_TURN_DPS=45deg/s`, spans
+beats 3+4 as one continuous stretch specifically to prevent whip/jerk elsewhere in the film — see its
+own header comment, §CPE_GAZE_CONSTANT_RATE) could not track a correction held that long on the test
+walk's own (short, ~17.5m) length — measured **70.9° mid-hold error**, a real jerk-class failure the
+new witness caught (`witness_cpe_cone_orient.js` G-CONE-6b), not a false alarm. **Shipped instead:
+hold 5→8m, decay 4→5m** — verified clean (17/17, mid-hold error 0.07°). Regression-checked
+`witness_cpe_gaze_acquire.js` (8/8) and `witness_cpe_aim_pin.js` (7/7) — the rate limiter itself and
+the sibling pin mechanism are both untouched by this change. **There is a real ceiling here, not
+arbitrarily chosen:** extending hold further needs the rate limiter made zone/window-aware of a held
+correction (the same unresolved "Cause 2" gap named in the `§CPE_AIM_PIN` section above, 2026-08-14)
+— out of scope for this tuning pass, flagged for whoever picks it up next.
+
+**On "ensure the whole animation has no jerks" (user, same session, prompted by this exact
+finding):** the smoothing the user was asking about IS real and IS the `_gazeRateBuild` mechanism
+above — it already rate-limits every composed gaze change in the film (spin, orbit, walk, and now
+corrections) to `CINEMA_TURN_DPS`, forward-only, spanning beats 3+4 as one span specifically because
+an earlier defect (§CPE_GAZE_CONSTANT_RATE's own header, "G-SH-4") showed limiting only one beat just
+MOVES a whip into the seam rather than removing it. It is working as designed for the shipped 8m/5m
+envelope (confirmed via `witness_cpe_gaze_acquire.js`'s own T0-T7 gates, 8/8 green, no whip). The
+12m/6m attempt is the one concrete case found this session where it's pushed past its own limit —
+recorded above, not re-litigated here.
