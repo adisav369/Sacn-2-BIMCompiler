@@ -111,6 +111,7 @@ nav:
       - "Clash Detection": CLASH_DETECTION.md
       - "Asset Classification & JKR/SKATA": JKR_SKATA.md
       - "IFC Export Guide (for the BIM author)": IFC_ExportGuide.md
+      - "Time Machine (4D Scheduling & Editing)": TimeMachine.md
       - "4D/5D Analysis": 4D5DAnalysis.md
       - "BIM → Project Order (ERP)": BIMtoProject.md
       - "Geometry as a Signed-Log Fold": ModellerKernelFold.md

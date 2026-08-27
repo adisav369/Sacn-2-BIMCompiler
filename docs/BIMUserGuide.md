@@ -362,12 +362,13 @@ one icon:
   <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:6px;"><a href="https://youtu.be/juwOrpqKhFE">Watch on YouTube</a> — Time Machine playback on a large building with the box-cube proxy toggle.</figcaption>
   </figure>
 
-  Full authoring/playback walkthrough already lives in
-  **[Kernel-ERP User Guide → Time Machine](ERPUserGuide.md)** (not re-documented here — same building,
-  same feature, reached from either app), including the
-  **[ERP-side entry point](ERPUserGuide.md#author-the-4d5d-schedule--build-it-up-from-the-model-live)** —
-  picking an element in 3D (or a red **Zoom Across** pill on an ERP record) jumps the Time Machine
-  straight to that element's construction moment.
+  Full authoring/editing/import walkthrough — including direct Gantt drag/resize/link and the
+  **⏪ Pull Back** (reschedule-as-early-as-possible) action — lives on its own page:
+  **[Time Machine — the 4D construction timeline](TimeMachine.md)** (not re-documented here — same
+  building, same feature, reached from either app), including the
+  **[ERP-side entry point](TimeMachine.md)** — picking an
+  element in 3D (or a red **Zoom Across** pill on an ERP record) jumps the Time Machine straight to
+  that element's construction moment.
 - **4D / 5D** (key **4**) opens the analytics dashboard (`boq_charts.html`) for the loaded building in a
   new tab — full coverage: **[4D/5D Analysis guide](4D5DAnalysis.md)**.
 

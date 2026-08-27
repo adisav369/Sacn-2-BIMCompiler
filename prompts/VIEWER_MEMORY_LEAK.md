@@ -416,3 +416,63 @@ byte-identical to the immediate post-fix verification: baseline 364 geometries/1
 scene objects, cycle-1 exit 380/44/388, cycle-2-exit vs cycle-1-exit delta = 0 on every counter.
 `_disposePhotoProps()` call confirmed still present in `_teardownPhotoStaging()`. No regression —
 nothing shipped since touched the photo-staging teardown path.
+
+## 2026-08-23 — sql.js instance leaks + staffage texture cache (§SQLJS_CLOSE / §STAFFAGE_TEX_CAP)
+
+New resource class for this file's checklist: **sql.js `SQL.Database` WASM-heap instances** — like WebGL
+resources, they are NOT freed by JS GC on reference drop; an orphaned instance keeps its entire DB copy
+(100-250MB for geo/mesh DBs) alive on the WASM heap until `.close()` or page death. Failure pattern #1
+from this file's own reference checklist (reassignment without disposal), in a heap `renderer.info` can't
+see and JS-heap tooling under-reports.
+
+**Sites audited (bim-ootb, line numbers at `bc17bb6`):** `A.db = new SQL.Database(...)` streaming.js:2292
+(split meta) / :2447 (single-DB); `A.libDb = new SQL.Database(...)` streaming.js:2361 (geo) / :2375
+(extracted fallback); the three `A.libDb = A.db` alias reassignments streaming.js:2294/:2382/:2624;
+`A.cityDb = new SQL.Database(...)` city.js:318. (The spec's scene.js:1420 site turned out to be a
+comment, not code — scene.js's real temp DBs, import/merge/patch paths :787/:980/:987/:1410, already
+close correctly and were the pattern copied.)
+
+**Reachability verdict — DORMANT, not an active leak (traced, not assumed):** every A.db/A.libDb site
+lives inside `A.init()` (streaming.js:2157), called exactly once per page life (main.js:942). All
+"load another building" paths checked: Ctrl+O replace → `location.assign` full navigation
+(scene.js:1073); Open-merge → `A._mergeDbIntoScene` folds into the LIVE A.db, never reassigns (its temp
+`src` closes correctly); city-mode switches (city.js:707/744/796/950) swap between instances CACHED in
+`A.cityBuildingDbs` — references, not constructions, and not discards (must never be closed);
+`A.initCity` reached once (A.init once, or `loadCityManual` early-returns on `A.cityDb`). No user can
+fire any site twice today. Claim shipped as "leak hardened, trigger not currently reachable."
+
+**The aliasing trap (why naive close-before-reassign would have been a live-DB-killing bug):** in split
+mode `A.libDb === A.db` from :2294 until the geo instance lands at :2361 — a bare `A.libDb.close()`
+there closes the LIVE meta DB. Conversely, on a (hypothetical) re-entry the alias sites are where a
+previous split-load's SEPARATE geo instance gets orphaned (:2294 would drop Clinic's 116MB geo with no
+close). Fix: alias-aware guards everywhere — A.db sites close prior A.db then null a stale
+`A.libDb === A.db` alias; A.libDb sites close only `A.libDb !== A.db`. All 7 streaming.js sites +
+city.js:318 guarded; try/catch-wrapped, no-ops on every current path (prior value null or alias).
+
+**§STAFFAGE_TEX_CAP (effects.js `_staffageTexCache`):** key space is STRICTLY bounded — 12 static
+roster files (_STAFFAGE_PEOPLE 6 + _STAFFAGE_TREES 6); a DB-saved non-roster file name never reaches
+`_staffageTex` (`_restoreStaffageInstances` drops it via `if (!entry) return`). Session-lifetime caching
+is the documented design (§PHOTO_STAFFAGE_PRELOAD: building-independent cutouts, warmed once so the
+second Alt+P is instant). Chose a dormant size cap (24 = 2x roster, dispose+evict oldest,
+§STAFFAGE_TEX_EVICT log) over a clear-trigger, because both candidate triggers are wrong:
+`clearRouteCache()`'s trigger is Find-panel open (navigate_find.js:4436, unrelated), and clearing in
+`_disposeStaffage()` would re-incur the 2-6s decode on every building switch — the exact cost the
+preload exists to kill. Cap fires only if a future change makes the key space dynamic.
+
+**Witness (headless Playwright + CDP per §Method above, swiftshader; witness_run2.log):** re-entered
+`A.init()` programmatically — the exact hypothetical multi-fire the guards protect — 3 cycles each on
+real local DBs:
+- Duplex 9.3MB single-DB: `oldDbClosed:true` (prior instance's `exec` throws "Database closed") both
+  re-entries, count 1193 stable, libDb alias handled ("n/a (was alias of oldDb)"), 0 page errors.
+- Clinic 6.1MB meta + 116MB geo split: `oldDbClosed:true` AND `oldLibClosed:true` — the :2294 alias
+  guard provably closing the separate 116MB geo instance each cycle; count 16114 stable;
+  renderer.info cycle2→cycle3 delta 0 on every counter (383 textures / 528 geometries / 712 meshes).
+- Staffage: exactly 12 §STAFFAGE_TEX_READY across preload + 2 `togglePopulate()` presses (dedup intact
+  through the new cap code), 0 §STAFFAGE_TEX_EVICT (dormant as designed), 0 errors. Press-2 GPU-texture
+  growth (+3) is the documented additive-placement design, roster-bounded — not a leak signature.
+
+**Shipped:** bim-ootb PR #1488 (branch `housekeeping/sqljs-close-leaks`) —
+https://github.com/red1oon/bim-ootb/pull/1488 — merged (the repo's github-actions bot armed auto-merge
+itself; not armed by this session). sw.js CACHE_VERSION v1076→v1077 (v1076 was a concurrent sibling
+session's bump — took the HIGHER number per the conflict-magnet rule, same PR) + viewer.html ?v= bumps
+(effects 25→26, streaming 63→64, city 7→8).
