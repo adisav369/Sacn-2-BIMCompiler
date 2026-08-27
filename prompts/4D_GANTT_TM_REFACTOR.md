@@ -5768,6 +5768,26 @@ investigated or fixed yet, don't assume any of these are closed by today's other
      revealed"), but would desync the visible bar from `§TPL_MOVIE_BINDS_BARS`'s own reveal-time
      mapping — the movie would then finish an element before its visually-stretched bar ends, reopening
      the exact disagreement that tag was built to close.
+
+   **⛔ DECISION 2026-08-27 (user) — direction chosen, dispatched, not yet built when this was
+   written.** Reject the revert-24h and raise-min_days options outright (wrong lever; Prime Rule
+   violation, as above — user's own words: "sounds dumb and regressing my earlier contention").
+   Chosen instead, in this order:
+   1. **Measure the 3x calibration mismatch's real scope FIRST** — across all 42 tasks, not just the
+      7 already floored at `min_days=1`. This is the load-bearing unknown: if it meaningfully
+      lengthens the other 35 tasks too, the whole 369-day project total moves, which is a materially
+      bigger decision than fixing 7 short bars — STOP AND REPORT before implementing broadly if so.
+   2. **If scoped as expected**, fix the calibration at its source (recalibrate the rate table's
+      per-element install-time basis to the 24h shift it's actually divided by) and finish the
+      real-quantity-basis check for the remaining Finishes/MEP-Final/Closeup classes — both
+      extraction-based, no invented numbers.
+   3. **Overlap across levels/independent trades is accepted as a natural consequence of lengthening**
+      (standard for level-major/LBS scheduling) — but the existing `no-same-level-phase-overlap`
+      invariant (`witness_4d_template_instantiation.js`) must still pass; this is NOT permission to
+      loosen same-level ordering.
+   4. **Elements reveal progressively across the corrected bar duration**, verified through the real
+      `_tmDisplayRemap` path (not just the raw solve schedule the earlier probe used) — closing the
+      open caveat from the RED measurement above before calling the MEP-Final skew confirmed.
 4. **Editor full-cycle review.** Whether the standalone Schedule Editor (`schedule_editor_ui.js`)
    actually supports a complete edit cycle end-to-end is *already* named as unverified above, in this
    same file (persist-fix section, "Deliberately NOT touched" — split-mode task-data loading was never
