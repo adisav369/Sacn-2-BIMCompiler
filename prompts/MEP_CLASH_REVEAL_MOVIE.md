@@ -192,6 +192,16 @@ the per-pair clash markers the matrix already computes on cell-click stay plotte
 InstancedMesh cloud (same pattern as `_clashBboxCloud`, §S245e — one draw call, cheap even at a few
 hundred dots) instead of being cleared when the matrix closes.
 
+**Confirmed 2026-08-27 (user): this is genuinely free perf, not just a UX nicety.** `clash_matrix.js`
+already caches per-discipline-pair element lists in `A._clashDiscCache` (keyed by `discA|discB|storey
+|ignore`, `clash_matrix.js:12-50`), populated as the matrix panel computes each cell. So opening the
+matrix and clicking the discipline pairs the user actually cares about is the ONLY scan that ever
+runs — "See Clashes" doesn't re-scan anything, it just keeps plotting what the matrix already
+computed and cached. This also directly answers "which types" from the design above: the types shown
+are exactly the cells the user clicked, nothing more — user-driven scope, not an always-on full-model
+scan. Sequencing this explicitly: **matrix first (cheap, cached, user-selected pairs) → "See Clashes"
+ON (plots only what's cached) → auto-path (below) walks only those.**
+
 **Auto-path (Option A, base behaviour):**
 - With "See Clashes" ON, order the plotted dots nearest-neighbor (cheap for tens of points) and
   auto-seed them as sticks — reuses the existing stick + `_replanFilm` pipeline, no new path mechanism.
@@ -213,6 +223,28 @@ not a detour into the 4D construction-sequence movie.
 **Open item, not yet resolved:** "supporting elements" (which elements besides the clashing pair get
 included in a BuildUp replay — e.g. the host wall/slab, adjacent hangers/connections) has no query yet.
 Needs a definition before BuildUp is buildable — flagged, not invented.
+
+**⛔ DECIDED 2026-08-27 (user) — Auto-path (Option A) and BuildUp (Option B) DEFERRED, not built now.**
+User: *"the dive to it is too outlandish for now. The all highlighted with labeling seems more
+different from what others are trying to do."* This drops the one-by-one camera-dive-to-each-clash
+sequence entirely for now (the part of the design that most directly mirrored the competitor
+reference video) in favour of the simpler, cheaper, and — the user's own framing — more
+distinctive shape: **every selected clash pair highlighted AND labeled simultaneously**, ambient in
+the scene during the existing Reveal 2nd round (ARC/STR already fade there, per Mechanism C,
+`CINEMA_DISCIPLINE_REVEAL.md`), not a guided tour to one clash at a time. **Revised, smaller build
+target:**
+- "See Clashes" checkbox still stands as designed above — plots the matrix-cached, user-selected
+  discipline-pair clash dots as an InstancedMesh cloud.
+- **No auto-seeded sticks, no `_replanFilm` re-plan, no camera dive-in/hold/fade-back sequence** —
+  the camera keeps flying whatever path the user already authored; it does not detour to clashes.
+- Each dot gets its label (item 6's "ACMV vs DRAIN — 0.12m overlap" text, item 4's leader-line/glow
+  presentation) shown for as long as it's on-screen during the existing Reveal pass — reads as "here
+  is everything that clashes, all at once, while MEP is revealed" rather than a scripted walkthrough.
+- **BuildUp (Option B) is dropped along with it** — it only made sense as a per-dot hold during the
+  now-cut dive-in sequence.
+- Net build is smaller than the original spec: skip the "one real new piece" (distance-based ARC/STR
+  opacity fade *on approach*, since there's no scripted approach anymore) — the EXISTING Reveal-round
+  fade already does the ARC/STR hiding this needs, for free.
 
 ## Open question #4 — ANSWERED 2026-08-14 (dispatched agent, from `CINEMA_DISCIPLINE_REVEAL.md §6` handoff)
 
@@ -251,3 +283,41 @@ zero hits. This is the READY-TO-BUILD core the user is asking about now, unchang
 spec below — the "Auto-path design" section (§ below, "resolved 2026-08-07") plus the HMI+perf triage's
 item 6 (clash-pair label text, e.g. "ACMV vs DRAIN — 0.12m overlap", i.e. the "FP - STR" labelling the
 user described) are the exact shape asked for. Nothing more to spec here — this file already has it.
+
+## §ELEMENT_LABEL — general single-element floating label, not mass-labelling (2026-08-27, user-queued, SPEC ONLY, not built)
+
+**User's ask, verbatim:** *"labelling of elements ie on walls, doors, or floating next to devices to
+indicate what they are, not for all just singles"* — read as: label ONE element at a time, on demand,
+never every element in the scene at once. Searched this project's prompts for a prior spec — **none
+found; this is genuinely new**, confirmed with the user directly, not assumed.
+
+**Not a new mechanism — the SAME leader-line/label primitive item 4 above already designs, generalized
+beyond clash pairs.** Item 4 ("Leader-line + glow callout") anchors a screen-space label to a clash
+point's projected coordinates, reusing `§CPE_WALK_EDIT_V1`'s existing pixel-readback/projection math.
+A general single-element label is the identical mechanism — projected screen position + a label div
+— just anchored to ANY picked element's position instead of only a clash overlap point, and triggered
+by a pick instead of only firing during the clash reveal. Building the clash label (item 4) as this
+generalized primitive from the start, rather than a clash-only one-off, avoids building the same thing
+twice.
+
+**Label content — real data, already extracted, nothing invented:** `elements_meta` has
+`ifc_class`, `element_name`, `discipline` per guid (confirmed via schema read, `Duplex_extracted.db`).
+A door/wall/device label reads e.g. `"Door D-142"` or `"IfcFlowTerminal — AHU-3"` straight from those
+columns — same discipline as item 6's clash-label text ("source the real numbers we already compute,"
+not a generic placeholder string).
+
+**Open, needs the user's call before this is buildable (flagged, not decided here):**
+1. **Trigger.** A manual pick (click an element, label appears, click elsewhere clears it — same
+   focus/blur shape `§CPE_CONE_ORIENT_ADJUST` just shipped, `CINEMA_PATH_EDITOR.md`) fits "single, on
+   demand" most literally. But the user's phrasing ("on walls, doors... floating next to devices")
+   could also mean labels that surface AUTOMATICALLY as the camera passes near specific element types
+   during a movie bake — closer to `§CPE_ROOM_TITLE`'s "appears as the film enters it" pattern than a
+   click. These are different builds (interactive-editor feature vs. baked-film feature) — which one,
+   or both?
+2. **Scope, if automatic:** "not for all just singles" needs a rule for WHICH elements qualify (every
+   door? only devices/equipment? user-tagged ones only?) — a real query needs a real filter, not "all
+   of class X" by default, or it silently becomes the mass-labelling the user explicitly ruled out.
+3. **Persistence.** Does a placed/triggered label get saved with the path (same `_pathsApply`/
+   `_buildOverride` round-trip every other CPE authored edit uses), or is it always ephemeral/re-derived
+   live? Bears on whether this is authored data (like a cone correction) or a pure runtime effect (like
+   room titles).
