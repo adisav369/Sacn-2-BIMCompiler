@@ -3555,3 +3555,84 @@ awareness fix holds — sampled gaze across a pinned zone's boundary shows no di
 un-pinned neighbours' natural ease; (c) pinning a band's gaze does NOT add/move any waypoint — `bands`
 length and every `band.c`/`band.d` position stay unchanged, only `lookAt` differs, directly disproving
 the "more sticks" regression this section exists to fix.
+
+## §CPE_CONE_ORIENT_ADJUST — drag the POV cone to fix a bad gaze (e.g. "staring skywards"), no stick added (2026-08-27, user-designed in discussion this session, SPEC READY, dispatching to build)
+
+**Supersedes the §CPE_PREVIEW_TACKBACK_PIN direction above** — same underlying problem (fix a bad
+gaze without adding a stick), but the mechanism converged on through discussion is materially
+different from that section's "re-enable §CPE_AIM_PIN's click trigger" recommendation. Read this
+section as the current plan; the section above is kept for its diagnosis of the "staring skywards"
+root cause (§CPE_AIM_DEPTH's omnidirectional search, §CPE_AIM_SIMPLIFY 2026-08-14) and the "more
+sticks" root cause (walk-mode's Enter/Space couples facing-capture to stick-planting,
+§CPE_WALK_ENTER_LOCK), both still correct — only the fix mechanism changed.
+
+**Two ideas explicitly considered and rejected in discussion, recorded so they aren't re-proposed:**
+- A dedicated mouse-look drag inside the preview/viewfinder box (`#cpe-vf-panel`) — abandoned in
+  favour of the cone once the cone turned out to already be a distinct, directly-pickable mesh.
+- A modifier key on walk-mode's Enter/Space (e.g. Ctrl+Enter = facing-only, no stick) — abandoned;
+  **Esc was specifically rejected**: walk-mode uses pointer lock for "look," and Escape releases
+  pointer lock unconditionally at the BROWSER level (cannot be intercepted) — `cpe_walk.js:246`
+  already treats losing lock as "walk ended," so binding Esc to a facing-only action would exit the
+  walk instead of adjusting anything.
+
+**The chosen mechanism: make the existing passive POV cone interactive.**
+`_state.povMarker` (`cinema_path_editor.js:1413`, `_syncPovMarker`) is already a standalone
+`THREE.Mesh` (`ConeGeometry`, currently `0xff1744` red) that tracks the scrub/walk position and
+orientation every frame, purely as a readout today — zero pointer interaction wired to it. Being a
+distinct, uniquely-raycastable object (not "click anywhere on the canvas" the way the retired
+AIM_PIN trigger was) is exactly why this sidesteps the stick-drag-slop conflict that got AIM_PIN's
+own click trigger disabled in 2026-08-06 and never re-enabled.
+
+**Interaction, as designed across this session's discussion:**
+1. **Position is scrub-only.** The cone must never be draggable along the path — repositioning WHICH
+   point you're correcting is done with the existing preview-box scrubber (`_scrubTo`), same as
+   today. Dragging the cone only ever rotates it.
+2. **Click = focus.** Clicking the cone changes its material to a distinct "brownish" tone (a
+   different, warmer hex than the standing `0xff1744` — pick a reasonable value, e.g. `0x8B5A2B`,
+   and treat it as a tuning knob, not a fixed requirement) so the user can see it has grabbed
+   interaction focus. Clicking anywhere outside the cone clears focus and reverts the color.
+3. **Drag while focused = live orientation edit.** The preview/viewfinder panel (`#cpe-vf-panel`/
+   `vfCam`) auto-shows during the drag (even if the eye toggle is currently off) so the user sees the
+   corrected framing as they rotate, not just the abstract cone in the flat canvas. **Open: whether
+   it auto-hides again on release or stays open until the eye toggle is used — not yet decided by the
+   user, pick the less surprising default (stays open) and flag it as adjustable.**
+4. **Release = commit an ANCHORED correction, not a band pin.** Because the cone's position is
+   scrub-driven and may sit at ANY arc-length/time-fraction along the path — not necessarily at an
+   existing band — this cannot reuse `band.lookAt`/`_setPin` as-is (that mechanism is band-indexed).
+   It needs its own small stored list on the plan (anchor position along the path, corrected
+   direction, hold length, decay length), round-tripped the same way bands already are
+   (clone/save/reopen, §CPE_REOPEN_NODE's precedent). **The implementer should study `_pinLookAtAt`'s
+   shape and the still-open "Cause 2" rate-limiter bleed fix (§CPE_AIM_PIN section above) before
+   designing this — the two systems must not fight each other or duplicate the taper math wastefully,
+   even though they are not the same code path.**
+5. **Envelope is asymmetric, path-arc-length based, not time/zone based (user's own design):** a
+   SHORT ease-in ramp BEHIND the anchor (so the transition into the correction isn't an abrupt cut —
+   this revises an earlier-discussed "untouched behind" idea, which the user corrected mid-session),
+   the corrected facing held FORWARD from the anchor for a length, then eased back down to whatever
+   the underlying facing would otherwise be (auto-computed gaze, or a neighbouring correction) over a
+   further decay length past the hold. Never rewrites footage before the short backward ramp starts.
+   **Hold/decay lengths have no user-specified default yet** — propose named, commented, tunable
+   constants (arc-length in meters, so behavior scales with path geometry rather than film seconds)
+   and say so plainly rather than presenting a guess as settled.
+6. **Multiple corrections along one path — not yet decided.** If two anchors' hold/decay windows
+   overlap, don't invent a rigid blending rule beyond what's needed to ship an MVP; note the ambiguity
+   and pick the simplest reasonable behavior (e.g. nearer anchor dominates), flagged for the user to
+   review, not silently finalized.
+7. **Undo integrates with the existing stack, not a new one.** `§CPE_UNDO` (`_undoPush`/`_undoApply`,
+   `cinema_path_editor.js:971`) already snapshots the plan before every edit action (stick drag, etc).
+   The commit step in (4) must call `_undoPush` the same way, so Ctrl+Z reverses a bad cam adjustment
+   exactly like it reverses any other edit — no new mechanism needed here.
+8. **Never adds or moves a band.** Acceptance witness must assert `bands` length and every
+   `band.c`/`band.d` byte-unchanged after a cone adjustment — the same disproof §CPE_PREVIEW_TACKBACK_PIN
+   above already named for the "more sticks" regression, now against the corrections-list mechanism
+   instead of a band pin.
+
+**Explicitly OUT of scope for this dispatch:** re-enabling §CPE_AIM_PIN's disabled canvas click
+trigger (a separate, still-parked fix, untouched by this); `4D_GANTT_TM_REFACTOR.md` §FUTURE item 2
+(separate lane, per the user's own explicit "do not touch item 2 in another session" directive this
+same day).
+
+**Status: spec ready, dispatching a build agent** (fresh `/tmp/wt-*` worktree off `origin/main`,
+Spec-First already satisfied by this section, FUNDAMENTAL LAW — §-log/numeric witness only, no
+screenshots — and CPE's own protected-lane caution apply). See the dispatch note below for exactly
+what was handed off.
