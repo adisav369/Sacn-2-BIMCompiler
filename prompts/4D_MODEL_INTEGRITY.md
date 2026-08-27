@@ -1366,38 +1366,45 @@ Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions a
 
 ---
 
-# §L ⛔ START HERE — SESSION HANDOFF 2026-08-27
+# §L ⛔ START HERE — SESSION HANDOFF 2026-08-27 (FINAL, end-of-session — supersedes all earlier §L
+edits made during the day, which are now history, not the plan)
 
-**⚡ THIS SECTION IS STALE PAST THIS POINT — read this update block FIRST, it supersedes the plan
-below.** Everything from "The decision that gated everything" down to "State, honestly" was written
-mid-session; the items below happened LATER the same day and are not reflected in that plan text:
+**Everything below "The decision that gated everything" down to "State, honestly" describes
+mid-session state and is superseded by this block. Read this first.**
 
-- **§I.3 (level relation) is CLOSED**, not open as stated below — it was a deploy gap (shipped
-  patches never uploaded to OCI), not a data gap. Hospital/Terminal/Duplex now serve real storey
-  elevations (56/67/4 datums). `HHS_Office_Federated` is the one still-open building — no honest data
-  source exists for it yet, not attempted rather than guessed. See §I.3 body, not this stale plan.
-- **§I.3a exists**: `LevelDeriver` is wired as the task-grid's level source, flag-gated
-  (`opts.levelSource==='deriver'`), **default OFF**, bim-ootb PR #1556. It was left off because
-  `spatial_structure` didn't exist yet — that blocker is now gone (see previous bullet), so flipping
-  the flag is a live, reconsiderable decision, not a closed one. Whether `LevelDeriver`'s higher tiers
-  actually activate correctly on real declared storeys is a **separate verification, not yet done.**
-- **TM edit persistence is verified clean** (bim-ootb PR #1552/#1554/#1555). The storey-datum half
-  (#1552) is a MODEL fact and stays in this file — §K.4 and §L item 1 below.
-  ➡ **For persistence itself, read `prompts/4D_GANTT_TM_REFACTOR.md` §5b — it OWNS this and records
-  it measured** (day-1 round-trip table, day-2 the W-PERS split-mode blind spot with its RED control,
-  day-3 the IDB evictor root cause). *Pointer replaced a shallower duplicate account here,
-  2026-08-27, consolidation L2 — two grains of one fact in two files is how a session ends up citing
-  the shallower one.* ⚠ Live code cites that section as both `§5b` and `§S5b`; grep both.
-- **Four new items queued, not started**: late residual midair elements, build-up elements crammed to
-  the start of their bar instead of spread across its duration, whether resource/effort timing is
-  masked by that same crowding, and whether the standalone Schedule Editor supports a full edit cycle
-  (this last one was already named as open below, at "§K.5 item... `schedule_editor_ui.js`" —
-  confirmed still open, not duplicated). Full detail: `4D_GANTT_TM_REFACTOR.md` §FUTURE (2026-08-27).
-- **"Where the work is" below is stale** — branch names have moved on to PR-per-fix (#1552 through
-  #1557), not the single `feat/day0-unsupported-probe` branch named there.
+## ✅ Live in production right now — verified merged, not just opened
+All seven confirmed `MERGED` on `bim-ootb` (checked via `gh pr view` against the actual repo, not
+recalled from chat): **#1552** storey datum is the floor · **#1554** W-PERS split-mode blind spot
+closed · **#1555** the IndexedDB data-loss bug (LRU evictor deleting user edits) · **#1556**
+LevelDeriver wired, flag OFF · **#1557** elevation deploy-gap closed for Hospital/Terminal/Duplex ·
+**#1558** cache now persists the task grid · **#1560** the calibration-fix-equals-rejected-revert
+proof. `bim-ootb`'s `deploy-pages.yml` auto-publishes on merge to `main` — no separate manual step
+like this repo's docs, so all seven are live on the public site, not just merged to git.
 
-**Read §G.0 (regain context) → §I (ownership table) → §K (this review). Then §K.5 is the plan.**
-There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5 supersedes all of them.**
+**⚠ Loose end, not yet closed**: `bim-ootb` PR **#1551** is still open and stale — it carries an
+OLDER, pre-correction version of `buildings/patches/Duplex_extracted.db.sql` that #1557 already
+superseded with the correct DROP+CREATE form. Nobody has closed it. Do that before it confuses a
+future session into thinking it's still live work.
+
+## ⛔ Explicitly NOT done, don't assume otherwise
+- **The Schedule Editor (`viewer/schedule_editor_ui.js`) has had ZERO commits and zero verification
+  all day** (`git log --since` confirms it). Whether it supports a full edit cycle end-to-end is
+  exactly as unverified now as it was this morning — this is the oldest unanswered item in this
+  whole file, not a new one.
+- **The build-up/reveal-distribution fix (dead-air gaps in `remapSolveToTasks`, MEP-Final cramming)
+  was diagnosed and a direction recommended, but NEVER DISPATCHED.** Do not confuse this with the
+  duration/calibration thread below, which IS closed (rejected, correctly, #1560 proves why). These
+  are two different bugs in the same function — don't let one's closure imply the other is done.
+- **The 4D-ownership-table design-review fixes are IN PROGRESS, not finished** — a staged agent is
+  resolving 10 defects found by a systematic audit (§I.5): PRIMAL LAW witness-blindness in `§TPL_MODEL`
+  logging, a stair-flight gap in 2 of 5 support-pool copies (false-negative floating), `§TPL_LAYER_ORDER`
+  silently narrowing the bearing relation (~32% of Hospital's contacts dropped) with its own self-check
+  sharing the blind spot, and an edit-legality gate that ANDs two already-known-disagreeing copies
+  instead of picking the correct one. Check `git log`/open PRs for its actual landing state before
+  assuming any of §I.5's ten items are resolved — this note will be stale the moment that agent reports.
+
+**Read §G.0 (regain context) → §I (ownership table, now includes §I.5's audit) → §K (the mid-session
+review). §K.5 is superseded by this block for sequencing, but its individual findings still stand.**
 
 ## ✅ The decision that gated everything is MADE
 **USER RULING 2026-08-27: the canonical model is the TEMPLATE PATH — `schedule_author.js`
