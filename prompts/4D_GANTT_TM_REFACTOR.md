@@ -6218,14 +6218,130 @@ Buildings already correctly connected are **byte-identical** — verified per-ta
 aggregate totalDays (0/139 tasks differing across Clinic+Hospital+LTU+HHS). Full witness suite:
 59 green, 6 new_red, all 6 previously verified pre-existing (see PR #1567/#1568's own sweeps).
 
-**⛔ Residual, named not fixed — same failure CLASS, one level more general, needs its own
-decision:** Terminal (1 task, 21 members, "Ceiling Level Kedai") and JKR (1 task, 199 members,
-"01 Ground Level Floor") each still have one orphaned root — a level whose local phase-chain
-starts mid-sequence (jumps straight to Architecture Envelope because that level never had a local
-Superstructure classification), so neither the ordinary `prevOnLevel` edge nor the building-scope
-floor applies. Would need: when a phase's turn comes with `prevOnLevel === null`, search back
-through lower-ranked levels for the nearest instance of the declared `within_level` predecessor
-phase (not just the building-scope special case) and float against that. **Deliberately not
-folded into this pass** — it's a bigger, more debatable design decision (does a level with a real
-skipped phase genuinely need to wait for a DIFFERENT level's instance of that phase? — defensible
-by the same logic `across_levels` already uses, but a new rule, not this one generalized).
+**⛔→✅ The residual above is CLOSED — bim-ootb PR #1570 (stacked on #1569/#1568/#1567),
+2026-08-27, same day.** User caught a live instance of the exact residual named above from real
+playback (not eyeballed by Claude — the user's own report, verified node-side): 193
+`IfcLightFixture` (MEP Final) on Terminal's "Ceiling Level Kedai" landing on day 1 of a 97-day
+programme, chained off the orphaned Architecture Envelope root this section already named.
+
+**The first attempt (searching backward through lower-RANKED levels for the nearest instance of
+the predecessor phase) was itself rejected before shipping** — user: *"we dont do hardcoded fix..
+but general rules.. phase of MEP is already known, oft repeated."* Level-rank adjacency is exactly
+the proxy class `4D_MODEL_INTEGRITY.md` §E already names as unreliable (nearest-by-elevation
+picks a coincidentally-early unrelated level when storey names are fragmented/duplicated, which
+Terminal's federated ladder guarantees). Measured before rejecting: moved the 193 fixtures day
+1→4, real but visibly still wrong relative to siblings (Ceiling Level 01/02/03 all land their own
+MEP Final around day 82-90).
+
+**Replaced with §PHASE_WATERMARK_FLOOR — no level/storey reasoning at all.** Track the
+latest-finishing task seen so far for each phase NAME as `instantiateTemplate` walks levels
+bottom-up (one running "watermark" per phase, updated on every task creation); when a level's own
+chain has nothing local behind it (`prevOnLevel === null`), float its root against its declared
+`within_level` predecessor's watermark directly. This SUBSUMES §BUILDING_SCOPE_FLOOR too (a
+building-scope phase's one task simply updates the watermark like any other — no special case
+needed) — one mechanism instead of two, and it needs nothing beyond what `within_level`/`scope`
+already declare. **MEASURED, full closure:** Terminal 77/77 and JKR 67/67 now reachable from
+Substructure, **exactly one root each (Substructure itself, correctly at day 0)** — the 193
+fixtures moved day 1→6. Buildings that were already healthy (Clinic/Hospital/LTU_AHouse/HHS/
+Duplex) stayed **byte-identical**, verified via two clean-checkout worktrees (0/159+42+56+40+40
+tasks differing — safer than `git stash`, which a earlier pass discovered is REPO-WIDE shared
+across every worktree of `bim-ootb`, not worktree-local, and collided with an 8-month-old
+unrelated stash entry mid-measurement; recovered cleanly, no data lost, method changed for good).
+Full witness suite clean throughout (59 green, same 6 pre-existing new_red each pass).
+
+### ⚖ STANDING RULE (user, 2026-08-27) — sequencing policy lives in `4D_template.json`, never in JS
+User's direct question, verified before answering: *"Is this easily set in the JSON?"* — yes,
+already was: `phases[].scope` (`"building"` vs `"level"`) is the ONLY thing that decides whether
+a phase is a single whole-building gate or repeats per floor, and `§PHASE_WATERMARK_FLOOR`/
+§BUILDING_SCOPE_FLOOR read that field directly — no phase is named in the fix code (not
+`"Substructure"`, not `"MEP Final"`). **Going forward, this is the bar for any future scheduling
+CODE change on this lane**: if the change encodes a POLICY decision (which phase gates which,
+what scope a phase has, what a duration basis is, what a crew cap is), it belongs as a field in
+`4D_template.json`/`sequence_rules.json`, read by name-agnostic code — never as a hardcoded
+phase/building name inside `schedule_author.js`/`schedule_gate.js`/`time_machine.js`.
+
+**"4D and 5D" confirmed by the user, same conversation: "5D means rates/resources/costing/
+weightage that influences work speed."** That is exactly `§FUTURE-5A`'s already-written scope —
+`sequence_rules.json` `LABOR_RATES` (productivity, `max_crews`, `rate_per_day`) plus the regional
+rate packs, all merged into `rates.js` — and the 11-constant inventory above (28800 install-basis
+duplicated 5x, crew-cap disagreeing 3-vs-1 between `schedule_gate.js`/`schedule_author.js`, an
+uncredited $95/day fallback, `LEVEL_SCAN_MAX`, `phaseDays=30`, the fragmentation floor) is the
+concrete list of where 5D policy is currently hardcoded instead. **Why this matters, in the
+user's own words: "editable so that user can control the speed of construction."** Both
+`4D_template.json` and `sequence_rules.json` are already wired into this project's live JSON
+editor (`4D_template.json`'s own header: *"Registered like every other project JSON… editable"*)
+— a value trapped in JS is invisible and unreachable to that editor; the SAME value as a JSON
+field is something a user can tune without a code change or a session like this one. That is the
+concrete payoff of the rule above, not just tidiness. `§FUTURE-5A`'s 11 items are the standing
+punch list for closing this gap on the 5D side; none applied yet, still needs its own pass.
+
+**Also asked and settled the same conversation, recorded so it is not re-litigated:** should
+Substructure-style whole-building gating extend to a strict global queue — all floor slabs
+everywhere, then all columns everywhere, then all walls, then all openings, whole-building ARCH
+before any MEP? **No — already tested and measured worse.** `4D_MODEL_INTEGRITY.md` §A's own
+sandbox test (yesterday, 2026-08-26): forcing phase-major order (all-Superstructure-before-
+all-Architecture) put an L2 slab before the L1 wall it rests on — 17 violations, worse than
+level-major's 10. Real construction doesn't serialize per-phase across a whole tower either
+(no floor-by-floor parallelism = far slower); the wave this codebase already models
+(`across_levels`, same phase one floor at a time with a lag) is the correct shape. Substructure
+is the ONE genuine whole-building exception because the template declares it `scope:"building"`,
+not because "sub-first" generalizes to every other phase.
+
+## §PHASE_WATERMARK_FLOOR — ✅ SUPERSEDES §BUILDING_SCOPE_FLOOR (bim-ootb PR #1571), same day,
+found from a real user-reported live-playback bug the narrower fix missed
+
+**User caught it directly from real playback, not eyeballed by Claude — reported "lots of light
+fixtures midair on Day 3," verified node-side against real `materializeZones` output.** Traced to
+`TASK_MEP_Final_Ceiling_Level_Kedai` (193 `IfcLightFixture`) at `sDays=1`. Two intermediate fixes
+were tried and REJECTED before this one landed, both instructive:
+1. **First attempt — search backward through lower-RANKED levels for the nearest instance of the
+   predecessor phase.** Moved the fixtures day 1→4, real but user rejected it before shipping:
+   *"we dont do hardcoded fix.. but general rules.. phase of MEP is already known, oft repeated."*
+   Level-rank adjacency is exactly the proxy class `4D_MODEL_INTEGRITY.md` §E already names as
+   unreliable — Terminal's fragmented/duplicate storey names make "nearest" pick a coincidentally-
+   early unrelated level, not the real physical predecessor.
+2. **Second attempt — §BUILDING_SCOPE_FLOOR generalized to `!prevOnLevel`, no level search at
+   all**, tracking a running watermark per phase name instead. Moved the fixtures day 1→6 — but
+   user, unprompted, spotted a real logical gap: *"It shows u lack in set theory"* → *"set theory
+   means not breaking any other super set."* **Verified node-side, not guessed: `!prevOnLevel`
+   and "my own declared predecessor has no local instance" are DIFFERENT SETS.** Terminal's
+   "Ceiling Level Kedai" has local Architecture Envelope (so `prevOnLevel` is non-null when MEP
+   Final's turn comes) but NO local Architecture Closeup — MEP Final's real predecessor. The
+   narrower condition missed this because it checked "is ANY phase present locally" instead of
+   "is MY declared phase present locally." A `§DEBUG_WM` trace confirmed it precisely:
+   `wlPred=architecture_closeup localPredExists=false wmTaskEDays=undefined` — the watermark
+   lookup was correct in shape but the GATE deciding when to consult it was the wrong set.
+
+**Fixed: gate on `taskAt[predName + '||' + lv]` (does THIS phase's OWN declared predecessor have
+a task on THIS level), not on `prevOnLevel`.** Subsumes the `scope:"building"` case for free (a
+building-scope phase's one task updates the watermark like any other task — no special case
+needed) — one mechanism, not two. No level/storey reasoning anywhere.
+
+**MEASURED, full fleet, before (§BUILDING_SCOPE_FLOOR only) -> after — bigger and MORE severe than
+either narrower fix found, because this is the first version that actually checks the right set:**
+
+| building | reachable | totalDays | what moved |
+|---|---|---|---|
+| Clinic | 35/35 -> 35/35 | 111->111 | 1/35: `Finishes` on `Roof Main` day 38->110 — was landing near project START instead of the true end |
+| Duplex | 20/20 -> 20/20 | 13->13 | 0 changed |
+| HHS | no Substructure (legit) | 50->50 | unaffected |
+| Hospital | 42/42 -> 42/42 | 318->318 | 0 changed |
+| JKR | 66/67 -> **67/67** | 55->64 | residual root closed |
+| LTU_AHouse | 62/62 -> 62/62 (already "fully reachable" under the narrower fix) | 788->**799** | **18/62 tasks were still wrong** — `Architecture Closeup` on `"VÅNING 2"` day 46->337, `MEP Final` on `"Storey 3"` day 368->754: severe pre-existing chain-bridging errors neither narrower fix could see |
+| Terminal | 75/77 -> **77/77** | 97->98 | residual root closed; MEP Final `Ceiling Level Kedai` floored against Closeup's real day-88 watermark |
+
+**Fleet now has exactly one root per building with a Substructure phase (Substructure itself,
+correctly at day 0) — zero orphaned chains anywhere.** Full witness suite clean throughout (59
+green, same 6 pre-existing new_red every pass, verified pre-existing on unmodified `origin/main`).
+
+**Method note, worth keeping:** the eventual fix came from re-reading the CODE'S OWN CONDITION
+against the declared data model after the user's abstract prompt ("set theory... supersets") —
+not from any visual, not from guessing. `§DEBUG_WM`/`§DEBUG_ALL_LEVELS` traces (temporary,
+inserted and removed same session) confirmed the exact mechanism before committing. Also
+confirmed, same trace: "Ceiling Level Kedai" ranks BELOW all levels with real Architecture Closeup
+work (rank 5 vs Aras Tanah@6, Aras 01@10, ...) — a thin, sparse space (21 railings/proxies + 193
+fixtures, no floor slabs) — which is why even the CORRECTED watermark had nothing to float against
+until this fix (the watermark for "Architecture Closeup" was genuinely empty at that point in the
+walk, honestly, not a bug). Whether that RANK itself is correct is a separate, already-documented,
+NOT-fixed-here question — `4D_MODEL_INTEGRITY.md` §I.3/§C ("level bucketing is INFERRED, not
+read") and `LevelDeriver` (built, flag-off per §I.3a). Not touched this pass.
