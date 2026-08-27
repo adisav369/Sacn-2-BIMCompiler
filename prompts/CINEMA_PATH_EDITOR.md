@@ -3371,18 +3371,50 @@ noise — matches "fast on the onset" directly. Hospital_3 (topout=0.900, 63415 
 comparable burst; the defect is schedule-dependent (how a given building's derived 4D order clusters
 completions across calendar days), consistent with the 2026-08-06 comment's own prediction.
 
-**Not fixed — a proposal, not yet built, needs a go before touching a recently-settled decision.**
-Reverting to element-linear pacing globally is NOT proposed — that was already tried, already measured
-worse on its own axis (the original Hospital burst: a quarter of the model in the first 5% of the
-film), and reversing it was a deliberate, reasoned, user-made call this file already records in detail
-(§CPE_BUILDUP_EVEN_TEMPO above), including a real regression (`§GHOST_GROUND`'s trigger threshold)
-that a similarly-scoped change caused last time — recorded as a caution, not a reason to freeze, but a
-reason to change this carefully and re-run `witness_cpe_ghost_ground.js` before calling it done.
-Minimal option matching the user's own scoping ("correct only the first 10 secs"): blend the cursor
-toward the ALREADY-PRESENT (flag-gated, currently unused) element-paced formula only within roughly the
-first ~10s of film / before some small fraction of the topout window, fading back to pure calendar-
-linear after — bounding the onset burst without reopening "two mechanisms compete for the whole film"
-that §CPE_BUILDUP_EVEN_TEMPO was written to end. Not started — proposal only, pending confirmation.
+**Not fixed (2026-08-13) — a proposal, not yet built, needs a go before touching a recently-settled
+decision.** Reverting to element-linear pacing globally is NOT proposed — that was already tried,
+already measured worse on its own axis (the original Hospital burst: a quarter of the model in the
+first 5% of the film), and reversing it was a deliberate, reasoned, user-made call this file already
+records in detail (§CPE_BUILDUP_EVEN_TEMPO above), including a real regression (`§GHOST_GROUND`'s
+trigger threshold) that a similarly-scoped change caused last time — recorded as a caution, not a
+reason to freeze, but a reason to change this carefully and re-run `witness_cpe_ghost_ground.js`
+before calling it done. Minimal option matching the user's own scoping ("correct only the first 10
+secs"): blend the cursor toward the ALREADY-PRESENT (flag-gated, currently unused) element-paced
+formula only within roughly the first ~10s of film / before some small fraction of the topout window,
+fading back to pure calendar-linear after — bounding the onset burst without reopening "two mechanisms
+compete for the whole film" that §CPE_BUILDUP_EVEN_TEMPO was written to end.
+
+### ✅ SHIPPED 2026-08-27 — `§CPE_BUILDUP_ONSET_BLEND`, exactly the minimal option above
+
+Re-raised unprompted after the 2026-08-13 deprioritization: *"...First few secs should take on Day 0
+as most 4D rush onset."* Studied first, user confirmed and scoped it: *"Yes the first one only. Do not
+touch item 2 in another session, separated concern"* — item 2 (`4D_GANTT_TM_REFACTOR.md` §FUTURE
+item 2, Gantt bar-width calibration) untouched, a separate already-blocked lane.
+
+**Built** (bim-ootb `fix/cpe-buildup-onset-blend`, `cinema_maxq.js`/`cinema_path_editor.js`):
+`_workCursorAt(tFilm, bkState, totalSec)` gets a new optional 3rd arg, the film's own designed length
+(a per-plan constant, same for preview and bake — the "pure function of film fraction" invariant
+stays intact). For `t < onsetU` (`onsetU = min(0.5, 10/totalSec)`), cursor =
+`lerp(elementPacedMs, calendarLinearMs, t/onsetU)` — element-paced at t=0, fading to exactly
+calendar-linear at t=onsetU, no seam. Omitting `totalSec` (old call sites) DEGRADES to byte-identical
+pure calendar-linear, unchanged. All 3 real call sites now pass it (bake loop, `_previewFly`,
+`_scrubBuildupSync`).
+
+**Flagged risk, specifically tested, not just re-run:** onset blend makes `tFilm` no longer purely
+calendar-linear near t=0, which is the exact clock-mismatch shape §GHOST_GROUND_LIVE_TRIGGER was built
+to catch. `witness_cpe_ghost_ground.js` calls `buildupCursorAt` with only 2 args, so re-running it
+green (30/30, Duplex+Hospital) proves the OLD path is untouched but doesn't exercise the new one — a
+fresh witness was required.
+
+**New witness `witness_cpe_buildup_onset_blend.js`, 12/12 green (Duplex + Hospital):** burst reduced
+(summed error vs. time-proportional placed%, marks strictly inside the onset window) Duplex
+67.4→44.3pt (**-34%**), Hospital 19.6→12.7pt (**-35%**); handoff at `t=onsetU` seamless on both;
+cursor for `t≥onsetU` byte-identical to pure calendar-linear on both (day-counter untouched); degrade
+path (2-arg calls) byte-identical to pre-fix on both; ghost-ground replayed 400 real frames through
+the new 3-arg cursor on both buildings — opacity floor held exactly until the real cursor crossed
+`firstAboveMs`, then rose monotonically (no regression).
+
+**sw.js `CACHE_VERSION` bumped same PR. Scope held exactly as directed** — §FUTURE item 2 not touched.
 
 ## §LTU_SUBSURFACE_BBOX — movie path dives underground on LTU_AHouse (2026-08-16) — ✅ SHIPPED same day, PR bim-ootb#1386 MERGED (user GO)
 **Fix shipped exactly as named below: `_bboxZFenced()` shared by both helpers, rows outside
