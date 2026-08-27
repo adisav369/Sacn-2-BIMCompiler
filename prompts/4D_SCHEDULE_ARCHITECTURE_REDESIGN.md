@@ -499,3 +499,99 @@ the one-shot reuse papers over their skew correctly but the second recipe is sti
    needs to absorb every one of them as a parameter/rule, not silently drop them and regress a fixed bug.
    Audit each named `§`-tag in `time_machine.js`'s support/contact code before deleting the function it
    lives in.
+
+---
+
+# §LANE_FILE_TOPOLOGY — should `4D_MODEL_INTEGRITY.md` and `4D_GANTT_TM_REFACTOR.md` MERGE?
+# ANSWER: NO — but three things are in the wrong file, and that is the real defect (2026-08-27)
+
+**Why this lives here.** This file's own `➡ HANDOFF (2026-08-16 evening)` is what CREATED the split
+being questioned — it spun the bar-shape/level-semantics work out to `4D_GANTT_TM_REFACTOR.md` and
+declared *"This file stays the engine's architecture record."* A question about whether that split
+still holds belongs against the record that made it. Nothing was changed in either of those two
+files by this pass; both were being actively edited the same day. **This is a recommendation only.**
+
+**The question, from the user (2026-08-27):** prompt-file bloat and fragmentation across too many
+separate files is a suspected contributing cause of this lane's recurring thrash (re-deriving
+settled findings, missing cross-references). Do those two files — both actively growing, both about
+4D scheduling — now overlap enough to become one?
+
+## The finding: they own genuinely different concerns, and both are correct as-is
+
+Read in full, 2026-08-27 (`4D_MODEL_INTEGRITY.md` 1,061 lines; `4D_GANTT_TM_REFACTOR.md` 5,836
+lines). They are not two views of one subject:
+
+| | `4D_MODEL_INTEGRITY.md` | `4D_GANTT_TM_REFACTOR.md` |
+|---|---|---|
+| the question it answers | **can the MODEL express the answer?** | **does the GESTURE reach the stored timeline and back?** |
+| its core artefact | **§I OWNERSHIP TABLE** — which function owns each relation | **🗺 DEBUG MAP** — 8 edit entry points × 7 obligatory steps |
+| what it fails at | a relation re-derived instead of called (§G.0: four times in one session) | a step skipped in the edit pipeline (five shipped defects, §S67–§S78) |
+| its unit of evidence | a geometry/relation measurement (§E, §H, §J) | a §-tag on the edit path, an IDB key, a canvas pixel row |
+| what it must never do | author order from geometry (§B: AUDIT never DECLAREs) | recompute schedule timing downstream (§VERIFICATION 4) |
+
+That is the **BOM PRINCIPLE / Three-Concerns split (`CLAUDE.md`) holding, not failing**: one file is
+WHAT/HOW (the construct and its rules), the other is the wiring that carries it to a surface. The
+proof that both are load-bearing is in `CLAUDE.md`'s own PRIMAL LAW: clause **0** sends you to §I
+before computing a relation, clause **2** sends you to the editor witness chain — two different
+instructions, to two different files, both correct today.
+
+**And the arithmetic argues against merging on its own.** 5,836 + 1,061 = **6,897 lines / ~469 KB**
+in one file. The user's hypothesis is right about the disease; concatenation is not the cure for it.
+Nobody re-reads a 469 KB file before acting, which is precisely the behaviour that produces the
+thrash. `4D_SCHEDULE_PERFECTION.md` already proved this at 452 KB and needed an INDEX plus an
+archive pass to become readable again.
+
+## But three things ARE in the wrong file — this is what to fix instead of merging
+
+Each is a genuine leak across the boundary above, and each has already cost, or is set up to cost,
+a re-derivation. **None was actioned by this pass.**
+
+**L1 — an OWNERSHIP TABLE row is corrected from a foreign file. Fix this one first; it is the
+cheapest and the most dangerous.** `4D_GANTT_TM_REFACTOR.md` §FUTURE item 2 (2026-08-27) says, of
+§I's row *"where inside its task?"*: *"it says the `layerOf` 4th arg 'exists only on unmerged
+`fix/tpl-layer-order`' at `6b12783`; that branch is merged into current `main`. Fix that row next
+time §I is touched."* A session obeying PRIMAL LAW clause 0 reads §I, finds the row, and gets a
+**stale** answer — with nothing in §I saying so. The whole value of an ownership table is that it is
+the one place you have to read; a correction parked in another file's futures list defeats it.
+➡ **Apply the correction INTO §I's row** (and re-check §I's other `origin/main @ 6b12783` line
+numbers while there — the whole table is pinned to that commit). §FUTURE keeps a one-line pointer.
+
+**L2 — `4D_MODEL_INTEGRITY.md` §L is carrying TM edit-path status that §S5b already owns in depth.**
+§L's *"✅ THE TM WIRING IS SOUND — TRACED 2026-08-27, PR #1553"* and its persistence bullets
+(PR #1552/#1554/#1555) restate, at summary grain, what `4D_GANTT_TM_REFACTOR.md` §5b records
+measured (day-1 round-trip table, day-2 W-PERS blind spot with its RED control, day-3 the IDB
+evictor root cause). Two grains of one fact in two files is how a session ends up citing the
+shallower one. **The split is not clean-cut and should not be done bluntly** — of §L's three PR
+#1553 fixes, only one is a model fact:
+  - `§TPL_MODEL model=template|legacy-deriveZones` (**which model ran**) — **stays** in
+    `4D_MODEL_INTEGRITY.md`; §I already carries it as a row, and it is the model question.
+  - `4D_template.json` missing from `sw.js PRECACHE_ASSETS`, and
+    `witness_gantt_edit_coherence.js` passing no `template:` — **move to
+    `4D_GANTT_TM_REFACTOR.md`**; these are precache/witness-wiring facts, its DEBUG MAP's subject.
+  - the persistence bullets — **replace with a pointer** to §5b, which is the fuller record.
+
+**L3 — the level relation is documented twice, and the older trail is a closed measurement band.**
+`4D_GANTT_TM_REFACTOR.md` §S31–§S38 (~900 lines, all 2026-08-19) is the storey/elevation/level
+measurement trail that produced `level_deriver.js` — §S34 RULED the declared-vs-geometry tie-break,
+§S35 BUILT the derivation with 14 hand-computed fixtures. `4D_MODEL_INTEGRITY.md` §I.3/§I.3a is now
+the declared OWNER of that relation and re-derives some of the same ground (storey-NULL percentages,
+the uniform-3m fallback cost) **without citing §S34's ruling at all**. That is the lane's signature
+defect — an owned question answered twice — sitting inside the very pair of files written to stop it.
+➡ **Two moves:** (a) §I.3a cites §S34's ruling and §S35's fixtures explicitly, so the tie-break is
+not re-derived a third time; (b) the §S31–§S38 band is then an ARCHIVE candidate in its own right
+(a closed trail whose conclusion is owned elsewhere) — pointer left in place, per the archive
+convention in `prompts/archive/*_archived_2026-08-27.md`.
+
+## The one thing genuinely missing from BOTH files
+Neither states its own boundary. A session that does not already know this lane cannot tell which
+of the two to open, so it opens the one it saw last — and that, not file size, is the mechanism
+behind "missing cross-references."
+➡ **One line at the top of each**, naming what it owns and what the other owns. Cheapest available
+fix for the user's actual complaint, and it costs nothing that a merge would cost.
+
+## Files checked in the same pass and NOT recommended for merging
+- `TM_4D5D_VARIANCE_LANE.md` vs `FUSED_4D5D_WEDGE_LANE.md` — the shared word "wedge" is a false
+  positive. Checked: zero overlap in witnesses, PRs or sections. Variance = BIM↔ERP cost twin
+  (EVM / PlannedAmt↔CommittedAmt / QS persona); Fused = the schedule-EDITOR arc (§SE-1..§SE-8).
+- `4D_SCHEDULE_ARCHITECTURE_REDESIGN.md` (this file) vs either — this file is the CPM engine's
+  architecture record; its `§STAGE4_RETIREMENT_PROPOSAL` steps 2–5 are still open against it.
