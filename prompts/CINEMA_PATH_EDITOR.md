@@ -3502,3 +3502,56 @@ exactly as today — only the bake-triggered path goes silent. Acceptance witnes
 stays `'none'`/whatever it was before the call (no visible pop-open) — paired with a second case
 proving a direct `activate()` call (simulating the clock-pill Play) still sets `display:flex` as today,
 so the split doesn't regress the real-Play path `G-CPE-SOLE-OWNER` protects.
+
+## §CPE_PREVIEW_TACKBACK_PIN — quick cam-head adjust during preview walk, reusing §CPE_AIM_PIN instead of adding sticks (2026-08-27, user-queued, NOT STARTED)
+
+**User's ask, verbatim:** *"Next i will make the preview walk to tack back a stick in focus so we can
+adjust it cam head angle as it has the habit of staring skywards when disturbed. With such a feature,
+we can quickly readjust the cam facing, and it should tamper ease as set along."* Then, same session,
+a correction on the mechanism: *"as now, we need to add a stick to adjust the cam head and we ended up
+with more sticks when the intent was just cam adjustment unless u have a better idea."*
+
+**"Staring skywards when disturbed" is the already-diagnosed §CPE_AIM_DEPTH omnidirectional-search
+swing** (§CPE_AIM_SIMPLIFY, 2026-08-14): once `_aimDepthSubject`'s forward-clearance trigger fires,
+the SEARCH itself is still fully omnidirectional, so the picked subject can legitimately sit behind or
+above the camera — measured `perpDeg` up to 156° (near-reversed vs travel). User accepted this as a
+tradeoff THEN because a manual override still existed in principle (the pin). It doesn't, in practice
+— see below.
+
+**"More sticks than intended" confirms the exact gap this file already named and never closed.**
+`§CPE_AIM_PIN` (Cause 1, above, `## Part C`) is precisely a look-target-only override — pin a band's
+`lookAt` WITHOUT moving the path — built and merged 2026-08-04 (PR #1172), then its one UI trigger
+(click-in-canvas) was commented out 2026-08-06 (PR #1228, `cinema_path_editor.js` still commented out
+today, confirmed at current `origin/main`: `_tryPinClick`/`CLICK_SLOP_PX`, line ~3018) because pin-
+clicks were swallowing near-miss stick-drag gestures. **Nothing has re-enabled it since.** The
+mechanism itself (`_setPin`/`_unpinBand`/`_buildPinZones`/`_pinLookAtAt`) is still fully present in
+`effects.js` and `cinema_path_editor.js` — this is a UI-wiring gap, not a missing feature. Today a
+user with no pin-click path has only one lever to influence gaze: move/add a stick, which changes
+WHERE the camera IS, not just where it LOOKS — exactly the "more sticks" symptom just reported.
+
+**Recommendation: don't build a new mechanism — re-enable and extend AIM_PIN, don't reach for sticks
+for a gaze-only edit.** Two threads converge on the same fix:
+1. **Re-enable the pin-click trigger** (the "Definitive fix" already spec'd above, Cause 1/2,
+   2026-08-14, never built): separate pin-click detection from stick-drag-slop (modifier key, or only
+   treat as a pin candidate when pointer-down didn't start on/near a handle) so re-enabling doesn't
+   reopen the 2026-08-06 regression; give `_setPin`/`_unpinBand` a cheap re-plan path (aim segment
+   only, not a full `_replanFilm()`); make `_gazeRateBuild` zone-aware so a pin doesn't visibly bleed/
+   drift near its own Voronoi zone boundary — **this IS the "tamper ease as set along" ask**, already
+   named as Cause 2's fix, not a new requirement.
+2. **New entry point: trigger the pin from PREVIEW WALK, not just a static canvas click.** This is the
+   genuinely new part of the ask — "tack back to the stick in focus" during a running preview means:
+   identify the band nearest the current preview cursor (`_previewFly`'s live `tn`/pose, same value
+   `_scrubTo`/`roomTitleLiveTick` already read), pause/snap the preview to it, and open the SAME
+   `_setPin` flow the canvas click uses — so the user adjusts facing live, mid-walk, without leaving
+   preview mode or hunting for the right band on the static path. Reuses `_pinLookAtAt`'s existing
+   band-Voronoi-zone lookup (`_buildPinZones`) to answer "which band is in focus" — no new geometry
+   concept needed.
+
+**Not started.** Spec-only per this project's Spec-First rule — implementation queued behind the
+user's own "Next i will make..." framing (their intent to build, not yet a dispatch). Acceptance
+witness, when built: (a) a pin set during preview-walk survives into the baked film identically to one
+set via the static canvas click (byte-identical `plan.bands[i].lookAt`); (b) the rate-limiter zone-
+awareness fix holds — sampled gaze across a pinned zone's boundary shows no discontinuity vs. its
+un-pinned neighbours' natural ease; (c) pinning a band's gaze does NOT add/move any waypoint — `bands`
+length and every `band.c`/`band.d` position stay unchanged, only `lookAt` differs, directly disproving
+the "more sticks" regression this section exists to fix.
