@@ -4,6 +4,73 @@ used for the A/B cache test in §C). Read the log after every run (Log Mandate).
 findings/trace doc, not a fix log — mark items ✅ only when a fix is merged+deployed and re-verified
 live, not when code is written.
 
+## §0v3 ⛔⛔ THE ACTUAL HANDOFF — READ THIS FIRST, IT SUPERSEDES §0v2 AND EVERYTHING BELOW IT
+
+**The new session's job, in order: FIND THE CAUSE FIRST. Do not patch, do not extend §K's
+approach, do not touch LTU's data, until the cause is known.**
+
+### The one fact everything must explain
+**User, verbatim, stated as fact, twice: "ALL WERE WELL BEFORE 16th."** Not a guess, not inferred
+— the anchor. Whatever explanation the new session lands on must account for this: the fault has
+to trace to something that happened ON or shortly before 2026-08-16, not to a general "the file's
+been wrong since June" story that doesn't explain why it looked fine before that date. If a lead
+can't explain the 16th specifically, it isn't the answer yet, keep looking.
+
+### Status of each building, precisely — do not round any of these up
+- **Terminal: PATCHED AND WORKING, CAUSE UNKNOWN.** `bim-ootb` PR #1566 is live, independently
+  re-verified against real production bytes (0/48,428 rows deviating, was 2,074) — the *symptom*
+  is gone, confirmed. But the patch is a computed correction (modal offset + generated UPDATE
+  statements against a fresh re-extraction) — the user has flagged this class of fix as "custom
+  patching," rejected as a *methodology*, independent of whether it currently works. **It does not
+  answer why those 2,074 rows were wrong in the first place**, and that is the actual open question
+  the user wants answered — not "is Terminal green now."
+- **LTU_AHouse: NOT SOLVED.** Earlier framing in this doc (§K) called LTU "re-checked, still
+  holding, 0 deviating" — **that check compared LTU's patched data against its OWN
+  `elements_rtree`**, the same shape of self-referential check that made Terminal look fine for
+  weeks before an independent fresh extraction proved 2,074 rows were still wrong. LTU has never
+  been checked against a genuinely independent, freshly re-extracted source (no
+  `/tmp/ltu_fresh_extract.db` was ever built this session). Treat LTU as unverified, not clean.
+  A bbox_x/`elements_rtree`-width anomaly was raised and then explicitly disputed by the user
+  ("BBOX are not bad - your analysis is") — do not carry that forward as a finding; if bbox
+  matters, re-derive it from the real reported symptom, don't assume this session's numbers.
+- **Clinic: SOLVED, different class of fix, not in question.** `bim-ootb` PR #1565 fixed a real
+  CODE bug (X-ray opacity-restore defaulting to opaque) — not a data patch. The user's "no custom
+  patching" objection is about data-value patches specifically; this fix was never part of that
+  rejection.
+
+### Where to actually look for the cause — concrete, not yet done
+1. **`viewer/streaming.js` / `viewer/scene.js` / `viewer/import_db_builder.js` git history around
+   2026-08-15 → 2026-08-18.** Started, not finished, this session (`git log --since=2026-08-15
+   --until=2026-08-18 -- viewer/streaming.js viewer/scene.js` returned 5 commits — photo/triplanar/
+   cache-revalidation work, `d9a9201`/`6a0f89a`/`0050d1c`/`32a39a6`/`4f8a5c5` — none of them read
+   or analyzed yet for a connection to element_transforms/position handling before the session was
+   stopped). Do this first.
+2. **Reconcile the "well before the 16th" claim against the raw file timestamps.** LTU's raw
+   `_meta.db`/`_geo.db` on OCI: `Last-Modified Aug 10`. Terminal's: `Last-Modified Jun 5-6`. Both
+   predate the 16th by weeks/months on OCI's own object timestamp — yet the user says things were
+   fine before the 16th. Two ways to reconcile, both unexplored: (a) the file was corrupt all along
+   but nothing in the app *surfaced* it as a visible symptom until a code change around the 16th
+   started reading/rendering it differently — check (1) above for this; (b) the OCI timestamp is
+   not actually the moment of corruption (e.g. a metadata-only touch, a re-upload of identical
+   bytes) and the real corrupting write happened later, closer to the 16th — re-verify the
+   timestamps mean what they're assumed to mean before trusting them again.
+3. **No git-tracked provenance exists for the raw DB uploads** (only `.sql` patches get a
+   `oci_patch_gate.js` manifest) — this is a real, permanent gap, not something more searching will
+   fix. If (1) and (2) don't find it, say plainly that the origin is unrecoverable from available
+   history, per this doc's own standing instruction (§0's original text, kept below) — don't keep
+   searching past the point where the evidence runs out.
+
+### Explicit rules for the new session, carried over, still binding
+- No further data-value patches ("custom patching") without the user's explicit go — this
+  includes not touching LTU's data even to "fix" it, until the cause is known.
+- Read `feedback_no_interactive_chrome_tool.md` in memory before asking the user to check, look at,
+  confirm, or identify ANYTHING — worded any way. Three separate violations of this in the
+  session that produced this doc.
+- Verify claims against real production bytes yourself (curl + sqlite3 against the live OCI
+  objects) — proven to work, used successfully for Terminal. Don't ask the user to test.
+
+---
+
 ## §0v2 ⛔ SESSION CLOSED HERE 2026-08-27, READ THIS FIRST — SUPERSEDES §0/§K's "SOLVED" framing
 **User's own words, verbatim, in order — treat as the anchor facts, not my analysis:**
 - "ALL WERE WELL BEFORE 16th.. THAT IS A FACT"
