@@ -5908,6 +5908,110 @@ investigated or fixed yet, don't assume any of these are closed by today's other
      first — if a constant this audit finds is already the subject of a tracked item, cross-reference
      it, don't re-open it as new.
 
+   ### §FUTURE-5A — THE INVENTORY (READ-ONLY PASS DONE 2026-08-27; nothing applied)
+
+   Read-only, as specified. No code changed, no JSON changed. Every row below was verified by
+   reading the cited lines on bim-ootb `origin/main` @ `676a71b` (checkout confirmed 0 ahead /
+   0 behind), never inferred from a variable name.
+
+   **SCOPE, fixed in writing before the first grep (Spec-First).** Files: `schedule_author.js`
+   (whole), `schedule_gate.js` (whole), `time_machine.js` **scheduling call sites only** — defined
+   as the functions that construct or consume a schedule (those passing `shiftHours`/`laborRates`/
+   `displayRemap` into ScheduleAuthor/ScheduleGate, plus `getInstallSecs`, `_tmDisplayRemap`,
+   `_twoTierRemap`), NOT the Gantt canvas drawing and NOT playback. A **"scheduling-relevant
+   constant"** = all of: (a) it participates in producing a task/element DURATION, DATE, CREW count,
+   COST, or ORDER — it changes a number the Gantt or the movie displays; (b) changing it changes a
+   shipped number without changing any algorithm (a parameter, not a structure); (c) it is not a pure
+   numerical/implementation detail. **Excluded up front, deliberately:** physical unit identities
+   (`3600`, `86400000`, `1000`) — *except* where a literal encodes POLICY disguised as a unit
+   conversion, which is the entire point of this audit; geometry epsilons/tolerances (`EPS`, `GAP`,
+   Z-bands — owned by `support_sweep.js`, §E/§I.1); rendering constants; `bar_model.js` (hook-blocked).
+
+   **THERE ARE THREE JSON HOMES, NOT TWO.** The task named `sequence_rules.json` and
+   `4D_template.json`. `viewer/rates/4D_policy.json` also exists and self-describes as *"The ONLY
+   authored input to 4D scheduling."* **It has ZERO production readers** — verified: the only files
+   that read it are `tests/witness_bar_schedule.js:31` and `tests/witness_bar_composite.js:31`, and
+   `bar_model.js` (which takes `policy` as a caller-supplied parameter, `:203`) is itself referenced
+   by **no** production JS or HTML, only by those same two witnesses. This is NOT a new defect —
+   it is exactly `4D_MODEL_INTEGRITY.md` §A ("⛔ SUPERSEDED 2026-08-27 — THIS MODEL IS DEAD CODE").
+   Recorded here so a future session does not "fix" scheduling by editing a file nothing loads.
+   Same class: `calendar.days_per_week` (`4D_template.json`) and `days_per_week` (`4D_policy.json`)
+   are the same fact stored twice, and **neither is read by any production code** — no week calendar
+   exists in the engine (consistent with `schedule_gate.js:1057`'s own `24/7 calendar unchanged`).
+
+   #### Group A — the 8h/24h shift-basis family (the trigger; item 2 already owns the BUG)
+
+   | # | constant | location (file:line) | natural home | safety / recommendation |
+   |---|---|---|---|---|
+   | A1 | `28800` — the install-time basis | `schedule_author.js:91` `_installSecs` (`secsPerUnit = 28800 / prod`) | **`sequence_rules.json`**, NOT the template calendar | ⚠ **The obvious move is the wrong one.** `28800` is the denominator the *productivity figures themselves* are quoted against — a property of the rate table. `4D_template.json` `calendar.hours_per_shift` (=24) is the crew's working day — a different quantity that merely shares the word "hours". Collapsing them into one key is precisely the 3x conflation item 2 is chasing. Recommend a NEW `LABOR_RATES._productivity_basis_secs: 28800` in `sequence_rules.json`, read alongside the table it calibrates. **Cross-ref: §FUTURE item 2** owns the bug; this row owns only the location question. |
+   | A2 | `28800` (2 more copies) | `schedule_author.js:1534` (`materializeDefault`), `:1729` (`scheduleContiguous`) | same as A1 | Same literal, two more sites, on the alternate/legacy authoring paths. Any A1 move is incomplete until these read the same value. |
+   | A3 | `28800` + `120` | `time_machine.js:4513` `getInstallSecs` fallback | same as A1 | **ALREADY TRACKED — `4D_MODEL_INTEGRITY.md` §I**, row *"how long does it take?"*: *"`time_machine.js:4494 getInstallSecs` already delegates here; its local fallback is documented as a divergence risk."* Cross-referenced, not re-opened. |
+   | A4 | `/ 28800` crew-day divisor | `time_machine.js:4744` (§HR_COST) | same as A1 | Fourth consumer of the same basis. |
+   | A5 | `SHIFT_MS = 8 * 3600 * 1000` | `schedule_gate.js:72` (module default), `:423` (per-call fallback) | `4D_template.json` `calendar.hours_per_shift` (=24) | **NOT safe to move blind.** The `:417` comment states the 8h default is load-bearing for back-compat: *every witness/probe that omits `shiftHours` is unaffected because a uniform rescale changes no order/floating assertion.* Flipping the default 8→24 moves every one of those baselines at once. If moved, keep 8 as the literal fallback and read 24 only from the template. |
+   | A6 | `8` fallback (`_shiftMs`) | `schedule_author.js:781` (`materializeZones`) | same as A5 | **Dead branch only** — `:739` `if (opts.template) return _writeTemplateSchedule(...)` returns early, so every line from `:746` down (incl. `:770`, `:781`, `:846`, `:852`) runs ONLY on the `model=legacy-deriveZones` path §I:488 calls off-model. Lowest priority of the whole audit. |
+   | A7 | `24` — `window.SHIFT_HOURS` fallback, **4 copies** | `time_machine.js:4688`, `:5329`, `:6909`, `:6951` | `rates.js SHIFT_HOURS` is the *declared* owner (per `4D_policy.json`), duplicated by `calendar.hours_per_shift` | Four hand-copied fallbacks of one value. Low risk individually (all agree at 24 today), but this is the shape that produced §GANTT_SHIFT_HOURS_DESYNC — one copy missed. |
+
+   #### Group B — genuinely new findings, tracked nowhere
+
+   | # | constant | location (file:line) | natural home | safety / recommendation |
+   |---|---|---|---|---|
+   | **B1** | **`seq <= 4` — the structure / non-structure boundary. 21 code sites in one file.** | `schedule_gate.js:132, 204, 205, 549, 570, 609, 669, 787, 806, 816, 868, 919, 933, 951, 1125, 1143, 1161, 1172, 1179, 1313, 1314` (comment sites excluded) | **Neither JSON — DERIVE it.** | **The highest-value finding of this audit.** Verified against `sequence_rules.json`: seq 1 = Substructure; seq 2-4 = Superstructure; seq 5+ = Architecture Envelope onward. So `4` is exactly `max(sequence)` over the phases the template declares structural — already fully determined by data, hardcoded 21 times. `4D_template.json` `phase_bands` *already declares* that phases own contiguous sequence bands, and §S65 #7 / PR #1527 has already moved a class between bands once (IfcRoof at seq 8). **Any future re-band silently mis-classifies structure at all 21 sites with no error.** Recommend one derived `STRUCT_MAX_SEQ` computed from the template at module init, not 21 literals — and note this is a *derivation*, so it needs no new JSON key and no fallback. |
+   | **B2** | **`'2026-01-01'` — the project start date** | **In audited scope, 9 sites:** `schedule_author.js:670, 925, 1419, 1692, 2445, 2500` + `time_machine.js:5330, 5334, 7583`. **Outside audited scope, 14 more** (counted, not audited): `schedule_author_ui.js:197, 267, 276, 277, 289, 293, 294, 301, 311, 359, 511`; `schedule_diff.js:215`; `proj_control.js:83`; `proj_fold.js:160` — **23 total across `viewer/*.js`** | **`4D_template.json` `calendar`** (which already holds `days_per_week` + `holidays`, but has no `project_start`) | The two real UI call sites (`time_machine.js:5330/5334`) pass it as a **literal**, not via `opts.start`, so the shipped product cannot start a programme on any other date. Safe to move (pure input, nothing branches on its value); needs a documented fallback since an unparseable date would `NaN`-poison every derived day number. Note the blast radius is **wider than this audit's scope** — a fix must sweep `schedule_author_ui.js` too, or the editor and the engine will disagree on the epoch. |
+   | B3 | `120` — the zero-minute install floor, **5 code sites** | `schedule_author.js:80`, `:90`; `schedule_gate.js:564`; `time_machine.js:4505`, `:4513` | `sequence_rules.json` (it is a property of the rate table) | §TPL_ZERO_MINUTE is a *named tag* and item 2 mentions it ("Verified NOT a `§TPL_ZERO_MINUTE` floor artifact"), but only as *did it fire* — the constant's **location** was never raised. New as a config question. Safe to move; needs a fallback (a 0 or missing value reintroduces the zero-width-bar stacking the tag exists to catch). |
+   | **B4** | **Two disagreeing fallbacks for the SAME missing value: crew cap = `3` vs `1`** | `schedule_gate.js:46` `MAX_CREWS_DEFAULT = 3` (used `:441`) **vs** `schedule_author.js:470`, `:604`, `:845`, `:1533`, `:1728` — all `|| 1` | `sequence_rules.json` (a `LABOR_RATES._default_max_crews`, matching the existing `SEQUENCE_DEFAULT` pattern) | **Dormant but live.** Verified all 10 trades in `LABOR_RATES` carry `max_crews`, so named trades never hit either fallback. But `_DEFAULT`/unnamed resources do: the gate paces the solve at **3** crews while the author prices the same cell's bar at **1** — a 3x width disagreement on identical input. Same *shape* as item 2's mismatch, different constant. See separate finding #2 below. |
+   | B5 | `95` — fallback labour day-rate | `time_machine.js:7992` (`var dailyRate = lr ? lr.rate_per_day * (lr.crew_size || 1) : 95;`) | `sequence_rules.json` `LABOR_RATES[t].rate_per_day` (already the real source, `:4782-4784`) | **The only constant in this entire audit with no documented derivation** — every other one carries a `§`-tagged provenance comment. A bare currency figure. Display-side (cost donut) so it moves no date, but it is a COST number and therefore in scope. See separate finding #3. |
+   | B6 | `LEVEL_SCAN_MAX = 100000` | `schedule_author.js:610`, used `:613` | `4D_template.json` `capacity_rule` | The crew-levelling search cap. Moving it is safe; **its failure mode is not** — see separate finding #1. |
+   | B7 | `phaseDays = opts.phaseDays \|\| 30` | `schedule_author.js:1420` (`materializeDefault`), `:1693` (`scheduleContiguous`) | `4D_template.json` | A 30-day default phase width on the alternate authoring paths. Low priority (not the canonical template path). |
+   | B8 | `FRAGMENT_M2_FLOOR = 1.0` (m²) | `schedule_author.js:120` | `sequence_rules.json` | **Cross-ref, not new** — item 2's own prose already names it ("well above the 1.0m² fragmentation floor, per `_classFragmentation`'s own documented rule"). Changes durations by switching a class between count-priced and area-priced, so it *is* scheduling-relevant. Documented as measured, not invented. |
+   | B9 | `BIG_ELEMENT_VOL = 1.556` (m³) | `schedule_gate.js:45` | `sequence_rules.json`, or leave in place | **Observability only** — gates the `§SUPPORT_UNCHECKED` log at `:1212`, touches no date, no duration (`:1209` says so explicitly). EXTRACTED p95 over 135,630 real elements with a "do not retune without re-measuring" warning. Listed for completeness; **recommend leaving it exactly where it is** — its comment is its provenance, and a JSON move would orphan that. |
+   | B10 | Ordering sentinels `1e9` (`schedule_author.js:444`), `99` (`:574`) | as cited | — | Unranked-level / unknown-phase sort sentinels. Reported for completeness; **not** recommended for relocation (they are "sort last", not policy). |
+
+   #### Group C — ALREADY DATA. Recorded so nobody "fixes" what is already correct.
+
+   - `schedule_author.js:437` — `shiftSecs` **reads** `T.calendar.hours_per_shift`, with `24` only as
+     a fallback. ✅
+   - `schedule_author.js:438` — `minDays` **reads** `T.duration_rule.min_days`, with `1` only as a
+     fallback. ✅ **Directly relevant to item 2**, which discusses `min_days=1` as though it were a
+     code constant: it is not, it is already an editable JSON value. Raising it is a one-key edit —
+     which does **not** make it a good idea (item 2's ⛔ DECISION rejects raising it on Prime Rule
+     grounds), but the *mechanism* is not the obstacle.
+   - `schedule_gate.js:1210` — `T.seq !== 1` ground exemption. **ALREADY TRACKED, `4D_MODEL_INTEGRITY.md`
+     §I** row *"does T rest on soil?"* and §I.2. Cross-referenced, not re-opened.
+
+   #### Separate findings — these are BUGS, not config-location questions. Named and NOT chased, per the spec.
+
+   1. **`LEVEL_SCAN_MAX` exhausts silently and then commits an illegal placement.**
+      `schedule_author.js:613` — `while (!fits(t, at) && guard++ < LEVEL_SCAN_MAX) at++;` — exits on
+      guard exhaustion, and `:616` then **unconditionally** commits `t.sDays = at; t.eDays = at +
+      t.days;`. That writes a placement which does **not** satisfy the crew cap. Worse, the only
+      report (`:630` `capacity_levelled`) counts it as a *successful* levelling, because its test is
+      merely `at > t.sDays`. Nothing anywhere distinguishes "found a fitting slot" from "gave up
+      after 100,000 days." This is **PRIMAL LAW clause 4** (a pass that cannot report its own
+      failure). A breach would eventually surface in `witness_4d_capacity_honoured.js` (which sweeps
+      emitted times against `capacity_rule`), but with no pointer back to this cause. Not fixed here.
+   2. **The `3` vs `1` crew fallback divergence (B4) is a latent 3x, structurally identical to item
+      2's.** For any `_DEFAULT`/unnamed resource, `schedule_gate.js` solves at 3 crews and
+      `schedule_author.js` prices the bar at 1 — the gate and the author disagree about the same
+      cell by exactly 3x. Currently masked because all 10 named trades carry `max_crews`. Not fixed
+      here; flagged because item 2 is already chasing a 3x that arose the same way.
+   3. **`95` is an invented number (B5).** `time_machine.js:7992`. Every other constant in this audit
+      carries a provenance comment; this one has none, and a real `rate_per_day` for all 10 trades is
+      already sitting in `sequence_rules.json`. Prime-Rule-relevant. Not fixed here.
+
+   #### Answer to the user's actual question ("are there others like this?")
+
+   Yes — **eleven distinct constants, of which one (B1) is repeated 21 times and one (B2) 23 times.**
+   But the systemic pattern is narrower and more useful than "constants are scattered": the failure
+   mode is **not** that values live in code rather than JSON. It is **duplication of a value that
+   already has a declared owner** — `28800` in 5 places, the `24` shift fallback in 4, `120` in 5,
+   the crew fallback in 2 mutually-disagreeing forms, `seq<=4` in 21, the start date in 23. Every one
+   of the three real defects above (and §GANTT_SHIFT_HOURS_DESYNC before them) is a *copy that
+   drifted*, never a *literal that should have been a JSON key*. That points the remediation at
+   single-source-of-truth, which is the same medicine §I's ownership table already prescribes for
+   relations — the constants simply never got their own table. **Recommended order if this is ever
+   actioned:** B1 (derive, no new key, largest blast radius), then B4 + B2 (real divergence, then the
+   product-limiting one), then the A-family as ONE change or none at all.
+
 **Separately, same day, same user concern:** a parallel task was dispatched to consolidate the
 largest 4D prompt files (`4D_SCHEDULE_ARCHITECTURE_REDESIGN.md`, `TM_4D5D_VARIANCE_LANE.md`,
 `RESUME_4D_TRUTH_AND_BE_HERE_WHEN.md`, and re-checking whether this file and `4D_MODEL_INTEGRITY.md`
