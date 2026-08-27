@@ -1829,3 +1829,53 @@ unchanged from #1334), converges cleanly (24/24, 395ms, no errors). **Proves the
 look** — verify live: corner/edge contact shadow should now read as visible without reverting to
 the original over-dark look. If still too weak or too strong, the next lever is intensity again
 (not radius, until intensity is confirmed right) — keep changes single-variable per round.
+
+## §PHOTO_REALISM_RETUNE — over-bright/over-reflective washing out shadow contrast + cool indoor read (2026-08-27, user-queued, SPEC ONLY, not built)
+
+**User's ask, verbatim:** *"we already got things too bright, shiny reflection, it be shadow effects
+for realism"* — then, same session: *"Indoor lighting should have more warm lighting."* Studied
+first, not invented: both trace to ALREADY-NAMED, unresolved loose ends in this project's own
+history, not new problems.
+
+**1. Brightness washing out shadow play — the exact complaint is already on record, only half-fixed.**
+`NIGHT_AND_FIXTURE_LIGHTING.md §STAGED_PL_CUT` (2026-08-16) shipped a 0.5× night-fixture-intensity
+cut after the user said staged lighting was *"too bright … it also wipe out the ground slab shadow
+play during alt-c movie baking."* That section's own closing note flags the loose end: **a LATER
+change, `§TRINORM_LINEAR`, made every triplanar surface brighter — "likely why 'too bright'
+resurfaced now" — and was never re-measured against the 0.5× fix.** So the shadow-washout complaint
+isn't a missing shadow feature; it's existing shadow work (AO retuned carefully above, real sun
+shadow maps) getting drowned by brightness that crept back in through a different, later change.
+**Named fix:** re-measure current staged brightness (real GPU, same `§PHOTO_AO`-style before/after
+numbers) against the post-§TRINORM_LINEAR baseline; if confirmed too bright again, retune
+`_nightPLScale` and/or the triplanar brightness gain — single-variable, one round-trip at a time,
+same discipline `§PHOTO_AO_EDGE` above already used.
+
+**2. "Shiny reflection" — the envmap boost was tuned for a bug that's since been fixed, never
+retuned.** `§MIRROR_ROOM_PROBE` (2026-08-16) diagnosed but did not act on this: `PHOTO_ENVMAP_BOOST
+=3.0` (a 3× reflection-intensity multiplier on every glossy/metal material) was tuned *before*
+`§TRINORM_LINEAR` fixed metal's real darkness bug — that section's own words: **"the likely
+'whitewash' source now that metal's real darkness bug is already fixed... the natural next step if
+the room probe alone isn't enough (not yet judged live)."** Nobody judged it live; nobody retuned it.
+**Named fix:** with the room probe (already shipped, gives materials a real local reflection instead
+of just sky/HDRI) doing more of the reflection work now, `PHOTO_ENVMAP_BOOST` almost certainly no
+longer needs 3×. Re-measure live, step it down in one controlled increment (matching `§PHOTO_AO_EDGE`'s
+"one controlled step" precedent, not a guess-and-hope multi-variable change), re-check against the
+same Clinic building that originally showed the "whitewash"/"jagged pipe" symptoms.
+
+**3. Indoor daytime read is cooler than this project's own established warm palette.** The camera's
+fill light — the dominant light source for interior walk shots, per `§CAM_LIGHT`'s own "bright torch
+light follows camera" confirmation — is `CAM_LIGHT_COLOR = 0xfff2e0` (`effects.js:332`), barely off
+pure white. This project already committed to a real warm tone elsewhere for exactly this purpose:
+Night Mode's fixture palette uses `0xffdca8`/`0xffe4b5` (a proper amber) for warm-class fittings
+(`tools.js`, downlight/sconce/pendant/surface). So the "cool indoor" read isn't a missing feature —
+it's one specific constant sitting far cooler than the palette this codebase already uses everywhere
+else for warm interior light. **Named fix:** shift `CAM_LIGHT_COLOR` toward the established
+`0xffdca8`-family warmth (a tuning knob, not a redesign — same file, same variable, no new
+mechanism), verify live that interior walk shots read warmer without over-saturating exterior/daylit
+frames the same light also touches.
+
+**Order, and why:** items 1+2 first (both are literally "step back an already-known-overtuned
+constant," lowest risk, most likely source of "too bright/shiny" exactly as reported) — verify those
+live before touching item 3, since a warmer camera light on TOP of still-too-bright/too-reflective
+staging would make it harder to isolate which change fixed what, the same single-variable discipline
+this file's whole AO-tuning history already earned the hard way.

@@ -239,3 +239,15 @@ the "trust IFC colors" doctrine). Named precisely, NOT implemented — full writ
 and the DB query evidence are in `CINEMA_DISCIPLINE_REVEAL.md`'s own `## Findings 2026-08-14` section,
 not duplicated here. That section also found STR's own "boring blue" is real, populated IFC data (not
 this gap) and stairs' "blue" traces to adjacent steel railings, not the stair class itself.
+
+**✅ Re-checked 2026-08-27 — item 5 IS shipped now, this doc was stale on this one point.**
+`A._getMaterial` (`streaming.js:365`) now takes a `discipline` 4th arg and consults `A.DISC_COLORS[discipline]`
+(`streaming.js:590-592`) — and it's genuinely wired into the real streamed/baked render path, not just a
+placeholder: real call sites at `streaming.js:1490,1543,1622,1745,1893,1915,2092` all pass `disc`/`el.disc`
+through. Confirmed via grep, not assumed. **Everything else in this file (isolate-mode checkbox,
+`§CPE_CLASH_RADIUS`→superseded "See Clashes" checkbox, auto-path dive, leader-line/glow label, "BuildUp"
+local replay) is still unbuilt** — grepped `viewer/*.js` for `"See Clashes"`/`CPE_CLASH_RADIUS`/`cpe-clash`,
+zero hits. This is the READY-TO-BUILD core the user is asking about now, unchanged from the 2026-08-07
+spec below — the "Auto-path design" section (§ below, "resolved 2026-08-07") plus the HMI+perf triage's
+item 6 (clash-pair label text, e.g. "ACMV vs DRAIN — 0.12m overlap", i.e. the "FP - STR" labelling the
+user described) are the exact shape asked for. Nothing more to spec here — this file already has it.
