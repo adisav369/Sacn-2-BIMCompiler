@@ -9,6 +9,12 @@ live, not when code is written.
 **The new session's job, in order: FIND THE CAUSE FIRST. Do not patch, do not extend §K's
 approach, do not touch LTU's data, until the cause is known.**
 
+**Do not creep off this task.** Finding the cause is the ONE job. Do not chase adjacent findings
+(a bbox anomaly, a different building's unrelated issue, a code-quality tangent, a "while I'm here"
+fix) even if something interesting turns up along the way — name it in this doc for later and
+return to the cause search. This session lost the user's trust partly by drifting into a bbox
+tangent that turned out to be a misread, instead of staying on the one question asked.
+
 ### The one fact everything must explain
 **User, verbatim, stated as fact, twice: "ALL WERE WELL BEFORE 16th."** Not a guess, not inferred
 — the anchor. Whatever explanation the new session lands on must account for this: the fault has
