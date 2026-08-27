@@ -895,6 +895,31 @@ Follow `4D_BAR_MODEL.md` §10.3. Nothing below reorders it; the only additions a
 
 # §L ⛔ START HERE — SESSION HANDOFF 2026-08-27
 
+**⚡ THIS SECTION IS STALE PAST THIS POINT — read this update block FIRST, it supersedes the plan
+below.** Everything from "The decision that gated everything" down to "State, honestly" was written
+mid-session; the items below happened LATER the same day and are not reflected in that plan text:
+
+- **§I.3 (level relation) is CLOSED**, not open as stated below — it was a deploy gap (shipped
+  patches never uploaded to OCI), not a data gap. Hospital/Terminal/Duplex now serve real storey
+  elevations (56/67/4 datums). `HHS_Office_Federated` is the one still-open building — no honest data
+  source exists for it yet, not attempted rather than guessed. See §I.3 body, not this stale plan.
+- **§I.3a exists**: `LevelDeriver` is wired as the task-grid's level source, flag-gated
+  (`opts.levelSource==='deriver'`), **default OFF**, bim-ootb PR #1556. It was left off because
+  `spatial_structure` didn't exist yet — that blocker is now gone (see previous bullet), so flipping
+  the flag is a live, reconsiderable decision, not a closed one. Whether `LevelDeriver`'s higher tiers
+  actually activate correctly on real declared storeys is a **separate verification, not yet done.**
+- **TM edit persistence is verified clean** (bim-ootb PR #1552/#1554/#1555): the storey-datum fix
+  shipped, a real witness blind spot closed (`witness_gantt_edit_persist`, proven by reverting the bug
+  and watching the old witness stay green on it), and a genuine silent data-loss bug root-caused to
+  `scene.js`'s cache evictor (not the persist path) and fixed.
+- **Four new items queued, not started**: late residual midair elements, build-up elements crammed to
+  the start of their bar instead of spread across its duration, whether resource/effort timing is
+  masked by that same crowding, and whether the standalone Schedule Editor supports a full edit cycle
+  (this last one was already named as open below, at "§K.5 item... `schedule_editor_ui.js`" —
+  confirmed still open, not duplicated). Full detail: `4D_GANTT_TM_REFACTOR.md` §FUTURE (2026-08-27).
+- **"Where the work is" below is stale** — branch names have moved on to PR-per-fix (#1552 through
+  #1557), not the single `feat/day0-unsupported-probe` branch named there.
+
 **Read §G.0 (regain context) → §I (ownership table) → §K (this review). Then §K.5 is the plan.**
 There are four "next" lists in this file now (§F, §G.3, §H.6, §J.4); **§K.5 supersedes all of them.**
 

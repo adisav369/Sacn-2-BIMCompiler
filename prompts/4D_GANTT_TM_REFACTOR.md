@@ -5629,3 +5629,58 @@ own mechanism and left corrected for whenever the harness runs clean.
 **gap 4 ✅ (this section)**, gap 5 ✅ (§S73), gap 6 ✅ (§S73), gap 7 ✅ (§S76), gap 8 open (structural,
 not a witness gap — `time_machine.js` at 8834 lines, tracked separately in
 `prompts/SCRIPT_LENGTH_REFACTOR_SEAMS.md`).
+
+---
+
+## §FUTURE — queued by user 2026-08-27, NOT started, for a future revisit
+
+Four items raised after live review of a working Hospital run. Named here so they aren't lost — none
+investigated or fixed yet, don't assume any of these are closed by today's other work.
+
+1. **Late midair elements.** Today's own logs already carry a live count worth starting from, not
+   re-deriving: `§CROSSTASK_JUDGE_PARITY` reports `floating=30/63415` (Hospital) and `floating=44/6880`
+   (HHS) even after judge-rule repair. User wants these chased further — check whether this residual is
+   a measurement artefact (§4D_MODEL_INTEGRITY.md's rescale/election findings) or genuine remaining
+   support gaps.
+2. **⛔ PROMOTED — NEXT TASK (user, 2026-08-27): elements must build up as sequential effort
+   animation, not one-shot sudden appearance.** Right now every element inside a task appears to
+   arrive crammed at the start of its bar instead of being revealed progressively across the bar's
+   full declared duration — the animation reads as "the whole task springs into existence," not "the
+   crew is working through it."
+
+   **Where to start, from evidence already in hand — don't re-derive.** `schedule_author.js`'s
+   `_writeTemplateSchedule` already emits `§TPL_MOVIE_BINDS_BARS remapped=N/N
+   degenerateTasksSpreadEvenly=0` on every real building measured today (Hospital 63415/63415,
+   HHS 6880/6880) — the counter name itself says the codebase already HAS a "spread evenly" concept,
+   for a "degenerate tasks" special case, and it is firing **zero** times on real data. That is the
+   first thing to read: find `degenerateTasksSpreadEvenly` in `schedule_author.js`, understand what
+   condition makes a task "degenerate" versus normal, and why normal (non-degenerate) tasks — the
+   entire real population — don't get any spreading logic at all. The per-element reveal-time
+   assignment for the NORMAL case is the actual target of this fix; find it via
+   `§TPL_MOVIE_BINDS_BARS`'s own call site, not by guessing a new mechanism.
+
+   **What "fixed" looks like, stated as a witness claim before any code changes (Spec-First,
+   CLAUDE.md):** for a task spanning declared duration `D` with `n` elements, each element's reveal
+   timestamp inside that task should be distributed across `[task_start, task_start+D]` in a way that
+   reads as sequential effort — evenly spread at minimum; ideally weighted by each element's own
+   `duration_rule`/`installSecs` (a big element takes visibly longer to "install" than a small one,
+   consistent with `§HEAVY_MEMBER_SPEED_LIMIT`'s existing real-size scaling for the trade-level rate).
+   Measure the CURRENT distribution first (histogram of reveal-time-within-task-window across a real
+   building's elements) as the red/before number, then measure the same histogram after the fix as
+   the green/after number — this is the numeric proof, not a visual "looks smoother."
+
+   **Item 3 folds into this, per the user's own hypothesis — check it as one task, not two.**
+   "Resource/task effort timing seems too fast" may simply be the perceptual effect of item 2 (if
+   every element appears in the first instant of a multi-day bar, the whole task visually reads as
+   "done" almost immediately, even though the bar's declared duration and `§HR_COST`/`§CREW_DEMAND`
+   numbers are correct). Verify this directly: after item 2's fix, re-observe whether the "too fast"
+   perception persists. Only chase it as a separate defect if it does.
+
+   **Boundaries for whoever picks this up:** this is a MOVIE/display-authoring change
+   (`§ZONE_DISPLAY_AUTHORING`/`§TPL_MOVIE_BINDS_BARS` territory per §B's PROJECT layer) — it must not
+   change the underlying task windows, dates, crew capacity, or cost numbers, only how elements are
+   revealed *within* an already-correct bar. Do not touch `bar_model.js` (hook-blocked, unrelated).
+4. **Editor full-cycle review.** Whether the standalone Schedule Editor (`schedule_editor_ui.js`)
+   actually supports a complete edit cycle end-to-end is *already* named as unverified above, in this
+   same file (persist-fix section, "Deliberately NOT touched" — split-mode task-data loading was never
+   confirmed). Folding the user's ask into that same open question rather than treating it as new.
