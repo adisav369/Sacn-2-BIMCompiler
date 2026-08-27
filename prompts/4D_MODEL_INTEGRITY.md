@@ -479,7 +479,7 @@ Paths are `~/bim-ootb/viewer/` unless stated. Line numbers are `origin/main` @ `
 | **what is the task grid?** | `schedule_author.js:425` `instantiateTemplate(...)` from **`rates/4D_template.json`** | derive phases from what the elements did. §B: an envelope cannot constrain what drew it |
 | **when does each element happen?** | `schedule_gate.js:421` `computeSchedule(...)`, then `cpm_schedule.js:796` `run(...)` | re-solve. The template path ends at `schedule_author.js:884` `remapSolveToTasks` |
 | **where inside its task?** | `schedule_author.js:884` `remapSolveToTasks(solve, tasks, startISO)` | ⚠ a 4th arg `layerOf` exists only on unmerged `fix/tpl-layer-order` — see §H.3 |
-| **what level is it on?** | `schedule_gate.js:404` `collapsePhase(storey)` → `:338` `deriveBandRanks(...)` | ⚠ **this is the broken one — see §I.3.** Do not build on it without reading that section |
+| **what level is it on?** | **OWNER: `viewer/lib/level_deriver.js` `LevelDeriver.derive/levelFor`** (T1 containment → T2 declared name → T3 geometry grid → T4 counted). Two callers: `location_axis.js` (display) and, **flag-gated**, the task grid — `schedule_author.js` `_deriverLevelAxis()` behind `opts.levelSource === 'deriver'`, **default OFF**, see §I.3a | re-derive it from `e.storey`. The OLD path (`schedule_gate.js:404` `collapsePhase` → `:338` `deriveBandRanks`) is still what runs by default and is **broken — see §I.3**; do not build new work on it |
 | **are two storey names one floor?** | `schedule_gate.js:382` `deriveStoreyMergeMap(spatialStructure)` | ⚠ **has never once run on any shipped building — §I.3** |
 | **is this slab ground-bearing?** | `schedule_gate.js:201` `groundworkSlabs(els)`, one shared definition | reclassify slabs inline in a recipe |
 | **is anything floating?** | `support_sweep.js:500` `_midairAudit(items)` (movie) · `schedule_gate.js:1122` `auditFloating(...)` (gate) | ⚠ these two disagree on the support top bound — §I.1 |
@@ -547,6 +547,64 @@ bands unmerged"`, which reads like benign degradation and is not: it is the leve
 - The datum IS recoverable for 2 of 4: `spatial_structure.center_z` is populated for Terminal (6
   storeys, 17.9–39.8 m) and HHS (3), with `size_z = 0` — a placement point, so `center_z` *is* the
   elevation. `deriveStoreyMergeMap` looks for a column named `elevation` and never sees it.
+
+## §I.3a THE OWNER IS NOW `LevelDeriver` — WIRED, MEASURED, AND LEFT OFF (2026-08-27)
+Per §I.4 ("a relation belongs here the moment a **second** caller needs it") the level relation now
+has two callers, so it gets a real owner instead of a warning. bim-ootb PR `feat/tpl-level-deriver`.
+
+**Why `LevelDeriver` is immune to the §I.3 corruption — verified in code, not assumed.**
+`assignStoreyByZ` (`schedule_author.js:342`) is a **pure local function**: it returns a string that
+is stored only into the in-memory element literal's `storey:` field (`:368`). It issues **no
+`db.run`/`UPDATE`** — `elements_meta.storey` on disk is never touched by it (the only writers of
+that column repo-wide are `wizard_storeys.js`, a deliberate user act, and the importers).
+`LevelDeriver.readLookups` reads `SELECT guid, storey FROM elements_meta` **straight from the frozen
+DB** (`level_deriver.js:67`), and `levelFor` consumes only `guid`/`base_z`/`top_z` off the element —
+**it never reads `el.storey`**. So the `_UNKNOWN` guard at `level_deriver.js:178` sees the
+UNREWRITTEN value and actually fires, where the structurally identical guard in `deriveBandRanks`
+(`schedule_gate.js:350`) is dead code on this path. **The swap removes the exposure; it does not
+relocate it.**
+
+**Measured, `§TPL_LEVEL_DISAGREE`, `viewer/tests/probe_tpl_level_axis.js`:**
+
+| building | n | fabricated by `assignStoreyByZ` | STRUCTURAL disagreement | tasks | grid source |
+|---|---|---|---|---|---|
+| Duplex | 1,119 | 976 (**87.22%**) | 107 (**9.56%**) | 20 → 20 | `uniform3m` ⚠ |
+| HHS_Office_Federated | 6,839 | 2,120 (**31.00%**) | 533 (**7.79%**) | 20 → 17 | `declared` k=3 ✅ |
+| Hospital | 63,182 | 9,457 (**14.97%**) | 25,198 (**39.88%**) | 42 → 68 | `uniform3m` ⚠ |
+
+The fabrication column reproduces the 87.0 / 30.8 / 14.9% figures independently. **But fabrication
+does NOT predict disagreement** — Duplex is 87% fabricated and only 9.6% structurally different,
+Hospital is 15% fabricated and 39.9% different. `assignStoreyByZ`'s nearest-median-Z guess usually
+lands on the same floor the geometry does; the divergence comes from the **grid**, not the guess.
+
+⚠ **Report STRUCTURAL, never the raw key diff.** Raw diff counts an element as disagreeing when only
+the level's *name* changed. Duplex first measured **100.00%** raw; the real regrouping was **9.56%**.
+
+**⛔ WHY THE FLAG IS OFF — the blocker is DATA, upstream of this code.**
+`Duplex_extracted.db` and `Hospital_extracted.db` have **no `spatial_structure` table at all**
+(verified by `PRAGMA table_info` — returns empty); only HHS carries storey `center_z`. With no
+declared floor lines `buildGrid` falls back to a **uniform 3.0 m grid**, so Hospital's 8 real storeys
+become 17 grid lines / 16 occupied levels and the task grid inflates 42 → 68. Level labels degrade to
+a mix of real names and synthetic `L3/L5/L8/L9/L10/L11/L12/L15`, several won on absurd plurality
+margins (`§TPL_LEVEL_AXIS_NAMEVOTE`: grid line 4 labelled `"Level 6"` on **2 votes out of 5,676**).
+This is the same gap `bim-compiler d0b226dce` ("§STOREY_DATUM — write `IfcBuildingStorey.Elevation`,
+which was never extracted") just fixed at the extractor — **the shipped DBs have not been
+re-extracted since.** Flip this flag only after they are, and re-run the probe to confirm
+`gridSource=declared` fleetwide.
+
+**⚠ The witnesses are SCOPE-BLIND to this.** All three template witnesses pass flag-ON
+(11/11, 29/29, 6/6; `ran` 82 → 105) *and* are byte-identical flag-OFF. They pass because their
+invariants judge crew-legality, ladder monotonicity and coverage — **none of them judges whether the
+level PARTITION is correct**, which is exactly what flipping would damage on Hospital. A green
+witness here is not permission to flip.
+
+No `gen_version` bump (`_GANTT_CACHE_VERSION = 37`, `time_machine.js:8260`) is needed while the flag
+is off: shipped output is proven byte-identical. **Flipping it later REQUIRES the bump**, or existing
+users keep a stale cached schedule built on the old level partition.
+
+**Follow-up, not chased here:** `time_machine.js:3687` and `:4563` carry their own copies of
+`assignStoreyByZ` feeding the movie/x-ray element builders. Same fabrication, different consumers —
+out of scope for this slice.
 
 ## §I.4 HOW TO ADD A ROW
 A relation belongs here the moment a **second** caller needs it. The shape to copy is
