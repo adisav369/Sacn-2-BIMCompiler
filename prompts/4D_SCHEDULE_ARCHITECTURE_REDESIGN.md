@@ -560,7 +560,23 @@ archive pass to become readable again.
 ## But three things ARE in the wrong file — this is what to fix instead of merging
 
 Each is a genuine leak across the boundary above, and each has already cost, or is set up to cost,
-a re-derivation. **None was actioned by this pass.**
+a re-derivation. **None was actioned by this pass** *(the pass that WROTE this section)*.
+
+> ✅ **ALL THREE ACTIONED 2026-08-27 by a follow-up pass. Do NOT re-do them.**
+> | | what was done | commit |
+> |---|---|---|
+> | **L1** | correction applied INTO §I's *"where inside its task?"* row (`layerOf` is MERGED) | `06b3d0025` |
+> | **L2** | split per-fix: `§TPL_MODEL` stayed in §L; precache + witness-wiring moved to a new `4D_GANTT_TM_REFACTOR.md` **§5c**; the persistence bullet became a pointer to §5b | `fd298b50b` |
+> | **L3** | §I.3a gained an ORIGIN block citing §S34.3's ruling / §S35's 14 fixtures / §S38's name ladder; §S31 and §S34.3 gained pointers back. **Done as a CROSS-REFERENCE, NOT the archive floated in L3(b)** — see the correction below | `8d385e7ad` |
+>
+> ⛔ **L3(b)'s archive suggestion was NOT taken, and should not be revived without re-checking.** This
+> section proposed the §S31–§S38 band as "an ARCHIVE candidate in its own right". A citation sweep run
+> before acting found **`bim-ootb/viewer/lib/level_deriver.js` alone carries 18 references into that
+> band** (plus `location_axis.js`, `cpm_schedule.js`, `schedule_author.js`) — it is cited by LIVE CODE,
+> not just by prose. Both sections stay. *(§S36 is the one genuinely orphaned member: zero citations
+> outside its own file.)*
+>
+> The fourth recommendation below — **"neither file states its own boundary"** — remains **NOT done.**
 
 **L1 — an OWNERSHIP TABLE row is corrected from a foreign file. Fix this one first; it is the
 cheapest and the most dangerous.** `4D_GANTT_TM_REFACTOR.md` §FUTURE item 2 (2026-08-27) says, of
