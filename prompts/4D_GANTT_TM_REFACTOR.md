@@ -6168,3 +6168,64 @@ Numeric before/after proof, never visual. Stop and report — do not push throug
 measured scope turns out bigger than described here (same rule that already worked twice today).
 Commit/PR per item, not one giant batch. Update this section in place marking each item done with
 evidence when it lands.
+
+## §BUILDING_SCOPE_FLOOR — ✅ DONE (bim-ootb PR #1569, stacked on #1568/#1567), 2026-08-27, NOT part
+of the plan above — surfaced from a live-log investigation mid-session
+
+**User, reading a live Terminal console log: "why does Terminal substructure not finish first
+before anything else?"** then, after the mechanism was traced: **"isn't this solved already? why
+keep creeping back?"** — the answer is in `4D_SCHEDULE_PERFECTION.md` §CPM_GENERATOR_UPSTREAM_SPEC
+(2026-08-15): the identical question was asked and scoped then, at the OLD `deriveZones` layer,
+and never implemented (awaiting user go). The authoring layer was later replaced entirely
+(§S68/§S69, 2026-08-22/23, the TEMPLATE PATH ruling) — a deliberately independent, declared task
+grid, not derived from the solve — which reintroduced the same SHAPE of gap in a new mechanism.
+The repair layer (`support_sweep.js` `_cjpJudgeParity`, `WINDOW_BLOCKED`) already refuses to fix
+this by design, in its own comments, since a 2026-08-13 attempt to let repairs cross task-window
+boundaries caused a 100-300 day desync regression — it explicitly names the fix as
+"§CPM_GENERATOR_UPSTREAM_SPEC's territory."
+
+**Root cause, traced to `instantiateTemplate` (`schedule_author.js` ~line 486-550):** a
+`scope:"building"` phase (Substructure) instantiates exactly ONE task, filed under whichever
+level sorts first by elevation rank. The `within_level` FS edge to its successor phase only fires
+via `prevOnLevel`, which resets to `null` at the top of every OTHER level's own loop — so the
+edge only ever reaches the one level the task happens to land on. **MEASURED on Terminal before
+the fix: the 77-task graph was 5 disconnected chains, only 5/77 tasks reachable from Substructure**
+(confirmed via the persisted `task_sequences` table, forward reachability, node-side — no browser,
+no screenshot, per standing WITNESS rule). 3 tasks (513 elements) started at literal day 0 with
+zero real dependency — the "Day 0 rushing" the user separately flagged from the same log.
+
+**Fixed, generally — not a Terminal patch.** For every phase on every level, if its declared
+`within_level` predecessor has `scope:"building"`, apply that predecessor's FS floor (and a real
+edge) regardless of which level the building-scope task is filed under. Reads the template's own
+declared `scope`/`within_level` fields; nothing keys off a building name or Terminal's specific
+storey soup — generalizes to any IFC model with a `scope:"building"` phase. Skipped where the
+ordinary edge already covers the pair (no duplicate constraint). Purely additive.
+
+**MEASURED, full 7-building fleet, before → after (user's constraint: "as long not impact the
+framework model at all" — verified, not assumed):**
+
+| building | reachable from Substructure | totalDays | tasks with sDays/eDays changed |
+|---|---|---|---|
+| Clinic | 35/35 (already clean) → 35/35 | 111→111 | **0** |
+| Duplex | 17/20 → **20/20** | 13→13 | (all newly-connected, no window shift) |
+| HHS | no Substructure (legit, template's own `_empty_ok`) → unaffected | 50→50 | **0** |
+| Hospital | 42/42 (already clean) → 42/42 | 318→318 | **0** |
+| JKR | 39/67 → **66/67** | 56→55 | small |
+| LTU_AHouse | 62/62 (already clean) → 62/62 | 788→788 | **0** |
+| Terminal | 5/77 → **75/77** | 97→97 | 2 previously-day-0 tasks (492 elements) now correctly gated at day 2/4 |
+
+Buildings already correctly connected are **byte-identical** — verified per-task, not just
+aggregate totalDays (0/139 tasks differing across Clinic+Hospital+LTU+HHS). Full witness suite:
+59 green, 6 new_red, all 6 previously verified pre-existing (see PR #1567/#1568's own sweeps).
+
+**⛔ Residual, named not fixed — same failure CLASS, one level more general, needs its own
+decision:** Terminal (1 task, 21 members, "Ceiling Level Kedai") and JKR (1 task, 199 members,
+"01 Ground Level Floor") each still have one orphaned root — a level whose local phase-chain
+starts mid-sequence (jumps straight to Architecture Envelope because that level never had a local
+Superstructure classification), so neither the ordinary `prevOnLevel` edge nor the building-scope
+floor applies. Would need: when a phase's turn comes with `prevOnLevel === null`, search back
+through lower-ranked levels for the nearest instance of the declared `within_level` predecessor
+phase (not just the building-scope special case) and float against that. **Deliberately not
+folded into this pass** — it's a bigger, more debatable design decision (does a level with a real
+skipped phase genuinely need to wait for a DIFFERENT level's instance of that phase? — defensible
+by the same logic `across_levels` already uses, but a new rule, not this one generalized).
