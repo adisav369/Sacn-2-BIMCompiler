@@ -1157,8 +1157,9 @@ re-verified against a clean baseline — same 3 pre-existing, unrelated failures
 regression from this change. **Not yet merged to `bim-ootb` main** — PR open, not auto-merged this
 session.
 
-## §S NEW ITEM, NOT STARTED — client-side (web-ifc) import is materially less complete than the
-server-side (ifcopenshell) extraction
+## §S ⛔ SUPERSEDED BY §T — its "37%" headline is WRONG (mismatched scopes). Left unedited so the
+reasoning trail stays honest, per this doc's own §O/§P convention. NEW ITEM, NOT STARTED — client-side
+(web-ifc) import is materially less complete than the server-side (ifcopenshell) extraction
 
 Found while investigating item 2, not chased — flagging for later. Same source file
 (`LTU_AHouse_ARC.ifc`), two pipelines, measured from real logs/gates this session:
@@ -1173,3 +1174,99 @@ Not diagnosed: whether this is a real `web-ifc` library limitation (would make a
 contribution meaningful) or a filtering/skip choice in this project's own `import_worker.js`
 wrapper (a local fix). Whichever it is, the client-side import path should not be treated as
 data-complete or as a substitute for the server pipeline until this is traced.
+
+## §T §S ANSWERED AND CLOSED — 2026-08-29. web-ifc loses NOTHING; it is a strict SUPERSET of the
+server pipeline's element set. §S's "37%" was a scope-mismatch arithmetic error, not a finding.
+
+**Verdict, one line:** neither a `web-ifc` library limitation nor an `import_worker.js` element bug —
+the client-side import is **element-complete**. What IS genuinely thinner is non-geometric relational
+schema, and that is entirely `import_db_builder.js`'s doing, all of it already gracefully degraded.
+
+### §T.1 The "37%" number was two different scopes subtracted from each other
+§S compared `6,927` (client-side, ONE file: `LTU_AHouse_ARC.ifc`) against `18,730` (attributed to the
+server-side "§PROOF gate"). **`18,730` appears nowhere in any §PROOF gate in this doc or in the
+shipped DB.** The real server-side counts for LTU_AHouse, re-measured from
+`~/bim-ootb/buildings/LTU_AHouse_meta.db` this session:
+
+| scope | `elements_meta` rows |
+|---|---|
+| whole building, all 9 discipline files | **125,698** (matches §O's own `ELEMENT_COUNT=125698`) |
+| `discipline='ARC'`, incl. 2,785 `IfcOpeningElement` | 9,712 |
+| `discipline='ARC'`, excl. openings | **6,927** |
+
+The client's `§CENTRES_RESULT rows=6927` is the **same number as the server's own ARC-discipline
+non-opening count.** Not 37% — 100%.
+
+### §T.2 Measured head-to-head, same file, same whitelist, GUID-by-GUID
+Ran the **vendored** `viewer/lib/web-ifc-api-iife.js` + `web-ifc.wasm` headless under node 18,
+replaying `import_worker.js`'s exact `PRODUCT_TYPES` whitelist (`viewer/import_worker.js:364-396`),
+then set-diffed the resulting GUIDs against the shipped server DB. Probe script + logs:
+`<scratchpad>/webifc_count.js`, `webifc_arc.log`, `webifc_str.log`.
+(Node harness note for whoever re-runs it: the iife is compiled `ENVIRONMENT=web` only — it must be
+loaded via `new Function('process', src + ';return WebIFC;')(undefined)` to hide `process.versions.node`
+from emscripten's env check, plus `window`/`self`/`document`/`navigator` shims and a `fetch` stub that
+reads `web-ifc.wasm` off disk. No `claude-in-chrome` involved — that tool stays banned.)
+
+| file | web-ifc (client lib) | server DB, that discipline, excl. openings | **server-only (web-ifc MISSED)** | web-ifc-only | in both |
+|---|---|---|---|---|---|
+| `LTU_AHouse_ARC.ifc` | **6,938** | 6,927 | **0** | 11 | 6,927 |
+| `LTU_AHouse_STR.ifc` | **6,409** | 6,083 | **0** | 326 | 6,083 |
+
+**`server-only = 0` on both files.** Every element the ifcopenshell pipeline wrote, web-ifc also
+found. The traffic is entirely in the other direction.
+- ARC's 11 extras = **5 `IfcCurtainWall` + 6 `IfcWall`**, absent from the server DB under *any*
+  discipline. Same class-shape as §I.1's unexplained curtain-wall aggregate-parent rows for Clinic —
+  worth connecting if that thread is ever picked up, but it is a *server-side* drop, not a client gap.
+- STR's 326 extras = `IfcWindow` 204 + `IfcDoor` 95 + `IfcStair` 15 + `IfcRoof` 12, all zero in the
+  server's STR discipline. That is the merge deduping doors/windows that also appear in ARC — a
+  legitimate `extract_merge_disciplines.py` choice, not a defect on either side.
+
+**Likely reconciliation of 6,938 enumerated → the user's live `rows=6927`** (stated as unproven): the
+11 extras are aggregate-parent curtain walls/walls with no own geometry, so they produce no transform
+row and drop out of the centres query. Not verified against a live run — flagged, not claimed.
+
+### §T.3 The whitelist is exhaustive for this fleet — checked, not assumed
+Enumerated every entity type across all 9 `LTU_AHouse_*.ifc` files and subtracted
+`import_worker.js`'s whitelist. **Zero physical product classes are unlisted.** The only omissions
+are deliberate or non-geometric: `IfcOpeningElement` (3,366), `IfcSite`/`IfcBuilding`/
+`IfcBuildingStorey`/`IfcProject` (65 total), `IfcSystem`/`IfcElectricalCircuit` (184),
+`IfcAnnotation` (1). `undefined_types_in_lib=0` — the vendored web-ifc knows every one of the 68
+whitelisted class names.
+
+⚠ **Standing maintenance liability, not a current bug:** `GetLineIDsWithType(modelID, type,
+includeInherited = false)` (`viewer/lib/web-ifc-api-iife.js:73227`) is called *without* the third
+argument (`import_worker.js:406`), so the whitelist has to name every **concrete** class by hand. It
+happens to be complete for these 9 files; a source IFC using a subtype nobody listed would silently
+vanish. The vendored library already supports `includeInherited=true` — that is the durable fix if
+this ever bites.
+
+### §T.4 What IS actually thinner — schema, all of it wrapper-side, all of it already degraded gracefully
+`import_db_builder.js` creates 11 tables; the server `meta.db` has 10 (+rtree internals). Measured
+per-table on LTU_AHouse:
+
+| server table | rows | client status | real cost |
+|---|---|---|---|
+| `elements_rtree` | 125,698 | absent | **none — self-heals.** `measure.js:129-176` (`§CLASH_RTREE`) rebuilds it from `element_transforms` at runtime; `elevation.js:138`, `section_cut.js:301`, `dlod_nav.js:1186`, `clash_matrix.js` all `hasTable`-guard and fall back first. Pure index, zero information. |
+| `rel_aggregates` | 751 | present, different shape | **none.** Client captures AGGREGATES/VOIDS/FILLS into `bom_tree` (`import_worker.js:317-360`). |
+| `rel_contained_in_space` | **0** | absent | none — empty server-side for this building anyway. |
+| `surface_styles` | 70 | folded into a column | partial: colour survives as `elements_meta.material_rgba` (server: 121,038/125,698 rows carry it); named styles do not. |
+| `material_layers` | 175 | absent | real but small — layer *names*/thicknesses lost. |
+| `spatial_structure` | 47 | absent | **the one real gap.** Deliberate (`import_worker.js:396`: *"IfcSpace + IfcSite excluded — render as solid boxes/terrain, obscure model"*); storey hierarchy is flattened to the `elements_meta.storey` string. Consumers already no-op honestly: `panels.js:873` table-exists guard, `hba_lens.js:197,315` try/catch → `§AISLE-ZONES` fallback, `navigate_find.js` (36 refs). |
+| `IfcOpeningElement` rows | 3,368 | not in whitelist | real: openings are not imported client-side. |
+
+**Net:** the only non-self-healing deltas are openings (2,785 in ARC), `spatial_structure` (47 rows),
+and material-layer/surface-style *names*. Everything else is either recovered at runtime or stored in
+a different shape. **None of it is a `web-ifc` limitation** — every one traces to an explicit choice
+in this project's own two import files.
+
+### §T.5 Consequence for §S's warning
+§S ended: *"the client-side import path should not be treated as data-complete or as a substitute for
+the server pipeline until this is traced."* Traced. **On elements it IS complete** (strictly more
+complete, on both files tested). The warning should be re-scoped to what actually holds: a
+client-imported DB has no rooms/spaces, no openings, and no named material layers, so room-lens /
+HBA / opening-aware features degrade to their documented no-op paths on it. That is a schema-parity
+backlog item for `import_db_builder.js`, not a correctness problem with the import.
+
+**Status: §S CLOSED. No code changed** — nothing measured here is broken. Two follow-ups are named
+above if ever prioritized: (a) `includeInherited=true` to retire the hand-maintained whitelist,
+(b) `spatial_structure` + openings + `material_layers` parity in `import_db_builder.js`.

@@ -493,3 +493,87 @@ already use (user's own machine, `window.__tmTrav`, `§MAXQ_FRAME elapsedMs`, `�
 style accounting), scheduled when no real bake is running. The bake loop already logs everything R1
 needs (`§MAXQ_FRAME i/N elapsedMs`, `§STILL_REFINE done elapsedMs`, `§PHOTO_AO done`) — one fresh
 `§`-line between fold-done and capture would complete the per-frame ledger with zero new harness.
+
+---
+
+## §7 R10 — a live-session log (2026-08-27, post-R1) found 3 candidates; 1 real, 2 are NOT levers
+
+User pasted a real-GPU MaxQ bake log and asked whether the Alt+C lane could still cut memory/perf
+waste post-R1. Code-read (not log-read alone) against current `origin/main` (`e63fa5d`, R1-R6 all
+live) settles all three:
+
+**NOT a lever — `§NIGHT_STILL_LIGHTS` reapplied every bake frame.** `A._nightUpdateLights`
+(`tools.js:1545`) frustum-culls the light set against `A.camera.projectionMatrix` /
+`matrixWorldInverse` (`§NIGHT_STILL_FRUSTUM`) — genuinely camera-pose-dependent. A MaxQ bake frame
+is a new camera pose every time, so this is real per-frame work, not churn. Leave it.
+
+**NOT a lever — the `§STILL_REFINE cancelled (interaction)` line every frame looked like wasted
+mid-compute work; it is not.** `A.stopStillRefine(force, keepStaging)` (`effects.js:4731`) is called
+by the bake loop itself (`cinema_maxq.js:1269`, `A.stopStillRefine(true, true)`) only AFTER
+`_waitFoldDone` (cinema_maxq.js:1337) has already confirmed the TAA+AO fold genuinely converged —
+"(interaction)" is just the generic reason string `_teardownStillRefine` logs on every exit path, a
+naming artifact, not a real-input misdetection. The occasional 13–26s `elapsedMs`/`§TRIPLANAR_PERF`
+spikes in the pasted log correlate with `§IDLE_GATE park`/`wake` immediately before them — tab
+backgrounding/rAF-throttle wall-clock, not stalled GPU work. **Correction to my own prior-turn
+claim in this conversation** — I said this was wasted work before reading the call site; it isn't.
+
+**REAL lever — `§GLOW_LENS_QUAD` (and only the lens quad) rebuilds from scratch every bake frame for
+no reason.** `_glowLensOn()` (`effects.js:4480`) builds its `InstancedMesh` geometry purely from
+`A._nightFixtureWorldPositions()` + the TM-visibility filter (`p.__guid == null ||
+A._tmIsVisible(p.__guid)`) — **it never reads `A.camera` anywhere in the function.** Unlike the round
+glow sprite (`_glowOn`, camera-dependent eye-offset nudge, genuinely needs the per-pose recompute)
+and the night lights (camera-frustum-dependent, same), the lens quad's world matrices are IDENTICAL
+across two bake frames unless the TM buildup has placed a new fixture in between. Yet
+`_teardownStillRefine` (`effects.js:4063-4064`) tears it down **unconditionally** — outside the
+`if (!keepStaging)` gate R1 added at :4098 — and `startStillRefine` (`effects.js:4623`) rebuilds it
+unconditionally every frame. This is the exact shape R1 already fixed for ground/puddle/HDRI/sky,
+just not extended to this one piece: dispose+reallocate two `InstancedMesh`es (geometry, two
+materials, matrix/color arrays sized to the full fixture count) every frame, for output that is
+almost always byte-identical to the previous frame.
+
+### §R10 SPEC — extend R1's `keepStaging` contract to the lens quad, Spec-First before implementing
+
+**Mechanism:** add a module-scope `_glowLensStagedCount = -1` next to the existing
+`_glowStagedCount` (effects.js:4281) — same role, new owner. Factor the visible-fixture-count loop
+that `A._tmVisSubscribe`'s round-sprite restage callback already runs (effects.js:4420-4424) into a
+small shared helper (e.g. `_glowVisibleFixtureCount()`) so the lens quad's gate uses the identical
+predicate as the round sprite's, not a second hand-copied one. In `_teardownStillRefine`, replace
+the unconditional `_glowLensOff();` at :4064 with: **always tear down when `!keepStaging`** (real
+interaction/selection/cinema-handoff exit — unchanged behavior, protects the "still-only content
+never survives into navigation" invariant `§GLOW_LENS_QUAD`'s own header comment states); **when
+`keepStaging` is true, tear down only if `_glowVisibleFixtureCount() !== _glowLensStagedCount`**
+(a buildup placed/removed a fixture since the last stage) — otherwise skip, leaving the existing
+`InstancedMesh`es exactly as they are. `_glowLensOn()` already no-ops when
+`_glowLensMeshRect || _glowLensMeshRound` is truthy (:4481), so skipping the teardown is sufficient
+to skip the rebuild too — no change needed inside `_glowLensOn` itself beyond setting
+`_glowLensStagedCount = pos.length` where `_glowStagedCount` is already set for the round sprite's
+own count (its filtered set differs — round sprite's `_glowOn` in the bake path is called with
+`filterFn = p.__exit`, exit-signs-only, while the lens quad handles everything else — so the lens
+quad's own count must come from ITS OWN filtered `pos`, not reuse `_glowStagedCount` verbatim).
+
+**Logging:** `§GLOW_LENS_QUAD skip (count unchanged N)` on the skip path — the FUNDAMENTAL LAW
+requires a witness-visible line proving the skip actually fires, not an inferred absence of
+`staged`/`removed` lines.
+
+**Explicitly NOT in scope:** the round glow sprite's per-frame dispose+recreate (camera-dependent
+eye-offset — genuinely needs recomputing every pose; a lower-risk in-place buffer update instead of
+full dispose/recreate is a real idea but separate surgery, not bundled here) and
+`§NIGHT_STILL_LIGHTS` (camera-frustum-dependent, real work, see above).
+
+**Witness — same rigor as R1's `witness_maxq_stage_keep.js` (repo root, bim-ootb):** two-source
+falsification, shipped `origin/main` vs. the working tree, on a scripted multi-frame bake (Duplex,
+small building, buildup ON so the visibility-gate path is actually exercised): (1) N consecutive
+frames with an UNCHANGED placed-fixture count must show `§GLOW_LENS_QUAD staged`/`removed` exactly
+ONCE (the pre-bake still-phase stage), not once per frame — shipped main must show the baseline
+count (roughly one full stage/unstage pair per frame, matching `§MAXQ_STAGE_KEEP`'s own R1 baseline
+shape) so the RED case actually reproduces; (2) a frame where the buildup DOES place a new fixture
+between two bake frames must still show a real `staged rect=… round=…` line with the new count —
+proving the skip never starves a legitimate buildup update; (3) rect/round instance matrices
+byte-identical between two skipped frames (no silent drift from stale data); (4) a real end-of-bake
+`stopStillRefine` (no `keepStaging`) still fully tears the lens quad down — the navigation-safety
+invariant unchanged. Gate on scene-content equivalence (matrix/color buffers), not speed — same
+discipline as R1's `witness_maxq_stage_keep.js`.
+
+**sw.js:** bump `CACHE_VERSION` in the same PR (learned twice already — R1/R4's own note above,
+PR #1409's miss) and record the mechanism in a version comment, same convention as every prior
+`§MAXQ_STAGE_KEEP`/`§R6a` entry.
