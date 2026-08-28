@@ -681,3 +681,214 @@ trusting the rtree cross-check again.
   fresh, 0 deviating including the specific reported walls.
 - ✅ LTU_AHouse (position) — re-checked against live production, 0 deviating; not newly fixed this
   session (was already correctly self-healing), but confirmed still holding, not assumed.
+
+## §L LTU ORIGIN — FOUND (2026-08-27, answers §0v3's open question for LTU; Terminal still open)
+
+**The write, dated and bracketed by git-tracked prose on both sides, even though the raw-DB upload
+itself is (as §0v3 says) not git-tracked:**
+- `900fd4a12` (bim-compiler, 2026-08-10 15:30:07 +08:00) — `fix(extract): merge_db destroyed mesh
+  blobs in no-library mode`. Commit body states it was found by "measured: LTU_AHouse re-extract" —
+  i.e. an LTU_AHouse extraction run was already in progress at this point.
+- OCI `Last-Modified` on the CURRENT, still-live `LTU_AHouse_meta.db`/`_geo.db`: **2026-08-10
+  16:16:50–56 +08:00** (`Mon, 10 Aug 2026 08:16:5{0,6} GMT`, checked via `oci os object head` just
+  now) — meta and geo 6 seconds apart, one coherent upload, not a mismatched pair.
+- `296391cdc` (bim-compiler, 2026-08-10 16:41:16 +08:00) — a resume-block spec entry, written ~25min
+  after the upload, says outright: **"LTU re-extract ✅ LIVE on OCI (meta 50MB/0-ghosts + geo 160MB +
+  positions, gzip, fetch-back byte-verified; June pair backed up: ... local copy at
+  `~/bim-ootb/buildings/_backup_ltu_june_2026-08-10/`)."** Same entry names the exact bug just fixed
+  ("merge_db no-library blob-destruction fixed") as the reason this re-extract was run.
+
+**So the write is: a manual LTU_AHouse re-extraction + OCI upload, run by this project between
+15:30–16:17 on 2026-08-10, using `scripts/extract_merge_disciplines.py` immediately after
+`900fd4a12` landed — same session, same building, no other candidate event exists in either repo's
+history in that window (checked `git log --all` across both `bim-compiler` and `bim-ootb`, ±2hr).**
+
+**Proof this write is what broke it — not just correlated timing — using the June backup as an
+independent, non-self-referential prior vintage (the exact check §0v3 flagged as never done for
+LTU):** decompressed `~/bim-ootb/buildings/_backup_ltu_june_2026-08-10/LTU_AHouse_meta.db.gz-served`
+(122,330 rows, `PRAGMA integrity_check`=ok) and joined it by `guid` against the CURRENT live
+`~/bim-ootb/buildings/LTU_AHouse_meta.db` (125,698 rows).
+- **122,330 guids match between the two vintages; 12,777 of them (10.4%) disagree by more than 1m on
+  at least one axis.** This is JUNE vs AUG-10, two independently-uploaded files — not meta.db vs its
+  own rtree — so it isn't subject to the self-referential-check flaw §0v3 warned about.
+- All three §D known-bad guids checked directly: the June vintage's values sit close to §D's
+  "correctly-patched" column (e.g. `3Nw3L$fQTD9g$AljfN52mv` June=`(76.56, 61.55, 4.31)` vs §D
+  patched=`(58.65, 61.55, 4.35)` — same z, close-ish x/y); the CURRENT Aug-10 file's values match §D's
+  "raw/corrupt" column exactly (`(0.15, 61.35, 2.7)`). **June was clean-ish, Aug-10 is the corrupt
+  vintage still live today.**
+- The corrupt rows aren't random noise: 1,576 rows in the current file land on the exact same
+  `center_z=2.7` (all 3 of §D's sample guids included) — a repeated flat value, the shape of a
+  storey/level datum getting misassigned to the wrong elements, not per-row noise.
+
+**What this rules out and what's still open:** `scripts/extract_merge_disciplines.py`'s own git
+history between June and this Aug-10 run has exactly one commit — `900fd4a12`, and it only touches
+`base_geometries` BLOB copying, never `element_transforms`/coordinates — so the position bug is not
+a regression in the merge script's own transform code. It must be upstream: either in
+`DAGCompiler/python/extractIFCtoDB.py` (which had many commits in this window — LOD400-layers,
+§ANCHOR void-consumed placement, `elements_meta.building` writes — any of which touches per-element
+placement) or in LTU_AHouse's own source IFCs / discipline mapping as fed into this specific run.
+**Not chased further this session — pinpointing which upstream commit is the actual mechanism is the
+next step, not done here** (stopping at the origin write per §0v3's scope, not chasing the
+mechanism inside it).
+
+**Terminal — same search attempted, came up empty, staying honest about it rather than padding:**
+checked both repos' git history bracketing Terminal's raw upload timestamps (`Terminal_geo.db`
+Last-Modified Fri 2026-06-05 18:50:12+08, `Terminal_meta.db` Sat 2026-06-06 16:16:05+08 — note these
+are ~21.5hr apart, unlike LTU's 6-second matched pair, a real difference worth keeping in mind even
+though §K already showed Terminal's error lives in `extracted.db` itself, not a meta/geo mismatch).
+No commit in either repo names Terminal extraction/upload in either window (checked ±2-4hr and a
+wider ±2wk sweep on "Terminal"-grep). No pre-corruption backup file exists for Terminal the way
+`_backup_ltu_june_2026-08-10/` does for LTU — `buildings/Terminal_meta.db.bak` exists locally but is
+dated 2026-08-17 (this investigation's own §K patch-testing artifact, not a pre-June relic) and is
+untracked/uncommitted in `bim-ootb`. **The exact write event/timestamp remains unfound — no equivalent
+evidence trail to LTU's.** BUT §M below (found on a follow-up pass, user asked for one more look)
+supplies the actual MECHANISM, found in an existing, previously-shipped diagnosis doc rather than by
+searching for a new commit — which is arguably a stronger answer than a bare timestamp would have been.
+
+## §M TERMINAL — MECHANISM FOUND (2026-08-27, follow-up pass): a KNOWN, documented, never-shipped-fix
+sandbox-tile bug, dated 5 weeks before the write, that also names LTU as at-risk
+
+**`prompts/TERMINAL_COORDINATE_FRAME_MISMATCH.md`** (bim-compiler, investigation dated
+**2026-07-11**, i.e. over a month before this doc's Aug-16 diagnosis and 5 weeks after Terminal's
+raw files were already live on OCI) is a complete, already-closed, ground-truth-verified root-cause
+trace for exactly this defect class on Terminal, found by re-reading `prompts/
+ROOM_INJECTION_CONSOLIDATED_REVIEW.md` item 5 (a room-injection lane review), not by searching git
+log for the write event itself — a different kind of search than §L's.
+
+**The mechanism, cited with evidence (that doc's own §Step 1-3, ground-truthed against the raw IFC
+via `ifcopenshell` directly, not inferred):**
+1. `DAGCompiler/python/extractIFCtoDB.py`'s S169 auto-normalize (lines ~1453-1506) subtracts a
+   reversible centroid offset when a building's raw coordinates sit >100m from origin — correct in
+   isolation, Terminal crossed the trigger. Stored the reversible offset
+   (`site_normalization` table, `offset_z=-14.653`) but nothing downstream re-applied it.
+2. `scripts/build_sandbox_1M.py` (`place_buildings()`/`write_tile()`) assembles a SYNTHETIC
+   multi-building "CBD" demo tile (`CBD_BUILDINGS = [HospitalGarage, Hospital, LTU_AHouse,
+   Terminal, …]`), laying real buildings side-by-side with an added rigid per-building placement
+   offset, guid-prefixed `T0_<Building>_…`.
+3. `scripts/extract_per_building.py` carves each building's deploy DB back OUT of that sandbox tile
+   — but copies rows **verbatim**, tile offset and prefix included, **no code path subtracts the
+   tile placement back out.** `deploy/buildings/Terminal_extracted.db` was therefore never a real
+   per-building extraction — a slice of the city demo, carrying the demo's arbitrary tile position.
+
+**Proven rigid and constant** (12 guids sampled against real IFC ground truth via `ifcopenshell`,
+stdev 4e-5/9e-7/2e-6m on x/y/z): `Δx=545.61m, Δy=51.22m, Δz=14.66m` for every element checked — not
+a rotation, not per-storey, a whole-building tile-placement contamination. **This is a materially
+better-evidenced explanation for "why is Terminal's raw file wrong at all" than anything found in
+§A-§L of this doc** — ground-truthed against the source IFC directly, not against another derived
+DB.
+
+**Fixed locally, 2026-07-11, but — confirmed just now — NEVER reached what's live:** the doc records
+a flat `UPDATE element_transforms SET center_x = center_x - 545.6119164218414, ...` applied to
+bim-compiler's **local, gitignored** `deploy/buildings/Terminal_extracted.db` only. Its own
+"Not done" section says explicitly: *"did not regenerate `deploy/buildings/Terminal_extracted.db`
+from scratch... did not touch Terminal's OCI/room-data ship status."* **The currently-live
+`buildings/Terminal_meta.db` (fetched fresh from OCI again just now: still `Last-Modified Sat, 06
+Jun 2026 08:16:05 GMT`, same etag `7e11d0f3…` as ever) predates this 2026-07-11 fix by a month — it
+cannot contain it, and per the doc's own words, never got it.** The raw file live today is still
+exactly the uncorrected sandbox-tile carve-out this doc diagnosed.
+
+**Does this explain the visible symptom ("some big walls raised")? Partially, and this is the
+honest limit of this pass.** A perfectly uniform Δz=14.66m shift, applied to literally every row,
+would NOT make some walls look raised relative to others — the whole building would just sit
+14.66m higher, self-consistent, invisible as a symptom. The visible defect is specifically that
+§S10/§K's "modal offset" analysis found **most** rows (46,354/48,428) already land close to
+fresh-extraction truth once a (different, independently-computed) modal offset is removed, while
+**2,074 don't** — that minority is what reads as "walls raised." This session did not close the
+gap between "the whole file carries a proven, named, ground-truthed tile contamination" and "why
+2,074 specific rows don't follow that contamination's own uniform pattern" — a plausible next step
+(not run, flagging for whoever picks this up) is testing whether those 2,074 rows are disproportionately
+elements added/edited in a LATER pass than the rest (partial re-extraction merged into an already-tile-
+contaminated base), the same "two builds drifted apart" shape §J found for the file overall.
+
+**Directly answers §L's flagged risk for LTU:** this same 2026-07-11 doc states outright — "*Hospital/
+HospitalGarage/LTU_AHouse... sit in the same `CBD_BUILDINGS` tile row and are at the same risk,
+unverified*" — written 5 weeks before LTU's Aug-10 write (§L). **Checked just now: LTU's Aug-10
+write went through `scripts/extract_merge_disciplines.py` (a discipline-IFC merge script), NOT
+`extract_per_building.py`/`build_sandbox_1M.py` (the sandbox-tile carve pipeline) — different code
+path. So this specific tile-offset bug is very unlikely to be LTU's Aug-10 mechanism** (consistent
+with §L's own z=2.7-flat-value, storey-datum-shaped signature, which doesn't match a rigid
+whole-building constant offset either) — **but the 2026-07-11 flag itself is real, was never
+resolved, and is worth its own explicit check** (has anyone ever regenerated LTU_AHouse via
+`extract_per_building.py` since? not checked this session) before assuming it's irrelevant.
+
+## §N LTU/TERMINAL UPSTREAM BUG — FOUND AND PROVEN, 2026-08-27 (user asked to keep looking after §L/§M):
+`element_transforms.center_x/y/z` is NOT the element's bbox center — it's the raw IFC placement-matrix
+translation, which for elongated/base-authored elements (walls above all) sits nowhere near the true
+center. This is a code bug, present today, universal, NOT a one-off corrupting write.
+
+**Proof, in order, each step isolating the previous step's result:**
+1. Computed ground truth for all 3 of §D's known-bad guids directly from the raw source IFC
+   (`internal/UNMERGED/LTU_AHouse_ARC.ifc`) via plain `ifcopenshell.geom` with `USE_WORLD_COORDS=True`
+   — no project code involved at all. Result: `(58.65,61.55,4.35)` / `(124.55,51.90,4.35)` /
+   `(118.55,29.33,4.35)` — matches §D's "correctly-patched" column exactly. **Rules out bad source
+   data.**
+2. Ran `DAGCompiler/python/extractIFCtoDB.py --ifc LTU_AHouse_ARC.ifc --skip-normalize` SOLO — the
+   exact per-discipline step `extract_merge_disciplines.py` calls, but with no merge/normalize
+   involved at all. Output for the same 3 guids: `(0.15,61.35,2.7)` / `(124.35,58.9,2.7)` /
+   `(118.35,44.5,2.7)` — **matches the CORRUPT column exactly.** Reproduced on demand, deterministically,
+   from a single-file run. **Rules out the merge step, the Aug-10 write, and any upload-timing theory
+   — this is not something that happened on a date, it happens every time this script runs.**
+3. Checked the SAME solo-extraction DB's `elements_rtree` (world-space bbox, built via a SEPARATE,
+   correct code path — `world_corners = (rot3 @ corners.T).T + mat4[:3,3]` applied to the LOCAL bbox
+   corners, not to a single point) for the same 3 guids and computed `(minXYZ+maxXYZ)/2`:
+   `(58.65,61.55,4.35)` / `(124.55,51.9,4.35)` / `(118.55,29.33,4.35)` — **matches ground truth
+   exactly, all three, to the same precision.** The correct value is already sitting right there in
+   the same row, in the `bbox_x/y/z`-feeding columns — it's just never used for `center_x/y/z`.
+4. **Not a rare edge case: checked all 2,408 `IfcWallStandardCase` rows in this one discipline file.
+   2,384 of them (99%) have `center` vs bbox-midpoint offset >1m.** The worst (this doc's own guid
+   `3Nw3L$fQTD9g$AljfN52mv`) is a single wall element spanning 117.8m in one axis (`minX=-0.25,
+   maxX=117.55` — a long straight run, not a modeling artifact) whose placement origin sits at one
+   end — a 58.5m center error from that alone. Even the smallest-offset walls checked are still
+   0.4-0.7m off.
+
+**The actual bug, cited:** `DAGCompiler/python/extractIFCtoDB.py` — `decompose_iterator_matrix()`
+(line 408) returns `center = mat4[:3, 3]`, the raw `IfcLocalPlacement` translation (where an element's
+own local origin maps to in world space). Line ~2352's `INSERT INTO element_transforms` stores this
+directly as `center_x/y/z`. For IFC authoring conventions where a wall's local origin sits at its
+start point / base (very common — extruded-profile walls, not point-inserted families), this is
+nowhere near the geometric center. The CORRECT value — `(minXYZ+maxXYZ)/2` from the already-computed
+`world_corners` bbox two lines below — is computed and used for `bbox_x/y/z` and `elements_rtree`,
+but never substituted into `center_x/y/z`.
+
+**Why this explains the whole symptom shape, both buildings, no other theory needed:**
+- Non-uniform, "some elements right, most wrong for walls specifically" — matches exactly: compact/
+  symmetric elements (furniture, doors, most MEP) have origin≈center by authoring convention anyway,
+  so the bug is invisible on them; elongated elements (walls, especially long runs) expose it badly.
+- LTU "worst case," up to 291m deviation — LTU's site has real 100m+-long wall runs (confirmed: this
+  ARC file alone has one 117.8m element). Long wall + off-center origin = huge absolute error.
+- Terminal "minor... some big walls raised" — same mechanism, smaller magnitude, consistent with
+  Terminal's walls being shorter/more typical (office partitions) than LTU's long runs.
+- **Not a corrupting write, not a date, not an upload gap — a standing code defect that will
+  reproduce identically on the NEXT re-extraction of ANY building with long/off-center-origin walls,
+  including buildings currently reported clean (their long walls may simply not be long enough for
+  the error to clear whatever eyeball/tolerance threshold makes it "visible" yet).**
+
+**Consequence for the fix (§0v3/user's Q2 above): re-extracting LTU "properly" will NOT fix this on
+its own — the bug is in the extraction code, not the data or the run.** The actual fix is a small,
+evidenced, extract-don't-invent code change: use `(minXYZ+maxXYZ)/2` for `center_x/y/z` instead of
+`mat4[:3,3]` — the correct value is already computed two lines away in the same function, nothing
+invented, nothing patched.
+
+**✅ APPLIED + VERIFIED, 2026-08-27 (user go-ahead given).** `DAGCompiler/python/extractIFCtoDB.py`:
+added `bbox_center = (minXYZ + maxXYZ) / 2.0` right after `maxXYZ` is computed, and the
+`element_transforms` INSERT now stores `bbox_center[0/1/2]` instead of `center[0/1/2]` (the old
+`mat4[:3,3]` placement-origin value). Also fixed the two purely-cosmetic diagnostic sites that
+tracked/printed the same wrong value (`§PRE_NORM` centre-span stats, `§SAMPLE` debug line) — no
+functional effect, kept the logs honest.
+
+**Re-ran the exact same solo `--ifc LTU_AHouse_ARC.ifc --skip-normalize` extraction that exposed the
+bug, byte-for-byte same command, only the code changed:**
+- All 3 of §D's known-bad guids now land EXACTLY on ground truth: `(58.65,61.55,4.35)` /
+  `(124.55,51.9,4.35)` / `(118.55,29.33,4.35)`.
+- Fleet check repeated: **0/2,408 `IfcWallStandardCase` rows now have >1cm center-vs-bbox-midpoint
+  offset (was 2,384/2,408 with >1m offset before the fix).**
+- Regression check: `bbox_x/y/z`, `rotation_x/y/z`, and total element count (9,712) are
+  BIT-IDENTICAL before/after — this is a pure additive fix to one wrong field, nothing else moved.
+
+**Not done (separate, bigger decision, not taken here):** the fix lives in the repo only. It has NOT
+been used to re-extract/re-ship LTU_AHouse or Terminal's production DBs — that's a full pipeline run
+(discipline merge, ~15-30min per building) + OCI upload, governed by this project's own DB-change
+policy (full rebuilt binary, `deploy/OCI_UPLOAD.md` rules) and the PRIME RULE ("NEVER TOUCH
+PRODUCTION" directly) — a separate go is needed before touching live buildings. Also not yet
+committed to git (only working-tree edit) — commit is a separate ask per this session's own git
+discipline.
