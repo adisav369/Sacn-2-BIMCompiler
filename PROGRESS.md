@@ -1,49 +1,41 @@
 # PROGRESS — Current Development State
 
-## Current State — 2026-08-27 (4D MODEL INTEGRITY)
+## Current State — 2026-08-29 (4D task-graph connectivity closed fleet-wide)
+**Substructure-first is now a real, general, JSON-driven rule — not a Terminal patch.**
+`instantiateTemplate`'s `within_level` edge-wiring only ever reached the ONE level a
+`scope:"building"` phase happened to be filed under; every other level's own chain-root started
+completely unconstrained. Fixed in 3 iterations (first two superseded, precise reasons kept in
+`prompts/4D_GANTT_TM_REFACTOR.md` §PHASE_WATERMARK_FLOOR): the shipped fix gates a phase on
+whether ITS OWN declared `within_level` predecessor has a task on ITS OWN level — not on
+level-rank adjacency (a proxy, rejected) and not on "is any phase present locally" (too weak,
+missed real bugs). bim-ootb **PR #1567 (§I.5c bearing-relation fix), #1568 (dead-air reveal
+tiling), #1569 → #1571 (superseded → final phase-watermark fix) — all MERGED.**
+**MEASURED, full fleet: every building with a Substructure phase now has EXACTLY ONE root task
+(Substructure itself, day 0) — zero orphaned chains anywhere.** Found via the corrected fix,
+**not visible before**: LTU_AHouse had 18/62 tasks landing at severely wrong times (one moved
+day 46→337, another 368→754) — invisible to the narrower fixes. Buildings already correct
+(Hospital, HHS, Duplex, Clinic minus 1 task) stayed byte-identical. Full witness suite clean
+throughout every iteration (59 green, same 6 pre-existing red, never new).
+**Standing rule recorded** (`§FUTURE-5A`, same file): sequencing/duration/crew policy belongs in
+`4D_template.json`/`sequence_rules.json`, read by name-agnostic code — never hardcoded by phase
+or building name. 11-item inventory of where 5D (cost/rate) policy still violates this is
+written, not yet actioned.
+**⛔ Named, not fixed:** DAY-0 headline (`§W_D0` below) is STALE against current `origin/main` —
+reproduces `PASS=4 FAIL=5` with a fresh cache, not the `14 PASS/0 FAIL` this file still shows;
+whoever next touches DAY-0 must re-baseline, not trust the number below. `Ceiling Level Kedai`
+(Terminal) and similar thin/sparse levels may have an unreliable elevation RANK (`LevelDeriver`
+built, flag-off) — separate, deeper, not touched this pass.
+
+## Superseded — 2026-08-27 (4D MODEL INTEGRITY), kept for historical trail only
 **DAY-0 integrity is at ZERO.** `§W_D0` (`bim-ootb viewer/tests/witness_day0_integrity.js`)
-**14 PASS / 0 FAIL / 2 INCONCLUSIVE**, from 4/9/3. It refuses to print GREEN: two claims judged an
-empty population (both Hospital — no `spatial_structure`, and 87 DAY-0 elements all seq-1 exempt).
-Measured directly: **0 of 718 `IfcColumn`** start before the slab/footing that bears them.
-
+**14 PASS / 0 FAIL / 2 INCONCLUSIVE** — **STALE, see Current State above.**
 **⚖ USER RULING 2026-08-27 — canonical model is the TEMPLATE PATH (`instantiateTemplate`).**
-`bar_model.js`/`bar_needs.js` are dead code and NOT the target (PR #1542 merged, nothing loads them).
-`4D_BAR_MODEL.md` §10.3 items 1–4 are therefore no longer the plan; item 5 stands.
-
-**Shipped:** bim-ootb **#1550, #1552 MERGED** · **#1553 OPEN** (`§TPL_MODEL` — the model fork now
-names which model ran, `4D_template.json` precached, edit witness judges the canonical model) ·
-**#1551 OPEN**
-(`§STOREY_DATUM` Terminal 22 bands→6, `§TPL_LADDER_BRIDGE`, 3 measured name overrides, Duplex datum
-patch, `knob_sweep.js`). bim-compiler `fable/meshdb-livewire`: `4D_MODEL_INTEGRITY.md` §H–§L,
-`CLAUDE.md` PRIMAL LAW + ownership table, `tools/extract.py` writes `IfcBuildingStorey.Elevation`.
-
-**✅ TM WIRING TRACED AND SOUND (2026-08-27, bim-ootb PR #1553 — `4D_MODEL_INTEGRITY.md` §L).**
-The canonical model DOES reach the Gantt editor: `instantiateTemplate:425` → `_writeTemplateSchedule
-:965` persists tasks/task_elements/task_sequences → `time_machine.js buildTaskIndex:5290` reads them
-back → `gantt_model.js buildTasks:96` draws each bar at its task window. §G.2's "shipped, witnessed,
-NEVER CALLED" is CLOSED (`§TPL_REACHED` green). **Do not re-trace this.**
-Three SILENT model-swap holes found and fixed: the fork at `schedule_author.js:715` logged nothing
-(now `§TPL_MODEL`) · `rates/4D_template.json` was never precached, so one failed fetch dropped the
-canonical model for a whole session · `witness_gantt_edit_coherence` judged the DEAD model.
-MEASURED (Duplex): legacy zones=21/edges=30, edit cascaded=**8** → canonical tasks=20/edges=29,
-cascaded=**16**, 11 pass/0 fail, with a red control that fails when the template is absent.
-
-**⚠ NEXT, in order (`4D_MODEL_INTEGRITY.md` §L):**
-1. ✅ DONE — datum is the FLOOR (PR #1552 MERGED). Shipped DBs/baked patches still carry the OLD
-   datum; regenerating them is a DB-content change needing the patch + self-heal-loader flow.
-2. Re-baseline `§W_D0` against the corrected datum.
-3. Write the sequence rule (§J.4) — granularity, legitimate overlap, which relation carries it.
-   6,734 bearing-order violations / 106,027 pairs are REPORTED and cannot be judged without it.
-4. **24 of 35 witnesses/probes calling `materializeZones` pass no `template:`** — they judge the
-   dead model. §K.2 item 2's audit, now with a concrete population (§L).
-
-**Habits that paid:** `scripts/cache_4d_run.js` runs the pipeline once per building and persists
-the `§`-log + run (119,568 elements read back in 0.43s) — never re-run `materializeZones`, never
-wrap it to silence `console.log`. Re-read §E/§I before each measurement, not once at startup:
-three retractions this session were all errors those sections already listed.
+bim-ootb #1550/#1552/#1553/#1551 MERGED — `§TPL_MODEL`, `§STOREY_DATUM`, datum-is-floor, TM
+wiring traced sound (`instantiateTemplate` → `_writeTemplateSchedule` → `buildTaskIndex` →
+`gantt_model.buildTasks`). Full detail: `4D_MODEL_INTEGRITY.md` §L.
 
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
-> ⚠ Over budget (636+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
+> ⚠ Over budget (750+ lines) — the archiving pass on `## OPEN`'s oldest items is still owed
 > (each needs a still-open-vs-DONE check by a session that owns its context before compressing).
 
 ## ▶ NEW LANE 2026-08-26 — BIMEyes STRUCTURAL ORACLE (the 4D judge)
@@ -66,35 +58,15 @@ https://red1oon.github.io/BIMCompiler/SpatialCompilationPaper/ with a Provenance
 (priority date 2026-03-30 04:48:48 +0800, tags `paper-spatial-compilation-v1`,
 `paper-first-published`, Wayback snapshot taken).
 
-## ▶ NEXT TASK ON RESTART (rewritten 2026-08-24)
+## ▶ 2026-08-27/29 restart trail — SUPERSEDED, see Current State at top
+The `§FUTURE item 2` "bars too short" block (3x calibration, `min_days` question) that stood here
+BLOCKED is resolved as part of the `§PHASE_WATERMARK_FLOOR` work above — see
+`4D_GANTT_TM_REFACTOR.md` for the full trail. `4D_MODEL_INTEGRITY.md` §I's stale "where inside its
+task?" citation (`fix/tpl-layer-order`, now merged) still needs its own fix, not done yet.
 
-**ERP T-0 (`prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md`) — 5 of 7 items closed this session.** Items
-6 (dead witness citations — first pass was ITSELF wrong, corrected in the open), 1 (enumerable ledger,
-`docs/internal/ERP_EQUIVALENCE_LEDGER.md`), 8 (new: DisplayLogic-live regression, re-scored honestly),
-4 (`gateRecordFor` record-access gate, bim-ootb PR #1499 merged), and 2 (41-lane memory-index
-write-back) all ✅ DONE. Remaining, both genuinely multi-session, read that file before starting
-either: item 5 (Form-screen renderer) and item 7 (the 454/476-unported-process corpus).
-
-**4D Gantt/TimeMachine lane** (`prompts/4D_GANTT_TM_REFACTOR.md`) stays CONCLUDED per the prior note
-below — do not restart without a new specific reason. This session added a **brainstorm-only** spec,
-`prompts/TM_OFFICE_SNAPSHOT_LANE.md` (spec settled, no code): embed a TM snapshot (image + existing
-`tm` deep-link) into Word/Excel via plain picture+hyperlink — reuses `sitecam.js` canvas-capture +
-`share.js`'s `buildShareUrl`, no OOXML/OLE. Named substrate for two riders (daily site-today view,
-permit-checkpoint flagging), neither built. A P6/XML scheduler-interop thread from the same brainstorm
-was redirected to a bim-ootb session (out of scope here — most of it turned out to already be shipped,
-see that file's §0).
-
-**⚠ Uncommitted, NOT this session's:** `docs/BIMUserGuide.md`, `docs/ERPUserGuide.md`, `mkdocs.yml`,
-untracked `docs/TimeMachine.md` — a `docs/time-machine-page` worktree exists at
-`/tmp/wt-docs-timemachine`, likely a concurrent session's in-progress docs work. Left untouched;
-verify who owns it before touching.
-
-**Disk state:** `bim-compiler` `fable/meshdb-livewire` pushed, zero committed-but-unpushed, as of
-2026-08-24 session end. `bim-ootb` PR #1499 merged to main.
-
-**Standing debt, not this session's to fix:** this file is still over its 80-line budget (~700 lines);
-the archiving pass on `## OPEN`'s oldest items is still owed to a session that can own the
-still-open-vs-DONE check per item.
+**ERP T-0 (`prompts/RESUME_ERP_T0_TRUTH_MAINTENANCE.md`) — 5 of 7 items closed 2026-08-24.**
+Remaining, both genuinely multi-session: item 5 (Form-screen renderer) and item 7 (the 454/476-
+unported-process corpus). Read that file before starting either.
 
 ## Session 2026-08-17 (Fable, marathon) — 4D Gantt lane S1-S22 all shipped+merged, closed
 Full trail in `prompts/4D_GANTT_TM_REFACTOR.md`. Root causes fixed, each independently verified
