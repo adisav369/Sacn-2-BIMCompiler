@@ -1139,10 +1139,37 @@ read, no cause traced. **Work this to zero, same discipline as everything else i
 5. Work to done or explicitly `⛔ BLOCKED: <question>` — per this project's WORK-TO-ZERO rule, don't
    stop and report "parked" without either a fix or a named blocking question.
 
-**Resume prompt for the new session:**
-> Resume `bim-compiler/prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` — read §R first. Item 1
-> (the center_x/y/z bbox-vs-placement-origin bug, §P/§Q) is DONE, don't re-open. Item 2 is the job:
-> the client-side "open/drop IFC" import path in the live viewer is broken for any LTU_AHouse source
-> IFC — not yet investigated at all. Start from §H/§H2's Terminal trace (same failure shape, a
-> never-confirmed cache-key-mismatch hypothesis) and work it to zero, no claude-in-chrome, §-log
-> first, headless witness harness if a live console log is needed.
+**Item 2 — ✅ DONE, 2026-08-29.** Correction to the framing above: the client-side import itself was
+never broken — the user re-tested live and it completed (just slow; see §S below). The REAL bug,
+found from the user's own live logs pasted mid-session (not the §H/§H2 hypothesis, which turned out
+irrelevant — no cache-key mismatch involved): opening the resulting `meta.db`+`geo.db` pair back
+into the viewer silently dropped one half. Two separate call sites had the same root cause
+(`A.openModelDb`'s file-picker only ever read `fsaFiles[0]`/`input.files[0]`, and `_openIfcFiles`
+took a split result's `metaDb` and discarded `geoDb`) — live-reproduced exactly:
+`§DB_SPLIT_DETECT meta=...geo.db geo=...geo.db` (same file twice, geo.db has no `elements_meta` at
+all) → `§CENTRES_RESULT rows=0`. Fixed: `bim-ootb` PR #1576 (`fix/open-split-db-pair`, `9b1543b`),
+adds `A._openSplitDbBytes`/`A._mergeSplitDbIntoScene` (split-aware siblings of the existing
+`_openDbBytes`/`_mergeDbIntoScene`, same `_mergeTable`/`_georefPin` helpers, two sources instead of
+one), wired into both broken call sites. New witness `W-OPEN-SPLIT-PAIR`
+(`viewer/tests/witness_open_split_db_pair_2026-08-29.js`) PASSES both phases (replace path loads
+real data; merge path folds both meta AND geo tables into a live scene). Existing `W-SCENE-MERGE`
+re-verified against a clean baseline — same 3 pre-existing, unrelated failures either way, zero
+regression from this change. **Not yet merged to `bim-ootb` main** — PR open, not auto-merged this
+session.
+
+## §S NEW ITEM, NOT STARTED — client-side (web-ifc) import is materially less complete than the
+server-side (ifcopenshell) extraction
+
+Found while investigating item 2, not chased — flagging for later. Same source file
+(`LTU_AHouse_ARC.ifc`), two pipelines, measured from real logs/gates this session:
+- Server-side (`extractIFCtoDB.py`, ifcopenshell): **18,730 elements** (§PROOF gate, this session's
+  §N/§O work).
+- Client-side (this canvas, web-ifc): **6,927 elements** (`§CENTRES_RESULT` in the user's own live
+  log) — **37% of the server-side count, same file.**
+- Client-side schema is thinner too: no `elements_rtree`, `rel_aggregates`, `surface_styles`,
+  `material_layers`, or `spatial_structure` — confirmed via the live `§CENTRES_QUERY` table list.
+
+Not diagnosed: whether this is a real `web-ifc` library limitation (would make an upstream
+contribution meaningful) or a filtering/skip choice in this project's own `import_worker.js`
+wrapper (a local fix). Whichever it is, the client-side import path should not be treated as
+data-complete or as a substitute for the server pipeline until this is traced.
