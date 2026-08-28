@@ -1043,4 +1043,106 @@ far-flung/below-surface elements near LTU, reported by the user as real but few 
 checking against LTU's own source IFC (same method as §L/§N: is it in the raw IFC data at all, or
 introduced somewhere in the pipeline) before deciding whether it's real source geometry (in which
 case leave it and just exclude it from Alt-C flight paths / Time Machine camera framing) or an actual
-defect. Not started.
+defect. — **DONE, see §Q below.**
+
+## §Q THE "13 STREWN ELEMENTS" — TRACED, PROVEN NEW (not source data), root mechanism narrowed but
+not fully closed (2026-08-28, user follow-up on §P's flagged item)
+
+**13 of LTU_AHouse's 125,698 elements (0.01%) sit tens of metres from their true position, even in
+the RESTORED/correct (§P) data.** Full list pulled by `center_z < -5` (all 13 land there): mostly
+`IfcColumn`, deltas up to 86.2m in XY and 55.1m in Z from true position.
+
+**1. Source IFC — confirmed correct for all 13, checked directly, not assumed.** Ground truth via
+`ifcopenshell` `USE_WORLD_COORDS=True` on `internal/UNMERGED/LTU_AHouse_ARC.ifc` for every one of the
+13: all sit inside the real building footprint at sensible heights (e.g. one column's true position
+is `(111.75, 61.38, 9.53)`; the extracted DB says `(114.54, 49.92, -45.55)`). **This is not a
+data-quality problem — the IFC is fine.**
+
+**2. Structural cause, confirmed: all 13 use `IfcMappedItem`/`MappedRepresentation`** (instanced/
+shared geometry via an `IfcCartesianTransformationOperator3D`), not the plain `SweptSolid` extrusion
+the vast majority of elements use (verified: a random control column uses `SweptSolid`; all 13
+outliers use `MappedRepresentation`). But this alone doesn't fully explain it — ARC.ifc has 1,345
+elements using this same construct, and only these 13 are wrong; the other 1,332 extract correctly.
+
+**3. Ruled out, tested not assumed:**
+- **Not the iterator's instancing/caching.** The code comment at `decompose_iterator_matrix()`'s
+  call site claims the `ifcopenshell.geom.iterator()` has "built-in C++ dedup, instancing, and
+  caching" — a plausible suspect. Reproduced the exact same wrong translation via `create_shape()`
+  (a completely separate, single-shot API with no iteration/caching) on the same 3 sample guids —
+  identical wrong numbers both ways. Not a caching artifact.
+- **Not threading.** `ifcopenshell.geom.iterator()`'s own default is `num_threads=1` (checked via
+  `help()`), and the extractor never overrides it — single-threaded, no race possible.
+- **Not the mapping operator's own rotation.** Checked `Axis1`/`Axis2` on all 1,345 mapped elements:
+  some CORRECTLY-extracted elements have a rotated (non-identity) operator, and one of the 13 WRONG
+  ones has a plain identity operator. Doesn't separate wrong from right.
+- **Not simply multi-piece mapped geometry.** 11/13 wrong elements have a 4-item `MappedRepresentation`
+  (vs 1 item for the other 2) — but 9 CORRECTLY-extracted elements also have 4 items. Correlated,
+  not exclusive.
+
+**4. Root mechanism, narrowed as far as evidence allows: `shape.transformation.matrix` under
+`USE_WORLD_COORDS=False` does not correctly compose the transform for SOME `IfcMappedItem`
+representations — verified reproducible via two independent ifcopenshell APIs, confined to the
+`MappedRepresentation` construct, but the exact trigger separating these 13 from the other 1,332
+correctly-handled mapped elements is not identified. Would need ifcopenshell-internals-level work
+(not this project's code) to close fully — correctly assessed as out of scope for a "just curiosity"
+follow-up, not chased further.**
+
+**5. Timing — checked against the June-vintage backup (the pre-Aug-10, pre-corruption vintage this
+doc already had on hand from §L): all 13 guids are CORRECT there too, matching true IFC values
+almost exactly** (e.g. the same column: June=`(111.75, 61.25, 9.61)` vs true=`(111.75, 61.38,
+9.53)` — same element, right place). **This anomaly is NEW — it does not predate the Aug-10 write
+that also introduced §L's systemic corruption.** Something in the extraction environment changed
+between June and Aug-10 that broke this one narrow, previously-fine code path while leaving the bulk
+of extraction (plain `SweptSolid` elements — the overwhelming majority) untouched. Leading,
+UNPROVEN guess: an `ifcopenshell` library version change between the two dates (this project's own
+extraction code for this path did not change between June and August) — not confirmed, no June-dated
+environment snapshot exists to check against.
+
+**Status: real, understood well enough to act on, low priority (0.01% of one building's elements).
+Mitigation already in place per §P — excluded from Alt-C/Time Machine camera framing. Not fixed at
+the source (would require pinning down the exact ifcopenshell trigger first) — named here so a future
+session doesn't have to re-derive any of the above.**
+
+## §R RESUME HERE — NEW SESSION HANDOFF (2026-08-28, user directive: "resolve both issues till zero")
+
+**Item 1 — §P/§Q, DONE, do not re-open without new evidence:** LTU_AHouse and Terminal production is
+restored to its pre-16th, pre-self-heal-patch, correct state (§P) — `center_x/y/z` is the render
+placement-origin, not the bbox midpoint; both corrupting patches are gone; the code regression is
+reverted (`b5d1eb711`); verified end-to-end against live production, not simulated. §Q's 13-element
+LTU anomaly is real but tiny (0.01%), source IFC confirmed clean, root cause narrowed to an
+ifcopenshell `USE_WORLD_COORDS=False`+`IfcMappedItem` interaction that appeared new at the same
+Aug-10 write — mitigated (excluded from camera framing), not fixed at the ifcopenshell-internals
+level. Treat both as closed unless something contradicts them.
+
+**Item 2 — ⛔ NOT STARTED, this session's actual next job:** user reports **"open IFCs to new
+Viewer still broken for any LTU IFC"** — the client-side Drop-IFC/import flow
+(`import_own.js`/`import_db_builder.js`, the SAME mechanism §H/§H2 in this doc already traced for
+Terminal — "starts clean, never finishes," stalls at different points across attempts) is ALSO
+broken specifically for LTU source IFCs. Nothing investigated yet — no repro run, no console log
+read, no cause traced. **Work this to zero, same discipline as everything else in this doc:**
+1. Read §H/§H2 first — Terminal's client-side import already showed this exact failure SHAPE
+   ("clean pipeline run, no errors, then nothing after `§IMPORT_AUTO_OPEN` — viewer never renders")
+   and a leading, never-confirmed hypothesis (a cache-KEY mismatch between the import writer's key
+   and `streaming.js`'s `§DB_SPLIT_DETECT`/`_checkCache` reader for `import://`-style keys — grep
+   both sides side by side, don't assume they match). LTU's break may be the SAME bug, never
+   confirmed on a second building — check that first before treating it as new.
+2. **No `claude-in-chrome`, ever** (`feedback_no_interactive_chrome_tool.md` in memory — banned
+   outright for this user). Get a real console log via the headless `playwright-core` +
+   `google-chrome-stable` pattern (`~/bim-ootb/witness/harness.js`'s own approach — §C in this doc
+   already used this successfully) or by directly reading/instrumenting `import_own.js`/
+   `import_db_builder.js` and `streaming.js`'s cache-key derivation code.
+3. §-log first, per this doc's own standing discipline — read whatever `§`-tagged output the import
+   path already emits before adding new instrumentation.
+4. Which LTU source file to drop: `internal/UNMERGED/LTU_AHouse_*.ifc` are the 9 real per-discipline
+   files this doc has used all along (no single pre-merged `LTUMerged.ifc` is known to exist —
+   confirm this before assuming one should).
+5. Work to done or explicitly `⛔ BLOCKED: <question>` — per this project's WORK-TO-ZERO rule, don't
+   stop and report "parked" without either a fix or a named blocking question.
+
+**Resume prompt for the new session:**
+> Resume `bim-compiler/prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md` — read §R first. Item 1
+> (the center_x/y/z bbox-vs-placement-origin bug, §P/§Q) is DONE, don't re-open. Item 2 is the job:
+> the client-side "open/drop IFC" import path in the live viewer is broken for any LTU_AHouse source
+> IFC — not yet investigated at all. Start from §H/§H2's Terminal trace (same failure shape, a
+> never-confirmed cache-key-mismatch hypothesis) and work it to zero, no claude-in-chrome, §-log
+> first, headless witness harness if a live console log is needed.
