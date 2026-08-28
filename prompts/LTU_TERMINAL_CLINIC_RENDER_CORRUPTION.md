@@ -892,3 +892,64 @@ policy (full rebuilt binary, `deploy/OCI_UPLOAD.md` rules) and the PRIME RULE ("
 PRODUCTION" directly) — a separate go is needed before touching live buildings. Also not yet
 committed to git (only working-tree edit) — commit is a separate ask per this session's own git
 discipline.
+
+## §O DEPLOYED — 2026-08-28, both buildings LIVE on production OCI, user explicit go ("proceed so it
+can work online")
+
+**Commit:** `51a5d1a9d` (`fable/meshdb-livewire`) — the §N code fix + this doc's §N section.
+
+**LTU_AHouse — full clean re-extraction, all 9 real discipline IFCs, code-fixed pipeline:**
+`python3 scripts/extract_merge_disciplines.py --ifc-dir internal/UNMERGED --pattern
+"LTU_AHouse_*.ifc" --disc-map LTU_AHouse_PLB=PLB LTU_AHouse_SAN=SAN LTU_AHouse_HEAT=HEAT` (the exact
+invocation the script's own `--help` documents for this building). §PROOF 13/13 PASS,
+`ELEMENT_COUNT=125698` (matches shipped count), `integrity_check`=ok. Split via `scripts/
+split_db.sh` → meta 50MB/geo 160MB/positions 2.9MB — same sizes as the original Aug-10 upload, only
+the positions are now correct. Fleet-wide: 0/3,030 walls (whole building, not just ARC) have any
+center-vs-bbox-midpoint offset.
+
+**Terminal — full clean re-extraction, direct from the real merged source IFC, bypassing
+`extract_per_building.py`/sandbox-tile entirely (per §M's separate root cause for Terminal):**
+`python3 DAGCompiler/python/extractIFCtoDB.py --ifc ~/Downloads/TerminalMerged.ifc -o ...`. §PROOF
+8/8 PASS, `elements=48428 failed=0`, `ROT_TRUTH 48428 ok`, 100% rgba coverage, `integrity_check`=ok.
+Split the same way → meta 83MB/geo 118MB/positions 1.1MB. Meta is bigger than the old 23MB shipped
+file because the OLD file predates a lot of schema (no `elements_rtree`, no `rel_aggregates`, no
+`surface_styles`, no `material_layers` — confirmed via direct table-list comparison) — Terminal's
+last REAL full regen was from long before this project's current extractor schema; this is a
+straightforward upgrade, not a risky swap.
+
+**All 6 files uploaded to OCI (`bim-ootb` bucket, `buildings/`), one at a time, each fetched back and
+md5-verified against the local raw file before moving to the next**, per `deploy/OCI_UPLOAD.md`
+rules 3/7/8/9. `positions.bin` wasn't previously live for either building (checked via HEAD before
+upload — neither existed) — shipped now since it's free (already built by `split_db.sh`) and
+strictly additive (optional, gracefully-skipped-if-missing per `streaming.js` §S260b).
+
+**⚠ Found and fixed a second landmine before declaring done — the OLD self-heal patches would have
+silently undone this fix on the very next page load:**
+- `buildings/patches/LTU_AHouse_meta.db.sql` (§S11's formula-based repair: snaps any row where
+  `center` disagrees with the rtree bbox-midpoint by >0.025m) — checked, **harmless, now a genuine
+  no-op**: since every row in the new raw file already satisfies `center == bbox_midpoint`, its
+  `WHERE` clause matches zero rows on every future load. Left as-is, no edit needed — it's actually
+  independent confirmation of the same fix from an earlier session's own runtime-patch logic.
+- `buildings/patches/Terminal_meta.db.sql` (4.5MB) was NOT harmless — its last third
+  (`§META_TRANSFORM_REPAIR`, PR #1566's fix) contained ~2,074 hardcoded `UPDATE element_transforms
+  SET center_x=<old-computed-value> ... WHERE guid='...'` statements, computed against the OLD
+  (pre-this-fix) fresh extraction. Applied on top of the NEW, already-correct raw file, this would
+  have silently overwritten exactly those 2,074 elements back to stale values on every load —
+  reintroducing "some walls raised" for that subset immediately. **Removed only that clearly
+  `>>> BEGIN`/`<<< END`-delimited block** (root cause is fixed at the source now, no repair needed);
+  kept the first 35,122 lines intact — a real, separate, unrelated room-injection + walkable-nav-mesh
+  patch (`spatial_structure`/`rel_contained_in_space`/`storey_walkable_raster`, ~150+6 rows) that has
+  nothing to do with element transforms. Test-applied the trimmed patch against a scratch copy first
+  (exit 0, room rows present, 0 wall mismatches), then uploaded, fetched back, md5-verified.
+
+**Final proof, run exactly as the real viewer would (fetch live raw DB → fetch live patch → apply →
+check), not a worktree simulation:** both buildings, **0 walls with any center-vs-bbox-midpoint
+mismatch**, all 3 of §D's known-bad LTU guids land exactly on ground truth, end to end, through the
+actual production patch chain as it exists on OCI right now.
+
+**Status: LTU_AHouse — ✅ SOLVED (origin found §L/§N, fixed at the pipeline source, redeployed,
+verified end-to-end). Terminal — ✅ SOLVED for the position symptom (same source-level fix,
+redeployed, verified end-to-end); the ORIGIN of Terminal's original June corruption is still the
+§M finding (`extract_per_building.py` sandbox-tile carve, never fixed at its own source) — moot for
+what's live now since this redeploy bypassed that pipeline entirely, but that script itself is
+still buggy for any future building that goes through it.**
