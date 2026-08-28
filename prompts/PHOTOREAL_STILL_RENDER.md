@@ -1874,9 +1874,8 @@ else for warm interior light. **Named fix:** shift `CAM_LIGHT_COLOR` toward the 
 mechanism), verify live that interior walk shots read warmer without over-saturating exterior/daylit
 frames the same light also touches.
 
-**Item 2 SHIPPED 2026-08-27 — bim-ootb PR #1575 (`fix/photo-envmap-retune`, OPEN, NOT merged — held
-for live visual confirm, per the user's own caution "be careful... not to fall off to the dark
-side").** `PHOTO_ENVMAP_BOOST` stepped 3.0→2.0 (one controlled increment, matching `§PHOTO_AO_EDGE`'s
+**Item 2 SHIPPED 2026-08-27/28 — bim-ootb PR #1575 (`fix/photo-envmap-retune`), MERGED (user: "send
+it!") — live on `bim-ootb main`.** `PHOTO_ENVMAP_BOOST` stepped 3.0→2.0 (one controlled increment, matching `§PHOTO_AO_EDGE`'s
 own single-step precedent above) — the room probe now supplies part of the reflection that 3.0 was
 calibrated for before the probe existed. New witness `witness_envmap_retune.js`. Verified on Clinic
 (the building "whitewash" was originally reported on), real GPU, apples-to-apples before/after (both
