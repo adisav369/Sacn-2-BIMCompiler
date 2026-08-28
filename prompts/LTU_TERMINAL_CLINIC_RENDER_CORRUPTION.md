@@ -947,9 +947,100 @@ check), not a worktree simulation:** both buildings, **0 walls with any center-v
 mismatch**, all 3 of §D's known-bad LTU guids land exactly on ground truth, end to end, through the
 actual production patch chain as it exists on OCI right now.
 
-**Status: LTU_AHouse — ✅ SOLVED (origin found §L/§N, fixed at the pipeline source, redeployed,
-verified end-to-end). Terminal — ✅ SOLVED for the position symptom (same source-level fix,
-redeployed, verified end-to-end); the ORIGIN of Terminal's original June corruption is still the
-§M finding (`extract_per_building.py` sandbox-tile carve, never fixed at its own source) — moot for
-what's live now since this redeploy bypassed that pipeline entirely, but that script itself is
-still buggy for any future building that goes through it.**
+**Status as of §O: WRONG. §N/§O were a mistake — see §P, which supersedes both. Left the text above
+unedited (not rewritten to hide it) so the reasoning trail stays honest.**
+
+## §P §N/§O WAS THE BUG, NOT THE FIX — CORRECTED AND RESTORED, 2026-08-28 (same session, user caught
+it live)
+
+**`element_transforms.center_x/y/z` is NOT the bbox midpoint. It never was. §N's whole premise —
+and, it now looks certain, §S9-§S12/§K's premise weeks before it — was backwards.**
+
+**What `center_x/y/z` is actually FOR, confirmed by reading the renderer, not assumed:** mesh
+vertices are stored in `base_geometries` in LOCAL coordinates (`blobToGeometry()`,
+`viewer/scene.js:1566` — only a Y↔Z axis swap, no recentring). At render time
+(`viewer/streaming.js:1590-1595`/`1624-1626`) the renderer does exactly `mesh.position.set(center_x,
+center_y, center_z)` on that local geometry — i.e. `center_x/y/z` IS the local-placement-origin's
+world position, the exact translation needed to place the LOCAL vertices correctly. It is not, and
+was never meant to be, the object's geometric centroid.
+
+**Proof this was always correct, done twice, in a sandbox, never touching production for the test
+itself:**
+1. Reconstructed a known guid's TRUE world vertices two ways and compared: (a) `ifcopenshell`
+   `USE_WORLD_COORDS=True` directly (ground truth) vs (b) LOCAL verts × rotation + the ORIGINAL
+   `center` (`mat4[:3,3]`, what §N called "raw/corrupt"). **Diff = 0.0**, exact match, every axis.
+2. User asked for a sandboxed mesh-vs-bbox check specifically (not production): took the same solo
+   `LTU_AHouse_ARC.ifc`-only extraction already sitting in scratch, computed each of §D's 3 known-bad
+   guids' full mesh world-space bbox two ways — using the placement-origin center vs using the
+   bbox-midpoint center — and compared BOTH against the element's own reported `elements_rtree` bbox:
+   - Using placement-origin: **diff from the element's own bbox = 0.0000** on all 3 guids.
+   - Using bbox-midpoint (§N's "fix"): diff = **58.50m / 7.00m / 15.17m** — the mesh renders that far
+     OUTSIDE its own reported bounding box.
+   This is the entire bug in one number: §N/§O made the BBOX PLACEHOLDER (which is drawn centered on
+   `center_x/y/z` by construction, so it always "looks right" after any change to that field) agree
+   with itself, while pushing the REAL MESH tens of metres away from where its own bbox says it is.
+   Bboxes "look fine," meshes are "strewn further" — exactly what the user reported, exactly because
+   they were watching the one signal (bboxes) that this bug is structurally incapable of disturbing.
+
+**Root cause of the ORIGINAL "corruption" diagnosis (§S9-§S12, this doc's §B-§K, weeks before this
+session): almost certainly the same mistake, made first.** `elements_rtree`'s bbox is genuinely
+correct (it's built from `world_corners`, the SAME correct transform) — but "the placement-origin
+disagrees with the bbox-midpoint" is NORMAL for elongated, base/endpoint-authored elements (walls
+above all — confirmed this session: 99% of a 2,408-wall sample disagree by >1m, one single wall by
+58.5m, because it's a single 117.8m-long element whose IFC placement sits at one end). An earlier
+session read that normal disagreement as corruption and shipped self-heal patches
+(`buildings/patches/LTU_AHouse_meta.db.sql` §S11, `Terminal_meta.db.sql` §S10/§K's PR #1566) that
+SNAP `center_x/y/z` to the bbox-midpoint on every load — i.e. the patches were the corrupting
+mechanism, not a fix, applying exactly §N's mistake at runtime since ~2026-08-16/17. **This is why
+"ALL WERE WELL BEFORE 16th"** (user's own anchor fact from §0v2/§0v3, now fully explained, not just
+matched-by-mechanism-timing like §R6a's cache theory was) — nothing patched `center_x/y/z` before
+the 16th, so it stayed at its always-correct placement-origin value.
+
+**User's own diagnosis, verbatim, correcting this session in real time — recorded because it was
+right and this doc's own analysis wasn't, until it was checked against the renderer:**
+> *"Don't touch Viewer, rendering.. it is pure DB as tested before this code is all clear. When DB
+> loaded it strewn."* · *"Old DB was coming out perfect.. not the later DB somehow your old session
+> tricked me to patch when should not have"* · *"That is why i kept insisting not to touch DB as it
+> was working for all"* · *"What an idiotic approach.. making patches just only for LTU without
+> investigating why only LTU"* · *"What are the self healing patches for in the first place? It
+> should be straight IFC to DB script. That works, that is it."*
+
+**Corrective action taken, this session, same sitting:**
+1. `DAGCompiler/python/extractIFCtoDB.py` — reverted (`b5d1eb711`, `git revert` of §N's `51a5d1a9d`,
+   diff against pre-session HEAD is empty — byte-identical to before this whole detour started).
+2. **Production restored to the exact pre-patch originals**, not to §O's redeploy:
+   `buildings/LTU_AHouse_meta.db`/`_geo.db` ← the untouched local Aug-10 files (mtime never touched
+   by any session, `center` confirmed = placement-origin). `buildings/Terminal_meta.db`/`_geo.db` ←
+   the raw bytes fetched fresh from OCI at the START of §O, before any upload this session touched
+   them (`Terminal_meta_RAW_LIVE.db`) + the local June-vintage geo.db. All 4 files fetched back and
+   md5-verified against the exact bytes uploaded.
+3. **`buildings/patches/LTU_AHouse_meta.db.sql` deleted outright** — its entire content was the
+   bbox-snap repair, nothing else worth keeping (confirmed by reading it in full, §L). Deleting is
+   safe: `_applyPendingPatch` 404s clean (already proven earlier in this doc, "§PATCH_NONE 404
+   handled clean, no wasm crash").
+4. `buildings/patches/Terminal_meta.db.sql` — left as the room-injection-only trim already done
+   earlier this session (§O); confirmed it never touched `element_transforms` (verified again just
+   now: live copy has 0 occurrences of `META_TRANSFORM_REPAIR`), so no further edit needed there —
+   it was already correct once §N's own transform-repair block was removed.
+5. `buildings/LTU_AHouse_positions.bin` / `buildings/Terminal_positions.bin` deleted — both were
+   §O-only additions (confirmed via HEAD check before §O: neither existed before this session),
+   baked the same wrong bbox-center values, and the viewer already has a graceful fallback when
+   they're absent (`§POSITIONS_MISS`).
+6. **Checked the rest of the fleet for the same pattern before calling this done** (the user's
+   challenge — "why only LTU" applies to the check too): grepped every other building's patches
+   (`Hospital_meta.db.sql`, `Clinic_meta.db.sql`, `HHS_Office_Federated_extracted.db.sql`,
+   `Duplex_extracted.db.sql`, `Hospital_extracted.db.sql`, `Clinic_extracted.db.sql`) for the
+   bbox-snap SQL shape / a `META_TRANSFORM_REPAIR` marker — **zero matches, all clean.** This bug
+   class was confined to the two patches this section just removed.
+
+**Status: LTU_AHouse and Terminal are back to their pre-16th, pre-patch, pre-this-session state —
+the state the user confirms was rendering correctly. No data was invented to get there; every byte
+restored was either an untouched local original or bytes fetched live from OCI before this session
+wrote anything.**
+
+**Still open, not yet investigated (user's own next item, 2026-08-28):** a small number of genuinely
+far-flung/below-surface elements near LTU, reported by the user as real but few and small — needs
+checking against LTU's own source IFC (same method as §L/§N: is it in the raw IFC data at all, or
+introduced somewhere in the pipeline) before deciding whether it's real source geometry (in which
+case leave it and just exclude it from Alt-C flight paths / Time Machine camera framing) or an actual
+defect. Not started.
