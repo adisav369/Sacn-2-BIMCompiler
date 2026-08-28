@@ -2198,12 +2198,6 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
                     minXYZ = world_corners.min(axis=0)
                     maxXYZ = world_corners.max(axis=0)
-                    # prompts/LTU_TERMINAL_CLINIC_RENDER_CORRUPTION.md §N — `center` (mat4[:3,3]) is
-                    # the element's LOCAL PLACEMENT ORIGIN, not its geometric centre; for elongated/
-                    # base-authored elements (walls above all) these diverge by metres. bbox_center is
-                    # what element_transforms.center_x/y/z actually needs to be — proven against source
-                    # IFC ground truth (§N), not invented.
-                    bbox_center = (minXYZ + maxXYZ) / 2.0
 
                     # S173: ROTATION TRUTH — at the event, compare Euler→matrix vs original rot3
                     if FINE:
@@ -2226,16 +2220,16 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 _vmax_local = np.abs(verts).max() if len(verts) > 0 else 0.0
                 if _vmax_local > _vmax_global:
                     _vmax_global = _vmax_local
-                _cx_min = min(_cx_min, float(bbox_center[0]))
-                _cx_max = max(_cx_max, float(bbox_center[0]))
-                _cy_min = min(_cy_min, float(bbox_center[1]))
-                _cy_max = max(_cy_max, float(bbox_center[1]))
-                _cz_min = min(_cz_min, float(bbox_center[2]))
-                _cz_max = max(_cz_max, float(bbox_center[2]))
+                _cx_min = min(_cx_min, float(center[0]))
+                _cx_max = max(_cx_max, float(center[0]))
+                _cy_min = min(_cy_min, float(center[1]))
+                _cy_max = max(_cy_max, float(center[1]))
+                _cz_min = min(_cz_min, float(center[2]))
+                _cz_max = max(_cz_max, float(center[2]))
 
                 if FINE and imported < 3:
                     print(f"    §SAMPLE[{imported}] {cls} "
-                          f"centre=({float(bbox_center[0]):.2f},{float(bbox_center[1]):.2f},{float(bbox_center[2]):.2f})m "
+                          f"centre=({float(center[0]):.2f},{float(center[1]):.2f},{float(center[2]):.2f})m "
                           f"vmax={_vmax_local:.3f}m "
                           f"bbox=[{float(minXYZ[0]):.2f},{float(maxXYZ[0]):.2f}]x"
                           f"[{float(minXYZ[1]):.2f},{float(maxXYZ[1]):.2f}]x"
@@ -2355,7 +2349,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         "(guid, center_x, center_y, center_z, "
                         "rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z, transform_source) "
                         "VALUES (?,?,?,?,?,?,?,?,?,?,'ifc_extract')",
-                        (guid, float(bbox_center[0]), float(bbox_center[1]), float(bbox_center[2]),
+                        (guid, float(center[0]), float(center[1]), float(center[2]),
                          float(rot_x), float(rot_y), float(rot_z),
                          float(maxXYZ[0]) - float(minXYZ[0]),
                          float(maxXYZ[1]) - float(minXYZ[1]),
