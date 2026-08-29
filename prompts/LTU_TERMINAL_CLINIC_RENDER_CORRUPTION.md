@@ -1433,3 +1433,42 @@ downloaded and md5-matched against `~/bim-ootb/buildings/LTU_AHouse_{meta,geo}.d
 files ARE the old live objects. Re-upload them gzipped to revert.
 
 **Status: LTU render-corruption lane CLOSED at the user's direction.**
+
+### §V.4 END-TO-END FROM THE LANDING PAGE — TESTED, PASS (2026-08-30)
+⚠ **This was NOT done before the user asked for it.** §V.1-§V.3 verified the OCI objects (HEAD,
+fetch-back md5, `integrity_check`, hash resolution, §MESHTRUTH) but never drove the actual
+landing-page → LTU card → viewer path. User: *"tested from landing page that LTU link works to point
+to repaired LTU from Downloads/ ?"* — fair catch; object-level verification is not the same claim.
+
+Driven headless (`playwright-core`, no `claude-in-chrome`) against **live production**: load
+`bim-ootb-live/o/index.html`, click the real `[data-arch="LTU_AHouse"]` card, capture the
+`window.open` popup, wait for streaming to settle, read the shipped `§`-log. Script + log:
+`<scratchpad>/landing_ltu_check.js` / `.log`.
+
+The discriminator is the element count — **122,330 = the new upload, 125,698 = the old one.**
+
+```
+opened  …/bim-ootb-live/o/sandbox/index.html?db=…/bim-ootb/o/buildings/LTU_AHouse_extracted.db
+[S192]  §DB_SPLIT_DETECT meta=…/buildings/LTU_AHouse_meta.db found=true
+        §CENTRES_RESULT rows=1 first=["LTU_AHouse",122330,59.217,24.073,8.090]
+[S260b] §POSITIONS_LOADED count=122330 size=2867KB
+[state] total=122330 metaCount=122330 rooms=47 styles=70 guidMap=122330
+        centres=["LTU_AHouse"] libSplit=true
+```
+
+| assertion | result |
+|---|---|
+| LTU card exists and points at the LTU building DB | 🟢 |
+| viewer split-detected → served `meta.db` + `geo.db` pair | 🟢 `found=true` |
+| **loaded the NEW upload (122,330), not the old (125,698)** | 🟢 |
+| `positions.bin` used → bbox-first path live (was 404 before) | 🟢 122,330 @ 2,867KB |
+| transplanted `spatial_structure` reached the viewer | 🟢 47 |
+| transplanted `surface_styles` reached the viewer | 🟢 70 |
+| real meshes rendered, not just bboxes | 🟢 `guidMap=122330` (all of them) |
+
+**§LTU_LANDING PASS, 7/7.** Every element resolved to a real mesh — `guidMap` equals the full element
+count, so nothing fell back to a bbox placeholder.
+
+**Measured cost, now that it is observed rather than predicted: 144 s** from click to fully-settled
+render on this connection — the 91.3 MB `geo.db` of §V.3, paid once (IndexedDB-cached after). Bboxes
+appear far earlier via the 1.1 MB `positions.bin`; that phase is unchanged-to-faster, as §V.3 said.
