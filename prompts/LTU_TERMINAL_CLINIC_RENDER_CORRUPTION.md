@@ -1270,3 +1270,89 @@ backlog item for `import_db_builder.js`, not a correctness problem with the impo
 **Status: §S CLOSED. No code changed** — nothing measured here is broken. Two follow-ups are named
 above if ever prioritized: (a) `includeInherited=true` to retire the hand-maintained whitelist,
 (b) `spatial_structure` + openings + `material_layers` parity in `import_db_builder.js`.
+
+## §U MERGE→SAVE→REOPEN LOST THE MERGED BUILDING — ROOT-CAUSED AND FIXED, 2026-08-30
+(bim-ootb PR #1578, `fix/merge-geo-table-fold`). Follows §R item 2 / PR #1576: opening the pair works
+now, but what you MERGE into it did not survive a save.
+
+**User report, verbatim:** *"Can open the meta/geo DBs and then add another IFC in this case ARC which
+was intentionally left out to test LTU. But when saving the merged one, which is extracted DB and
+reopening, it still does not has the merged ARC in the whole."*
+
+### §U.1 Root cause — three defects in ONE chain, not one bug
+Reproduced end-to-end on the real LTU data shapes before a line was changed.
+
+**1. THE GEOMETRY FOLD NEVER RAN — a table-NAME mismatch.** `_mergeTable()` (`viewer/scene.js:888`)
+folded a table only when it existed on **both** sides. Measured, from the shipped files:
+- `buildings/LTU_AHouse_geo.db` → **`base_geometries`** (59,917 rows). No `component_geometries`.
+- a client-side IFC import → **`component_geometries`** (`viewer/import_db_builder.js:66`). No
+  `base_geometries`.
+
+`_MERGE_GEO_TABLES = ['component_geometries','base_geometries']` — **neither name is on both sides**,
+so every incoming geometry BLOB was folded NOWHERE. Silently: the only trace is
+`§MERGE_TABLES skipped=[...,"component_geometries","base_geometries"]`. The saved DB kept the merged
+`elements_meta`/`element_instances` rows, with `geometry_hash` values resolving to nothing — exactly
+"the elements are counted but the building isn't there."
+
+**2. THE CENTRES QUERY THREW AND WAS SWALLOWED.** Both merge paths hardcoded `GROUP BY m.building`.
+`LTU_AHouse_meta.db`'s `elements_meta` **has no `building` column** — already measured and worked
+around in `streaming.js:26-31` / `CPE_4D_PERF_MEM_FINDINGS.md §R6`, but the two merge functions were
+written without that guard. `A.dbQuery` eats the error → `added=[]` → the merged building is never
+registered in `buildingCentres` and never streams.
+
+**3. `building` WAS DISCARDED ON THE WAY IN.** `_mergeTable`'s destination-driven column intersection
+drops any source column the destination lacks — so the incoming building name was thrown away, and a
+merged DB could not say which rows were the new building even after fix 1.
+
+**Plus a latent 4th:** `_mergeDbIntoScene` skipped the geometry fold outright when `A.libDb` was null
+(`streaming.js:2302,2479` set it null in several modes). Its split sibling always had that `else`
+branch; this one never did.
+
+⚠ Note which path the user actually hits: `import_db_builder.js:172` only splits above **15,000
+elements**, and `LTU_AHouse_ARC.ifc` has **6,938** (§T) — so an ARC import is a MONOLITH and goes
+through `_mergeDbIntoScene`, not `_mergeSplitDbIntoScene`. Both had every defect above; both fixed.
+
+### §U.2 The fix
+- `§MERGE_CREATE` — when the destination has no such table, create it from the **source's own DDL**
+  and fold into it. Readers already accept either geometry name (`streaming.js:1162,1212`), so this
+  is what makes the fold lossless. Also recovers `bom_tree`, which was dropping identically.
+- `_mergeCentresRows()` — both merge paths now go through one helper that mirrors
+  `streaming.js:2501`'s existing `_hasBuildingCol` guard.
+- `_ensureBuildingCol()` — adds `building` once, backfilling existing rows with the label the scene is
+  **already** using (read off `A.buildingCentres`, never invented), and invalidates streaming.js's
+  cached `_buildingCol` probe (a stale `false` would pin the session to the single-building fallback).
+- the missing `else` branch in `_mergeDbIntoScene`.
+
+### §U.3 Witness — `W-MERGE-SAVE-ROUNDTRIP`
+`viewer/tests/witness_merge_save_roundtrip_2026-08-30.js` walks the user's exact path: open the split
+pair → merge an import-shaped DB → `A._exportBuildingDb()` → reopen those exact bytes. Fixtures are
+**EXTRACTED** from the real shipped `buildings/LTU_AHouse_{meta,geo}.db`
+(`scripts/make_merge_roundtrip_fixtures.py`) — no invented rows, no invented schema; the meta fixture
+asserts it really has no `building` column and the geo fixture really has only `base_geometries`.
+
+| | before | after |
+|---|---|---|
+| assertions | **6/14 red** | **14/14 green** |
+| `§MERGE_TABLES folded=` | `elements_meta, element_transforms, element_instances` | `…, bom_tree, component_geometries` |
+| `§MERGE_CENTRES` | `added=[]` | `added=["LTU_AHouse_ARC"]` |
+| saved file | 483,328 B · `geoTables=["base_geometries"]` | 860,160 B · `geoTables=["base_geometries","component_geometries"]` |
+| after reopen | `arcRenderable=ERR: no such column` | `arcRenderable=120/120`, `sceneRenderable=300/300` |
+
+⚠ **Two assertions in the FIRST cut of this witness went GREEN while the defect was live** — one
+matched `component_geometries` anywhere on the `§MERGE_TABLES` line, i.e. including `skipped=[...]`;
+the other waited for a `§MERGE_CENTRES_FAIL` that never fires because `dbQuery` swallows its own
+throw. Both were re-anchored (to `folded=[...]` and to `§HELPERS_QUERY_ERR`) BEFORE the fix was
+written. Exactly the scope-blind failure mode `WITNESS_INTERFACE_FRAMEWORK.md` warns about — a
+witness that cannot go red on the live defect is not a witness.
+
+**Regression:** `W-OPEN-SPLIT-PAIR` PASS. `W-SCENE-MERGE` fails the same 3 assertions (CLAIM 8, 8b,
+6b) with identical detail strings on this branch AND on clean `origin/main` `141c1c5` — pre-existing,
+unchanged. `tests/audit_specs.js`'s one violation (`38-sh-dx-2d-runtime.spec.js`) is in a file this
+branch does not touch. `viewer/sw.js` CACHE_VERSION v1099 → v1100 (`scene.js` is precached).
+
+### §U.4 ⛔ NEXT — the user's own next step, not done here
+User: *"Once u check that out and fixed it, we can try again and submit that extracted to OCI as it
+works bbxes first while geo meshes loads on."* The re-merge has to happen **in the browser** (that is
+where the web-ifc import runs), so the merged DB is theirs to produce. **Nothing was uploaded to OCI
+this session.** Once PR #1578 is live, redo open-pair → add ARC → Save, then follow
+`deploy/OCI_UPLOAD.md` §RULES (rule 8: DB = gzip + `content-encoding`) to publish it.
