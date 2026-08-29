@@ -1,5 +1,13 @@
 # ⚠ DO NOT REMOVE
-**▶ RESUME 2026-08-13 (updated same day) — read this first:** `§CPE_AIM_DEPTH_BUILDUP` is now THREE
+**▶ RESUME 2026-08-30 — read this first, movie-quality polish continues from here:** onset-blend
+(#1570), cone-drag facing correction (#1572/#1573), envmap retune item 2 (#1575) all SHIPPED+live.
+Item 3 (warm `CAM_LIGHT_COLOR` 0xfff2e0→0xffdca8, `PHOTOREAL_STILL_RENDER.md` §PHOTO_REALISM_RETUNE)
+is BUILT, measured, but sitting UNCOMMITTED in `/tmp/wt-cam-warm` — ship it next, or discard if
+stale. Item 1 (brightness/PL-scale) is CLOSED, not a bug — measured net-negative on contrast, no
+further action. `§ELEMENT_LABEL`/clash-reveal (`MEP_CLASH_REVEAL_MOVIE.md`) are still study-only,
+not built. §OLDER RESUME BELOW is historical — superseded, don't re-derive from it.
+
+**▶ RESUME 2026-08-13 (updated same day):** `§CPE_AIM_DEPTH_BUILDUP` is now THREE
 fixes deep, all SHIPPED this session:
 1. Candidate 1 + eye-level-bias refinement — bim-ootb **PR #1340, MERGED** (`fd2faaa`) — `_aimSubject`
    zSpan facade filter + eye-level bias (fixes "faces the ceiling"/roof tiles).
