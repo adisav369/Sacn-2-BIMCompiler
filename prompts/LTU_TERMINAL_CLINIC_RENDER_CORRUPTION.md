@@ -1356,3 +1356,80 @@ works bbxes first while geo meshes loads on."* The re-merge has to happen **in t
 where the web-ifc import runs), so the merged DB is theirs to produce. **Nothing was uploaded to OCI
 this session.** Once PR #1578 is live, redo open-pair → add ARC → Save, then follow
 `deploy/OCI_UPLOAD.md` §RULES (rule 8: DB = gzip + `content-encoding`) to publish it.
+
+## §V LTU SHIPPED TO OCI FROM THE CLIENT-SIDE IMPORT — LIVE AND VERIFIED, 2026-08-30
+User: *"I have saved LTU_AHouse_FULL.db in Downloads/. Send it to OCI to replace the present meta/geo
+DBs in the landing page link… Thus this matter and also the corruption of LTU issues is closed."*
+
+### §V.1 What the file actually was
+NOT the §U merge output — a **full client-side (web-ifc) import of all 9 LTU discipline IFCs in one
+run**: 122,330 elements, one building, 9 disciplines, `component_geometries` only, no
+`base_geometries`. Reconciles exactly against the old server DB: 125,698 − 3,368 `IfcOpeningElement`
+= **122,330**. All 122,330 GUIDs are shared with the old DB. ARC = 6,927, matching §T exactly.
+
+### §V.2 ⚠ THE NEAR-MISS — it looked exactly like the §N/§O corruption, and it is NOT
+`element_transforms` disagreed with the live DB on **12,777 rows (10.4%)**, max delta **291.5m** —
+the same magnitude `deploy/OCI_UPLOAD.md` rule 9 records for the real corruption. Worse, **8,278 of
+those 12,777 sit exactly on the bbox midpoint** while live does not, and the classes are §P's exact
+signature (`IfcWallStandardCase` 2,680, `IfcFlowSegment`, `IfcMember`, `IfcColumn`, `IfcBeam`). By
+§P's rule — *"`center_x/y/z` is the placement-origin, not the bbox midpoint"* — this reads as
+§N/§O shipped all over again.
+
+**It isn't. §P's rule describes the SERVER pipeline's convention, not a universal truth about the
+column.** The two pipelines use DIFFERENT, EACH SELF-CONSISTENT conventions:
+
+| | server (`extractIFCtoDB.py`) | client (web-ifc import) |
+|---|---|---|
+| `center_x/y/z` | placement origin | **bbox midpoint** |
+| vertices in geometry table | LOCAL, unrotated | **pre-rotated (world-oriented)** |
+| `rotation_x/y/z` | real, ±π — 42,932/32,679/73,797 non-zero | **all zero, 122,330/122,330** |
+
+Both reproduce the identical world position. **The only honest test is verts + center together,
+never `center` alone.** §MESHTRUTH did that — decoded each element's own vertex blob, placed it with
+its own `center`, compared the resulting world bbox against the old DB's `elements_rtree` (built from
+ifcopenshell `world_corners` = ground truth), 4,000-element random sample:
+
+```
+NEW (own verts + own ctr)   median=0.0000m  p90=0.0000m  p99=0.0899m  max=3.083m  >0.5m = 7/4000 (0.17%)
+```
+Re-run against the **fetched-back served bytes** after upload — identical numbers. The 3 worst
+(3.08m/1.83m/1.04m, all ARC `IfcWall`) are the only rows above 1m in the sample.
+
+**Rule for the next session: never call a `center_x/y/z` diff "corruption" without reconstructing the
+mesh.** Comparing two DBs' `center` columns, or `center` against a bbox midpoint, is the wrong proxy
+(`4D_MODEL_INTEGRITY.md` §E's category) whenever the two files come from different pipelines. This
+check took one script and reversed a conclusion that was one command away from being acted on.
+
+### §V.3 What shipped, and the one real cost
+Rooms/styles were **transplanted from the live meta.db before splitting** so nothing regressed —
+`spatial_structure` (47) and `surface_styles` (70) are self-contained (guid/name-keyed, no ids, no
+transforms), so this carries none of rule 9's transform-divergence risk. Split with
+`scripts/split_db.sh`, all four objects uploaded gzipped with `--content-encoding gzip`, one at a
+time, each fetched back and md5-verified (rules 3/7/8), and `extracted.db` re-uploaded from the SAME
+build run so the unit stays consistent (rule 9).
+
+| object (gzipped, as served) | before | after |
+|---|---|---|
+| `LTU_AHouse_meta.db` | 21.0 MB | **18.3 MB** ↓ |
+| `LTU_AHouse_geo.db` | 24.1 MB | **91.3 MB** ↑ 3.8× |
+| `LTU_AHouse_positions.bin` | **404 — not live** | **1.1 MB** (new) |
+| `LTU_AHouse_extracted.db` | 71 MB (uncompressed) | 111 MB gz, same build run |
+| **first paint (bboxes)** | 21.0 MB | **19.4 MB** ↓ |
+| **full load** | 45.1 MB | **110.7 MB** ↑ 2.5× |
+
+**The cost is `geo.db`, and the cause is the baked-in rotation.** The server dedups one shape reused
+at many angles (125,698 elements → **59,917** `base_geometries`, 2.1:1); baking rotation into the
+vertices makes each angle a distinct hash (122,330 → **104,340**, 1.17:1). Bbox-first got *faster*;
+the mesh stream that follows it is 3.8× heavier. If that matters more than having ARC in the file,
+the fix is instancing-aware export (dedupe up to rotation), not a re-extraction.
+
+**Verified live:** served pair opens clean (`integrity_check` ok both halves), meta 122,330 elements
+with 0 geometry tables, geo 104,340 `component_geometries`, and **122,330/122,330 elements resolve
+their `geometry_hash` across the served pair**. `buildings/patches/LTU_AHouse_meta.db.sql` is **404**
+— no self-heal patch can re-apply §S11's bbox-midpoint snap on load.
+
+**Rollback (one command, byte-identical originals kept):** the pre-upload served bytes were
+downloaded and md5-matched against `~/bim-ootb/buildings/LTU_AHouse_{meta,geo}.db` — those local
+files ARE the old live objects. Re-upload them gzipped to revert.
+
+**Status: LTU render-corruption lane CLOSED at the user's direction.**
