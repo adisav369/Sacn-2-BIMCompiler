@@ -175,3 +175,63 @@ corrected with a pointer here rather than duplicated.
 ## Lane status: R1-R6 all shipped and live. R7 (support-predicate consolidation), R8
 (date-layout-cursor consolidation), R9 (DLOD flip-storm, deliberately last) remain unstarted —
 next session picks one if the user wants to continue this lane; none are costed as urgent.
+
+---
+
+## §R10 §MAXQ_FRAME_BUDGET — the only lever that moves the bake clock (SPEC ONLY, 2026-08-30, awaiting user go)
+
+**User:** *"Will rebuild with the new code to see the intended 'Reveal' round on HHS_Office for
+speed. Can we still reduce mem and increase frame speed or wait for the background ops?"*
+Specs first, **not to be built yet.**
+
+### Where the time actually goes — MEASURED, already on record
+Hospital, 3,447 frames, `perFrameMs=1989` (`CINEMA_PATH_EDITOR.md` §SESSION_2026-08-30):
+- §STILL_REFINE ~1,200 ms = **62%**
+- §PHOTO_AO ~450 ms = **23%**
+- everything else = the 15% tail.
+
+Reading the code for what those numbers ARE: `effects.js:4811` folds TAA until `accumulateIndex >= 16`
+and `effects.js:3738` sets `STILL_AO_FRAMES = 24`. **So every exported frame costs 16 + 24 = 40 full
+composer renders.** 3,447 × 40 = **137,880 composer renders** for one Hospital film.
+
+**This is why the session record already says "do not expect HUD or smoothing work to move the bake
+clock."** Nothing outside those two constants is worth touching for speed.
+
+### The proposal — R10, quality-per-second, measured not guessed
+Make the two budgets bake-time settings instead of stills constants, then **measure the quality cost
+of each step down** rather than picking a number:
+- sweep TAA 16 → 12 → 8 → 4 and AO 24 → 16 → 12 → 8 on ONE frame, one page-load per condition
+  (**§SESSION_2026-08-30 dead-end 5: same-page A/B is invalid for stills** — the second Alt+S logs
+  `avgRenderMs=0.7` against the first's `94.5`, the AO phase does no real work twice);
+- score each against the 40-render reference with a numeric image metric (per-pixel RMS + a
+  high-frequency/noise term), never by eye;
+- ship the lowest pair whose RMS stays under a stated threshold, as a named preset.
+
+**Arithmetic, not a promise:** 40 → 20 renders/frame halves the bake. Hospital 1 h 54 m → ~57 m,
+HHS_Office (1,661 frames last bake) proportionally. Whether 20 is visually acceptable is exactly
+what the sweep decides — that number is the *ceiling* on the win, not a claim about quality.
+
+### Memory — the honest read for HHS_Office
+- **HHS_Office_Federated is 6,839 elements** (cached run), against Hospital's 63,182 — **9.2× smaller**.
+  It is the fastest fleet member to iterate on, which is the right call for seeing the Reveal round.
+- The measured memory profile is Terminal's, not HHS's: heap 1,226 MB, geometry attributes 469 MB
+  (position 198.6, normal 198.6, index 71.8), 17.35M verts / 864 geometries, textures only 4.1 MB.
+  **At 6,839 elements HHS is nowhere near that**, so memory is very unlikely to be its limiter — it
+  should be measured (`§MEM_PROBE`) before any memory work is aimed at it.
+- Two memory routes are already CLOSED and must not be re-walked (§SESSION_2026-08-30): dropping the
+  `normal` attribute to save 199 MB is **WITHDRAWN** (it breaks §TRIPLANAR's `vTriWorldNormal` and all
+  texturing collapses), and the 129.6 MB "weldable" figure is an **upper bound** that assumes normals
+  can merge — flat surfaces need split normals, so the real saving is far smaller.
+- The genuine floor is not CPE/4D's: `sql.js` loads the entire DB into WASM linear memory with no
+  paging. A refactor inside CPE/4D cannot move it.
+
+### Ordering — the direct answer to "or wait for the background ops?"
+**Do not wait.** They are independent and they do different things:
+- **§MAXQ_BACKGROUND** does not make a single frame faster. It buys back *your attention*, not time.
+- **§R10** is the only thing that shortens the bake, and it is the smaller change — two constants, a
+  sweep, and an image metric, versus a new scheduler with two unverified browser behaviours.
+- R10 first also makes the background work cheaper to test, because every probe run is shorter.
+
+### Still unstarted in this lane, unchanged
+R7 (support-predicate consolidation), R8 (date-layout-cursor consolidation), R9 (DLOD flip-storm,
+deliberately last). None are costed as urgent and none of them move the bake clock either.

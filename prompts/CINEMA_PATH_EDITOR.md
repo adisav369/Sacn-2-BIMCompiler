@@ -3996,3 +3996,57 @@ list the whole way — no second opinion about when topout was.
 This branch's first bump wrote `v1109` into a file that **already read v1109** (#1585 had taken it on
 main), so the sed was a silent no-op and the commit carried no bump at all. `sw.js` is the known
 conflict magnet: always read the current value before bumping, and always take the HIGHER one.
+
+---
+
+## §MAXQ_BACKGROUND — send the bake to the background (SPEC ONLY, 2026-08-30, awaiting user go)
+
+**User:** *"the user can send it to bake in the background without needing to watch it on a tab and
+that might be disturbed by accident."* Asked for facts first, **not to be built yet.**
+
+### The blocker, exactly
+`requestAnimationFrame` does not slow in a hidden tab, it **STOPS** — this lane's own probe counted
+rAF ticks frozen at exactly **167 for a full 6 s** of hiding, resuming only on reveal
+(`§MAXQ_HIDDEN_PAUSE` comment, `cinema_maxq.js` :519). Three rAF loops carry 100% of a baked frame:
+
+| loop | file:line | per baked frame | measured share |
+|---|---|---|---|
+| §STILL_REFINE TAA fold | `effects.js:4812` | 16 composer renders (`idx >= 16`) | ~1,200 ms — **62%** |
+| §PHOTO_AO converge | `effects.js:4079` | 24 composer renders (`STILL_AO_FRAMES = 24`) | ~450 ms — **23%** |
+| `_raf2` frame boundary | `cinema_maxq.js:534` | 2 rAF, 6 call sites | the 15% tail |
+
+**40 full composer renders per exported frame.** Hospital: 3,447 frames × 1,989 ms ≈ **1 h 54 m**.
+
+### What the fix is
+One shared clock both files call instead of rAF. Visible → rAF, unchanged. Hidden **and** the
+checkbox is on → `MessageChannel`/`setTimeout`, which a background tab throttles to **~1 tick/s** —
+and a frame already costs **1,989 ms**, so the throttle floor is *below* the work and scheduling
+stops being the bottleneck. `§MAXQ_HIDDEN_PAUSE` stays exactly as it is for the checkbox-off path.
+
+**Two things must be measured before any of this is promised, because both are assumptions today:**
+1. **Does a hidden tab still render + read back?** `_captureFrame` does `drawImage(renderer.domElement)`
+   then `toBlob` in the same task. It *should* hold, and it is cheap to prove with a probe that bakes
+   ~20 frames hidden and compares the bytes against the same 20 visible. **Unverified.**
+2. **Chrome's intensive throttling.** After **5 minutes** hidden, background timers drop from 1/s to
+   **1/minute** — that would turn a 2-hour bake into days. The documented dodge is a silent
+   `AudioContext` (a tab "playing audio" is exempt). Must be measured over a >5-minute hidden run,
+   not assumed. **This is the one that decides whether the feature is real.**
+
+### Cost
+| piece | new? | LOC |
+|---|---|---|
+| `viewer/bake_clock.js` — the shared clock + audio keepalive + `§MAXQ_CLOCK` tick-rate log | **new file** | ~90 |
+| `cinema_maxq.js` — route `_raf2`, read the checkbox, log | edit | ~20 |
+| `effects.js` — route the TAA and AO loops | edit | ~10 |
+| `cinema_path_editor.js` — `#cpe-background` beside `#cpe-buildup`/`#cpe-room-title`/`#cpe-reveal` (:896-904) | edit | ~15 |
+| `viewer.html` + `sw.js` precache | edit | 2 |
+| `witness_bake_background.js` — headful, two tabs, measures achieved tick rate + byte-identity while hidden | **new file** | ~130 |
+| **total** | **2 new files** | **≈270** |
+
+### Answers
+- **(a) Possible?** Yes, subject to the two measurements above. The rAF dependency is centralised in
+  three loops, which is what makes it small.
+- **(b)** ≈270 LOC, **2 new files** (one runtime module, one witness).
+- **(c) Checkbox?** Yes — identical pattern to the three that already exist in the Alt+C dialog.
+- **(d) Faster?** **No. It does not reduce bake duration at all.** Best case is the same wall clock,
+  spent while you do something else. Frame speed is §MAXQ_FRAME_BUDGET below, a separate lever.
