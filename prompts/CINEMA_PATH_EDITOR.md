@@ -1,11 +1,19 @@
 # ⚠ DO NOT REMOVE
-**▶ RESUME 2026-08-30 — read this first, movie-quality polish continues from here:** onset-blend
-(#1570), cone-drag facing correction (#1572/#1573), envmap retune item 2 (#1575) all SHIPPED+live.
-Item 3 (warm `CAM_LIGHT_COLOR` 0xfff2e0→0xffdca8, `PHOTOREAL_STILL_RENDER.md` §PHOTO_REALISM_RETUNE)
-is BUILT, measured, but sitting UNCOMMITTED in `/tmp/wt-cam-warm` — ship it next, or discard if
-stale. Item 1 (brightness/PL-scale) is CLOSED, not a bug — measured net-negative on contrast, no
-further action. `§ELEMENT_LABEL`/clash-reveal (`MEP_CLASH_REVEAL_MOVIE.md`) are still study-only,
-not built. §OLDER RESUME BELOW is historical — superseded, don't re-derive from it.
+**▶ RESUME 2026-08-30 (evening) — read this first. ALL SHIPPED + LIVE (sw v1106), nothing unpushed.**
+PRs #1579, #1580, #1582, #1583 all merged and verified live by fetching the deployed files back.
+Session shipped: §TRIPLANAR_NORMAL, warm cam fill, §CPE_PATH_OVERVIEW, §CPE_HUD_STACK,
+§CPE_LABEL_PANEL_SYNC, §CPE_RESOURCE_PANEL, §CPE_BIG_STATS, §MEP_SMOOTH_NORMALS,
+§CPE_CORR_BRUSH_STROKE, §IDX16, §GLOW_BUILDUP_EARLY_OUT. Full record: §SESSION_2026-08-30 below.
+
+⛔ THE ONE THING NOT VERIFIED END-TO-END: the resource panel has NEVER rendered real trades in a
+bake. Its `withResource=0` bug is FIXED (the trade is `op.parameters.resource`, not on the row —
+loadOps :102 shape) and §CPE_BIG_STATS witnessed 6/6 with real Clinic data, but nobody has yet seen
+the pie draw with live crew numbers. FIRST ACTION NEXT SESSION: bake with Label ON and read
+`§CPE_RESOURCE_PANEL` — it now states its own cause in plain English rather than leaving a blank
+corner. Second unverified item: §CPE_CORR_BRUSH_STROKE has NO WITNESS.
+
+⚠ DO NOT run headless probes while the user is baking. Twelve puppeteer Chromes (2,146 MB, load
+average 9.88) competed with a real bake on this machine and the user had to abort it. Ask first.
 
 **▶ RESUME 2026-08-13 (updated same day):** `§CPE_AIM_DEPTH_BUILDUP` is now THREE
 fixes deep, all SHIPPED this session:
@@ -3722,3 +3730,85 @@ MOVES a whip into the seam rather than removing it. It is working as designed fo
 envelope (confirmed via `witness_cpe_gaze_acquire.js`'s own T0-T7 gates, 8/8 green, no whip). The
 12m/6m attempt is the one concrete case found this session where it's pushed past its own limit —
 recorded above, not re-litigated here.
+
+## §SESSION_2026-08-30 — HUD column, curve smoothing, bake-cost cuts (ALL SHIPPED + LIVE, sw v1106)
+
+**Live-verified by fetching the deployed files back, not by trusting a green PR.** PRs #1579, #1580,
+#1582, #1583. Nothing committed is unpushed.
+
+### What shipped
+| § | what | witness |
+|---|---|---|
+| §TRIPLANAR_NORMAL | the missing 3rd PBR map (NOTICE.txt had recorded the gap since day one) | interior blockStd +4.3%, exterior +0.2% |
+| §PHOTO_REALISM_RETUNE item 3 | `CAM_LIGHT_COLOR` 0xfff2e0 → 0xffdca8 | — |
+| §CPE_PATH_OVERVIEW | static 3/4 top-down box: the Alt+C yellow path + red head on the REAL pose | 6/6 |
+| §CPE_HUD_STACK | ONE corner preference drives counter → panel → box | — |
+| §CPE_LABEL_PANEL_SYNC | caption moved from full-bleed band to the counter's rounded plate | W-RTC green |
+| §CPE_RESOURCE_PANEL | cylindrical composition pie, glass progress ring, avatar + ×N | draw-proven only |
+| §CPE_BIG_STATS | revolving BIM-value cards once the pie is honestly empty | 6/6 |
+| §MEP_SMOOTH_NORMALS | class + measured-shape gate, crease-limited, in place | 5/5 Hospital |
+| §CPE_CORR_BRUSH_STROKE | cam-face corrections HOLD FORWARD instead of decaying back | **none** |
+| §IDX16 | Uint32→Uint16 index where verts < 65536 | Clinic 137→437 |
+| §GLOW_BUILDUP_EARLY_OUT | stop staging glow for fixtures that do not exist yet | — |
+
+### Measurements worth not re-deriving
+- **§SHADE_PROBE (Clinic, 448 real geometries):** every class ships HARD PER-FACE normals —
+  weldRatio 0.107–0.29, splitNormal 96–100% — so `flatShading:false` is silently overridden by the
+  data. That is why curved MEP looked faceted; it was never a tuning miss.
+- **§THRESHOLD_PROBE (Hospital), distinct facet directions per element span — the cut at 16 is in
+  real empty space:** IfcWallStandardCase p50=6 **max=6** 0%≥16 · IfcPlate 6/6/0% · IfcFooting 14/0%
+  · IfcValve 65 **100%** · IfcPipeFitting 51 91.5% · IfcDuctFitting 40 72.6%. Only **36% of spans**
+  qualify but that is 92% of VERTICES — curved fittings are vertex-heavy. Domes/round columns
+  qualify on the same measurement without being named.
+- **§MEM_PROBE (Terminal):** heap 1,226 MB; geometry attributes 469 MB (position 198.6, normal
+  198.6, index 71.8); 17.35M vertices / 864 geometries; textures only 4.1 MB.
+  Live Hospital during staging: `§NIGHT_MEM_WITNESS heapMB=1771.5`.
+- **Bake frame budget (Hospital, 3,447 frames, perFrameMs=1989):** §STILL_REFINE ~1,200 ms (62%) +
+  §PHOTO_AO ~450 ms (23%) = **85%**. Everything else is the 15% tail. Do not expect HUD or
+  smoothing work to move the bake clock.
+
+### Dead ends — do NOT re-walk
+- **§PHOTO_GRADE** (spec-clip + shadow-deepen composer pass): BUILT, tuned twice, passed its numeric
+  bar (+4.5% contrast, clip 0%→0.21%) and the user still could not see it. **REVERTED.** Its v1
+  constants came from an inverse-ACES reconstruction of a PNG whose range topped at 3.065; the real
+  HDR p88 is 7.4827 — 17.6× higher. If ever revisited, read `§PHOTO_GRADE_PROBE` first.
+- **Dropping the `normal` attribute to save 199 MB: WITHDRAWN.** It breaks §TRIPLANAR's
+  `vTriWorldNormal`, so the triplanar blend weights become garbage and all texturing collapses.
+- **The 129.6 MB "weldable" figure is an upper bound** that assumes normals can merge. Flat surfaces
+  need split normals, so the real saving is far smaller. Do not quote it as achievable.
+- **"Directional light makes normal maps show"** — TESTED AND REFUTED: exterior sun gave +0.2%,
+  *smaller* than indoors. At ~80 m the 2.5 m-repeat relief is sub-pixel.
+
+### Bugs this session created and fixed — the pattern is worth remembering
+1. **An undeclared variable aborted a live 3,048-frame bake.** `_ovCam` survived an edit that deleted
+   its declaration. It threw between §CPE_ROOM_TITLE_COLLECTIVE and the frame loop; staging, schedule
+   and captions all completed and then nothing. **The MISSING §-line located it** — that block logs on
+   every path, so no line meant it threw on entry. Both overview call sites are now wrapped: a
+   decorative corner box can never cost a film again. CI's own `no-undef` gate then caught the same
+   class on two new globals.
+2. **A witness that shared the code's own gate.** G-MEP-2 read `curveVerts=0` while the pass smoothed
+   172,143 — it only understood merged ranges. A witness whose classification disagrees with the code
+   it judges is measuring itself. It now measures curvature INDEPENDENTLY per span.
+3. **A witness that would have passed a total no-op.** Before the batched/instanced paths were added
+   to it, Hospital (merged=0) doing nothing at all would have scored clean.
+4. **Three probes with an instant-resolve wait** — `!APP.streaming` is true *before* streaming starts,
+   so they sampled the page at init and reported `undefined`. Always wait for streaming to BEGIN first.
+5. **Same-page A/B is invalid for stills:** the second Alt+S logs `§PHOTO_AO avgRenderMs=0.7` against
+   the first's `94.5` — the AO phase does no real work twice. One condition per page load.
+
+### Open
+- ⛔ **§CPE_RESOURCE_PANEL has never rendered real trades in a bake.** Bug fixed, never seen working.
+- ⛔ **§CPE_CORR_BRUSH_STROKE has no witness.**
+- **Batched meshes have no per-element ranges exposed** (`A._mergedMeta` covers merged only), so a
+  dome inside a batched mesh still falls back to the class gate. Widening that needs real work —
+  the unscoped shape test smoothed 5,233,835 wall vertices before it was caught.
+- **Material palette NOT BUILT** — `TRIPLANAR_MAT` (`streaming.js`) still keys on `ifc_class`, so
+  Terminal's floor (`jkrAR_flr-f_(jhn21)-3 300 x 300 x 8 mm Jubin Homogeneous`) and its ceiling
+  (`600mm x 600mm PVC Laminated Gypsum Board`) BOTH render as 2.5 m cast concrete because both are
+  `IfcSlab`. `material_name` coverage: Terminal **79 names / 90.3% of 48,428**, LTU 178/29.4%,
+  HHS 4/34.7%, **Hospital/Clinic/JKR 0%**. This is the "you can name the defect out loud" win that
+  every per-pixel shading tweak this session could not deliver.
+- **Clinic glass:** the §NOGEO_COMPOSE patch IS live (91,238 B, 200 from GH and OCI, PR #1267,
+  31 IfcCurtainWall + 12 others). Whether it APPLIES on Clinic was never confirmed — the probe read
+  `A.db`, which does not exist on Clinic's split-DB path.
+- **`renderer.info.textures` reports 1,486** while only 3 carry image data (4.1 MB). Unexplained.

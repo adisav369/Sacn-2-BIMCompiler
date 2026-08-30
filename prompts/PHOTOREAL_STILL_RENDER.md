@@ -1971,3 +1971,26 @@ no mesh table); geometry is a separate **261,349,376 B `Terminal_geo.db`**. Same
 different content and a different residency model — settle that before attributing memory to
 rendering. (`surface_styles` is EMPTY on Terminal/LTU_AHouse_extracted; `material_rgba` is 86–100%
 populated fleet-wide except HHS at 34.8%, and IS already used.)
+
+## §PHOTO_SHADING_CEILING — UPDATE 2026-08-30 evening: the shading fault was REAL and is now FIXED
+
+The section above concluded that per-pixel shading knobs land at 1–7% and that the remaining wins
+are material-identity ones. **Half of that stands; the other half was wrong, and the user was right.**
+
+**§SHADE_PROBE settled it (Clinic, 448 real streamed geometries):** every class ships HARD PER-FACE
+normals — weldRatio 0.107–0.29, splitNormal 96–100% — so `flatShading:false` was being silently
+overridden by the data. Curved MEP was not "as good as tessellation allows"; its roundness was being
+thrown away at shading time. IfcFlowController carries 189 distinct facet directions, IfcFlowTerminal
+128.6, IfcFlowFitting 114.3 — richly tessellated shapes rendered flat.
+
+**Fixed and live (sw v1106): §MEP_SMOOTH_NORMALS.** Gate is the SHAPE — ≥16 distinct facet
+directions, where every box class measures EXACTLY 7 — OR'd with a curve-class list for low-poly
+ducts (IfcFlowSegment 10.3). Crease-limited at 55°, rewriting normal VALUES in place: no weld, no
+re-index, so ranges/picking/BVH/§TRIPLANAR all keep reading the same vertex layout. Witness 5/5 on
+Hospital with the user's constraint measured independently: **non-curve changed=0, maxDelta=0 of
+6,370,253 vertices.** Hospital went 0 → 14,068 element spans once the batched/instanced paths were
+handled (it reports merged=0, so a ranges-only gate reached nothing there). 8.6 s ONCE per session.
+
+**Still true from the section above:** §PHOTO_GRADE was reverted (passed +4.5% contrast, invisible),
+the 199 MB normal-drop is withdrawn (breaks §TRIPLANAR's vTriWorldNormal), and the material-identity
+lane remains the largest unbuilt win. Full record: `prompts/CINEMA_PATH_EDITOR.md` §SESSION_2026-08-30.
