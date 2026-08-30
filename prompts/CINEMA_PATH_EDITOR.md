@@ -3921,3 +3921,78 @@ It now records every offscreen context the run creates. Same family as §SESSION
 `§CPE_PIE_HOLD heldFrames=N/framesDone (X% of the film)` at bake end, plus a first-hold line naming
 the day it holds and how far back it is. `heldFrames === framesDone` is flagged ⚠ — it means no day
 was ever staffed, which is a schedule defect, not a HUD one.
+
+---
+
+## §CPE_STATS_TAIL — reclaim the frozen half of the film
+**BUILT + WITNESSED 15/15, bim-ootb PR #1587 (auto-merge armed), sw → v1110. Not yet seen in a bake.**
+
+**User, 2026-08-30, on `BIM_MaxQ_Hospital_1788092317604.mp4`:** *"It is as we wanted.. but there is
+ample unused timing to display more info after Finishes."*
+
+### MEASURED on that exact mp4 (3,447 frames, 15 fps, 229.8 s, 1852×960, h264, 145 MB, no audio track)
+- The day counter's digits stop changing at **u≈0.45–0.47** (`Day 315 / 315`) and never change again:
+  XOR against the final frame's digit mask drops from ~250 px to ~50 px (compression noise) at
+  sample i=27 and stays there for the remaining 32 samples. Consistent with the recorded
+  `§CPE_BUILDUP_TOPOUT topoutU=0.524`.
+- The pie is a **single static trade for that whole tail** — `4 on site · Finisher ×4`, ~5,100
+  palette-matched purple wedge px in every one of the 22 samples from u=0.35 to u=0.99.
+- So **≈125 s — over half the film — shows a pinned counter, an unchanging pie, and nothing else.**
+  That is the "ample unused timing".
+
+### Why §CPE_BIG_STATS never fired here
+Its handover trigger is *"the pie is honestly empty"*. On this Hospital schedule the pie is **never**
+empty: Finisher ops run to the last day, so `resourcePanelAt` returns a real composition on every
+frame and the cards were structurally unreachable. The trigger was right about the symptom
+(post-topout the panel has nothing new to say) and wrong about the test.
+
+### The rule — TWO ROUNDS (user's own ruling, same session)
+*"the in betweens highlights are in the wrong spots. They should all be in play during the 'Reveal'
+2nd round. In the first round, if nothing is added, that last info holds and wait till a new one
+arrives, not intersperse."*
+- **ROUND 1 (buildup, u < topoutU)** — the panel is the schedule and **NOTHING rotates**. A day with
+  no staffed op HOLDS the last real composition until a new one arrives (§CPE_PIE_HOLD). No
+  interspersing of anything else.
+- **ROUND 2 (the Reveal, u ≥ topoutU)** — every highlight is in play, revolving, with the **roster as
+  one of the slots** so the trade list with its avatars and ×N is never lost to the cards.
+
+The boundary is the plan's own §CPE_BUILDUP_TOPOUT, **not a new constant**. With no plan beats to read
+it degrades (DEGRADE, DON'T DISABLE) to `resourcePanelFrozenAt`: **no op boundary — a start or an
+end — remains after the END OF THE CURSOR'S DAY**, so the composition is fixed for every following
+frame. Day granularity is what makes the real shape work: the buildup parks the cursor on the final
+day with the last trade still running on it, which is non-empty AND frozen at the same time.
+- `resourcePanelAt` returning `null` (post-topout, unstaffed) is a **special case** of frozen, so
+  §CPE_PIE_HOLD's behaviour is unchanged and subsumed, not replaced.
+- **The pie keeps its column either way** (§CPE_PIE_HOLD) — live and full-strength when the crew is
+  real, dimmed and day-captioned when held.
+- **The roster is not lost to the cards.** The rotation is `[ roster ] + cards`, so the trade list
+  with its avatars and ×N is one of the revolving slots rather than being replaced by them.
+
+### Non-invention
+Frozen is read off the ops array (starts and ends), never off a film fraction, a topout constant or
+a guess. A building whose work genuinely runs to the last frame never freezes and keeps the trade
+list the whole way — no second opinion about when topout was.
+
+### Witness — extends `witness_cpe_resource_hold.js` (still NODE, no browser)
+- **G-TAIL-1** a cursor with a later op boundary is NOT frozen (the list keeps the column).
+- **G-TAIL-2** a cursor past every boundary IS frozen, even though the composition is non-empty —
+  this is the exact Hospital case the cards could not reach.
+- **G-TAIL-3** the empty-pie case still reports frozen (§CPE_PIE_HOLD subsumed, not regressed).
+- **G-TAIL-4** the rotation reaches the roster slot AND every card, and the roster slot draws the
+  trade list (avatars + ×N), not a number.
+- **G-TAIL-5** the roster slot draws the trade LIST (avatars + ×N), not a number.
+- **G-TAIL-6** no cards buildable → the roster still revolves rather than the panel going blank.
+
+### RESULT — 15/15 PASS (`node witness_cpe_resource_hold.js`, no browser)
+```
+  frozen: mid-programme=false  past-every-boundary=true
+          Hospital shape (staffed to the last day): pieEmpty=false frozen=true rows="FINISHER:4"
+  rotation: slots=4 (1 roster + 3 cards)  reached=4  rosterHits=18 cardHits=54 fades=true
+            noCardsFallback=roster n=1
+  roster slot draws: ["4 on site","×4"]
+```
+
+### sw.js version collision — worth not repeating
+This branch's first bump wrote `v1109` into a file that **already read v1109** (#1585 had taken it on
+main), so the sed was a silent no-op and the commit carried no bump at all. `sw.js` is the known
+conflict magnet: always read the current value before bumping, and always take the HIGHER one.
