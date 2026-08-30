@@ -1604,3 +1604,63 @@ every element with a real IFC material, and to all four PBR fields for opaque el
 mostly benign (§S265c deliberately keeps class PBR for texture realism), but it is the same shape of
 defect — a class preset outranking authored data — and worth an audit if another "material looks
 wrong" report lands.
+
+## §Y `~/Downloads/Clinic.db` — MEASURED, DO NOT SHIP IT (2026-08-30)
+User: *"Clinic.db is the clean one solved in Downloads/ was extracted manually and saved there."*
+Measured before acting. It is the **2026-08-27 client-side re-merge** already catalogued in §I.1
+(226MB, `mtime Aug 27 15:19`, 16,071 elements, client schema — `component_geometries`, no
+`base_geometries`/`spatial_structure`/`surface_styles`/`rel_aggregates`/`elements_rtree`).
+
+**It does not fix the glass, because the glass was never a data defect.** Its glazing is
+byte-identical to what is already live:
+
+| | `~/Downloads/Clinic.db` | live `Clinic_meta.db` |
+|---|---|---|
+| `IfcPlate` @ `0.000,0.502,0.753,0.100` | 167 | 167 |
+| `IfcWindow` @ `0.000,0.502,0.753,0.100` | 58 | 58 |
+| `IfcPlate` @ alpha 0.25 | 5 | 5 |
+| `IfcCurtainWall` | **0** | 31 |
+
+Shipping it would be a pure regression: **it is a strict SUBSET of live** — `live_only=43`,
+`dl_only=0`, `both=16071`. The 43 absent rows are exactly the geometry-less aggregate parents
+(`IfcCurtainWall` 31, `IfcRoof` 7, `IfcStair` 4, `IfcRamp` 1) — the same 43 the user's own log
+reports as `§NOGEO_COMPOSE composed=43`. They are not ghosts (§B established that; §I.1's "ghost
+rows" framing was wrong): they are what groups the 167 `IfcPlate` glazing panels into curtain walls.
+The live `buildings/patches/Clinic_meta.db.sql` (91,238 bytes, one `CREATE TABLE IF NOT EXISTS
+rel_aggregates`) references those guids — 2 of 8 sampled curtain-wall guids appear in it — so on this
+DB the patch would build aggregate rows pointing at elements that no longer exist.
+
+**Nothing was uploaded.** The glass fix is `bim-ootb` #1585 (§X) and it is code, not data — proven by
+`W-GLASS-NOT-METAL` passing 9/9 against the EXISTING live `Clinic_extracted.db`.
+
+### §Y.1 Deployment state, measured not inferred
+| front | `streaming.js` served | glass fix |
+|---|---|---|
+| GH Pages | minified, `opts.metalness=a<1?0:stdMat?stdMat.metal:.08`, `envMapIntensity=a<1?.6:…`, `triMat=a<1?null:…` | ✅ **LIVE** |
+| OCI `bim-ootb-live/o/sandbox` | `streaming.js?v=40`, unminified, 78KB, `opts.metalness = METALNESS_MAP[ifcClass] \|\| 0.05`, no `triMat` at all | ❌ a much older build — predates the triplanar feature entirely, not merely this fix |
+
+So the user's *"things are working"* is GH Pages, correctly. **The OCI sandbox viewer is a
+substantially older vintage than GH Pages** — observed on `streaming.js` only, not audited across
+the whole bundle; worth a deliberate pass before anyone treats the two fronts as equivalent.
+
+### §Y.2 Session reflection — the pattern behind all of today's wrong turns
+Both real bugs this session were found by the USER, from their own logs, after I reported the area
+resolved. The shape is consistent enough to name:
+
+1. **I verified the middle of the chain and called it the end.** OCI objects md5-verified → "LTU
+   shipped" (not the landing page); PR merged → "glass fixed" (not the deployed asset); X-ray
+   witness green → "symptom resolved" (not the user's actual trigger). `CLAUDE.md`'s PRIMAL LAW
+   already says the end of the chain is the test. → `feedback_verify_the_end_of_the_chain.md`.
+2. **I measured proxies instead of the quantity in question** — `center` columns across two
+   pipelines, `userData.origOpacity` instead of `opacity`, a source-form property name against a
+   minified build. `4D_MODEL_INTEGRITY.md` §E is literally the table of this mistake, and
+   `CLAUDE.md` §0a says re-read it before each thinking pass; reading it once at startup did not
+   prevent four repeats. → appended to `feedback_measure_compute_matchback.md`.
+3. **What actually worked, every time, was an ORACLE INSIDE THE DATA:** `elements_rtree` built from
+   ifcopenshell `world_corners`; the same rgba on `IfcWindow` as a known-good rendering of the
+   identical material; a control run with the trigger absent; export→reopen the real bytes. Each
+   collapsed a contested question to one measurement. The generalisable move is to ask *"what value
+   here is independently known to be right?"* BEFORE measuring — not to derive a target and compare
+   against my own arithmetic.
+4. **The user's pasted logs contained both answers** (`§TRIPLANAR_INIT class=IfcPlate tex=metal…`,
+   and the absence of any X-ray line). Reading the whole log first would have skipped two dead ends.
