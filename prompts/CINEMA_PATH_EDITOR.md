@@ -12,6 +12,15 @@ shape) is fixed and the whole chain works end to end.
 
 ⛔ STILL UNVERIFIED: §CPE_CORR_BRUSH_STROKE has NO WITNESS.
 
+▶ §CPE_PIE_HOLD — BUILT 2026-08-30 late, witness 9/9, **bim-ootb PR #1586** (auto-merge armed),
+sw v1108. NOT YET SEEN IN A BAKE. User: *"make the pie part not to disappear but hold when there is
+silent info."* MEASURED from the persisted `~/.cache/bim4d` task windows: Hospital 318 days, Clinic
+111, Terminal 97, HHS 50, Duplex 13 — **ZERO** days with no task active on any of them, so the
+silence is NOT a mid-programme gap; it is the post-topout half. The pie now keeps its column for the
+whole film (ONE geometry in both modes), holding the last staffed day's REAL composition, dimmed and
+captioned with that day, while the ring stays live and the §CPE_BIG_STATS cards revolve beside it.
+Full record: §CPE_PIE_HOLD at the end of this file.
+
 ▶ §CPE_HUD_ORDER — FIXED 2026-08-30, NOT YET SEEN IN A BAKE. User, from that same frame: the path
 view "should be above, the pie part below". Order is now counter → PATH BOX → pie/stats, built from
 ONE running `_stackY` in `_captureFrame` so the three can never overlap or leave a gap. Rationale:
@@ -3820,3 +3829,95 @@ recorded above, not re-litigated here.
   31 IfcCurtainWall + 12 others). Whether it APPLIES on Clinic was never confirmed — the probe read
   `A.db`, which does not exist on Clinic's split-DB path.
 - **`renderer.info.textures` reports 1,486** while only 3 carry image data (4.1 MB). Unexplained.
+
+---
+
+## §CPE_PIE_HOLD — the pie holds through silence instead of vanishing
+**BUILT + WITNESSED 9/9, bim-ootb PR #1586 (auto-merge armed), sw v1107 → v1108. Not yet seen in a bake.**
+
+**User, 2026-08-30, immediately after §CPE_HUD_ORDER:** *"make the pie part not to disappear but hold
+when there is silent info."*
+
+### What "silent info" actually is — MEASURED, not assumed
+Read from the persisted `~/.cache/bim4d/*/run.json` task windows (§5 RUN ONCE, PERSIST, READ FOREVER
+— no probe was launched, no bake was disturbed):
+
+| building | tasks | programme days | days with NO task active |
+|---|---|---|---|
+| Hospital | 42 | 318 | **0** |
+| Clinic | 35 | 111 | **0** |
+| Terminal | 77 | 97 | **0** |
+| HHS_Office_Federated | 20 | 50 | **0** |
+| Duplex | 20 | 13 | **0** |
+
+**So the silence is NOT a mid-programme gap — every programme is gap-free.** The silence the user saw
+is the one §CPE_BIG_STATS already names: after §CPE_BUILDUP_TOPOUT (`topoutU=0.524` on their own
+Hospital bake) no trade is active for the whole second half, `resourcePanelAt` correctly returns
+`null`, and the pie — the panel's whole left column — DISAPPEARS while a full-width stat card takes
+the slot. That pop is what the instruction is about: *"the pie **part**"* is a part of the panel, and
+it should stay put.
+
+### The rule
+**ONE panel, ONE fixed geometry, in both modes: `[ cylinder pie + progress ring ] | [ content ]`.**
+The pie never moves and never disappears once it has had a real composition to show. Only the right
+column changes:
+- **trades working** → the avatar/×N trade list (today's live composition), pie at full strength.
+- **silent (post-topout, or any day with no staffed op)** → the revolving §CPE_BIG_STATS card, and the
+  pie **HOLDS the most recent real composition**, dimmed, with the day it is from printed under it.
+
+### Non-invention (this is the load-bearing part)
+A held pie is a statement about a PAST day. It is only honest if it says so, so:
+1. The held composition is the **real composition of the most recent day that actually had staffed
+   ops** — recomputed by the same `resourcePanelAt` arithmetic at that day's cursor. Nothing is
+   averaged, decayed, extrapolated or carried forward as a number.
+2. It is **dimmed to 0.60** and captioned `day N` (the day it is from) directly under the pie, while
+   the day counter above the panel shows the current day. A viewer can read the difference.
+3. **The progress ring stays LIVE.** Elapsed programme fraction is still true after topout, so the
+   ring keeps filling on the real cursor while the wedges hold.
+4. If **no staffed day has occurred yet** at this cursor (film opens before the first staffed op),
+   there is nothing real to hold → return `null`, panel omitted, `§CPE_RESOURCE_HOLD INCONCLUSIVE`.
+   Never a fabricated composition, never a confident empty ring.
+5. `A.resourcePanelAt` itself is **UNCHANGED** — it stays the pure live-day truth its existing witness
+   gates. The hold is a separate pure function layered on top, `A.resourcePanelHoldAt`, so the two
+   claims ("who is on site today" vs "who was on site last") can never be confused in the log.
+
+### Witness — `witness_cpe_resource_hold.js` (NODE, no browser, no bake contention)
+The hold is pure arithmetic over an ops array, so it is gated without launching Chrome (the user's
+own standing warning: twelve puppeteer Chromes competed with a real bake and it had to be aborted).
+The file is loaded under `vm` with a stub `window`/`document`, and a recording 2D-context stub counts
+draw calls the same way `witness_big_stats.js` does.
+- **G-HOLD-1** live day → `held=false`, real rows, matches `resourcePanelAt` exactly.
+- **G-HOLD-2** post-topout day → `held=true`, and the rows are **identical** to the last staffed day's
+  live rows (proves it holds the real thing, not a re-derivation).
+- **G-HOLD-3** the ring is live on a held frame: `progress` equals the cursor's elapsed fraction, not
+  the held day's.
+- **G-HOLD-4** cursor before any staffed op → `null` (no fabrication).
+- **G-HOLD-5** an unstaffed day INSIDE the programme holds the previous staffed day (not a future one).
+- **G-HOLD-6** `resourcePanelAt` still returns `null` on a silent day — the live contract is intact.
+- **G-HOLD-7** both composite paths actually draw the pie when held, and the stats path blits one
+  more layer with a held pie than without it (proves the pie is really in the stats panel).
+- **G-HOLD-8** the held pie is captioned with the day it is from.
+- **G-HOLD-9** the pie bitmap is cached across BOTH modes — a held pie costs one blit per frame,
+  never a re-render.
+
+### RESULT — 9/9 PASS (`node witness_cpe_resource_hold.js`, no browser launched)
+```
+  live  day 7  : "CONCRETE_GANG:18,STEEL_ERECTOR:12"  heads=30 held=false
+  last staffed : day 30  "HVAC_TECH:4,PLUMBER:4"
+  silent day 46: raw=null  hold="HVAC_TECH:4,PLUMBER:4"  held=true heldDay=30 back=16d
+  ring on hold : progress=0.7583  cursor=0.7583  heldDayProgress=0.4917
+  before start : null (refused)
+  mid gap d13  : raw=null  hold="CONCRETE_GANG:18" heldDay=10
+  draw: resource panel blits=2 offscreen wedgeFills=4 | stats+held blits=2 | stats alone blits=1
+  captions seen: ["day 30"]
+```
+**The witness's own near-miss, worth keeping:** the first version counted `fill()` calls on the
+VISIBLE context and scored 6/8 — because the pie is rendered into an OFFSCREEN bitmap and blitted,
+so its wedge fills never touch that context. A pie that never drew at all would have scored the same.
+It now records every offscreen context the run creates. Same family as §SESSION_2026-08-30's bug 2
+("a witness that shared the code's own gate") — measure the surface the code actually draws on.
+
+### Also now logged
+`§CPE_PIE_HOLD heldFrames=N/framesDone (X% of the film)` at bake end, plus a first-hold line naming
+the day it holds and how far back it is. `heldFrames === framesDone` is flagged ⚠ — it means no day
+was ever staffed, which is a schedule defect, not a HUD one.
