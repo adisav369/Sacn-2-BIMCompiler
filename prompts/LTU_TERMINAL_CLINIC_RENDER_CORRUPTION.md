@@ -1532,3 +1532,75 @@ Two lessons, both already in this project's rules and both re-learned the hard w
 OCI sandbox build but survives on GH Pages. Nothing in `viewer/*.js` assigns `userData = {}` (grepped,
 zero hits), and the restored opacities are correct on both, so it changes no conclusion here. Noted
 in case it surfaces elsewhere — do not assume a mechanism, it was not established.
+
+## §X CLINIC GLASS — THE ACTUAL ROOT CAUSE, FOUND AND FIXED 2026-08-30 (§W tested the WRONG mechanism)
+User, after §W claimed the symptom resolved: *"still not glass walls in Clinic bug is there"* — with a
+full console log attached. **The log contains no X-ray toggle anywhere.** §B/§W's X-ray-restore bug is
+real, is fixed (#1565), and §W's live verification of it stands — but it was never this symptom's
+cause. Fixed for real in `bim-ootb` PR **#1585** (`81f5e4d`).
+
+### §X.1 What the user's own log gave away
+```
+§TRIPLANAR_INIT class=IfcPlate tex=textures/materials/metal_color_1k.jpg
+```
+`IfcPlate` is Clinic's curtain-wall **glazing** — and it is being handed a brushed-**metal** texture.
+
+### §X.2 Root cause — the class table overrides real IFC material data for everything except colour
+`STD_MAT` and `TRIPLANAR_MAT` (`viewer/streaming.js`) are keyed on `ifc_class` **alone**. §S265c's
+*"trust IFC data — only NULL gets the class fallback"* guard was only ever wired to **colour**;
+roughness, metalness, `envMapIntensity` and the triplanar texture were taken from the class table
+unconditionally, even when the element carried a real, transparent IFC material.
+
+Clinic authors its glazing as `IfcPlate`, whose preset is **"steel plate"** — `metal: 0.70`,
+`envInt: 0.05`, plus `_TRI_METAL`.
+
+**The oracle was inside the building the whole time.** Clinic puts the SAME IFC material
+`0.000,0.502,0.753,0.100` on BOTH `IfcWindow` (58 elements) and `IfcPlate` (167). Measured live on
+GH Pages, straight out of `A._matCache`:
+
+| cache key | metalness | envMapIntensity | triplanar |
+|---|---|---|---|
+| `0.000,0.502,0.753,0.100\|IfcWindow\|\|ARC\|` | **0.00** | **0.6** | false |
+| `0.000,0.502,0.753,0.100\|IfcPlate\|\|ARC\|` | **0.70** | **0.05** | **true** |
+
+Same rgba, same alpha 0.1, same discipline, same opacity — **the only differing input is
+`ifc_class`**. So **167 of Clinic's 225 glass panels (74%) rendered as steel**: at metalness 0.7 the
+diffuse albedo is suppressed and `envInt 0.05` leaves nothing to reflect, which is precisely §A's
+*"just loss of glass"* / *"glass openings no longer see thru"*. Build-wide, **4 of 5** transparent
+materials were metallic and triplanar-textured (the other two are `IfcFlowTerminal` at metal 0.3).
+
+### §X.3 Fix — one physical rule, not a per-class patch
+`alpha < 1` is the IFC itself declaring the surface transparent, and in a metal/rough workflow **a
+transparent surface is by definition not a metal** (metals are opaque). So when `a < 1`:
+metalness → 0; `envMapIntensity` → the global 0.6 (the `envInt` overrides exist *only* to stop
+HIGH-metalness classes taking the sky's blue PMREM reflection, §HOSPITAL_BLUE_TINT — which cannot
+apply at metalness 0); and no triplanar surface-wear texture. Roughness is deliberately left on the
+class value (0.225 vs the oracle's 0.08) — both read as glass. `sw.js` v1105→v1109 (v1108 on main by
+merge time; higher-wins per the standing conflict rule).
+
+### §X.4 Witness — `W-GLASS-NOT-METAL`, and why it can't be fooled
+`viewer/tests/witness_glass_not_metal_2026-08-30.js` asserts against the in-building oracle: the same
+rgba under `IfcWindow` is the known-good rendering of that exact material, so the claim is
+*"`IfcPlate` must agree with it"* — no invented target value.
+
+| | before | after |
+|---|---|---|
+| assertions | **6/9 red** | **9/9 green** |
+| subject `IfcPlate` glass | metal 0.7, envI 0.05, tri true | metal 0, envI 0.6, tri false |
+| build-wide transparent materials | 5 — **4 metallic, 4 triplanar** | 5 — **0, 0** |
+
+### §X.5 ⚠ THE LESSON — §W verified a real fix for the wrong mechanism
+§W is not wrong about what it tested: PR #1565's X-ray restore genuinely works, proven on both
+fronts. It is wrong about what it **implied** — that the user's reported symptom was therefore
+resolved. Two distinct mechanisms produce the identical visible symptom ("glass isn't glass"), and
+§B had named only one of them. **The tell was in the user's log the whole time and cost nothing to
+read: no X-ray toggle appears in it, so an X-ray-triggered bug could not have been the cause.**
+Before verifying a fix against a reported symptom, check that the reproduction actually contains the
+fix's trigger — a green witness for mechanism A says nothing about mechanism B.
+Sibling of §V.2's near-miss: both were cases of judging by the wrong instrument.
+
+⚠ **Follow-up, not chased:** the same class-over-data override still applies to **roughness** for
+every element with a real IFC material, and to all four PBR fields for opaque elements. That is
+mostly benign (§S265c deliberately keeps class PBR for texture realism), but it is the same shape of
+defect — a class preset outranking authored data — and worth an audit if another "material looks
+wrong" report lands.
