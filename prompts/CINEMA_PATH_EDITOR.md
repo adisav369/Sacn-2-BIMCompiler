@@ -5,12 +5,20 @@ Session shipped: §TRIPLANAR_NORMAL, warm cam fill, §CPE_PATH_OVERVIEW, §CPE_H
 §CPE_LABEL_PANEL_SYNC, §CPE_RESOURCE_PANEL, §CPE_BIG_STATS, §MEP_SMOOTH_NORMALS,
 §CPE_CORR_BRUSH_STROKE, §IDX16, §GLOW_BUILDUP_EARLY_OUT. Full record: §SESSION_2026-08-30 below.
 
-⛔ THE ONE THING NOT VERIFIED END-TO-END: the resource panel has NEVER rendered real trades in a
-bake. Its `withResource=0` bug is FIXED (the trade is `op.parameters.resource`, not on the row —
-loadOps :102 shape) and §CPE_BIG_STATS witnessed 6/6 with real Clinic data, but nobody has yet seen
-the pie draw with live crew numbers. FIRST ACTION NEXT SESSION: bake with Label ON and read
-`§CPE_RESOURCE_PANEL` — it now states its own cause in plain English rather than leaving a blank
-corner. Second unverified item: §CPE_CORR_BRUSH_STROKE has NO WITNESS.
+✅ §CPE_RESOURCE_PANEL **CONFIRMED WORKING IN A REAL BAKE** (user's Hospital mp4, 2026-08-30 17:21):
+"51 on site · Conc ×18 · Steel ×12 · Mason ×6 · HVAC ×4 · Pipefit ×4 · +2 more" with the cylindrical
+pie drawn. The `withResource=0` bug (trade is `op.parameters.resource`, not on the row — loadOps :102
+shape) is fixed and the whole chain works end to end.
+
+⛔ STILL UNVERIFIED: §CPE_CORR_BRUSH_STROKE has NO WITNESS.
+
+▶ §CPE_HUD_ORDER — FIXED 2026-08-30, NOT YET SEEN IN A BAKE. User, from that same frame: the path
+view "should be above, the pie part below". Order is now counter → PATH BOX → pie/stats, built from
+ONE running `_stackY` in `_captureFrame` so the three can never overlap or leave a gap. Rationale:
+the path box answers "where am I", which a viewer tracks continuously, so it belongs under the clock;
+the pie is consulted, not followed. Same frame also showed trade names truncating to "Conc…",
+"Steel…", "Pipefit…" — list width 0.46 → 0.56 of the panel, pie takes the remainder. **Both land on
+the next bake.**
 
 ⚠ DO NOT run headless probes while the user is baking. Twelve puppeteer Chromes (2,146 MB, load
 average 9.88) competed with a real bake on this machine and the user had to abort it. Ask first.
