@@ -235,3 +235,61 @@ what the sweep decides — that number is the *ceiling* on the win, not a claim 
 ### Still unstarted in this lane, unchanged
 R7 (support-predicate consolidation), R8 (date-layout-cursor consolidation), R9 (DLOD flip-storm,
 deliberately last). None are costed as urgent and none of them move the bake clock either.
+
+### ✅ §R10 SHIPPED 2026-08-30 — bim-ootb PR #1588 MERGED + LIVE (sw v1111), verified by fetching back
+
+**`MAXQ_STILL_BUDGET = { taa: 8, ao: 12 }` — 20 composer renders per baked frame, was 40.**
+Live check: `CACHE_VERSION = 'v1111'` and `MAXQ_STILL_BUDGET = { taa: 8` both present in the
+deployed files. Alt+S stills are UNCHANGED at 40 — the override is bake-only and released on all
+5 exit paths.
+
+#### RESULT — HHS_Office_Federated, one SEEDED load per condition, scored against a CONTROL
+| taa | ao | renders | RMS vs control | verdict | proj ms/frame | vs 1989 |
+|---|---|---|---|---|---|---|
+| 12 | 16 | 28 | 0.21 | AT THE FLOOR | 1539 | 77% |
+| **8** | **12** | **20** | **0.24** | **AT THE FLOOR — SHIPPED** | **1164** | **59%** |
+| 8 | 8 | 16 | 0.37 | AT THE FLOOR | 1089 | 55% |
+| 4 | 8 | 12 | 21.33 | **DISTINGUISHABLE** | 789 | 40% |
+
+Noise floor **RMS 0.21** (0-255 luma). 40 renders and 20 renders are the same image to within a
+fifth of one luma level; 4/8 sits 100× above the floor, which is what a real difference looks like.
+8/8 also measured at the floor — **8/12 shipped anyway for one AO step of margin**, because this is
+ONE pose on ONE building and interior corners are what AO carries. Margin costs 75 ms/frame.
+
+#### Hospital projection — the honest arithmetic, NOT a measured bake
+The user's observed wall clock was **~3 h** for 3,447 frames. Only the FRAME LOOP shrinks:
+- frame loop today: 3,447 × 1.989 s = **1 h 54 m**
+- frame loop at 8/12: 3,447 × 1.164 s = **1 h 7 m**
+- the remaining ~1 h (staging, stitch, any §MAXQ_HIDDEN_PAUSE) is **unchanged**
+→ **~3 h becomes ~2 h 10-15 m.** A ~47-minute saving, not a halving of the wall clock. The 1,164 ms
+comes from the user's OWN measured budget (75.0 ms per TAA render, 18.75 per AO render, 339 tail),
+never from the headless probe — swiftshader ms mean nothing for an RTX 4060.
+
+#### THREE MEASUREMENT METHODS FAILED FIRST — do NOT re-walk them
+1. **Synthetic camera pose → empty frustum.** A bbox-derived interior eye-level pose sees nothing on
+   HHS. Five conditions scored `meanRGB 0.00` with an IDENTICAL md5 — a perfect "no quality loss"
+   that meant nothing. The tell was in the log all along: `§PHOTO_AO avgRenderMs=23` against
+   **2520.8** for a fold that really renders. A witness that invents its own camera can invent its
+   own emptiness — use the viewer's own framing and GATE on a non-black pre-fold frame.
+2. **One page load per condition → the scene RESEEDS.** A control at IDENTICAL settings across two
+   loads differed by **RMS 32.19**, 22.86% of pixels off by >8 — larger than every effect being
+   measured. §SESSION_2026-08-30 dead-end 5 ("one condition per page load") is right for
+   §PHOTO_GRADE and WRONG here; a documented rule's trade-off must be re-checked for each new
+   measurement.
+3. **All conditions on one page load → only the FIRST fold does real AO work.** `avgRenderMs` 768.9,
+   then 4.8 / 9.6 / 14.9 / 14.2 / 1.1; the same-settings control landed 30 luma from row 1.
+
+**THE FIX:** seed `Math.random` before any page script. `effects.js` makes **13 `Math.random()`
+calls** while staging — staffage species and placement, and the 410→200 night-light subset. That is
+the ONLY reason two loads differ. Seeded, the warm loads agree to **RMS 0.21-0.37**.
+
+**Known harness artifact:** the FIRST load in a fresh browser is cold-cache and differs by
+**RMS 26.24** from a warm load at its OWN settings. The reference row is excluded from scoring.
+
+**Scorer bug worth remembering:** its first cut took the **MAX** warm pair as the noise floor, which
+let the 4/8 outlier define the floor and then wave itself through (it recommended 4/8 at RMS 21.33).
+The floor must be the **CLOSEST** warm pair — the smallest difference the harness can still resolve.
+
+#### Files
+`witness_maxq_frame_budget.js` (states its own verdict, shells out to the scorer) +
+`score_frame_budget.py` (RMS + pairwise matrix + floor gate), both in bim-ootb.
