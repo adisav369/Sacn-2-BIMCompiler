@@ -220,9 +220,8 @@ the `scene.traverse` fallback) to fall back to `mat.userData.origOpacity`/`origS
 opaque/FrontSide default, when `_origOpacity`/`_origSide` was never captured. Additive, no
 behavior change for materials that DO have `_origOpacity` set (the normal case).
 `sw.js` CACHE_VERSION v1093→v1094. CI (`fast-checks`, `e2e-tests`) both passed before merge.
-⚠ **Not re-verified live in a real browser** (no claude-in-chrome access this session) — the fix is
-code-correct and CI-green, but nobody has actually toggled X-ray mid-stream on Clinic post-deploy
-and confirmed the glass stays transparent. Do that first if this symptom is reported again.
+⚠ ~~Not re-verified live in a real browser~~ — **DONE 2026-08-30, PASS on both GH Pages and OCI.
+See §W.**
 
 ## §C LTU_AHouse / Terminal — MECHANISM NOT FOUND, ONE THEORY DISPROVEN, NEEDS FRESH EYES
 
@@ -1472,3 +1471,64 @@ count, so nothing fell back to a bbox placeholder.
 **Measured cost, now that it is observed rather than predicted: 144 s** from click to fully-settled
 render on this connection — the 91.3 MB `geo.db` of §V.3, paid once (IndexedDB-cached after). Bboxes
 appear far earlier via the 1.1 MB `positions.bin`; that phase is unchanged-to-faster, as §V.3 said.
+
+## §W CLINIC GLASS — VERIFIED LIVE ON BOTH GH PAGES AND OCI, 2026-08-30 (closes §B's open caveat)
+User: *"check has Clinic glass panels on GH / OCI resolved?"* §B's fix (PR #1565, `0d4ad58`) shipped
+2026-08-27 but carried an explicit caveat: *"nobody has actually toggled X-ray mid-stream on Clinic
+post-deploy and confirmed the glass stays transparent."* Now done, on both fronts.
+
+### §W.1 Code deployed — both
+| front | file | fix present |
+|---|---|---|
+| OCI | `bim-ootb-live/o/sandbox/tools.js` | ✅ `userData.origOpacity` fallback, unminified |
+| GH Pages | `red1oon.github.io/bim-ootb/viewer/tools.js?v=42` | ✅ minified: `mat.opacity=mat._origOpacity!==void 0?mat._origOpacity:_ud.origOpacity!==void 0?_ud.origOpacity:1` |
+
+⚠ A first grep for the literal `userData.origOpacity` returned **0 hits on GH Pages** and nearly
+became a "not deployed on GH" claim. It is minified — the minifier hoists `mat.userData` into `_ud`.
+Grep the *value* (`origOpacity`), never the source-form property chain, when checking a built asset.
+
+### §W.2 Live behavioural test — the trigger §B named, reproduced on purpose
+`<scratchpad>/clinic_glass_v3.js`: load Clinic in the live viewer, wait until `A.streaming === true`,
+toggle X-ray **ON mid-stream**, let the remaining elements stream in under X-ray, toggle OFF, then
+read every scene material's real `opacity` via `scene.traverse`. PRIMAL LAW: numeric material state,
+no screenshots, no `claude-in-chrome`.
+
+**Control (never toggled X-ray):** 6 of 45 materials transparent, opacities
+`[0.1, 0.15, 0.1, 0.25, 0.25, 0.49]`.
+
+| front | materials | transparent after X-ray round-trip | opacities |
+|---|---|---|---|
+| OCI sandbox | 45 | **6** | `[0.1, 0.15, 0.1, 0.25, 0.25, 0.49]` — identical to control |
+| GH Pages | 60 | **6** | `[0.1, 0.15, 0.1, 0.25, 0.49, 0.25]` — same multiset |
+
+**The GH run is the decisive, non-vacuous one.** Its `_origOpacity` dump splits exactly along the
+population the fix exists for: materials at indices 2–24 have `_origOpacity` (they existed when
+X-ray turned ON, so the old loop captured them), indices 25+ have **`_origOpacity = null`** — born
+during X-ray, never captured. Four of the six transparent materials are in that second group
+(`ud=0.1`, `0.25`, `0.49`, `0.25`) and every one came back at its true alpha. Those four are
+restored **purely by the `userData.origOpacity` fallback PR #1565 added** — pre-fix they would each
+have been set to `1` and cached opaque for the session. That is the bug, not reproduced, because
+the fix is live.
+
+**Verdict: Clinic glass RESOLVED on GH Pages and OCI. §B closed.**
+
+### §W.3 Instrument fault worth recording (two runs wasted)
+v1/v2 of this witness filtered the post-toggle material set on `userData.origOpacity < 1` and got
+**0 on OCI** — then printed 🔴 FAIL on *"there are transparent materials to judge"*. That was the
+**instrument**, not the product: on the OCI sandbox build `mat.userData` reads empty after the X-ray
+round-trip (on GH it persists), so a userData-keyed filter finds nothing while the opacities are
+perfectly correct. v3 fixed it by measuring `mat.opacity` directly — the thing actually under test —
+and comparing against a no-X-ray control run of the same building.
+
+Two lessons, both already in this project's rules and both re-learned the hard way here:
+- **Measure the quantity the symptom is about** (opacity), not a bookkeeping field that happens to
+  correlate (`userData.origOpacity`) — `4D_MODEL_INTEGRITY.md` §E's wrong-proxy category again, same
+  shape as §V.2's `center` comparison.
+- **A red verdict from a filter that returned an empty set is INCONCLUSIVE, not FAIL**
+  (`WITNESS_INTERFACE_FRAMEWORK.md` §4 vacuity rule). v2 half-implemented this — it gated the
+  *mid-X-ray* population for vacuity but not the *final* one, so it reported FAIL on an empty set.
+
+⚠ **Open, not chased, not a defect:** why `mat.userData` reads empty after an X-ray round-trip on the
+OCI sandbox build but survives on GH Pages. Nothing in `viewer/*.js` assigns `userData = {}` (grepped,
+zero hits), and the restored opacities are correct on both, so it changes no conclusion here. Noted
+in case it surfaces elsewhere — do not assume a mechanism, it was not established.

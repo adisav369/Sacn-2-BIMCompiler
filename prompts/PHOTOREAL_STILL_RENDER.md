@@ -1892,3 +1892,82 @@ constant," lowest risk, most likely source of "too bright/shiny" exactly as repo
 live before touching item 3, since a warmer camera light on TOP of still-too-bright/too-reflective
 staging would make it harder to isolate which change fixed what, the same single-variable discipline
 this file's whole AO-tuning history already earned the hard way.
+
+## §PHOTO_SHADING_CEILING — three per-pixel shading attempts all landed 1–7%, none visible to the user (2026-08-30, measured, one change KEPT, one REVERTED)
+
+**Context:** user asked what would improve Alt+S photorealism, then "do only the single thing that
+carries the most benefit." Three attempts, all measured on real GPU frames (Terminal departure
+lounge, 960x540, one condition per page load). **All three produced sub-visible deltas. The user's
+own repeated verdict — "don't notice changes", "I cannot single out a real win" — is correct and
+matches the numbers.** Do not re-run these lanes expecting a different answer.
+
+### Baseline, measured on the user's own Alt+S frame (1773x921, Terminal interior)
+`meanLuma 139.79  stdLuma 54.21  p99.9 245.1  >250 0.0000%  <16 0.103%`
+`gradEnergy 2.35 -> 4.07` is what triplanar texture already buys (+73%, the biggest single win to date).
+Flat-surface measurements that motivated the work: **ceiling patch luma std 5.67 / grad 1.61; floor
+patch luma std 16.92 / grad 2.00.**
+
+### 1. §PHOTO_GRADE — still-only spec-clip + shadow-deepen composer pass. BUILT, MEASURED, **REVERTED**.
+v1 shipped with constants derived from an inverse-ACES reconstruction of a PNG (range topped at
+3.065). **`§PHOTO_GRADE_PROBE` then read the REAL scene-linear HDR buffer: luma p45=0.5406
+p75=5.6826 p88=7.4827 p95=8.4239 p99=9.5590 max=10.6996; grad p50=0.0154 p90=0.0755 p99=4.2845.**
+The v1 pivot of 0.4259 was **17.6x too low** — a p75 pixel scored hi=1.99, clamped to 1.0, so over
+75% of the frame had the highlight term saturated; times the 0.35 mask floor that is a 2.75x lift on
+flat surfaces. User's live result: mean luma +18.6, 12.94% of pixels over 240, "overlighted."
+v2 (pivot at real p95, edge GATING instead of a floor, gain 5.0->3.0) passed its numeric bar —
+`meanLuma -2.82, stdLuma +4.5%, >250 0% -> 0.2118%` — and the user still could not see it. **Reverted
+on the user's call. A 4.5% contrast shift is below the threshold of noticing.**
+
+### 2. §TRIPLANAR_NORMAL — the missing third PBR map. BUILT, MEASURED, **KEPT** (cheap, correct, marginal).
+`NOTICE.txt` recorded the omission from day one: *"Diffuse+roughness only (no normal/AO ...
+two-maps-only first pass)"*. Without it every fragment of a flat surface shares ONE normal, so the
+lighting term is constant across it. Wired as a whiteout/UDN triplanar blend at
+`#include <normal_fragment_maps>` in `viewer/streaming.js`, same still-only `uTriActive` gate,
+NormalGL maps from the same ambientCG assets already vendored. A/B switch: `APP._triNormalOff`.
+- **Interior pose:** blockStd 11.0039 -> 11.4801 (**+4.3%**), gradEnergy +2.8%. 42/46 materials.
+- **Exterior pose:** blockStd 9.214 -> 9.230 (**+0.2%**), gradEnergy +1.4%, but stdLuma 72.15 ->
+  77.54 (+7.5%) and meanLuma 197.49 -> 190.08.
+
+### 3. The hypothesis that FAILED — do not repeat it
+Predicted the interior result was small because normal maps need DIRECTIONAL light and the interior
+is lit near-uniformly (ambient + hemi + ~200 point fixtures + cam torch; `effects.js` §CAM_LIGHT:
+*"no bounce anywhere in this pipeline"*). **The exterior sun-side test REFUTED this** — under a
+strong directional key the fine-relief gain was 0.2%, *smaller* than indoors. What the exterior
+numbers actually show is large-scale facet shading shifting (stdLuma +7.5%, mean -7.4), not fine
+relief: at ~80 m the 2.5 m-repeat relief is far below pixel scale and averages out.
+
+### The conclusion worth carrying forward
+**Per-pixel shading knobs cannot create contrast the lighting does not have.** Three independent
+attempts landed 1–7% and none crossed the visibility threshold. The remaining real wins are the ones
+a person can NAME IN WORDS, not measure in percent — material IDENTITY errors:
+`TRIPLANAR_MAT` (`streaming.js:519`) keys texture selection on `ifc_class`, so Terminal's floor
+(`jkrAR_flr-f_(jhn21)-3 300 x 300 x 8 mm Jubin Homogeneous "non slip"`) and its ceiling
+(`jkrAR_clg-f_(pv60)-3 600mm x 600mm PVC Laminated Gypsum Board`) BOTH render as 2.5 m cast concrete
+because both are `IfcSlab`; and Terminal's walls are all concrete (`IfcWall` 333) while Hospital's
+are all plaster (`IfcWallStandardCase` 1310) — decided by the exporter's class choice, not material.
+**The DB already carries the answer and the renderer never reads it:** `material_name` coverage is
+Terminal **79 distinct names / 90.3% of 48,428 elements**, LTU_AHouse 178/29.4%, HHS 4/34.7%, and
+**Hospital / Clinic / JKR 0%** (90,882 elements with nothing to bind to — any palette needs a
+class/storey fallback for them). `tileMeters` 2.5/2.0/0.6 are invented while the material name
+literally contains "300 x 300" and "600mm x 600mm". Persistence for a palette is already built —
+`A._applyPendingPatch` (`viewer/scene.js:1426`) + `buildings/patches/*.sql`.
+
+### Witness-methodology defects found and fixed here (both produced FALSE verdicts first)
+1. **VACUOUS:** `document.querySelector('canvas')` grabbed a 300x150 all-black overlay canvas; the
+   witness judged an empty frame and printed **NO-OP**. Use `APP.renderer.domElement`, and print
+   INCONCLUSIVE when the readback is black.
+2. **CONFOUNDED:** running both A/B conditions on ONE page load is invalid — the second Alt+S logs
+   `§PHOTO_AO done avgRenderMs=0.7` against the first's `94.5`, i.e. the AO phase does no real work
+   the second time. **One condition per page load.** Witnesses must also assert the poses match and
+   both AO phases did real work, or print INCONCLUSIVE.
+3. Calibrating constants at one camera pose and scoring them at another (probe pose vs witness pose)
+   invalidated a whole round. Same pose, both.
+
+### Unrelated fact established while chasing the user's 1.6 GB tab report (NOT the renderer)
+GH Pages 404s on `/buildings/Terminal_*.db` and falls through to OCI, which serves a **monolithic
+281,600,000 B `Terminal_extracted.db`**. The local checkout's same-named file is **28,262,400 B and
+meta-only** (tables: `elements_meta`, `element_instances`, `element_transforms`, `surface_styles` —
+no mesh table); geometry is a separate **261,349,376 B `Terminal_geo.db`**. Same filename, 10x
+different content and a different residency model — settle that before attributing memory to
+rendering. (`surface_styles` is EMPTY on Terminal/LTU_AHouse_extracted; `material_rgba` is 86–100%
+populated fleet-wide except HHS at 34.8%, and IS already used.)
