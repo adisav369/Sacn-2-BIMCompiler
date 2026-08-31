@@ -1664,3 +1664,93 @@ resolved. The shape is consistent enough to name:
    against my own arithmetic.
 4. **The user's pasted logs contained both answers** (`§TRIPLANAR_INIT class=IfcPlate tex=metal…`,
    and the absence of any X-ray line). Reading the whole log first would have skipped two dead ends.
+
+## §Z ⛔ RESUME HERE — NEW SESSION HANDOFF (2026-08-31). Read §Z.1 for state, §Z.3 for the open bug.
+
+### §Z.1 WHAT IS LIVE RIGHT NOW (measured, do not re-derive)
+| object | state |
+|---|---|
+| `buildings/LTU_AHouse_{meta,geo}.db` + `positions.bin` | client-side 9-discipline import, 122,330 elements, split. §V. Landing verified end-to-end §V.4 |
+| `buildings/Clinic.db` | **the user's own `Downloads/Clinic.db`, byte-identical (md5 `636c8ef1…`), 16,071 elements, SINGLE FILE — no split, no patch, nothing transplanted.** §Y′ |
+| `buildings/Clinic_meta.db`, `Clinic_geo.db` | **DELETED** — while they existed, `streaming.js:2495` derived and HEAD-probed them and loaded the pair regardless of the landing link |
+| `buildings/Clinic_extracted.db` | restored to its pre-session bytes (md5 `b57a2866…`) — other pages still link it |
+| `buildings/patches/Clinic_meta.db.sql` | still present but now **inert** — nothing loads `Clinic_meta.db`. Verified `§PATCH_NONE Clinic.db (404)` |
+| landing `index.html` | `'Clinic':{db:'Clinic.db'}` — PR #1589 (`6ad35bc`), live on GH Pages |
+| glass fix | `bim-ootb` #1585 (`81f5e4d`) — **live on GH Pages**, §X |
+
+Verified live: `§DB_SPLIT_DETECT found=false`, `§CENTRES_RESULT rows=1 ["Clinic",16071]`,
+`§CONTRACT_CHECK guidMap=16071 streamed=16071 orphans=0`, glass materials all `metal=0 tri=false`.
+
+### §Z.2 ⛔ OPEN — the OCI sandbox viewer is a MUCH older build than GH Pages
+Not a DB problem, and not a one-file drift. Measured on `bim-ootb-live/o/sandbox/`:
+| file | OCI | `~/bim-ootb/viewer/` |
+|---|---|---|
+| `streaming.js` | 78 KB, **unminified**, `opts.metalness = METALNESS_MAP[ifcClass] \|\| 0.05`, no `triMat` | 179 KB |
+| `scene.js` | 7 KB | 191 KB |
+| `effects.js` | **404 — absent** | 640 KB |
+| `panels.js` | 7.7 KB | 154 KB |
+
+Consequences already observed: no `§PATCH-SELFHEAL` (so **no `§PATCH_APPLY`/`§NOGEO_COMPOSE` at all**
+on OCI), and the glass fix cannot reach it. The GH landing and the OCI landing are DIFFERENT files
+(OCI's has `'LTU_AHouse': { db: … }` with spaces; the repo's is minified-style). **Decide first
+whether the OCI sandbox is still a supported front at all** before spending a deploy on it — it may
+be dead and better retired than resurrected. Do not assume `~/bim-ootb/viewer/*` → `sandbox/*` is a
+safe wholesale copy; the file list itself differs.
+
+### §Z.3 ⛔ OPEN — NEW BUG: Clinic TM ground-floor slab appears LATE, then persists on scrub-back
+**User, 2026-08-31, verbatim:** *"why the Clinic.db during Time machine build up, its ground floor
+slab appears very late, and having appeared, a scrub back, the ground floor slab kept persisting as
+if it is outside the timeline somewhat."*
+
+**⚠ Read `4D_MODEL_INTEGRITY.md` §I OWNERSHIP TABLE before touching this** (CLAUDE.md mandates it).
+The relevant owners: *is this slab ground-bearing?* → `schedule_gate.js:201 groundworkSlabs`;
+*ground exemption* → `schedule_gate.js:1210` `T.seq !== 1`; *is it on screen at cursor?* →
+`time_machine.js:169` `placed = start_ts <= cursor && end_ts <= cursor`.
+
+**MEASURED THIS SESSION, from the shipped `Clinic.db` itself — the schedule is BAKED INTO THE FILE**
+(`schedules=1, tasks=36, task_sequences=54, task_elements=16071`), so this is reproducible offline
+with `sqlite3`, no browser needed:
+
+- The ground floor slab is **4 × `Floor:150mm (Exterior) Slab on Grade`**, `storey='First Floor'`,
+  `center_z` −1.29 / −1.08 / −0.08 / −0.07 — the lowest slabs in the building.
+- All four are in **`TASK_Substructure_TOF_Footing`, `schedule_start = 2026-08-27` — the FIRST task
+  of the project.** They should appear FIRST, not late.
+- There are **no `IfcCovering` elements at ground level at all** (query returned empty), so the floor
+  the user sees IS one of those 4 slabs — not a finish layer scheduled separately.
+- Data integrity is clean: **0** orphan `task_elements`, **0** tasks with null/blank dates, **0**
+  elements missing from `task_elements`.
+
+**So the baked schedule contradicts the observed behaviour. That contradiction is the lead.** Two
+hypotheses, both cheap to falsify, NEITHER verified — do not report either as cause without measuring:
+
+**H1 — the TM re-authors at runtime instead of replaying the baked tasks.** Check the `§TPL_MODEL`
+line (`schedule_author.js:715`): `model=template` vs `model=legacy-deriveZones`. The runtime path
+goes through `schedule_gate.js`'s band derivation, which §I.3 declares **broken**, and this DB is a
+worst case for it: storeys are **duplicated across disciplines** — `Level 1` (3,729) *and*
+`First Floor` (2,343), `Level 2` (1,411) *and* `Second Floor` (1,708) — and **5,158 elements
+(32%) have `storey='Unknown'`, including 10 of the 16 slabs.** The owner that merges duplicate
+storey names is `deriveStoreyMergeMap(spatialStructure)` — and **this DB has no `spatial_structure`
+table** (client-side import; the user explicitly wants it shipped clean, so re-adding it is NOT the
+fix). The baked task list already shows the split: separate `— Level 1` and `— First Floor` bands.
+
+**H2 — the persisting object is not a timeline element at all** (matches the user's own *"as if it
+is outside the timeline"*). `tools.js` `_calcGroundY` picks a ground-floor slab to place the
+viewer's GROUND PLANE — the live log shows `§GROUND_Y src=gf-storey-slab(First Floor) z=-1.37` then
+`§GROUND_INIT y=-4.8 visible=false`. The ground plane is scene furniture with no `start_ts`/`end_ts`,
+so nothing in `time_machine.js:169`'s placed/frontier/future classification can ever hide it. If it
+becomes visible mid-buildup it would look exactly like a ground slab that appears and then never
+leaves on scrub-back.
+
+**Next measurements, in order:**
+1. Open Clinic with TM on, capture `§TPL_MODEL`, `§GANTT_AXIS`, `§4D_BAND_MONOTONIC` — settles H1
+   in one run. PRIMAL LAW clause 3: read the shipped `§` log, don't re-derive.
+2. At a cursor BEFORE project start, dump which meshes are visible and whether the 4 slab guids are
+   among them, and separately whether `A.ground.visible` is true — settles H2, and distinguishes
+   "slab element still shown" from "ground plane shown".
+3. Only if H1 confirms runtime re-authoring: the band collapse for a `spatial_structure`-less DB with
+   duplicated storey names is the defect to fix — likely by turning on the `LevelDeriver` owner
+   (`schedule_author.js _deriverLevelAxis()`, `opts.levelSource === 'deriver'`, **default OFF**,
+   §I.3a) rather than patching the broken `deriveBandRanks` path.
+
+Cross-lane: the TM edit/debug map lives in `prompts/4D_GANTT_TM_REFACTOR.md` (read its 🗺 DEBUG MAP
+first); the level relation is `4D_MODEL_INTEGRITY.md` §I.3/§I.3a.
