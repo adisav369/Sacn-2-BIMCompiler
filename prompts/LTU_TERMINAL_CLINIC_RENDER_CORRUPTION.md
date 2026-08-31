@@ -1665,7 +1665,11 @@ resolved. The shape is consistent enough to name:
 4. **The user's pasted logs contained both answers** (`§TRIPLANAR_INIT class=IfcPlate tex=metal…`,
    and the absence of any X-ray line). Reading the whole log first would have skipped two dead ends.
 
-## §Z ⛔ RESUME HERE — NEW SESSION HANDOFF (2026-08-31). Read §Z.1 for state, §Z.3 for the open bug.
+## §Z ⛔ SUPERSEDED IN PART BY §AA/§AB/§AC (2026-09-01) — READ THOSE FIRST.
+§Z.1 state still holds. §Z.2 is ANSWERED in §AB. §Z.3's H1 and H2 are BOTH DISPROVEN in §AA —
+do not re-measure them; the one surviving hypothesis (H3, streaming-arrival race) is §AA.5.
+
+## §Z RESUME HANDOFF (2026-08-31). Read §Z.1 for state, §Z.3 for the original two hypotheses.
 
 ### §Z.1 WHAT IS LIVE RIGHT NOW (measured, do not re-derive)
 | object | state |
@@ -1754,3 +1758,122 @@ leaves on scrub-back.
 
 Cross-lane: the TM edit/debug map lives in `prompts/4D_GANTT_TM_REFACTOR.md` (read its 🗺 DEBUG MAP
 first); the level relation is `4D_MODEL_INTEGRITY.md` §I.3/§I.3a.
+
+## §AA §Z.3 H1 AND H2 BOTH DISPROVEN — MEASURED 2026-09-01. Session cut short by the user
+(machine load); the ONE remaining hypothesis and its ready-to-run probe are named at the end.
+
+**Do not re-run what is below. Both §Z.3 hypotheses are settled; two NEW defects were found.**
+
+### §AA.1 H1 (runtime re-authoring) — DISPROVEN, two independent producers agree
+Ran the SHIPPED pipeline offline against the byte-identical live file (`~/Downloads/Clinic.db`,
+md5 `636c8ef1…`) via `bim-ootb scripts/cache_4d_run.js` — cache key `ClinicLive/567de7d89253_694d9b4033f5`,
+`witness.log` + `run.json` persisted there (PRIMAL LAW clause 5: read it, don't re-run).
+
+- `§TPL_MODEL model=template v=1.2.0` — **the CANONICAL template path runs**, not `legacy-deriveZones`.
+- All 4 slab-on-grade guids land in `TASK_Substructure_TOF_Footing`, task days **0–2 of 111** =
+  **1.8 %** of the timeline — i.e. the fresh authored run reproduces the BAKED schedule exactly.
+- The only low (`bz<1.0`), flat (`<1.5 m`), large (`>50 m²`) elements in the whole model are those
+  3 visible slabs (2939 / 188 / 56 m²) and every one is at 1.7–1.8 %. **Nothing at ground level is
+  scheduled late.** The next-lowest large horizontal thing is `IfcCovering` ceilings at bz 2.68 m,
+  76.7 % — a ceiling, 2.7 m up, not a floor.
+
+⚠ §Z.3's band-duplication observation is REAL but is not this bug: `§4D_BAND_MONOTONIC ranks=7
+ladder=[TOF Footing@-0.5m(1678), Level 1@0.4m(4678), First Floor@2.8m(3654), Level 2@4.6m(2614),
+Second Floor@7.4m(2921), Roof - Mech@8.6m(173), Roof - Main@11.3m(353)]` with
+`§S18_STOREY_MERGE_FAIL no such table: spatial_structure`. 7 bands for 4 real floors. That is
+**§T.4 follow-up (b)** (`spatial_structure` parity in `import_db_builder.js`) surfacing in the 4D
+lane — a schedule-quality item, not the cause of a late slab.
+
+### §AA.2 H2 (the scene GROUND PLANE) — DISPROVEN
+`§Z3_GROUND_PLANE firstVisibleFwd=NEVER y=-4.74`, across a full 40-step forward + 40-step backward
+scrub. Shipped log agrees: `§GROUND_Y src=gf-storey-slab(First Floor) z=-1.37 y=-4.74` →
+`§GROUND_INIT y=-4.7 visible=false`, `§TM_SHADOW_INHERIT shadowOn=false groundVisible=false`.
+`streaming.js:2866` gates it on `A._shadowOn || A._nightMode`; both false. It never turns on, so it
+cannot be what appeared. (DLOD proxies also ruled out: `_dlodProxyOn` defaults **false**,
+`time_machine.js:558`.)
+
+### §AA.3 The user's symptom does NOT reproduce on a SETTLED scene
+`probe_clinic_ground_slab.js` (kept at
+`/tmp/claude-1000/-home-red1-bim-compiler/4b57663a-4708-4e7c-9e85-e76eecaf57cf/scratchpad/`) drives
+the shipped hooks `tmActivateForBake` / `__tmSetCursor` / `__tmSnapshotVisible` under puppeteer,
+against a symlink serve-root so **nothing was written into `~/bim-ootb`**. Health lines all clean:
+`§DB_SPLIT_DETECT found=false`, `§PATCH_NONE Clinic.db (404)`, `§NOGEO_COMPOSE_SKIP no ghosts`,
+`§CONTRACT_CHECK batch=10373 instanced=5698 guidMap=16071 streamed=16071 orphans=0`,
+`§TM_OPS_CHECK total=16071 place=16071`, `§GANTT_AXIS axisDays=111.0 trueDays=111.0`.
+
+| slab | first visible, forward | lowest still-visible, scrub-back | schedule |
+|---|---|---|---|
+| `2XnCNfbvb5mfgxvK1MPFfM` (2939 m²) | **2.5 %** | 2.5 % | 1.8 % |
+| `04P9YDzmrE2hYqZJi1w5iG` | 2.5 % | 2.5 % | 1.8 % |
+| `1lGrrtZObD3BCuxBCd$E_H` | 2.5 % | 2.5 % | 1.8 % |
+| `2lH_RQeBDBG8rH6PWO_5fC` | **NEVER** | NEVER | 1.8 % |
+
+2.5 % is the first sample after 0 % at 40 steps — correct to sampling resolution. Scrub-back hides
+them again at exactly the same cursor. **No lateness, no persistence, on a settled scene.**
+
+### §AA.4 ⛔ TWO NEW DEFECTS, both found by the probe, neither previously known
+1. **`2lH_RQeBDBG8rH6PWO_5fC` (`Floor:150mm Slab on Grade:221475`, 56 m², bz −0.15) is never
+   visible at ANY cursor, including project end.** It is not missing data: it has an
+   `element_instances` row and an `element_transforms` row, it is in `_batchMeta` (probe reports
+   `path=batched`), and it is scheduled. Its batch slot simply reads invisible at 100 %.
+2. **142 of 16,071 elements are still invisible at project end** (`visN=15929` at cursor
+   = `projectEnd`). Population unidentified — the probe counted them, it did not list them.
+   Both belong in one witness: *"every scheduled element is visible at `projectEnd`"* — that
+   assertion does not exist today, which is why neither was ever caught.
+
+### §AA.5 ⛔ THE ONE HYPOTHESIS LEFT — H3, streaming-arrival race. Probe written, NOT run to completion
+The user's flow is not a settled scene: they press Time Machine while a **226 MB single-file** DB is
+still streaming. `time_machine.js:9610`'s own comment already names this class — *"a mesh that
+arrives after this pass defaults to its normal (fully-visible) state and is never swept to match the
+active cursor until the NEXT cursor change"* — with `tmResweep()` as the fix, and
+`§PERF_INCR_DEFER` dropping the event index for the whole streaming window. **H3: the ground slab's
+BatchedMesh lands late in stream order, so it appears at its ARRIVAL wall-clock moment rather than
+at day 2, and keeps whatever visibility it arrived with until a full pass sweeps that mesh.** That
+matches both halves of the user's sentence, including *"as if it is outside the timeline."*
+
+`probe_clinic_stream_race.js` (same scratchpad dir) is written to settle it: it activates TM
+**mid-stream** (verified: `§Z3R_ARMED streamingAtActivate=true metaGen=192`), plays 120 ticks with
+real waits so batches keep landing, then scrubs back to 0 %. It was killed before finishing —
+purely to free the machine (user: *"cut down any mem hogging sessions… need to shut off a while"*),
+not because it failed. Re-run notes for whoever picks this up:
+- serve root: symlink every top-level `~/bim-ootb` entry into a scratch dir, `buildings/` as a real
+  dir of symlinks **with `Clinic_meta.db`/`Clinic_geo.db` OMITTED** (else `streaming.js:2495`
+  HEAD-probes and loads the split pair, which is NOT what is live — §Z.1);
+  `ln -s ~/Downloads/Clinic.db buildings/Clinic.db`; `python3 -m http.server 8611`.
+- puppeteer needs `protocolTimeout: 600000` and **one CDP call per tick** — v1 put the whole sweep
+  in a single `page.evaluate` and blew the 180 s default.
+- fold §AA.4's two defects into the same run: at `projectEnd`, LIST the invisible guids, don't count.
+
+## §AB §Z.2 ANSWERED — the OCI sandbox viewer is not "an older build", it is a DIFFERENT LINEAGE
+Measured 2026-09-01. §Z.2 asked whether the OCI sandbox is still a supported front before spending a
+deploy on it. **It is not one file behind; it is a separate, frozen source tree.**
+
+`deploy/OCI_UPLOAD.md` §RULES 5/180/186: `bim-ootb-live/o/sandbox/*` is uploaded from
+**`bim-compiler/deploy/dev/`** — NOT from `~/bim-ootb/viewer/`. Those two trees are unrelated snapshots:
+
+| | `bim-compiler/deploy/dev/` (the OCI source) | `~/bim-ootb/viewer/` (GH Pages source) |
+|---|---|---|
+| last commit touching it | **2026-08-01** (`0ded97fc2`) | 2026-08-30 (`742ea66b`) |
+| `.js` files | 111 | 137 |
+| `time_machine.js` | 144,607 B, **2026-06-04** | 592,663 B, 2026-08-30 |
+| `schedule_author.js` / `schedule_gate.js` / `cpm_schedule.js` / `support_sweep.js` / `gantt_model.js` | **absent** | present |
+| `cinema_path_editor.js` + the whole `cpe_*` set | **absent** | present |
+
+**62 modules exist in the viewer that `deploy/dev` has never had**, including the entire 4D
+authoring stack and the entire CPE/cinema stack. So the OCI front cannot run today's Time Machine at
+all — the glass fix (§X) not reaching it is a symptom, not the problem.
+
+**Recommendation (user's call, not taken): retire the OCI sandbox as a viewer front and keep
+`bim-ootb-live` for what still works there.** Bringing it current is a re-port of 62 modules plus a
+minify/deploy pipeline, not a file copy — and GH Pages already serves the current viewer. The only
+in-repo reference to an OCI sandbox URL is `bim-ootb/tests/card_verify.js:874`, and it points at the
+**dev** bucket, not live. Do NOT wholesale-copy `~/bim-ootb/viewer/*` over `sandbox/*` (§Z.2's own
+warning, now with the reason attached: the file lists differ by 62 entries and `index.html` differs).
+
+## §AC §T.4 — ALREADY CLOSED, ONE LIVE CONSEQUENCE WORTH NAMING
+§T.4 needed nothing: elements are complete client-side, every listed gap either self-heals or is a
+documented no-op. Its follow-up **(b) `spatial_structure` parity in `import_db_builder.js`** is no
+longer cosmetic — it is what makes `deriveStoreyMergeMap` fail on Clinic
+(`§S18_STOREY_MERGE_FAIL no such table: spatial_structure`), which is why a 4-floor building
+authors **7 level bands** with `Level 1` and `First Floor` as separate storeys (§AA.1). That is the
+concrete cost of the gap, and the argument for prioritising (b) over (a).
