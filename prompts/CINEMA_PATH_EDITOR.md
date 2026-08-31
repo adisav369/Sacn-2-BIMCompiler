@@ -1,5 +1,41 @@
 # ⚠ DO NOT REMOVE
-**▶ RESUME 2026-08-30 (evening) — read this first. ALL SHIPPED + LIVE (sw v1106), nothing unpushed.**
+**▶ RESUME 2026-09-01 — READ THIS FIRST. Everything below shipped + live, sw v1112, nothing unpushed.**
+
+| § | what | witness | PR |
+|---|---|---|---|
+| §CPE_PIE_HOLD | the pie HOLDS the last real crew instead of vanishing; dimmed 0.60, captioned with the day it is from, ring stays live | 9/9 | #1586 |
+| §CPE_STATS_TAIL | TWO ROUNDS — round 1 holds and never rotates; the Reveal round revolves everything, roster included | 15/15 | #1587 |
+| §R10 §MAXQ_FRAME_BUDGET | a baked frame is **20 composer renders, not 40** (bake only; Alt+S keeps 40) | floor RMS 0.21 | #1588 |
+| §R11 §PHOTO_PREWARM | 8.9 s of curve-smoothing + HDRI + ground texture moved OFF the first Alt+S | 6/6 | #1590 |
+
+**⛔ NOT ONE OF THESE HAS BEEN SEEN IN A REAL BAKE YET.** The user's last Hospital mp4
+(`BIM_MaxQ_Hospital_1788092317604.mp4`, 3,447 frames, 229.8 s) was baked from a tab loaded BEFORE
+§CPE_HUD_ORDER deployed — proven by its HUD order (counter → pie → path box, the OLD order) and by
+the pie showing a live `4 on site · Finisher ×4` to the last frame with no held caption and no
+stat cards. **A stale tab serves stale JS: reload before baking.**
+
+**What the next real bake should show, and what it proves:**
+- `§PHOTO_PREWARM ms=… did=[mepSmooth,hdri,groundTex]` a few seconds after streaming → §R11 landed
+- first Alt+S ~27 s → ~7-9 s → §R11's saving is real on Hospital
+- `§CPE_STATS_TAIL reveal round entered at frame …` → the dead tail is reclaimed
+- `§CPE_PIE_HOLD heldFrames=N/framesDone` → the hold fired (it will NOT fire on Hospital: Finisher
+  ops run to the last day, so the pie is never empty — that is correct, not a bug)
+- bake wall clock ~3 h → ~2 h 10-15 m → §R10's saving is real
+
+**Measured this session, do not re-derive:** the day counter pins at u≈0.45 and the pie sits on one
+static trade for the remaining **≈125 s** of a 229.8 s film — that is the "ample unused timing" the
+Reveal-round rotation now fills. Hospital = 63,182 elements, heap ~1.57 GB, `§SPLIT_GEO_LOADED
+size=229MB`. Curve smoothing on Hospital: 1,705 geoms / 14,621 ranges / 23,735,190 verts smoothed,
+8,923.6 ms, once per session.
+
+**Still open, unchanged:** §CPE_CORR_BRUSH_STROKE has NO witness. The material palette is UNBUILT —
+`TRIPLANAR_MAT` still keys on `ifc_class`, so Terminal's 300×300 tile floor and its 600×600 gypsum
+ceiling both render as concrete; 79 material names covering 90.3% of 48,428 elements, entirely
+unread. §MAXQ_BACKGROUND is SPEC-ONLY, facts delivered, **user has not approved building it**.
+
+---
+
+**▶ RESUME 2026-08-30 (evening) — superseded by the block above, kept for its detail. (sw v1106)**
 PRs #1579, #1580, #1582, #1583 all merged and verified live by fetching the deployed files back.
 Session shipped: §TRIPLANAR_NORMAL, warm cam fill, §CPE_PATH_OVERVIEW, §CPE_HUD_STACK,
 §CPE_LABEL_PANEL_SYNC, §CPE_RESOURCE_PANEL, §CPE_BIG_STATS, §MEP_SMOOTH_NORMALS,

@@ -3,6 +3,40 @@ spec section signed off after this study. Read the log after every run you do pe
 
 # CPE (Alt+C) + 4D Schedule — consolidated perf/memory study
 
+## ▶ RESUME 2026-09-01 — READ THIS FIRST
+**R10 and R11 both SHIPPED + LIVE this session. sw v1112. Nothing unpushed.**
+| § | what | witness | PR |
+|---|---|---|---|
+| §R10 §MAXQ_FRAME_BUDGET | a baked frame costs **20 composer renders, not 40** (taa 8 / ao 12). Bake-only — Alt+S keeps all 40. | table below, floor RMS 0.21 | bim-ootb #1588 |
+| §R11 §PHOTO_PREWARM | the 8.9 s curve-smoothing + HDRI + ground texture moved OFF the first Alt+S onto idle-after-streaming | 6/6 | bim-ootb #1590 |
+
+**⛔ NEITHER IS CONFIRMED ON A REAL HOSPITAL RUN YET — that is the next thing to do, and it needs
+the USER, not a probe.** Both numbers below come from the user's own v1111 Hospital log; the next
+real session's `§PHOTO_PREWARM` line and bake wall-clock are what prove they landed:
+- expected: first Alt+S **~27 s → ~7-9 s** (§R11)
+- expected: Hospital bake **~3 h → ~2 h 10-15 m** (§R10 — only the frame loop shrinks; the ~1 h of
+  staging + stitch is unchanged, so this is a ~47 min saving, NOT a halving)
+
+**Next open items, in the order I would take them:**
+1. **§R12 memory — MEASURE BEFORE FIXING.** Run the `§MEM_PROBE` breakdown on Hospital (Terminal's
+   is the only one on record: heap 1,226 MB, geometry attributes 469 MB). The user's log shows the
+   staging is NOT the hog — ~17 MB retained per Alt+S on a ~1.57 GB baseline, ~1%. The weight is
+   63,182 elements + `§SPLIT_GEO_LOADED size=229MB` resident in WASM for the tab's life. Closed
+   doors: dropping the `normal` attribute is WITHDRAWN, and 129.6 MB "weldable" is an upper bound.
+2. **⛔ The section-cut case is UNMEASURED.** The user's Alt+S after `§SECTION ON axis=Y` was
+   interrupted (`soft-cancel (camera move) elapsedMs=7887`) and never completed. Needs a run left
+   alone until `§STILL_REFINE done`, with and without the cut, same pose.
+3. **§MAXQ_BACKGROUND** (spec in `CINEMA_PATH_EDITOR.md`) — facts given, user has NOT approved
+   building it. It saves ZERO bake time; it buys back attention. ~270 LOC, 2 new files.
+4. R7 / R8 / R9 — still unstarted, still not urgent, and none of them move the bake clock.
+
+**⚠ MEASUREMENT LANDMINES — three methods failed before R10's table existed. Read §R10's
+"THREE MEASUREMENT METHODS FAILED FIRST" before designing any image-quality comparison.** Short
+version: never let the witness invent its own camera; one-condition-per-page-load is WRONG here
+because the scene reseeds (RMS 32 noise vs the effect being measured); one-load-many-folds is also
+wrong because only the first fold's AO does real work. Seed `Math.random` and compare per load.
+
+
 ## Goal
 Both lanes below have been built incrementally across many separate `prompts/#.md` files, each solving
 one feature at a time. Read them ALL TOGETHER (not one at a time) and look for: (a) duplicated or
