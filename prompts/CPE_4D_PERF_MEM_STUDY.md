@@ -321,7 +321,23 @@ than any headless probe, and it is what this section is built on. Nothing here i
 3. **First-press-only inits:** `§PHOTO_AO_INIT_OK` (lazy N8AO), `§MIRROR_ROOM_PROBE built` (later
    presses log `reused`).
 
-**Proposal:** move all of it off the Alt+S press and onto idle-after-streaming. The smoothing pass
+**✅ SHIPPED 2026-09-01 — bim-ootb PR #1590 MERGED + LIVE (sw v1112), witness 6/6.** Verified by
+fetching the deployed files back: `CACHE_VERSION = 'v1112'`, `PHOTO_PREWARM` in `effects.js`,
+`_photoPrewarm` in `streaming.js`. `A._photoPrewarm()` is called from the point streaming.js's own
+comment already calls "the model is fully streamed here", runs at idle (`requestIdleCallback`
+timeout 8000), and does mepSmooth + HDRI + ground-texture warm. The staging path KEEPS its own call
+as a fallback — degrade, don't disable. §PHOTO_AO deliberately untouched (576 ms of a 27 s press).
+Witness order proof: `§MEP_SMOOTH_NORMALS ms=1339.4` at index 0, `§PHOTO_PREWARM did=[mepSmooth,
+hdri,groundTex]` at 1, `§STILL_REFINE start` at 3 with nothing left to do. G-PW-2 and G-PW-3 are
+load-bearing TOGETHER — "prewarm fired" alone would also pass if the pass simply ran TWICE, which is
+worse than the original bug.
+**HONEST LIMIT:** the HDRI is STARTED earlier, not guaranteed FINISHED. The witness presses Alt+S
+immediately and `§LAYER2_HDRI_READY` still lands after `§STILL_REFINE start` there; a real user
+takes seconds so it should resolve first, but the guarantee is "started sooner", not "done".
+**NOT YET CONFIRMED ON HOSPITAL** — the 8,923.6 ms figure is from the user's log; the next real
+Hospital session's `§PHOTO_PREWARM` line is what proves the saving landed.
+
+**Original proposal (kept for the record):** move all of it off the Alt+S press and onto idle-after-streaming. The smoothing pass
 is already once-per-session and idempotent behind its own guard, so this is a scheduling change, not
 a behaviour change. Same for pre-warming the HDRI, the ground map, the N8AO pass and the mirror
 probe. **Expected: first Alt+S ≈ 27 s → ≈ 7-9 s, matching subsequent presses.** §PHOTO_AO is NOT
