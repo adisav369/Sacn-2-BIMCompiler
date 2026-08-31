@@ -293,3 +293,67 @@ The floor must be the **CLOSEST** warm pair — the smallest difference the harn
 #### Files
 `witness_maxq_frame_budget.js` (states its own verdict, shells out to the scorer) +
 `score_frame_budget.py` (RMS + pairwise matrix + floor gate), both in bim-ootb.
+
+---
+
+## §R11 / §R12 — first-Alt+S latency and the real memory picture (SPEC ONLY, 2026-09-01, awaiting go)
+
+**User, on v1111, Hospital:** *"we need to reduce its mem hog, as it seems slow to come on first
+time, but also when testing here with X section cut in joint action."*
+
+**Source: the user's OWN pasted console from a real session on their RTX 4060** — better evidence
+than any headless probe, and it is what this section is built on. Nothing here is re-derived.
+
+### §R11 — why the FIRST Alt+S is slow, MEASURED
+| | first Alt+S | second Alt+S |
+|---|---|---|
+| `§MEP_SMOOTH_NORMALS` | **8,923.6 ms** | — (once per session, `A._mepSmoothDone`) |
+| `§STILL_REFINE done elapsedMs` | **17,933** | **6,868** |
+| `§PHOTO_AO done totalMs` | 576 | 625 |
+| **total** | **≈ 27 s** | **≈ 7 s** |
+
+**The 20-second gap is ALL one-time work sitting on the Alt+S critical path:**
+1. **`§MEP_SMOOTH_NORMALS ms=8923.6`** — the curve smoothing (geoms=1705, ranges=14621,
+   vertsSmoothed=23,735,190, vertsKeptHard=8,874,063). Biggest single item, ~45% of the gap.
+2. **Assets arriving DURING the fold, which restart it.** Run 1 logs `§STILL_REFINE_RESTART
+   cam-moved — accumulation restarted` **twice**, with `§LAYER2_HDRI_READY` and `§GROUND_MAP
+   key=earth` landing in between. Every restart throws away the samples accumulated so far.
+3. **First-press-only inits:** `§PHOTO_AO_INIT_OK` (lazy N8AO), `§MIRROR_ROOM_PROBE built` (later
+   presses log `reused`).
+
+**Proposal:** move all of it off the Alt+S press and onto idle-after-streaming. The smoothing pass
+is already once-per-session and idempotent behind its own guard, so this is a scheduling change, not
+a behaviour change. Same for pre-warming the HDRI, the ground map, the N8AO pass and the mirror
+probe. **Expected: first Alt+S ≈ 27 s → ≈ 7-9 s, matching subsequent presses.** §PHOTO_AO is NOT
+worth touching — 576 ms of a 27 s press.
+
+### §R12 — the memory picture, and what it is NOT
+`§NIGHT_MEM_WITNESS heapMB` across three full Alt+S cycles: **1565.9 → 1572.0 → 1572.9 → 1578.3 →
+1599.8**. So ~**17 MB retained per cycle on a ~1.57 GB baseline — about 1% per press.**
+
+**The staging is NOT the hog, and two suspicions were checked and cleared:**
+- **`windowLights` growing 3775 → 4536 → 4755 is NOT a leak.** Skyline box sizes are randomised per
+  rebuild (`winCount = floor((bw*bh)/14)` with random `bw`/`bh`), so the count legitimately differs.
+  The skyline group and its Points cloud are disposed at `effects.js:632-635`.
+- **`§ALTS_MEM_HOG` (2026-08-16) is live, not pending.** `_disposePhotoProps()` really is called on
+  the real-exit path (`effects.js:3684`). `glowMatKeys` cycles 98 → 0 → 98 → 0 in the log, which is
+  the clean-up working.
+
+**The baseline is the hog, and it is the model, not the still:** 63,182 elements,
+`§SPLIT_GEO_LOADED size=229MB` resident in WASM linear memory for the life of the tab,
+`§CONTRACT_CHECK batch=38169 instanced=25013`. For scale, the measured Terminal profile is heap
+1,226 MB with **geometry attributes 469 MB** (position 198.6, normal 198.6, index 71.8).
+
+**Proposal: MEASURE Hospital before proposing any fix.** Run the same `§MEM_PROBE` breakdown that
+Terminal has, so the 1.57 GB is split into geometry attributes / textures / WASM DB / everything
+else. Aiming memory work at a 1%-per-press creep while a 229 MB DB and ~470 MB of attributes sit
+underneath it would be the square peg this file's own §0a warns about.
+**Closed, do not reopen:** dropping the `normal` attribute is WITHDRAWN (it breaks §TRIPLANAR's
+`vTriWorldNormal` and all texturing collapses), and the 129.6 MB "weldable" figure is an upper bound.
+
+### ⛔ The section-cut case is NOT measured — the log cannot answer it
+The third Alt+S, the one taken after `§SECTION ON axis=Y range=[-45.3, 90.5]`, ends with
+`§STILL_REFINE soft-cancel (camera move) elapsedMs=7887` — **it was interrupted, so it never
+produced a completed timing.** The repeated `[GridScissors] §GRID_SCISSORS skipped — overlay not
+active` lines are no-ops and cost nothing. To answer "slow with X section cut" a run is needed where
+the fold is left alone until `§STILL_REFINE done`, with and without the cut, same pose.
