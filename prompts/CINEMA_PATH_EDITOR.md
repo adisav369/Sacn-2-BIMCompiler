@@ -3,17 +3,23 @@
 Five shipped + live (sw v1113): §CPE_PIE_HOLD #1586, §CPE_STATS_TAIL #1587, §R10 #1588, §R11 #1590,
 §CPE_CARD_FIT #1592. HUD order and the Reveal rotation both CONFIRMED in the user's own bake.
 
-**Two branches pushed, NEITHER merged — pick these up first:**
-1. `fix/corr-brush-bounded` — bounded fraction-of-walk brush, witness 6/7. **Blocker: a 111 deg
-   single-frame snap.** Suspect named (`_cpeCorrDirBlend` naive short-way yaw). Do not merge until
-   G-BR-6 is green.
+**Branch status:**
+1. `fix/corr-brush-bounded` — ✅ **UNBLOCKED 2026-09-01, witness 8/8, PR #1597 (auto-merge armed),
+   sw v1116.** The 111 deg was CONFIRMED as the named suspect: `_cpeCorrDirBlend`'s
+   `round(raw/2π)` is a step function of the moving underlying gaze, so the blended yaw jumped
+   2π·w = **110.44 deg in one sample** when the authored correction sat within **0.05 deg of
+   antipodal** to the gaze beneath it. Fixed by porting §CINEMA_GAZE_SENSE (branch resolved ONCE
+   per stroke). In-run A/B proves it: **110.436 → 13.114**, against the walk's own 13.282. See
+   §CPE_CORR_BRANCH in §SESSION_2026-09-01.
 2. `fix/buildup-tie-spread` — **A/B says DO NOT MERGE**: worst frame 124 → 134, largest exact tie is
    only 5. The slab pop is CLUSTERING, not ties. The real lever is §CPE_BUILDUP_WORK_PACED, and
    turning it on is a user decision (it swings the calendar advance 57x).
 
-**Next, in the order I would take them:** (a) the material omission — Terminal has 100%
-`material_name` and our code ignores it, fix shape written; (b) palette rules + brown scrub tip;
-(c) freeze §CPE_AIM_DEPTH inside a correction window.
+**Next, in the order I would take them:** (a) ~~the material omission~~ SHIPPED as §CPE_MATERIAL_KEY
+#1595; (b) ~~palette rules + brown scrub tip~~ SHIPPED #1594; (c) freeze §CPE_AIM_DEPTH inside a
+correction window; (d) NEW, filed by the #1597 run — witness G-BR-5 compares the correction's two
+window edges to each other, which reads the underlying walk as much as the correction (Duplex fails
+it at 435 vs 110 deg/m while that walk's own peak is 1945). It needs a walk-relative denominator.
 
 **⚠ Two numbers I asserted this session were WRONG and are corrected in §SESSION_2026-09-01:** the
 89.5 m Hospital walk (really 39.43 m) and "walk length scales with film duration" (it does not).
@@ -4126,10 +4132,12 @@ the Reveal rotation live — 10 slots, `20 levels` at u=0.75, `1,771,249 labour 
 
 ### ⛔ PARKED WITH MEASUREMENTS — both branches pushed, NEITHER merged
 
-**`fix/corr-brush-bounded`** — §CPE_CORR_BOUNDED. Bounded + fraction-of-walk reach (4% / 12% / 18%),
-legacy metre records still honoured. Witness was 6/7 on Hospital: window 33.4% of the walk (authored
-34%), outside it untouched to 0.031 deg. **The blocker was one sample jumping 111 deg** where the
-baseline walk never exceeds 13 deg/sample.
+**`fix/corr-brush-bounded`** — §CPE_CORR_BOUNDED. **UNBLOCKED 2026-09-01 — witness 8/8 on Hospital,
+PR #1597, auto-merge armed.** Bounded + fraction-of-walk reach (4% / 12% / 18%), legacy metre records
+still honoured. Witness was 6/7: window 33.4% of the walk (authored 34%), outside it untouched to
+0.031 deg. **The blocker was one sample jumping 111 deg** where the baseline walk never exceeds
+13 deg/sample. It was `_cpeCorrDirBlend`'s naive short-way yaw — the named suspect, now CONFIRMED by
+measurement, fixed by porting §CINEMA_GAZE_SENSE. Details in §CPE_CORR_BRANCH below.
 **Corrected en route:** the EXIT is not the abrupt edge (284 deg/m vs the walk's own 304); the ENTRY
 is (2524). And the walks are Duplex 13.85 m / HHS 27.40 m / Hospital **39.43 m** — the 89.5 m in the
 §CPE_WALK_BUDGET comment does NOT reproduce, and walk length does NOT scale with film duration.
@@ -4179,6 +4187,42 @@ uses, and it swings the pitch **4.8 deg past what the uncorrected walk itself re
 own pitch envelope (`-71.19..15.45`) and is a two-line change to the expression `_dirBlend` /
 `_cinemaGazeBlend` already use. Counterfactual, all three on the same 900 samples:
 `§PROBE_WINDOW shippedWinMax=110.436 slerpWinMax=11.982 refWinMax=13.114 baseWinMax=13.282`.
+
+**SHIPPED — PR #1597, `sw v1116`, `effects.js?v=28`. Witness `witness_cpe_corr_brush.js` 8/8 on
+Hospital** (`durationSec=150`, 39.43 m walk, 900 arc samples):
+
+| § line | measured |
+|---|---|
+| `§CPE_CORR_BOUNDED_SNAP` | in-window max **13.114 deg/sample** @ e3=0.4156 vs the baseline walk's own **13.282** @ e3=0.4389, 307 pairs judged of 900 |
+| `§CPE_CORR_BRANCH_AB` | branch OFF **110.436** → branch ON **13.114** — the gate discriminates |
+| `§CPE_CORR_BRANCH_NOOP` | ON vs OFF curves **105.1135 deg** apart (the wrap fires here) |
+| `§CPE_CORR_BOUNDED_HAZARD` | authored gaze within **0.05 deg** of antipodal — wrap hazard EXERCISED |
+| `§CPE_CORR_BOUNDED_REACH` | window **33.4%** of the walk vs the authored 34.0% — did not regress |
+| `§CPE_CORR_BOUNDED_DRIFT` | outside the authored window **0.0000 deg** over 595 samples (bar was 0.031) |
+| `§CPE_CORR_BRANCH` | `strokes=1 s=0.4387 entryE3=0.3987 refDeltaDeg=179.76 nearAntipodal=true` |
+
+**Two witness proxies were themselves measured wrong and replaced — this is the §E defect class again,
+and it is why Duplex looked broken.** G-BR-3/4/5 measured reach and edge abruptness from the
+LARGEST-DEVIATION index as a stand-in for the anchor. The deviation peak is NOT the anchor: it lands
+2.08 m past it on Duplex (the underlying gaze keeps drifting through the hold, so the deviation keeps
+growing), reading as *"reach BACK 2.71 m against an authored 0.64 m"* — a false FAIL about the proxy.
+They now use the record's own `s`, which TIGHTENS Hospital 0.61 → **1.53 m against the authored 1.58**.
+G-BR-5's exit edge is now the decay window instead of a slice that swept the whole hold: **283.96 →
+8.65 deg/m**. So the earlier "exit 284 vs the walk's own 304" was itself a proxy artefact — the real
+decay edge is 8.65, and the exit was even further from being the abrupt one than that note claimed.
+
+**Duplex 7/8, and NOT caused by this change — proved, not argued.** `§CPE_CORR_BRANCH_NOOP` measures
+the branch-ON and branch-OFF curves **0.000002 deg** apart there (`refD=60.79`, nowhere near the wrap),
+so the fix is a bit-for-bit no-op on that plan and G-BR-5's `435.54 vs 110.43 deg/m` is pre-existing.
+The witness now prints this attribution itself (`§CPE_CORR_BOUNDED_ATTRIB`). **Left alone deliberately**
+— the exit edge was out of scope, and 435 deg/m is far under Duplex's own **1945 deg/m** walk peak, so
+G-BR-5 is reading the walk as much as the correction. **Open, filed, not chased: G-BR-5 compares two
+window edges whose underlying gaze behaves differently and needs a walk-relative denominator.**
+
+Also worth keeping: the witness gained a real A/B (`A._cpeCorrBranchOff`, read-only hook, default off)
+so it names the issue it proves in ONE run instead of asserting a number against an older session's,
+plus NO-OP / VACUOUS / INCONCLUSIVE gates and a scope-blind self-report (`§CPE_CORR_BOUNDED_HAZARD`
+says outright when a plan does not exercise the wrap, as Duplex does not).
 
 **`fix/buildup-tie-spread`** — §BUILDUP_TIE_SPREAD. **A/B says DO NOT MERGE.** Hospital, 3118 frames:
 | | distinct end_ts | largest exact tie | worst frame |
