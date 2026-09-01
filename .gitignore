@@ -130,3 +130,17 @@ build/erp/.demo_controller_key.json
 
 # Raw pipeline input staging (large extraction DBs; canonical ignored copy lives under DAGCompiler/lib/)
 /input/
+
+# ── NO BINARY .db IN GIT — repo-wide, added 2026-09-01 with the LFS removal ────────────────────
+# CLAUDE.md DB POLICY: binary .db commits are banned outright and unconditionally. The blanket
+# `*.db filter=lfs` rule in .gitattributes had pulled 59 DBs (1.79 GB) into HEAD; they were
+# untracked (files kept on disk) and every path they lived in is closed here so they cannot come
+# back by accident. DB content reaches a consumer as migration/*.sql or <app>/patches/*.sql plus a
+# self-heal loader; full rebuilt binaries go to OCI (deploy/OCI_UPLOAD.md §RULES). See
+# prompts/LFS_QUOTA_AUDIT.md for the measurement this came from.
+*.db
+*.db-wal
+*.db-shm
+# The two SQL-defined exceptions stay tracked as TEXT, never as binaries:
+!migration/*.sql
+!**/patches/*.sql
