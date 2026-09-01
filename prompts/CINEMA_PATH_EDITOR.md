@@ -1,5 +1,25 @@
 # ⚠ DO NOT REMOVE
-**▶ RESUME 2026-09-01 — READ THIS FIRST. Everything below shipped + live, sw v1112, nothing unpushed.**
+**▶ RESUME 2026-09-01 (late) — READ §SESSION_2026-09-01 AT THE END OF THIS FILE FIRST.**
+Five shipped + live (sw v1113): §CPE_PIE_HOLD #1586, §CPE_STATS_TAIL #1587, §R10 #1588, §R11 #1590,
+§CPE_CARD_FIT #1592. HUD order and the Reveal rotation both CONFIRMED in the user's own bake.
+
+**Two branches pushed, NEITHER merged — pick these up first:**
+1. `fix/corr-brush-bounded` — bounded fraction-of-walk brush, witness 6/7. **Blocker: a 111 deg
+   single-frame snap.** Suspect named (`_cpeCorrDirBlend` naive short-way yaw). Do not merge until
+   G-BR-6 is green.
+2. `fix/buildup-tie-spread` — **A/B says DO NOT MERGE**: worst frame 124 → 134, largest exact tie is
+   only 5. The slab pop is CLUSTERING, not ties. The real lever is §CPE_BUILDUP_WORK_PACED, and
+   turning it on is a user decision (it swings the calendar advance 57x).
+
+**Next, in the order I would take them:** (a) the material omission — Terminal has 100%
+`material_name` and our code ignores it, fix shape written; (b) palette rules + brown scrub tip;
+(c) freeze §CPE_AIM_DEPTH inside a correction window.
+
+**⚠ Two numbers I asserted this session were WRONG and are corrected in §SESSION_2026-09-01:** the
+89.5 m Hospital walk (really 39.43 m) and "walk length scales with film duration" (it does not).
+Do not re-quote the §CPE_WALK_BUDGET comment as a live measurement.
+
+**▶ RESUME 2026-09-01 (earlier) — superseded by the block above. Everything below shipped + live, sw v1112.**
 
 | § | what | witness | PR |
 |---|---|---|---|
