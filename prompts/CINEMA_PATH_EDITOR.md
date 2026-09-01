@@ -4127,13 +4127,58 @@ the Reveal rotation live — 10 slots, `20 levels` at u=0.75, `1,771,249 labour 
 ### ⛔ PARKED WITH MEASUREMENTS — both branches pushed, NEITHER merged
 
 **`fix/corr-brush-bounded`** — §CPE_CORR_BOUNDED. Bounded + fraction-of-walk reach (4% / 12% / 18%),
-legacy metre records still honoured. Witness 6/7 on Hospital: window 33.4% of the walk (authored
-34%), outside it untouched to 0.031 deg. **Blocker: one sample jumps 111 deg** where the baseline
-walk never exceeds 13 deg/sample. Suspect, unconfirmed: `_cpeCorrDirBlend`'s naive short-way yaw —
-the exact hazard §CINEMA_GAZE_SENSE fixes elsewhere, which measured 118 deg/frame when it last bit.
+legacy metre records still honoured. Witness was 6/7 on Hospital: window 33.4% of the walk (authored
+34%), outside it untouched to 0.031 deg. **The blocker was one sample jumping 111 deg** where the
+baseline walk never exceeds 13 deg/sample.
 **Corrected en route:** the EXIT is not the abrupt edge (284 deg/m vs the walk's own 304); the ENTRY
 is (2524). And the walks are Duplex 13.85 m / HHS 27.40 m / Hospital **39.43 m** — the 89.5 m in the
 §CPE_WALK_BUDGET comment does NOT reproduce, and walk length does NOT scale with film duration.
+
+#### §CPE_CORR_BRANCH (2026-09-01) — the 111 deg, CONFIRMED, and the fix. SPEC.
+
+**The suspect was right, and it is now measured, not inferred.** A standalone probe rebuilt
+`_cpeCorrDirBlend` outside the product and reproduced the shipped corrected gaze curve to
+`§PROBE_RECON fidelityToShipped maxDeg=0.000` over 676 samples — so what follows is a statement about
+the real function, not about a look-alike.
+
+The blend takes `raw = yawB - yawA` and picks the short way with `raw - 2π·round(raw/2π)`. `yawB` is
+the authored correction, fixed; `yawA` is the underlying pin/depth/path-follow gaze, which moves every
+sample. `round()` is a **step function of `yawA`**: the sample `raw` crosses ±π, `dYaw` moves by 2π and
+the blended yaw `yawA + dYaw·w` moves by **2π·w in one sample**. Identical mechanism to the one
+§CINEMA_GAZE_SENSE (2026-07-27) already names and fixes for the look-back beat, where it measured
+118 deg/frame.
+
+Measured on Hospital (39.43 m walk, 900 arc samples, anchor `s=0.4387`, ramp/hold/decay 4/12/18%):
+`§PROBE_WRAP count=5` — `raw` crosses ±180 deg five times over the walk. Three land where `w=0`
+(harmless, outside the window). Two land inside the ramp:
+
+| e3 | raw before → after | w | predicted 2π·w | measured deg/sample |
+|---|---|---|---|---|
+| 0.4078 | +179.9 → -179.8 | 0.1309 | 47.11 | **42.16** |
+| 0.4144 | -178.8 → +177.9 | 0.3424 | 123.28 | **110.44** |
+
+That second row IS the 111 deg. Prediction and measurement differ only by the `cos(pitch)` foreshortening
+of a yaw step measured as a 3-D angle. The authored correction happened to land **near-antipodal in yaw**
+to the gaze underneath it (`|raw|` within 2 deg of 180 for a run of ~40 samples), which is exactly the
+case `_cpeCorrDirBlend`'s own comment declared out of scope: *"a corrected gaze and the underlying
+path-follow gaze are never expected to be near-antipodal."* **That assumption is false and is what broke.**
+
+**FIX — port §CINEMA_GAZE_SENSE, do not invent a second mechanism.** Resolve the 2π branch ONCE per
+stroke, at plan-build time, from the geometry at the moment that stroke's blend STARTS; then take every
+per-sample `raw` as the representative NEAREST that reference:
+`dYaw = raw - 2π·round((raw - refD)/2π)`. `refD` is cached on the `_corrArc` record and is the
+normalised `yawB - yawA` at `e3 = s - rampFrac`, where `yawA` is read from the **uncorrected**
+`_beat3Pose` at that e3 (a one-shot re-entrant probe guarded so it returns before the correction step —
+so the reference is the very vector `_cpeCorrDirBlend` will be handed, not an approximation of it).
+Deterministic, order-independent, one extra pose evaluation per stroke per plan.
+
+**The alternative was measured and rejected on numbers, not on taste.** A branch-free great-circle
+slerp also kills the snap (11.982 deg/sample) but it leaves the yaw/pitch lerp the rest of the file
+uses, and it swings the pitch **4.8 deg past what the uncorrected walk itself reaches** in that span
+(`§PROBE_PITCH slerp=-81.10..15.45` vs `base=-76.32..17.51`). The reference port stays inside the base's
+own pitch envelope (`-71.19..15.45`) and is a two-line change to the expression `_dirBlend` /
+`_cinemaGazeBlend` already use. Counterfactual, all three on the same 900 samples:
+`§PROBE_WINDOW shippedWinMax=110.436 slerpWinMax=11.982 refWinMax=13.114 baseWinMax=13.282`.
 
 **`fix/buildup-tie-spread`** — §BUILDUP_TIE_SPREAD. **A/B says DO NOT MERGE.** Hospital, 3118 frames:
 | | distinct end_ts | largest exact tie | worst frame |
@@ -4165,8 +4210,12 @@ authored presentation, which the user explicitly ruled in scope.
 zebra/mono, 91-97 random, 98-100 HARD. **It never reads `material_name` or `material_rgba`.**
 **Alt+S does NOT bake over it:** `_setTriplanarActive` (`effects.js:136`) is a **no-op stub** that
 returns a count and swaps nothing; `_recolorMesh` clones the material and sets `.color`, so on a
-triplanar material the palette TINTS the texture. Code-read, not yet run-confirmed.
-**User's asks, not yet built:** (a) brown track on the scrub's last segment as an affordance that the
+triplanar material the palette TINTS the texture. ~~Code-read, not yet run-confirmed.~~
+**→ RUN-CONFIRMED 2026-09-01 with one correction (§SESSION_2026-09-01C MEASURED):** "does not bake
+over" holds (0/400 materials swapped or recoloured across a real still pass), but the TINT half is
+WRONG — `clone()` drops the triplanar `onBeforeCompile` hook (347/347 measured), so the palette
+REPLACES the texture with flat colour on triplanar materials.
+**User's asks — BUILT 2026-09-01, PR #1594 (§SESSION_2026-09-01C):** (a) brown track on the scrub's last segment as an affordance that the
 tip does something special (material injection); (b) rules mapping colour scheme to grouping —
 ordinal groupings (storey) want a RAMP, categorical (class/disc) want distinct hues; today both get
 the same cycling list keyed on `palette[i % len]` by group SIZE rank, which is arbitrary and throws
@@ -4179,3 +4228,248 @@ Order is path-follow → depth → **correction last** (`effects.js:8143-8152`),
 edit already overrides depth. The wobble window is the ramp/decay, where depth keeps MOVING the
 direction being blended from. Freezing depth at window entry makes it a fixed-to-fixed crossfade.
 Removing depth outright would regress the dead-end "nose against the wall" case it was built for.
+
+---
+
+## §CPE_MATERIAL_KEY (2026-09-01) — triplanar keys `material_name` FIRST, `ifc_class` as fallback
+
+### SPEC (written before code — Spec-First)
+**Issue this exposes or disproves:** `TRIPLANAR_MAT` (`viewer/streaming.js`) is keyed on `ifc_class`
+ALONE, so an element's own authored IFC material name — which 100% of Terminal's elements carry — is
+never consulted when choosing which of the three real photographic texture sets it gets. Same defect
+class as §GLASS_NOT_METAL (2026-08-30), which fixed the *alpha* half of the same "class alone decides"
+problem. This section fixes the *name* half.
+
+**Change:** `A._getMaterial(rgbaStr, ifcClass, matVariant, discipline, mepHint)` gains a 6th
+parameter `matName`. Texture selection becomes `TRIPLANAR_BY_NAME[matName] || TRIPLANAR_MAT[ifcClass]
+|| null`. The `alpha < 1 → no triplanar` guard from §GLASS_NOT_METAL is evaluated FIRST and is
+unchanged. A name that is not in the authored map falls through to today's class lookup, i.e. an
+unmapped name is a strict no-op.
+
+**Assets are fixed, not invented.** `viewer/textures/materials/` holds exactly THREE complete sets —
+`concrete_*`, `plaster_*`, `metal_*` (color/rough/normal 1k each, `NOTICE.txt` for provenance). No
+new texture asset is added; the 41 Terminal names are mapped onto those three or left unmapped.
+
+**Row plumbing:** `m.material_name` is appended as slot **16** of the stream row, i.e. AFTER the
+bbox triple, so slots 0-15 keep the §BBOX_ROW_SHIFT 16-slot layout byte-for-byte. To keep 16 fixed
+even on a DB with no bbox columns the query now emits `NULL, NULL, NULL` instead of omitting them.
+Column presence is probed once per DB (`A._hasMatNameCol`), the same pattern `A._hasBuildingCol`
+(§17.17.4 / W-OCC3-LTU) already uses, because `elements_meta.material_name` is absent from some
+older/partial DBs.
+
+**Bucketing is deliberately NOT re-keyed, and that is measured, not assumed:** `material_name` is
+fully determined by `(storey, discipline, material_rgba)` in every building checked, so adding it to
+the batch key would add ZERO buckets:
+| building | rows | buckets on `storey｜disc｜rgba` | buckets with `material_name` added |
+|---|---|---|---|
+| Terminal (`Terminal_meta.db`) | 48,428 | 244 | **244** |
+| Hospital (`Hospital_meta.db`) | 63,415 | 160 | **160** |
+| Clinic (`Clinic_meta.db`) | 16,114 | 65 | **65** |
+Draw-call count therefore cannot regress, and every bucket carries exactly one name, so taking
+`items[0].matName` — exactly how `batchCls` is already taken — is exact, not an approximation.
+
+### Two corrections to the §SESSION_2026-09-01 scoping note, both re-measured
+1. **"Hospital/Clinic have 0% `material_name`" is true of `*_extracted.db` only.** Measured:
+   `Hospital_extracted.db` 0/64,150 and `Clinic_extracted.db` 0/17,322 ✓ — but `Hospital_meta.db`
+   has **6,664/63,415 named (17 distinct)** and `Clinic_meta.db` **16,071/16,114 (12 distinct)**.
+   Those names are NOT authored IFC materials: **every one of them is prefixed `≈ `** (`≈ Grey`,
+   `≈ Off-White`, `≈ Red` …) — a synthetic colour approximation, 6,664/6,664 and 16,071/16,071 and
+   HHS 2,388/2,388. Terminal 0/48,428 `≈`-prefixed; LTU 0/36,957. So the `≈` prefix is a clean,
+   measured discriminator between an approximated colour label and a real authored material, and no
+   `≈ ` key is in the map — which is *why* Hospital/Clinic stay unchanged, not an assumption that
+   they have no names at all.
+2. **"Terminal's 300x300 tile floor and its 600x600 gypsum ceiling both render as concrete" does not
+   reproduce.** There is no 300x300 tile material in `Terminal_meta.db`'s 41 names, and the
+   600x600 gypsum ceiling (`jkrAR_clg-f_(pv60)-3 …`, 34 elements, all `IfcCovering`) already
+   resolves to **plaster**, not concrete. The real measured defect is bigger and different — below.
+
+### The measured defect, and the one thing the fix must NOT do
+Cross-tab of `material_name` × today's class-derived texture on `Terminal_meta.db`:
+- `Metal Deck` 33,756 → 33,643 already metal, **113 get no texture** (IfcDoor 110, IfcAirTerminal 3).
+- `Silver` 4,263 → 3,115 metal, **912 none**, **236 concrete** (IfcSlab).
+- `Aluminum` 256 → **256 none** (IfcWindow 228, IfcAlarm 17, IfcDoor 9, proxy 2).
+- `Steel, Paint Finish, Ivory, Glossy` 157 → **135 none** (IfcLightFixture).
+- `Concrete - Cast-in-Place Concrete - 45 MPa` 448 → 428 concrete, **20 metal**.
+- **`Basic Wall:A_Wall_Ext_150mm_BrickPlaster_V1` 7,714 — the trap.** It is a Revit *wall-type*
+  name that has leaked onto hosted elements: only **327 of 7,714 (4.2%) are `IfcWall`**. The rest are
+  IfcPipeFitting 4,243, IfcDuctFitting 713, IfcDuctSegment 568, IfcLightFixture 486, IfcAirTerminal
+  286, IfcFurniture 62, IfcValve 62 … Mapping that name to plaster would drag **5,892 correctly
+  metal-textured MEP elements** off the texture §TRIPLANAR_MEP_GAPS deliberately gave them. It is
+  therefore NOT in the map: a name that does not denote the element's material substance is left
+  unmapped and falls back to class. Same for `Basic Wall:A_Wall_Ext_150mm_Coping_V1` (3).
+
+### The 41 names, mapped — 19 in, 22 deliberately OUT
+Only the three texture sets that exist are used: `concrete_color_1k.jpg`, `plaster_color_1k.jpg`,
+`metal_color_1k.jpg` (+ their `_rough`/`_normal` siblings).
+
+**IN — 19 names (they denote a material substance):**
+metal 13 — `Metal Deck` 33,756 · `Silver` 4,263 · `Copper` 1,169 · `Aluminum` 256 ·
+`Steel, Paint Finish, Ivory, Glossy` 157 · `Rastelli Rubinetterie - Metal - Brass - Bronze` 41 ·
+`Metal - Steel, Polished` 24 · `Door Handle - Aluminium` 9 · `Metal - Generic - Black Finish` 4 ·
+`Metal Panel` 2 · `Steel - Zurn Industries - Stainless - Type 304` 1 ·
+`Metal-WATTS-ASTM A-536 Ductile Iron-Blue` 1 · `Metal - IEC - Steel` 1.
+concrete 2 — `Concrete - Cast-in-Place Concrete - 45 MPa` 448 · `Concrete, C12/15` 1.
+plaster 4 — the JKR ceiling family: `…(pv60)-3 600mm x 600mm PVC Laminated Gypsum Board` 34 ·
+`…(cf60)-3 1220 x 1220 x 4.5mm Papan simen gentian` 22 ·
+`…(pv60)-3 600mm x 1200mm PVC Laminated Gypsum Board(1)` 15 · `…(sk)-2 Skim Coat Plastering` 11.
+
+**OUT — 22 names, reported rather than guessed (each falls back to `ifc_class`, i.e. unchanged):**
+| why | names |
+|---|---|
+| Revit TYPE name, not a material (the trap above) | `Basic Wall:A_Wall_Ext_150mm_BrickPlaster_V1` 7,714 · `Basic Wall:A_Wall_Ext_150mm_Coping_V1` 3 |
+| substance real, but NO such texture exists — mapping it would be inventing an asset | `Linergy - Plastic - Polycarbonate Grey 7035` 179 · `Porcelain - Linen` 52 · `Glass` 16 · `Plastic` 8 · `Fiberglass-Watts-ABS` 7 · `Plastic - Black` 4 · `fiberglass-reinforced polyester` 2 · `jkrAR_flr-f_(vy20)-3 Vinyl (Anti static Finishing)` 1 · `Telescope wood` 1 |
+| a component name, not a material | `Seat Base` 108 · `Fin` 14 · `ConnectorInletMediumMaterial` 1 |
+| a colour word / finish word, no substance | `Red` 26 · `Finish.Cream` 8 · `White` 6 · `Grigio` 4 · `Yellow` 1 |
+| placeholder | `Default Panel` 32 · `Default` 22 · `<Unnamed>` 4 |
+
+**LTU gains NOTHING from this map, measured:** 0 of its 125,698 elements carry any of the 19 names.
+Its own three obviously-mappable substance names are `Steel` 1,078 and `Concrete - Existing` 549
+(both have an existing texture) and `Wood` 2,661 (there is NO wood texture — it would need a new
+asset). They are a SCOPED FOLLOW-UP, deliberately not shipped here, because this witness judges
+Terminal/Hospital/Clinic only and an unwitnessed change is not a change worth making.
+
+### WITNESS — W-CPE-MATERIAL-KEY, 12/12, exit 0
+`bim-ootb/viewer/tests/witness_cpe_material_key_2026-09-01.js` → `…2026-09-01.log`.
+Tier B streams Terminal for REAL (458.7 s wall clock, `?db=/buildings/Terminal_extracted.db`);
+Tier A runs the A/B over **100 %** of each building's elements through the SHIPPED resolver
+(`A._triResolve`, the single owner — the witness never re-implements the rule), then feeds the
+population through `witness_kit/contract.js` (schema + 9 invariants + a redControl that breaks
+"Hospital unchanged" on purpose and is confirmed to fail).
+
+| § line | value |
+|---|---|
+| `§MATNAME_COL` | `present=true` |
+| `§TRI_SRC_TALLY` | `bld=TerminalMerged rows=48428 named=48428 approx_named=0 by_name=40215 by_class=6514 alpha_none=35 none=1664 textured=46729 distinct_names_resolved=19` |
+| `§MATKEY_AB` Terminal | `elements=48428 named=48428 approx_named=0 distinct_names_resolved=19 elements_by_name=40215 elements_changed=1716` |
+| `§MATKEY_AB` Hospital | `elements=63182 named=6664 approx_named=6664 elements_by_name=0 elements_changed=0  NO-OP` |
+| `§MATKEY_AB` Clinic | `elements=16071 named=16071 approx_named=16071 elements_by_name=0 elements_changed=0  NO-OP` |
+| `§MATKEY_VERDICT` | `terminal_names_by_name=19 terminal_elements_by_name=40215 terminal_elements_changed=1716 hospital_changed=0 clinic_changed=0` |
+| `§WITNESS_CPE_MATERIAL_KEY` | `pass=12 fail=0 ran=203` |
+
+**What actually changed on screen, the ten biggest groups** (`(none)` = no texture at all before):
+| name | class | n | before → after |
+|---|---|---|---|
+| Silver | IfcFireSuppressionTerminal | 899 | (none) → metal |
+| Silver | IfcSlab | 236 | concrete → **metal** |
+| Aluminum | IfcWindow | 228 | (none) → metal |
+| Steel, Paint Finish, Ivory, Glossy | IfcLightFixture | 135 | (none) → metal |
+| Metal Deck | IfcDoor | 110 | (none) → metal |
+| Copper | IfcBuildingElementProxy | 22 | (none) → metal |
+| Concrete - Cast-in-Place Concrete - 45 MPa | IfcBeam | 20 | metal → **concrete** |
+| Aluminum | IfcAlarm | 17 | (none) → metal |
+| Aluminum / Door Handle - Aluminium | IfcDoor | 9 + 9 | (none) → metal |
+
+**Read the gap between 40,215 and 1,716 correctly:** 40,215 elements are now *decided* by their own
+material name; of those, 38,499 would have landed on the SAME texture through their class anyway
+(e.g. `Metal Deck` on `IfcPlate`). **1,716** is the number of elements whose pixels actually change.
+Both numbers are asserted; neither is the headline on its own.
+
+**Live render path (Tier B):** 92 materials in `_matCache` — 39 `src=name`, 21 `src=class`,
+25 `src=none`, 7 `src=alpha-none`; stream row length 17; every cached material records which key
+decided it (`mat.userData._triSrc/_triTex/_matName`). The shipped `§TRI_SRC_TALLY by_name=40215`
+and the independently recomputed A/B `40215` agree exactly — the log and the witness close on each
+other rather than on a hand derivation.
+
+### Palette interaction — asserted, not assumed (§SUNGLASS_TRIPLANAR_TINT)
+The concurrent palette lane MEASURED that `_recolorMesh`'s `material.clone()` DROPS the triplanar
+`onBeforeCompile` hook on 347/347 sampled originals — so an ACTIVE §SUNGLASS palette **REPLACES**
+the texture with a flat colour, it does not tint it. **This retracts the "the palette TINTS the
+texture" line in §SESSION_2026-09-01's Palette block above** (that line was flagged there as
+"code-read, not yet run-confirmed"; it is now run-refuted). A palette left on during a
+§CPE_MATERIAL_KEY measurement would make the screen disagree with the resolver and could score this
+fix a false no-op, so the palette state is now (a) printed in the shipped `§TRI_SRC_TALLY` line as
+`palette_tick=` / `palette_recoloured=` and (b) ASSERTED OFF by the witness:
+`§MATKEY_PALETTE_STATE tick=0 recoloured_meshes=0`. No behaviour change to the clone path — that
+stays with the palette lane. (The other half of the same block still holds: `_setTriplanarActive` is
+a no-op stub and Alt+S does NOT bake over the palette — run-confirmed there as
+`§SETTRIPLANAR_NOOP_BEHAVIOR`, swapped=0/recoloured=0 over a real 8 s still-refine pass.)
+
+### Shipped — bim-ootb PR #1595, branch `fix/material-name-key`
+`viewer/streaming.js` + `viewer/sw.js` (`v1113→v1115`) + `viewer/viewer.html`
+(`streaming.js?v=64→65`) + the witness. **The sw bump is v1115, not v1114:** #1594
+(§SUNGLASS_GROUPING_RULES) landed on main taking v1114 first, so `origin/main` was merged in and the
+collision resolved by this repo's own convention — KEEP BOTH notes, take the HIGHER version.
+`viewer/effects.js` and `viewer/tools.js` mention `TRIPLANAR_MAT` only in COMMENTS about
+`normFactor` — neither needed a change, so the concurrent `fix/corr-brush-bounded` region around
+`effects.js:8143` was never touched.
+
+
+## §SESSION_2026-09-01C — §SUNGLASS_GROUPING_RULES: colour scheme must match the KIND of grouping
+
+### SPEC (written before code — the two user asks from §SESSION_2026-09-01 "Palette")
+
+**Correction en route (code-read, `tools.js:679` vs `tools.js:703`):** the session note said both
+grouping kinds key `palette[i % len]` "by group SIZE rank". Measured in code: only the CLASS bands
+(1-30) sort by size rank (`g[b].length - g[a].length`, tools.js:679/687/695); the STOREY bands
+(31-55) sort ALPHABETICALLY (`keys.sort()`, tools.js:703/711). The substance of the defect is
+unchanged — both indices are arbitrary w.r.t. the storey's ordinal (vertical) position, and the
+palette is an unordered cycling list, so storey ordering is thrown away either way. Clinic is the
+disagree building: alphabetic = [First Floor, Level 1, Level 2, Roof - Main, Roof - Mech,
+Second Floor, TOF Footing]; real vertical order puts TOF Footing FIRST and First Floor between
+Level 1 and Level 2.
+
+**RULE (ask b):** ordinal grouping (storey) → monotonic RAMP keyed on ordinal position; categorical
+grouping (ifcClass tick 1-30, disc 56-65) → distinct hues, keyed exactly as today, UNCHANGED. No new
+modes, no tick remapping.
+
+- **Ordinal source is EXTRACTED geometry, never name parsing:** per mesh, world-space
+  bounding-box-centre Y (`geometry.boundingBox` for plain meshes; `computeBoundingBox()` on the
+  Instanced/Batched mesh itself so instances are unioned); per storey group, the MEDIAN of its
+  meshes' centre-Y; keys sorted ascending by that elevation, name as deterministic tiebreak.
+  Cached per mesh (`__paletteY`); shipped §-log: `§SUNGLASS_ORDINAL <storey>@<elevY> < …`.
+- **Ramp (ticks 31-45 warm / 46-55 cool):** storey at ordinal fraction t = i/(n-1) gets
+  `setHSL(h0+(h1-h0)*t, 0.45+sub*0.02, 0.36+0.42*t)` — warm h0=0.02→h1=0.13, cool h0=0.50→h1=0.66.
+  Lightness AND hue strictly increase with elevation (lowest storey darkest/reddest-cyanest);
+  `sub` (in-band tick) keeps its meaning as saturation depth. Channels stated for the witness:
+  lightness (primary), hue (secondary), both monotonic in ordinal position.
+- **(ask a) Brown track:** `#sunglass-slider` gets a custom track (viewer.html CSS only); the last
+  segment — ticks 98-100, i.e. 97%→100% of the range — is saddle-brown `rgb(139,69,19)` as the
+  affordance that the tip does something special (material injection, the separate TRIPLANAR_MAT
+  lane). Base track keeps the existing #4fc3f7 accent as a translucent fill.
+
+**WITNESS `viewer/tests/witness_sunglass_grouping_rules.js`** (headless chromium, Clinic — the
+building where alphabetic, size-rank and ordinal order all disagree):
+§SUNGLASS_ORDINAL (elevations per storey, ascending), §SUNGLASS_RAMP_MONOTONIC (L and H strictly
+increasing along ordinal, as numbers), §SUNGLASS_OLD_VS_NEW (≥1 storey colour differs from the old
+alphabetic-cycle formula, count printed — NO-OP printed if zero), §SUNGLASS_NOT_SIZE_NOT_ALPHA
+(lightness sorted by size rank / alphabetic rank is NOT monotonic on Clinic), §SUNGLASS_CATEGORICAL_FROZEN
+(tick 5 class colours + tick 60 disc colours equal the pinned origin/main formula, per group),
+§SUNGLASS_HUE_SEP (min pairwise circular hue distance ≥ 0.02 — the palette table's own designed
+minimum — and min RGB distance > 0), §SUNGLASS_BROWN_TRACK (computed track gradient: colour
+rgb(139,69,19), stops 97%→100%), §SUNGLASS_ALTS_SURVIVES (apply palette → startStillRefine →
+stopStillRefine → material uuid + colour unchanged; run-confirms the `_setTriplanarActive` no-op,
+effects.js:137-139, and the "palette tints triplanar" claim — INCONCLUSIVE if the still pass cannot
+run headless). Self-failure: VACUOUS if <2 storey groups, INCONCLUSIVE if nothing judged, NO-OP if
+output identical to old behaviour.
+
+### MEASURED (from `viewer/tests/witness_sunglass_grouping_rules.log`, Clinic, 2026-09-01)
+**`§WITNESS_SUNGLASS_GROUPING_RULES pass=13 fail=0 ran=13 verdict=PASS`** — PR bim-ootb **#1594**
+(sw v1114, tools.js?v=43), branch `fix/palette-grouping-rules`, auto-merge armed.
+
+- `§SUNGLASS_ORDINAL` (median world-Y): TOF Footing@-3.82 < Level 1@-1.04 < First Floor@-0.19 <
+  Unknown@0.02 < Level 2@1.80 < Second Floor@3.54 < Roof - Mech@5.95 < Roof - Main@7.59 — the
+  Clinic disagreement is real: alphabetic puts First Floor 1st / TOF Footing 7th; size rank puts
+  Unknown(583) 1st / TOF Footing 4th.
+- `§SUNGLASS_RAMP_MONOTONIC` L: 0.36 < 0.42 < 0.48 < 0.54 < 0.60 < 0.66 < 0.72 < 0.78 and
+  H: 0.02 < 0.0357 < … < 0.13, both strictly increasing with elevation; `§SUNGLASS_NOT_SIZE_NOT_ALPHA`
+  the same L sequence is NOT monotonic under alphabetic (0.48, 0.42, 0.60, 0.78, 0.72, 0.66, 0.36,
+  0.54) or size-rank order.
+- `§SUNGLASS_OLD_VS_NEW` 8/8 storey colours differ from the old alphabetic-cycle formula (e.g.
+  Roof - Main #5dadd0→#e8d9a6). Red control: the monotonicity checker FAILS on the old colours
+  (old L by ordinal: 0.49, 0.57, 0.61, 0.51, 0.54, 0.63, 0.55, 0.59) — the witness can fail.
+- `§SUNGLASS_CATEGORICAL_FROZEN` tick 5: all 15 class colours dist=0.00e+0 vs pinned formula;
+  tick 60: all 7 disc colours dist=0.00e+0 — class/disc did NOT regress. `§SUNGLASS_HUE_SEP`
+  class minPairHue=0.0200 (7.2°) minPairRGB=0.0913 over first 10; disc minPairHue=0.0100 (3.6°,
+  the earthTone table's own minimum) minPairRGB=0.0696 — all distinct.
+- `§SUNGLASS_BROWN_TRACK` colour=rgb(139,69,19) stops=97%..100%, extent 3.9px of a 129.0px track
+  (panel opened for layout — first run measured 0px on the unopened panel, fixed in the witness).
+- **Run-confirmations of §SESSION_2026-09-01's code-read claims:**
+  - `§SETTRIPLANAR_NOOP_BEHAVIOR` **CONFIRMED** — startStillRefine→8s→stopStillRefine leaves all
+    400 sampled palette materials in place: swapped=0 recoloured=0, triplanarMaterials=38. Alt+S
+    does NOT bake over the palette.
+  - `§SUNGLASS_TRIPLANAR_TINT` **REFUTES the "palette TINTS the texture" claim** — the
+    `_recolorMesh` `material.clone()` DROPS the `onBeforeCompile` hook on **347/347** sampled
+    triplanar originals, so on a triplanar material the palette REPLACES the texture with the
+    flat palette colour (it does not tint it). §SESSION_2026-09-01's "the palette TINTS the
+    texture" sentence is wrong as written; "survives a bake" stands. Handed to the TRIPLANAR_MAT
+    lane — no behaviour change shipped for it here.
