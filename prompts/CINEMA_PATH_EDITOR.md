@@ -1,25 +1,29 @@
 # ⚠ DO NOT REMOVE
-**▶ RESUME 2026-09-01 (late) — READ §SESSION_2026-09-01 AT THE END OF THIS FILE FIRST.**
-Five shipped + live (sw v1113): §CPE_PIE_HOLD #1586, §CPE_STATS_TAIL #1587, §R10 #1588, §R11 #1590,
-§CPE_CARD_FIT #1592. HUD order and the Reveal rotation both CONFIRMED in the user's own bake.
+**▶ RESUME 2026-09-01 (latest) — READ §CPE_AIM_DEPTH_FREEZE AT THE END OF THIS FILE FIRST.**
+**§CPE_AIM_DEPTH_FREEZE SHIPPED — PR #1598 (auto-merge armed), sw v1117, effects.js?v=29.** Inside
+a correction window the blend-from is now FROZEN at the window's own edges (entry gaze through
+ramp+hold, exit gaze through decay — §CPE_CORR_BRANCH's resolve-once machinery extended, not a
+second mechanism). Hospital witness **13/13**: in-window max step **13.114 → 7.791 deg/sample
+(-41%)**, jerk 2.387 → 0.841; constancy 0.0000 deg with a working red control;
+nose-against-the-wall MEASURED not reintroduced (clearance minima identical, 0.00 m is the walk's
+own position); dead-end rescue intact outside the window (fires 28/91, turns 83.45 deg). Duplex
+11/12 — only the pre-existing filed G-BR-5. ⚠ If you touch the correction blend: the witness's
+branch A/B must stay freeze-OFF or the frozen from-dir masks the wrap defect.
 
-**Branch status:**
-1. `fix/corr-brush-bounded` — ✅ **UNBLOCKED 2026-09-01, witness 8/8, PR #1597 (auto-merge armed),
-   sw v1116.** The 111 deg was CONFIRMED as the named suspect: `_cpeCorrDirBlend`'s
-   `round(raw/2π)` is a step function of the moving underlying gaze, so the blended yaw jumped
-   2π·w = **110.44 deg in one sample** when the authored correction sat within **0.05 deg of
-   antipodal** to the gaze beneath it. Fixed by porting §CINEMA_GAZE_SENSE (branch resolved ONCE
-   per stroke). In-run A/B proves it: **110.436 → 13.114**, against the walk's own 13.282. See
-   §CPE_CORR_BRANCH in §SESSION_2026-09-01.
-2. `fix/buildup-tie-spread` — **A/B says DO NOT MERGE**: worst frame 124 → 134, largest exact tie is
-   only 5. The slab pop is CLUSTERING, not ties. The real lever is §CPE_BUILDUP_WORK_PACED, and
-   turning it on is a user decision (it swings the calendar advance 57x).
+**Earlier same day (all merged + live):** §CPE_PIE_HOLD #1586, §CPE_STATS_TAIL #1587, §R10 #1588,
+§R11 #1590, §CPE_CARD_FIT #1592, §SUNGLASS_GROUPING_RULES #1594 (v1114), §CPE_MATERIAL_KEY #1595
+(v1115), §CPE_CORR_BRANCH #1597 (v1116 — the 110.44 deg 2π-branch flip, A/B 110.436 → 13.114).
+HUD order and the Reveal rotation CONFIRMED in the user's own bake.
 
-**Next, in the order I would take them:** (a) ~~the material omission~~ SHIPPED as §CPE_MATERIAL_KEY
-#1595; (b) ~~palette rules + brown scrub tip~~ SHIPPED #1594; (c) freeze §CPE_AIM_DEPTH inside a
-correction window; (d) NEW, filed by the #1597 run — witness G-BR-5 compares the correction's two
-window edges to each other, which reads the underlying walk as much as the correction (Duplex fails
-it at 435 vs 110 deg/m while that walk's own peak is 1945). It needs a walk-relative denominator.
+**Branch status:** `fix/buildup-tie-spread` — **A/B says DO NOT MERGE**: worst frame 124 → 134,
+largest exact tie is only 5. The slab pop is CLUSTERING, not ties. The real lever is
+§CPE_BUILDUP_WORK_PACED, and turning it on is a user decision (57x calendar swing).
+
+**Next, in the order I would take them:** (a) ~~material omission~~ #1595; (b) ~~palette rules~~
+#1594; (c) ~~freeze §CPE_AIM_DEPTH~~ **#1598**; (d) still open, filed by the #1597 run — witness
+G-BR-5 compares the correction's two window edges to each other, which reads the underlying walk as
+much as the correction (Duplex fails it at 436 vs 114 deg/m while that walk's own peak is 1945). It
+needs a walk-relative denominator.
 
 **⚠ Two numbers I asserted this session were WRONG and are corrected in §SESSION_2026-09-01:** the
 89.5 m Hospital walk (really 39.43 m) and "walk length scales with film duration" (it does not).
@@ -4517,3 +4521,118 @@ output identical to old behaviour.
     flat palette colour (it does not tint it). §SESSION_2026-09-01's "the palette TINTS the
     texture" sentence is wrong as written; "survives a bake" stands. Handed to the TRIPLANAR_MAT
     lane — no behaviour change shipped for it here.
+
+
+## §CPE_AIM_DEPTH_FREEZE (2026-09-01) — freeze the blend-from at the correction window's own edges. SPEC (written before code).
+
+**Issue this exposes or disproves:** §SESSION_2026-09-01's closing recommendation — inside a
+correction window the blend runs from a direction §CPE_AIM_DEPTH keeps MOVING, so the ramp/decay
+wobbles. §CPE_CORR_BOUNDED_SNAP's 13.114 deg/sample in-window peak sits essentially AT the walk's
+own 13.282 — and the probe below shows that peak IS depth re-aiming underneath the ramp, not the
+crossfade itself.
+
+**MEASURED FIRST (probe `scratchpad/probe_aim_freeze.js`, Hospital, SECS=150, N=900, the same
+authored correction as `witness_cpe_corr_brush.js`; reconstruction fidelity to the shipped curve
+`§FRZ_PROBE_RECON maxDeg=0.000` — statements about the real function, not a look-alike):**
+- **The from-direction genuinely moves, violently, mid-ramp.** `§FRZ_DEPTH_TURN` at e3=0.422-0.433
+  (inside the ramp): forward clearance 0.1-0.4 m against the product's own clearM=8.0 m, and the
+  depth rule is turning the underlying gaze **126-140 deg** (aimOff A/B). That motion leaking
+  through `(1-w)` is the 13.114 spike.
+- **Frozen fixed-to-fixed curve: in-window max step 13.114 → 7.791 deg/sample** (-41%; the 7.79 is
+  the smoothstep crossfade's own peak rate). Total turn on the ramp RISES 155.00 → 169.65 deg
+  (a monotone 125-deg-geodesic sweep is longer than a partially-cancelling wobble) — smoothness is
+  bought with path length; stated, not hidden.
+- **Decay-side wobble is negligible on this plan** (live maxStep 0.379 deg/sample) — the freeze's
+  work is almost all on the ramp here.
+- **Boundary continuity of the two-edge freeze:** entry 0.040/0.579, hold-switch 0.005, exit
+  0.003/0.349 deg/sample (`§FRZ_EDGES`) — all far under the walk's own 13.282 peak. No seam.
+- **Nose-against-the-wall: does freezing re-aim away a wall save? NO — measured, no bound needed.**
+  Gaze-direction clearance over every in-window sample (product's own `_cinemaFanMeshesDebug` mesh
+  set, 4,074 meshes): minima base=0.00 m, live=0.00 m, frozen=0.00 m, all at e3=0.439 — the zero is
+  a property of the WALK's own position (it brushes geometry at the anchor), present identically in
+  all three curves. Sample-wise the frozen curve tracks live within ~0.15 m (worst8 table in the
+  probe log). The freeze cannot "walk into a wall it no longer sees" because (a) the hold is the
+  authored direction — which full-strength correction ALREADY makes the gaze today, unchanged — and
+  (b) the decay's frozen target is the uncorrected (depth-approved) gaze AT THE EXIT POSITION,
+  captured from the very pose the walk adopts when the window ends.
+- **The dead-end case stays demonstrable OUTSIDE the window:** depth fires at 36/91 probes outside
+  it (e.g. e3=0.089: fwdClear 0.1 m << clearM 8.0 m, turns the gaze 83.45 deg). Outside the window
+  the code path is untouched by this change.
+
+**DESIGN — extend §CPE_CORR_BRANCH's per-stroke machinery, no second mechanism.**
+`_resolveCorrBranch` already probes the uncorrected gaze at window ENTRY (e3 = s - rampFrac) via the
+`_corrRefProbe` tap and keeps only its yaw. Now it also KEEPS THE VECTOR (`c.entryDir`) and probes
+once more at window EXIT (e3 = s + holdFrac + decayFrac → `c.exitDir`). `_cpeCorrectionAt` returns
+the phase's frozen from-direction (`from`: entryDir during ramp+hold, exitDir during decay), and
+`_beat3Pose` hands THAT to `_cpeCorrDirBlend` instead of the live `_lx/_ly/_lz` whenever a
+correction is in force. So:
+- ramp = fixed(entry gaze) → fixed(authored): a true fixed-to-fixed crossfade; `raw == refD`
+  exactly, so the §CPE_CORR_BRANCH branch choice becomes exact rather than nearest-representative.
+- hold = authored (unchanged — w=1 already ignored the from-direction).
+- decay = fixed(authored) → fixed(exit gaze), landing bit-exactly on the live gaze at the window's
+  end because the frozen target was probed AT that e3. The frozen-from switch (entry→exit dir)
+  happens at the hold boundary where the from-weight is zero — continuous by construction.
+- NO-PROBE degrade: a stroke whose edge gaze could not be probed keeps `from=null` → live base,
+  i.e. exactly today's behaviour (same degradation precedent as refD=0).
+- `A._cpeAimFreezeOff` (read-only witness hook, default off, same precedent as `_cpeCorrBranchOff`):
+  apply-time switch back to the live from-direction, so ONE plan yields both curves.
+- ⚠ WITNESS INTERACTION, found in the spec pass: with the from-direction frozen, `round(raw/2π)`
+  has nothing to step on — the naive branch-off A/B can NO LONGER reproduce the 110.44 defect
+  unless the freeze is ALSO off. `witness_cpe_corr_brush.js`'s branch A/B therefore sets
+  `_cpeAimFreezeOff=true` for its branch-OFF samples, keeping §CPE_CORR_BRANCH_AB discriminating.
+- New read-only hook `A._cpeGazeClearDebug(e3)`: metres of clearance along the CURRENT composed
+  gaze at e3, using the same `_cinemaFanMeshes` raycaster the product already owns — so the
+  nose-against-the-wall claim is asserted by the witness from product state, not probe-side
+  approximations.
+
+**WITNESS (extend `witness_cpe_corr_brush.js`, no new file):** existing G-BR-1..8 must stay green
+(G-BR-6's bar tightens on its own: 7.79 << 13.28). New, each with NO-OP/VACUOUS/INCONCLUSIVE
+self-reports:
+- G-FRZ-1 frozen-from CONSTANCY over the full series: every ramp/decay sample must lie on the
+  fixed curve `blend(from, authored, w)` — w INVERTED from each sample's own pitch channel (the
+  product's pitch is linear in w), never recomputed from the envelope; plus entryDir/exitDir equal
+  the baseline curve at the window edges.
+- G-FRZ-2 wobble reduced, A/B in one run: in-window max deg/sample freeze-ON vs freeze-OFF
+  (expected ≈7.79 vs ≈13.11); if the two curves are identical → NO-OP, do not ship.
+- G-FRZ-3 dead-end preserved: an OUTSIDE-window e3 where the trigger genuinely fires
+  (fwdClear < clearM from `_probeAimDepth`), where aimOff-A/B shows the gaze turning toward depth
+  (clearance along gaze rises), and where the corrected curve equals baseline (≤0.031 deg).
+- G-FRZ-4 no clearance regression in-window: min gaze-clearance ON ≥ min OFF (tolerance 0.05 m
+  float noise), via `_cpeGazeClearDebug`.
+
+**Ships with:** `viewer/effects.js` (+`viewer.html` `effects.js?v=29`, `sw.js` CACHE_VERSION
+v1117 — same-PR bump, conflict-magnet rule) + the witness. Duplex 7/8 stays out of scope (G-BR-5
+walk-relative denominator, filed).
+
+### MEASURED + SHIPPED (2026-09-01, PR bim-ootb #1598, branch `fix/aim-depth-freeze`, sw v1117, effects.js?v=29)
+**Witness `witness_cpe_corr_brush.js` — Hospital 13/13 PASS** (was 8/8; every G-BR gate still
+green, G-BR-6's own number improves), logs `witness_hospital_final.log` / `witness_duplex_final.log`
+(session scratchpad):
+| § line | measured |
+|---|---|
+| `§CPE_AIM_FREEZE_WOBBLE` | in-window max **13.114 → 7.791 deg/sample (-41%)**, jerk **2.387 → 0.841 deg/sample²**; the 7.79 is the crossfade's own smoothstep peak |
+| `§CPE_AIM_FREEZE_CONST` | fixed-from fit **0.0000 deg** on ramp AND decay over the full series; red control: the freeze-OFF curve does NOT fit (25.9 deg) — the check can fail |
+| `§CPE_AIM_FREEZE_CONST` (edges) | entryDirVsBase **0.006 deg**, exitDirVsBase **0.056 deg** — the frozen dirs ARE the uncorrected edge gazes |
+| `§CPE_AIM_FREEZE_CLEAR` | clearance minima identical ON/OFF (**0.00 m @e3=0.439** — the walk position itself); worst sample-wise drop 17.71 → 7.84 m, still far clear |
+| `§CPE_AIM_FREEZE_DEADEND` | outside the window depth fires at 28/91 probes; tightest e3=0.089: fwdClear 0.10 m < clearM 8.0 m, gaze turns **83.45 deg** |
+| `§CPE_CORR_BOUNDED_SNAP` | in-window max now **7.791** vs the walk's own 13.282 |
+| `§CPE_CORR_BRANCH_AB` | still discriminates: branch-OFF **110.436** reproduced — because the witness runs its branch A/B **freeze-OFF too** (a frozen from-dir gives `round()` nothing to step on and would mask the wrap) |
+
+**Duplex 11/12** — the ONE fail is the pre-existing, filed G-BR-5 (walk-relative denominator).
+Two witness-design defects of my own were found by the Duplex run and fixed IN the witness:
+1. `§CPE_CORR_BRANCH_NOOP` had become confounded — `ab` (branch-off+freeze-off) was compared
+   against the shipped curve (branch-on+freeze-ON), reading the freeze's 2.79 deg as "the branch
+   changes Duplex" and mis-attributing G-BR-5. Now compares against the freeze-OFF branch-ON curve:
+   Duplex reads **0.0000 deg** again, attribution correct.
+2. G-FRZ-1 constancy read a false 7.48 deg on Duplex — its decay tail crosses e3=0.75 where
+   §CINEMA_BEAT_OVERLAP blends toward the orbit AFTER the correction. The fit now excludes that
+   zone using the product's own constant (`turnOverlap` exposed on `_cpeBeat3GazeDebug`, not a
+   hardcoded copy). With the exclusion: Duplex fit 0.0000 deg.
+Duplex's window is QUIET (freeze moves the curve only 2.79 deg; peaks 7.767 vs 7.757) — the
+reduction claim prints INCONCLUSIVE there by design (5-deg scope line between the two measured
+clusters, printed in the log, same treatment as the hazard's 20-deg line); non-regression
+(G-FRZ-2a) is judged and green.
+
+**Honest cost, stated:** total in-window turn RISES 188.2 → 203.8 deg (ramp 155.0 → 169.7) — a
+monotone fixed-to-fixed sweep is longer than a partially-self-cancelling wobble. Smoothness
+(peak step -41%, jerk -65%) is what the freeze buys; path length is what it pays.
