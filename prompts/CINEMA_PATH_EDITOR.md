@@ -4086,3 +4086,76 @@ stops being the bottleneck. `§MAXQ_HIDDEN_PAUSE` stays exactly as it is for the
 - **(c) Checkbox?** Yes — identical pattern to the three that already exist in the Alt+C dialog.
 - **(d) Faster?** **No. It does not reduce bake duration at all.** Best case is the same wall clock,
   spent while you do something else. Frame speed is §MAXQ_FRAME_BUDGET below, a separate lever.
+
+---
+
+## §SESSION_2026-09-01 — four shipped, two parked with measurements, one omission scoped
+
+### Shipped + live (verified by fetching the deployed files back)
+| § | what | witness | PR | sw |
+|---|---|---|---|---|
+| §CPE_PIE_HOLD | pie holds the last real crew instead of vanishing | 9/9 | #1586 | v1108 |
+| §CPE_STATS_TAIL | two rounds — round 1 holds, Reveal round revolves everything | 15/15 | #1587 | v1110 |
+| §R10 §MAXQ_FRAME_BUDGET | baked frame = 20 composer renders, not 40 | floor RMS 0.21 | #1588 | v1111 |
+| §R11 §PHOTO_PREWARM | 8.9 s smoothing + HDRI + ground tex off the first Alt+S | 6/6 | #1590 | v1112 |
+| §CPE_CARD_FIT | stat-card label/sub no longer truncate beside the held pie | 18/18 | #1592 | v1113 |
+
+Confirmed in the user's own bake (`BIM_MaxQ_Hospital_1788210263256.mp4`, pixel-measured): HUD order
+correct (path box y92-284 with yellow path + red head, pie y296-526 with 2,783-3,544 wedge px), and
+the Reveal rotation live — 10 slots, `20 levels` at u=0.75, `1,771,249 labour cost` at u=0.90.
+
+### ⛔ PARKED WITH MEASUREMENTS — both branches pushed, NEITHER merged
+
+**`fix/corr-brush-bounded`** — §CPE_CORR_BOUNDED. Bounded + fraction-of-walk reach (4% / 12% / 18%),
+legacy metre records still honoured. Witness 6/7 on Hospital: window 33.4% of the walk (authored
+34%), outside it untouched to 0.031 deg. **Blocker: one sample jumps 111 deg** where the baseline
+walk never exceeds 13 deg/sample. Suspect, unconfirmed: `_cpeCorrDirBlend`'s naive short-way yaw —
+the exact hazard §CINEMA_GAZE_SENSE fixes elsewhere, which measured 118 deg/frame when it last bit.
+**Corrected en route:** the EXIT is not the abrupt edge (284 deg/m vs the walk's own 304); the ENTRY
+is (2524). And the walks are Duplex 13.85 m / HHS 27.40 m / Hospital **39.43 m** — the 89.5 m in the
+§CPE_WALK_BUDGET comment does NOT reproduce, and walk length does NOT scale with film duration.
+
+**`fix/buildup-tie-spread`** — §BUILDUP_TIE_SPREAD. **A/B says DO NOT MERGE.** Hospital, 3118 frames:
+| | distinct end_ts | largest exact tie | worst frame |
+|---|---|---|---|
+| stock | 59,258 | **5** | 124 @ f345 = 6.1x mean |
+| fixed | 59,522 | **5** | 134 @ f1470 = 6.6x mean |
+The largest exact tie is FIVE — the collapse-to-one-instant mechanism the patch fixes is absent on
+Hospital. The pop is **clustering**, not ties: the cursor steps linearly in calendar ms while
+completions arrive in bursts. The fix redistributed rather than improved (worst frame moved and grew).
+**The real lever is §CPE_BUILDUP_WORK_PACED** (pace by elements completed → ~20/frame), OFF by
+default at `cinema_maxq.js:92` because it made the calendar advance swing 57x. That trade-off is the
+next decision, and it is the user's.
+
+### The material omission — SCOPED, NOT STARTED. Data is complete; our code ignores it.
+`Terminal_meta.db`: **48,428 / 48,428 = 100% `material_name`, 41 distinct** (Metal Deck 33,756;
+Brick/Plaster wall 7,714; Silver 4,263; Copper 1,169; 45 MPa concrete 448; Aluminum 256). The older
+`Terminal_extracted.db` is worse — 90.3%, 79 distinct, 6,412 `<Unnamed>`; that 90.3% figure in
+earlier notes refers to the WRONG file. **Nothing was lost in extraction — re-extraction is not
+needed to recover this.**
+`Hospital`: `material_rgba` 63,917/64,150 = 99.6% but only **39 distinct, 89% one off-white**
+(`0.920,0.900,0.850`); `material_name` **0 / 64,150**. Clinic the same shape (99.8% rgba, 20 distinct,
+0% names). So Hospital cannot get vibrancy from its own metadata.
+**Fix shape:** `TRIPLANAR_MAT` keys `material_name` FIRST, falls back to `ifc_class`. Terminal/LTU/HHS
+gain real materials; Hospital/Clinic/JKR keep exactly today's behaviour. The name→texture map is
+authored presentation, which the user explicitly ruled in scope.
+
+### Palette (§SUNGLASS, `tools.js:614-775`) — works, and survives a bake
+100-tick dial: 1-30 warm/cool/earth by `ifcClass`, 31-55 by `storey`, 56-65 by `disc`, 66-90
+zebra/mono, 91-97 random, 98-100 HARD. **It never reads `material_name` or `material_rgba`.**
+**Alt+S does NOT bake over it:** `_setTriplanarActive` (`effects.js:136`) is a **no-op stub** that
+returns a count and swaps nothing; `_recolorMesh` clones the material and sets `.color`, so on a
+triplanar material the palette TINTS the texture. Code-read, not yet run-confirmed.
+**User's asks, not yet built:** (a) brown track on the scrub's last segment as an affordance that the
+tip does something special (material injection); (b) rules mapping colour scheme to grouping —
+ordinal groupings (storey) want a RAMP, categorical (class/disc) want distinct hues; today both get
+the same cycling list keyed on `palette[i % len]` by group SIZE rank, which is arbitrary and throws
+away storey ordering.
+
+### §CPE_AIM_DEPTH — recommendation: KEEP, but freeze inside a correction window
+§CPE_AIM_DENSITY is already RETIRED (2026-08-13). Only DEPTH remains; its trigger is a forward
+raycast firing when clearance ahead is under 3-8 m, though its subject search still weights n*d.
+Order is path-follow → depth → **correction last** (`effects.js:8143-8152`), so at full strength an
+edit already overrides depth. The wobble window is the ramp/decay, where depth keeps MOVING the
+direction being blended from. Freezing depth at window entry makes it a fixed-to-fixed crossfade.
+Removing depth outright would regress the dead-end "nose against the wall" case it was built for.
