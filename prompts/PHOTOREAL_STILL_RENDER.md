@@ -1994,3 +1994,96 @@ handled (it reports merged=0, so a ranges-only gate reached nothing there). 8.6 
 **Still true from the section above:** §PHOTO_GRADE was reverted (passed +4.5% contrast, invisible),
 the 199 MB normal-drop is withdrawn (breaks §TRIPLANAR's vTriWorldNormal), and the material-identity
 lane remains the largest unbuilt win. Full record: `prompts/CINEMA_PATH_EDITOR.md` §SESSION_2026-08-30.
+
+## §WALL_WINDING_MEASURE (2026-09-01) — is FrontSide viable, measured, not feared
+
+**Question.** User wants walls facing away from the sun to render dark. Cause (code-read, this
+session): every element material is `THREE.DoubleSide` (`streaming.js:839`, the §S260d line), and
+three.js negates the shading normal on back-facing fragments, so diffuse lighting tracks the
+CAMERA, not the sun. Candidate fix `THREE.FrontSide` is correct shading but any wrongly-wound face
+vanishes. This section measures how much geometry is actually mis-wound, so the choice is data.
+MEASUREMENT ONLY — no rendering change shipped with this section.
+
+**Data + validity (all verified this session, not assumed):**
+- Source = the DBs the viewer streams (`§SPLIT_GEO_LOADED`): `Terminal_geo.db` (249 MB, 9,394
+  unique meshes) + `Terminal_meta.db`; `Hospital_geo.db` (229 MB, 20,609 meshes) + `Hospital_meta.db`
+  (`/home/red1/bim-ootb/viewer/buildings/`, Hospital symlinked to `deploy/buildings/`).
+- Decode identical to `A.blobToGeometry` (`scene.js:1830`): `vertices`=Float32 xyz, `faces`=Uint32
+  tri indices. The viewer's axis swap (x,y,z)→(x,z,−y) has det=+1 (proper rotation) and instancing
+  composes with scale (1,1,1), Euler rotations only (`streaming.js:2242,2347`; `element_transforms`
+  has no scale column) — so winding measured in the DB IS what the GPU sees.
+- Per mesh: signed volume V=Σ det(v0,v1,v2)/6 (divergence theorem; V>0 ⇔ CCW-outward ⇔ FrontSide
+  shows the exterior). Winding consistency via directed-edge multiset after welding coincident
+  verts at 0.1 mm (the index carries duplicated positions — weldRatio 0.107–0.29, §SHADE_PROBE):
+  an interior edge whose two directed copies run the SAME way = winding flip between neighbours
+  (the only case a uniform flip cannot repair). Boundary edge (used once) = open shell → no
+  meaningful volume, own bucket. Open meshes re-tested at 1 mm and 5 mm weld (false-open detector),
+  and sub-bucketed by boundary-edge fraction: near-closed ≤0.5 %, partly-open ≤5 %, sheet >5 %.
+- Probe run 2026-09-01, ~14 s/building + ~30 s drill; logs `winding_{Terminal,Hospital}.log`,
+  `drill_*.log`, `sheet_census_Hospital.log` (session scratchpad; every number below is a §-line
+  from those logs). All 111,610 elements with geometry resolved a mesh — missing_geo=0 both
+  buildings, nothing vacuous.
+
+**Terminal — 48,428 elements, every one measured:**
+| bucket | elements | % |
+|---|---|---|
+| uniformly outward, closed | 45,520 | 94.0 % |
+| uniformly INVERTED | **0** | **0.0 %** |
+| mixed winding | **0** | **0.0 %** |
+| open shells | 2,908 | 6.0 % |
+Open drill: 49 close at a coarser weld (false-open); 1,702 near-closed, 1,136 partly-open —
+**every single one with V>0 (outward)**; true sheets 21 elements (0.04 %). Net: **48,407/48,428 =
+99.96 % of Terminal elements are uniformly outward-wound.**
+Wall classes: IfcWall 333 = 110 closed-outward + 190 near-closed(+) + 33 partly-open(+) → **100 %
+outward, 0 sheets**; IfcSlab 705, IfcCovering 82, IfcPlate 33,324 (the facade) → 100 % closed
+outward. (No IfcWallStandardCase/IfcCurtainWall in Terminal.) Triangle-weighted: 38.3 % of drawn
+tris are closed-outward, 61.1 % open-but-positive (the big facade/wall meshes are near-closed
+solids, not sheets), sheets 0.5 %.
+
+**Hospital — 63,182 elements with geometry (of 63,415; the 233 without include all 178
+IfcCurtainWall — containers that decompose into IfcPlate/IfcMember, both 100 % outward):**
+| bucket | elements | % |
+|---|---|---|
+| uniformly outward, closed | 49,434 | 78.2 % |
+| outward after open-drill (false-open 1,330 + near-closed 6,747 + partly-open 52, all V>0) | 8,129 | 12.9 % |
+| uniformly INVERTED | **2** | **0.003 %** |
+| mixed winding | 303 | 0.5 % |
+| true sheets | 5,314 | 8.4 % |
+Net: **57,563/63,182 = 91.1 % uniformly outward.** The 303 mixed elements are 298
+IfcBuildingElementProxy + 5 others — but they are huge meshes: **18.9 % of the building's 15.3 M
+drawn triangles.** Sheets by class: IfcPipeFitting 3,635, IfcDuctFitting 811, proxies 714,
+IfcWindow 118, IfcDoor 12 — wall classes only 22 (IfcCovering 9, IfcWallStandardCase 8, IfcWall 5).
+Wall classes: IfcWallStandardCase 1,310 → 97.6 % closed-outward + 2.4 % open (8 sheets); IfcWall
+158 → 86.7 % closed + 16 near/partly-open(+) + 5 sheets; IfcCovering 602 → 98.5 % + 9 sheets;
+IfcSlab 35 → 88.6 % + 4 near-closed (1 mixed).
+
+**Shipped `normal` attribute vs winding: 0 % disagreement — BY CONSTRUCTION, there is no shipped
+normal.** `component_geometries` has no `normals` column in Terminal_geo, Hospital_geo, or
+Hospital_extracted (schema read); the viewer's §NORMALS_PROBE (`streaming.js:1481`) finds none and
+`blobToGeometry` falls to `geo.computeVertexNormals()` (`scene.js:1869`) — the on-screen shading
+normal is DERIVED from the winding (then §MEP_SMOOTH_NORMALS rewrites values, not sign). So the
+§S260d comment "IFC geometry has inconsistent normals" is now measured: the winding is NOT
+inconsistent (0 mixed meshes in Terminal, 0.6 % of meshes in Hospital) — what makes lighting track
+the viewer is DoubleSide's camera-facing flip alone.
+
+**VERDICT — FrontSide is viable for the walls, with ~zero repair; load-time winding repair is a
+solution to a defect that does not exist.**
+- The number that drives it: **uniformly-inverted meshes = 0 in Terminal, 2 elements in Hospital
+  (0.003 %)** — there is nothing to flip. Wall classes are 100 % outward-positive in Terminal and
+  ≥ 96.8 % in Hospital (22 sheet elements ≈ 1 % of wall-class population).
+- The real FrontSide cost is not winding but the ONE-SIDED SHEET population + mixed meshes:
+  Terminal 21 elements (0.04 %); Hospital 5,617 (8.9 % of elements — open-ended pipe/duct
+  fittings, windows, doors, proxy meshes; the 303 mixed alone are 18.9 % of drawn triangles). A
+  sheet is invisible from one side under FrontSide regardless of winding — unrepairable by any
+  flip, per-face surgery only for the mixed ones.
+- So the data reshapes the either/or: **class-keyed side** — FrontSide for the closed classes the
+  user is looking at (walls, slabs, coverings, plates, structure), DoubleSide retained for the
+  sheet-heavy classes (fittings, windows, doors, terminals, stairs, railings) — same class-keyed
+  pattern STD_MAT already uses. Blanket FrontSide would hole out ~9 % of Hospital; blanket
+  load-time repair has nothing to repair.
+- Honest caveat: the near-closed/partly-open positive shells (Terminal walls: 223/333) have real
+  boundary cracks (≤5 % of edges) where FrontSide shows through where DoubleSide today paints the
+  interior back face — hairline-bounded, and only where faces are already absent.
+- Separate lever, NOT this measurement: ambient 0.785 + hemisphere 1.257 vs sun 4.4 + envMap 0.6
+  (`scene.js:178-190`, `streaming.js:839-853`) means even perfectly-wound geometry only drops to
+  ~1/3 of lit value on the dark side. Side-flip alone will not give the user dark shadow faces.
