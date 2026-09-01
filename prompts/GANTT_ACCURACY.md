@@ -218,6 +218,8 @@ fixed AWAY bursty/clustered reveal as a defect; re-clustering the schedule itsel
 back. Needs its own measurement before building (start with: does the current `_cap` linear i/n
 distribution even produce real day-buckets to batch, or does it need synthetic grouping — and if
 synthetic, is that "presentation" or "invention"? Answer that FIRST.)
+**→ ANSWERED 2026-09-01: see §BUILDUP_DAY_BATCH_FEASIBILITY at the bottom of this file — measured
+NO-GO (no real day-buckets exist; a daily pulse raises Hospital's worst frame 94→399 = ~4x worse).**
 
 ⛔ **Also named, not built — separate, bigger scope, user-identified 2026-08-04:** Terminal's walls
 (Architecture phase) start at calendar day 1,189 of 1,264 (94% into the project) because
@@ -1654,3 +1656,83 @@ a flat constant, not proportional to the phase's element count (or labor-days, v
 e.g. width ∝ Σ(`getInstallSecs(cls)` or `LABOR_RATES` productivity) per phase, or at minimum ∝ element
 count — NOT the within-phase distribution algorithm in `time_machine.js`, which does not need touching.
 No code was changed for this investigation.
+
+## §BUILDUP_DAY_BATCH_FEASIBILITY — 2026-09-01 — MEASURED: no real day-buckets exist; batching would make the worst frame ~4x WORSE. NO-GO.
+**Answers the ⛔ within-phase day-batching item's own precondition (this file, §"Named, not built
+tonight", the `_cap` linear i/n question). Measurement only — no pacing behaviour changed, no flag
+flipped, nothing built.** Data: the persisted `~/.cache/bim4d` runs, rebuilt once for the CURRENT
+codeKey `567de7d89253` (the 2026-08-27 cache predates §PHASE_WATERMARK_FLOOR + 3 other schedule-input
+commits) — Hospital 63,182 els + Duplex 1,119 els, shipped pipeline, §-logs read
+(`witness.log`: `§TPL_MOVIE_BINDS_BARS remapped=63182/63182 degenerateTasksSpreadEvenly=0`).
+Probe scripts + logs: session scratchpad `daybatch_measure.py` / `daybatch_burst_probe.py`.
+
+**0. The question's premise is stale.** "The current `_cap` linear i/n distribution" is no longer
+the mechanism: the canonical template path's `remapSolveToTasks` (`schedule_author.js:965-1044`,
+§TPL_MOVIE_BINDS_BARS + §TPL_LAYER_ORDER + §FUTURE-item-2 tiling) now lays each task's elements out
+in support-layer bands, tiled edge-to-edge with each element's width ∝ its own solve duration
+(installSecs/crew). That is MORE continuous than i/n — duration-weighted, no day concept anywhere.
+
+**1. Real day-buckets do NOT exist.** Hospital (`§DAYBATCH_*`, cache `567de7d89253_569fac128caf`):
+- `§DAYBATCH_TIES distinctEnds=63179/63182 largestExactTie=2` — end_ts are pairwise-distinct
+  continuous instants (live A/B on the user's bake said 59,258/5 on 63,415 ops — same verdict).
+- `§DAYBATCH_INTRADAY` hour-of-day histogram min=2505/max=2779 vs 2633 expected if uniform (±5.5%),
+  ends within 1 min of midnight = 123/63,182 = **0.19%**. No day-boundary concentration at all
+  (24/7 calendar: `§CREW_DAY shift=24h/24h`). Duplex: 1.79%, same verdict.
+- `§DAYBATCH_GAPS` biggest task (MEP Rough-in L3, 9,507 els): successive-completion gap p50 =
+  **631,738 ms ≈ 10.5 min**, p90 ≈ 15 min, max 2.2 h — a smooth drip, never a daily clump.
+- `§DAYBATCH_TASK_DAYRATE` per-day counts within each big task are near-FLAT: MEP RI L3 mean
+  146.3/day CV=0.23; L4 153.0 CV=0.22; L5 149.5 CV=0.21; Arch Env L4 90.7 CV=0.31. A per-day
+  "bucket" is exactly N/window — the binning of a continuous tiling, i.e. **an artifact of the
+  spread, not schedule structure**. (Duplex's higher CVs, median 0.93, are 2-day-window edge
+  fractions on tiny tasks, not structure either.)
+
+**Where the pop actually comes from (also measured, since it bears on the recommendation):** the
+worst frames sit MID-TASK, not at phase handovers. Hospital, 3,118 frames, cache pipeline:
+`§DAYBATCH_FRAMES worst=94 at f1250 = 4.6x mean(20.3)`; f1250 = day 127.5, **no task boundary
+within ±0.5d** — 82/94 els are ONE task's (TASK_MEP_Rough_in_Level_3, win [110,174]) run of SHORT
+elements: `§DAYBATCH_BURST_MIX` their width median **45 s vs the task's 632 s** (installSecs p50
+114 vs 1920) — the duration-weighted tiling packs a short-duration run (pipe fittings/short
+segments) ~5-14x denser than the task's own mean. One task alone swings **p50=14 → max=82 per
+frame** (`§DAYBATCH_BURST_TASKFRAMES`) while its per-DAY rate is flat (CV 0.23). The pop is
+WITHIN-TASK DURATION-MIX CLUSTERING, sub-day scale, plus task overlap (f1250 adds 12 els of
+Arch Env L4). The A/B's live worst f345 sits at d35.2 — the project's peak 3-task concurrency
+plateau (`§DAYBATCH_DENSITY` d35-39 = 338 els/day: MEP RI L1 [34,69] + Arch Env L2 [34,47] +
+Superstructure L4 [35,40]; per-day max 399 at day 36) — again overlap+clustering, again NOT a
+phase boundary. (Cache vs live A/B worst frames differ — 94@f1250 vs 124@f345 — because
+tmOpsSnapshot carries 63,415 ops vs the cache's 63,182 els and live activation adds steps the
+cache pipeline doesn't replay; the SHAPE — clustering, not ties, worst 4.6-6.1x mean — agrees.)
+
+**2. Prediction under day-batching (labelled prediction, computed from the measured per-day
+distribution — not a claim it works):** batching a day's completions into one visible pulse puts
+that day's WHOLE count on one frame. Hospital: 9.81 frames/day, per-day p50=195 p90=298 **max=399**
+→ predicted worst frame **399 = 19.7x mean vs today's 4.6x — ~4x WORSE**, and
+`§DAYBATCH_PULSE_PREDICTION daysWhoseFullCountExceedsCurrentWorstFrame=299/319` — 94% of all days
+would each individually out-pop today's single worst frame. Duplex is worse still (101.5
+frames/day: a pulse = 198 els on one frame = 234x mean vs 14.2x today). Spreading each "pulse"
+over k frames needs k≥4.25 (~0.43 day) just to break even with today — at which point it is no
+longer a pulse, it is roughly the existing spread. **There is no batching parameter that reduces
+the worst-frame count; the mechanism can only trade it worse.** (Two buildings, same verdict —
+not a single-model artifact.)
+
+**3. So grouping would have to be synthetic — and the repo's own follow-up:** the grouping keys
+that genuinely exist in the data are per-element crew duration (installSecs), support layer, task,
+class — NOT calendar day; day membership is `floor(end_ts/86400000)` of a continuous tiling, i.e.
+a bin edge, not a fact about the schedule. Reading, flagged as a USER question, not decided here:
+(a) moving `end_ts` onto day pulses re-authors the timeline every consumer reads (scrubber, Gantt,
+day counter, judge) — plainly INVENTION under the PRIME RULE and a direct violation of
+§CPE_BUILDUP_FOLLOW_TM ("the buildup PLAYS the Time Machine timeline, it does not author one");
+(b) a film-side-only pulse (renderer holds reveals and dumps them in day groups, cursor/day counter
+untouched) is mechanically "presentation" (feedback: Prime-Rule scope = data, not presentation),
+but since the day membership is measured here to be an artifact, the rhythm shown is one the
+schedule does not contain — the SAME "renderer tells a story the day-counter contradicts" layering
+violation this file already condemned in §CPE_EVEN_PHASE_PACING/§CPE_PHASE_STAGGER (and slated for
+removal, item 3 of "THE RIGHT FIX"). Reading: invention in substance, presentation only in
+mechanism — the user's call if they still want the construction-rhythm LOOK despite the numbers.
+
+**VERDICT: NO-GO on within-phase day-batching.** Both halves of the precondition fail: no real
+day-buckets to batch (1), and batching what the binning produces raises the worst frame ~4x instead
+of lowering it (2). If the "all at once" pop is ever re-attacked, the measured levers are the ones
+the data actually names: the short-duration runs inside `remapSolveToTasks`' duration-weighted
+tiling (a presentation-neutral cap/spread on same-band SHORT-element density would address f1250's
+82-element run directly) and task-overlap density (d35-39 plateau) — both schedule-shape facts,
+neither needs a day concept. No code changed for this measurement.
