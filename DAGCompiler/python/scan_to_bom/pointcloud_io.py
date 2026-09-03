@@ -6,15 +6,16 @@ pointcloud_io.py — point cloud ingestion (Phase 2 step 1 of the Scan-to-BIM ro
 
 Reads raw point cloud files into a plain numpy array: Nx3 (XYZ) or Nx6 (XYZ+RGB uint8).
 No labels, no classification — this is the literal raw scan, exactly as it comes off the
-scanner. Supports the two formats real scan exports and this project's own synthetic test
-data actually use:
+scanner. Supports:
 
   .xyz / .txt   plain ASCII "x y z" or "x y z r g b" per line (space or comma separated)
   .ply          ASCII or binary_little_endian PLY, vertex x/y/z (+ optional red/green/blue)
-
-LAS/LAZ (real LiDAR-specific formats) are NOT supported yet — would need the `laspy`
-dependency, which isn't installed in this environment. Documented gap, not a silent one:
-load_pointcloud() raises NotImplementedError with a clear message rather than guessing.
+  .las / .laz   via `load_pointcloud()` -> `_load_las()`, full-resolution, in one shot.
+                Fine at synthetic/small-scan scale; a real high-resolution terrestrial scan
+                (hundreds of millions of points) will not fit in memory this way — use
+                `load_las_downsampled()` instead for those (see its own docstring: chunked,
+                voxel-grid downsampled, index-preserving so an external per-point label
+                array stays aligned).
 """
 
 from __future__ import annotations
@@ -168,6 +169,99 @@ def _load_las(path: Path) -> PointCloud:
         ]).astype(np.uint8)
 
     return PointCloud(xyz, rgb)
+
+
+def load_las_downsampled(path: str | Path, voxel_size_m: float, chunk_size: int = 5_000_000,
+                          log=print) -> tuple[PointCloud, np.ndarray]:
+    """Chunked, voxel-grid-downsampled LAS/LAZ ingestion for real-world scans too large for
+    `_load_las()`'s one-shot read — a real terrestrial scan can be hundreds of millions of
+    points (437M for DeKH_B_ICU, first real-world file this pipeline has processed); a naive
+    full load needs tens of GB of RAM and makes RANSAC/DBSCAN intractable regardless.
+
+    Keeps exactly ONE REAL measured point per voxel cell — the first one encountered in the
+    file's own point order, never an invented average — so every kept point is still a real
+    scan measurement, consistent with this project's extract-or-compile-only rule. Reads and
+    downsamples chunk-by-chunk so peak memory is bounded by the DOWNSAMPLED point count
+    (typically a small fraction of the raw count for a real high-density scan), not the raw
+    one.
+
+    Returns `(PointCloud, kept_indices)`. `kept_indices` are positions into the ORIGINAL,
+    file-order point sequence — so a same-length external array (e.g. a per-point ground-
+    truth `.npy`, one label per raw point) can be sliced with these exact indices
+    (`labels[kept_indices]`) and stay correctly aligned with the downsampled cloud, point for
+    point, with no re-derivation needed.
+
+    `voxel_size_m` is a real, load-bearing parameter, not a tuning knob to pick blindly: pick
+    it well below every geometric tolerance segment.py/classify.py already tune at (2-8cm),
+    so downsampling only removes literally-redundant same-spot resampling, never real spatial
+    detail those algorithms rely on.
+    """
+    import laspy
+
+    xyz_chunks: list[np.ndarray] = []
+    rgb_chunks: list[np.ndarray] = []
+    kept_idx_chunks: list[np.ndarray] = []
+    seen_voxels: set[int] = set()
+    n_raw = 0
+
+    # Voxel-key packing: three per-axis cell indices -> one int64. real building-scale scans
+    # span tens of metres, i.e. a few thousand cells per axis even at 1cm voxels — the
+    # generous +/-1,000,000-cell, 2,000,000-wide-per-axis packing below has enormous headroom
+    # over that and stays collision-free.
+    AXIS_OFFSET = 1_000_000
+    AXIS_WIDTH = 2_000_000
+
+    with laspy.open(str(path)) as f:
+        has_rgb = {"red", "green", "blue"}.issubset(set(f.header.point_format.dimension_names))
+        offset = 0
+        for chunk in f.chunk_iterator(chunk_size):
+            x = np.asarray(chunk.x, dtype=np.float64)
+            y = np.asarray(chunk.y, dtype=np.float64)
+            z = np.asarray(chunk.z, dtype=np.float64)
+            n = len(x)
+
+            vx = np.floor(x / voxel_size_m).astype(np.int64)
+            vy = np.floor(y / voxel_size_m).astype(np.int64)
+            vz = np.floor(z / voxel_size_m).astype(np.int64)
+            key = ((vx + AXIS_OFFSET) * AXIS_WIDTH + (vy + AXIS_OFFSET)) * AXIS_WIDTH + (vz + AXIS_OFFSET)
+
+            # First-occurrence-per-voxel WITHIN this chunk, fully vectorized (np.unique's
+            # return_index is the first occurrence in the *original*, unsorted order).
+            _, first_local_idx = np.unique(key, return_index=True)
+            first_local_idx.sort()
+            cand_keys = key[first_local_idx]
+
+            # Of those chunk-local candidates, keep only voxels not already claimed by an
+            # earlier chunk's real point — the actual cross-chunk dedup. Only iterates the
+            # chunk's own unique-voxel count, not its raw point count.
+            cand_keys_list = cand_keys.tolist()
+            new_mask = np.fromiter((k not in seen_voxels for k in cand_keys_list),
+                                    dtype=bool, count=len(cand_keys_list))
+            new_local_idx = first_local_idx[new_mask]
+            seen_voxels.update(k for k, keep in zip(cand_keys_list, new_mask) if keep)
+
+            xyz_chunks.append(np.column_stack([x[new_local_idx], y[new_local_idx], z[new_local_idx]]))
+            kept_idx_chunks.append(new_local_idx + offset)
+            if has_rgb:
+                r = np.asarray(chunk.red)[new_local_idx] >> 8
+                g = np.asarray(chunk.green)[new_local_idx] >> 8
+                b = np.asarray(chunk.blue)[new_local_idx] >> 8
+                rgb_chunks.append(np.column_stack([r, g, b]).astype(np.uint8))
+
+            n_raw += n
+            offset += n
+            log(f"§LAS_DOWNSAMPLE chunk: {n} raw -> {len(new_local_idx)} new voxels "
+                f"({len(seen_voxels)} kept total, {n_raw} raw points processed so far)")
+
+    xyz = np.concatenate(xyz_chunks, axis=0) if xyz_chunks else np.zeros((0, 3))
+    kept_indices = (np.concatenate(kept_idx_chunks, axis=0) if kept_idx_chunks
+                     else np.zeros((0,), dtype=np.int64))
+    rgb = np.concatenate(rgb_chunks, axis=0) if rgb_chunks else None
+
+    retained_pct = (len(kept_indices) / n_raw) if n_raw else 0.0
+    log(f"§LAS_DOWNSAMPLE {path}: {n_raw} raw points -> {len(kept_indices)} kept "
+        f"(voxel={voxel_size_m}m, {retained_pct:.1%} retained)")
+    return PointCloud(xyz, rgb), kept_indices
 
 
 def save_ply(path: str | Path, pc: PointCloud, labels: np.ndarray | None = None) -> None:
