@@ -36,9 +36,11 @@ Algorithm, in order:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
+from scipy import ndimage
 from sklearn.cluster import DBSCAN
 
 from pointcloud_io import PointCloud
@@ -52,8 +54,24 @@ MIN_PLANE_CONFIDENT_INLIERS = 1500  # at/above this inlier count, confidence = 1
 MAX_PLANES = 40                     # hard stop — a building has a bounded number of surfaces
 HORIZONTAL_NORMAL_TOL_DEG = 20.0    # normal within this of +-Z -> 'horizontal'
 VERTICAL_NORMAL_TOL_DEG = 20.0      # normal within this of the XY plane -> 'vertical'
-PLANE_COMPONENT_EPS_M = 0.30        # DBSCAN eps for splitting one plane into physical pieces
+PLANE_COMPONENT_EPS_M = 0.30        # connectivity radius for splitting one plane into physical
+                                     # pieces — points within this of each other (via the grid
+                                     # dilation below) count as one connected surface
 PLANE_COMPONENT_MIN_SAMPLES = 20
+PLANE_COMPONENT_GRID_CELL_M = 0.01  # grid-based connected-components cell size (Phase 6 fix —
+                                     # was DBSCAN on raw (u,v) points, which is O(density^2)
+                                     # memory in the eps-radius neighbor query: fine at the
+                                     # synthetic test's ~400 pts/m^2 but a real terrestrial scan
+                                     # (DeKH_B_ICU, even after 1cm-voxel downsampling) is dense
+                                     # enough on a real wall/floor plane to blow available RAM
+                                     # (confirmed: MemoryError on a 4.5M-point corner crop).
+                                     # "same connected physical surface" is fundamentally a
+                                     # spatial-adjacency question, not a general clustering one,
+                                     # so it's answered on a 2D occupancy grid instead: memory is
+                                     # bounded by grid CELL COUNT (a plane's spatial extent /
+                                     # cell size), never by point density or count. 10x finer
+                                     # than PLANE_COMPONENT_EPS_M so the eps-dilation below (in
+                                     # whole cells) approximates the real distance closely.
 MIN_COMPONENT_POINTS = 150          # a split-off piece below this isn't a real architectural
                                      # surface (furniture-top / roof-facet fragment) — its points
                                      # go back into the remaining pool, not out as a segment
@@ -90,10 +108,18 @@ class Segment:
         return (self.aabb_min + self.aabb_max) / 2.0
 
 
-def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, float, np.ndarray] | None:
+def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator, log=None,
+                       progress_every: int = 100) -> tuple[np.ndarray, float, np.ndarray] | None:
     """One RANSAC search over `xyz` (all remaining, unassigned points). Returns
     (normal, offset, inlier_mask) for the best plane found, or None if nothing clears
-    MIN_PLANE_INLIERS."""
+    MIN_PLANE_INLIERS.
+
+    `log` is optional and, when given, prints coarse within-search progress every
+    `progress_every` iterations — at real-world point counts (millions, not the synthetic
+    test's 670K) a single plane search can itself take real time, and losing a run mid-search
+    with no trace of how far it got (Phase 6's checkpointing work) is worse than a little log
+    noise. None by default so this stays silent for the already-fast synthetic-scale path.
+    """
     n = len(xyz)
     if n < 3:
         return None
@@ -101,7 +127,10 @@ def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator) -> tuple[np.nda
     best_count = 0
     best_normal = None
     best_offset = 0.0
-    for _ in range(RANSAC_ITERATIONS):
+    for it in range(RANSAC_ITERATIONS):
+        if log is not None and it > 0 and it % progress_every == 0:
+            log(f"§SEGMENT   RANSAC iter {it}/{RANSAC_ITERATIONS} "
+                f"({n} candidate points, best so far: {best_count} inliers)")
         idx = rng.choice(n, size=3, replace=False)
         p0, p1, p2 = xyz[idx]
         v1, v2 = p1 - p0, p2 - p0
@@ -158,8 +187,18 @@ def _split_plane_into_components(xyz: np.ndarray, plane_indices: np.ndarray,
                                   normal: np.ndarray) -> list[np.ndarray]:
     """A single RANSAC plane can span multiple physically separate surfaces (two wall
     segments broken by a gap, opposite walls that happen to be parallel and coplanar in a
-    symmetric room). Project onto the plane's local 2D frame and DBSCAN-cluster there —
-    connectivity within the plane, not 3D proximity across it, is what defines "one wall.\""""
+    symmetric room). Project onto the plane's local 2D frame and find connected components
+    there — connectivity within the plane, not 3D proximity across it, is what defines "one
+    wall."
+
+    Grid-based (rasterize (u,v) into an occupancy grid, dilate by the eps radius, flood-fill
+    label the connected cells — scipy.ndimage.label), not DBSCAN: this is fundamentally a
+    spatial-adjacency question ("is every point reachable from every other through a chain of
+    nearby points"), which a grid answers with memory bounded by the plane's spatial extent
+    (cell count), never by point density. DBSCAN's eps-radius neighbor query is
+    O(density^2)-ish in memory — fine at the synthetic test's ~400 pts/m^2, confirmed to
+    MemoryError on a real terrestrial scan's actual density (DeKH_B_ICU smoke test, Phase 6).
+    """
     pts = xyz[plane_indices]
     # Build an orthonormal in-plane basis (u, v) from the normal.
     arbitrary = np.array([1.0, 0.0, 0.0]) if abs(normal[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
@@ -167,12 +206,36 @@ def _split_plane_into_components(xyz: np.ndarray, plane_indices: np.ndarray,
     u = u / np.linalg.norm(u)
     v = np.cross(normal, u)
     uv = np.column_stack([pts @ u, pts @ v])
-    labels = DBSCAN(eps=PLANE_COMPONENT_EPS_M, min_samples=PLANE_COMPONENT_MIN_SAMPLES).fit_predict(uv)
+
+    cell = PLANE_COMPONENT_GRID_CELL_M
+    uv_min = uv.min(axis=0)
+    grid_idx = np.floor((uv - uv_min) / cell).astype(np.int64)
+    grid_shape = (int(grid_idx[:, 0].max()) + 1, int(grid_idx[:, 1].max()) + 1)
+    occupied = np.zeros(grid_shape, dtype=bool)
+    occupied[grid_idx[:, 0], grid_idx[:, 1]] = True
+
+    # Dilate by HALF the eps radius (in whole cells): two separate blobs merge once their
+    # own dilation halos touch, i.e. once their real edge-to-edge gap is <= 2*(this radius)
+    # -- so half of PLANE_COMPONENT_EPS_M makes the merge threshold the real eps, matching
+    # DBSCAN's "any two points within eps are directly linked" rather than doubling it.
+    # (Caught by direct A/B measurement against the pre-change DBSCAN version, not assumed:
+    # dilating by the full eps merged real elements DBSCAN kept separate -- plane-purity
+    # fragmentation on the synthetic ground truth got measurably worse, 55/58 -> 57/58 real
+    # elements split across >1 segment, before this fix.)
+    dilation_cells = max(1, round(PLANE_COMPONENT_EPS_M / (2 * cell)))
+    dilated = ndimage.binary_dilation(occupied, iterations=dilation_cells)
+    labeled, _ = ndimage.label(dilated, structure=np.ones((3, 3)))  # 8-connectivity
+    point_labels = labeled[grid_idx[:, 0], grid_idx[:, 1]]
+
     components = []
-    for lbl in sorted(set(labels)):
-        if lbl == -1:
-            continue  # noise within this plane — not enough local support to call a surface
-        components.append(plane_indices[labels == lbl])
+    for lbl in np.unique(point_labels):
+        if lbl == 0:
+            continue  # unlabeled background — cannot occur for an originally-occupied cell,
+                       # kept only as a defensive no-op
+        comp_idx = plane_indices[point_labels == lbl]
+        if len(comp_idx) < PLANE_COMPONENT_MIN_SAMPLES:
+            continue  # too few points — same noise-suppression intent as DBSCAN's min_samples
+        components.append(comp_idx)
     return components
 
 
@@ -194,7 +257,11 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
         remaining_idx = np.nonzero(remaining_mask)[0]
         if len(remaining_idx) < MIN_PLANE_INLIERS:
             break
-        result = _fit_plane_ransac(xyz[remaining_idx], rng)
+        log(f"§SEGMENT plane search #{plane_count + 1}/{MAX_PLANES} starting: "
+            f"{len(remaining_idx)} candidate points")
+        t_plane = time.time()
+        result = _fit_plane_ransac(xyz[remaining_idx], rng, log=log)
+        log(f"§SEGMENT   RANSAC search done in {time.time() - t_plane:.1f}s")
         if result is None:
             log(f"§SEGMENT plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
                 f"among {len(remaining_idx)} remaining points — stopping plane extraction")
@@ -208,7 +275,12 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
         # progress and can't re-discover the same fragment forever.
         remaining_mask[plane_global_idx] = False
 
+        log(f"§SEGMENT   plane found ({orientation}, {len(plane_global_idx)} inliers) — "
+            f"splitting into connected components")
+        t_split = time.time()
         components = _split_plane_into_components(xyz, plane_global_idx, normal)
+        log(f"§SEGMENT   component split done in {time.time() - t_split:.1f}s -> "
+            f"{len(components)} components")
         if not components:
             log(f"§SEGMENT plane found ({orientation}, {len(plane_global_idx)} pts) but "
                 f"split into zero connected components — releasing to clustering pool")
@@ -266,8 +338,14 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
     remaining_idx = np.concatenate([np.nonzero(remaining_mask)[0], leftover_idx]).astype(int)
     remaining_idx = np.unique(remaining_idx)
     if len(remaining_idx) >= CLUSTER_MIN_SAMPLES:
+        log(f"§SEGMENT residual DBSCAN clustering starting: {len(remaining_idx)} points "
+            f"(eps={CLUSTER_EPS_M}m) — no per-iteration progress available (single sklearn "
+            f"call); this line plus the 'done' line below bound how long it ran if a run "
+            f"dies mid-call")
+        t_cluster = time.time()
         labels = DBSCAN(eps=CLUSTER_EPS_M, min_samples=CLUSTER_MIN_SAMPLES).fit_predict(
             xyz[remaining_idx])
+        log(f"§SEGMENT residual DBSCAN clustering done in {time.time() - t_cluster:.1f}s")
         n_noise = int((labels == -1).sum())
         for lbl in sorted(set(labels)):
             if lbl == -1:
