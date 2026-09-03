@@ -52,6 +52,13 @@ RANSAC_ITERATIONS = 400             # per plane search
 MIN_PLANE_INLIERS = 300             # below this, not worth calling a plane at all
 MIN_PLANE_CONFIDENT_INLIERS = 1500  # at/above this inlier count, confidence = 1.0
 MAX_PLANES = 40                     # hard stop — a building has a bounded number of surfaces
+NORMAL_ANGLE_TOL_DEG = 8.0           # two planes' normals within this angle + offsets within
+OFFSET_TOL_M = 0.05                  # OFFSET_TOL_M count as "the same real plane equation" —
+                                      # used both by _same_plane_equation() (RANSAC-rediscovery
+                                      # check, below) and merge_coplanar_fragments (Phase 2.5)
+MAX_GAP_M = 2.0                      # AABB gap tolerance for "close enough to be one real
+                                      # surface" (Phase 2.5's merge criterion) — bridges a
+                                      # doorway-scale gap, not the width of a room
 HORIZONTAL_NORMAL_TOL_DEG = 20.0    # normal within this of +-Z -> 'horizontal'
 VERTICAL_NORMAL_TOL_DEG = 20.0      # normal within this of the XY plane -> 'vertical'
 PLANE_COMPONENT_EPS_M = 0.30        # connectivity radius for splitting one plane into physical
@@ -164,6 +171,34 @@ def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator, log=None,
     dist = np.abs(xyz @ refined_normal + refined_offset)
     inliers = dist < RANSAC_DIST_THRESHOLD_M
     return refined_normal, refined_offset, inliers
+
+
+def _plane_offset(normal: np.ndarray, point_on_plane: np.ndarray) -> float:
+    """c such that normal . x + c = 0 for points on the plane."""
+    return -float(np.dot(normal, point_on_plane))
+
+
+def _same_plane_equation(orientation_a: str, normal_a: np.ndarray, centroid_a: np.ndarray,
+                          orientation_b: str, normal_b: np.ndarray, centroid_b: np.ndarray) -> bool:
+    """True if two planes are close enough (orientation, normal angle, offset) to be the
+    same real physical surface — the exact criteria merge_coplanar_fragments (Phase 2.5)
+    already uses to reunite fragments, shared here rather than re-invented: it's the same
+    question ("is this the same real surface"), just asked one phase earlier. Does NOT check
+    spatial proximity (AABB gap) — same-orientation-and-equation but spatially far apart is a
+    legitimate case (e.g. opposite parallel walls); callers needing that too should also
+    check aabb_gap()."""
+    if orientation_a != orientation_b:
+        return False
+    cos_tol = np.cos(np.radians(NORMAL_ANGLE_TOL_DEG))
+    cos_angle = abs(float(np.dot(normal_a, normal_b)))
+    if cos_angle < cos_tol:
+        return False
+    # Align b's normal sign to a's before comparing offsets — a plane's normal direction is
+    # arbitrary (SVD/RANSAC sign is not deterministic), the plane itself is not.
+    sign = 1.0 if np.dot(normal_a, normal_b) >= 0 else -1.0
+    off_a = _plane_offset(normal_a, centroid_a)
+    off_b = _plane_offset(sign * normal_b, centroid_b)
+    return abs(off_a - off_b) <= OFFSET_TOL_M
 
 
 def _classify_orientation(normal: np.ndarray) -> str:
@@ -287,7 +322,7 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
             leftover_chunks.append(plane_global_idx)
             continue
 
-        accepted_any = False
+        accepted_any = False  # did this search find at least one GENUINELY NEW plane?
         for comp_idx in components:
             if len(comp_idx) < MIN_COMPONENT_POINTS:
                 # Furniture-top / roof-facet-scale fragment, not a real architectural
@@ -297,9 +332,56 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
                 n_rejected_fragments += 1
                 n_rejected_points += len(comp_idx)
                 continue
+
+            comp_aabb_min = xyz[comp_idx].min(axis=0)
+            comp_aabb_max = xyz[comp_idx].max(axis=0)
+            comp_centroid = (comp_aabb_min + comp_aabb_max) / 2.0
+
+            # Rediscovery check (Phase 6 fix — DeKH_B_ICU): is this the SAME real surface as
+            # an already-accepted plane, just swept up by a later search because the surface
+            # didn't fit one exact plane equation everywhere (real noise/occlusion/slight
+            # non-planarity)? Verified this was the actual mechanism starving wall discovery,
+            # not occlusion as first suspected: on DeKH_B_ICU, 35 of 40 RANSAC searches found
+            # a 'horizontal' plane and only 5 found 'vertical' — those 35 clustered into just
+            # two real height bands (ceiling, floor), confirming they were the same two real
+            # surfaces being re-discovered piecemeal, not 35 distinct surfaces, before the
+            # MAX_PLANES budget ran out with most walls never getting a search at all. If
+            # this is a rediscovery, absorb its points into the existing segment instead of
+            # spending a fresh budget slot — same "same real surface" test
+            # merge_coplanar_fragments (Phase 2.5) already applies, just run one phase
+            # earlier so it never costs a search in the first place.
+            rediscovered = None
+            for existing in segments:
+                if existing.geometry_type != "plane" or existing.orientation != orientation:
+                    continue
+                if not _same_plane_equation(orientation, normal, comp_centroid,
+                                             existing.orientation, existing.normal,
+                                             existing.centroid):
+                    continue
+                if aabb_gap(comp_aabb_min, comp_aabb_max,
+                            existing.aabb_min, existing.aabb_max) > MAX_GAP_M:
+                    continue
+                rediscovered = existing
+                break
+
+            if rediscovered is not None:
+                rediscovered.point_indices = np.concatenate(
+                    [rediscovered.point_indices, comp_idx])
+                rediscovered.aabb_min = np.minimum(rediscovered.aabb_min, comp_aabb_min)
+                rediscovered.aabb_max = np.maximum(rediscovered.aabb_max, comp_aabb_max)
+                rediscovered.confidence = _plane_confidence(len(rediscovered.point_indices))
+                rediscovered.low_confidence = rediscovered.confidence < 0.5
+                rediscovered.support_note = (
+                    f"RANSAC plane, {len(rediscovered.point_indices)} inliers "
+                    f"(threshold {MIN_PLANE_CONFIDENT_INLIERS} for full confidence; "
+                    f"includes a {len(comp_idx)}-pt rediscovery absorbed from a later search)")
+                log(f"§SEGMENT   {len(comp_idx)}-pt component absorbed into existing plane "
+                    f"#{rediscovered.id} (same real surface rediscovered — "
+                    f"{len(rediscovered.point_indices)} total now) — no new budget slot spent")
+                continue
+
             accepted_any = True
-            aabb_min = xyz[comp_idx].min(axis=0)
-            aabb_max = xyz[comp_idx].max(axis=0)
+            aabb_min, aabb_max = comp_aabb_min, comp_aabb_max
             conf = _plane_confidence(len(comp_idx))
             seg = Segment(
                 id=seg_id, geometry_type="plane", orientation=orientation,
@@ -317,8 +399,9 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
             seg_id += 1
         if accepted_any:
             plane_count += 1
-        # else: this whole plane search only produced sub-threshold fragments — don't
-        # count it against MAX_PLANES, but do keep looping (points already consumed above).
+        # else: this whole plane search only produced rediscoveries and/or sub-threshold
+        # fragments — don't count it against MAX_PLANES, but do keep looping (points already
+        # consumed above either way).
 
     # Disambiguate floor vs ceiling among 'horizontal' planes by relative height —
     # the lowest confident horizontal plane is the floor, everything else horizontal
@@ -395,21 +478,18 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
 # out merging two genuinely different parallel walls on opposite sides of a room: they
 # share an orientation but not an offset), (3) AABBs within MAX_GAP_M of each other — bridges
 # a doorway-scale gap, not the width of a room.
-
-NORMAL_ANGLE_TOL_DEG = 8.0
-OFFSET_TOL_M = 0.05
-MAX_GAP_M = 2.0
+#
+# NORMAL_ANGLE_TOL_DEG/OFFSET_TOL_M (the "is this the same plane equation" half of that
+# criterion) now live in the Tunables section above — segment_pointcloud() itself also uses
+# them (see _same_plane_equation(), the RANSAC-rediscovery check) to stop wasting plane-search
+# budget re-finding the same real surface piecemeal, the same real question this Phase 2.5
+# pass answers, just asked one phase earlier.
 
 
 def aabb_gap(min1: np.ndarray, max1: np.ndarray, min2: np.ndarray, max2: np.ndarray) -> float:
     """Minimum distance between two AABBs — 0 if they overlap or touch."""
     d = np.maximum(np.maximum(min1 - max2, min2 - max1), 0)
     return float(np.linalg.norm(d))
-
-
-def _plane_offset(normal: np.ndarray, point_on_plane: np.ndarray) -> float:
-    """c such that normal . x + c = 0 for points on the plane."""
-    return -float(np.dot(normal, point_on_plane))
 
 
 def merge_coplanar_fragments(segments: list[Segment], log=print) -> list[Segment]:
@@ -430,7 +510,6 @@ def merge_coplanar_fragments(segments: list[Segment], log=print) -> list[Segment
         if ri != rj:
             parent[ri] = rj
 
-    cos_tol = np.cos(np.radians(NORMAL_ANGLE_TOL_DEG))
     n_pairs_checked = 0
     n_pairs_merged = 0
     for i in range(len(planes)):
@@ -439,16 +518,8 @@ def merge_coplanar_fragments(segments: list[Segment], log=print) -> list[Segment
             if a.orientation != b.orientation:
                 continue
             n_pairs_checked += 1
-            cos_angle = abs(float(np.dot(a.normal, b.normal)))
-            if cos_angle < cos_tol:
-                continue
-            # Align b's normal sign to a's before comparing offsets — a plane's normal
-            # direction is arbitrary (SVD sign is not deterministic), but the plane itself
-            # (and its offset) is the same regardless of which way the normal points.
-            sign = 1.0 if np.dot(a.normal, b.normal) >= 0 else -1.0
-            off_a = _plane_offset(a.normal, a.centroid)
-            off_b = _plane_offset(sign * b.normal, b.centroid)
-            if abs(off_a - off_b) > OFFSET_TOL_M:
+            if not _same_plane_equation(a.orientation, a.normal, a.centroid,
+                                         b.orientation, b.normal, b.centroid):
                 continue
             gap = aabb_gap(a.aabb_min, a.aabb_max, b.aabb_min, b.aabb_max)
             if gap > MAX_GAP_M:

@@ -496,6 +496,109 @@ hardware (handle, hinge), not enough real evidence to defensibly call `IfcDoor` 
 the same wall-normal-spread signal to doors was checked and rejected here, honestly, rather
 than forced: `IfcDoor` stays `IfcBuildingElementProxy` (deferred, not guessed) for this dataset.
 
+## Real-world validation (Phase 6 — DeKH_B_ICU)
+
+First run against a real terrestrial LiDAR scan, not the synthetic cloud every earlier phase
+was validated against — DeKH (German Hospital Dataset, published alongside the BIMStruct3D
+paper — model card: https://huggingface.co/dfki-av/BIMStruct3D-segmentation),
+`Buildings/B/DeKH_B_ICU`, CC BY-NC-SA 4.0, permission confirmed from the authors for this use.
+Kept entirely outside this repo (licensed third-party data); every checkpoint, the written
+reference DB, and the run log stayed in a local scratch directory, never committed. Only the
+pipeline code that processes it — `pointcloud_io.load_las_downsampled()`, `smoke_test_dekh.py`,
+`validate_real_world.py`, `run_dekh_staged.py` — is committed here.
+
+**Scale forced two real infrastructure changes before any DeKH-specific work could even run**:
+- 437,277,430 raw points — far too many to load in one shot (tens of GB) or run
+  RANSAC/DBSCAN on directly. `load_las_downsampled()` reads and voxel-downsamples chunk by
+  chunk (1cm voxels, keeping exactly one real measured point per cell — never an invented
+  average), bounding memory by the downsampled count (23.7M, 5.4% retained) regardless of raw
+  file size, and returns the kept points' original indices so an external per-point label
+  array (DeKH's own `.npy` ground truth) stays aligned after downsampling.
+- This environment could not sustain a background or even a fully OS-detached process across
+  a conversation turn boundary — four full-run attempts died silently before this was
+  understood. The only execution mode confirmed to survive is a single foreground call, capped
+  at ~10 minutes. `run_dekh_staged.py` splits the pipeline into 3 checkpointed stages
+  (downsample / segment / classify), each its own process, each checkpointing to disk, with
+  within-stage progress logging (RANSAC iteration counts, per-search timing) added to
+  `segment.py` so a run that does die mid-stage shows exactly how far it got, not just that
+  it's gone.
+
+**A real bug caught in the scoring before trusting any result**: the first scoring pass showed
+8/82 ground-truth elements matched (9.8%) with one axis at 111.3 (11,100%) relative error —
+not "real data is hard," a bug. Predictions had gone through `normalize_pointcloud()`
+(coordinates shifted by a computed tack point), but the ground-truth IFC was extracted with
+`--skip-normalize` (its own raw frame) — comparing across two different origins. Fixed by
+un-shifting predicted AABBs back to the raw frame before matching; confirmed the fix was
+correctly scoped because the baseline comparison (extracted the same `--skip-normalize` way)
+was unaffected before or after.
+
+**Couldn't verify DeKH's own per-point label scheme, so didn't invent one.** The `.npy` ground
+truth is real (`float32`, one label per raw point, index-aligned with the `.laz`) but checking
+the dataset README, the segmentation model's own config, the source paper (Kaufmann et al.,
+EC3 2023) in full, and the external annotation-guideline repo (login-gated) found no
+authoritative numeric-ID-to-class-name table. Used as an unnamed grouping signal only
+(purity/coverage, same as `validate_segmentation.py` already does for the synthetic ground
+truth) — no class names inferred from the raw label IDs anywhere in this pipeline.
+
+### The wall-detection investigation — three real causes checked, in order, not assumed
+
+Composition on the real scan: `IfcBuildingElementProxy` 164-175 (65%+, honest deferral, by
+design), `IfcFurniture` 51-52 (the real GT has **zero** furniture/equipment entities — Building-
+category only, per Kaufmann et al.'s own category split — so every furniture prediction is
+structurally unscoreable here, not wrong), and real structural predictions
+(`IfcSlab`/`IfcWindow`/`IfcWall`/`IfcDoor`) badly under-counting the real 124-element ground
+truth. Spatial IoU-style matching (same kind of metric this research area's own literature,
+BIMStruct3D, reports for itself) found only 13/82 scoreable GT elements matched (15.9%) against
+the published baseline's 47.6% — and specifically only 5 of 31 real `IfcWall` elements
+recovered. Investigated why, checking each hypothesis against real data rather than reporting
+the first plausible one:
+
+1. **Occlusion — checked, mostly ruled out.** Compared point density and `.npy` label
+   composition inside each GT wall's footprint, matched vs. unmatched. Matched-wall median
+   density 125,679 pts/m³; unmatched-wall median 101,690 pts/m³ — comparable, not
+   systematically sparse. Only 2 of 20 unmatched walls showed a real occlusion signature (density
+   under ~3,200 pts/m³, or label values that never appear in matched walls' point clouds). The
+   other 18 looked statistically identical to matched walls yet still went unmatched — occlusion
+   is real for a small minority, not the dominant cause.
+2. **Piecemeal rediscovery — checked, found real, fixed.** Checked whether a vertical-oriented
+   plane segment existed over each unmatched wall's footprint at all, regardless of
+   classification: 19 of 20 had **zero**, despite comparable point density to matched walls —
+   never discovered as a wall-orientation plane in the first place. Checked the segmentation log
+   directly: all 40 of `MAX_PLANES=40`'s RANSAC searches ran (budget exhausted, not "ran out of
+   planes"), and 35 of those 40 found a horizontal-orientation plane, only 5 vertical. The 35
+   horizontal results clustered into just two real height bands (ceiling, floor) — the same two
+   real surfaces being re-discovered piecemeal each search (real noise/slight non-planarity means
+   one plane equation doesn't fit the whole surface at once), not 35 distinct objects, burning
+   the budget before most walls got a turn.
+
+   **Fixed**: `_same_plane_equation()` (shared with Phase 2.5's `merge_coplanar_fragments` —
+   same `NORMAL_ANGLE_TOL_DEG`/`OFFSET_TOL_M` criteria, same real question, asked one phase
+   earlier) checks each newly-found plane component against already-accepted plane segments of
+   the same orientation; a match absorbs the component's points into the existing segment
+   instead of spending a fresh `MAX_PLANES` budget slot. Verified two ways before trusting it:
+   the synthetic Sample House baseline first (coverage 58/58 unchanged, confident-wrong
+   unchanged at exactly 2, classification correct-rate actually *improved* 51.5%→66.7% — fewer,
+   more-complete segments classify more confidently), then re-ran DeKH_B_ICU itself: raw plane
+   count dropped 508→113 (78% fewer, 497 real components absorbed as genuine rediscoveries) —
+   the mechanism demonstrably works.
+3. **Real horizontal clutter competing with walls — the actual dominant cause, found after
+   re-scoring the fix rather than assuming it worked.** `IfcWall` recovery barely moved (5→6);
+   spatial match stayed at 13/82. Checked why: even with rediscovery-absorption, the loop still
+   spent all 40 accepted-plane slots (107 horizontal, only 6 vertical) — because a real,
+   cluttered ICU room has **many genuinely distinct real horizontal surfaces** (equipment,
+   furniture, counters at different heights — not near-duplicates of the ceiling/floor, so
+   correctly *not* absorbed by the fix above), which RANSAC's biggest-remaining-plane-first
+   search keeps finding ahead of walls regardless. The absorption fix caught exactly the failure
+   mode it was designed for; this is a different, larger problem it was never meant to solve.
+
+**Status: real, not occlusion-dominated, not (only) piecemeal-rediscovery — genuine RANSAC
+search-order starvation by legitimate horizontal clutter density in real cluttered rooms. Not
+yet fixed.** A hard per-orientation search cap was considered and rejected (would risk missing
+buildings with genuinely multiple real horizontal surfaces — mezzanines, stepped ceilings — the
+same way this bug just missed walls); something like search-order interleaving or a
+budget-reservation scheme across orientations is the likely shape of a real fix, but that's an
+open design decision for its own dedicated, reviewed session, not a rushed end-of-session guess.
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -556,6 +659,19 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
 
 ## What's still not done — deliberately deferred
 
+- **RANSAC plane search is starved by real horizontal clutter in dense, cluttered rooms**
+  (Phase 6, DeKH_B_ICU) — a real hospital ICU has many genuinely distinct real horizontal
+  surfaces (equipment, furniture, counters) that legitimately compete with walls for
+  `MAX_PLANES`'s biggest-remaining-plane-first search order and usually win (only 5-6 of 31
+  real walls ever got discovered as a plane at all). Piecemeal re-discovery of the *same*
+  surface was checked and fixed (`_same_plane_equation()`-based absorption, verified against
+  both the synthetic baseline and a 508→113 raw-plane-count drop on DeKH_B_ICU itself) but
+  barely moved wall recovery (5→6) — confirming genuinely-distinct real clutter, not
+  duplicate-surface waste, is the dominant remaining cause. Not fixed: a hard per-orientation
+  cap was considered and rejected (would risk missing real buildings with genuinely multiple
+  horizontal surfaces — mezzanines, stepped ceilings — the same way this bug just missed
+  walls); the real fix is likely a search-order or budget-reservation redesign, which is an
+  open design decision left for its own dedicated session.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
