@@ -1,17 +1,18 @@
-# scan_to_bom — Phase 2 through 4: segmentation, reunification, classification, instance merge, reference-DB writing
+# scan_to_bom — Phase 2 through 5: segmentation, reunification, classification, instance merge, reference-DB writing, BOM assembly
 
-Status: Phases 2, 2.5, 3, 3.5, and 4 of the Scan-to-BIM roadmap (see `docs/ScanToBOM_ReferenceDB_Spec.md`
+Status: Phases 2, 2.5, 3, 3.5, 4, and 5 of the Scan-to-BIM roadmap (see `docs/ScanToBOM_ReferenceDB_Spec.md`
 for Phase 1's schema contract this all feeds into and now writes to). Produces confidence-scored
 geometric segments from a raw point cloud, reunifies fragments of one continuous physical surface,
 assigns each segment an IFC-class-shaped label + discipline + placement from measurable geometry
-alone, reunites disconnected fragments of one real furniture instance, then serializes the result
-into the exact reference-DB schema the existing IFC-side pipeline (`ExtractionPopulator`,
-`StructuralBomBuilder`, `BomValidator`, `CompilationPipeline`, downstream `BIM_COBOL`/gates)
-already consumes unmodified — no material/RGB, no ML model. Nothing is silently invented: every
-segment and every label carries a traceable confidence score, and low-confidence output is
-flagged, not hidden or force-classified. `IfcBuildingElementProxy` — a real, standard IFC4 class —
-is the deliberate "real object, type not determined" fallback for anything that doesn't clear a
-specific class's evidence bar.
+alone, reunites disconnected fragments of one real furniture instance, serializes the result into
+the exact reference-DB schema the existing IFC-side pipeline consumes, and — Phase 5 — runs that
+straight through the real, **unmodified** `IFCtoBOMMain` Java pipeline (`ExtractionPopulator`,
+`StructuralBomBuilder`, `ScopeBomBuilder`, `BomValidator`) to produce a real `*_BOM.db`, no Java
+code touched — no material/RGB, no ML model. Nothing is silently invented: every segment and every
+label carries a traceable confidence score, and low-confidence output is flagged, not hidden or
+force-classified. `IfcBuildingElementProxy` — a real, standard IFC4 class — is the deliberate
+"real object, type not determined" fallback for anything that doesn't clear a specific class's
+evidence bar.
 
 ## Files
 
@@ -68,6 +69,16 @@ specific class's evidence bar.
   every earlier phase uses, and — new for Phase 4 — dimensional fidelity against the REAL
   `element_transforms` rows in `SampleHouse_extracted.db`, the actual source the synthetic cloud
   was sampled from. See "Reference-DB writing" below for what that check found.
+- `run_scan_to_bom.py` — Phase 5's production entry point (not a validator). Runs the full
+  chain and writes to `DAGCompiler/lib/input/<building_type>_extracted.db` — the exact
+  hardcoded path convention `ExtractionPopulator`/`IFCtoBOMPipeline` already read a real IFC
+  extraction from, so the existing, unmodified Java `IFCtoBOMMain` CLI treats this pipeline's
+  output identically to an IFC extraction. See "BOM assembly" below.
+- `validate_bom.py` — Phase 5's blind validator. Doesn't run either pipeline itself (both
+  `*_BOM.db` files are built separately by the real Maven commands, see "Running it"); reads
+  the two already-committed `*_BOM.db` files back and compares the point-cloud-derived one
+  against the real, IFC-extracted `SH_BOM.db` — building envelope, QA-gate pass evidence, and
+  per-class composition via the same equivalence set `validate_classification.py` uses.
 
 ## Running it
 
@@ -100,6 +111,10 @@ python3 validate_reference_db.py \
 `--save-labeled` writes a `.segmented.ply` sidecar with a per-point segment-id label, for
 loading into any point-cloud viewer that supports custom vertex properties. Phase 2.5 merge runs
 by default; pass `--no-merge` to score raw Phase 2 output for comparison.
+
+For Phase 5 (running the point-cloud output through the real, unmodified Java BOM pipeline and
+scoring the result against the real IFC-extracted BOM), see "BOM assembly" below — it needs the
+Maven/Java commands, not just Python, so it's kept as its own command block there.
 
 ## LAS/LAZ ingestion + coordinate normalization
 
@@ -334,6 +349,84 @@ and honestly scored against real ground truth on every axis it can be — includ
 concrete, real-numbers instance of an already-flagged upstream limitation, rather than declaring
 success on schema-validity alone.**
 
+## BOM assembly (Phase 5)
+
+Per CLAUDE.md's mandate — "keep the BOM/verb/compile/gate back end unchanged" — Phase 5 is
+**not** new BOM logic. It's proving the Phase 4 reference DB is a drop-in replacement for an
+IFC extraction at the one seam that matters: the real `IFCtoBOMMain` Java CLI, completely
+unmodified.
+
+`ExtractionPopulator` / `IFCtoBOMPipeline` don't take the reference-DB path as a CLI argument —
+they hardcode it by convention from the classification YAML's `building_type` field:
+`DAGCompiler/lib/input/<building_type>_extracted.db`. So the whole integration is: give the
+point-cloud pipeline's output a `building_type` distinct from the real IFC-extracted
+`SampleHouse`, write it there (`run_scan_to_bom.py`), point a classification YAML at it
+(`IFCtoBOM/src/main/resources/classify_shpc.yaml`, `building_type: SampleHousePC`), and run the
+exact same two Maven commands `scripts/run_RosettaStones.sh` already runs for every real
+building. No `rel_aggregates`/`rel_contained_in_space`/`rel_fills_host` tables are written —
+checked in `StructuralBomBuilder`/`ScopeBomBuilder`/`ExtractionPopulator` source first, not
+assumed: all three catch the missing-table case and degrade to flat, non-nested BOMs, exactly
+the behavior `docs/ScanToBOM_ReferenceDB_Spec.md` documents for a reference DB that skips those
+optional tables — exercised for real here, not just specified.
+
+```bash
+# Phase 2-4: write DAGCompiler/lib/input/SampleHousePC_extracted.db
+cd DAGCompiler/python/scan_to_bom
+python3 run_scan_to_bom.py --ply ../../lib/input/pointcloud/samplehouse_synthetic.ply \
+    --building-type SampleHousePC --lib-input ../../lib/input
+
+# Phase 5: the real, unmodified Java BOM pipeline — identical commands to any IFC building
+cd ../../..
+mvn exec:java -pl IFCtoBOM -Dexec.mainClass=com.bim.ifctobom.IFCtoBOMMain \
+    -Dexec.args="--populate --classify IFCtoBOM/src/main/resources/classify_shpc.yaml" -q
+mvn exec:java -pl IFCtoBOM -Dexec.mainClass=com.bim.ifctobom.IFCtoBOMMain \
+    -Dexec.args="--classify IFCtoBOM/src/main/resources/classify_shpc.yaml --bom-db library/SHPC_BOM.db" -q
+
+# blind-then-score against the real IFC-extracted BOM for the same building
+cd DAGCompiler/python/scan_to_bom
+python3 validate_bom.py --real ../../../library/SH_BOM.db --pc ../../../library/SHPC_BOM.db
+```
+
+### First run, no Java changes: full QA gate cleared
+
+Both Maven commands ran clean on the first try — `--populate` imported 135 geometry blobs and
+cataloged 135 new products with zero errors, and the BOM build passed **all 18 of
+`BomValidator`'s pre-commit QA checks** (BOM/line counts, duplicate/orphan detection,
+world-coordinate and AABB-containment checks, LBD convention, product linkage, extraction
+reconciliation, shape consistency) — the same gate a bad extraction would fail and roll back
+from, cleared without any Java code aware a point cloud was ever involved.
+
+### Blind-scored against the real IFC-extracted BOM for the same physical building
+
+- **Building envelope: within 0.6% on every axis**, measured completely independently —
+  16882×8686×3968mm (point cloud) vs 16867×8667×3945mm (real IFC), a 0.1%/0.2%/0.6% relative
+  error on width/depth/height. This number depends on none of the classification or
+  fragmentation machinery — it's the outermost scanned points on each axis — and it's the
+  strongest single piece of evidence that the geometric pipeline underneath is measuring the
+  real building correctly, independent of any label a segment ends up with.
+- **Per-class composition, checked against the real BOM's `M_Product.ifc_class` breakdown**:
+  `IfcWindow` matched exactly (1/1). `IfcFurniture` came close (8 vs 10 real). `IfcWall`
+  (11 vs 5 real) and `IfcSlab`/`IfcRoof`-equivalent (22 vs 19 real, split differently across
+  the two labels) both over-count relative to real elements — **not a new Phase 5 defect**;
+  it's the already-documented Phase 2.5 plane-fragmentation gap (see "Reference-DB writing"
+  above) surfacing a third time, now visible as inflated BOM line counts rather than inflated
+  segment counts, exactly what you'd expect it to look like at this layer.
+- **New finding, specific to this cross-check: `IfcDoor` came back 0/2.** Traced directly
+  (`validate_classification.py`'s per-segment log): both real doors' points landed in
+  **cluster**, not plane, segments — meaning Phase 2's RANSAC never found them a clean enough
+  plane fit, so they fell into the DBSCAN pool. `classify.py`'s door-vs-window
+  floor-proximity check only runs inside `_classify_plane()` — a cluster-geometry segment has
+  no path to `IfcDoor` at all, only `IfcFurniture` or `IfcBuildingElementProxy` (which is what
+  they honestly got: `DEFERRED`, not `WRONG` — confirmed, this is a real *deferral* gap, not a
+  misclassification). Not fixed here — flagged below as a concrete, now-quantified instance of
+  the general "cluster fragments never get door/window disambiguation" gap.
+
+**Phase 5 is real: the unmodified Java BOM pipeline runs on point-cloud-derived input, clears
+its own QA gate, and produces a building envelope within 0.6% of the real IFC extraction on
+every axis. The composition differences it also surfaces all trace to already-documented,
+already-understood upstream gaps — Phase 5 adds a genuinely independent (BOM-line-count-level)
+confirmation of those gaps' real-world size, not a new failure mode of its own.**
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -412,8 +505,19 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   not a bug — flagged so no future session tries to "fix" it with a geometric heuristic; it would
   need either a second scan pass of the hidden face or a catalog/BOM-supplied nominal thickness
   (extract-or-compile-only still applies: never invent one from the visible face alone).
+- **Cluster-geometry segments have no door/window disambiguation path.**
+  `classify.py`'s floor-proximity door-vs-window check only runs inside `_classify_plane()`;
+  a segment that fell into the DBSCAN cluster pool (because RANSAC never found it a clean
+  plane fit) can only become `IfcFurniture` or `IfcBuildingElementProxy`, never `IfcDoor` or
+  `IfcWindow`, no matter its actual shape. Quantified for the first time via Phase 5's BOM-level
+  cross-check: both real doors in this dataset are cluster segments, so `IfcDoor` came back 0/2
+  in the point-cloud BOM against the real IFC BOM's 2 — a real, honestly-deferred (not
+  misclassified) gap, not attempted here.
 - No room/space segmentation — per `docs/ScanToBOM_ReferenceDB_Spec.md` §1, this is optional
-  for v1 (`ScopeBomBuilder` already degrades gracefully to flat floor-level BOMs without it).
+  for v1 (`ScopeBomBuilder` already degrades gracefully to flat floor-level BOMs without it —
+  confirmed for real in Phase 5's run, not just per the spec: `rel_contained_in_space` isn't
+  written, and the point-cloud BOM committed with 0 SET BOMs, catching that degradation path
+  live rather than only reading that it exists in source).
 - No material/color inference — classification is geometry-only throughout.
 - No handling of tilted scans (`rotation_x`/`rotation_y` assumed ~0) — documented open item,
   see "LAS/LAZ ingestion" above.

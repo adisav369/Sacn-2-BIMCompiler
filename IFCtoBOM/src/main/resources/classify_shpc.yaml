@@ -1,0 +1,37 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# This classification YAML is the single point of invention in the pipeline.
+# Everything else (extraction, BOM, compilation) is deterministic code.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
+# ────────────────────────────────────────────────────────────────────
+#
+# SampleHousePC — same physical building as classify_sh.yaml's SampleHouse, extracted via
+# the point-cloud pipeline (DAGCompiler/python/scan_to_bom/) instead of IFC parsing. A
+# distinct building_type/prefix so it writes to its own
+# DAGCompiler/lib/input/SampleHousePC_extracted.db and library/SHPC_BOM.db, side by side
+# with the real IFC-extracted SampleHouse — letting the two be compared directly as a
+# Phase 5 blind validation (see validate_bom.py), not overwriting the ground truth.
+schema_version: 1
+
+building:
+  building_type: SampleHousePC     # matches I_Element_Extraction.building_type
+  prefix: SHPC
+  building_bom_id: BUILDING_SHPC_STD
+  doc_sub_type: SHPC
+  product_category: RE
+  name: Sample House (point cloud)
+  jurisdiction: MY
+  geometry_fail_threshold: 9   # LOD_ generative device geometry (pre-existing S154)
+
+  # storeys: auto-discovered from spatial_structure, as classify_sh.yaml.
+  # floor_rooms: none — the point-cloud pipeline doesn't do room/space segmentation yet
+  # (documented open item, DAGCompiler/python/scan_to_bom/README.md). No IfcSpace rows are
+  # written, so ScopeBomBuilder degrades to flat floor-level BOMs — same graceful-degradation
+  # path docs/ScanToBOM_ReferenceDB_Spec.md documents for a reference DB missing rel_*
+  # tables, exercised here for real rather than just specified.
+
+  # No static_children (FLOOR_SLAB_GF / ROOF_ASSEMBLY) — those are catalog products already
+  # keyed by dimensions in component_library.db from the real SampleHouse run, not something
+  # this extraction source should assume it can reference sight-unseen; scoring the pipeline's
+  # own honest output is the point of this run, not reusing SampleHouse's static children.
+
+  remove_disciplines: [FP]
