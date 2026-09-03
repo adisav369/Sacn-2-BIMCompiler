@@ -705,7 +705,8 @@ public class CompilationPipeline {
             List<String> disciplines = new ArrayList<>();
             try (PreparedStatement ps = compileDb.prepareStatement(
                     "SELECT DISTINCT Discipline FROM C_OrderLine " +
-                    "WHERE C_Order_ID = ? AND host_type = 'DISCIPLINE' ORDER BY Discipline")) {
+                    "WHERE C_Order_ID = ? AND host_type = 'DISCIPLINE' AND IsActive != 'N' " +
+                    "ORDER BY Discipline")) {
                 ps.setString(1, orderId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {

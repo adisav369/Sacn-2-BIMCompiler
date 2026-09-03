@@ -142,10 +142,14 @@ public class ClassificationYaml {
             String jurisdiction,
             List<String> mepDisciplines,
             int mepOrderQty,  // coverage level: 99=standard, 0=max, N=budget cap (§6.12.4 §8)
-            int reconciliationTolerance  // allowed |delta| in extraction reconciliation —
+            int reconciliationTolerance,  // allowed |delta| in extraction reconciliation —
             // count of known source-model catalog-identity duplicates (same resolved
             // product + position) that verb-factoring legitimately collapses. Per-building,
             // mirrors geometryFailThreshold. Default 0 (exact). RESUME_DROP_OUTLINER_ROADMAP §1.
+            List<String> removeDisciplines  // per-building exception: category-default
+            // disciplines to exclude (e.g. FP when no real sprinkler geometry exists for
+            // this building). Written to ad_sysconfig.REMOVE_DISCIPLINES, consumed by
+            // OrderLineProductCallout.applyYamlOverrides() in DAGCompiler's RouteStage.
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -320,6 +324,17 @@ public class ClassificationYaml {
         // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §8 — Witness: W-DEVICE-PLACE
         int mepOrderQty = getInt(bldg, "mep_order_qty", 99);
 
+        // Parse remove_disciplines (per-building exception to category defaults)
+        @SuppressWarnings("unchecked")
+        List<String> removeDisciplines = null;
+        Object removeRaw = bldg.get("remove_disciplines");
+        if (removeRaw instanceof List<?> removeList) {
+            removeDisciplines = new ArrayList<>();
+            for (Object item : removeList) {
+                if (item != null) removeDisciplines.add(item.toString());
+            }
+        }
+
         result.building = new BuildingConfig(
                 getString(bldg, "building_type"),
                 getString(bldg, "prefix"),
@@ -334,7 +349,8 @@ public class ClassificationYaml {
                 getString(bldg, "jurisdiction"),
                 mepDisciplines,
                 mepOrderQty,
-                getInt(bldg, "reconciliation_tolerance", 0)
+                getInt(bldg, "reconciliation_tolerance", 0),
+                removeDisciplines
         );
 
         return result;

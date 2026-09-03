@@ -498,6 +498,19 @@ public class IFCtoBOMPipeline {
                 BIMLogger.info("PIPELINE", "ad_sysconfig: MEP_DISCIPLINES={}", mepCsv);
             }
 
+            // 10c-3b. Store remove_disciplines exceptions (per-building override consumed by
+            // OrderLineProductCallout.applyYamlOverrides() in DAGCompiler's RouteStage)
+            if (config.removeDisciplines() != null && !config.removeDisciplines().isEmpty()) {
+                String removeCsv = String.join(",", config.removeDisciplines());
+                try (PreparedStatement ps = bomConn.prepareStatement(
+                        "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
+                        "VALUES ('REMOVE_DISCIPLINES', ?, 'YAML remove_disciplines exception — deactivated at compile time')")) {
+                    ps.setString(1, removeCsv);
+                    ps.executeUpdate();
+                }
+                BIMLogger.info("PIPELINE", "ad_sysconfig: REMOVE_DISCIPLINES={}", removeCsv);
+            }
+
             // 10c-4. Store MEP order qty — coverage level for generative placement (§6.12.4 §8)
             // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §8 — Witness: W-DEVICE-PLACE
             {

@@ -25,7 +25,11 @@ building:
     - { child_product_id: FLOOR_SLAB_GF, role: GROUND_SLAB, seq: 5, dz: 0.0 }
     - { child_product_id: ROOF_ASSEMBLY, role: ROOF, seq: 15, dz: 3.0 }
 
-  # MEP disciplines: RE default [ELEC, SP] from Callout (§10.4.11 T3.4)
-  # Override with remove_disciplines: [SP] to narrow, add_disciplines: [FP] to widen
+  # MEP disciplines: RE default [FP, ELEC, ACMV, CW, SP] from Callout (§10.4.11 T3.4)
+  # Override with remove_disciplines to narrow, add_disciplines to widen.
+  # FP removed: no real sprinkler geometry in this checkout (source DB
+  # deploy/buildings/HHS_Office_Federated_extracted.db is not present — honest
+  # gap, not fabricated. See M_Sprinkler - Pendent - Hosted in component_library.db).
+  remove_disciplines: [FP]
 
   # composition: null  — simple building, no paired units
