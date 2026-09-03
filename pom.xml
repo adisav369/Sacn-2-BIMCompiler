@@ -21,9 +21,7 @@
         <module>TopologyMaker</module>
         <module>BIM_COBOL</module>
         <module>IFCtoBOM</module>
-        <module>BIMBackOffice</module>
         <module>BIMEyes</module>
-        <module>BonsaiBIMDesigner</module>
     </modules>
 
     <properties>
@@ -73,17 +71,6 @@
                 <artifactId>ifc-to-bom</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.bim</groupId>
-                <artifactId>bim-backoffice</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.bim</groupId>
-                <artifactId>bonsai-bim-designer</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <!-- SQLite JDBC Driver -->
             <dependency>
                 <groupId>org.xerial</groupId>

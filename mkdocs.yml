@@ -79,14 +79,7 @@ nav:
       - Home: index.md
       - "📖 User Guide": USER_GUIDE.md
       - "🔒 Fully Offline / Air-Gapped Install": OFFLINE_INSTALL_GUIDE.md
-      - "🆕 What's New": WhatsNew.md
-      - About BIM OOTB: AboutMore.md
-      - Feature Comparison: FeatureComparison.md
-      - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
-      - "Two Apps, One Kernel": TwoAppsOneKernel.md
-      - "One Page InfoGraphics - Landscape": TwoAppsOneKernelInfographicLandscape.html
       - "Benchmark Comparison (live)": bench_suite.html
-      - "Does Your ERP Age? (live)": age_demo.html
       - The ERP World View: MANIFESTO.md
       - Contribute: CONTRIBUTING.md
 
@@ -111,20 +104,14 @@ nav:
       - "Clash Detection": CLASH_DETECTION.md
       - "Asset Classification & JKR/SKATA": JKR_SKATA.md
       - "IFC Export Guide (for the BIM author)": IFC_ExportGuide.md
+      - "Scan-to-BOM Reference DB Spec": ScanToBOM_ReferenceDB_Spec.md
       - "Time Machine (4D Scheduling & Editing)": TimeMachine.md
       - "4D/5D Analysis": 4D5DAnalysis.md
       - "BIM → Project Order (ERP)": BIMtoProject.md
       - "Geometry as a Signed-Log Fold": ModellerKernelFold.md
 
   - Papers & Positioning:
-      - "Construction Economy / ERP Wave": BIMERPPaper.md
       - "Enterprise Authentication (security)": EnterpriseAuthentication.md
-      - "Strategic Positioning": StrategicIndustryPositioning.md
-      - "Local-First Prior Art": LocalFirstPriorArt.md
-      - "Enabling-Tech Timeline": EnablingTechTimeline.md
-      - "Vibe Programming — AI + Domain Expertise": VibeProgramming.md
-      - "The Last Mile — drift tracking": LAST_MILE_PROBLEM.md
-      - "Project Chronology": PROJECT_CHRONOLOGY.md
       - "Beyond Buildings": ShipYard.md
       - "Find & Navigate (wayfinding)": RouteTemplate.md
       - "Self-Host (DIY installer)": SYSTEMS_INSTALLER_GUIDE.md
