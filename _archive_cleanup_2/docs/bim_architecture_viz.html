@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIM Intent Compiler — How it Works</title>
+<!-- Terminal-specific ERD: see terminal_erd.html (discipline hierarchy, verb→ERP, ROUTE as BOM) -->
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+h1 { text-align: center; padding: 24px 0 8px; font-size: 1.4rem; color: #94a3b8; letter-spacing: 0.05em; }
+h1 span { color: #60a5fa; }
+
+/* --- Tabs --- */
+.tabs { display: flex; justify-content: center; gap: 8px; padding: 0 0 24px; }
+.tab { padding: 8px 22px; border-radius: 20px; cursor: pointer; border: 1px solid #334155; color: #94a3b8; font-size: 0.85rem; transition: all 0.2s; }
+.tab:hover { border-color: #60a5fa; color: #60a5fa; }
+.tab.active { background: #1e3a5f; border-color: #60a5fa; color: #93c5fd; font-weight: 600; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* --- DB Architecture --- */
+.db-layout { display: flex; gap: 0; justify-content: center; align-items: stretch; padding: 0 32px 32px; }
+.db-box { width: 220px; border-radius: 12px; padding: 14px; position: relative; }
+.db-box.comp { background: #1c1a10; border: 2px solid #854d0e; }
+.db-box.disc { background: #2a1a0f; border: 2px solid #d97706; }
+.db-box.bom  { background: #0f172a; border: 2px solid #1d4ed8; }
+.db-box.out  { background: #0f2310; border: 2px solid #166534; }
+.db-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+.db-box.comp .db-title { color: #fbbf24; }
+.db-box.disc .db-title { color: #f59e0b; }
+.db-box.bom  .db-title { color: #60a5fa; }
+.db-box.out  .db-title { color: #4ade80; }
+.db-sub { font-size: 0.7rem; color: #64748b; margin-bottom: 12px; }
+.tbl { padding: 5px 8px; margin: 3px 0; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+.comp .tbl { background: #292110; color: #fde68a; border: 1px solid transparent; }
+.comp .tbl:hover, .comp .tbl.sel { background: #3d2f0c; border-color: #f59e0b; color: #fff; }
+.disc .tbl { background: #2a1f10; color: #fcd34d; border: 1px solid transparent; }
+.disc .tbl:hover, .disc .tbl.sel { background: #3d2a0c; border-color: #d97706; color: #fff; }
+.bom  .tbl { background: #1e2d4a; color: #93c5fd; border: 1px solid transparent; }
+.bom  .tbl:hover, .bom  .tbl.sel { background: #253c60; border-color: #3b82f6; color: #fff; }
+.out  .tbl { background: #1a2e1a; color: #86efac; border: 1px solid transparent; }
+.out  .tbl:hover, .out  .tbl.sel { background: #1f3d1f; border-color: #22c55e; color: #fff; }
+
+.db-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; flex-shrink: 0; gap: 6px; }
+.db-arrow svg { opacity: 0.5; }
+.db-arrow .lbl { font-size: 0.62rem; color: #475569; text-align: center; line-height: 1.3; }
+
+.detail-box { margin: 0 32px 24px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; min-height: 80px; font-size: 0.82rem; line-height: 1.7; color: #cbd5e1; }
+.detail-box .key { color: #fbbf24; font-weight: 600; }
+.detail-box .val { color: #86efac; }
+.detail-box .note { color: #64748b; font-style: italic; }
+.hint { text-align: center; color: #334155; font-size: 0.75rem; margin-bottom: 8px; }
+
+/* --- Pipeline --- */
+.pipe { padding: 0 40px 40px; max-width: 900px; margin: 0 auto; }
+.step { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; margin-top: 4px; }
+.step-body { flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s; }
+.step-body:hover { border-color: #60a5fa; }
+.step-body.open { border-color: #60a5fa; background: #1e2d4a; }
+.step-title { font-weight: 600; font-size: 0.9rem; }
+.step-detail { display: none; margin-top: 10px; font-size: 0.8rem; color: #94a3b8; line-height: 1.8; border-top: 1px solid #334155; padding-top: 10px; }
+.step-body.open .step-detail { display: block; }
+.step-connector { margin-left: 16px; width: 32px; text-align: center; color: #334155; font-size: 1.2rem; line-height: 1; margin-bottom: 2px; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+.badge.bom { background: #1d3557; color: #60a5fa; }
+.badge.comp { background: #3d2508; color: #fbbf24; }
+.badge.out { background: #1a3320; color: #4ade80; }
+code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0 5px; font-family: 'Cascadia Code', monospace; font-size: 0.78rem; color: #e2e8f0; }
+.mono { font-family: 'Cascadia Code', monospace; font-size: 0.78rem; }
+.pipe-eg { background: #0f172a; border-left: 3px solid #3b82f6; padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 8px; font-family: monospace; font-size: 0.75rem; line-height: 1.8; color: #94a3b8; }
+.pipe-eg .hl { color: #60a5fa; }
+.pipe-eg .gr { color: #4ade80; }
+.pipe-eg .yw { color: #fbbf24; }
+
+/* --- BOM Tree --- */
+.tree-wrap { padding: 0 40px 40px; max-width: 760px; margin: 0 auto; }
+.tree-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.75rem; }
+.leg { display: flex; align-items: center; gap: 6px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+.tree ul { list-style: none; padding-left: 22px; border-left: 1px solid #1e293b; }
+.tree > ul { padding-left: 0; border-left: none; }
+.tree li { margin: 3px 0; }
+.node { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; font-size: 0.8rem; }
+.node:hover { filter: brightness(1.2); }
+.node.UN { background: #1a2744; border: 1px solid #1d4ed8; color: #93c5fd; }
+.node.L1, .node.L2 { background: #1a3322; border: 1px solid #166534; color: #86efac; }
+.node.SL { background: #291e0e; border: 1px solid #92400e; color: #fcd34d; }
+.node.RF { background: #231b30; border: 1px solid #6b21a8; color: #c4b5fd; }
+.node.RM { background: #1a2933; border: 1px solid #0e7490; color: #67e8f9; }
+.node.FN { background: #2a1a2a; border: 1px solid #7e22ce; color: #d8b4fe; }
+.node.ST { background: #1f1f1f; border: 1px dashed #475569; color: #64748b; }
+.node .cat { font-size: 0.65rem; opacity: 0.7; }
+.node .dims { font-size: 0.65rem; color: #64748b; }
+.node .toggle { font-size: 0.7rem; width: 14px; }
+.node-info { display: none; margin: 4px 0 4px 22px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 10px; font-size: 0.72rem; color: #94a3b8; line-height: 1.8; }
+.node-info.show { display: block; }
+.dim-row { display: flex; gap: 12px; font-family: monospace; font-size: 0.72rem; }
+.dim-lbl { color: #475569; }
+.dim-val { color: #fbbf24; }
+
+/* --- Coord demo --- */
+.coord-demo { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 10px; padding: 16px; margin: 0 40px 32px; max-width: 820px; margin-left: auto; margin-right: auto; }
+.coord-demo h3 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 12px; }
+.coord-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-family: monospace; }
+.coord-table th { color: #475569; text-align: left; padding: 4px 8px; border-bottom: 1px solid #1e293b; }
+.coord-table td { padding: 5px 8px; border-bottom: 1px solid #1e2030; }
+.coord-table tr:hover td { background: #1e293b; }
+.coord-table .src { color: #3b82f6; }
+.coord-table .esl { color: #f59e0b; }
+.coord-table .out { color: #4ade80; }
+.arrow-col { color: #475569; text-align: center; }
+
+/* --- Responsive --- */
+@media (max-width: 700px) {
+  .db-layout { flex-direction: column; align-items: center; }
+  .db-arrow { flex-direction: row; width: 100%; height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<h1><span>BIM Intent Compiler</span> — How it works</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('arch')">4-Database Architecture</div>
+  <div class="tab" onclick="switchTab('pipe')">Compilation Pipeline</div>
+  <div class="tab" onclick="switchTab('tree')">BOM Tree + Coordinates</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 1: ARCHITECTURE -->
+<div class="panel active" id="tab-arch">
+  <p class="hint">Click any table to see what it holds</p>
+  <div class="db-layout">
+
+    <!-- component_library.db -->
+    <div class="db-box comp">
+      <div class="db-title">component_library.db</div>
+      <div class="db-sub">LOD Geometry Store</div>
+      <div class="tbl" onclick="showDetail('comp_def')">component_definitions</div>
+      <div class="tbl" onclick="showDetail('comp_geo')">component_geometries</div>
+      <div class="tbl" onclick="showDetail('comp_types')">component_types</div>
+      <div class="tbl" onclick="showDetail('place_rules')">placement_rules</div>
+      <div class="tbl" onclick="showDetail('lod_gmap')">I_Geometry_Map</div>
+      <div class="tbl" onclick="showDetail('m_prod_img')">M_Product_Image</div>
+      <div class="tbl" onclick="showDetail('surface')">surface_styles</div>
+      <div class="tbl" onclick="showDetail('cl_m_product')">M_Product</div>
+      <div class="tbl" onclick="showDetail('cl_mat_layers')">material_layers</div>
+      <div class="tbl" onclick="showDetail('cl_mat_thermal')">ad_material_thermal</div>
+      <div class="tbl" onclick="showDetail('cl_room_boundary')">ad_room_boundary</div>
+      <div class="tbl" onclick="showDetail('cl_product_dim')">ad_product_dim</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#d97706" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">placement_rules<br>shared reference</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">material_layers<br>thermal props</div>
+    </div>
+
+    <!-- ERP.db -->
+    <div class="db-box disc">
+      <div class="db-title">ERP.db</div>
+      <div class="db-sub">Discipline Validation Rules + Calibration</div>
+      <div class="tbl" onclick="showDetail('dv_element_mep')">ad_element_mep</div>
+      <div class="tbl" onclick="showDetail('dv_space_mep_bom')">ad_space_type_mep_bom</div>
+      <div class="tbl" onclick="showDetail('dv_fp_coverage')">ad_fp_coverage</div>
+      <div class="tbl" onclick="showDetail('dv_space_type')">ad_space_type</div>
+      <div class="tbl" onclick="showDetail('dv_asm_manifest')">ad_assembly_manifest</div>
+      <div class="tbl" onclick="showDetail('dv_wall_face')">ad_wall_face</div>
+      <div class="tbl" onclick="showDetail('dv_place_rules')">placement_rules</div>
+      <div class="tbl" onclick="showDetail('dv_sysconfig')">AD_SysConfig</div>
+      <div class="tbl" onclick="showDetail('dv_cal_result')">W_Calibration_Result</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#60a5fa" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">validation rules<br>drive BOM resolver</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">M_Product refs<br>cross-DB lookup</div>
+    </div>
+
+    <!-- {PREFIX}_BOM.db -->
+    <div class="db-box bom">
+      <div class="db-title">{PREFIX}_BOM.db</div>
+      <div class="db-sub">Per-Building Dictionary — BOM Catalog (read-only)</div>
+      <div class="tbl" onclick="showDetail('m_bom')">m_bom (M_BOM)</div>
+      <div class="tbl" onclick="showDetail('m_bom_line')">m_bom_line (M_BOM_Line)</div>
+      <div class="tbl" onclick="showDetail('ad_prod')">M_Product</div>
+      <div class="tbl" onclick="showDetail('c_doctype')">C_DocType</div>
+      <div class="tbl" onclick="showDetail('bom_line_ma')">m_bom_line_ma</div>
+      <div class="tbl" onclick="showDetail('bom_sysconfig')">ad_sysconfig</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#4ade80" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">BOM dictionary<br>→ order + compile</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#60a5fa" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">c_order refs<br>DocType lookup</div>
+    </div>
+
+    <!-- output.db -->
+    <div class="db-box out">
+      <div class="db-title">output.db</div>
+      <div class="db-sub">Self-Contained — Orders + Production + Compiled Result</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:4px 0 2px;padding-left:4px;">ORDER (WHAT)</div>
+      <div class="tbl" onclick="showDetail('c_order')">c_order (C_Order)</div>
+      <div class="tbl" onclick="showDetail('c_orderline')">c_orderline (WHAT only)</div>
+      <div style="font-size:0.65rem;color:#a78bfa;margin:6px 0 2px;padding-left:4px;">PRODUCTION (HOW) — PP_Order_Node</div>
+      <div class="tbl" onclick="showDetail('verb_line')" style="border-left:2px solid #a855f7;">PP_Order_Node (HOW)</div>
+      <div class="tbl" onclick="showDetail('verb_param')" style="border-left:2px solid #a855f7;">PP_Order_NodeProduct (params)</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:6px 0 2px;padding-left:4px;">SPATIAL (WHERE) — S_Resource</div>
+      <div class="tbl" onclick="showDetail('co_es')">co_empty_space</div>
+      <div class="tbl" onclick="showDetail('co_esl')">co_empty_space_line (S_Resource)</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:6px 0 2px;padding-left:4px;">COMPILED OUTPUT</div>
+      <div class="tbl" onclick="showDetail('elements_meta')">elements_meta</div>
+      <div class="tbl" onclick="showDetail('elem_inst')">element_instances</div>
+      <div class="tbl" onclick="showDetail('elem_asm')">element_assemblies</div>
+    </div>
+
+  </div>
+
+  <div class="detail-box" id="detail-box">
+    <span class="note">← Click a table above to see its role</span>
+  </div>
+
+<!-- ERD: Cross-Database Relationships -->
+<div style="margin:0 32px 40px;">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;color:#94a3b8;font-size:0.85rem;">
+    <strong style="color:#e2e8f0;">ERD — Cross-Database Relationships</strong><br>
+    <span style="font-size:0.8rem;color:#64748b;line-height:1.8;">
+      See <code>docs/DATA_MODEL.md</code> for full cross-database relationship mapping.<br>
+      Key chain: <code style="color:#60a5fa;">m_bom_line.child_product_id</code> → <code style="color:#60a5fa;">M_Product</code> → <code style="color:#fbbf24;">M_Product_Image [geometry_hash]</code> → <code style="color:#4ade80;">component_geometries [mesh BLOB]</code><br>
+      4 databases: <span style="color:#fbbf24;">component_library.db</span> (geometry), <span style="color:#f59e0b;">ERP.db</span> (rules), <span style="color:#60a5fa;">{PREFIX}_BOM.db</span> (dictionary), <span style="color:#4ade80;">output.db</span> (orders + compiled result).
+    </span>
+  </div>
+</div>
+
+</div><!-- /tab-arch -->
+
+<!-- ═══════════════════════════════════════════════ TAB 2: PIPELINE -->
+<div class="panel" id="tab-pipe">
+<div class="pipe">
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">1</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">C_Order — the Building Definition <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        Two fields ARE the entire building definition:<br>
+        <code>C_DocType.DocSubType</code> = WHO (DX = Duplex, SH = SampleHouse, TB = TerraceBlock)<br>
+        <code>AABB</code> = HOW BIG (width × depth × height in mm)<br><br>
+        Everything downstream — which floors, which rooms, which furniture — cascades from these two.
+        The order starts in <code>DocStatus='DR'</code> (Draft) and moves to <code>'CO'</code> (Complete) after compilation.<br>
+        <code>C_DocType_ID</code> → <code>C_DocType</code> (in {PREFIX}_BOM.db). DocBaseType drives template selection (RE→Residential). DocSubType scopes which BOMs are visible (SH/DX/TB).<br>
+        <code>C_BPartner</code> in iDempiere = the customer who placed the order (contractor, architect, client). Present at release.<br>
+        <div class="pipe-eg">
+          <span class="hl">C_Order</span>  Duplex<br>
+          &nbsp;&nbsp;C_DocType_ID   = <span class="yw">'RE_DX'</span>      ← DocSubType=DX (WHO)<br>
+          &nbsp;&nbsp;aabb_width_mm  = <span class="gr">14000</span><br>
+          &nbsp;&nbsp;aabb_depth_mm  = <span class="gr">10000</span><br>
+          &nbsp;&nbsp;aabb_height_mm = <span class="gr">7000</span>          ← HOW BIG
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">2</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">C_OrderLine — WHAT to Build (Order Topics Only) <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        <strong>WHAT-only:</strong> Each line selects an <code>M_BOM</code> from the catalog. No placement columns — HOW is in <code>PP_Order_Node</code>, WHERE is in <code>co_empty_space_line</code>.<br>
+        <strong>Two sources:</strong> (1) User-specified lines in {PREFIX}_BOM.db (design-time), (2) compiler-generated from WALK THRU walk.<br>
+        <div class="pipe-eg">
+          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'BUILDING_DX_STD'</span>  discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #4  family_ref=<span class="yw">'Doors_IntSgl'</span>       discipline=ARC   <span class="yw">[generated]</span>
+        </div>
+        <strong style="color:#a855f7;">PP_ model:</strong> iDempiere C_OrderLine = "customer wants 100 chairs." PP_Order_Node = "cut, assemble, paint."<br>
+        Our c_orderline = WHAT. PP_Order_Node = HOW. co_empty_space_line = WHERE. §11.9.
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">3</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">BOM Explosion — Recursive Tree Walk <span class="badge bom">{PREFIX}_BOM.db</span></div>
+      <div class="step-detail">
+        <code>M_BOM → M_BOM_Line → child M_BOM → ...</code> recursively.<br>
+        Each node carries: <code>dx/dy/dz</code> (offset from parent), <code>rotation_rule</code> (abstract, e.g. FACE_INTO_ROOM),
+        <code>SpaceSize</code> (AABB of this construct), <code>BOMCategory</code> (RE/L1/L2/SL/RF/GF/FR/ST).<br>
+        Buffer children (category ST) fill the remainder — they are explicit BOM nodes, not computed gaps.<br>
+        <strong>Invariant:</strong> parent AABB = SUM of all children AABBs per locator strip.
+        <div class="pipe-eg">
+          BUILDING_DX_STD (RE)  14000×10000×7000mm<br>
+          &nbsp;&nbsp;├─ FLOOR_SLAB_GF  (SL)  dZ=0<br>
+          &nbsp;&nbsp;├─ FLOOR_DX_L1_STD (L1) dZ=0    → 14000×10000×3000mm<br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Rm_Living_1 (RM)<br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Piano (FN)  dx=0  dy=0   <span class="yw">rotation_rule=PARALLEL_TO_WALL</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Sofa  (FN)  dx=1500      <span class="yw">rotation_rule=FACE_INTO_ROOM</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└─ Buffer_NW (ST)  <span class="gr">fills remainder</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└─ Rm_Bedroom_1 ...<br>
+          &nbsp;&nbsp;├─ FLOOR_SLAB_L2  (SL)  dZ=3000<br>
+          &nbsp;&nbsp;├─ FLOOR_DX_L2_STD (L2) dZ=3000<br>
+          &nbsp;&nbsp;└─ ROOF_ASSEMBLY   (RF)  dZ=6000
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#0f766e;color:#5eead4">4</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Template Composition — ST Mode Only <span class="badge bom">{PREFIX}_BOM.db</span></div>
+      <div class="step-detail">
+        <strong>Only runs for DocSubType='ST'</strong> (Standard Mode builds). Skipped for owner-matched (SH/DX/TB).<br>
+        Walks <code>M_BomCategoryLine</code> tree (RE→SL/GF/RF, GF→LI/BD/DN/KT/BT) to select best-fit BOMs from the
+        full catalog using only the building AABB + num_units. No pre-wired C_OrderLine needed.<br>
+        <code>GF selection owner</code> (e.g. SH) then resolves the UNIT BOM and feeds CO_EmptySpace L2 lines.<br>
+        When composition is complete (0 gaps), header is marked <code>CO</code> directly — ProveStage is skipped.<br>
+        <div class="pipe-eg">
+          <span class="hl">M_BomCategoryLine</span> walk for ST_SH (16867×8667×3945mm, numUnits=1):<br>
+          &nbsp;&nbsp;L0 RE   →  &lt;envelope&gt;<br>
+          &nbsp;&nbsp;L1 SL   → <span class="yw">FLOOR_SLAB_GF</span><br>
+          &nbsp;&nbsp;L1 GF   → <span class="yw">FLOOR_SH_GF_STD</span>  owner=<span class="gr">SH</span>  → BUILDING_SH_STD<br>
+          &nbsp;&nbsp;L2 LI   → <span class="yw">LIVING_PREFAB_MY</span>   (best-fit from catalog)<br>
+          &nbsp;&nbsp;L2 BD   → <span class="yw">BEDROOM_PREFAB_MY_3100</span><br>
+          &nbsp;&nbsp;L2 KT   → <span class="yw">KITCHEN_CABINET_SET</span><br>
+          &nbsp;&nbsp;L1 RF   → <span class="yw">ROOF_ASSEMBLY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">5</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">CO_EmptySpace — Construction Site Envelope <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        One record per C_Order. Holds the AABB of the whole construction site and lifecycle state.<br>
+        <code>is_available = Y</code> throughout processing. Flips to <code>N</code> ONLY after translation
+        to output + all witness tests GREEN. If tests fail → stays Y, space not consumed.<br>
+        <strong>ST mode:</strong> L2 lines written from template leaf selections. Header marked CO when composition complete.<br>
+        <div class="pipe-eg">
+          <span class="hl">co_empty_space</span><br>
+          &nbsp;&nbsp;c_order_id       = <span class="yw">'Duplex'</span><br>
+          &nbsp;&nbsp;aabb_*_mm        = <span class="gr">14000 × 10000 × 7000</span><br>
+          &nbsp;&nbsp;is_available     = <span class="yw">Y</span>   → <span class="gr">N</span> after compile+tests pass
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">6</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">CO_EmptySpaceLine — WHERE + Orientation <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        One line per BOM construct placed in space. Does NOT repeat the BOM — it only says where it lands.<br>
+        <code>before/next</code> = GPD anchor chain in mm (before is entry point, next is exit for the next item).<br>
+        <code>orientation_rad</code> = resolved concrete angle (FACE_INTO_ROOM → π for north-wall rooms).<br>
+        <code>remaining_mm</code> = buffer still available (queryable: "does a 300mm lampshade fit here?").<br>
+        <div class="pipe-eg">
+          <span class="hl">co_empty_space_line</span><br>
+          &nbsp;&nbsp;#7  bom=<span class="yw">LIVING_SET</span>  before=<span class="gr">(208,-5246,0)</span>  orient=<span class="gr">π</span><br>
+          &nbsp;&nbsp;#15 bom=<span class="yw">Piano</span>        before=<span class="gr">(1620,3308,0)</span> next=<span class="gr">(3120,3308,0)</span><br>
+          &nbsp;&nbsp;#16 bom=<span class="yw">Buffer_NW</span>   remaining=<span class="gr">254mm</span><br>
+          &nbsp;&nbsp;#17 bom=<span class="yw">Sofa_3Seat</span>  before=<span class="gr">(3374,3308,0)</span> next=<span class="gr">(5374,3308,0)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">6b</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">VerbStage — BIM COBOL Production Operations <span class="badge out">output.db</span> <span class="badge bom">{PREFIX}_BOM.db</span></div>
+      <div class="step-detail">
+        <strong>PP_Order_Node dispatch:</strong> Reads <code>PP_Order_Node</code> by SeqNo. Each verb invocation targets an ESLine (S_Resource workstation) and produces IFC elements.<br>
+        <strong>Verbs:</strong> TILE SURFACE (grid placement), ARRAY (rebar spacing), ROUTE SPRINKLERS, CONNECT FITTINGS, WIRE LIGHTING, etc.<br>
+        <strong>iDempiere parallel:</strong> PP_Order_Node = operation step on S_Resource workstation. Multiple verbs target same ESLine.<br>
+        <div class="pipe-eg">
+          <span class="hl">PP_Order_Node</span> seq=10  verb=<span class="yw">TILE SURFACE</span>  target_ESLine=#7<br>
+          &nbsp;&nbsp;params: GRID_NX=<span class="gr">15</span> GRID_NY=<span class="gr">294</span> STEP_DX=<span class="gr">495</span>mm STEP_DY=<span class="gr">150</span>mm<br>
+          &nbsp;&nbsp;→ emits <span class="gr">4,410</span> IfcPlate elements into output.db<br>
+          &nbsp;&nbsp;→ doc_status <span class="yw">DR</span> → <span class="gr">CO</span>, witness stored in last_result<br><br>
+          <span class="hl">PP_Order_Node</span> seq=20  verb=<span class="yw">ARRAY</span>  target_ESLine=#12<br>
+          &nbsp;&nbsp;params: LENGTH=<span class="gr">6000</span>mm SPACING=<span class="gr">150</span>mm COVER=<span class="gr">40</span>mm<br>
+          &nbsp;&nbsp;→ emits <span class="gr">40</span> rebar elements, cover compliance=PASS
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#166534;color:#4ade80">7</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Translation — BOM Offsets + ESL Anchor → World XYZ <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        The actual math step. Takes each BOM leaf's abstract <code>dx/dy/dz</code>, rotates it by
+        <code>orientation_rad</code>, then adds the <code>CO_EmptySpaceLine.before</code> anchor to get world coordinates.<br>
+        Geometry hash is resolved via <code>M_Product_Image</code> + <code>LOD_Object</code> in component_library.db.<br>
+        <div class="pipe-eg">
+          BOM offset:  Piano  dx=<span class="yw">0</span>  dy=<span class="yw">0</span>  rotation_rule=PARALLEL_TO_WALL<br>
+          ESL anchor:  origin=<span class="gr">(208, -5246, 0)</span>  orient=<span class="gr">π</span><br>
+          ──────────────────────────────────────────<br>
+          world_xyz = origin + rotate(dx,dy, π) = <span class="gr">(208, -5246, 0)</span><br><br>
+          BOM offset:  Sofa   dx=<span class="yw">1500</span>  dy=<span class="yw">0</span>  rotation_rule=FACE_INTO_ROOM<br>
+          world_xyz = origin + rotate(1500,0, π) = <span class="gr">(-1292, -5246, 0)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#166534;color:#4ade80">8</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Output DB + Witness Tests <span class="badge out">output.db</span> <span class="badge comp">component_library.db</span></div>
+      <div class="step-detail">
+        <code>elements_meta</code> — final IFC elements: guid, ifc_class, storey, world xyz.<br>
+        <code>element_instances</code> — geometry transform matrix + material (resolved from component_library).<br>
+        <code>element_assemblies</code> — parent/child grouping for IFC IfcRelAggregates.<br><br>
+        Witness tests then run (G8 centroids, F4 edges, W-SPACESIZE-1 …). If ALL pass:<br>
+        → <code>co_empty_space.is_available = N</code> (space consumed, construction confirmed).<br>
+        If any fail → <code>is_available</code> stays Y, output is rolled back.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-pipe -->
+
+<!-- ═══════════════════════════════════════════════ TAB 3: BOM TREE -->
+<div class="panel" id="tab-tree">
+<div class="tree-wrap">
+
+  <div class="tree-legend">
+    <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> RE — Residential</div>
+    <div class="leg"><div class="leg-dot" style="background:#22c55e"></div> L1/L2 — Floor</div>
+    <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div> SL — Slab</div>
+    <div class="leg"><div class="leg-dot" style="background:#a855f7"></div> RF — Roof</div>
+    <div class="leg"><div class="leg-dot" style="background:#06b6d4"></div> RM — Room</div>
+    <div class="leg"><div class="leg-dot" style="background:#9333ea"></div> FN — Furniture</div>
+    <div class="leg"><div class="leg-dot" style="background:#475569"></div> ST — Buffer/Spacer</div>
+  </div>
+
+  <div class="tree" id="bom-tree">
+    <ul>
+      <li>
+        <div class="node UN" onclick="toggleNode(this)">
+          <span class="toggle">▶</span>
+          <strong>BUILDING_DX_STD</strong>
+          <span class="cat">[UN · DX]</span>
+          <span class="dims">14000×10000×7000mm</span>
+        </div>
+        <div class="node-info">
+          <div class="dim-row">
+            <span class="dim-lbl">BOMCategory</span><span class="dim-val">RE (Residential)</span>
+            <span class="dim-lbl">DocSubType</span><span class="dim-val">DX (Duplex)</span>
+          </div>
+          <div class="dim-row">
+            <span class="dim-lbl">AABB</span><span class="dim-val">14000 × 10000 × 7000 mm</span>
+          </div>
+          <div class="dim-row">
+            <span class="dim-lbl">children</span><span class="dim-val">5 (slabs + floors + roof)</span>
+          </div>
+        </div>
+        <ul class="hidden">
+
+          <li>
+            <div class="node SL" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              FLOOR_SLAB_GF
+              <span class="cat">[SL]</span>
+              <span class="dims">dZ=0</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">SL (Slab)</span></div>
+              <div class="dim-row"><span class="dim-lbl">dZ offset</span><span class="dim-val">0mm (ground level)</span></div>
+              <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">IfcSlab → M_Product_Image → LOD_Object</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node L1" onclick="toggleNode(this)">
+              <span class="toggle">▶</span>
+              <strong>FLOOR_DX_L1_STD</strong>
+              <span class="cat">[L1]</span>
+              <span class="dims">dZ=0 · 14000×10000×3000mm</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">L1 (Level 1)</span></div>
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,0) → (0,0,3000)</span></div>
+              <div class="dim-row"><span class="dim-lbl">rooms</span><span class="dim-val">Living, Dining, Kitchen, Bed×2, Bath×2</span></div>
+            </div>
+            <ul class="hidden">
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">▶</span>
+                  Rm_Living_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">before=(208,−5246,0) · orient=π</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">RM (Room)</span></div>
+                  <div class="dim-row"><span class="dim-lbl">ESL anchor</span><span class="dim-val">origin=(208,−5246,0) orientation=π rad</span></div>
+                  <div class="dim-row"><span class="dim-lbl">AABB</span><span class="dim-val">6000×5600×3000mm</span></div>
+                </div>
+                <ul class="hidden">
+                  <li>
+                    <div class="node FN" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Piano
+                      <span class="cat">[FN]</span>
+                      <span class="dims">dx=0 dy=0 · PARALLEL_TO_WALL</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">SpaceSize</span><span class="dim-val">1500×600×1200mm</span></div>
+                      <div class="dim-row"><span class="dim-lbl">BOM offset</span><span class="dim-val">dx=0 dy=0 dz=0</span></div>
+                      <div class="dim-row"><span class="dim-lbl">rotation_rule</span><span class="dim-val">PARALLEL_TO_WALL → π</span></div>
+                      <div class="dim-row"><span class="dim-lbl">world_xyz</span><span class="dim-val">(208, −5246, 0)</span></div>
+                      <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">IfcFurnishingElement</span></div>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="node FN" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Sofa_3Seat
+                      <span class="cat">[FN]</span>
+                      <span class="dims">dx=1500 · FACE_INTO_ROOM</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">SpaceSize</span><span class="dim-val">2000×900×900mm</span></div>
+                      <div class="dim-row"><span class="dim-lbl">BOM offset</span><span class="dim-val">dx=1500 dy=0 dz=0</span></div>
+                      <div class="dim-row"><span class="dim-lbl">rotation_rule</span><span class="dim-val">FACE_INTO_ROOM → π</span></div>
+                      <div class="dim-row"><span class="dim-lbl">world_xyz</span><span class="dim-val">(−1292, −5246, 0)</span></div>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="node ST" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Buffer_NW
+                      <span class="cat">[ST · spacer]</span>
+                      <span class="dims">remaining=254mm</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">role</span><span class="dim-val">fills remainder — no geometry emitted</span></div>
+                      <div class="dim-row"><span class="dim-lbl">remaining_mm</span><span class="dim-val">254mm (queryable)</span></div>
+                      <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">explicit BOM node — not a computed gap</span></div>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">·</span>
+                  Rm_Dining_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">before=(208,−8554,0)</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">dining set + buffer — same pattern as living</span></div>
+                </div>
+              </li>
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">·</span>
+                  Rm_Bedroom_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">BED_SET_MASTER</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">bed, wardrobe, buffer</span></div>
+                </div>
+              </li>
+
+            </ul>
+          </li>
+
+          <li>
+            <div class="node SL" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              FLOOR_SLAB_L2
+              <span class="cat">[SL]</span>
+              <span class="dims">dZ=3000</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,3000) → (0,0,3000)</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node L2" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              <strong>FLOOR_DX_L2_STD</strong>
+              <span class="cat">[L2]</span>
+              <span class="dims">dZ=3000 · 14000×10000×3000mm</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">same room layout as L1, different furniture</span></div>
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,3000) → (0,0,6000)</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node RF" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              ROOF_ASSEMBLY
+              <span class="cat">[RF]</span>
+              <span class="dims">dZ=6000</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">lod_parametric_mesh (GABLE_ROOF or HIP_ROOF)</span></div>
+              <div class="dim-row"><span class="dim-lbl">before</span><span class="dim-val">(0,0,6000) → top of envelope</span></div>
+            </div>
+          </li>
+
+        </ul>
+      </li>
+    </ul>
+  </div>
+</div>
+
+  <!-- Translation demo table -->
+  <div class="coord-demo">
+    <h3>Translation in practice — Living Room, orient=π</h3>
+    <table class="coord-table">
+      <tr>
+        <th>Item</th>
+        <th class="src">BOM dx,dy (abstract)</th>
+        <th class="arrow-col">+</th>
+        <th class="esl">ESL origin (208,−5246,0)</th>
+        <th class="arrow-col">→</th>
+        <th class="out">world_xyz</th>
+      </tr>
+      <tr>
+        <td>Piano</td>
+        <td class="src mono">0, 0</td>
+        <td class="arrow-col">rotate(π)</td>
+        <td class="esl mono">208, −5246, 0</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">208, −5246, 0</td>
+      </tr>
+      <tr>
+        <td>Sofa</td>
+        <td class="src mono">1500, 0</td>
+        <td class="arrow-col">rotate(π)</td>
+        <td class="esl mono">208, −5246, 0</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">−1292, −5246, 0</td>
+      </tr>
+      <tr>
+        <td>Buffer_NW</td>
+        <td class="src mono">3500, 0</td>
+        <td class="arrow-col">—</td>
+        <td class="esl mono">254mm remaining</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">(no geometry)</td>
+      </tr>
+    </table>
+    <div style="margin-top:10px;font-size:0.72rem;color:#475569">
+      rotate(dx, π) = (−dx, 0) — at 180° the axis flips. Piano at dx=0 stays at origin; Sofa at dx=1500 steps −1500mm in X.
+    </div>
+  </div>
+
+</div><!-- /tab-tree -->
+
+<script>
+// --- Tab switching ---
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name === 'arch' ? 'architecture' : name === 'pipe' ? 'pipeline' : 'bom')) {
+      t.classList.add('active');
+    }
+  });
+}
+
+// --- Pipeline step toggle ---
+function toggleStep(el) {
+  el.classList.toggle('open');
+}
+
+// --- DB table detail ---
+const details = {
+  comp_def:    '<span class="key">component_definitions</span> — one row per component shape.<br>Holds: <span class="val">up_axis</span> (default Z), <span class="val">forward_axis</span> (default Y), <span class="val">attachment_face</span> (TOP/BOTTOM/SIDE/CENTER), <span class="val">orientation</span> (PENDANT/UPRIGHT/WALL_MOUNT), <span class="val">default_rotation</span>.<br><span class="note">This is where a door "knows" it mounts to a wall face, or a pendant light "knows" it hangs from a ceiling.</span>',
+  comp_geo:    '<span class="key">component_geometries</span> — deduplicated mesh BLOBs keyed by hash.<br>Holds: <span class="val">vertices BLOB</span>, <span class="val">faces BLOB</span>, <span class="val">normals BLOB</span>, counts.<br><span class="note">Same shape used by many elements → one row. The hash is the FK everywhere.</span>',
+  comp_types:  '<span class="key">component_types</span> — IFC class taxonomy.<br>Holds: <span class="val">ifc_class</span> (IfcWall, IfcFurnishingElement…), <span class="val">category</span>, <span class="val">discipline</span> (ARC/STR/MEP).',
+  place_rules: '<span class="key">placement_rules</span> — host-relative component constraints.<br>Holds: <span class="val">host_type</span> (CEILING/WALL/FLOOR), <span class="val">offset_from_host</span> (mm), <span class="val">grid_spacing</span>, <span class="val">clearance_radius</span>.<br><span class="note">E.g. sprinkler: host=CEILING, offset=0, grid_spacing=4600mm.</span>',
+  lod_gmap:    '<span class="key">I_Geometry_Map</span> (renamed from lod_geometry_map / ad_geometry_map, 2026-03-07) — element→geometry hash mapping.<br>Holds: <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">ordinal</span>, <span class="val">geometry_hash</span>, <span class="val">provenance</span> (LIBRARY/EXTRACTED/PARAMETRIC).<br><span class="note">iDempiere I_ = Import table. Superseded by M_Product_Image for product-level lookups. Terminal still uses for legacy path.</span>',
+  m_prod_img:  '<span class="key">M_Product_Image</span> (P0.2: renamed from LOD_key) — canonical product → geometry mapping.<br>Holds: <span class="val">M_Product_ID</span> (PK, FK → {PREFIX}_BOM.db M_Product), <span class="val">geometry_hash</span> (FK → LOD_Object), <span class="val">up_axis</span>, <span class="val">forward_axis</span>, <span class="val">attachment_face</span>.<br><span class="note">115 rows. One row per product type. iDempiere M_Product_Image = product representation. Chain: m_bom_line.child_product_id → M_Product → M_Product_Image → LOD_Object.</span>',
+  surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
+  cl_m_product:'<span class="key">M_Product</span> (component_library copy) — product master for geometry resolution.<br>Holds: <span class="val">product_id</span>, <span class="val">Name</span>, <span class="val">component_id</span> (FK to component_definitions), <span class="val">width/depth/height</span>.<br><span class="note">Cross-referenced from {PREFIX}_BOM.db via product_id. Links products to their geometry chain.</span>',
+  cl_mat_layers:'<span class="key">material_layers</span> — composite material layer definitions.<br>Holds: <span class="val">material_id</span>, <span class="val">layer_index</span>, <span class="val">thickness_mm</span>, <span class="val">material_name</span>.<br><span class="note">Used for wall/slab/roof assemblies with multiple material layers (e.g. brick + insulation + plasterboard).</span>',
+  cl_mat_thermal:'<span class="key">ad_material_thermal</span> — thermal properties for materials.<br>Holds: <span class="val">material_id</span>, <span class="val">conductivity</span>, <span class="val">density</span>, <span class="val">specific_heat</span>, <span class="val">r_value</span>.<br><span class="note">Supports energy compliance checks. Linked from material_layers for composite U-value calculations.</span>',
+  cl_room_boundary:'<span class="key">ad_room_boundary</span> — room boundary geometry definitions.<br>Holds: <span class="val">space_type</span>, <span class="val">boundary_type</span> (WALL/FLOOR/CEILING), <span class="val">min/max dimensions</span>.<br><span class="note">Used by spatial validation to check room boundaries against design constraints.</span>',
+  cl_product_dim:'<span class="key">ad_product_dim</span> — extended product dimension attributes.<br>Holds: <span class="val">product_id</span>, <span class="val">dim_type</span>, <span class="val">value_mm</span>, <span class="val">tolerance_mm</span>.<br><span class="note">Supplements M_Product with additional dimensional attributes (clearance zones, connection offsets).</span>',
+  dv_element_mep:'<span class="key">ad_element_mep</span> — MEP element validation rules per discipline.<br>Holds: <span class="val">ifc_class</span>, <span class="val">discipline</span> (PLB/ELE/MEC/FPR), <span class="val">spacing_mm</span>, <span class="val">coverage_m2</span>.<br><span class="note">Drives MEP BOM resolution — e.g. sprinkler spacing = 4600mm, one per 21m2.</span>',
+  dv_space_mep_bom:'<span class="key">ad_space_type_mep_bom</span> — maps space types to required MEP BOMs.<br>Holds: <span class="val">space_type</span>, <span class="val">mep_bom_id</span>, <span class="val">discipline</span>, <span class="val">is_mandatory</span>.<br><span class="note">E.g. BATHROOM requires PLB_COLD + PLB_HOT + ELE_LIGHTING. Validation checks completeness.</span>',
+  dv_fp_coverage:'<span class="key">ad_fp_coverage</span> — fire protection coverage rules.<br>Holds: <span class="val">building_class</span>, <span class="val">max_coverage_m2</span>, <span class="val">max_spacing_mm</span>, <span class="val">min_flow_rate</span>.<br><span class="note">Code compliance for fire sprinkler and alarm coverage. Referenced by ROUTE SPRINKLERS verb.</span>',
+  dv_space_type:'<span class="key">ad_space_type</span> — space type definitions and constraints.<br>Holds: <span class="val">space_type</span>, <span class="val">min/max_area_m2</span>, <span class="val">min_height_mm</span>, <span class="val">ventilation_req</span>.<br><span class="note">Defines what constitutes a valid BEDROOM, BATHROOM, KITCHEN etc. Used by discipline validation.</span>',
+  dv_asm_manifest:'<span class="key">ad_assembly_manifest</span> — assembly validation manifests.<br>Holds: <span class="val">assembly_type</span>, <span class="val">required_components</span>, <span class="val">min_count</span>, <span class="val">validation_rule</span>.<br><span class="note">Ensures assemblies contain all required sub-components before compilation proceeds.</span>',
+  dv_wall_face:'<span class="key">ad_wall_face</span> — wall face classification for placement.<br>Holds: <span class="val">wall_id</span>, <span class="val">face_direction</span> (N/S/E/W), <span class="val">surface_area_m2</span>, <span class="val">has_opening</span>.<br><span class="note">Used by placement_rules to determine which wall face receives mounted elements (cabinets, fixtures).</span>',
+  dv_place_rules:'<span class="key">placement_rules</span> (ERP copy) — discipline-specific placement constraints.<br>Holds: <span class="val">discipline</span>, <span class="val">ifc_class</span>, <span class="val">host_type</span>, <span class="val">clearance_mm</span>, <span class="val">grid_spacing_mm</span>.<br><span class="note">Validation-side placement rules. Checked against compiled output to verify code compliance.</span>',
+  dv_sysconfig:'<span class="key">AD_SysConfig</span> — system configuration key-value pairs for validation.<br>Holds: <span class="val">Name</span> (config key), <span class="val">Value</span>, <span class="val">Description</span>.<br><span class="note">Thresholds, tolerances, and feature flags for discipline validation (e.g. MAX_SPRINKLER_SPACING=4600).</span>',
+  dv_cal_result:'<span class="key">W_Calibration_Result</span> — calibration test results and witness data.<br>Holds: <span class="val">test_name</span>, <span class="val">expected</span>, <span class="val">actual</span>, <span class="val">pass_fail</span>, <span class="val">timestamp</span>.<br><span class="note">Records calibration runs. W_ prefix = iDempiere workbench/temporary table convention.</span>',
+  bom_line_ma: '<span class="key">m_bom_line_ma</span> — BOM line material attributes (many-to-many).<br>Holds: <span class="val">bom_line_id</span> (FK to m_bom_line), <span class="val">M_AttributeSetInstance_ID</span>, <span class="val">material_name</span>, <span class="val">qty</span>.<br><span class="note">Attaches specific material instances to BOM lines. Supports multi-material leaves (e.g. composite wall layers).</span>',
+  bom_sysconfig:'<span class="key">ad_sysconfig</span> — BOM-level system configuration.<br>Holds: <span class="val">Name</span> (config key), <span class="val">Value</span>, <span class="val">Description</span>, <span class="val">EntityType</span>.<br><span class="note">Per-building configuration overrides (e.g. DEFAULT_WALL_THICKNESS, SLAB_DEPTH_MM). Read by compiler at build time.</span>',
+  c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order. Lives in <strong>output.db</strong> (transaction data, not dictionary).<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">C_DocType_ID</span> (→ C_DocType: RE_SH/RE_DX/CO_TE), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG), <span class="val">doc_status</span> (DR→IP→CO).<br><span class="note">{PREFIX}_BOM.db = pure dictionary (no orders). output.db = self-contained with orders + production + compiled result. §11.9.</span>',
+  c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = WHAT to build — order topics ONLY).<br>Key fields: <span class="val">building_type</span>, <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">discipline</span>, <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">is_active</span>.<br><strong style="color:#a855f7;">No placement columns.</strong> HOW (position, orientation) lives in <span class="val">PP_Order_Node</span> + <span class="val">PP_Order_NodeProduct</span>. WHERE lives in <span class="val">co_empty_space_line</span>. Material dims already in <span class="val">M_Product</span>.<br><span class="note">iDempiere parallel: C_OrderLine says "customer wants 100 chairs." PP_Order_Node says how to produce them. §11.9.</span>',
+  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">doc_base_type</span> (RE/CO/IN — Prime Rule DocType), <span class="val">doc_sub_type</span> (SH/DX/TB/ST — Prime Rule DocSubType), <span class="val">bom_category</span> (LI/BD/KT — functional role → M_BomCategory), <span class="val">origin_x/y/z</span> (always (0,0,0) — world position set in CO_EmptySpace, output.db).<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match → singularity.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers. Tack convention: child dx/dy/dz always ≥ 0 relative to parent origin. BOM is one hierarchy — compiler decides EN-BLOC vs WALK THRU traversal.</span>',
+  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (§3.4 parent-relative offset, always ≥ 0), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (AABB).<br><span class="note">Instance columns (storey, element_ref, ordinal, orientation, material_name, material_rgba) are NULL in {PREFIX}_BOM.db dictionary — populated in output.db from I_Element_Extraction at compile time. EN-BLOC vs WALK THRU = compiler traversal modes, not {PREFIX}_BOM.db data distinctions. Tack convention guard: X_M_BOMLine.setDx() rejects negative values.</span>',
+  ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">Name</span>, <span class="val">Description</span>, <span class="val">M_Product_Category_ID</span> (→M_Product_Category), <span class="val">M_AttributeSet_ID</span>, <span class="val">width/depth/height</span> (metres).<br>198 rows. 79 DX + 11 SH products. IFC class lives on M_Product_Category, not product.<br><span class="note">BOM leaf→mesh chain: m_bom_line.child_product_id → M_Product → M_Product_Image [geometry_hash] → LOD_Object [mesh BLOB]. Replaces legacy component_definitions chain.</span>',
+  c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN), <span class="val">DocSubType</span> (SH/DX/TB/TE/ST).<br>DocBaseType classifies (RE/CO/IN). DocSubType drives BOM scoping + compilation path: ST=template (M_BomCategory AABB match).<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match, singularity → EN-BLOC.<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX. C_BPartner to be repurposed for real business partners.</span>',
+  verb_line:   '<span class="key">PP_Order_Node</span> — iDempiere Manufacturing table (not custom). One row per production operation.<br>Key fields: <span class="val">C_Order_ID</span> (→ c_order), <span class="val">SeqNo</span> (execution order), <span class="val">Name</span> (BIM: verb keyword — TILE SURFACE, ARRAY, ROUTE…), <span class="val">Description</span> (BIM: COBOL source line), <span class="val">S_Resource_ID</span> (BIM: → ESLine = WHERE), <span class="val">DocStatus</span> (DR→IP→CO→VO).<br><span class="note">Standard iDempiere name, BIM semantics in column usage. Multiple operations target the same S_Resource (ESLine). §15.6.</span>',
+  verb_param:  '<span class="key">PP_Order_NodeProduct</span> — iDempiere Manufacturing table. Structured parameters per operation.<br>Key fields: <span class="val">PP_Order_Node_ID</span> (→ PP_Order_Node), <span class="val">Name</span> (BIM: param name — ORIGIN_X, GRID_NX, SPACING_MM…), <span class="val">Value</span>, <span class="val">ValueType</span> (TEXT/REAL/INTEGER).<br><span class="note">Description = COBOL source (human-readable). NodeProduct rows = same data in structured form (GUI-editable). Both in sync.</span>',
+  elements_meta:'<span class="key">elements_meta</span> — final compiled IFC elements.<br>Key fields: <span class="val">guid</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">world_x/y/z</span> (mm, absolute).<br><span class="note">Written ONLY after CO_EmptySpaceLine alignment is resolved. This is the IFC-ready output.</span>',
+  elem_inst:   '<span class="key">element_instances</span> — geometry transform + material.<br>Key fields: <span class="val">transform matrix</span> (4×4), <span class="val">geometry_hash</span> (→ component_library), <span class="val">material_name</span>.',
+  elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
+  co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">origin_x/y/z_mm</span> (RTREE-measured), <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">Quality gate: is_available=N means compiled AND all witnesses GREEN. NORM-3b (2026-02-28): deliberately kept separate from c_order — origin_x/y/z lives here (compile-time measurement), ProveStage writes output.db only, co_emptyspace_id FK stays local within output.db.</span>',
+  co_esl:      '<span class="key">co_empty_space_line</span> — spatial workstation (WHERE). iDempiere S_Resource equivalent.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left), <span class="val">capacity_mm</span>, <span class="val">filled_mm</span>.<br><span class="note">WHAT = c_orderline (order topics). HOW = PP_Order_Node (production operations targeting this ESLine). WHERE = here. Multiple verbs target same ESLine (TILE + ARRAY + ROUTE on one slab). §11.9, ADHistory §S_Resource.</span>',
+};
+
+function showDetail(key) {
+  const box = document.getElementById('detail-box');
+  // deselect all
+  document.querySelectorAll('.tbl').forEach(t => t.classList.remove('sel'));
+  // select this one
+  event.target.classList.add('sel');
+  box.innerHTML = details[key] || '<span class="note">No detail available.</span>';
+}
+
+// --- BOM tree toggle ---
+function toggleNode(el) {
+  const li = el.parentElement;
+  const ul = li.querySelector('ul');
+  const toggle = el.querySelector('.toggle');
+  const info = el.nextElementSibling;
+
+  if (ul) {
+    ul.classList.toggle('hidden');
+    toggle.textContent = ul.classList.contains('hidden') ? '▶' : '▼';
+  }
+  if (info && info.classList.contains('node-info')) {
+    info.classList.toggle('show');
+    if (!ul) toggle.textContent = info.classList.contains('show') ? '▾' : '·';
+  }
+}
+
+// Hidden class for tree
+document.querySelectorAll('.tree ul ul').forEach(ul => ul.classList.add('hidden'));
+document.querySelectorAll('.tree .toggle').forEach(t => {
+  const li = t.closest('li');
+  const ul = li.querySelector('ul');
+  if (ul) t.textContent = '▶'; else t.textContent = '·';
+});
+</script>
+
+<!-- ERD renderer removed — see docs/DATA_MODEL.md for cross-database relationship mapping -->
+</body>
+</html>

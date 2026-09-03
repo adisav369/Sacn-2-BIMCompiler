@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BIM Viewer</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui;background:#1a1a2e;color:#eee;height:100vh;display:flex;flex-direction:column}
+        header{background:#16213e;padding:12px 20px;border-bottom:1px solid #0f3460}
+        header h1{font-size:16px}
+        header span{color:#e94560}
+        .main{display:flex;flex:1;overflow:hidden}
+        model-viewer{flex:1;background:#1a1a2e}
+        .side{width:280px;background:#16213e;padding:15px;overflow-y:auto;font-size:13px}
+        .sec{margin-bottom:15px}
+        .sec h3{font-size:10px;color:#666;text-transform:uppercase;margin-bottom:8px}
+        .btns{display:flex;flex-wrap:wrap;gap:5px}
+        .btn{background:#0f3460;border:none;color:#eee;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:11px}
+        .btn.on{background:#e94560}
+        .card{background:#0f3460;border-radius:6px;padding:12px}
+        .card h4{color:#e94560;font-size:14px;margin-bottom:8px}
+        .row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+        .lbl{color:#888}
+        #drop{position:absolute;top:50%;left:35%;transform:translate(-50%,-50%);text-align:center;padding:40px;border:2px dashed #0f3460;border-radius:10px;background:rgba(22,33,62,0.95)}
+        #drop h2{color:#e94560;margin-bottom:10px}
+        #drop label{background:#e94560;color:#fff;padding:10px 20px;border-radius:5px;cursor:pointer;display:inline-block;margin-top:10px}
+        #file{display:none}
+        footer{background:#0f3460;padding:8px 15px;font-size:11px;color:#888}
+    </style>
+</head>
+<body>
+    <header><h1><span>BIM</span> Viewer — <span id="title">Load Model</span></h1></header>
+    <div class="main">
+        <model-viewer id="mv" camera-controls auto-rotate shadow-intensity="1" exposure="1"
+            camera-orbit="45deg 55deg auto" interaction-prompt="none">
+            <div id="drop">
+                <h2>BIM Viewer</h2>
+                <p style="color:#888;margin-bottom:10px">Drop .glb file here</p>
+                <input type="file" id="file" accept=".glb,.gltf">
+                <label for="file">Choose File</label>
+            </div>
+        </model-viewer>
+        <aside class="side">
+            <div class="sec">
+                <h3>Disciplines</h3>
+                <div class="btns" id="disc">
+                    <button class="btn on" onclick="toggle(this,'ARCH')">ARCH</button>
+                    <button class="btn on" onclick="toggle(this,'STRUCT')">STRUCT</button>
+                    <button class="btn on" onclick="toggle(this,'ELEC')">ELEC</button>
+                    <button class="btn on" onclick="toggle(this,'PLUMB')">PLUMB</button>
+                </div>
+            </div>
+            <div class="sec">
+                <h3>Storeys</h3>
+                <div class="btns" id="stor"><button class="btn on">All</button></div>
+            </div>
+            <div class="sec">
+                <h3>Building</h3>
+                <div class="card">
+                    <h4 id="bname">-</h4>
+                    <div class="row"><span class="lbl">Elements</span><span id="nelem">-</span></div>
+                    <div class="row"><span class="lbl">Rooms</span><span id="nroom">-</span></div>
+                    <div class="row"><span class="lbl">Storeys</span><span id="nstor">-</span></div>
+                </div>
+            </div>
+            <div class="sec">
+                <h3>Counts</h3>
+                <div class="card">
+                    <div class="row"><span class="lbl">ARCH</span><span id="c-arch">-</span></div>
+                    <div class="row"><span class="lbl">STRUCT</span><span id="c-struct">-</span></div>
+                    <div class="row"><span class="lbl">ELEC</span><span id="c-elec">-</span></div>
+                    <div class="row"><span class="lbl">PLUMB</span><span id="c-plumb">-</span></div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    <footer id="status">Ready</footer>
+
+<script>
+const mv = document.getElementById('mv');
+const drop = document.getElementById('drop');
+let DISC = {}, ELEM = [], VIS = {ARCH:1,STRUCT:1,ELEC:1,PLUMB:1};
+
+document.getElementById('file').onchange = e => load(e.target.files[0]);
+mv.ondragover = e => e.preventDefault();
+mv.ondrop = e => { e.preventDefault(); load(e.dataTransfer.files[0]); };
+
+function load(f) {
+    if (!f) return;
+    document.getElementById('status').textContent = 'Loading ' + f.name;
+    mv.src = URL.createObjectURL(f);
+    drop.style.display = 'none';
+}
+
+mv.addEventListener('load', () => {
+    document.getElementById('status').textContent = 'Analyzing...';
+    setTimeout(analyze, 300);
+});
+
+function analyze() {
+    const m = mv.model;
+    if (!m) { document.getElementById('status').textContent = 'Error: no model'; return; }
+
+    DISC = {}; ELEM = [];
+    let name = 'Building', storeys = new Set(), rooms = 0;
+    let cnt = {ARCH:0, STRUCT:0, ELEC:0, PLUMB:0};
+
+    m.traverse(n => {
+        if (n.parent && n.parent.type === 'Scene') name = n.name.replace(/[-_]/g,' ');
+        if (['ARCH','STRUCT','ELEC','PLUMB'].includes(n.name)) DISC[n.name] = n;
+        if (n.userData && n.userData.guid) {
+            ELEM.push({n, ...n.userData});
+            if (n.userData.storey) storeys.add(n.userData.storey);
+            if (n.userData.ifc_class === 'IfcSpace') rooms++;
+            let d = n.userData.discipline || 'ARCH';
+            cnt[d] = (cnt[d]||0) + 1;
+        }
+    });
+
+    document.getElementById('title').textContent = name;
+    document.getElementById('bname').textContent = name;
+    document.getElementById('nelem').textContent = ELEM.length;
+    document.getElementById('nroom').textContent = rooms;
+    document.getElementById('nstor').textContent = storeys.size;
+    document.getElementById('c-arch').textContent = cnt.ARCH;
+    document.getElementById('c-struct').textContent = cnt.STRUCT;
+    document.getElementById('c-elec').textContent = cnt.ELEC;
+    document.getElementById('c-plumb').textContent = cnt.PLUMB;
+
+    // Storey buttons
+    let sb = document.getElementById('stor');
+    sb.innerHTML = '<button class="btn on" onclick="filterStor(\'all\')">All</button>';
+    [...storeys].sort().forEach(s => {
+        sb.innerHTML += `<button class="btn" onclick="filterStor('${s}')">${s}</button>`;
+    });
+
+    document.getElementById('status').textContent = 'Loaded: ' + ELEM.length + ' elements | Disciplines: ' + Object.keys(DISC).join(', ');
+}
+
+function toggle(btn, d) {
+    VIS[d] = !VIS[d];
+    btn.classList.toggle('on');
+    applyVis();
+}
+
+function filterStor(s) {
+    document.querySelectorAll('#stor .btn').forEach(b => b.classList.remove('on'));
+    event.target.classList.add('on');
+    window.STOR = s;
+    applyVis();
+}
+
+function applyVis() {
+    // Discipline visibility
+    for (let d in DISC) {
+        setVis(DISC[d], VIS[d]);
+    }
+    // Storey filter
+    if (window.STOR && window.STOR !== 'all') {
+        ELEM.forEach(e => {
+            if (e.storey !== window.STOR) e.n.visible = false;
+        });
+    }
+    mv.requestUpdate && mv.requestUpdate();
+}
+
+function setVis(node, v) {
+    node.visible = v;
+    if (node.children) node.children.forEach(c => setVis(c, v));
+}
+</script>
+</body>
+</html>
