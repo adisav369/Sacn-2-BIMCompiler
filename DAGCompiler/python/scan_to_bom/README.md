@@ -427,6 +427,75 @@ every axis. The composition differences it also surfaces all trace to already-do
 already-understood upstream gaps — Phase 5 adds a genuinely independent (BOM-line-count-level)
 confirmation of those gaps' real-world size, not a new failure mode of its own.**
 
+## Window detection for cluster segments (Phase 5 follow-up)
+
+Phase 5's BOM cross-check found cluster-geometry segments had **no path to `IfcWindow` at
+all** — `_classify_cluster()` only ever returned `IfcFurniture` or `IfcBuildingElementProxy`,
+so any window whose points missed RANSAC plane detection (and fell into the DBSCAN pool) was
+deferred, never correctly labeled, no matter how clean the scan. Same blind-validation
+discipline as the Phase 3 furniture fix: don't report a fix done without re-scoring against
+held-out ground truth, and if the first geometric hypothesis doesn't cleanly separate true
+positives, go find a different one rather than tuning the same one further.
+
+**First checked what was actually available to work with.** All 30 true-window cluster
+segments in this dataset sit at `wall_dist=0.00m` from a wall plane — i.e. every one of them
+was already being correctly excluded from `IfcFurniture` by the existing wall-distance check
+(`FURNITURE_MAX_WALL_DIST_M`), then unconditionally dumped into `IfcBuildingElementProxy` along
+with genuine wall/plate debris fragments, which sit at the *same* `wall_dist=0.00m` — so
+wall-distance, precise as it is for furniture-vs-debris, carries zero information for
+window-vs-debris. Checked volume, flatness, point count, and max AABB extent next (the other
+signals already in use elsewhere in `classify.py`) — **all four showed the same kind of total
+population overlap volume did for the original furniture problem**: window and debris ranges
+overlapped almost entirely on every one of them. Printed full sorted lists, not just
+percentiles, to be sure — no threshold on any single existing feature separates the two
+populations here.
+
+**Found a real, different signal: how much actual point *depth* a cluster has relative to the
+wall's own normal direction**, not just whether its AABB touches the wall. A window is real
+relief set into a wall's opening — the glass and frame sit at a range of positions along the
+wall's depth (recessed, or spanning the wall's thickness), not sitting flush on a single
+surface the way debris does. Computed `points[cluster] @ wall_normal`, then `max - min` of
+that projection — genuinely different information from `aabb_gap`, which only measures whether
+the AABBs touch, not how deep the cluster's own points go relative to the wall plane's face.
+True window clusters ranged 0.084–0.251m on this measure; debris was concentrated lower (median
+0.10m) but — unlike the furniture/wall-distance split, which had zero overlap — **this one
+genuinely doesn't separate cleanly**: some wall-corner debris chips and some furniture pressed
+against a wall (a wardrobe has real depth too) land in the same range as true windows.
+
+**Swept thresholds 0.10–0.18m against held-out ground truth rather than picking one and hoping**
+(precision/recall/F1 at each): 0.12m gave the best F1 (0.72) found — precision 0.68, recall
+0.77 on the geometric feature alone. Because this signal is real but not clean,
+`classification_confidence` is set to **0.55, deliberately below the 0.7 "confident" bar** — a
+wrong prediction here should show up as `WRONG`, never `CONFIDENT-WRONG`.
+
+**Re-scored blind, on the live pipeline, against held-out ground truth** (not just the offline
+threshold sweep): cluster-only window predictions came back **21 true positives, 10 false
+positives, 9 false negatives — precision 0.68, recall 0.70**, matching the offline sweep
+closely. Checked for regressions on everything the fix touches:
+- **Furniture classification: unchanged, exactly** — 49 TP, 0 FP, 79.03% recall / 100%
+  precision, identical to before this change. The new window path only fires for clusters that
+  were *already* being rejected from `IfcFurniture` (wall-touching), so it cannot affect any
+  segment that was already correctly classified as furniture — confirmed, not just expected
+  from reading the code.
+- **Confident-wrong count: unchanged, exactly 2** — the same two genuinely-hard `IfcWall`→
+  `IfcPlate` cases from Phase 3, untouched. The 10 new false-positive window predictions all
+  score `WRONG`, none `CONFIDENT-WRONG`, exactly as the confidence choice intended.
+- Overall classification: 68/176 → **89/176 correct**, 93 → 62 deferred to
+  `IfcBuildingElementProxy`. Phase 4's written-row accuracy check: 27/135 → **48/135 correct**,
+  schema integrity and dimensional-fidelity numbers unaffected (this change only touches
+  labels, never geometry).
+
+**Honest limit, not chased further: doors.** The same investigation traced why all 3 true door
+clusters in this dataset have *low* wall-normal spread, like debris, not like windows: their
+actual point counts (41–83) and volumes (0.002–0.007m³) are far too small to be a door leaf —
+consistent with the door leaf's front face being **nearly coplanar with the closed wall's own
+plane**, so RANSAC's plane detection absorbs it into the wall segment itself (a real,
+single-scan-of-a-closed-door limit — you can't tell there's a door there from outside without
+the frame reveal or the door being open). What's left as a cluster is a few points of leftover
+hardware (handle, hinge), not enough real evidence to defensibly call `IfcDoor` — extending
+the same wall-normal-spread signal to doors was checked and rejected here, honestly, rather
+than forced: `IfcDoor` stays `IfcBuildingElementProxy` (deferred, not guessed) for this dataset.
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -505,14 +574,20 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   not a bug — flagged so no future session tries to "fix" it with a geometric heuristic; it would
   need either a second scan pass of the hidden face or a catalog/BOM-supplied nominal thickness
   (extract-or-compile-only still applies: never invent one from the visible face alone).
-- **Cluster-geometry segments have no door/window disambiguation path.**
-  `classify.py`'s floor-proximity door-vs-window check only runs inside `_classify_plane()`;
-  a segment that fell into the DBSCAN cluster pool (because RANSAC never found it a clean
-  plane fit) can only become `IfcFurniture` or `IfcBuildingElementProxy`, never `IfcDoor` or
-  `IfcWindow`, no matter its actual shape. Quantified for the first time via Phase 5's BOM-level
-  cross-check: both real doors in this dataset are cluster segments, so `IfcDoor` came back 0/2
-  in the point-cloud BOM against the real IFC BOM's 2 — a real, honestly-deferred (not
-  misclassified) gap, not attempted here.
+- **Cluster-geometry windows now have a real detection path** (`WINDOW_WALL_NORMAL_SPREAD_M`,
+  see "Window detection for cluster segments" above) — precision 0.68, recall 0.70 on held-out
+  ground truth, confidence deliberately kept below the 0.7 "confident" bar since the signal,
+  while real, isn't clean. **Doors remain undetectable from cluster geometry in this dataset**,
+  root-caused (not just observed): a closed door's leaf is nearly coplanar with its wall, so
+  RANSAC absorbs it into the wall's own plane segment — what's left as a cluster is a few
+  points of hardware (handle/hinge), genuinely too little evidence to call `IfcDoor` rather
+  than defer. `classify.py`'s floor-proximity door check still only runs inside
+  `_classify_plane()`; a cluster segment has no path to `IfcDoor` at all. This was quantified
+  first via Phase 5's BOM-level cross-check (both real doors in this dataset are cluster
+  segments, so `IfcDoor` came back 0/2 against the real IFC BOM's 2) and root-caused via direct
+  point-count/volume inspection of those 3 fragments — not attempted further here, since the
+  evidence genuinely doesn't support a specific label, only "something real but small was
+  here."
 - No room/space segmentation — per `docs/ScanToBOM_ReferenceDB_Spec.md` §1, this is optional
   for v1 (`ScopeBomBuilder` already degrades gracefully to flat floor-level BOMs without it —
   confirmed for real in Phase 5's run, not just per the spec: `rel_contained_in_space` isn't

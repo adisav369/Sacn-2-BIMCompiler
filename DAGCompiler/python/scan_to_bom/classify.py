@@ -105,6 +105,26 @@ FURNITURE_MAX_WALL_DIST_M = 0.05  # a genuine furniture piece sits in open room 
                                    # real separation — unlike volume or elevation, which
                                    # (both checked) genuinely overlap in this dataset.
 
+# ── Cluster-geometry window detection ─────────────────────────────────────────────────────
+# A window pane/frame is real geometric relief set into a wall's own footprint — not flush
+# with the wall's dominant plane the way genuine wall-material debris is. Checked against
+# ground truth (Phase 5's BOM cross-check first surfaced that cluster segments had NO path to
+# IfcWindow at all): wall-touching clusters split by true class on the spread of their own
+# points projected onto the nearest wall's normal (max-min, i.e. "how much real depth does
+# this cluster have into/out of the wall, not just its AABB gap to it") — true window clusters
+# ranged 0.084-0.251m; true wall/plate debris clustered much lower (median 0.10m) but with a
+# real, not-fully-clean overlap into the same range (unlike the furniture/wall-distance split,
+# which had zero overlap). Swept thresholds 0.10-0.18m against ground truth: 0.12m gave the
+# best precision/recall trade found (precision 0.68, recall 0.77, F1 0.72) — genuinely useful
+# (baseline recall for cluster-geometry windows was 0%, nothing before this could ever call a
+# cluster IfcWindow), but not clean, so classification_confidence is set deliberately below
+# the 0.7 "confident" bar: a wrong prediction here should show up as WRONG, never
+# CONFIDENT-WRONG. False positives are real, explainable cases (a wardrobe against a wall has
+# real depth too; a wall-corner debris chip can catch an adjacent perpendicular wall's points
+# in this measurement) — not overfit noise. See DAGCompiler/python/scan_to_bom/README.md
+# "Window detection for cluster segments" for the full threshold sweep.
+WINDOW_WALL_NORMAL_SPREAD_M = 0.12
+
 
 @dataclass
 class ClassifiedSegment:
@@ -127,7 +147,13 @@ def _plane_yaw(normal: np.ndarray) -> float:
     return float(np.arctan2(normal[1], normal[0]))
 
 
-def classify_segments(segments: list[Segment], log=print) -> list[ClassifiedSegment]:
+def classify_segments(segments: list[Segment], points: np.ndarray | None = None,
+                       log=print) -> list[ClassifiedSegment]:
+    """`points` is the full Nx3 point cloud `Segment.point_indices` index into — needed for
+    the cluster window-detection check (`WINDOW_WALL_NORMAL_SPREAD_M`), which measures real
+    point depth relative to a wall's normal, not just an AABB-level property. Optional: pass
+    None to skip that check entirely (falls back to the prior Proxy-only behavior for
+    wall-touching clusters) rather than guessing at points that were never provided."""
     # Floor level, if any floor plane was found — needed for the door/window heuristic.
     # None of this is guessed: it's the actual measured height of whichever plane
     # segment_pointcloud() already determined was the floor by relative elevation.
@@ -154,7 +180,7 @@ def classify_segments(segments: list[Segment], log=print) -> list[ClassifiedSegm
         if seg.geometry_type == "plane":
             ifc_class, conf, note, rot_z = _classify_plane(seg, extent, floor_z)
         else:
-            ifc_class, conf, note = _classify_cluster(seg, extent, floor_z, wall_planes)
+            ifc_class, conf, note = _classify_cluster(seg, extent, floor_z, wall_planes, points)
             rot_z = 0.0
 
         discipline = infer_discipline(ifc_class)
@@ -221,7 +247,8 @@ def _classify_plane(seg: Segment, extent: np.ndarray, floor_z: float | None
 
 
 def _classify_cluster(seg: Segment, extent: np.ndarray, floor_z: float | None,
-                       wall_planes: list[Segment]) -> tuple[str, float, str]:
+                       wall_planes: list[Segment],
+                       points: np.ndarray | None = None) -> tuple[str, float, str]:
     volume = float(np.prod(extent))
     height = extent[2]
     flatness = float(extent.min() / extent.max()) if extent.max() > 0 else 0.0
@@ -246,9 +273,29 @@ def _classify_cluster(seg: Segment, extent: np.ndarray, floor_z: float | None,
     # real furniture doesn't. This is a hard reject, not a confidence adjustment, because the
     # ground-truth check found no overlap to hedge against.
     if wall_planes:
-        wall_dist = min(aabb_gap(seg.aabb_min, seg.aabb_max, w.aabb_min, w.aabb_max)
-                         for w in wall_planes)
+        nearest_wall, wall_dist = min(
+            ((w, aabb_gap(seg.aabb_min, seg.aabb_max, w.aabb_min, w.aabb_max))
+             for w in wall_planes), key=lambda pair: pair[1])
         if wall_dist <= FURNITURE_MAX_WALL_DIST_M:
+            # Wall-touching: not open-room furniture. Most of what lands here really is
+            # wall/plate debris (see FURNITURE_MAX_WALL_DIST_M's comment), but some is a real
+            # window — see WINDOW_WALL_NORMAL_SPREAD_M's comment for the ground-truth-checked
+            # signal that tells them apart: a window has real point depth relative to the
+            # wall's own normal (frame + glass set into the opening); flush debris doesn't.
+            if points is not None:
+                pt_depth = points[seg.point_indices] @ (
+                    nearest_wall.normal / np.linalg.norm(nearest_wall.normal))
+                wall_normal_spread = float(pt_depth.max() - pt_depth.min())
+                if wall_normal_spread >= WINDOW_WALL_NORMAL_SPREAD_M:
+                    return "IfcWindow", 0.55, \
+                        f"cluster touching a wall plane (dist={wall_dist:.3f}m) but with " \
+                        f"real depth into/out of it (wall_normal_spread=" \
+                        f"{wall_normal_spread:.3f}m >= {WINDOW_WALL_NORMAL_SPREAD_M}m) — " \
+                        f"consistent with a window frame/glass set into the wall, not flush " \
+                        f"debris (vol={volume:.3f}m3 height={height:.2f}m); checked against " \
+                        f"ground truth, this signal is real but not clean (precision ~0.68, " \
+                        f"recall ~0.77 — see README), confidence kept below the 0.7 " \
+                        f"'confident' bar accordingly"
             return "IfcBuildingElementProxy", 0.3, \
                 f"furniture-scale cluster but touching a wall plane " \
                 f"(dist={wall_dist:.3f}m <= {FURNITURE_MAX_WALL_DIST_M}m) — more likely " \

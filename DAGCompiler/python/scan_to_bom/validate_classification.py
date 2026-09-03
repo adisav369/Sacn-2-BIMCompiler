@@ -58,7 +58,7 @@ def main():
     pc, _ = normalize_pointcloud(pc, log=lambda *a, **k: None)
     segments = segment_pointcloud(pc, log=lambda *a, **k: None)
     segments = merge_coplanar_fragments(segments, log=lambda *a, **k: None)
-    classified = classify_segments(segments)
+    classified = classify_segments(segments, points=pc.xyz)
 
     if not gt_path.exists():
         print(f"§VALIDATE no ground truth at {gt_path} — cannot score classification")

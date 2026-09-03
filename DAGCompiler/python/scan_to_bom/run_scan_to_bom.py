@@ -61,7 +61,7 @@ def main():
     floor_segments = [s for s in segments if s.orientation == "floor"]
     floor_z = float(np.mean([s.centroid[2] for s in floor_segments])) if floor_segments else None
 
-    classified = classify_segments(segments)
+    classified = classify_segments(segments, points=pc.xyz)
     merged = merge_instances(classified)
 
     out_path = Path(args.lib_input) / f"{args.building_type}_extracted.db"

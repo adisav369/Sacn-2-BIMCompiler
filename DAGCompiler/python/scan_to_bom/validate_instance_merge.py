@@ -75,7 +75,7 @@ def main():
     pc, _ = normalize_pointcloud(pc, log=lambda *a, **k: None)
     segments = segment_pointcloud(pc, log=lambda *a, **k: None)
     segments = merge_coplanar_fragments(segments, log=lambda *a, **k: None)
-    classified = classify_segments(segments, log=lambda *a, **k: None)
+    classified = classify_segments(segments, points=pc.xyz, log=lambda *a, **k: None)
 
     n_before, viol_before, frag_before = _report(classified, gt_guid, gt_class,
                                                    "BEFORE instance merge (Phase 3 output)")
