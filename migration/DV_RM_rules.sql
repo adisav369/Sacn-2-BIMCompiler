@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RM: Revit MEP (HospitalAuckland)
--- Source: DAGCompiler/lib/output/hospitalauckland.db
--- Generated: 2026-04-05 02:17
+-- Source: DAGCompiler/lib/output/hospitalauckland_enbloc.db
+-- Generated: 2026-03-21 09:22
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -9,7 +9,7 @@
 
 -- ifc_class                   storey      cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- --------------------------  ----------  ----  --------  --------  --------  --------  --------
--- IfcMember                   Unknown     1450  851.0     564.0     851.0     60.0      3549.0  
+-- IfcMember                   Unknown     1450  851.0     564.0     851.0     60.0      3548.0  
 -- IfcPlate                    Unknown     629   1986.0    1112.0    1778.0    30.0      40591.0 
 -- IfcDuctFitting              Level 2     328   259.0     249.0     275.0     12.0      1050.0  
 -- IfcDuctFitting              Level 3     319   253.0     243.0     274.0     25.0      1150.0  
@@ -48,10 +48,10 @@
 -- IfcFlowFitting              Roof Level  14    70.0      81.0      81.0      22.0      213.0   
 -- IfcDuctSegment              Roof Level  9     2056.0    825.0     2118.0    400.0     11875.0 
 -- IfcRailing                  Unknown     8     40.0      7548.0    4411.0    40.0      40.0    
+-- IfcSlab                     Level 2     8     36040.0   34852.0   163.0     7105.0    65685.0 
 -- IfcStairFlight              Unknown     8     1600.0    5094.0    2696.0    1600.0    1600.0  
 -- IfcDuctFitting              Roof Level  7     1161.0    1429.0    1327.0    604.0     2425.0  
 -- IfcSlab                     Level 1     7     33656.0   36741.0   171.0     7140.0    65835.0 
--- IfcSlab                     Level 2     7     40114.0   39031.0   164.0     7105.0    65685.0 
 -- IfcFireSuppressionTerminal  Level 2     6     15.0      15.0      54.0      15.0      15.0    
 -- IfcBuildingElementProxy     Roof Level  5     2594.0    1627.0    2050.0    146.0     6130.0  
 -- IfcColumn                   Roof Level  4     38.0      38.0      2000.0    38.0      38.0    
@@ -74,27 +74,21 @@
 -- ifc_class                   discipline  cnt 
 -- --------------------------  ----------  ----
 -- IfcMember                   STR         1450
--- IfcDuctFitting              MEP         815 
+-- IfcDuctFitting              MEP         935 
+-- IfcDuctSegment              MEP         837 
 -- IfcBuildingElementProxy     ARC         654 
--- IfcDuctSegment              MEP         634 
 -- IfcPlate                    STR         629 
--- IfcFlowFitting              MEP         534 
--- IfcFlowTerminal             MEP         356 
--- IfcFlowSegment              ARC         349 
--- IfcDuctSegment              ARC         203 
--- IfcFlowSegment              MEP         162 
--- IfcAirTerminal              ACMV        161 
--- IfcAirTerminal              ARC         148 
--- IfcColumn                   STR         135 
--- IfcWall                     STR         133 
+-- IfcFlowFitting              MEP         549 
+-- IfcFlowSegment              MEP         511 
+-- IfcFlowTerminal             MEP         421 
+-- IfcAirTerminal              ACMV        309 
+-- IfcColumn                   ARC         135 
+-- IfcWall                     ARC         133 
 -- IfcDoor                     ARC         124 
--- IfcDuctFitting              ARC         120 
--- IfcFlowTerminal             ARC         65  
 -- IfcCovering                 ARC         43  
--- IfcSlab                     STR         24  
--- IfcFlowFitting              ARC         15  
--- IfcRailing                  ARC         14  
--- IfcStairFlight              ARC         8   
+-- IfcSlab                     STR         25  
+-- IfcRailing                  STR         14  
+-- IfcStairFlight              STR         8   
 -- IfcFireSuppressionTerminal  FP          6   
 -- IfcStair                    ARC         4   
 
@@ -608,6 +602,19 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '4411.0');
 
+-- Rule: IfcSlab_Level_2 (8 instances, avg 36040.0x34852.0x163.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 2: 8 instances, avg W=36040.0 D=34852.0 H=163.0mm',
+--     'HospitalAuckland');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '36040.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '34852.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '163.0');
+
 -- Rule: IfcStairFlight_Unknown (8 instances, avg 1600.0x5094.0x2696.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -646,19 +653,6 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '36741.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '171.0');
-
--- Rule: IfcSlab_Level_2 (7 instances, avg 40114.0x39031.0x164.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 2: 7 instances, avg W=40114.0 D=39031.0 H=164.0mm',
---     'HospitalAuckland');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '40114.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '39031.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '164.0');
 
 -- Rule: IfcFireSuppressionTerminal_Level_2 (6 instances, avg 15.0x15.0x54.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,

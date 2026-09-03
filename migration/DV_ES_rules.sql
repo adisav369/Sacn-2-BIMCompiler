@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- ES: Esplanades (Esplanades)
--- Source: DAGCompiler/lib/output/esplanades.db
--- Generated: 2026-03-31 00:21
+-- Source: DAGCompiler/lib/output/esplanades_enbloc.db
+-- Generated: 2026-03-21 06:03
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -58,15 +58,15 @@
 
 -- ifc_class                discipline  cnt
 -- -----------------------  ----------  ---
--- IfcWall                  STR         846
+-- IfcWall                  ARC         846
 -- IfcWindow                ARC         297
 -- IfcBuildingElementProxy  ARC         230
 -- IfcDoor                  ARC         211
--- IfcRailing               ARC         170
+-- IfcRailing               STR         170
 -- IfcRoof                  ARC         78 
 -- IfcBeam                  STR         37 
--- IfcColumn                STR         37 
--- IfcStairFlight           ARC         20 
+-- IfcColumn                ARC         37 
+-- IfcStairFlight           STR         20 
 -- IfcSlab                  STR         15 
 
 -- §5: Candidate validation rules for ERP.db

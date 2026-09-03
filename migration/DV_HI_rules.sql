@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- HI: HITOS Building (HITOS)
--- Source: DAGCompiler/lib/output/hitos.db
--- Generated: 2026-03-31 00:21
+-- Source: DAGCompiler/lib/output/hitos_enbloc.db
+-- Generated: 2026-03-21 09:34
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -63,18 +63,17 @@
 
 -- ifc_class                discipline  cnt
 -- -----------------------  ----------  ---
--- IfcWall                  STR         838
+-- IfcWall                  ARC         838
 -- IfcSlab                  STR         363
 -- IfcWindow                ARC         226
--- IfcColumn                STR         208
+-- IfcColumn                ARC         208
 -- IfcDoor                  ARC         198
 -- IfcBeam                  STR         86 
--- IfcFlowTerminal          MEP         63 
+-- IfcFlowTerminal          MEP         67 
 -- IfcBuildingElementProxy  ARC         31 
 -- IfcFurnishingElement     ARC         23 
--- IfcRailing               ARC         14 
+-- IfcRailing               STR         14 
 -- IfcStair                 ARC         14 
--- IfcFlowTerminal          ARC         4  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

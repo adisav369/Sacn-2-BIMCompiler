@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CL: Sample Castle (SampleCastle)
--- Source: DAGCompiler/lib/output/samplecastle.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/samplecastle_enbloc.db
+-- Generated: 2026-03-21 09:30
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -68,15 +68,14 @@
 -- ifc_class                discipline  cnt 
 -- -----------------------  ----------  ----
 -- IfcCovering              ARC         1482
--- IfcWall                  STR         631 
+-- IfcWall                  ARC         631 
 -- IfcDoor                  ARC         387 
 -- IfcSlab                  STR         259 
 -- IfcBeam                  STR         174 
--- IfcRailing               ARC         90  
+-- IfcRailing               STR         90  
 -- IfcWindow                ARC         77  
--- IfcFlowSegment           ARC         40  
--- IfcColumn                STR         28  
--- IfcFlowSegment           MEP         20  
+-- IfcFlowSegment           MEP         60  
+-- IfcColumn                ARC         28  
 -- IfcBuildingElementProxy  ARC         13  
 -- IfcStair                 ARC         9   
 -- IfcMember                STR         4   

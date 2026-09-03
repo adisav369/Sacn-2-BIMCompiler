@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- JS: AC90 Jasmin Sun (AC90_Jasmin)
--- Source: DAGCompiler/lib/output/ac90_jasmin.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/ac90_jasmin_enbloc.db
+-- Generated: 2026-03-21 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -33,14 +33,14 @@
 
 -- ifc_class             discipline  cnt
 -- --------------------  ----------  ---
--- IfcWall               STR         19 
+-- IfcWall               ARC         19 
 -- IfcWindow             ARC         12 
 -- IfcFurnishingElement  ARC         11 
 -- IfcDoor               ARC         8  
 -- IfcSlab               STR         5  
 -- IfcFlowTerminal       MEP         3  
 -- IfcStair              ARC         2  
--- IfcRailing            ARC         1  
+-- IfcRailing            STR         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

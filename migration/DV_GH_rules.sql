@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- GH: AC9 Haus G-H (AC9_HausGH)
--- Source: DAGCompiler/lib/output/ac9_hausgh.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/ac9_hausgh_enbloc.db
+-- Generated: 2026-03-21 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -40,15 +40,15 @@
 
 -- ifc_class                discipline  cnt
 -- -----------------------  ----------  ---
--- IfcWall                  STR         60 
+-- IfcWall                  ARC         60 
 -- IfcSlab                  STR         35 
 -- IfcWindow                ARC         35 
 -- IfcDoor                  ARC         25 
 -- IfcBeam                  STR         16 
--- IfcRailing               ARC         16 
+-- IfcRailing               STR         16 
 -- IfcStair                 ARC         4  
 -- IfcBuildingElementProxy  ARC         1  
--- IfcColumn                STR         1  
+-- IfcColumn                ARC         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

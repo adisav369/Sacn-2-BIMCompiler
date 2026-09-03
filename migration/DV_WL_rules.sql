@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WL: BimWhale Large Building (BimWhale_Large)
--- Source: DAGCompiler/lib/output/bimwhale_large.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/bimwhale_large_enbloc.db
+-- Generated: 2026-03-21 09:04
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -9,7 +9,6 @@
 
 -- ifc_class                storey   cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- -----------------------  -------  ---  --------  --------  --------  --------  --------
--- IfcOpeningElement        Unknown  60   509.0     628.0     1918.0    200.0     1550.0  
 -- IfcWindow                Level 1  28   558.0     558.0     1830.0    200.0     915.0   
 -- IfcDoor                  Level 1  18   692.0     692.0     2195.0    250.0     1643.0  
 -- IfcFurnishingElement     Level 1  14   1563.0    819.0     762.0     1563.0    1563.0  
@@ -22,17 +21,6 @@
 
 -- §2: Material distribution
 
--- ifc_class             material_name            cnt
--- --------------------  -----------------------  ---
--- IfcWindow             Glass                    42 
--- IfcDoor               Door - Frame             16 
--- IfcFurnishingElement  Laminate, Ivory, Matte   14 
--- IfcWall               Basic Wall:Outside wall  14 
--- IfcCovering           Compound Ceiling:Plain   5  
--- IfcWall               Basic Wall:Inside        4  
--- IfcSlab               Floor:Generic 150mm      3  
--- IfcDoor               Aluminum                 2  
--- IfcSlab               Default Roof             1  
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -42,30 +30,16 @@
 
 -- ifc_class                discipline  cnt
 -- -----------------------  ----------  ---
--- IfcOpeningElement        ARC         60 
 -- IfcWindow                ARC         42 
 -- IfcDoor                  ARC         18 
--- IfcWall                  STR         18 
+-- IfcWall                  ARC         18 
 -- IfcFurnishingElement     ARC         14 
 -- IfcBuildingElementProxy  ARC         13 
 -- IfcCovering              ARC         5  
--- IfcSlab                  STR         4  
+-- IfcSlab                  ARC         4  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
-
--- Rule: IfcOpeningElement_Unknown (60 instances, avg 509.0x628.0x1918.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcOpeningElement_Unknown', 'IfcOpeningElement', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcOpeningElement on Unknown: 60 instances, avg W=509.0 D=628.0 H=1918.0mm',
---     'BimWhale_Large');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '509.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '628.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1918.0');
 
 -- Rule: IfcWindow_Level_1 (28 instances, avg 558.0x558.0x1830.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,

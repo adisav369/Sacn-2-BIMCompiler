@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CP: Clinic Plumbing (Clinic_Plumbing)
--- Source: DAGCompiler/lib/output/clinic_plumbing.db
--- Generated: 2026-04-01 07:54
+-- Source: DAGCompiler/lib/output/clinic_plumbing_enbloc.db
+-- Generated: 2026-03-21 06:00
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -31,12 +31,10 @@
 
 -- ifc_class          discipline  cnt 
 -- -----------------  ----------  ----
--- IfcFlowFitting     MEP         3317
--- IfcFlowSegment     ARC         1931
--- IfcFlowSegment     MEP         962 
+-- IfcFlowFitting     MEP         3318
+-- IfcFlowSegment     MEP         2893
 -- IfcFlowController  MEP         254 
 -- IfcFlowTerminal    MEP         119 
--- IfcFlowFitting     ARC         1   
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

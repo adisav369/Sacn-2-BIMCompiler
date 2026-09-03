@@ -1,36 +1,26 @@
 -- ════════════════════════════════════════════════════════
 -- WT: BimWhale Tall Building (BimWhale_Tall)
--- Source: DAGCompiler/lib/output/bimwhale_tall.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/bimwhale_tall_enbloc.db
+-- Generated: 2026-03-21 09:04
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
 -- Use: identify typical element sizes for validation rules
 
--- ifc_class            storey   cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
--- -------------------  -------  ---  --------  --------  --------  --------  --------
--- IfcOpeningElement    Unknown  26   640.0     499.0     1884.0    200.0     915.0   
--- IfcWindow            Level 2  7    609.0     506.0     1830.0    200.0     915.0   
--- IfcWallStandardCase  Level 1  6    3433.0    4033.0    3900.0    200.0     8200.0  
--- IfcWallStandardCase  Level 2  6    3433.0    4033.0    4000.0    200.0     8200.0  
--- IfcWallStandardCase  Level 4  6    3433.0    4033.0    4000.0    200.0     8200.0  
--- IfcWallStandardCase  Level 5  6    3433.0    4033.0    4000.0    200.0     8200.0  
--- IfcWindow            Level 1  6    677.0     438.0     1830.0    200.0     915.0   
--- IfcDoor              Level 1  5    255.0     1182.0    2182.0    250.0     275.0   
--- IfcWindow            Level 4  4    915.0     200.0     1830.0    915.0     915.0   
--- IfcWindow            Level 5  4    915.0     200.0     1830.0    915.0     915.0   
+-- ifc_class  storey   cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- ---------  -------  ---  --------  --------  --------  --------  --------
+-- IfcWindow  Level 2  7    609.0     506.0     1830.0    200.0     915.0   
+-- IfcWall    Level 1  6    3433.0    4033.0    3900.0    200.0     8200.0  
+-- IfcWall    Level 2  6    3433.0    4033.0    4000.0    200.0     8200.0  
+-- IfcWall    Level 4  6    3433.0    4033.0    4000.0    200.0     8200.0  
+-- IfcWall    Level 5  6    3433.0    4033.0    4000.0    200.0     8200.0  
+-- IfcWindow  Level 1  6    677.0     438.0     1830.0    200.0     915.0   
+-- IfcDoor    Level 1  5    255.0     1182.0    2182.0    250.0     275.0   
+-- IfcWindow  Level 4  4    915.0     200.0     1830.0    915.0     915.0   
+-- IfcWindow  Level 5  4    915.0     200.0     1830.0    915.0     915.0   
 
 -- §2: Material distribution
 
--- ifc_class            material_name            cnt
--- -------------------  -----------------------  ---
--- IfcWindow            Glass                    21 
--- IfcWallStandardCase  Basic Wall:Outside wall  16 
--- IfcWallStandardCase  Basic Wall:Inside        8  
--- IfcDoor              Door - Frame             4  
--- IfcSlab              Floor:Generic 150mm      4  
--- IfcDoor              Aluminum                 1  
--- IfcSlab              Default Roof             1  
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -38,29 +28,15 @@
 
 -- §4: IFC class inventory
 
--- ifc_class            discipline  cnt
--- -------------------  ----------  ---
--- IfcOpeningElement    ARC         26 
--- IfcWallStandardCase  STR         24 
--- IfcWindow            ARC         21 
--- IfcDoor              ARC         5  
--- IfcSlab              STR         5  
+-- ifc_class  discipline  cnt
+-- ---------  ----------  ---
+-- IfcWall    ARC         24 
+-- IfcWindow  ARC         21 
+-- IfcDoor    ARC         5  
+-- IfcSlab    ARC         5  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
-
--- Rule: IfcOpeningElement_Unknown (26 instances, avg 640.0x499.0x1884.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcOpeningElement_Unknown', 'IfcOpeningElement', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcOpeningElement on Unknown: 26 instances, avg W=640.0 D=499.0 H=1884.0mm',
---     'BimWhale_Tall');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '640.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '499.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1884.0');
 
 -- Rule: IfcWindow_Level_2 (7 instances, avg 609.0x506.0x1830.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -75,11 +51,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1830.0');
 
--- Rule: IfcWallStandardCase_Level_1 (6 instances, avg 3433.0x4033.0x3900.0 mm)
+-- Rule: IfcWall_Level_1 (6 instances, avg 3433.0x4033.0x3900.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWallStandardCase_Level_1', 'IfcWallStandardCase', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWallStandardCase on Level 1: 6 instances, avg W=3433.0 D=4033.0 H=3900.0mm',
+-- VALUES ('IfcWall_Level_1', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 1: 6 instances, avg W=3433.0 D=4033.0 H=3900.0mm',
 --     'BimWhale_Tall');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3433.0');
@@ -88,11 +64,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3900.0');
 
--- Rule: IfcWallStandardCase_Level_2 (6 instances, avg 3433.0x4033.0x4000.0 mm)
+-- Rule: IfcWall_Level_2 (6 instances, avg 3433.0x4033.0x4000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWallStandardCase_Level_2', 'IfcWallStandardCase', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWallStandardCase on Level 2: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
+-- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 2: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
 --     'BimWhale_Tall');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3433.0');
@@ -101,11 +77,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '4000.0');
 
--- Rule: IfcWallStandardCase_Level_4 (6 instances, avg 3433.0x4033.0x4000.0 mm)
+-- Rule: IfcWall_Level_4 (6 instances, avg 3433.0x4033.0x4000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWallStandardCase_Level_4', 'IfcWallStandardCase', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWallStandardCase on Level 4: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
+-- VALUES ('IfcWall_Level_4', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 4: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
 --     'BimWhale_Tall');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3433.0');
@@ -114,11 +90,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '4000.0');
 
--- Rule: IfcWallStandardCase_Level_5 (6 instances, avg 3433.0x4033.0x4000.0 mm)
+-- Rule: IfcWall_Level_5 (6 instances, avg 3433.0x4033.0x4000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWallStandardCase_Level_5', 'IfcWallStandardCase', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWallStandardCase on Level 5: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
+-- VALUES ('IfcWall_Level_5', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 5: 6 instances, avg W=3433.0 D=4033.0 H=4000.0mm',
 --     'BimWhale_Tall');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3433.0');

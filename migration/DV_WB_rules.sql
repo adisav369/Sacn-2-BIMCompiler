@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WB: BimWhale Basic House (BimWhale_Basic)
--- Source: DAGCompiler/lib/output/bimwhale_basic.db
--- Generated: 2026-03-31 00:21
+-- Source: DAGCompiler/lib/output/bimwhale_basic_enbloc.db
+-- Generated: 2026-03-21 09:04
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -30,7 +30,7 @@
 -- -----------------------  ----------  ---
 -- IfcFurnishingElement     ARC         71 
 -- IfcWindow                ARC         19 
--- IfcWall                  STR         13 
+-- IfcWall                  ARC         13 
 -- IfcDoor                  ARC         8  
 -- IfcFlowTerminal          MEP         7  
 -- IfcBuildingElementProxy  ARC         4  

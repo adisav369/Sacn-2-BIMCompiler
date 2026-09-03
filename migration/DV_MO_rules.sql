@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- MO: Molio (Molio)
--- Source: DAGCompiler/lib/output/molio.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/molio_enbloc.db
+-- Generated: 2026-03-21 06:05
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -10,8 +10,9 @@
 -- ifc_class                storey     cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- -----------------------  ---------  ----  --------  --------  --------  --------  --------
 -- IfcRailing               Unknown    2066  117.0     25.0      1113.0    20.0      5513.0  
--- IfcOpeningElement        Unknown    245   1208.0    1308.0    2069.0    285.0     5104.0  
--- IfcWall                  Kælder     27    4191.0    4298.0    3102.0    100.0     27492.0 
+-- IfcStair                 Unknown    564   324.0     1440.0    189.0     10.0      6070.0  
+-- IfcWall                  Kælder     54    4191.0    4298.0    3102.0    100.0     27492.0 
+-- IfcDoor                  Kælder     28    281.0     1026.0    2100.0    40.0      1010.0  
 -- IfcWindow                Grundplan  22    1314.0    459.0     3015.0    165.0     3972.0  
 -- IfcWindow                2. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
 -- IfcWindow                3. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
@@ -23,14 +24,16 @@
 -- IfcDoor                  5. Sal     18    542.0     608.0     2100.0    40.0      1810.0  
 -- IfcWindow                1. Sal     17    1423.0    553.0     1479.0    165.0     1812.0  
 -- IfcDoor                  1. Sal     15    419.0     732.0     2100.0    40.0      1810.0  
--- IfcDoor                  Kælder     14    281.0     1026.0    2100.0    40.0      1010.0  
 -- IfcDoor                  Grundplan  12    598.0     996.0     2125.0    40.0      2955.0  
+-- IfcFlowTerminal          Kælder     12    619.0     483.0     563.0     500.0     685.0   
+-- IfcFurnishingElement     Kælder     12    2300.0    460.0     2290.0    1800.0    2400.0  
 -- IfcWall                  1. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
 -- IfcWall                  2. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
 -- IfcWall                  3. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
 -- IfcWall                  4. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
 -- IfcWall                  5. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
 -- IfcWall                  Grundplan  11    2997.0    1886.0    3241.0    100.0     14560.0 
+-- IfcFooting               Fundament  8     14187.0   10611.0   900.0     588.0     28080.0 
 -- IfcFurnishingElement     Grundplan  7     771.0     604.0     939.0     600.0     850.0   
 -- IfcSlab                  2. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
 -- IfcSlab                  3. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
@@ -43,18 +46,18 @@
 -- IfcFlowTerminal          4. Sal     6     619.0     483.0     563.0     500.0     685.0   
 -- IfcFlowTerminal          5. Sal     6     619.0     483.0     563.0     500.0     685.0   
 -- IfcFlowTerminal          Grundplan  6     619.0     483.0     563.0     500.0     685.0   
--- IfcFlowTerminal          Kælder     6     619.0     483.0     563.0     500.0     685.0   
--- IfcFurnishingElement     Kælder     6     2300.0    460.0     2290.0    1800.0    2400.0  
+-- IfcSlab                  Kælder     6     2200.0    2067.0    50.0      2200.0    2200.0  
 -- IfcFurnishingElement     1. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcFurnishingElement     2. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcFurnishingElement     3. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcFurnishingElement     4. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcFurnishingElement     5. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcWall                  6. sal     5     2580.0    2330.0    2475.0    100.0     6136.0  
+-- IfcColumn                Kælder     4     300.0     300.0     2754.0    300.0     300.0   
 -- IfcCovering              6. sal     4     14700.0   10828.0   141.0     645.0     28758.0 
 -- IfcSlab                  1. Sal     3     2200.0    2067.0    50.0      2200.0    2200.0  
 -- IfcSlab                  Grundplan  3     2200.0    2067.0    50.0      2200.0    2200.0  
--- IfcSlab                  Kælder     3     2200.0    2067.0    50.0      2200.0    2200.0  
+-- IfcBeam                  Kælder     2     9868.0    300.0     400.0     9868.0    9868.0  
 -- IfcBuildingElementProxy  Grundplan  2     171.0     150.0     55.0      93.0      250.0   
 -- IfcColumn                1. Sal     2     300.0     300.0     2822.0    300.0     300.0   
 -- IfcColumn                2. Sal     2     300.0     300.0     2822.0    300.0     300.0   
@@ -62,23 +65,9 @@
 -- IfcColumn                4. Sal     2     300.0     300.0     2812.0    300.0     300.0   
 -- IfcColumn                5. Sal     2     300.0     300.0     2812.0    300.0     300.0   
 -- IfcColumn                Grundplan  2     300.0     300.0     2822.0    300.0     300.0   
--- IfcColumn                Kælder     2     300.0     300.0     2754.0    300.0     300.0   
 
 -- §2: Material distribution
 
--- ifc_class                material_name                      cnt 
--- -----------------------  ---------------------------------  ----
--- IfcRailing               Stål - Bærende                     1959
--- IfcRailing               Træ - Gulv                         107 
--- IfcWall                  Beton - Letbeton Bærende           52  
--- IfcSlab                  GENERISK - STRUKTUREL              37  
--- IfcWall                  Beton - Armeret Bærende            37  
--- IfcColumn                GENERISK - STRUKTUREL              14  
--- IfcBeam                  GENERISK - STRUKTUREL              7   
--- IfcCovering              Aluminium                          4   
--- IfcWall                  Beton - Insitu Udfyldning          4   
--- IfcWall                  Beton - Letbeton Bærende Tagetage  3   
--- IfcBuildingElementProxy  GENERISK - STRUKTUREL              1   
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -88,16 +77,17 @@
 
 -- ifc_class                discipline  cnt 
 -- -----------------------  ----------  ----
--- IfcRailing               ARC         2066
--- IfcOpeningElement        ARC         245 
--- IfcDoor                  ARC         119 
+-- IfcRailing               STR         2066
+-- IfcStair                 ARC         564 
+-- IfcDoor                  ARC         133 
+-- IfcWall                  ARC         125 
 -- IfcWindow                ARC         119 
--- IfcWall                  STR         98  
--- IfcFlowTerminal          MEP         42  
--- IfcFurnishingElement     ARC         38  
--- IfcSlab                  STR         37  
--- IfcColumn                STR         14  
--- IfcBeam                  STR         7   
+-- IfcFlowTerminal          MEP         48  
+-- IfcFurnishingElement     ARC         44  
+-- IfcSlab                  STR         40  
+-- IfcColumn                ARC         16  
+-- IfcBeam                  STR         8   
+-- IfcFooting               ARC         8   
 -- IfcCovering              ARC         4   
 -- IfcBuildingElementProxy  ARC         2   
 
@@ -117,24 +107,24 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1113.0');
 
--- Rule: IfcOpeningElement_Unknown (245 instances, avg 1208.0x1308.0x2069.0 mm)
+-- Rule: IfcStair_Unknown (564 instances, avg 324.0x1440.0x189.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcOpeningElement_Unknown', 'IfcOpeningElement', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcOpeningElement on Unknown: 245 instances, avg W=1208.0 D=1308.0 H=2069.0mm',
+-- VALUES ('IfcStair_Unknown', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on Unknown: 564 instances, avg W=324.0 D=1440.0 H=189.0mm',
 --     'Molio');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1208.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1308.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1440.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2069.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
 
--- Rule: IfcWall_Kælder (27 instances, avg 4191.0x4298.0x3102.0 mm)
+-- Rule: IfcWall_Kælder (54 instances, avg 4191.0x4298.0x3102.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcWall_Kælder', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Kælder: 27 instances, avg W=4191.0 D=4298.0 H=3102.0mm',
+--     'IfcWall on Kælder: 54 instances, avg W=4191.0 D=4298.0 H=3102.0mm',
 --     'Molio');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '4191.0');
@@ -142,6 +132,19 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '4298.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3102.0');
+
+-- Rule: IfcDoor_Kælder (28 instances, avg 281.0x1026.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Kælder', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Kælder: 28 instances, avg W=281.0 D=1026.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '281.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1026.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
 
 -- Rule: IfcWindow_Grundplan (22 instances, avg 1314.0x459.0x3015.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -286,19 +289,6 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
 
--- Rule: IfcDoor_Kælder (14 instances, avg 281.0x1026.0x2100.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDoor_Kælder', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Kælder: 14 instances, avg W=281.0 D=1026.0 H=2100.0mm',
---     'Molio');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '281.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1026.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
-
 -- Rule: IfcDoor_Grundplan (12 instances, avg 598.0x996.0x2125.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -311,6 +301,32 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '996.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2125.0');
+
+-- Rule: IfcFlowTerminal_Kælder (12 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Kælder', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Kælder: 12 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFurnishingElement_Kælder (12 instances, avg 2300.0x460.0x2290.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Kælder', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Kælder: 12 instances, avg W=2300.0 D=460.0 H=2290.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '460.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2290.0');
 
 -- Rule: IfcWall_1._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -389,6 +405,19 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3241.0');
+
+-- Rule: IfcFooting_Fundament (8 instances, avg 14187.0x10611.0x900.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFooting_Fundament', 'IfcFooting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFooting on Fundament: 8 instances, avg W=14187.0 D=10611.0 H=900.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '14187.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '10611.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '900.0');
 
 -- Rule: IfcFurnishingElement_Grundplan (7 instances, avg 771.0x604.0x939.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -546,31 +575,18 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
 
--- Rule: IfcFlowTerminal_Kælder (6 instances, avg 619.0x483.0x563.0 mm)
+-- Rule: IfcSlab_Kælder (6 instances, avg 2200.0x2067.0x50.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowTerminal_Kælder', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowTerminal on Kælder: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+-- VALUES ('IfcSlab_Kælder', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Kælder: 6 instances, avg W=2200.0 D=2067.0 H=50.0mm',
 --     'Molio');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
-
--- Rule: IfcFurnishingElement_Kælder (6 instances, avg 2300.0x460.0x2290.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFurnishingElement_Kælder', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFurnishingElement on Kælder: 6 instances, avg W=2300.0 D=460.0 H=2290.0mm',
---     'Molio');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2300.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '460.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2290.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
 
 -- Rule: IfcFurnishingElement_1._Sal (5 instances, avg 600.0x760.0x901.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -650,6 +666,19 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2475.0');
 
+-- Rule: IfcColumn_Kælder (4 instances, avg 300.0x300.0x2754.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Kælder', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Kælder: 4 instances, avg W=300.0 D=300.0 H=2754.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2754.0');
+
 -- Rule: IfcCovering_6._sal (4 instances, avg 14700.0x10828.0x141.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -681,19 +710,6 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Grundplan', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Grundplan: 3 instances, avg W=2200.0 D=2067.0 H=50.0mm',
---     'Molio');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
-
--- Rule: IfcSlab_Kælder (3 instances, avg 2200.0x2067.0x50.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcSlab_Kælder', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Kælder: 3 instances, avg W=2200.0 D=2067.0 H=50.0mm',
 --     'Molio');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');

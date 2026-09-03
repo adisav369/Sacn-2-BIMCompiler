@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RS: Revit Structural (Revit_STR)
--- Source: DAGCompiler/lib/output/revit_str.db
--- Generated: 2026-04-17 09:01
+-- Source: DAGCompiler/lib/output/revit_str_enbloc.db
+-- Generated: 2026-03-21 09:27
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -10,7 +10,7 @@
 -- ifc_class          storey   cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- -----------------  -------  ----  --------  --------  --------  --------  --------
 -- IfcReinforcingBar  Unknown  3680  1210.0    767.0     899.0     8.0       24360.0 
--- IfcBeam            Unknown  370   2339.0    1065.0    340.0     50.0      13487.0 
+-- IfcBeam            Unknown  370   2339.0    1059.0    340.0     50.0      13487.0 
 -- IfcSlab            Unknown  37    2076.0    1686.0    3041.0    300.0     24410.0 
 -- IfcColumn          Unknown  30    116.0     155.0     3484.0    64.0      450.0   
 -- IfcWall            Unknown  9     10269.0   3133.0    2756.0    280.0     24410.0 
@@ -31,11 +31,11 @@
 -- IfcReinforcingBar  STR         3680
 -- IfcBeam            STR         370 
 -- IfcSlab            STR         37  
--- IfcColumn          STR         30  
--- IfcWall            STR         9   
--- IfcFooting         STR         4   
+-- IfcColumn          ARC         30  
+-- IfcWall            ARC         9   
+-- IfcFooting         ARC         4   
 -- IfcMember          STR         2   
--- IfcStairFlight     ARC         1   
+-- IfcStairFlight     STR         1   
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
@@ -53,16 +53,16 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '899.0');
 
--- Rule: IfcBeam_Unknown (370 instances, avg 2339.0x1065.0x340.0 mm)
+-- Rule: IfcBeam_Unknown (370 instances, avg 2339.0x1059.0x340.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcBeam_Unknown', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Unknown: 370 instances, avg W=2339.0 D=1065.0 H=340.0mm',
+--     'IfcBeam on Unknown: 370 instances, avg W=2339.0 D=1059.0 H=340.0mm',
 --     'Revit_STR');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2339.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1065.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1059.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '340.0');
 

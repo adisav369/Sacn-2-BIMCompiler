@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CS: Clinic Structural (Clinic_Structural)
--- Source: DAGCompiler/lib/output/clinic_structural.db
--- Generated: 2026-03-31 00:21
+-- Source: DAGCompiler/lib/output/clinic_structural_enbloc.db
+-- Generated: 2026-03-21 05:44
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -36,14 +36,14 @@
 -- ifc_class       discipline  cnt
 -- --------------  ----------  ---
 -- IfcBeam         STR         738
--- IfcColumn       STR         195
--- IfcFooting      STR         96 
--- IfcWall         STR         26 
+-- IfcColumn       ARC         195
+-- IfcFooting      ARC         96 
+-- IfcWall         ARC         26 
 -- IfcSlab         STR         13 
 -- IfcRoof         ARC         5  
--- IfcRailing      ARC         3  
+-- IfcRailing      STR         3  
 -- IfcRampFlight   ARC         1  
--- IfcStairFlight  ARC         1  
+-- IfcStairFlight  STR         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CH: Clinic HVAC (Clinic_HVAC)
--- Source: DAGCompiler/lib/output/clinic_hvac.db
--- Generated: 2026-04-01 07:54
+-- Source: DAGCompiler/lib/output/clinic_hvac_enbloc.db
+-- Generated: 2026-03-21 05:48
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -30,13 +30,10 @@
 
 -- ifc_class          discipline  cnt 
 -- -----------------  ----------  ----
--- IfcFlowFitting     MEP         1541
--- IfcFlowSegment     MEP         1060
--- IfcFlowSegment     ARC         488 
--- IfcFlowTerminal    MEP         437 
+-- IfcFlowFitting     MEP         1590
+-- IfcFlowSegment     MEP         1548
+-- IfcFlowTerminal    MEP         440 
 -- IfcFlowController  MEP         115 
--- IfcFlowFitting     ARC         49  
--- IfcFlowTerminal    ARC         3   
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

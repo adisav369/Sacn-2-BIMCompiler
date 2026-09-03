@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- NI: AC90 Niedriha (AC90_Niedriha)
--- Source: DAGCompiler/lib/output/ac90_niedriha.db
--- Generated: 2026-03-31 00:21
+-- Source: DAGCompiler/lib/output/ac90_niedriha_enbloc.db
+-- Generated: 2026-03-21 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -34,12 +34,12 @@
 
 -- ifc_class  discipline  cnt
 -- ---------  ----------  ---
--- IfcWall    STR         45 
+-- IfcWall    ARC         45 
 -- IfcDoor    ARC         16 
 -- IfcWindow  ARC         16 
 -- IfcBeam    STR         13 
 -- IfcSlab    STR         8  
--- IfcColumn  STR         4  
+-- IfcColumn  ARC         4  
 -- IfcStair   ARC         2  
 
 -- §5: Candidate validation rules for ERP.db
