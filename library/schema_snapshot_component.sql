@@ -175,7 +175,6 @@ CREATE TABLE ad_building_bom (
         is_active         INTEGER DEFAULT 1,
         UNIQUE(template_id, floor_type_id, seq_no)
     );
-CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE ad_unit_type (
         unit_type_id      TEXT PRIMARY KEY,    -- '1BR_A', '2BR_B', 'STUDIO'
         unit_name         TEXT NOT NULL,

@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS "m_attribute" (
     FOREIGN KEY (M_BOM_Line_ID) REFERENCES "m_bom_line"(M_BOM_Line_ID),
     UNIQUE(M_BOM_Line_ID, param_key)
 );
-CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE M_Product_Category (
     M_Product_Category_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
     Value             TEXT NOT NULL UNIQUE,  -- old TEXT PK (e.g., 'RE', 'LIVING')
@@ -209,7 +208,7 @@ CREATE TABLE IF NOT EXISTS "M_Product" (
         code_ref          TEXT,
         is_active         INTEGER DEFAULT 1
     , extracted_from TEXT NOT NULL DEFAULT 'PENDING'
-    CHECK(extracted_from NOT IN ('','TODO','UNKNOWN')), material_name TEXT, material_rgba TEXT, component_id INTEGER, bom_id TEXT REFERENCES m_bom(bom_id), ifc_class TEXT, M_AttributeSet_ID TEXT, Name TEXT, Description TEXT, M_Product_Category_ID TEXT REFERENCES M_Product_Category(M_Product_Category_ID));
+    CHECK(extracted_from NOT IN ('','TODO','UNKNOWN')), material_name TEXT, material_rgba TEXT, component_id INTEGER, bom_id TEXT REFERENCES m_bom(bom_id), ifc_class TEXT, M_AttributeSet_ID TEXT, Description TEXT, M_Product_Category_ID TEXT REFERENCES M_Product_Category(M_Product_Category_ID));
 CREATE TABLE ad_element_dependency (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type TEXT NOT NULL,

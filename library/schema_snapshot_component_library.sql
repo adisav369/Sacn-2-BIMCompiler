@@ -184,7 +184,6 @@ CREATE TABLE ad_building_grid (
     is_active     INTEGER DEFAULT 1, building_id INTEGER REFERENCES ad_building(id),
     UNIQUE(building_type, axis, grid_label)
 );
-CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE ad_room_boundary (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type TEXT NOT NULL,

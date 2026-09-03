@@ -283,7 +283,7 @@ echo "── Phase 8b: Generative MEP products ──"
 for gf in DV043_generative_mep_products \
            DV044_space_type_ceiling_height DV045_product_dimensions \
            DV046_generative_product_lod_bridge DV047_fixture_tack_points DV048_unmapped_product_lod \
-           DV049_fridge_kitchen_schedule; do
+           DV049_fridge_kitchen_schedule DV050_deactivate_sprinkler_no_geometry; do
     [ -f "$MIGRATION/${gf}.sql" ] && apply "$MIGRATION/${gf}.sql" "$gf"
 done
 echo ""
