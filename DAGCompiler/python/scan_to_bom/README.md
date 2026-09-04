@@ -1161,6 +1161,16 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   confirmation that the trace was right**; the other is real scan-coverage occlusion, sitting
   physically beyond where the scanner ever reached (zero points at any stage). Nothing in the
   segmentation code can recover that one; it needs a rescan, not a fix.
+- **`IfcColumn` has no classification path at all — a complete class gap, never attempted.**
+  Measured: 0 predicted vs 9 real (B_ICU) and 0 vs 7 real (Building A). This is not a tuning or
+  accuracy problem — `classify.py` mentions `IfcColumn` only in its discipline map (`"IfcColumn":
+  "STR"`), and no branch can ever emit it, so the recall is structurally 0 and always has been.
+  Columns are geometrically distinctive (compact footprint, full floor-to-ceiling height,
+  free-standing rather than wall-embedded), so unlike doors/windows this looks genuinely
+  tractable from geometry alone — but it needs its own session with the same rigor applied
+  everywhere else here: measure real column geometry in the DeKH ground truth first, check what
+  the existing vertical-plane and cluster paths currently do with those points, and verify
+  against the synthetic baseline before trusting any new branch. Not started.
 - **Flush-mounted openings (doors) are not recoverable by geometry alone — a capability
   boundary, not a defect.** Traced from Building C's gap-to-baseline (15/34 = 44.1% vs the
   BIMStruct3D baseline's 25/34 = 73.5%), which turned out to be **entirely doors**: we match
@@ -1217,8 +1227,43 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   matched their real element's footprint within 35% — most of the misses are the same
   fragmentation pattern (e.g. one real sloped-roof element split across 6 written segments,
   whose *union* does reconstruct the real footprint, confirming it's this issue and not
-  something new). Still not attempted here — same reasoning as before, it needs domain
-  knowledge about surface continuity that pure per-segment geometry doesn't have.
+  something new).
+
+  **Attempted and REJECTED on measured evidence (Phase 6) — a distance-based parallel-face
+  merge is not safe on this data at any threshold.** Implemented post-classification on
+  `IfcWall` planes only (parallel normals, laterally co-located, perpendicular gap under a
+  threshold, plus an assembly-thickness cap), then measured every candidate pair against
+  ground truth by attributing each predicted face to its dominant real wall:
+
+  | Threshold | B_ICU good / harmful | Building A good / harmful |
+  |---|---|---|
+  | 0.05m | 9 / 6 | 49 / **72** |
+  | 0.10m | 25 / 19 | 98 / **163** |
+  | 0.20m | 42 / 37 | 196 / **349** |
+
+  On Building A, fusing two *genuinely different* real walls is the majority outcome at
+  **every** threshold tested, including the tightest. Real walls in these buildings sit close
+  enough together that perpendicular proximity simply does not separate "two faces of one
+  wall" from "faces of two different walls". Shipping it would have reproduced exactly the
+  failure the `IfcFurniture`-only `MERGEABLE_CLASSES` exclusion above was written to prevent,
+  so the change was reverted rather than tuned.
+
+  **Methodological note worth keeping, because it nearly shipped a bad merge:** an initial
+  measurement said 0.10m produced *zero* wrong fusions. That was wrong. It used the AABB's
+  minimum-extent axis as a proxy for "wall thickness direction", which is only valid for
+  axis-aligned walls — and it was validated against GT walls, which *are* axis-aligned in
+  these models, so the proxy looked sound. Predicted segments include walls running diagonally
+  in plan, where the AABB minimum extent is a projection artifact, not a thickness (measured:
+  median 0.766m, max 3.703m — nothing like a wall thickness). Re-measuring with the segments'
+  actual plane normals, which `_same_plane_equation` already uses, reversed the conclusion.
+  Any future attempt here should use plane normals, and should validate on *predicted pairs
+  attributed to ground truth*, never on GT-to-GT separations.
+
+  What the same measurements suggest might work, none of it attempted: requiring the two faces
+  to have near-identical in-plane footprint (two faces of one wall do; faces of different walls
+  usually don't), or checking that the gap between them is empty of points (a wall core is;
+  the space between two walls generally is not). Both are real signals beyond distance — and
+  both need their own measurement pass before being trusted.
 - **Material thickness / depth is not measurable from a single-sided scan** — Phase 4's
   dimensional check found the axis with the smallest real extent on thin/planar elements (a
   slab's thickness, a wall's depth) reads as just the scan's noise band, not the true thickness
