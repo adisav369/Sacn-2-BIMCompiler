@@ -623,8 +623,29 @@ orientation) for the same RANSAC compute, so raw accepted-plane count before Pha
 rose accordingly (45 → 551 on the full DeKH scan) — real, evidence-gated surfaces (each still
 individually clears `MIN_PLANE_INLIERS`), not an invented cap change.
 
-2 of 31 real walls remain unmatched — not yet traced to a specific cause; worth a quick look in
-a future session but not blocking Buildings A/C.
+2 of 31 real walls remain unmatched (unchanged under the corrected match criterion below — see
+"Match-criterion fix"). Traced both, two different real causes, not one:
+
+- **`2ph7MLnXD1bPhR$mzRgMlx`** (a short, 1.3m wall): fit a plane to just this wall's own points
+  directly (ignoring everything else nearby) — 24,343 real points, 40,512 pts/m³, normal 89.9°
+  from Z (i.e. genuinely, cleanly vertical, 3cm thick spread). The points are real and are a
+  wall. But every prediction whose AABB happens to overlap this small footprint is a large
+  `oblique`/`IfcRoof` segment (20K-130K points each) that merely spans through the area — this
+  wall's own points never won a "best vertical candidate" slot in any of the 40 search rounds
+  and fell into the residual pool, ending up inside a large, non-specific 606K-point leftover
+  cluster instead of its own segment. This is a smaller-scale echo of the same competition
+  dynamic the interleaved-search fix addressed: guaranteeing vertical *a* slot per round doesn't
+  guarantee every individual real wall wins that slot over a bigger one.
+- **`13OLwq45n4L9MQCha$HlGf`**: zero points, at every stage checked (raw downsample, any
+  padding). Its Y-extent (10.21-10.37m, normalized frame) sits just past the whole point cloud's
+  own Y-extent (max 10.2m) — this wall is physically beyond where the scanner ever reached.
+  Padding the search by 0.3m confirms real points exist right up to that boundary and stop dead
+  at it. Real scan-coverage occlusion, not a pipeline gap — nothing to extract because nothing
+  was ever measured there.
+
+Neither needs a code fix right now: the second is fundamentally unrecoverable from this scan; the
+first is a real, minor, residual instance of within-orientation competition, worth revisiting if
+it turns out to affect more than one wall in a future scene, not chased further this session.
 
 ### Buildings A and C — does the fix generalize, or was B_ICU scene-specific?
 
@@ -796,7 +817,11 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
 
 - **2 of 31 real DeKH_B_ICU walls still unmatched** after the interleaved per-orientation search
   fix (see "Real-world validation (Phase 6)" above — wall recovery is 29/31 now, up from 5/31).
-  Not yet traced to a specific cause.
+  Traced (see above): one is real scan-coverage occlusion (physically beyond the scanned area,
+  unrecoverable); the other is a genuinely vertical wall whose own points never won a
+  best-vertical-candidate round against bigger walls — a minor residual instance of the same
+  within-orientation competition the interleaving fix addressed, not chased further since it's a
+  single wall in a single scene.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
