@@ -591,13 +591,35 @@ the first plausible one:
    search keeps finding ahead of walls regardless. The absorption fix caught exactly the failure
    mode it was designed for; this is a different, larger problem it was never meant to solve.
 
-**Status: real, not occlusion-dominated, not (only) piecemeal-rediscovery — genuine RANSAC
-search-order starvation by legitimate horizontal clutter density in real cluttered rooms. Not
-yet fixed.** A hard per-orientation search cap was considered and rejected (would risk missing
-buildings with genuinely multiple real horizontal surfaces — mezzanines, stepped ceilings — the
-same way this bug just missed walls); something like search-order interleaving or a
-budget-reservation scheme across orientations is the likely shape of a real fix, but that's an
-open design decision for its own dedicated, reviewed session, not a rushed end-of-session guess.
+**Fixed: interleaved per-orientation search.** Before picking an approach, checked the actual
+`segment_pointcloud()` loop against three named candidates (reserve a fixed search-budget split
+per orientation; interleave best-vertical/best-horizontal each round; a two-pass floor/ceiling-
+first extraction) — the floor/ceiling-first option turned out to already be mostly captured by
+the rediscovery-absorption fix above (floor/ceiling re-discovery is already free; the real
+remaining competitor is *other* horizontal clutter, not floor/ceiling), so it wouldn't have
+generalized to the actual cause. Went with interleaving: `_fit_plane_ransac_multi()` tracks the
+best-supported candidate **per orientation class** (vertical/horizontal/oblique) within one
+RANSAC pass — no extra iterations, same compute — instead of only the single biggest candidate
+overall, and each round now accepts every orientation whose candidate clears
+`MIN_PLANE_INLIERS`, processed vertical-first so a boundary point contested between two
+orientations' inlier sets goes to the wall candidate, not the (usually larger) floor/ceiling/
+clutter one.
+
+Verified two ways before trusting it, same discipline as every fix this project: the synthetic
+Sample House baseline first (coverage 58/58 unchanged, cluster fragmentation actually improved
+12/58→1/58 — fewer stray points fall through to the clustering stage now that more real planes
+get found; one small regression traced to its real cause — a single `IfcMember` picked up four
+1-point boundary-noise contacts from having 2.5x more accepted planes nearby, not a structural
+break, its own dominant segment stayed at ~95% purity), then re-ran DeKH_B_ICU itself: **wall
+recovery 5/31 → 29/31 (93.5%)**, overall spatial match 13/82 (15.9%) → 36/82 (43.9%), closing
+most of the gap to the published baseline's 39/82 (47.6%). `MAX_PLANES=40` still means 40 search
+*rounds*, not 40 accepted planes — each round can now accept up to 3 plane equations (one per
+orientation) for the same RANSAC compute, so raw accepted-plane count before Phase 2.5 merge
+rose accordingly (45 → 551 on the full DeKH scan) — real, evidence-gated surfaces (each still
+individually clears `MIN_PLANE_INLIERS`), not an invented cap change.
+
+2 of 31 real walls remain unmatched — not yet traced to a specific cause; worth a quick look in
+a future session but not blocking Buildings A/C.
 
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
@@ -659,19 +681,9 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
 
 ## What's still not done — deliberately deferred
 
-- **RANSAC plane search is starved by real horizontal clutter in dense, cluttered rooms**
-  (Phase 6, DeKH_B_ICU) — a real hospital ICU has many genuinely distinct real horizontal
-  surfaces (equipment, furniture, counters) that legitimately compete with walls for
-  `MAX_PLANES`'s biggest-remaining-plane-first search order and usually win (only 5-6 of 31
-  real walls ever got discovered as a plane at all). Piecemeal re-discovery of the *same*
-  surface was checked and fixed (`_same_plane_equation()`-based absorption, verified against
-  both the synthetic baseline and a 508→113 raw-plane-count drop on DeKH_B_ICU itself) but
-  barely moved wall recovery (5→6) — confirming genuinely-distinct real clutter, not
-  duplicate-surface waste, is the dominant remaining cause. Not fixed: a hard per-orientation
-  cap was considered and rejected (would risk missing real buildings with genuinely multiple
-  horizontal surfaces — mezzanines, stepped ceilings — the same way this bug just missed
-  walls); the real fix is likely a search-order or budget-reservation redesign, which is an
-  open design decision left for its own dedicated session.
+- **2 of 31 real DeKH_B_ICU walls still unmatched** after the interleaved per-orientation search
+  fix (see "Real-world validation (Phase 6)" above — wall recovery is 29/31 now, up from 5/31).
+  Not yet traced to a specific cause.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in

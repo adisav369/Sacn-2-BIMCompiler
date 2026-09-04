@@ -22,6 +22,12 @@ own within-stage progress logging) and re-run without losing the stages before i
     python3 run_dekh_staged.py --stage segment --checkpoint-dir <same dir>
     python3 run_dekh_staged.py --stage classify --checkpoint-dir <same dir> \
         --gt-ifc-extracted <path> --pred-ifc-extracted <path>
+
+--stage segment is itself resumable one level deeper (Phase 6, interleaved per-orientation
+search): a real 23.7M-point cloud needs more than 10 minutes of RANSAC search rounds even
+before component-splitting/clustering, so it checkpoints after every round it doesn't finish
+in time and picks back up from there — just re-run the identical `--stage segment` command
+until it logs "STAGE 2/3 (segment) COMPLETE" instead of "round checkpoint written".
 """
 
 from __future__ import annotations
@@ -68,9 +74,21 @@ def stage_downsample(args):
 
 
 def stage_segment(args):
+    """Resumable: MAX_PLANES rounds of plane extraction can exceed this environment's single
+    ~10-minute foreground-call limit on a real 23M-point scan (confirmed — see
+    _plane_extraction_round's docstring in segment.py). Each invocation runs rounds until
+    either plane extraction genuinely finishes (proceeds straight to floor/ceiling + residual
+    clustering + the final stage2_segments.pkl checkpoint) or a wall-clock round-time-budget
+    is hit (writes a ROUND checkpoint and returns — re-run the exact same command to resume
+    from the next round). `xyz`/`tack_point` are NOT stored in the round checkpoint — they're
+    cheaply and deterministically reloaded from stage1 + normalize_pointcloud() on every
+    invocation (normalize measured at 1.4s on the full 23.7M-point cloud) rather than
+    duplicating ~570MB of point data into every round checkpoint write.
+    """
     from pointcloud_io import PointCloud
     from normalize import normalize_pointcloud
-    from segment import segment_pointcloud, merge_coplanar_fragments
+    from segment import (merge_coplanar_fragments, _plane_extraction_round,
+                          _finish_segmentation, MAX_PLANES, MIN_PLANE_INLIERS)
 
     ckpt_dir = Path(args.checkpoint_dir)
     in_pc = ckpt_dir / "stage1_pointcloud.npz"
@@ -79,18 +97,75 @@ def stage_segment(args):
 
     _log(f"STAGE 2/3 (segment): loading checkpoint {in_pc}")
     data = np.load(in_pc)
-    xyz = data["xyz"]
+    raw_xyz = data["xyz"]
     rgb = data["rgb"] if bool(data["has_rgb"]) else None
-    pc = PointCloud(xyz, rgb)
+    pc = PointCloud(raw_xyz, rgb)
     _log(f"STAGE 2/3 loaded {len(pc)} points")
 
     t0 = time.time()
     pc, tack_point = normalize_pointcloud(pc, log=_log)
     _log(f"STAGE 2/3 normalize done in {time.time()-t0:.1f}s")
+    xyz = pc.xyz
 
+    round_ckpt_path = ckpt_dir / "stage2_round_checkpoint.pkl"
+    if round_ckpt_path.exists():
+        _log(f"STAGE 2/3 resuming from round checkpoint {round_ckpt_path}")
+        with open(round_ckpt_path, "rb") as f:
+            state = pickle.load(f)
+        remaining_mask = state["remaining_mask"]
+        rng = np.random.default_rng()
+        rng.bit_generator.state = state["rng_state"]
+        segments = state["segments"]
+        seg_id = state["seg_id"]
+        leftover_chunks = state["leftover_chunks"]
+        reject_stats = state["reject_stats"]
+        plane_count = state["plane_count"]
+        _log(f"STAGE 2/3 resumed at round {plane_count}/{MAX_PLANES}, "
+             f"{len(segments)} plane segments so far, "
+             f"{int(remaining_mask.sum())} points not yet touched by a plane search")
+    else:
+        remaining_mask = np.ones(len(xyz), dtype=bool)
+        rng = np.random.default_rng(0)
+        segments = []
+        seg_id = 0
+        leftover_chunks = []
+        reject_stats = {"fragments": 0, "points": 0}
+        plane_count = 0
+
+    t_budget_start = time.time()
+    stopped_for_time_budget = False
+    while plane_count < MAX_PLANES:
+        if time.time() - t_budget_start > args.round_time_budget_s:
+            stopped_for_time_budget = True
+            break
+        seg_id, found_any, accepted_any = _plane_extraction_round(
+            xyz, remaining_mask, rng, segments, seg_id, leftover_chunks, reject_stats,
+            _log, plane_count + 1)
+        if not found_any:
+            _log(f"STAGE 2/3 plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
+                 f"among remaining points — plane extraction complete")
+            break
+        if accepted_any:
+            plane_count += 1
+
+    if stopped_for_time_budget:
+        with open(round_ckpt_path, "wb") as f:
+            pickle.dump({"remaining_mask": remaining_mask, "rng_state": rng.bit_generator.state,
+                         "segments": segments, "seg_id": seg_id, "leftover_chunks": leftover_chunks,
+                         "reject_stats": reject_stats, "plane_count": plane_count},
+                        f, protocol=pickle.HIGHEST_PROTOCOL)
+        _log(f"STAGE 2/3 round time budget ({args.round_time_budget_s}s) reached at round "
+             f"{plane_count}/{MAX_PLANES} ({len(segments)} plane segments so far) — round "
+             f"checkpoint written -> {round_ckpt_path} — re-run the identical command to continue")
+        return
+
+    _log(f"STAGE 2/3 plane extraction complete at round {plane_count}/{MAX_PLANES} "
+         f"({len(segments)} plane segments) — finishing (floor/ceiling relabel + "
+         f"residual clustering)")
     t0 = time.time()
-    segments = segment_pointcloud(pc, log=_log)
-    _log(f"STAGE 2/3 segment_pointcloud done in {time.time()-t0:.1f}s -> {len(segments)} raw segments")
+    segments = _finish_segmentation(xyz, remaining_mask, segments, seg_id, leftover_chunks,
+                                     reject_stats["fragments"], reject_stats["points"], _log)
+    _log(f"STAGE 2/3 finish done in {time.time()-t0:.1f}s -> {len(segments)} segments")
 
     t0 = time.time()
     segments = merge_coplanar_fragments(segments, log=_log)
@@ -101,9 +176,11 @@ def stage_segment(args):
 
     out_path = ckpt_dir / "stage2_segments.pkl"
     with open(out_path, "wb") as f:
-        pickle.dump({"segments": segments, "xyz": pc.xyz, "floor_z": floor_z,
+        pickle.dump({"segments": segments, "xyz": xyz, "floor_z": floor_z,
                      "tack_point": tack_point}, f, protocol=pickle.HIGHEST_PROTOCOL)
     _log(f"STAGE 2/3 checkpoint written -> {out_path}")
+    if round_ckpt_path.exists():
+        round_ckpt_path.unlink()
     _log("STAGE 2/3 (segment) COMPLETE")
 
 
@@ -208,6 +285,12 @@ def main():
     ap.add_argument("--laz", help="required for --stage downsample")
     ap.add_argument("--npy", default=None, help="optional for --stage downsample")
     ap.add_argument("--voxel-size", type=float, default=0.01)
+    ap.add_argument("--round-time-budget-s", type=float, default=480.0,
+                     help="--stage segment only: wall-clock budget per invocation for plane-"
+                          "extraction rounds, leaving headroom under this environment's ~10-"
+                          "minute single-foreground-call limit for npz load/normalize/pickle "
+                          "overhead. Re-run the identical command to resume from a round "
+                          "checkpoint if this is hit before all MAX_PLANES rounds complete.")
     ap.add_argument("--gt-ifc-extracted", default=None, help="for --stage classify")
     ap.add_argument("--pred-ifc-extracted", default=None, help="for --stage classify")
     args = ap.parse_args()

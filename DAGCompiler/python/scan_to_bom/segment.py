@@ -16,8 +16,11 @@ later, better algorithm can revisit low-confidence segments; Phase 3 must not tr
 as equivalent to confident ones.
 
 Algorithm, in order:
-  1. Iterative RANSAC plane extraction — repeatedly find the best-supported plane among
-     remaining points; stop when no plane clears MIN_PLANE_INLIERS.
+  1. Iterative RANSAC plane extraction — each round finds the best-supported plane PER
+     ORIENTATION CLASS (vertical/horizontal/oblique) among remaining points, not just the
+     single biggest overall (Phase 6 fix — see _fit_plane_ransac_multi's docstring: a plain
+     "biggest wins" search lets real horizontal clutter starve wall discovery of search
+     budget). Stops when no orientation clears MIN_PLANE_INLIERS.
   2. Each accepted plane is split into spatially-connected components (two physically
      separate walls can share the same orientation/offset — e.g. two segments of the same
      straight wall line broken by a doorway gap — and must not be merged into one segment).
@@ -51,7 +54,15 @@ RANSAC_DIST_THRESHOLD_M = 0.02      # a point counts as a plane inlier within 2c
 RANSAC_ITERATIONS = 400             # per plane search
 MIN_PLANE_INLIERS = 300             # below this, not worth calling a plane at all
 MIN_PLANE_CONFIDENT_INLIERS = 1500  # at/above this inlier count, confidence = 1.0
-MAX_PLANES = 40                     # hard stop — a building has a bounded number of surfaces
+MAX_PLANES = 40                     # hard stop on SEARCH ROUNDS, not accepted planes — a
+                                     # building has a bounded number of surfaces, but since
+                                     # Phase 6's per-orientation search (below) can accept up
+                                     # to 3 new plane equations per round (one per orientation
+                                     # class), and each of those can itself split into several
+                                     # component segments, actual accepted-segment count was
+                                     # already round-count-independent before this change and
+                                     # remains so — this caps RANSAC search rounds (bounded
+                                     # wall-clock work), not the number of real surfaces found
 NORMAL_ANGLE_TOL_DEG = 8.0           # two planes' normals within this angle + offsets within
 OFFSET_TOL_M = 0.05                  # OFFSET_TOL_M count as "the same real plane equation" —
                                       # used both by _same_plane_equation() (RANSAC-rediscovery
@@ -115,11 +126,24 @@ class Segment:
         return (self.aabb_min + self.aabb_max) / 2.0
 
 
-def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator, log=None,
-                       progress_every: int = 100) -> tuple[np.ndarray, float, np.ndarray] | None:
-    """One RANSAC search over `xyz` (all remaining, unassigned points). Returns
-    (normal, offset, inlier_mask) for the best plane found, or None if nothing clears
-    MIN_PLANE_INLIERS.
+def _fit_plane_ransac_multi(xyz: np.ndarray, rng: np.random.Generator, log=None,
+                             progress_every: int = 100
+                             ) -> dict[str, tuple[np.ndarray, float, np.ndarray]]:
+    """One RANSAC search over `xyz` (all remaining, unassigned points) — tracks the
+    best-supported candidate PER ORIENTATION CLASS ('horizontal'/'vertical'/'oblique')
+    within a single pass, not just the single biggest candidate overall. Returns
+    {orientation: (normal, offset, inlier_mask)}, one entry per orientation whose best
+    candidate clears MIN_PLANE_INLIERS (0-3 entries; empty if nothing clears it).
+
+    Why per-orientation (Phase 6 fix — DeKH_B_ICU wall-starvation): a plain "biggest inlier
+    count wins" search lets a room's genuinely distinct horizontal clutter (equipment,
+    counters, furniture tops) outcompete walls for every one of the 40 search rounds —
+    confirmed as the dominant remaining cause on real data after occlusion and piecemeal
+    floor/ceiling-rediscovery were checked and ruled out/fixed separately (see this module's
+    rediscovery-absorption check, and README's "Real-world validation (Phase 6)" section).
+    Tracking 3 running bests instead of 1 costs no extra RANSAC iterations — same `n`
+    samples, same RANSAC_ITERATIONS compute — it just stops a round from throwing away its
+    vertical candidate purely because a horizontal candidate happened to have more points.
 
     `log` is optional and, when given, prints coarse within-search progress every
     `progress_every` iterations — at real-world point counts (millions, not the synthetic
@@ -129,15 +153,14 @@ def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator, log=None,
     """
     n = len(xyz)
     if n < 3:
-        return None
-    best_inliers = None
-    best_count = 0
-    best_normal = None
-    best_offset = 0.0
+        return {}
+    # orientation -> (count, inlier_mask, normal, offset)
+    best: dict[str, tuple[int, np.ndarray, np.ndarray, float]] = {}
     for it in range(RANSAC_ITERATIONS):
         if log is not None and it > 0 and it % progress_every == 0:
+            counts = {o: b[0] for o, b in best.items()}
             log(f"§SEGMENT   RANSAC iter {it}/{RANSAC_ITERATIONS} "
-                f"({n} candidate points, best so far: {best_count} inliers)")
+                f"({n} candidate points, best so far by orientation: {counts})")
         idx = rng.choice(n, size=3, replace=False)
         p0, p1, p2 = xyz[idx]
         v1, v2 = p1 - p0, p2 - p0
@@ -150,27 +173,34 @@ def _fit_plane_ransac(xyz: np.ndarray, rng: np.random.Generator, log=None,
         dist = np.abs(xyz @ normal + offset)
         inliers = dist < RANSAC_DIST_THRESHOLD_M
         count = int(inliers.sum())
-        if count > best_count:
-            best_count = count
-            best_inliers = inliers
-            best_normal = normal
-            best_offset = offset
-    if best_count < MIN_PLANE_INLIERS:
-        return None
-    # Refit on the inlier set for a stabler normal (least-squares plane through centroid).
-    pts = xyz[best_inliers]
-    centroid = pts.mean(axis=0)
-    centered = pts - centroid
-    # Eigendecompose the 3x3 covariance matrix rather than SVD the full (N,3) point set —
-    # equivalent result (smallest-eigenvalue eigenvector = plane normal), but O(1) in point
-    # count instead of blowing up memory/LAPACK on hundreds of thousands of inlier points.
-    cov = centered.T @ centered
-    eigvals, eigvecs = np.linalg.eigh(cov)
-    refined_normal = eigvecs[:, 0]  # eigh returns ascending eigenvalues — index 0 is smallest
-    refined_offset = -np.dot(refined_normal, centroid)
-    dist = np.abs(xyz @ refined_normal + refined_offset)
-    inliers = dist < RANSAC_DIST_THRESHOLD_M
-    return refined_normal, refined_offset, inliers
+        orientation = _classify_orientation(normal)
+        if orientation not in best or count > best[orientation][0]:
+            best[orientation] = (count, inliers, normal, offset)
+
+    results: dict[str, tuple[np.ndarray, float, np.ndarray]] = {}
+    for orientation, (count, inliers, normal, offset) in best.items():
+        if count < MIN_PLANE_INLIERS:
+            continue
+        # Refit on the inlier set for a stabler normal (least-squares plane through centroid).
+        pts = xyz[inliers]
+        centroid = pts.mean(axis=0)
+        centered = pts - centroid
+        # Eigendecompose the 3x3 covariance matrix rather than SVD the full (N,3) point set —
+        # equivalent result (smallest-eigenvalue eigenvector = plane normal), but O(1) in point
+        # count instead of blowing up memory/LAPACK on hundreds of thousands of inlier points.
+        cov = centered.T @ centered
+        eigvals, eigvecs = np.linalg.eigh(cov)
+        refined_normal = eigvecs[:, 0]  # eigh returns ascending eigenvalues — index 0 is smallest
+        refined_offset = -np.dot(refined_normal, centroid)
+        dist = np.abs(xyz @ refined_normal + refined_offset)
+        refined_inliers = dist < RANSAC_DIST_THRESHOLD_M
+        if int(refined_inliers.sum()) < MIN_PLANE_INLIERS:
+            continue
+        # Refitting can very rarely nudge a candidate across an orientation boundary — key
+        # the result by its actual final orientation, not its pre-refit guess.
+        results[_classify_orientation(refined_normal)] = (refined_normal, refined_offset,
+                                                            refined_inliers)
+    return results
 
 
 def _plane_offset(normal: np.ndarray, point_on_plane: np.ndarray) -> float:
@@ -274,36 +304,61 @@ def _split_plane_into_components(xyz: np.ndarray, plane_indices: np.ndarray,
     return components
 
 
-def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment]:
-    xyz = pc.xyz
-    remaining_mask = np.ones(len(xyz), dtype=bool)
-    rng = np.random.default_rng(seed)
-    segments: list[Segment] = []
-    seg_id = 0
-    leftover_chunks: list[np.ndarray] = []  # rejected small plane fragments -> clustering stage
-    n_rejected_fragments = 0
-    n_rejected_points = 0
+def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
+                             rng: np.random.Generator, segments: list[Segment], seg_id: int,
+                             leftover_chunks: list[np.ndarray], reject_stats: dict,
+                             log, round_num: int) -> tuple[int, bool, bool]:
+    """Runs ONE plane-search round: find the best plane candidate per orientation, split each
+    into connected components, absorb rediscoveries or accept new segments. Split out of
+    segment_pointcloud() so a caller that can't finish all MAX_PLANES rounds in a single
+    process lifetime (Phase 6 — a real 23M-point scan needs more search rounds than fit in
+    this environment's ~10-minute single-foreground-call limit, see run_dekh_staged.py) can
+    call this one round at a time and checkpoint `segments`/`remaining_mask`/`seg_id` between
+    calls, instead of duplicating this whole round's logic for a resumable path.
 
-    log(f"§SEGMENT start: {len(xyz)} points")
+    `segments`, `remaining_mask`, and `leftover_chunks` are mutated in place; `reject_stats`
+    (dict with 'fragments'/'points' int keys) is mutated in place too. Only `seg_id` is
+    returned by value (ints aren't mutable). Also returns `found_any_candidate` (False means
+    NOTHING cleared MIN_PLANE_INLIERS this round — the caller should stop plane extraction
+    entirely, not just skip this round) and `accepted_any` (whether this round should count
+    against the MAX_PLANES round budget).
+    """
+    remaining_idx = np.nonzero(remaining_mask)[0]
+    if len(remaining_idx) < MIN_PLANE_INLIERS:
+        return seg_id, False, False
+    log(f"§SEGMENT plane search #{round_num}/{MAX_PLANES} starting: "
+        f"{len(remaining_idx)} candidate points")
+    t_plane = time.time()
+    candidates = _fit_plane_ransac_multi(xyz[remaining_idx], rng, log=log)
+    log(f"§SEGMENT   RANSAC search done in {time.time() - t_plane:.1f}s -> "
+        f"{len(candidates)} orientation candidate(s): {sorted(candidates.keys())}")
+    if not candidates:
+        return seg_id, False, False
 
-    # ── Stage 1+2+3: iterative plane extraction ──────────────────────────────────────
-    plane_count = 0
-    while plane_count < MAX_PLANES:
-        remaining_idx = np.nonzero(remaining_mask)[0]
-        if len(remaining_idx) < MIN_PLANE_INLIERS:
-            break
-        log(f"§SEGMENT plane search #{plane_count + 1}/{MAX_PLANES} starting: "
-            f"{len(remaining_idx)} candidate points")
-        t_plane = time.time()
-        result = _fit_plane_ransac(xyz[remaining_idx], rng, log=log)
-        log(f"§SEGMENT   RANSAC search done in {time.time() - t_plane:.1f}s")
-        if result is None:
-            log(f"§SEGMENT plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
-                f"among {len(remaining_idx)} remaining points — stopping plane extraction")
-            break
-        normal, offset, local_inlier_mask = result
+    accepted_any = False  # did this round find at least one GENUINELY NEW plane?
+    n_accepted_this_round = 0
+    # Process vertical first, then horizontal, then oblique. This round's candidates were
+    # all fit against the SAME remaining-point snapshot, so their inlier sets can overlap
+    # near real edges/corners where two surfaces meet within RANSAC_DIST_THRESHOLD_M of
+    # each other — processing vertical first means a contested point goes to the wall
+    # candidate, not the (usually much larger) floor/ceiling/clutter candidate. That's
+    # the actual wall-starvation fix (Phase 6 — see _fit_plane_ransac_multi's docstring
+    # and README's "Real-world validation (Phase 6)" section for the full diagnosis: a
+    # plain single-winner-per-round search let real horizontal clutter outcompete walls
+    # for every one of the 40 rounds, independent of and larger than the already-fixed
+    # piecemeal floor/ceiling-rediscovery problem below).
+    for orientation in ("vertical", "horizontal", "oblique"):
+        if orientation not in candidates:
+            continue
+        normal, offset, local_inlier_mask = candidates[orientation]
         plane_global_idx = remaining_idx[local_inlier_mask]
-        orientation = _classify_orientation(normal)
+        # Drop points an earlier orientation this same round already claimed.
+        plane_global_idx = plane_global_idx[remaining_mask[plane_global_idx]]
+        if len(plane_global_idx) < MIN_PLANE_INLIERS:
+            log(f"§SEGMENT   {orientation} candidate dropped: only "
+                f"{len(plane_global_idx)} inliers left after an earlier orientation this "
+                f"round claimed the rest (below {MIN_PLANE_INLIERS})")
+            continue
 
         # Always consume the full inlier set from the plane-search pool — whether or not
         # every piece clears MIN_COMPONENT_POINTS below — so RANSAC always makes forward
@@ -322,34 +377,27 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
             leftover_chunks.append(plane_global_idx)
             continue
 
-        accepted_any = False  # did this search find at least one GENUINELY NEW plane?
         for comp_idx in components:
             if len(comp_idx) < MIN_COMPONENT_POINTS:
                 # Furniture-top / roof-facet-scale fragment, not a real architectural
                 # surface at this size — don't report it as a plane segment, but don't
                 # lose the points either: they may still form a real object cluster later.
                 leftover_chunks.append(comp_idx)
-                n_rejected_fragments += 1
-                n_rejected_points += len(comp_idx)
+                reject_stats["fragments"] += 1
+                reject_stats["points"] += len(comp_idx)
                 continue
 
             comp_aabb_min = xyz[comp_idx].min(axis=0)
             comp_aabb_max = xyz[comp_idx].max(axis=0)
             comp_centroid = (comp_aabb_min + comp_aabb_max) / 2.0
 
-            # Rediscovery check (Phase 6 fix — DeKH_B_ICU): is this the SAME real surface as
-            # an already-accepted plane, just swept up by a later search because the surface
-            # didn't fit one exact plane equation everywhere (real noise/occlusion/slight
-            # non-planarity)? Verified this was the actual mechanism starving wall discovery,
-            # not occlusion as first suspected: on DeKH_B_ICU, 35 of 40 RANSAC searches found
-            # a 'horizontal' plane and only 5 found 'vertical' — those 35 clustered into just
-            # two real height bands (ceiling, floor), confirming they were the same two real
-            # surfaces being re-discovered piecemeal, not 35 distinct surfaces, before the
-            # MAX_PLANES budget ran out with most walls never getting a search at all. If
-            # this is a rediscovery, absorb its points into the existing segment instead of
-            # spending a fresh budget slot — same "same real surface" test
-            # merge_coplanar_fragments (Phase 2.5) already applies, just run one phase
-            # earlier so it never costs a search in the first place.
+            # Rediscovery check (Phase 6 fix — DeKH_B_ICU): is this the SAME real surface
+            # as an already-accepted plane, just swept up by a later search because the
+            # surface didn't fit one exact plane equation everywhere (real noise/
+            # occlusion/slight non-planarity)? If so, absorb its points into the existing
+            # segment instead of spending a fresh budget slot — same "same real surface"
+            # test merge_coplanar_fragments (Phase 2.5) already applies, just run one
+            # phase earlier so it never costs a search in the first place.
             rediscovered = None
             for existing in segments:
                 if existing.geometry_type != "plane" or existing.orientation != orientation:
@@ -381,6 +429,7 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
                 continue
 
             accepted_any = True
+            n_accepted_this_round += 1
             aabb_min, aabb_max = comp_aabb_min, comp_aabb_max
             conf = _plane_confidence(len(comp_idx))
             seg = Segment(
@@ -397,12 +446,53 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
                 f"aabb=[{aabb_min[0]:.2f},{aabb_max[0]:.2f}]x[{aabb_min[1]:.2f},{aabb_max[1]:.2f}]"
                 f"x[{aabb_min[2]:.2f},{aabb_max[2]:.2f}]")
             seg_id += 1
+    if accepted_any:
+        log(f"§SEGMENT plane search #{round_num}/{MAX_PLANES} done: "
+            f"{n_accepted_this_round} new plane segment(s) accepted this round")
+    # else: this whole round only produced rediscoveries and/or sub-threshold fragments
+    # across every orientation tried — don't count it against MAX_PLANES, but the caller
+    # should keep looping (points already consumed above either way).
+    return seg_id, True, accepted_any
+
+
+def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment]:
+    xyz = pc.xyz
+    remaining_mask = np.ones(len(xyz), dtype=bool)
+    rng = np.random.default_rng(seed)
+    segments: list[Segment] = []
+    seg_id = 0
+    leftover_chunks: list[np.ndarray] = []  # rejected small plane fragments -> clustering stage
+    reject_stats = {"fragments": 0, "points": 0}
+
+    log(f"§SEGMENT start: {len(xyz)} points")
+
+    # ── Stage 1+2+3: iterative plane extraction ──────────────────────────────────────
+    plane_count = 0
+    while plane_count < MAX_PLANES:
+        seg_id, found_any, accepted_any = _plane_extraction_round(
+            xyz, remaining_mask, rng, segments, seg_id, leftover_chunks, reject_stats,
+            log, plane_count + 1)
+        if not found_any:
+            log(f"§SEGMENT plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
+                f"among remaining points — stopping plane extraction")
+            break
         if accepted_any:
             plane_count += 1
-        # else: this whole plane search only produced rediscoveries and/or sub-threshold
-        # fragments — don't count it against MAX_PLANES, but do keep looping (points already
-        # consumed above either way).
+    n_rejected_fragments = reject_stats["fragments"]
+    n_rejected_points = reject_stats["points"]
+    return _finish_segmentation(xyz, remaining_mask, segments, seg_id, leftover_chunks,
+                                 n_rejected_fragments, n_rejected_points, log)
 
+
+def _finish_segmentation(xyz: np.ndarray, remaining_mask: np.ndarray, segments: list[Segment],
+                          seg_id: int, leftover_chunks: list[np.ndarray],
+                          n_rejected_fragments: int, n_rejected_points: int, log) -> list[Segment]:
+    """Floor/ceiling disambiguation + residual-point clustering — runs once, after ALL plane
+    extraction rounds are done (whether that took one segment_pointcloud() call or many
+    resumed _plane_extraction_round() calls, Phase 6's staged path). Split out so both paths
+    share this exact tail instead of a resumable caller reimplementing it. Mutates `segments`
+    in place (appends clusters) and also returns it.
+    """
     # Disambiguate floor vs ceiling among 'horizontal' planes by relative height —
     # the lowest confident horizontal plane is the floor, everything else horizontal
     # above it is a ceiling/soffit candidate. Purely a relabel; doesn't touch confidence.
