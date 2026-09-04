@@ -500,11 +500,13 @@ than forced: `IfcDoor` stays `IfcBuildingElementProxy` (deferred, not guessed) f
 
 First run against a real terrestrial LiDAR scan, not the synthetic cloud every earlier phase
 was validated against — DeKH (German Hospital Dataset, published alongside the BIMStruct3D
-paper — model card: https://huggingface.co/dfki-av/BIMStruct3D-segmentation),
-`Buildings/B/DeKH_B_ICU`, CC BY-NC-SA 4.0, permission confirmed from the authors for this use.
-Kept entirely outside this repo (licensed third-party data); every checkpoint, the written
-reference DB, and the run log stayed in a local scratch directory, never committed. Only the
-pipeline code that processes it — `pointcloud_io.load_las_downsampled()`, `smoke_test_dekh.py`,
+paper — model card: https://huggingface.co/dfki-av/BIMStruct3D-segmentation). Started with
+`Buildings/B/DeKH_B_ICU`, then extended to `Buildings/C/DeKH_C_surgery` and
+`Buildings/A/{1st_floor,2nd_floor}` (see "Buildings A and C" below), CC BY-NC-SA 4.0, permission
+confirmed from the authors for this use. Kept entirely outside this repo (licensed third-party
+data); every checkpoint, the written reference DB, and the run log stayed in a local scratch
+directory, never committed. Only the pipeline code that processes it —
+`pointcloud_io.load_las_downsampled()`, `smoke_test_dekh.py`, `smoke_test_from_checkpoint.py`,
 `validate_real_world.py`, `run_dekh_staged.py` — is committed here.
 
 **Scale forced two real infrastructure changes before any DeKH-specific work could even run**:
@@ -620,6 +622,57 @@ individually clears `MIN_PLANE_INLIERS`), not an invented cap change.
 
 2 of 31 real walls remain unmatched — not yet traced to a specific cause; worth a quick look in
 a future session but not blocking Buildings A/C.
+
+### Buildings A and C — does the fix generalize, or was B_ICU scene-specific?
+
+Same discipline as B_ICU throughout: smoke test from the real downsample checkpoint before
+committing to full segmentation (all 3 scenes passed clean), the same checkpointed/resumable
+staged runner (no code changes needed — `--laz`/`--checkpoint-dir` were already parameters, not
+hardcoded), active monitoring, real ground truth, and tracing anything surprising before
+trusting it. Building C (`DeKH_C_surgery`, one scene, 359M raw points) ran the same way as
+B_ICU. Building A has **two separate floor scans** (`1st_floor` 507M pts, `2nd_floor` 621M pts)
+but only one combined whole-building ground-truth IFC with no usable per-floor storey metadata
+(`get_storey_for_element()` returned `"Unknown"` for all 618 elements — the export doesn't carry
+`IfcRelContainedInSpatialStructure` storey containment) — rather than invent a Z-height cutoff
+between floors (the two floors' point-cloud Z-ranges actually overlap by ~1.9m at the slab
+transition, so any cutoff would misassign real elements), each floor was segmented and
+classified independently (each gets its own `normalize_pointcloud()` tack point), then both
+floors' predictions were un-shifted back to the shared raw/world frame and combined **before**
+scoring once against the single whole-building GT — the same tack-point un-shift Phase 6's
+original coordinate-frame fix established, just applied per floor.
+
+**Wall recovery generalizes well**: B_ICU 29/31 (93.5%), Building C 15/16 (93.8%), Building A
+72/72 nominal — the interleaved search reliably finds a plane at real wall locations across all
+three real scenes, not just B_ICU's.
+
+**But Building A's 72/72 needed tracing before trusting it — and didn't hold up as "100%
+recovered."** `_spatial_match`'s "any positive AABB overlap counts as a match" criterion (used
+unchanged from B_ICU/C, where it never caused a problem) breaks down at a full-floor building
+scale with many walls close together: median bbox relative error for matched walls was
+**42x on the long axis** — implausible enough on its own to trace rather than report. Root
+cause, confirmed by inspecting the worst offenders directly: one real 35.6m-long corridor wall
+we correctly found gets its AABB checked against every GT wall whose own AABB it happens to
+cross — including several short, real, *perpendicular* partition walls (GT size 0.15×3.37×3.0m,
+i.e. running north-south) that just touch the long wall at a T-junction. AABB overlap there is
+real (they do physically touch) but it isn't the same wall being recovered — B_ICU/C's smaller,
+single-room scans never had enough co-located walls for this to surface. A per-GT-wall
+volume-coverage check (matched overlap volume ÷ that GT wall's own volume — not exposed by the
+existing script, computed separately) shows the honest picture: median 52% of each matched
+wall's own volume actually covered, 24/72 (33%) at ≥90% (solid, complete matches), 4/72 under
+10% (the T-junction false-positives just described). For comparison, the same coverage check on
+the other two scenes: B_ICU's matches are far tighter (median 97.5% coverage, 18/29 at ≥90%,
+zero under 10%); Building C's are middling (median 33.4% coverage, partial-but-real, zero under
+10% — no crossing artifacts there, its single room doesn't have enough co-located walls for one
+either).
+**Takeaway: wall *discovery* (does a plane exist at all) generalizes across all three real
+scenes; wall *match quality* varies by scene, and the raw "any-overlap" match-rate number is not
+reliable at multi-room building scale without a coverage-fraction check alongside it** — a
+scoring-methodology gap, not a segmentation regression, and not chased further this session per
+the same "note it, don't rabbit-hole" discipline as the 2 unmatched B_ICU walls.
+
+Overall spatial match (all scoreable classes, same "any positive overlap" criterion as above):
+Building C 20/34 (58.8%) vs. published baseline 29/34 (85.3%); Building A 411/535 (76.8%,
+combined-floor, no baseline available per-building for this comparison shape).
 
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
