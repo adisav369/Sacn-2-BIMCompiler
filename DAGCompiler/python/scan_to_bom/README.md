@@ -873,6 +873,72 @@ session (not where the pattern was strong; their existing numbers stand). `MAX_P
 (`run_dekh_staged.py`) persists the yield history across resumed calls the same way it already
 persisted `remaining_mask`/`segments`.
 
+### Fixing round-budget exhaustion further — multi-candidate accept per round (Option C)
+
+Confirmed worth doing before starting: Building A's adaptive-stop run (Option B above) ran 14+
+extra rounds, kept finding genuinely substantial content the whole way (14,599-52,813 accepted
+points/round through round 53), and still left 16 real walls unmatched — evidence this needed
+more than a smarter round budget, not a hypothesis.
+
+**Grounded K in real data before implementing, not guessed.** Probed a single 400-iteration
+RANSAC pass over Building A's actual DBSCAN leftover pool (the points that ended up unclaimed
+after Option B's run) using the same dedup logic `_fit_plane_ransac_multi` already had
+(`_same_plane_equation`) — found **21-24 genuinely DISTINCT vertical hypotheses per floor**,
+each with 13,000-48,000 real inliers (horizontal/oblique had 100+ each). The single-winner
+design was finding these every pass and throwing all but one away, every round. Set
+`MULTI_CANDIDATE_K = 5` (a bounded middle ground — small enough not to blow up per-round
+cost given horizontal/oblique's much larger candidate pools, big enough to meaningfully shrink
+the backlog), applied uniformly across all three orientations (not vertical-only) to avoid
+reintroducing fix #1's original bug at a smaller scale — a scene with more distinct horizontal
+surfaces than K would otherwise starve vertical of ITS OWN K slots via clutter, the same
+failure fix #1 already solved once.
+
+**Verified against the synthetic baseline first, with extra care since this touches the core
+candidate-selection logic every prior real-world number depends on — and it caught two real
+bugs before they reached production DeKH numbers.** First pass: coverage and plane-only
+fragmentation held (58/58 both), but cluster-only fragmentation jumped 1/58→10/58 and
+low-confidence roughly doubled (56→119) — traced, not shrugged off:
+1. **Sub-threshold components skipped the rediscovery-absorption check entirely.** A component
+   under `MIN_COMPONENT_POINTS` went straight to the leftover pool without ever being checked
+   against existing segments — fine when the single best candidate per round rarely produced
+   small fragments, a real bug once `MULTI_CANDIDATE_K`'s weaker rank-2..5 candidates started
+   producing them routinely. Fixed by moving the absorption check before the size filter: a
+   small fragment of an already-existing real surface gets absorbed regardless of its own size;
+   only fragments that AREN'T absorbed get the "too small to be its own surface" size check.
+2. **`_split_plane_into_components` returns pieces in grid-label order, not size order.** A
+   real wall interrupted by a doorway can split into one large main piece plus small siblings
+   of the same surface — if a small sibling was processed before the main piece existed in
+   `segments`, it had nothing to absorb into yet. Fixed by processing each candidate's own
+   components biggest-first.
+
+After both fixes: cluster-only fragmentation 4/58 (still a small increase over the 1/58
+baseline, but converged from 10/58, and low-confidence count landed at 55 — at or slightly
+under the Option-B baseline's 56). Coverage and plane-only fragmentation stayed exactly 58/58
+throughout. This residual is reported honestly, not chased further — the coverage and
+low-confidence numbers that matter most are at or better than baseline.
+
+**Re-ran Building A**: rounds needed actually DROPPED (26 vs Option B's 54 for the 1st floor,
+each round now finding far more) even though total accepted content rose sharply (2,114 raw
+plane segments on the 1st floor alone, vs 883 under Option B).
+
+| Metric | Before (Option B only) | After (+ Option C) |
+|---|---|---|
+| Wall recovery | 56/72 (77.8%) | **69/72 (95.8%)** |
+| Overall match | 380/535 (71.0%) | **404/535 (75.5%)** |
+| Matched-wall median coverage | 95.5% | 98.5% |
+
+**Closed 13 of the remaining 16 walls — a strong result, not a full close.** 3 real walls
+still go unmatched (not investigated further this session, same "report the honest number"
+discipline as everywhere else tonight). **Real trade-off worth reporting plainly**: total
+predicted elements grew ~4.8x (2,527 → 12,047 across both floors), IfcWall predictions alone
+~3x (239 → 729) — mostly small, correctly-deferred `IfcBuildingElementProxy` segments (each
+still individually gated by `MIN_PLANE_INLIERS`/`CLUSTER_MIN_SAMPLES`, nothing invented) rather
+than misclassifications, but a real operational cost (bigger output, more downstream volume) at
+Building A's construction-site-clutter scale that a future session may want to address — e.g.
+in `merge_instances.py`'s consolidation, or by revisiting whether `MULTI_CANDIDATE_K=5` is more
+generous than this scale needs. B_ICU and Building C were not re-run under Option C this
+session (not where the pattern was strong).
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -940,16 +1006,16 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   best-vertical-candidate round against bigger walls — a minor residual instance of the same
   within-orientation competition the interleaving fix addressed, not chased further since it's a
   single wall in a single scene.
-- **Building A's round-budget exhaustion — partially fixed, not fully closed.** The fixed
-  40-round cap was replaced with an adaptive diminishing-returns stop (see "Fixing round-budget
-  exhaustion" above) — wall recovery improved 50/72 → 56/72 (both floors ran to round ~52-54
-  before genuinely plateauing, not an arbitrary cutoff). **16 real walls still unmatched even
-  with adaptive stopping** — some real walls are still losing the within-orientation
-  competition well past 50 rounds, confirming this needs more than a bigger/smarter round
-  budget alone. Next candidate (from the original design menu, not implemented preemptively):
-  multi-candidate accept per round — harvest several distinct real planes per orientation per
-  round instead of the current single winner, attacking the same-round competition directly
-  rather than buying more rounds. Open for a future session.
+- **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched.**
+  The fixed 40-round cap was replaced with an adaptive diminishing-returns stop, then
+  `MULTI_CANDIDATE_K=5` let each round accept several distinct real planes per orientation
+  instead of one (see "Fixing round-budget exhaustion" and its "further" follow-up above).
+  Wall recovery: 50/72 → 56/72 (adaptive stop alone) → **69/72 (95.8%, both fixes)**. 3 real
+  walls remain unmatched — not investigated further this session, small enough not to chase
+  blind. Real, honestly-reported trade-off: total predicted elements grew ~4.8x at Building A's
+  scale (mostly small, correctly-deferred `IfcBuildingElementProxy` segments, not
+  misclassifications) — worth a future look at `merge_instances.py` consolidation or a smaller
+  `MULTI_CANDIDATE_K` for this scale, not chased further this session either.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
