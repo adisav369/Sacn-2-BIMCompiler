@@ -557,10 +557,13 @@ segmentation defect** — they are scan-coverage occlusion, cross-floor pipeline
 compound/aggregate GT entities with inflated bounding boxes, and the already-documented
 multi-layer wall-face limitation (details in the trace subsections below).
 
-Two honest caveats on these numbers: (1) **Building C still lags its published baseline
-substantially** (44.1% vs 73.5% overall) — the single biggest remaining gap-to-baseline, not yet
-investigated; (2) predicted-element volume is high (over-fragmentation — see Option C's
-trade-off note), which inflates the "unmatched predicted elements" count in every scene.
+Two honest caveats on these numbers: (1) **Building C's gap to its published baseline is
+entirely doors** — traced (see "What's still not done"): 0/14 vs the baseline's 14/14, because a
+flush door leaf is coplanar with its host wall and gets absorbed into that plane. Per-class we
+are otherwise ahead of the baseline on that scene (walls 14/16 vs 11/16, slab 1/1 vs 0/1). It's
+a geometry-only capability boundary, not a defect, and it is orthogonal to fragmentation;
+(2) predicted-element volume is high (over-fragmentation — see Option C's trade-off note), which
+inflates the "unmatched predicted elements" count in every scene.
 
 ⚠️ These are **front-end** numbers. The full `scan → BOM → compile → gates` chain does not
 currently run at HEAD — see "Phase 5 does NOT currently reproduce at HEAD" above.
@@ -1111,11 +1114,36 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   confirmation that the trace was right**; the other is real scan-coverage occlusion, sitting
   physically beyond where the scanner ever reached (zero points at any stage). Nothing in the
   segmentation code can recover that one; it needs a rescan, not a fix.
-- **Building C lags its published baseline by the widest margin of the three scenes** — 15/34
-  (44.1%) overall vs the BIMStruct3D baseline's 25/34 (73.5%), even though its wall recovery is
-  strong at 14/16 (87.5%). B_ICU is level with its baseline and Building A has none published,
-  so this is the one scene where a real, unexplained gap-to-baseline remains. Not yet
-  investigated — the most obvious next question for anyone picking up front-end accuracy work.
+- **Flush-mounted openings (doors) are not recoverable by geometry alone — a capability
+  boundary, not a defect.** Traced from Building C's gap-to-baseline (15/34 = 44.1% vs the
+  BIMStruct3D baseline's 25/34 = 73.5%), which turned out to be **entirely doors**: we match
+  **0/14**, the baseline matches **14/14**. Per-class, we are otherwise ahead — walls 14/16 vs
+  their 11/16, slab 1/1 vs 0/1, windows 0/3 for both — so the 10-element deficit is 14 lost
+  doors offset by +4 elsewhere, not a general weakness.
+
+  **Mechanism, confirmed at point level:** a closed door leaf is nearly coplanar with its host
+  wall, so RANSAC's `RANSAC_DIST_THRESHOLD_M` (2cm) sweeps its points into the wall's — or an
+  overlapping ceiling's — plane segment. The door never exists as its own segment to classify.
+  All 14 GT doors have real, dense points (8K-90K each); every one is claimed by *plane*
+  segments (7 ceiling, 6 vertical, 1 oblique — never clusters), each scattered across 39-59
+  segments with the top claimant taking only 13-35%. Our 27 `IfcDoor` predictions are
+  essentially unrelated slivers: only 5 touch a real door at all, best coverage 4.1%, and their
+  median size is right in height but a third of real width (0.49×0.39×1.98m vs 1.29×0.30×2.05m).
+
+  **This is a SECOND, distinct door-loss mechanism** — not the one already documented in "Window
+  detection for cluster segments" (where SampleHousePC's doors fell into *cluster* segments with
+  no path to `IfcDoor`). Here they land in planes. On real data this plane-absorption mechanism
+  is the dominant one.
+
+  **It is orthogonal to the fragmentation/consolidation work** — a door is a distinct *object
+  within* a plane, not a distinct plane, so consolidation will not recover it and Building C's
+  gap should not be used as a success metric for that work. And it is not a data limitation:
+  the baseline's 14/14 proves the scan supports door recovery. It's the cost of geometry-only
+  extraction (the prime rule) showing up as a measurable boundary — a trained model uses
+  appearance and context priors that pure planar geometry has no access to. Closing it needs a
+  genuinely different signal: RGB/intensity (already ingested, unused by `classify.py`), the
+  dataset's `.npy` semantic labels, or detecting the *opening* in the host wall rather than the
+  door leaf. Not attempted — a real design question, not a patch.
 - **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched,
   traced to two new, distinct, non-segmentation causes.** The fixed 40-round cap was replaced
   with an adaptive diminishing-returns stop, then `MULTI_CANDIDATE_K=5` let each round accept
