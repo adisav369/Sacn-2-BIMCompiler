@@ -427,6 +427,45 @@ every axis. The composition differences it also surfaces all trace to already-do
 already-understood upstream gaps — Phase 5 adds a genuinely independent (BOM-line-count-level)
 confirmation of those gaps' real-world size, not a new failure mode of its own.**
 
+### ⚠️ Phase 5 does NOT currently reproduce at HEAD (2026-09-04)
+
+Everything above is a real, historical result — it is **not** reproducible from a fresh checkout
+today. Re-running the exact `classify_shpc.yaml` commands now aborts with
+`no such table: M_Product` (see `CLAUDE.md`'s known-gap section, and `PROGRESS.md`). Confirmed
+this is the pre-existing library gap and **not** a scale or point-cloud-input problem by running
+the small known-good case (135 elements) and a large DeKH one (5,543) — both abort identically,
+at `ProductRegistrar`'s pre-flight (`IFCtoBOMPipeline.java:239-266`), before BOM assembly and
+before `BomValidator`'s 18 gates.
+
+### Real-world-scale dry run of the chain (`classify_dekhapc.yaml`)
+
+`IFCtoBOM/src/main/resources/classify_dekhapc.yaml` (`building_type: DeKHAPC`, prefix `DKAP`)
+points the same unmodified Java entry point at DeKH Building A's 1st floor — 5,543 elements,
+**41x** SampleHousePC's 135, same writer, identical schema. Config only: no DeKH measurements
+live in the YAML, and the extraction DB it names is written to gitignored
+`DAGCompiler/lib/input/` (licensed third-party data, nothing derived from it is committed).
+
+What that run establishes, up to the `M_Product` wall — all clean, in **39 seconds**, no memory
+or performance problem and no new failure mode at scale:
+
+| Stage | Result at 5,543 elements |
+|---|---|
+| Schema creation | OK |
+| Extraction read | 5,543 elements → 5,523 distinct products, 9 geometry gaps filled |
+| Storey / spatial containers | 1 auto-discovered |
+| `ProfileValidator` | 7 classes, dominant `IfcBuildingElementProxy` 77.3%, composition NORMAL |
+| `ShapeAdvisory` | 5,543/5,543 checked, 2,263 advisories, 5 batches |
+| BOM assembly, 18 QA gates, compile, gates | **BLOCKED** — `M_Product` |
+
+One at-scale signal worth noting even from the partial run: 5,543 elements produced 5,523
+*distinct* catalog products — near 1:1, almost no reuse — the over-fragmentation gap showing up
+at the product-catalog layer for a single floor.
+
+**Also found here:** running the Java chain writes into the tracked, LFS-stored
+`library/component_library.db` — this run put 5,531 DeKH-derived rows into its `I_Geometry_Map`
+before being reversed. Do not put licensed data through the Java chain again without isolating
+the library (scratch copy, or mandatory post-run restore + verification).
+
 ## Window detection for cluster segments (Phase 5 follow-up)
 
 Phase 5's BOM cross-check found cluster-geometry segments had **no path to `IfcWindow` at

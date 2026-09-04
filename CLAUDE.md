@@ -18,7 +18,34 @@ DAGCompiler, BIM_COBOL, orm-core — the compile core and verb engine.
 ## MODULES — BEING REPLACED
 IFCtoBOM's IFC-parsing front end → new point-cloud ingestion (our new work).
 
-## KNOWN PRE-EXISTING GAP — component_library.db (do not rush a fix; resolve deliberately in its own session)
+## CURRENT STATUS CORRECTION (2026-09-04) — the full chain does NOT run at HEAD
+The point-cloud front end is real and measured (see `DAGCompiler/python/scan_to_bom/README.md`),
+but **the `PIPELINE` line above is not currently reproducible end-to-end from a fresh checkout.**
+Everything from `BOM.db` rightward is blocked by the `M_Product` gap below. "The architecture bet
+is proven" is a HISTORICAL statement — true once (Phase 5, when `component_library.db` still had
+`M_Product`), not true of HEAD today. Verified 2026-09-04 by running the known-good 135-element
+`classify_shpc.yaml` case and a 5,543-element DeKH one: both abort at the same place, so this is
+not a scale or point-cloud-input problem. Do not read the DeKH accuracy numbers and assume a
+working scan→BOM→compile→gates chain right now.
+
+## KNOWN PRE-EXISTING GAP — component_library.db (HIGHEST-PRIORITY OPEN ITEM; do not rush a fix; resolve deliberately in its own session)
+**Reprioritized 2026-09-04.** This was previously described here as independent of Scan-to-BIM
+work and safe to pick up "anytime, in parallel." That was wrong and is corrected: it blocks the
+entire back half of this project's own stated pipeline, for every building, at every scale.
+Everything past `ProductRegistrar`'s pre-flight (`IFCtoBOMPipeline.java:239-266`) — BOM
+assembly, `BomValidator`'s 18 QA gates, compile, output.db, gates — cannot be exercised or
+verified until it is fixed. It remains a "own dedicated session" item (the ~13-migration
+ordering problem below is exactly the kind of thing that must not be guessed through under time
+pressure) — but it should now get that session SOON, ahead of further front-end accuracy work,
+because no amount of segmentation improvement can be validated end-to-end while it stands.
+
+ALSO (found 2026-09-04): running the Java chain WRITES into this tracked, LFS-stored file — a
+single `--classify` run on DeKH input added 5,531 DeKH-derived rows to `I_Geometry_Map`
+(reversed with `git checkout --`, after first confirming HEAD's LFS object still carried the
+documented `I_Geometry_Map` rename fix). Licensed third-party data must not be put through the
+Java chain again without an isolation approach (scratch copy of the library, or a mandatory
+post-run restore + verification).
+
 `library/component_library.db` (checked into git, ~230MB) is missing table `M_Product` at
 HEAD. This is real, not stale — confirmed 2026-09-03 by reverting the file to HEAD
 (`git checkout -- library/component_library.db`) and re-running

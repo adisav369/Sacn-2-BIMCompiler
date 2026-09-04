@@ -1,0 +1,32 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# This classification YAML is the single point of invention in the pipeline.
+# Everything else (extraction, BOM, compilation) is deterministic code.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
+# ────────────────────────────────────────────────────────────────────
+#
+# DeKHAPC — DeKH Building A (1st floor), extracted via the point-cloud pipeline
+# (DAGCompiler/python/scan_to_bom/). Config only: no DeKH measurements live here, and the
+# extraction DB this points at is written to a gitignored path (DAGCompiler/lib/input/) —
+# DeKH is licensed third-party data and nothing derived from it is committed.
+#
+# Exists to exercise the unmodified Java BOM pipeline at REAL-WORLD SCALE: SampleHousePC
+# (classify_shpc.yaml) proved the seam works at 135 elements; this one is 5,543 — a 41x jump
+# from the same writer (write_reference_db.py), identical schema.
+schema_version: 1
+
+building:
+  building_type: DeKHAPC           # matches DAGCompiler/lib/input/DeKHAPC_extracted.db
+  prefix: DKAP
+  building_bom_id: BUILDING_DKAP_STD
+  doc_sub_type: DKAP
+  product_category: RE
+  name: DeKH Building A 1st floor (point cloud)
+  jurisdiction: MY
+  geometry_fail_threshold: 9   # LOD_ generative device geometry (pre-existing S154)
+
+  # storeys: auto-discovered from spatial_structure, as classify_shpc.yaml.
+  # floor_rooms: none — the point-cloud pipeline doesn't do room/space segmentation yet, so
+  # ScopeBomBuilder degrades to flat floor-level BOMs (the documented graceful-degradation
+  # path for a reference DB without rel_* tables).
+
+  remove_disciplines: [FP]
