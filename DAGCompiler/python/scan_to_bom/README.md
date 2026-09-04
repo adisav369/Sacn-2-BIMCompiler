@@ -755,6 +755,60 @@ fixing it changed the *reported* numbers substantially without the underlying pi
 at all (re-scored existing checkpoints, no re-segmentation needed for B_ICU/Building C; Building
 A likewise reused its existing classified predictions).
 
+### Tracing Buildings A and C's unmatched walls — different scenes, different dominant causes
+
+Same discipline as B_ICU's 2 unmatched walls above: for each unmatched wall, checked (1) which
+predicted element, if any, actually claims its real POINTS (not just AABB overlap — AABB overlap
+alone was already shown, on B_ICU, to be misleading), (2) that claiming segment's own real
+orientation and final classified class, and (3) whether the wall's own points are real/dense
+(occlusion check) or genuinely sparse.
+
+**Building C (5 unmatched walls) — dominated by an already-known limitation, not a new one:**
+- **3 walls** (`...Wnx`, `...WzL`, and the `...Wjv` guid backed by seg#63): each has a real,
+  high-confidence, correctly-classified `IfcWall` segment claiming the majority of its points
+  (69-82%) — the wall genuinely was found. But that segment's own AABB only covers 18-27% of the
+  GT element's *volume*, because the found single real face's thin-axis (thickness-direction)
+  position doesn't span the GT model's authored full multi-layer wall-assembly thickness (e.g.
+  one wall: GT thickness 0.3m, found face only 0.06-0.18m thick, offset such that they overlap by
+  just ~20-27%). This is the exact, already-documented "wall-face" finding from Phase 2.5 above
+  (a real modeled wall is a multi-layer, multi-face solid; reunifying a found single face into the
+  full authored assembly needs semantic reasoning, correctly deferred to Phase 3) — not a new bug,
+  just this fix's stricter coverage threshold making its scoring impact visible for the first time.
+- **1 wall** (`1OXN4mbxn21A5c_v3nopc7`): genuinely fragmented, not offset — no single segment
+  claims a majority of its points (checked the full claim breakdown: best is 23%, then 13%, 7%,
+  6%, 4%...), scattered across several neighboring real planes (other walls, the ceiling) it
+  borders. A different partial-recovery shape from the other 3: never captured as one coherent
+  face at all, rather than captured-but-offset.
+- **1 wall** (`1OXN4mbxn21A5c_v3noo5C`): only 12 real points in its whole footprint, against
+  matched walls' 10,000s — negligible real data, most likely a tiny sliver/corner element in the
+  authored model with almost no physical footprint actually scanned. Effectively an occlusion/
+  small-element edge case, same category as B_ICU's zero-point wall, just not quite zero.
+
+**Building A (22 unmatched walls) — dominated by a different, genuinely new finding: round
+budget exhaustion at larger scale.** For **20 of the 22**, the top point-claimant is not a plane
+at all but a giant DBSCAN residual cluster (168,000-923,000 points each — far too large and
+non-planar to be one real object), honestly classified `IfcBuildingElementProxy` rather than
+guessed. The wall's own points are real and dense (same check as B_ICU's wall 1) but were never
+independently extracted as their own plane within the 40-round search budget — they fell into
+the leftover pool and got glued into one of these enormous non-specific blobs by DBSCAN's
+`CLUSTER_EPS_M` bridging nearby unclaimed points, whatever real object they actually belong to.
+This is the same underlying "loses the best-of-round competition" dynamic the interleaved-search
+fix targeted — just still happening at Building A's larger scale: its GT is dominated by STR-
+discipline structural clutter (275 `IfcMember` + 99 `IfcPlate`, consistent with a construction-
+phase scan — scaffolding, formwork, bracing), and 40 rounds, even split fairly by orientation,
+isn't enough to drain every real distinct surface in a building this cluttered. **This is a real,
+new, scale-dependent finding** — not present on B_ICU or Building C's simpler single-room scenes
+— and the natural next fix (raising `MAX_PLANES`, or a clutter-density-aware round budget) is an
+open design question, not chased further this session; the remaining 2 walls were lower-priority
+partial touches from neighboring `ceiling`/`oblique` planes, not investigated as deeply.
+
+**Takeaway: three real scenes, three different dominant causes for their unmatched walls** —
+B_ICU's 2 split between a within-orientation competition echo and true scan-edge occlusion;
+Building C's 5 mostly reflect the already-known, already-deferred wall-face multi-layer
+limitation; Building A's 22 mostly reflect a genuinely new finding (round budget exhaustion at
+construction-site clutter scale) worth a future design session of its own, separate from
+tonight's interleaving fix.
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -822,6 +876,17 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   best-vertical-candidate round against bigger walls — a minor residual instance of the same
   within-orientation competition the interleaving fix addressed, not chased further since it's a
   single wall in a single scene.
+- **RANSAC's 40-round search budget isn't enough to drain every real distinct surface at
+  construction-site clutter scale** (Building A — 20 of its 22 unmatched walls' own real,
+  dense, genuinely-vertical points were never independently extracted as a plane at all within
+  40 rounds, ending up absorbed into giant 168K-923K-point DBSCAN residual clusters instead;
+  see "Tracing Buildings A and C's unmatched walls" above). Not present on B_ICU or Building C's
+  simpler single-room scenes — genuinely new, scale-dependent, distinct from the wall-starvation
+  problem the interleaving fix already solved (that was walls losing to unrelated clutter
+  *orientations*; this is real walls losing to other real walls/surfaces of the *same*
+  orientation, once there are more real surfaces than 40 rounds can cover). Candidate fixes
+  (raising `MAX_PLANES`, a clutter-density-aware round budget) not evaluated yet — open design
+  question for its own session, not chased further this one.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
