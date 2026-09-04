@@ -535,6 +535,53 @@ hardware (handle, hinge), not enough real evidence to defensibly call `IfcDoor` 
 the same wall-normal-spread signal to doors was checked and rejected here, honestly, rather
 than forced: `IfcDoor` stays `IfcBuildingElementProxy` (deferred, not guessed) for this dataset.
 
+### Correction on real scans: this check needed a window-SCALE gate (Phase 6)
+
+On real terrestrial scans the check above fired constantly: **645 `IfcWindow` predictions on
+B_ICU against 26 real windows (24.8x), 1,771 on Building A against 41 (43.2x)** — and, measured
+against ground truth, **0 of them matched a real window in either scene.** Pure noise.
+
+Traced rather than tuned. The depth test is a window-vs-*debris* discriminator, not a
+window-vs-*anything* one, and it inherited its size envelope from the FURNITURE gates — whose
+volume floor is `FURNITURE_MIN_VOLUME_M3 = 0.0003m3` (0.3 litres, a ~7cm cube), deliberately
+lowered for furniture with its own separate ground-truth justification. So *any* blob within
+5cm of a wall with ≥12cm of depth passed as a window regardless of scale. Harmless on the
+synthetic cloud, which has no such blobs; on a real construction scan there are thousands.
+Measured on Building A's 1st floor: 524 of 628 window predictions came from this path, median
+extent **0.13×0.23×0.15m (0.0045m3)** — 15x *smaller* than the smallest real window in any scene.
+
+Fixed with `WINDOW_MIN_VOLUME_M3 = 0.05`, grounded in measurement, not guessed: the smallest
+real GT window across all four scenes is 0.0685m3 (B_ICU; Building A 0.463, Building C 1.093,
+synthetic Sample House 0.808), while predicted-junk volume sits at p50 0.0053 / p90 0.036. The
+gate clears every real window in every scene with a 1.37x margin on the smallest, and cuts 93%
+of the junk. Deliberately a window-specific constant, **not** a change to
+`FURNITURE_MIN_VOLUME_M3` — that floor is correct for furniture and raising it would regress a
+separately-validated result.
+
+Verified against the synthetic baseline first (A/B via `git stash`), where it is a strict
+improvement — **51 correct → 51 correct (zero true positives lost), 58 wrong → 53, 18 deferred
+→ 23, confident-wrong unchanged at 32**: five wrong predictions became honest Proxy deferrals.
+Then on real data:
+
+| Scene | `IfcWindow` before | after | vs real |
+|---|---|---|---|
+| B_ICU | 645 | **120** | 24.8x → **4.6x** |
+| Building C | 334 | **48** | — |
+| Building A (both floors) | 1,771 | **280** | 43.2x → **6.8x** |
+
+Spatial match rates are unchanged by this (B_ICU 30/82, Building A 404/535, walls 69/72) —
+expected, since these predictions were matching nothing to begin with. The cut elements became
+`IfcBuildingElementProxy`, i.e. honestly deferred rather than confidently mislabelled.
+
+**Still 0 real windows recovered on real scans, and that is a separate problem the gate does not
+address**: like doors, a window set into a wall is nearly coplanar with it, so its points are
+absorbed into the host plane — all 26 real B_ICU windows have their points claimed by *plane*
+segments (19 ceiling, 7 vertical), never their own, despite a median 3,710 real points each.
+Notably the published BIMStruct3D baseline predicts **no** windows either on these scenes
+(B_ICU baseline classes: `IfcWall` 19, `IfcOpeningElement` 12, `IfcDoor` 12, `IfcColumn` 3) —
+it emits the *opening* rather than the filling. Recovering flush-mounted openings needs the
+different signal discussed under the door finding, not a better size threshold.
+
 ## Real-world validation (Phase 6 — DeKH_B_ICU)
 
 ### Current numbers — all three scenes, one code version (2026-09-04)

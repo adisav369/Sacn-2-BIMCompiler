@@ -124,6 +124,27 @@ FURNITURE_MAX_WALL_DIST_M = 0.05  # a genuine furniture piece sits in open room 
 # in this measurement) — not overfit noise. See DAGCompiler/python/scan_to_bom/README.md
 # "Window detection for cluster segments" for the full threshold sweep.
 WINDOW_WALL_NORMAL_SPREAD_M = 0.12
+WINDOW_MIN_VOLUME_M3 = 0.05  # a window-scale floor for the check above (Phase 6 fix). The
+                              # depth test is a window-vs-debris discriminator, NOT a
+                              # window-vs-anything one, and it inherited its size envelope from
+                              # the FURNITURE gates — whose volume floor is
+                              # FURNITURE_MIN_VOLUME_M3 = 0.0003m3 (0.3 litres, a ~7cm cube),
+                              # deliberately lowered for furniture with its own ground-truth
+                              # justification. So any small blob sitting within 5cm of a wall
+                              # with >=12cm of depth passed as a window regardless of scale.
+                              # Harmless on the synthetic cloud (no such blobs); on real
+                              # terrestrial scans it fired constantly — measured on DeKH
+                              # Building A 1st floor: 524 of 628 IfcWindow predictions came from
+                              # this path, median extent 0.13x0.23x0.15m (0.0045m3), i.e. 15x
+                              # SMALLER than the smallest real window in any scene checked.
+                              # Grounded, not guessed: smallest real GT window across all four
+                              # scenes is 0.0685m3 (B_ICU; Building A 0.463, Building C 1.093,
+                              # synthetic Sample House 0.808), while predicted-junk volume sits
+                              # at p50 0.0053 / p90 0.036. 0.05m3 clears every real window in
+                              # every scene (1.37x margin on the smallest) and cuts 93% of the
+                              # junk. Explicitly NOT a change to FURNITURE_MIN_VOLUME_M3 — that
+                              # floor is correct for furniture and re-raising it would regress
+                              # a separately-validated result.
 
 
 @dataclass
@@ -282,7 +303,7 @@ def _classify_cluster(seg: Segment, extent: np.ndarray, floor_z: float | None,
             # window — see WINDOW_WALL_NORMAL_SPREAD_M's comment for the ground-truth-checked
             # signal that tells them apart: a window has real point depth relative to the
             # wall's own normal (frame + glass set into the opening); flush debris doesn't.
-            if points is not None:
+            if points is not None and volume >= WINDOW_MIN_VOLUME_M3:
                 pt_depth = points[seg.point_indices] @ (
                     nearest_wall.normal / np.linalg.norm(nearest_wall.normal))
                 wall_normal_spread = float(pt_depth.max() - pt_depth.min())
