@@ -76,6 +76,47 @@ def _aabb_overlap_volume(min1, max1, min2, max2) -> float:
     return float(np.prod(inter))
 
 
+COVERAGE_GRID_CELL_M = 0.02  # same granularity as RANSAC_DIST_THRESHOLD_M (segment.py) --
+                             # reused here rather than picked arbitrarily
+MATCH_COVERAGE_THRESHOLD = 0.5  # a GT element counts as matched only once the UNION of
+                                 # compatible-class predicted elements covers at least half its
+                                 # own real volume -- see _spatial_match()'s docstring for why
+                                 # this replaced the old "any positive AABB overlap" criterion
+
+
+def _union_coverage_fraction(gt_min: np.ndarray, gt_max: np.ndarray,
+                              pred_boxes: list[tuple[np.ndarray, np.ndarray]],
+                              cell_m: float = COVERAGE_GRID_CELL_M) -> float:
+    """What fraction of the GT element's own AABB volume is covered by the UNION (not sum) of
+    the given predicted boxes' overlap with it. Grid-based (rasterize the GT box at `cell_m`
+    resolution, mark cells any predicted box's AABB-intersection touches, coverage = occupied
+    cell fraction) rather than summing each predicted box's individual overlap volume, because
+    summing double-counts here: confirmed on real DeKH data (see _spatial_match()'s docstring)
+    that several of a wall's contributing plane fragments are different PARALLEL FACES of the
+    same multi-layer wall assembly (inner/outer face, insulation, ~10-30cm apart in thickness),
+    each spanning close to the wall's full length/height — summing their overlap volumes
+    inflated some walls' coverage past 100% (up to 239% measured) by counting the same
+    length/height footprint once per face layer. A small grid local to just this one GT
+    element's own (small) AABB is cheap regardless of how many predicted boxes contribute —
+    same reasoning as segment.py's grid-based plane-component split, applied here to a much
+    smaller per-element grid instead of a whole scan.
+    """
+    extent = gt_max - gt_min
+    if np.any(extent <= 0):
+        return 0.0
+    shape = np.maximum(1, np.ceil(extent / cell_m).astype(np.int64))
+    occupied = np.zeros(tuple(shape), dtype=bool)
+    for pred_min, pred_max in pred_boxes:
+        lo = np.maximum(pred_min, gt_min)
+        hi = np.minimum(pred_max, gt_max)
+        if np.any(hi <= lo):
+            continue  # no real overlap with the GT box at all
+        lo_idx = np.floor((lo - gt_min) / cell_m).astype(np.int64)
+        hi_idx = np.minimum(shape, np.ceil((hi - gt_min) / cell_m).astype(np.int64))
+        occupied[lo_idx[0]:hi_idx[0], lo_idx[1]:hi_idx[1], lo_idx[2]:hi_idx[2]] = True
+    return float(occupied.sum()) / float(occupied.size)
+
+
 def _extract_gt_elements(db_path: str):
     con = sqlite3.connect(db_path)
     rows = con.execute(
@@ -91,9 +132,48 @@ def _extract_gt_elements(db_path: str):
 
 
 def _spatial_match(pred_elements, gt_elements):
-    """For each GT element, find the compatible-class predicted element with the largest
-    AABB-overlap volume. Returns (matched, unmatched_gt, unmatched_pred) — matched is a list
-    of (gt, pred, overlap_vol, rel_err[3])."""
+    """For each GT element, sums coverage across ALL compatible-class predicted elements that
+    overlap it at all (not just the single biggest) via a real grid-based UNION
+    (_union_coverage_fraction — not a naive sum, see its docstring for why), and counts the GT
+    element matched only once that union covers at least MATCH_COVERAGE_THRESHOLD of its own
+    volume. Replaces the original "any positive AABB overlap counts" criterion.
+
+    Why (found on real DeKH data, Phase 6): the old criterion had two real failure modes, both
+    confirmed by direct inspection, not assumed:
+      1. UNDER-counted real matches — a real wall correctly found as several separate plane
+         fragments (occluder gaps, or a RANSAC search splitting one real surface across
+         rounds; see README's plane-fragmentation findings) only ever credited its SINGLE
+         best-overlapping fragment, so a wall recovered as e.g. 5 real, correct fragments each
+         covering ~20% of it read as "40% covered" (best fragment only) instead of the true
+         ~100%. Checked this correlation directly before writing this fix: of the walls with
+         <50% single-best-fragment coverage across all three real DeKH scenes checked (B_ICU,
+         Building C, Building A), effectively all of them (51/52) were matched by MORE THAN
+         ONE predicted wall fragment — this under-counting was the dominant driver of "low
+         coverage" looking like a segmentation problem when it was actually a scoring
+         artifact.
+      2. OVER-counted false positives — a single long real wall's AABB can cross several
+         short, real, unrelated, perpendicular walls it merely touches at a T-junction (found
+         on Building A: one 35.6m corridor wall's AABB technically overlapped multiple
+         unrelated partition walls). "Any positive overlap" credited those touches as full
+         matches.
+    A naive SUM of all contributing fragments' overlap volumes (the first fix attempted, ad
+    hoc, before this) does NOT correctly solve failure mode 1: it fixes the fragmentation
+    under-count but then itself over-counts whenever several contributing fragments are
+    different PARALLEL FACES of the same multi-layer wall assembly (inner/outer face,
+    insulation — a real modeled wall's own multi-face structure, documented in README's Phase
+    2.5 findings) rather than end-to-end pieces — measured sums past 100% of a GT wall's own
+    volume (up to 239%) on real data. The real UNION (via `_union_coverage_fraction`'s grid)
+    fixes both failure modes at once: fragmentation and multi-face duplication both correctly
+    saturate toward (not past) 100%, and a thin T-junction touch stays a small fraction of the
+    touched wall's own volume regardless of how many other elements also graze it.
+
+    Returns (matched, unmatched_gt, unmatched_pred) — matched is a list of
+    (gt, best_pred, coverage_frac, best_pred_overlap_vol, rel_err[3]); best_pred is the single
+    largest-overlap contributing prediction, reported for descriptive bbox/rel_err purposes
+    only — the match decision itself is `coverage_frac`, not this one piece. unmatched_pred
+    excludes every predicted element that contributed to any GT element's coverage (even ones
+    that individually didn't clear the threshold alone).
+    """
     matched, unmatched_gt = [], []
     used_pred = set()
     for gt in gt_elements:
@@ -104,22 +184,30 @@ def _spatial_match(pred_elements, gt_elements):
                 break
         if gt_equiv is None:
             continue  # GT class has no equivalence mapping (e.g. IfcOpeningElement) — skip
-        best, best_vol = None, 0.0
+        contributors = []  # (i, pred, overlap_vol)
         for i, pred in enumerate(pred_elements):
             if pred["ifc_class"] != gt_equiv:
                 continue
             vol = _aabb_overlap_volume(gt["aabb_min"], gt["aabb_max"],
                                         pred["aabb_min"], pred["aabb_max"])
-            if vol > best_vol:
-                best, best_vol, best_i = pred, vol, i
-        if best is not None:
-            gt_bbox = gt["aabb_max"] - gt["aabb_min"]
-            pred_bbox = best["aabb_max"] - best["aabb_min"]
-            rel_err = np.abs(pred_bbox - gt_bbox) / np.maximum(gt_bbox, 1e-6)
-            matched.append((gt, best, best_vol, rel_err))
-            used_pred.add(best_i)
-        else:
+            if vol > 0:
+                contributors.append((i, pred, vol))
+        if not contributors:
             unmatched_gt.append(gt)
+            continue
+        coverage = _union_coverage_fraction(
+            gt["aabb_min"], gt["aabb_max"],
+            [(p["aabb_min"], p["aabb_max"]) for _, p, _ in contributors])
+        if coverage < MATCH_COVERAGE_THRESHOLD:
+            unmatched_gt.append(gt)
+            continue
+        best_i, best_pred, best_vol = max(contributors, key=lambda c: c[2])
+        gt_bbox = gt["aabb_max"] - gt["aabb_min"]
+        pred_bbox = best_pred["aabb_max"] - best_pred["aabb_min"]
+        rel_err = np.abs(pred_bbox - gt_bbox) / np.maximum(gt_bbox, 1e-6)
+        matched.append((gt, best_pred, coverage, best_vol, rel_err))
+        for i, _, _ in contributors:
+            used_pred.add(i)
     unmatched_pred = [p for i, p in enumerate(pred_elements) if i not in used_pred]
     return matched, unmatched_gt, unmatched_pred
 
@@ -127,17 +215,23 @@ def _spatial_match(pred_elements, gt_elements):
 def _report_spatial_match(pred_elements, gt_elements, label):
     matched, unmatched_gt, unmatched_pred = _spatial_match(pred_elements, gt_elements)
     n_gt_scoreable = sum(1 for gt in gt_elements if any(gt["ifc_class"] in e for e in EQUIVALENCE.values()))
-    print(f"\n§VALIDATE ── spatial IoU-style match: {label} vs ground truth ──")
+    print(f"\n§VALIDATE ── spatial match: {label} vs ground truth "
+          f"(>= {MATCH_COVERAGE_THRESHOLD:.0%} real volume-union coverage, not just any "
+          f"AABB touch) ──")
     print(f"  GT elements: {len(gt_elements)} total, {n_gt_scoreable} in a scoreable class")
-    print(f"  matched (any spatial overlap, compatible class): {len(matched)}/{n_gt_scoreable} "
-          f"({len(matched)/n_gt_scoreable:.1%})" if n_gt_scoreable else "  no scoreable GT elements")
-    print(f"  unmatched predicted elements (no GT overlap): {len(unmatched_pred)}")
+    print(f"  matched (>={MATCH_COVERAGE_THRESHOLD:.0%} own-volume coverage, compatible class): "
+          f"{len(matched)}/{n_gt_scoreable} ({len(matched)/n_gt_scoreable:.1%})"
+          if n_gt_scoreable else "  no scoreable GT elements")
+    print(f"  unmatched predicted elements (never contributed to any GT element's coverage): "
+          f"{len(unmatched_pred)}")
     if matched:
-        vols = np.array([m[2] for m in matched])
-        errs = np.array([m[3] for m in matched])
-        print(f"  overlap volume: median={np.median(vols):.3f}m3, "
-              f"{np.mean(vols > 0):.0%} with any positive overlap")
-        print(f"  bbox rel_err (matched pairs): median per-axis = "
+        coverages = np.array([m[2] for m in matched])
+        vols = np.array([m[3] for m in matched])
+        errs = np.array([m[4] for m in matched])
+        print(f"  coverage: median={np.median(coverages):.1%}, "
+              f"{np.mean(coverages >= 0.9):.0%} at >=90%")
+        print(f"  best-single-fragment overlap volume: median={np.median(vols):.3f}m3")
+        print(f"  bbox rel_err (best contributing fragment vs GT): median per-axis = "
               f"{np.median(errs, axis=0).round(2).tolist()}")
     return matched, unmatched_gt, unmatched_pred
 

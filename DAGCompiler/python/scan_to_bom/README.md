@@ -613,9 +613,12 @@ Sample House baseline first (coverage 58/58 unchanged, cluster fragmentation act
 get found; one small regression traced to its real cause — a single `IfcMember` picked up four
 1-point boundary-noise contacts from having 2.5x more accepted planes nearby, not a structural
 break, its own dominant segment stayed at ~95% purity), then re-ran DeKH_B_ICU itself: **wall
-recovery 5/31 → 29/31 (93.5%)**, overall spatial match 13/82 (15.9%) → 36/82 (43.9%), closing
-most of the gap to the published baseline's 39/82 (47.6%). `MAX_PLANES=40` still means 40 search
-*rounds*, not 40 accepted planes — each round can now accept up to 3 plane equations (one per
+recovery 5/31 → 29/31 (93.5%)** — up from the 13/82 (15.9%) overall match / 5/31 wall recovery
+first measured when this investigation started. (The overall spatial-match numbers this run was
+originally scored against — 36/82, baseline 39/82 — were themselves later found to rest on a
+flawed match criterion; see "Match-criterion fix" below for the corrected, current numbers,
+which replace those.) `MAX_PLANES=40` still means 40 search *rounds*, not 40 accepted planes —
+each round can now accept up to 3 plane equations (one per
 orientation) for the same RANSAC compute, so raw accepted-plane count before Phase 2.5 merge
 rose accordingly (45 → 551 on the full DeKH scan) — real, evidence-gated surfaces (each still
 individually clears `MIN_PLANE_INLIERS`), not an invented cap change.
@@ -646,33 +649,90 @@ original coordinate-frame fix established, just applied per floor.
 three real scenes, not just B_ICU's.
 
 **But Building A's 72/72 needed tracing before trusting it — and didn't hold up as "100%
-recovered."** `_spatial_match`'s "any positive AABB overlap counts as a match" criterion (used
-unchanged from B_ICU/C, where it never caused a problem) breaks down at a full-floor building
-scale with many walls close together: median bbox relative error for matched walls was
-**42x on the long axis** — implausible enough on its own to trace rather than report. Root
-cause, confirmed by inspecting the worst offenders directly: one real 35.6m-long corridor wall
-we correctly found gets its AABB checked against every GT wall whose own AABB it happens to
-cross — including several short, real, *perpendicular* partition walls (GT size 0.15×3.37×3.0m,
-i.e. running north-south) that just touch the long wall at a T-junction. AABB overlap there is
-real (they do physically touch) but it isn't the same wall being recovered — B_ICU/C's smaller,
-single-room scans never had enough co-located walls for this to surface. A per-GT-wall
-volume-coverage check (matched overlap volume ÷ that GT wall's own volume — not exposed by the
-existing script, computed separately) shows the honest picture: median 52% of each matched
-wall's own volume actually covered, 24/72 (33%) at ≥90% (solid, complete matches), 4/72 under
-10% (the T-junction false-positives just described). For comparison, the same coverage check on
-the other two scenes: B_ICU's matches are far tighter (median 97.5% coverage, 18/29 at ≥90%,
-zero under 10%); Building C's are middling (median 33.4% coverage, partial-but-real, zero under
-10% — no crossing artifacts there, its single room doesn't have enough co-located walls for one
-either).
-**Takeaway: wall *discovery* (does a plane exist at all) generalizes across all three real
-scenes; wall *match quality* varies by scene, and the raw "any-overlap" match-rate number is not
-reliable at multi-room building scale without a coverage-fraction check alongside it** — a
-scoring-methodology gap, not a segmentation regression, and not chased further this session per
-the same "note it, don't rabbit-hole" discipline as the 2 unmatched B_ICU walls.
+recovered."** `_spatial_match`'s original "any positive AABB overlap counts as a match"
+criterion (used unchanged from B_ICU/C, where it never caused a visible problem) breaks down at
+a full-floor building scale with many walls close together: median bbox relative error for
+matched walls was **42x on the long axis** — implausible enough on its own to trace rather than
+report. Root cause, confirmed by inspecting the worst offenders directly: one real 35.6m-long
+corridor wall we correctly found gets its AABB checked against every GT wall whose own AABB it
+happens to cross — including several short, real, *perpendicular* partition walls (GT size
+0.15×3.37×3.0m, i.e. running north-south) that just touch the long wall at a T-junction. AABB
+overlap there is real (they do physically touch) but it isn't the same wall being recovered —
+B_ICU/C's smaller, single-room scans never had enough co-located walls for this to surface.
+This finding is what drove the match-criterion fix below.
 
-Overall spatial match (all scoreable classes, same "any positive overlap" criterion as above):
-Building C 20/34 (58.8%) vs. published baseline 29/34 (85.3%); Building A 411/535 (76.8%,
-combined-floor, no baseline available per-building for this comparison shape).
+### Match-criterion fix — replacing "any overlap" with real volume coverage
+
+`_spatial_match()` (`validate_real_world.py`) now requires a GT element's compatible-class
+predictions to cover **at least 50% of that GT element's own volume** (`MATCH_COVERAGE_THRESHOLD`)
+before counting it matched, computed via a real grid-based union (`_union_coverage_fraction`,
+2cm cells — same granularity as `RANSAC_DIST_THRESHOLD_M`, reused rather than picked
+arbitrarily) over ALL compatible-class predicted elements that overlap it, not just the single
+biggest one.
+
+**Checked the fragmentation correlation before implementing, as it needed checking rather than
+assuming**: computed, for every real DeKH wall across all three scenes, how many distinct
+predicted wall segments actually overlap it at all vs. how much of its volume the single best
+one alone covers. Of the walls with <50% single-best-fragment coverage (52 total across B_ICU/
+Building C/Building A), **51 of 52 were touched by more than one predicted fragment** — the old
+"best single piece only" criterion really was mostly measuring plane-fragmentation (a real wall
+correctly found as several separate physical pieces — an occluder gap, or a RANSAC search
+splitting one surface across rounds; see Phase 2.5's fragmentation findings above), not a
+segmentation failure, exactly as suspected. So the fix is directly entangled with that known
+issue, not a separate, unrelated concern.
+
+That correlation check also nearly led to the wrong fix: a first attempt just **summed** every
+contributing fragment's overlap volume instead of the single best one. That does fix the
+fragmentation under-count, but on real data it then over-counts a different, real way — several
+of a wall's contributing fragments turned out to be different **parallel faces** of the same
+multi-layer wall assembly (inner/outer face, insulation, ~10-30cm apart in thickness — the same
+multi-face structure already documented in Phase 2.5's "wall-face" findings), each spanning
+close to the wall's full length/height. Summing their individual overlap volumes double- and
+triple-counts the same length/height footprint once per face layer — measured coverage past
+100% on real matches (up to 239%) before this was caught. The real fix needed an actual 3D
+**union**, not a sum: `_union_coverage_fraction` rasterizes each GT element's own (small, cheap)
+AABB into an occupancy grid and marks cells touched by ANY contributing predicted box, so
+fragmentation and multi-face duplication both correctly saturate toward — not past — 100%,
+while a thin T-junction touch stays a small fraction of the volume it grazes regardless of how
+many other elements also touch it.
+
+**Verified against the synthetic Sample House baseline before trusting it, same discipline as
+every fix this project**: `_spatial_match` is used only by the real-world DeKH scoring path —
+the synthetic regression checks (`validate_segmentation.py`, `validate_reference_db.py`) match
+by real per-point source GUID instead, structurally independent of this function — re-ran
+`validate_segmentation.py` anyway for direct confirmation and got byte-identical numbers to
+before (58/58 coverage, 111 segments, 56 low-confidence — nothing changed, as expected).
+
+**Re-ran all three real DeKH scenes under the corrected criterion — these numbers replace every
+"any overlap" number reported above and in the original Buildings A/C findings, not additional
+to them:**
+
+| Scene | Wall recovery (old → new) | Overall match (old → new) | Published baseline (old → new) |
+|---|---|---|---|
+| B_ICU | 29/31 (93.5%) → **29/31 (93.5%), unchanged** | 36/82 (43.9%) → **29/82 (35.4%)** | 39/82 (47.6%) → **30/82 (36.6%)** |
+| Building C | 15/16 (93.8%) → **11/16 (68.8%)** | 20/34 (58.8%) → **12/34 (35.3%)** | 29/34 (85.3%) → **25/34 (73.5%)** |
+| Building A | 72/72 nominal → **50/72 (69.4%)** | 411/535 (76.8%) → **330/535 (61.7%)** | not available per-building |
+
+B_ICU's wall number is **exactly unchanged** — its matches were already high-quality single
+pieces (median 97.5% own-volume coverage, confirmed during tracing above), so neither the
+fragmentation under-count nor the T-junction over-count were live problems there; the overall
+number still drops because doors/windows/slabs elsewhere in that scene *were* fragmented enough
+to lose credit under a strict single-best-piece view before the union fix, and gain some of it
+back, without ever crossing the stricter 50% bar as often as the old any-overlap criterion did.
+Building C and Building A both drop substantially on wall recovery specifically — this is the
+honest number: many of their previously-"matched" walls were genuinely below 50% real coverage
+(partial recovery, not full), not the false-positive-only story the T-junction trace alone would
+suggest. Both scenes' matches that DO clear the bar are solid (Building A's 50 matched walls:
+median 95.1% coverage; Building C's 11: legitimate T-junction-adjacent partial coverage, 59-100%,
+confirmed by inspection — no scoring artifacts left in what counts as matched now).
+
+**Takeaway: wall *discovery* (does a plane exist at all) still generalizes across all three real
+scenes — that finding stands. Wall *match quality* genuinely varies by scene, and now the
+match-rate number reflects that honestly instead of being inflated by AABB touches or deflated
+by fragmentation** — this was a real scoring-methodology gap, not a segmentation regression, and
+fixing it changed the *reported* numbers substantially without the underlying pipeline changing
+at all (re-scored existing checkpoints, no re-segmentation needed for B_ICU/Building C; Building
+A likewise reused its existing classified predictions).
 
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
