@@ -537,6 +537,34 @@ than forced: `IfcDoor` stays `IfcBuildingElementProxy` (deferred, not guessed) f
 
 ## Real-world validation (Phase 6 — DeKH_B_ICU)
 
+### Current numbers — all three scenes, one code version (2026-09-04)
+
+**These are the authoritative current results.** Everything further down this section is the
+fix-by-fix progression that got here (kept deliberately: each step's evidence is what justified
+the next one), but those per-fix tables quote scenes as they stood at the time, on older code.
+After the last two fixes landed, all three scenes were re-run on identical code so the numbers
+below are directly comparable to each other for the first time:
+
+| Scene | Wall recovery | Overall match (≥50% volume coverage) | Published BIMStruct3D baseline |
+|---|---|---|---|
+| DeKH_B_ICU | **30/31 (96.8%)** | **30/82 (36.6%)** | 30/82 (36.6%) — level |
+| DeKH_C_surgery | **14/16 (87.5%)** | **15/34 (44.1%)** | 25/34 (73.5%) |
+| DeKH Building A (both floors) | **69/72 (95.8%)** | **404/535 (75.5%)** | n/a per-building |
+
+Wall recovery is 87-97% across all three real buildings. Every remaining unmatched wall in
+every scene has been individually traced to a specific cause, and **none of them is a
+segmentation defect** — they are scan-coverage occlusion, cross-floor pipeline architecture,
+compound/aggregate GT entities with inflated bounding boxes, and the already-documented
+multi-layer wall-face limitation (details in the trace subsections below).
+
+Two honest caveats on these numbers: (1) **Building C still lags its published baseline
+substantially** (44.1% vs 73.5% overall) — the single biggest remaining gap-to-baseline, not yet
+investigated; (2) predicted-element volume is high (over-fragmentation — see Option C's
+trade-off note), which inflates the "unmatched predicted elements" count in every scene.
+
+⚠️ These are **front-end** numbers. The full `scan → BOM → compile → gates` chain does not
+currently run at HEAD — see "Phase 5 does NOT currently reproduce at HEAD" above.
+
 First run against a real terrestrial LiDAR scan, not the synthetic cloud every earlier phase
 was validated against — DeKH (German Hospital Dataset, published alongside the BIMStruct3D
 paper — model card: https://huggingface.co/dfki-av/BIMStruct3D-segmentation). Started with
@@ -906,8 +934,9 @@ off-by-one on the cap: some real walls are evidently still losing the within-ori
 competition even at 50+ rounds. Per the original design-menu plan, **Option C (multi-candidate
 accept per round) is the natural next step if this gap needs closing further** — it attacks the
 same-round winner-take-all mechanism directly rather than just buying more rounds — but it's not
-implemented preemptively; B_ICU and Building C were not re-run under the new adaptive stop this
-session (not where the pattern was strong; their existing numbers stand). `MAX_PLANES`/
+implemented preemptively; B_ICU and Building C were not re-run under the adaptive stop at the
+time (not where the pattern was strong) — they have since been re-run under the final code, see
+"Current numbers" at the top of this section. `MAX_PLANES`/
 `EARLY_STOP_*` tunables and the full mechanism are in `segment.py`; the resumable driver
 (`run_dekh_staged.py`) persists the yield history across resumed calls the same way it already
 persisted `remaining_mask`/`segments`.
@@ -1004,8 +1033,16 @@ still individually gated by `MIN_PLANE_INLIERS`/`CLUSTER_MIN_SAMPLES`, nothing i
 than misclassifications, but a real operational cost (bigger output, more downstream volume) at
 Building A's construction-site-clutter scale that a future session may want to address — e.g.
 in `merge_instances.py`'s consolidation, or by revisiting whether `MULTI_CANDIDATE_K=5` is more
-generous than this scale needs. B_ICU and Building C were not re-run under Option C this
-session (not where the pattern was strong).
+generous than this scale needs.
+
+**B_ICU and Building C have since been re-run under this same final code** (they weren't at the
+time, since Building A was where the pattern was strong), so all three scenes are now directly
+comparable — see "Current numbers" at the top of this section. Both improved: B_ICU wall
+recovery 29/31 → 30/31 and overall 29/82 → 30/82 (now exactly level with the published
+BIMStruct3D baseline); Building C wall 11/16 → 14/16 and overall 12/34 → 15/34. B_ICU's newly
+recovered wall is specifically the one the earlier trace predicted was recoverable (a
+within-orientation competition loss), while its zero-points scan-boundary wall correctly remains
+unrecoverable — a real, independent confirmation that that trace was correct.
 
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
@@ -1067,13 +1104,18 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
 
 ## What's still not done — deliberately deferred
 
-- **2 of 31 real DeKH_B_ICU walls still unmatched** after the interleaved per-orientation search
-  fix (see "Real-world validation (Phase 6)" above — wall recovery is 29/31 now, up from 5/31).
-  Traced (see above): one is real scan-coverage occlusion (physically beyond the scanned area,
-  unrecoverable); the other is a genuinely vertical wall whose own points never won a
-  best-vertical-candidate round against bigger walls — a minor residual instance of the same
-  within-orientation competition the interleaving fix addressed, not chased further since it's a
-  single wall in a single scene.
+- **1 of 31 real DeKH_B_ICU walls still unmatched — and it is unrecoverable from this scan.**
+  Wall recovery is 30/31 (96.8%) after the final code. Both originally-unmatched walls were
+  traced (see above): one was a genuinely vertical wall losing a best-vertical-candidate round
+  to bigger walls, **which the multi-candidate fix has since recovered — an independent
+  confirmation that the trace was right**; the other is real scan-coverage occlusion, sitting
+  physically beyond where the scanner ever reached (zero points at any stage). Nothing in the
+  segmentation code can recover that one; it needs a rescan, not a fix.
+- **Building C lags its published baseline by the widest margin of the three scenes** — 15/34
+  (44.1%) overall vs the BIMStruct3D baseline's 25/34 (73.5%), even though its wall recovery is
+  strong at 14/16 (87.5%). B_ICU is level with its baseline and Building A has none published,
+  so this is the one scene where a real, unexplained gap-to-baseline remains. Not yet
+  investigated — the most obvious next question for anyone picking up front-end accuracy work.
 - **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched,
   traced to two new, distinct, non-segmentation causes.** The fixed 40-round cap was replaced
   with an adaptive diminishing-returns stop, then `MULTI_CANDIDATE_K=5` let each round accept
