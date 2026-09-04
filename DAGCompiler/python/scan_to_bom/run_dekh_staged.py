@@ -74,21 +74,28 @@ def stage_downsample(args):
 
 
 def stage_segment(args):
-    """Resumable: MAX_PLANES rounds of plane extraction can exceed this environment's single
-    ~10-minute foreground-call limit on a real 23M-point scan (confirmed — see
-    _plane_extraction_round's docstring in segment.py). Each invocation runs rounds until
-    either plane extraction genuinely finishes (proceeds straight to floor/ceiling + residual
-    clustering + the final stage2_segments.pkl checkpoint) or a wall-clock round-time-budget
-    is hit (writes a ROUND checkpoint and returns — re-run the exact same command to resume
-    from the next round). `xyz`/`tack_point` are NOT stored in the round checkpoint — they're
-    cheaply and deterministically reloaded from stage1 + normalize_pointcloud() on every
-    invocation (normalize measured at 1.4s on the full 23.7M-point cloud) rather than
-    duplicating ~570MB of point data into every round checkpoint write.
+    """Resumable: plane extraction can run well beyond this environment's single ~10-minute
+    foreground-call limit on a real multi-million-point scan (confirmed — see
+    _plane_extraction_round's docstring in segment.py), and now runs until a real
+    diminishing-returns signal fires (EARLY_STOP_WINDOW/EARLY_STOP_YIELD_FRAC in segment.py —
+    Phase 6 fix #2: a fixed round count was confirmed to cut off real construction-site-scale
+    buildings while they still had substantial real surfaces left; see README's "round-budget
+    exhaustion" finding), not a fixed round count — MAX_PLANES is now a generous safety
+    ceiling, not the primary control. Each invocation runs rounds until either plane
+    extraction genuinely finishes (proceeds straight to floor/ceiling + residual clustering +
+    the final stage2_segments.pkl checkpoint) or a wall-clock round-time-budget is hit (writes
+    a ROUND checkpoint and returns — re-run the exact same command to resume from the next
+    round; the diminishing-returns yield history persists across resumed calls too).
+    `xyz`/`tack_point` are NOT stored in the round checkpoint — they're cheaply and
+    deterministically reloaded from stage1 + normalize_pointcloud() on every invocation
+    (normalize measured at 1.4s on the full 23.7M-point cloud) rather than duplicating
+    ~570MB of point data into every round checkpoint write.
     """
     from pointcloud_io import PointCloud
     from normalize import normalize_pointcloud
     from segment import (merge_coplanar_fragments, _plane_extraction_round,
-                          _finish_segmentation, MAX_PLANES, MIN_PLANE_INLIERS)
+                          _finish_segmentation, MAX_PLANES, MIN_PLANE_INLIERS,
+                          EARLY_STOP_WINDOW, EARLY_STOP_YIELD_FRAC)
 
     ckpt_dir = Path(args.checkpoint_dir)
     in_pc = ckpt_dir / "stage1_pointcloud.npz"
@@ -120,8 +127,11 @@ def stage_segment(args):
         leftover_chunks = state["leftover_chunks"]
         reject_stats = state["reject_stats"]
         plane_count = state["plane_count"]
-        _log(f"STAGE 2/3 resumed at round {plane_count}/{MAX_PLANES}, "
-             f"{len(segments)} plane segments so far, "
+        round_num = state["round_num"]
+        yield_history = state["yield_history"]
+        best_round_yield = state["best_round_yield"]
+        _log(f"STAGE 2/3 resumed at round {round_num} ({plane_count} rounds accepted "
+             f"something so far), {len(segments)} plane segments so far, "
              f"{int(remaining_mask.sum())} points not yet touched by a plane search")
     else:
         remaining_mask = np.ones(len(xyz), dtype=bool)
@@ -131,35 +141,57 @@ def stage_segment(args):
         leftover_chunks = []
         reject_stats = {"fragments": 0, "points": 0}
         plane_count = 0
+        round_num = 0
+        yield_history = []
+        best_round_yield = 0
 
     t_budget_start = time.time()
     stopped_for_time_budget = False
-    while plane_count < MAX_PLANES:
+    stopped_for_diminishing_returns = False
+    while round_num < MAX_PLANES:
         if time.time() - t_budget_start > args.round_time_budget_s:
             stopped_for_time_budget = True
             break
-        seg_id, found_any, accepted_any = _plane_extraction_round(
+        round_num += 1
+        seg_id, found_any, accepted_any, round_yield = _plane_extraction_round(
             xyz, remaining_mask, rng, segments, seg_id, leftover_chunks, reject_stats,
-            _log, plane_count + 1)
+            _log, round_num)
         if not found_any:
             _log(f"STAGE 2/3 plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
                  f"among remaining points — plane extraction complete")
             break
         if accepted_any:
             plane_count += 1
+        yield_history.append(round_yield)
+        best_round_yield = max(best_round_yield, round_yield)
+        if len(yield_history) >= EARLY_STOP_WINDOW:
+            recent_mean = sum(yield_history[-EARLY_STOP_WINDOW:]) / EARLY_STOP_WINDOW
+            if best_round_yield > 0 and recent_mean < EARLY_STOP_YIELD_FRAC * best_round_yield:
+                _log(f"STAGE 2/3 diminishing returns: last {EARLY_STOP_WINDOW} rounds "
+                     f"averaged {recent_mean:.0f} accepted points/round, under "
+                     f"{EARLY_STOP_YIELD_FRAC:.1%} of this run's best single round "
+                     f"({best_round_yield} points) — plane extraction complete (real "
+                     f"surfaces exhausted for this scene, not an arbitrary round cap)")
+                stopped_for_diminishing_returns = True
+                break
 
     if stopped_for_time_budget:
         with open(round_ckpt_path, "wb") as f:
             pickle.dump({"remaining_mask": remaining_mask, "rng_state": rng.bit_generator.state,
                          "segments": segments, "seg_id": seg_id, "leftover_chunks": leftover_chunks,
-                         "reject_stats": reject_stats, "plane_count": plane_count},
+                         "reject_stats": reject_stats, "plane_count": plane_count,
+                         "round_num": round_num, "yield_history": yield_history,
+                         "best_round_yield": best_round_yield},
                         f, protocol=pickle.HIGHEST_PROTOCOL)
         _log(f"STAGE 2/3 round time budget ({args.round_time_budget_s}s) reached at round "
-             f"{plane_count}/{MAX_PLANES} ({len(segments)} plane segments so far) — round "
+             f"{round_num} ({len(segments)} plane segments so far) — round "
              f"checkpoint written -> {round_ckpt_path} — re-run the identical command to continue")
         return
 
-    _log(f"STAGE 2/3 plane extraction complete at round {plane_count}/{MAX_PLANES} "
+    stop_reason = "diminishing returns" if stopped_for_diminishing_returns else \
+        (f"round {round_num}/{MAX_PLANES} safety ceiling" if round_num >= MAX_PLANES else
+         "no plane clears the inlier floor")
+    _log(f"STAGE 2/3 plane extraction complete at round {round_num} ({stop_reason}) "
          f"({len(segments)} plane segments) — finishing (floor/ceiling relabel + "
          f"residual clustering)")
     t0 = time.time()

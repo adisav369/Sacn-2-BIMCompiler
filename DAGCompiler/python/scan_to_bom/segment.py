@@ -54,15 +54,31 @@ RANSAC_DIST_THRESHOLD_M = 0.02      # a point counts as a plane inlier within 2c
 RANSAC_ITERATIONS = 400             # per plane search
 MIN_PLANE_INLIERS = 300             # below this, not worth calling a plane at all
 MIN_PLANE_CONFIDENT_INLIERS = 1500  # at/above this inlier count, confidence = 1.0
-MAX_PLANES = 40                     # hard stop on SEARCH ROUNDS, not accepted planes — a
-                                     # building has a bounded number of surfaces, but since
-                                     # Phase 6's per-orientation search (below) can accept up
-                                     # to 3 new plane equations per round (one per orientation
-                                     # class), and each of those can itself split into several
-                                     # component segments, actual accepted-segment count was
-                                     # already round-count-independent before this change and
-                                     # remains so — this caps RANSAC search rounds (bounded
-                                     # wall-clock work), not the number of real surfaces found
+MAX_PLANES = 300                    # SAFETY-CEILING hard stop on search rounds — a generous
+                                     # backstop, not the primary control (Phase 6 fix #2: a
+                                     # fixed 40-round cap was confirmed, on real DeKH data, to
+                                     # cut off real construction-site-scale buildings while
+                                     # they still had substantial real surfaces left to find —
+                                     # see EARLY_STOP_* below and README's "round-budget
+                                     # exhaustion" finding). Rounds cost less as the remaining
+                                     # point pool shrinks, so a high ceiling here is cheap
+                                     # insurance against a scene EARLY_STOP_* never settles on,
+                                     # not something expected to bind in normal operation.
+EARLY_STOP_WINDOW = 10              # the REAL stopping control: rounds worth of accepted-point
+                                     # yield to average before judging "diminishing returns" —
+                                     # a single-round threshold doesn't work (checked real
+                                     # DeKH_B_ICU round-by-round yield before picking this: it
+                                     # oscillates noisily between ~0.4% and ~3.7% of its best
+                                     # round even in its final 10 rounds, never a clean crash to
+                                     # near-zero — a window smooths that noise into a real trend)
+EARLY_STOP_YIELD_FRAC = 0.005       # stop once the last EARLY_STOP_WINDOW rounds' MEAN accepted
+                                     # -point yield falls under this fraction of the best single
+                                     # round's yield seen so far in this run — i.e. genuinely
+                                     # scraping the bottom of THIS scene's own barrel, not an
+                                     # absolute point count picked blind. Deliberately scene-
+                                     # relative: effort should scale with how much real content
+                                     # a scene actually has (confirmed scale-dependent — see
+                                     # README's Building A finding), not one global round count
 NORMAL_ANGLE_TOL_DEG = 8.0           # two planes' normals within this angle + offsets within
 OFFSET_TOL_M = 0.05                  # OFFSET_TOL_M count as "the same real plane equation" —
                                       # used both by _same_plane_equation() (RANSAC-rediscovery
@@ -307,7 +323,7 @@ def _split_plane_into_components(xyz: np.ndarray, plane_indices: np.ndarray,
 def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
                              rng: np.random.Generator, segments: list[Segment], seg_id: int,
                              leftover_chunks: list[np.ndarray], reject_stats: dict,
-                             log, round_num: int) -> tuple[int, bool, bool]:
+                             log, round_num: int) -> tuple[int, bool, bool, int]:
     """Runs ONE plane-search round: find the best plane candidate per orientation, split each
     into connected components, absorb rediscoveries or accept new segments. Split out of
     segment_pointcloud() so a caller that can't finish all MAX_PLANES rounds in a single
@@ -320,12 +336,15 @@ def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
     (dict with 'fragments'/'points' int keys) is mutated in place too. Only `seg_id` is
     returned by value (ints aren't mutable). Also returns `found_any_candidate` (False means
     NOTHING cleared MIN_PLANE_INLIERS this round — the caller should stop plane extraction
-    entirely, not just skip this round) and `accepted_any` (whether this round should count
-    against the MAX_PLANES round budget).
+    entirely, not just skip this round), `accepted_any` (whether this round should count
+    against the MAX_PLANES round budget), and `accepted_points_this_round` (total point count
+    across every genuinely NEW segment accepted this round — not absorbed rediscoveries, not
+    sub-threshold rejects — the real signal the caller's diminishing-returns check watches;
+    see EARLY_STOP_WINDOW/EARLY_STOP_YIELD_FRAC).
     """
     remaining_idx = np.nonzero(remaining_mask)[0]
     if len(remaining_idx) < MIN_PLANE_INLIERS:
-        return seg_id, False, False
+        return seg_id, False, False, 0
     log(f"§SEGMENT plane search #{round_num}/{MAX_PLANES} starting: "
         f"{len(remaining_idx)} candidate points")
     t_plane = time.time()
@@ -333,10 +352,11 @@ def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
     log(f"§SEGMENT   RANSAC search done in {time.time() - t_plane:.1f}s -> "
         f"{len(candidates)} orientation candidate(s): {sorted(candidates.keys())}")
     if not candidates:
-        return seg_id, False, False
+        return seg_id, False, False, 0
 
     accepted_any = False  # did this round find at least one GENUINELY NEW plane?
     n_accepted_this_round = 0
+    n_accepted_points_this_round = 0
     # Process vertical first, then horizontal, then oblique. This round's candidates were
     # all fit against the SAME remaining-point snapshot, so their inlier sets can overlap
     # near real edges/corners where two surfaces meet within RANSAC_DIST_THRESHOLD_M of
@@ -430,6 +450,7 @@ def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
 
             accepted_any = True
             n_accepted_this_round += 1
+            n_accepted_points_this_round += len(comp_idx)
             aabb_min, aabb_max = comp_aabb_min, comp_aabb_max
             conf = _plane_confidence(len(comp_idx))
             seg = Segment(
@@ -448,11 +469,12 @@ def _plane_extraction_round(xyz: np.ndarray, remaining_mask: np.ndarray,
             seg_id += 1
     if accepted_any:
         log(f"§SEGMENT plane search #{round_num}/{MAX_PLANES} done: "
-            f"{n_accepted_this_round} new plane segment(s) accepted this round")
+            f"{n_accepted_this_round} new plane segment(s) accepted this round "
+            f"({n_accepted_points_this_round} points)")
     # else: this whole round only produced rediscoveries and/or sub-threshold fragments
     # across every orientation tried — don't count it against MAX_PLANES, but the caller
     # should keep looping (points already consumed above either way).
-    return seg_id, True, accepted_any
+    return seg_id, True, accepted_any, n_accepted_points_this_round
 
 
 def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment]:
@@ -468,16 +490,31 @@ def segment_pointcloud(pc: PointCloud, seed: int = 0, log=print) -> list[Segment
 
     # ── Stage 1+2+3: iterative plane extraction ──────────────────────────────────────
     plane_count = 0
-    while plane_count < MAX_PLANES:
-        seg_id, found_any, accepted_any = _plane_extraction_round(
+    round_num = 0
+    yield_history: list[int] = []
+    best_round_yield = 0
+    while round_num < MAX_PLANES:
+        round_num += 1
+        seg_id, found_any, accepted_any, round_yield = _plane_extraction_round(
             xyz, remaining_mask, rng, segments, seg_id, leftover_chunks, reject_stats,
-            log, plane_count + 1)
+            log, round_num)
         if not found_any:
             log(f"§SEGMENT plane search: no plane clears {MIN_PLANE_INLIERS} inliers "
                 f"among remaining points — stopping plane extraction")
             break
         if accepted_any:
             plane_count += 1
+        yield_history.append(round_yield)
+        best_round_yield = max(best_round_yield, round_yield)
+        if len(yield_history) >= EARLY_STOP_WINDOW:
+            recent_mean = sum(yield_history[-EARLY_STOP_WINDOW:]) / EARLY_STOP_WINDOW
+            if best_round_yield > 0 and recent_mean < EARLY_STOP_YIELD_FRAC * best_round_yield:
+                log(f"§SEGMENT diminishing returns: last {EARLY_STOP_WINDOW} rounds averaged "
+                    f"{recent_mean:.0f} accepted points/round, under "
+                    f"{EARLY_STOP_YIELD_FRAC:.1%} of this run's best single round "
+                    f"({best_round_yield} points) — stopping (real surfaces exhausted for "
+                    f"this scene, not an arbitrary round cap)")
+                break
     n_rejected_fragments = reject_stats["fragments"]
     n_rejected_points = reject_stats["points"]
     return _finish_segmentation(xyz, remaining_mask, segments, seg_id, leftover_chunks,

@@ -809,6 +809,70 @@ limitation; Building A's 22 mostly reflect a genuinely new finding (round budget
 construction-site clutter scale) worth a future design session of its own, separate from
 tonight's interleaving fix.
 
+### Fixing round-budget exhaustion — adaptive stopping, not a bigger number
+
+Before implementing, checked the ACTUAL mechanism against a real design menu (5 named options:
+raise `MAX_PLANES`; an adaptive/clutter-aware round budget; multi-candidate accept per round —
+harvest several distinct real planes per orientation per round instead of one; cross-round
+"starvation aging" for near-miss candidates; a separate cheap mop-up pass over the leftover
+pool before DBSCAN clustering) rather than jumping to the first plausible one. Picked the
+adaptive round budget: it directly matches the confirmed finding (effort should scale with real
+scene complexity — exactly what differs between B_ICU/Building C and Building A), it's the
+cheapest to verify safely since it doesn't touch `_fit_plane_ransac_multi`'s candidate-selection
+logic that every real-world number this project has reported depends on, and it reuses the
+resumable/checkpointed infrastructure already built for exactly this purpose.
+
+**Checked real per-round yield data before picking parameters, not guessed blind**: parsed
+DeKH_B_ICU's actual round-by-round accepted-point counts. The tail is genuinely noisy — it
+oscillates between ~0.4% and ~3.7% of its best round's yield even in its final 10 rounds, never
+a clean single-round crash to near-zero — so a single-round threshold would be unreliable
+(could trigger on a random small round, or never trigger at all). Landed on: `MAX_PLANES` is now
+a generous **safety-ceiling backstop** (300, raised from 40, essentially never expected to
+bind), and the real control is `EARLY_STOP_WINDOW`/`EARLY_STOP_YIELD_FRAC` — stop once the last
+10 rounds' *mean* accepted-point yield falls under 0.5% of the best single round's yield seen so
+far in that run. Scene-relative (a fraction of that scene's own best round, not an absolute
+point count picked blind), and the 10-round window smooths the noise a single-round rule would
+have been fragile to.
+
+**Verified against the synthetic Sample House baseline first, same discipline as every fix
+tonight**: coverage held 58/58, fragmentation identical (58/58 plane-only, 1/58 cluster-only),
+low-confidence count identical (56). It ran one extra round (41 vs the old fixed 40) before the
+new stop correctly triggered (298 accepted points/round over the last 10, under 0.5% of that
+run's best round of 109,656) — confirming the mechanism doesn't just run forever on a small
+scene; it recognizes real exhaustion and stops close to where the old fixed cap already was.
+
+**Re-ran Building A specifically** (both floors, since that's where the pattern is strongest):
+
+| Floor | Rounds (old fixed → new adaptive) | Raw plane segments (old → new) |
+|---|---|---|
+| 1st floor | 40 → **54** | 616 → **883** |
+| 2nd floor | 40 → **52** | 560 → **755** |
+
+Both floors kept finding substantial content well past round 40 (1st floor: 14,599-52,813
+accepted points per round through round 53) before genuinely diminishing — confirming this
+wasn't an arbitrary cutoff, there really was more real content the fixed cap was missing.
+Re-scored the combined-floor prediction against the whole-building GT, same methodology as
+before (each floor's own tack point, combined before scoring):
+
+| Metric | Before (fixed 40 rounds) | After (adaptive stop) |
+|---|---|---|
+| Wall recovery | 50/72 (69.4%) | **56/72 (77.8%)** |
+| Overall match | 330/535 (61.7%) | **380/535 (71.0%)** |
+| Matched-wall median coverage | 95.1% | 95.5% |
+
+**Real, meaningful progress — 6 of the 22 previously-unmatched walls now recovered — but not a
+full close.** 16 real walls in Building A still go unmatched even with adaptive stopping,
+consistent with this being a genuine round-budget/competition problem rather than a simple
+off-by-one on the cap: some real walls are evidently still losing the within-orientation
+competition even at 50+ rounds. Per the original design-menu plan, **Option C (multi-candidate
+accept per round) is the natural next step if this gap needs closing further** — it attacks the
+same-round winner-take-all mechanism directly rather than just buying more rounds — but it's not
+implemented preemptively; B_ICU and Building C were not re-run under the new adaptive stop this
+session (not where the pattern was strong; their existing numbers stand). `MAX_PLANES`/
+`EARLY_STOP_*` tunables and the full mechanism are in `segment.py`; the resumable driver
+(`run_dekh_staged.py`) persists the yield history across resumed calls the same way it already
+persisted `remaining_mask`/`segments`.
+
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 
 Numbers below are from the pre-normalization investigation (`--no-normalize`), kept as the
@@ -876,17 +940,16 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   best-vertical-candidate round against bigger walls — a minor residual instance of the same
   within-orientation competition the interleaving fix addressed, not chased further since it's a
   single wall in a single scene.
-- **RANSAC's 40-round search budget isn't enough to drain every real distinct surface at
-  construction-site clutter scale** (Building A — 20 of its 22 unmatched walls' own real,
-  dense, genuinely-vertical points were never independently extracted as a plane at all within
-  40 rounds, ending up absorbed into giant 168K-923K-point DBSCAN residual clusters instead;
-  see "Tracing Buildings A and C's unmatched walls" above). Not present on B_ICU or Building C's
-  simpler single-room scenes — genuinely new, scale-dependent, distinct from the wall-starvation
-  problem the interleaving fix already solved (that was walls losing to unrelated clutter
-  *orientations*; this is real walls losing to other real walls/surfaces of the *same*
-  orientation, once there are more real surfaces than 40 rounds can cover). Candidate fixes
-  (raising `MAX_PLANES`, a clutter-density-aware round budget) not evaluated yet — open design
-  question for its own session, not chased further this one.
+- **Building A's round-budget exhaustion — partially fixed, not fully closed.** The fixed
+  40-round cap was replaced with an adaptive diminishing-returns stop (see "Fixing round-budget
+  exhaustion" above) — wall recovery improved 50/72 → 56/72 (both floors ran to round ~52-54
+  before genuinely plateauing, not an arbitrary cutoff). **16 real walls still unmatched even
+  with adaptive stopping** — some real walls are still losing the within-orientation
+  competition well past 50 rounds, confirming this needs more than a bigger/smarter round
+  budget alone. Next candidate (from the original design menu, not implemented preemptively):
+  multi-candidate accept per round — harvest several distinct real planes per orientation per
+  round instead of the current single winner, attacking the same-round competition directly
+  rather than buying more rounds. Open for a future session.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
