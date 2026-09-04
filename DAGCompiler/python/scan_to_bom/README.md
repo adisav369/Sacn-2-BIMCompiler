@@ -928,8 +928,37 @@ plane segments on the 1st floor alone, vs 883 under Option B).
 | Matched-wall median coverage | 95.5% | 98.5% |
 
 **Closed 13 of the remaining 16 walls — a strong result, not a full close.** 3 real walls
-still go unmatched (not investigated further this session, same "report the honest number"
-discipline as everywhere else tonight). **Real trade-off worth reporting plainly**: total
+still go unmatched — traced (same discipline as B_ICU's 2 walls earlier), two genuinely
+different causes, neither a segment.py defect:
+
+- **`1HTFNqrDvEpg$7WnXK$oqs`** (a normal-sized 0.3×14.33×3.8m wall): real, dense points exist
+  on BOTH floors (3,578 on 1st, 33,236 on 2nd, both ~90° local normal fit — genuinely
+  vertical), largely claimed by real segments on each floor individually. But its Z-range
+  (-1.7 to 2.1m) straddles the boundary between the two floors' own scan coverage (1st floor
+  spans -2.23 to 1.99m, 2nd spans 0.05 to 5.34m) — and since **the two floors are segmented as
+  two fully independent pipeline runs with no cross-floor merge step**, this wall's points get
+  captured and fragmented differently by each floor's own local segmentation, entangled with
+  each floor's own distinct ceiling/oblique content. No single predicted element can ever span
+  its full box under the current per-floor-independent architecture — a real, newly-found
+  pipeline-design limitation (cross-floor stitching), not a segmentation defect, and a
+  materially different, larger design question from anything fixed tonight.
+- **`1HTFNqrDvEpg$7WnXK$olD` and `2jYNokeq1ACPTSEXzm2GQ6`**: nearly identical X/Y footprint at
+  two different Z-levels (`aabb_min≈[25.27/25.28, -5.61]`, ~3.7-3.8m × 19.6m each) — almost
+  certainly the same real structure (a stairwell/shaft core, consistent with Building A's
+  STR-heavy construction-site content) authored as separate per-floor GT instances. Their GT
+  *volumes* are implausible for an ordinary wall (274.7m³ and 222.8m³) — these are compound/
+  aggregate authored entities whose bounding box vastly exceeds any individual flat wall
+  face's real material extent. Their claimed content is spread thinly across dozens of
+  unrelated `ceiling` segments (17%, 11%, 9%...) simply because a box this inflated
+  geometrically engulfs a large volume of real ceiling content around it, not because the real
+  walls weren't found. The 50%-of-GT-volume coverage bar is structurally very hard to clear
+  here regardless of extraction quality — a scoring-criterion edge case surfaced by an
+  unusually-shaped authored element, not a pipeline defect.
+
+Neither cause is chased further this session — cross-floor stitching is a real, separate
+design question, and the compound-entity scoring edge case would need its own volume-shape
+heuristic (e.g. flagging GT elements whose volume is implausible for their class) that hasn't
+been designed. **Real trade-off worth reporting plainly**: total
 predicted elements grew ~4.8x (2,527 → 12,047 across both floors), IfcWall predictions alone
 ~3x (239 → 729) — mostly small, correctly-deferred `IfcBuildingElementProxy` segments (each
 still individually gated by `MIN_PLANE_INLIERS`/`CLUSTER_MIN_SAMPLES`, nothing invented) rather
@@ -1006,16 +1035,23 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   best-vertical-candidate round against bigger walls — a minor residual instance of the same
   within-orientation competition the interleaving fix addressed, not chased further since it's a
   single wall in a single scene.
-- **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched.**
-  The fixed 40-round cap was replaced with an adaptive diminishing-returns stop, then
-  `MULTI_CANDIDATE_K=5` let each round accept several distinct real planes per orientation
-  instead of one (see "Fixing round-budget exhaustion" and its "further" follow-up above).
-  Wall recovery: 50/72 → 56/72 (adaptive stop alone) → **69/72 (95.8%, both fixes)**. 3 real
-  walls remain unmatched — not investigated further this session, small enough not to chase
-  blind. Real, honestly-reported trade-off: total predicted elements grew ~4.8x at Building A's
-  scale (mostly small, correctly-deferred `IfcBuildingElementProxy` segments, not
-  misclassifications) — worth a future look at `merge_instances.py` consolidation or a smaller
-  `MULTI_CANDIDATE_K` for this scale, not chased further this session either.
+- **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched,
+  traced to two new, distinct, non-segmentation causes.** The fixed 40-round cap was replaced
+  with an adaptive diminishing-returns stop, then `MULTI_CANDIDATE_K=5` let each round accept
+  several distinct real planes per orientation instead of one (see "Fixing round-budget
+  exhaustion" and its "further" follow-up above). Wall recovery: 50/72 → 56/72 (adaptive stop
+  alone) → **69/72 (95.8%, both fixes)**. The remaining 3 (traced immediately after the
+  multi-candidate results above) split into: (1) one real wall spanning the Z-boundary between
+  Building A's two
+  independently-segmented floors, which the current per-floor-independent architecture can
+  never unify into one predicted element — needs cross-floor stitching, a real, separate,
+  larger design question; (2) two GT elements (likely a stairwell/shaft core, same structure
+  at two Z-levels) with implausible authored volumes (274.7m³, 222.8m³) for an ordinary wall —
+  a scoring-criterion edge case for compound/aggregate entities, not a pipeline defect. Neither
+  chased further this session. Separately, real, honestly-reported trade-off: total predicted
+  elements grew ~4.8x at Building A's scale (mostly small, correctly-deferred
+  `IfcBuildingElementProxy` segments, not misclassifications) — worth a future look at
+  `merge_instances.py` consolidation or a smaller `MULTI_CANDIDATE_K` for this scale.
 - **Merging same-entity-but-different-face planes** (a wall's inner vs outer face, or its faces
   across a corner turn) — needs semantic/domain reasoning about wall assembly (e.g. "two
   parallel planes ~wall-thickness apart"), not pure geometry; see the wall-face finding in
