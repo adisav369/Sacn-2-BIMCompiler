@@ -151,6 +151,30 @@ goes 9/9 green.
   as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
   to the above; the chain is green regardless.
 
+## STANDING RULE — verify bulk/automated edits against the diff, not against the tool
+Applies to any change applied mechanically across many files (a script that rewrites imports,
+inserts a guard, renames a symbol, reformats). The script reporting "APPLIED: 88 files" is not
+evidence the edit was correct. Two checks are mandatory before committing:
+
+1. **`git diff --numstat`, and require deletions == 0 for anything claimed "purely additive".**
+   A single non-zero deletion count is the whole signal. This caught a bulk insert that wrote
+   `newline="
+"` unconditionally and silently converted 9 CRLF files wholesale — **10,785
+   phantom deleted lines burying the 16 real added ones**, which would have made the diff
+   unreviewable and the change impossible to audit later. Read each file with `newline=""` and
+   write back its own endings.
+2. **Read the actual diff of at least one file the edit touched, ideally the hardest case.**
+   Doing that caught the other bug in the same change: the inserter skipped `import sys` when a
+   file imported `sys` further down, which is a `NameError` in every file whose own import sits
+   BELOW the insertion point — including the very script being fixed. Both bugs compiled fine
+   at the script level and would only have failed at runtime.
+
+Corollary for mechanical fixes generally: **reproduce the original failure before trusting the
+fix.** A full-chain green run is not proof the specific defect is gone — it may simply not be
+exercising that path any more. For the cp1252 crash the real proof was dropping the
+`ad_geometry_map` view to force the fatal branch and re-running on a genuine cp1252 stdout with
+no env override. "The suite passes" and "the bug is fixed" are different claims.
+
 ## STANDING METHODOLOGY RULE — validate on predicted→GT attribution, never GT-to-GT
 Applies to ALL measurement-driven design work in this project, not just the one finding that
 produced it. When measuring whether some proposed rule (a merge threshold, a match criterion,
