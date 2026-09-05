@@ -14,6 +14,21 @@ Also asserts the two structural guarantees the Tier-2 design rests on:
   - the artifact refuses cross-building use (measured-dead, 8-17% top-1).
 Exit 0 only if every assertion holds. Read the §-log, not the exit code alone.
 """
+import sys
+# --- utf8-console guard (2026-09-05) ---------------------------------------------
+# This script prints non-ASCII (box-drawing, arrows, section marks). On a console whose
+# encoding is not UTF-8 -- Windows cp1252 is the common case -- print() raises
+# UnicodeEncodeError and kills the script mid-run. That is not hypothetical: it aborted
+# scripts/restore_generative_meshes.py immediately after it created its back-compat view
+# but BEFORE it restored any mesh, which is why the component_library repair silently
+# needed two passes to converge. errors="replace" is deliberate: a mangled glyph in a log
+# line is always better than a dead pipeline stage.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass  # already-wrapped, detached, or replaced by a non-TextIOWrapper (e.g. in tests)
+# ---------------------------------------------------------------------------------
 import json
 import os
 import sys

@@ -10,6 +10,18 @@
 #
 # Usage:  ./scripts/bake_all_sandbox.sh
 # ──────────────────────────────────────────────────────────────────
+
+# --- utf8-console guard (2026-09-05) ------------------------------------------
+# Belt to the per-script Python guard's braces. Every Python file in this repo that prints a
+# non-ASCII LITERAL now reconfigures its own stdout, but that detection cannot see non-ASCII
+# arriving at RUNTIME (a material name, an IFC family, a path). PYTHONUTF8 makes the
+# interpreter use UTF-8 for stdio regardless, so nothing launched from this script can die on
+# a Windows cp1252 console the way restore_generative_meshes.py did -- it created its
+# back-compat view and then crashed on the very next print, before restoring any mesh.
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+# ------------------------------------------------------------------------------
+
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

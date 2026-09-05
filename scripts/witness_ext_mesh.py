@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+import sys
+# --- utf8-console guard (2026-09-05) ---------------------------------------------
+# This script prints non-ASCII (box-drawing, arrows, section marks). On a console whose
+# encoding is not UTF-8 -- Windows cp1252 is the common case -- print() raises
+# UnicodeEncodeError and kills the script mid-run. That is not hypothetical: it aborted
+# scripts/restore_generative_meshes.py immediately after it created its back-compat view
+# but BEFORE it restored any mesh, which is why the component_library repair silently
+# needed two passes to converge. errors="replace" is deliberate: a mangled glyph in a log
+# line is always better than a dead pipeline stage.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass  # already-wrapped, detached, or replaced by a non-TextIOWrapper (e.g. in tests)
+# ---------------------------------------------------------------------------------
 # ⚠ DO NOT REMOVE — WITNESS ONLY (no render). Blast exterior visibility against the REAL MESH (actual
 # triangle vertices), not bboxes. Fixes the two issues bbox could not: (1) GAPS — thin columns/beams no
 # longer over-occlude (their real geometry is thin, not a fat box); (2) THICKNESS — a vertex is "visible"
