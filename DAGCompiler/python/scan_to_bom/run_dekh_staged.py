@@ -243,8 +243,10 @@ def stage_classify(args):
     _log(f"STAGE 3/3 instance-merge done in {time.time()-t0:.1f}s -> {len(merged)} elements")
 
     ref_db_path = ckpt_dir / "stage3_reference.db"
-    write_reference_db(merged, ref_db_path, floor_z, log=_log)
-    _log(f"STAGE 3/3 reference DB written -> {ref_db_path}")
+    part = write_reference_db(merged, ref_db_path, floor_z, log=_log)
+    _log(f"STAGE 3/3 reference DB written -> {ref_db_path} "
+         f"({part['n_primary']} confident) + {part['lowconf']} "
+         f"({part['n_lowconf']} low-confidence)")
 
     report_lines = []
     def _r(msg=""):

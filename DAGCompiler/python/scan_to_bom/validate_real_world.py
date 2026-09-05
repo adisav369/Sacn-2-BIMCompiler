@@ -308,6 +308,9 @@ def main():
     pred_elements = [dict(guid=f"seg_{cs.segment.id}", ifc_class=cs.ifc_class,
                            aabb_min=cs.segment.aabb_min, aabb_max=cs.segment.aabb_max)
                       for cs in merged]
+    confident_elements = [dict(guid=f"seg_{cs.segment.id}", ifc_class=cs.ifc_class,
+                                aabb_min=cs.segment.aabb_min, aabb_max=cs.segment.aabb_max)
+                           for cs in merged if not cs.low_confidence]
     n_low = sum(1 for cs in merged if cs.low_confidence)
     n_proxy = sum(1 for cs in merged if cs.ifc_class == "IfcBuildingElementProxy")
     print(f"\n§VALIDATE classification: {len(merged)} elements, {n_low} low-confidence, "
@@ -315,7 +318,20 @@ def main():
     print(f"  by class: {dict(Counter(cs.ifc_class for cs in merged))}")
 
     gt_elements = _extract_gt_elements(args.gt_ifc_extracted)
-    _report_spatial_match(pred_elements, gt_elements, "our prediction")
+    matched_all, _, _ = _report_spatial_match(pred_elements, gt_elements,
+                                               "our prediction — COMBINED output")
+    # The confident tier is what write_reference_db now puts in the primary DB, so it is the
+    # number that actually describes the pipeline's product. Reported alongside, never instead
+    # of, the combined figure — so any recall the partition costs is visible, not hidden.
+    matched_conf, _, _ = _report_spatial_match(confident_elements, gt_elements,
+                                                "our prediction — CONFIDENT tier "
+                                                "(what the primary reference DB holds)")
+    lost = {m[0]["guid"] for m in matched_all} - {m[0]["guid"] for m in matched_conf}
+    print("")
+    print(f"§VALIDATE confidence partition: {len(confident_elements)}/{len(pred_elements)} "
+          f"elements confident ({len(confident_elements)/max(len(pred_elements),1):.1%}); "
+          f"GT elements matched by the combined output but NOT by the confident tier alone: "
+          f"{len(lost)}")
 
     if args.pred_ifc_extracted:
         pred_baseline = [dict(guid=g["guid"], ifc_class=g["ifc_class"],

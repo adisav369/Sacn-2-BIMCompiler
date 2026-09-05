@@ -91,3 +91,31 @@ through them under time pressure, and do not apply any of them to the shared, tr
 `library/component_library.db` without that investigation first. Until resolved,
 `./scripts/run_RosettaStones.sh classify_sh.yaml` (and any `--populate` call) will fail on a
 freshly-checked-out `library/component_library.db`.
+## STANDING METHODOLOGY RULE — validate on predicted→GT attribution, never GT-to-GT
+Applies to ALL measurement-driven design work in this project, not just the one finding that
+produced it. When measuring whether some proposed rule (a merge threshold, a match criterion,
+a geometric guard) will behave correctly, the measurement must be run over **predicted
+segments, each attributed to the ground-truth element it actually covers** — never over
+ground-truth-to-ground-truth relationships.
+
+Reason: ground truth in these models has properties real predicted segments do not share —
+it is axis-aligned, watertight, one-element-per-object, and noise-free. Any proxy or heuristic
+validated against GT alone is being tested on the easy case only, and will look sound while
+being invalid on the data it will actually run on.
+
+Confirmed twice, both times where the flawed measurement looked *more* convincing than the
+correct one:
+1. **Wall-face merge (2026-09-04)** — used the AABB minimum-extent axis as a proxy for wall
+   thickness direction. Valid only for axis-aligned walls; validated against GT walls, which
+   are axis-aligned, so it reported *zero* wrong fusions at 0.10m. Predicted segments include
+   diagonal-in-plan walls where AABB-min-extent is a projection artifact (median 0.766m, max
+   3.703m). Re-measuring with actual plane normals reversed the conclusion entirely: harmful
+   fusions were the majority outcome at every threshold. See the rejected-merge section in
+   `DAGCompiler/python/scan_to_bom/README.md`.
+2. **Spatial match criterion** — "any AABB overlap counts" scored fine against GT-shaped
+   boxes but credited fragmented predictions that barely touched the real element; replaced
+   with true volume-coverage (`_union_coverage_fraction`) measured predicted-against-GT.
+
+Practical form: attribute each prediction to its dominant GT element first, then evaluate the
+rule on those attributed pairs. If a measurement can only be expressed GT-to-GT, that is a
+signal the proposed rule has not yet been stated in terms of what the pipeline actually sees.

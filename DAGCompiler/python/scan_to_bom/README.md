@@ -62,7 +62,10 @@ evidence bar.
   `element_transforms`, `element_instances`, `base_geometries` (a coarse box mesh per element,
   per the spec's decision #5 — mesh fidelity is explicitly deferred past v1), and
   `spatial_structure` (one `IfcBuilding` + one `IfcBuildingStorey`, since this pipeline has no
-  multi-storey detection yet). See "Reference-DB writing" below.
+  multi-storey detection yet). Also writes the additive `element_confidence` table and
+  PARTITIONS output by the pipeline's own `low_confidence` flag into a primary DB (confident,
+  the one the Java chain consumes) plus a `<stem>_lowconf.db` companion — nothing is dropped.
+  See "Reference-DB writing" and "Confidence-gated output partition" below.
 - `validate_reference_db.py` — runs the full chain including `write_reference_db.py`, blind,
   then scores the WRITTEN DATABASE (not just the in-memory objects) three ways: schema/FK
   integrity, row-level classification accuracy against the same held-out per-point ground truth
@@ -1093,6 +1096,57 @@ BIMStruct3D baseline); Building C wall 11/16 → 14/16 and overall 12/34 → 15/
 recovered wall is specifically the one the earlier trace predicted was recoverable (a
 within-orientation competition loss), while its zero-points scan-boundary wall correctly remains
 unrecoverable — a real, independent confirmation that that trace was correct.
+
+### Confidence-gated output partition (Phase 6)
+
+The single largest quality problem in the real-scan output was never wrong geometry, it was
+*volume*: Building A emitted 12,047 elements against 535 scoreable ground-truth ones. But the
+pipeline already knew which of those it did not stand behind — `low_confidence` was computed
+per element and then thrown away at the DB write. `write_reference_db` now partitions on that
+existing flag instead of discarding it.
+
+**It is a partition, not a filter.** Two full-schema DBs are written: the primary `db_path`
+holds the confident tier (this is what the Java chain consumes), and a `<stem>_lowconf.db`
+companion holds the rest. Every element in either DB also carries its own provenance in a new
+additive `element_confidence` table (tier, geometry confidence, classification confidence, the
+flag itself, and both support notes), so nothing is lost and the split is auditable from the
+DB alone rather than from the filename. Verified before adding it that no consumer — Java or
+Python — enumerates this DB's tables or `SELECT *`s from it, so the six spec tables downstream
+actually reads are untouched. `partition=False` still writes one combined DB for diagnostics.
+
+Measured on all three DeKH scenes (`_spatial_match` at the same ≥50% volume-coverage
+criterion used everywhere else in this section):
+
+| Scene | elements | confident | GT matched, combined | GT matched, confident tier | over-prediction |
+|---|---|---|---|---|---|
+| B_ICU | 4,661 | 805 (17.3%) | 30/82 | **30/82** | 56.8x → **9.8x** |
+| Building A | 12,047 | 1,110 (9.2%) | 404/535 | **404/535** | 22.5x → **2.1x** |
+| Building C | 2,610 | 339 (13.0%) | 15/34 | **15/34** | 76.8x → **10.0x** |
+
+**Recall cost on the real scans is exactly zero** — every ground-truth element the combined
+output matched is still matched by the confident tier alone, on all three buildings. That is
+the whole case for this change: it is the one accuracy lever found so far that costs nothing,
+which is precisely why it was worth doing after the distance-based wall-face merge (above) was
+rejected for costing too much.
+
+Where the discrimination comes from, and its honest limit: the low-confidence tier is 83–91%
+`IfcBuildingElementProxy` on the real scans — surfaces the classifier explicitly declined to
+name. The flag cleanly separates those in *every* scene (100% of deferred rows land in the low
+tier), but the resulting precision gain is only large where they dominate. On the synthetic
+Sample House they are just 18% of output, and there the partition barely discriminates:
+per-row classification precision 0.50 confident vs 0.47 low, because that scene's errors are
+*confident* errors (the long-standing `confident-wrong=32`). Measured the same
+GT-elements-reached way as the DeKH scenes, synthetic goes 11/58 → 10/58 — a cost of one
+element, an `IfcWindow`, consistent with the window-absorption boundary documented above. So:
+zero recall cost on real scans, one element on synthetic, and no claim that the confidence
+flag is a good general-purpose correctness signal — it is a good *"did the classifier decline
+to name this"* signal, which is a different and narrower thing.
+
+Regression check: the synthetic blind run is unchanged end-to-end — 127 elements, 51 correct /
+53 wrong / 23 deferred, confident-wrong 32, schema integrity OK, footprint fidelity 3/12.
+Schema integrity also passes on both tiers of all three DeKH scenes at full scale, with
+element counts summing exactly back to the combined total (4,661 = 805+3,856;
+5,543 = 498+5,045; 2,610 = 339+2,271).
 
 ## Validated results (Sample House synthetic cloud, 670,965 points, 3mm noise, 400 pts/m²)
 

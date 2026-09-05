@@ -65,7 +65,10 @@ def main():
     merged = merge_instances(classified)
 
     out_path = Path(args.lib_input) / f"{args.building_type}_extracted.db"
-    write_reference_db(merged, out_path, floor_z)
+    part = write_reference_db(merged, out_path, floor_z)
+    print(f"§RUN confidence partition: {part['n_primary']} confident elements -> "
+          f"{part['primary'].name} (this is what the Java chain consumes), "
+          f"{part['n_lowconf']} low-confidence retained in {part['lowconf'].name}")
     print(f"§RUN wrote {out_path} — ready for "
           f"'mvn exec:java -pl IFCtoBOM -Dexec.mainClass=com.bim.ifctobom.IFCtoBOMMain "
           f"-Dexec.args=\"--populate --classify <yaml for {args.building_type}>\"'")
