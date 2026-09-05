@@ -118,11 +118,24 @@ goes 9/9 green.
   here: `--library` is used by `scripts/bake_all_sandbox.sh` and `scripts/pipeline_library.sh`
   across many buildings, so changing it needs its own session. Workaround: extract without
   `--library` and let `repairDanglingGeometry` move the blobs.
-- **The library repair is not committed.** A green run adds +51 `component_geometries` blobs
-  and +50 `M_Product_Image` rows to `library/component_library.db` (schema unchanged, purely
-  additive, all derived from the committed IFC). It was deliberately NOT committed: that file
-  is a 230MB LFS object and the change regenerates from committed inputs in one command.
-  A fresh checkout therefore needs the extract command above once before the chain is green.
+- ~~The library repair is not committed.~~ **Committed 2026-09-05 (`a81f66ded`).** A fresh
+  checkout now runs 9/9 green with no manual step. The committed change is purely additive and
+  was audited row-by-row: `component_geometries` +51 real mesh blobs (0 NULL), `M_Product_Image`
+  +50 link rows, `I_Geometry_Map` +10 (generative-fixture restores + SampleHouse guid entries),
+  plus the pure-alias view `ad_geometry_map AS SELECT * FROM I_Geometry_Map`. Zero DeKH-derived
+  rows — verified explicitly, the 2026-09-04 contamination is not present and was not
+  reintroduced. It is the CONVERGED state, not a mid-repair snapshot: the chain was run three
+  times and compared on a content fingerprint (schema + per-table sorted-row hash, ignoring
+  SQLite page churn); runs 2 and 3 are logically identical, so the file is a fixed point and
+  does not keep growing. The re-extract command above is therefore only needed if the reference
+  DB is ever regenerated in `--library` (hash-only) mode again.
+- **`scripts/restore_generative_meshes.py` crashes on a non-UTF-8 console, and the crash is
+  silent-ish.** It creates its back-compat `ad_geometry_map` view and then dies on the very next
+  line printing "§SELF-HEAL ... →" — a Windows `cp1252` encoding error — aborting before the
+  generative-mesh restore actually runs. That is why the repair took two passes to converge:
+  run 1 created the view and died, run 2 restored the 10 fixture meshes. Now latent (with the
+  view committed that branch is skipped), but it will bite anyone whose library lacks the view.
+  Not fixed here. Same class as the `PYTHONIOENCODING=utf-8` need for the Python validators.
 - **`library/ERP.db` is gitignored and NOT in a fresh checkout**, yet the Java chain hardcodes
   it (`IFCtoBOMMain.java:122`, `IFCtoBOMPipeline.java:109`) and `M_Product` now lives there.
   `scripts/rebuild_erp.sh` regenerates it — but builds `library/disc_patterns.db` and then

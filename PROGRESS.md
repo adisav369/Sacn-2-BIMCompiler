@@ -53,11 +53,14 @@ re-assumed.)
   entries that were never imported, and `MetadataValidator` rejected the whole compile.
   `ExtractionPopulator.repairDanglingGeometry` now imports those blobs from the building's own
   reference extraction (exact hash match, never synthesised; unresolvable hashes are reported).
-- **Smaller items left open by that session** — `extractIFCtoDB.py --library` mode still holds
-  the pre-S168 assumption; the library repair (+51 blobs, +50 image rows) is regenerable and
-  deliberately uncommitted; `library/ERP.db` is gitignored yet hardcoded, and the de-ERP rename
-  to `disc_patterns.db` is half-applied on Windows. All catalogued in `CLAUDE.md`'s
-  "STILL OPEN" section. None of them block the chain.
+- **Library repair committed** (`a81f66ded`) — a fresh checkout runs 9/9 green with no manual
+  step. Purely additive, audited, zero DeKH-derived rows, and verified to be the converged
+  fixed point (three runs, content-fingerprint compared) rather than a mid-repair snapshot.
+- **Smaller items still open** — `extractIFCtoDB.py --library` mode still holds the pre-S168
+  assumption; `scripts/restore_generative_meshes.py` dies on a `cp1252` console before its mesh
+  restore runs (now latent, but it is why the repair needed two passes); `library/ERP.db` is
+  gitignored yet hardcoded, and the de-ERP rename to `disc_patterns.db` is half-applied on
+  Windows. All catalogued in `CLAUDE.md`'s "STILL OPEN" section. None block the chain.
 - **Running the Java chain writes into the tracked, LFS-stored `library/component_library.db`.**
   Found 2026-09-04: a single `--classify` run on DeKH input wrote 5,531 DeKH-derived rows into
   `I_Geometry_Map` in that tracked file (reversed via `git checkout --`, after first verifying
