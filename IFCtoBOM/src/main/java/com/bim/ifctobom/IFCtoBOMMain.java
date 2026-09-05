@@ -140,11 +140,11 @@ public class IFCtoBOMMain {
             }
 
             // 3. Link M_Product → geometry_hash via M_Product_Image
-            int images = ProductRegistrar.ensureProductImages(compConn, buildingType);
+            int images = ProductRegistrar.ensureProductImages(compConn, discConn, buildingType);
             System.out.printf("[populate] Images linked: %d new%n", images);
 
             // 4. Guard: every product must have geometry
-            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, buildingType);
+            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, discConn, buildingType);
             if (unlinked > 0) {
                 System.err.printf("[populate] FAIL — %d product(s) have no geometry_hash%n", unlinked);
                 System.exit(1);

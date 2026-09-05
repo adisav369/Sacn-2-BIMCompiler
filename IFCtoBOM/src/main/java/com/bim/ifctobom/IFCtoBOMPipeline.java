@@ -236,7 +236,7 @@ public class IFCtoBOMPipeline {
                     compConn, discConn, allElements, config.buildingType());
             // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §11 — Witness: W-LOD-BRIDGE
             int lodBridged = ProductRegistrar.bridgeSourceElementRef(compConn, discConn);
-            int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
+            int images = ProductRegistrar.ensureProductImages(compConn, discConn, config.buildingType());
             if (cataloged > 0 || images > 0) {
                 System.out.printf("[IFCtoBOM] Product catalog: %d new products, %d new image links%n",
                         cataloged, images);
@@ -246,7 +246,7 @@ public class IFCtoBOMPipeline {
             // GUARD: Every product must have a geometry_hash in M_Product_Image.
             // Products without geometry produce 0 placements at compile time.
             // Common for MEP elements (FP, ELEC) and infrastructure IFC4X3 entities.
-            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, config.buildingType());
+            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, discConn, config.buildingType());
             if (unlinked > 0) {
                 String msg = String.format(
                         "[FAIL] %d product(s) have no geometry_hash in M_Product_Image "

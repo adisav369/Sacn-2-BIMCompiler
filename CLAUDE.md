@@ -18,79 +18,123 @@ DAGCompiler, BIM_COBOL, orm-core — the compile core and verb engine.
 ## MODULES — BEING REPLACED
 IFCtoBOM's IFC-parsing front end → new point-cloud ingestion (our new work).
 
-## CURRENT STATUS CORRECTION (2026-09-04) — the full chain does NOT run at HEAD
-The point-cloud front end is real and measured (see `DAGCompiler/python/scan_to_bom/README.md`),
-but **the `PIPELINE` line above is not currently reproducible end-to-end from a fresh checkout.**
-Everything from `BOM.db` rightward is blocked by the `M_Product` gap below. "The architecture bet
-is proven" is a HISTORICAL statement — true once (Phase 5, when `component_library.db` still had
-`M_Product`), not true of HEAD today. Verified 2026-09-04 by running the known-good 135-element
-`classify_shpc.yaml` case and a 5,543-element DeKH one: both abort at the same place, so this is
-not a scale or point-cloud-input problem. Do not read the DeKH accuracy numbers and assume a
-working scan→BOM→compile→gates chain right now.
+## RESOLVED 2026-09-05 — the full chain runs end-to-end again (was: "does NOT run at HEAD")
+`./scripts/run_RosettaStones.sh classify_sh.yaml` is **9/9 gates ALL GREEN** from a
+byte-clean HEAD `library/component_library.db`, in a single run: populate → BOM.db →
+all 18 `BomValidator` QA gates → compile → output.db → integrity/clash/C8/C9 fidelity.
+The `PIPELINE` line above is reproducible again. Two independent defects were blocking it;
+both are fixed in code, neither was the missing-migration problem this file previously
+assumed. See "M_PRODUCT — ROOT CAUSE" below before touching any migration.
 
-## KNOWN PRE-EXISTING GAP — component_library.db (HIGHEST-PRIORITY OPEN ITEM; do not rush a fix; resolve deliberately in its own session)
-**Reprioritized 2026-09-04.** This was previously described here as independent of Scan-to-BIM
-work and safe to pick up "anytime, in parallel." That was wrong and is corrected: it blocks the
-entire back half of this project's own stated pipeline, for every building, at every scale.
-Everything past `ProductRegistrar`'s pre-flight (`IFCtoBOMPipeline.java:239-266`) — BOM
-assembly, `BomValidator`'s 18 QA gates, compile, output.db, gates — cannot be exercised or
-verified until it is fixed. It remains a "own dedicated session" item (the ~13-migration
-ordering problem below is exactly the kind of thing that must not be guessed through under time
-pressure) — but it should now get that session SOON, ahead of further front-end accuracy work,
-because no amount of segmentation improvement can be validated end-to-end while it stands.
+## M_PRODUCT — ROOT CAUSE FOUND AND FIXED (2026-09-05); the earlier diagnosis here was WRONG
+**Do not replay migrations to "restore" `M_Product` into `component_library.db`. It does not
+belong there, and adding it actively breaks the pipeline — measured, not argued.**
 
-ALSO (found 2026-09-04): running the Java chain WRITES into this tracked, LFS-stored file — a
-single `--classify` run on DeKH input added 5,531 DeKH-derived rows to `I_Geometry_Map`
-(reversed with `git checkout --`, after first confirming HEAD's LFS object still carried the
-documented `I_Geometry_Map` rename fix). Licensed third-party data must not be put through the
-Java chain again without an isolation approach (scratch copy of the library, or a mandatory
-post-run restore + verification).
+This file previously said `M_Product` "likely does belong in component_library.db" and that
+fixing it meant working out the order of ~13 migrations. That was a guess, and it was wrong.
+The real defect was a two-line inconsistency left behind by change S168:
 
-`library/component_library.db` (checked into git, ~230MB) is missing table `M_Product` at
-HEAD. This is real, not stale — confirmed 2026-09-03 by reverting the file to HEAD
-(`git checkout -- library/component_library.db`) and re-running
-`mvn exec:java -pl IFCtoBOM -Dexec.mainClass=com.bim.ifctobom.IFCtoBOMMain -Dexec.args="--populate --classify IFCtoBOM/src/main/resources/classify_sh.yaml"`,
-which fails with `[SQLITE_ERROR] ... no such table: M_Product` (thrown from
-`ProductRegistrar.ensureProductImages`, called via `IFCtoBOMMain`'s `--populate` path after
-`ProductRegistrar.ensureProductCatalog` — both in `IFCtoBOM/src/main/java/com/bim/ifctobom/`).
-Earlier in that same session this had looked already-fixed because a prior, never-committed
-local session had already patched the file — that local-only state was silently lost on the
-`git checkout --` above (see the project's Claude memory: "local uncommitted fixes to shared
-tracked files are invisible and get wiped by discard/checkout" — flag and commit/document such
-state before relying on it again).
+- S168 moved all `M_Product` **writes** to `ERP.db` (`ProductRegistrar.ensureProductCatalog`
+  writes to `discConn`; its own class javadoc states "M_Product writes go ONLY to ERP.db").
+- But `ProductRegistrar.ensureProductImages` and `countUnlinkedProducts` were left
+  **reading** `M_Product` from `compConn` (component_library.db), where the table correctly
+  no longer exists. Every `--populate`/`--classify` run aborted there with
+  `no such table: M_Product` — at `ProductRegistrar.java:303`, called from
+  `IFCtoBOMMain.java:143` / `IFCtoBOMPipeline.java:239`.
+- `bridgeSourceElementRef`, sitting between them, already used `discConn` correctly — which is
+  exactly why the inconsistency survived: the surrounding code looked right.
 
-A SEPARATE, narrower gap in the same file — `I_Geometry_Map` present only under its old name
-`ad_geometry_map` — was found and fixed the same session via the existing, documented
-migration `migration/migration_rename_geometry_map.sql` (`ALTER TABLE ad_geometry_map RENAME
-TO I_Geometry_Map`; the table's columns already matched, just needed the rename). That fix is
-applied to the local `library/component_library.db` working copy. `M_Product` is a distinct,
-larger problem — do not conflate the two.
+**Fix:** both readers now `ATTACH` the ERP database (path read off `discConn` itself via
+`PRAGMA database_list`, never hardcoded a second time) and select from `erp.M_Product`. The
+SQL is otherwise untouched **on purpose** — 35 of Sample House's 40 products match more than
+one `I_Geometry_Map` row (up to 16 distinct `geometry_hash` values), so `GROUP BY p.Value`
+picks one arbitrarily; reimplementing the join as a two-phase Java loop would have silently
+changed which geometry each product compiles to.
 
-`M_Product_Category` deliberately does NOT belong in `component_library.db` — confirmed via
-`ProductRegistrar.java`'s own comment ("component_library.db has no category column") and
-`ExtractionPopulator.java` never referencing it against `compConn`. Its real home is
-`library/ERP.db` (127 rows, real hierarchy), copied per-run into each `*_BOM.db` by
-`IFCtoBOMPipeline.copyCategoryLookup()`. Do not try to add it to component_library.db.
+**Evidence that `M_Product` belongs only in ERP.db** — three independent sources agree:
+1. `scripts/rebuild_erp.sh` (the authoritative from-scratch rebuild) creates `M_Product`
+   directly in the ERP database at its Phase 6, explicitly **skips DV015**, and filters the
+   `M_Product` statements out of S62 with the comment "M_Product doesn't exist yet".
+2. `ProductRegistrar.ensureProducts`'s own javadoc documents its catalog parameter as
+   "read connection to ERP.db (master product catalog)", and its SQL selects `Value` —
+   a column the extraction-side `M_Product` has never had.
+3. Tested directly: creating an extraction-side `M_Product` in component_library.db (from the
+   tracked schema snapshot + DV033's `source_element_ref`) makes `ensureProducts` find a table
+   it then cannot read, and the pipeline fails with `no such column: Value`. It only worked
+   before because `tableExists(compConn, "M_Product")` silently degraded to the no-catalog path.
 
-`M_Product` itself likely does belong in component_library.db (its `M_Product_ID` column
-elsewhere references it, and `migration/DV015_move_m_product.sql`'s own comment says it only
-COPIES `M_Product` out to ERP.db, explicitly "component_library.db is NOT modified" — implying
-component_library.db is still the source of truth, DV015 assumes it already has the table).
-~13 migration files touch `M_Product` + component_library.db, order and supersession unknown:
-`DV015_move_m_product.sql`, `CL001_drop_dead_tables.sql`, `CL003_m_product_category_int_pk.sql`,
-`CL004_m_product_int_pk.sql`, `CL005_drop_int_sidecar.sql`,
-`CL_001_generative_product_images.sql`, `DV001_disc_validation_schema.sql`,
-`DV032_uom_correction.sql`, `DV033_product_element_ref.sql`,
-`DV046_generative_product_lod_bridge.sql`, `DV048_unmapped_product_lod.sql`,
-`DV049_fridge_kitchen_schedule.sql`, `J4_002_product_forward_axis.sql`,
-`S62_001_product_category_fp.sql`, `migration_P02_SH_product_link.sql`. Working out the
-correct order (and which are superseded, e.g. by checking `migration/archive/` for anything
-these supersede, the way `migration_phase_DE2/DE3_*` were superseded by the single
-`migration_rename_geometry_map.sql` above) needs a dedicated investigation — do not guess
-through them under time pressure, and do not apply any of them to the shared, tracked
-`library/component_library.db` without that investigation first. Until resolved,
-`./scripts/run_RosettaStones.sh classify_sh.yaml` (and any `--populate` call) will fail on a
-freshly-checked-out `library/component_library.db`.
+`DV015_move_m_product.sql` does presuppose a `comp.M_Product` (it `ATTACH`es
+component_library.db and copies from it), so such a table existed historically. It is
+superseded: `rebuild_erp.sh` skips DV015 outright. **`library/schema_snapshot_component_library.sql`
+still declares `M_Product` and is stale on this point** — it also predates both `Value`
+(CL004) and `source_element_ref` (DV033). Trust `rebuild_erp.sh` over the snapshot.
+
+Also checked and NOT applied: `CL001_drop_dead_tables.sql` drops `ad_product_dim` calling it a
+"duplicate of M_Product (same schema, same purpose)". That comment is false — `ad_product_dim`
+is a 52-row authored design-rules table (clearances, fitting rules, quantity-per-area/room,
+connection points) sharing only `product_id`/`product_type`/`w`/`d`/`h` with `M_Product`.
+Applying CL001 would destroy real data. Leave it alone.
+
+## SECOND BLOCKER, ALSO FIXED (2026-09-05) — dangling geometry refs
+With M_Product fixed, the compile still failed:
+`MetadataValidator` → "I_Geometry_Map.geometry_hash: 90 dangling refs to component_geometries"
+(all 90 Sample House rows, 51 distinct hashes). Pre-existing at HEAD, not caused by any of
+this work — verified by diffing the HEAD library against the post-run one (identical counts).
+
+Cause: `ExtractionPopulator.fillGeometryGaps` is a **gap** fill — it only considers
+`element_ref`s ABSENT from `I_Geometry_Map`. A row that is already present but whose
+`geometry_hash` has no `component_geometries` entry is revisited by nothing, so it stayed
+dangling forever and the compiler rejected the whole building.
+
+**Fix:** new `ExtractionPopulator.repairDanglingGeometry`, run right after the gap fill. It
+finds present-but-dangling hashes for the building and imports each blob through the existing,
+already-tested `ensureGeometryBlob` helper. Extract-only, never invent: blobs are copied
+verbatim from the building's own reference extraction on an exact hash match; a hash the
+reference DB does not carry is left dangling and **reported**, never synthesised (it re-checks
+after importing rather than trusting the import count, because `ensureGeometryBlob` is
+deliberately silent when a blob is NULL).
+
+One prerequisite, worth knowing before re-running any building: the extractor's `--library`
+mode (S168) writes mesh BLOBs into the library and leaves `base_geometries` **hash-only**
+(NULL vertices/faces). `DAGCompiler/lib/input/SampleHouse_extracted.db` had been produced that
+way, so its 51 blobs existed in neither place and the repair had nothing to import. Re-extracting
+WITHOUT `--library` puts the real meshes in the reference DB, and the repair then imports all
+of them (`Repaired 50 dangling geometry ref(s) ... 0 still unresolved`):
+
+```
+python DAGCompiler/python/extractIFCtoDB.py --ifc DAGCompiler/lib/input/IFC/Ifc4_SampleHouse.ifc \
+    -o DAGCompiler/lib/input/SampleHouse_extracted.db
+```
+
+`*_extracted.db` is gitignored, so this is a free, repeatable regeneration from the committed
+IFC. After it, one `./scripts/run_RosettaStones.sh classify_sh.yaml` self-heals the library and
+goes 9/9 green.
+
+## STILL OPEN after 2026-09-05 (smaller, precisely characterised — none block the chain)
+- **`extractIFCtoDB.py --library` mode is broken against a HEAD library.** `_open_library`
+  hard-requires `M_Product` in component_library.db and the extractor writes `M_Product` rows
+  there — the last code still holding the pre-S168 assumption. Since M_Product must NOT be
+  added to that DB (see above), the requirement and those writes are what should go. Not done
+  here: `--library` is used by `scripts/bake_all_sandbox.sh` and `scripts/pipeline_library.sh`
+  across many buildings, so changing it needs its own session. Workaround: extract without
+  `--library` and let `repairDanglingGeometry` move the blobs.
+- **The library repair is not committed.** A green run adds +51 `component_geometries` blobs
+  and +50 `M_Product_Image` rows to `library/component_library.db` (schema unchanged, purely
+  additive, all derived from the committed IFC). It was deliberately NOT committed: that file
+  is a 230MB LFS object and the change regenerates from committed inputs in one command.
+  A fresh checkout therefore needs the extract command above once before the chain is green.
+- **`library/ERP.db` is gitignored and NOT in a fresh checkout**, yet the Java chain hardcodes
+  it (`IFCtoBOMMain.java:122`, `IFCtoBOMPipeline.java:109`) and `M_Product` now lives there.
+  `scripts/rebuild_erp.sh` regenerates it — but builds `library/disc_patterns.db` and then
+  `ln -sf`s `ERP.db` to it, which does not produce a symlink on Windows. This machine has two
+  independent files (ERP.db 5,753 products; disc_patterns.db 17), and the code reads ERP.db.
+  Untangling the de-ERP rename is its own task.
+- `library/schema_snapshot_component_library.sql` is stale (declares `M_Product`, predates
+  `Value` and `source_element_ref`). Regenerate or annotate it.
+- The extractor's own `§PROOF` gate reports `LOD400_ENVELOPE 1/8 multi-layer elements shipped
+  as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
+  to the above; the chain is green regardless.
+
 ## STANDING METHODOLOGY RULE — validate on predicted→GT attribution, never GT-to-GT
 Applies to ALL measurement-driven design work in this project, not just the one finding that
 produced it. When measuring whether some proposed rule (a merge threshold, a match criterion,

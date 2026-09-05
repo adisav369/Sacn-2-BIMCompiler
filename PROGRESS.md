@@ -4,25 +4,26 @@
 > point-cloud pipeline's own validated-results doc) and `CLAUDE.md` (project rules + known
 > gaps). Keep this file short — a pointer to where the real detail lives, not the detail itself.
 
-## ⚠️ Read this before citing any status below
+## Chain status (2026-09-05): running end-to-end again
 
-**The full chain does NOT currently run end-to-end from a fresh checkout.** The Java BOM back
-end aborts on `no such table: M_Product` (see "Open" below) — for *every* building, at *every*
-scale, not just point-cloud input. Verified 2026-09-04 by running the known-good 135-element
-`classify_shpc.yaml` case, which fails at the same place as a 5,543-element DeKH one.
+`./scripts/run_RosettaStones.sh classify_sh.yaml` is **9/9 gates ALL GREEN** — populate →
+BOM.db → all 18 `BomValidator` QA gates → compile → output.db → integrity/clash/C8/C9
+fidelity — from a byte-clean HEAD `library/component_library.db`, in one run. "The architecture
+bet is proven" is a present-tense statement again.
 
-So: the front end's measured results below are real and current, but **"the architecture bet is
-proven" is a historical statement, not a present-tense one** — it was proven once (Phase 5, when
-`component_library.db` still had `M_Product`), and is not reproducible today at HEAD. Don't read
-the point-cloud accuracy numbers and assume a working scan→BOM→compile→gates chain right now.
+This supersedes the 2026-09-04 warning that the chain did not run. Two defects were blocking it,
+both now fixed in code, and **neither was the missing-migration problem previously assumed** —
+see `CLAUDE.md`'s "M_PRODUCT — ROOT CAUSE" section, which corrects a diagnosis that was wrong.
+One caveat for a genuinely fresh checkout: the reference extraction has to be regenerated once
+from the committed IFC (single command, in that same section) before the chain is green.
 
 ## Current state
 
 **Point-cloud front end** (`DAGCompiler/python/scan_to_bom/`) — Phases 2 through 6 built and
 blind-validated against held-out ground truth (never the pipeline's own numbers):
 segmentation, coplanar-fragment reunification, geometry-only IFC-class classification,
-furniture instance-merging, reference-DB writing, and (Phase 5, historically — see the warning
-above) running that DB through the real, unmodified `IFCtoBOMMain` Java pipeline. Real, measured
+furniture instance-merging, reference-DB writing, and (Phase 5) running that DB through the
+real, unmodified `IFCtoBOMMain` Java pipeline. Real, measured
 results (not aspirational) are in that README. Phase 6 took it to real terrestrial LiDAR scans
 (DeKH, 3 real buildings, 359M-621M raw points each) and fixed four real segmentation defects
 found there — wall-starvation, an any-overlap scoring criterion, round-budget exhaustion, and
@@ -31,25 +32,32 @@ single-winner-per-round candidate selection. Current wall recovery: 29/31 (B_ICU
 are pending a re-run.
 
 **Compile back end** (`DAGCompiler`, `BIM_COBOL`, `orm-core`, `IFCtoBOM`'s BOM-building side) —
-kept as-is per `CLAUDE.md`. **Currently blocked at HEAD by the missing `M_Product` table** — the
-prior claim here that Sample House "compiles clean through `./scripts/run_RosettaStones.sh`,
-all `BomValidator` QA checks passing" was true when written but does NOT reproduce today; it has
-been corrected rather than carried forward stale.
+kept as-is per `CLAUDE.md`, and **verified running again 2026-09-05**: Sample House compiles
+clean through `./scripts/run_RosettaStones.sh classify_sh.yaml`, all 18 `BomValidator` QA checks
+passing, 9/9 gates, 78 elements across 3 storeys, C8 geometry-diversity and C9 per-axis
+dimensional fidelity both green. (This claim was correctly retracted on 2026-09-04 when it had
+stopped reproducing; it is restored here because it was re-measured, not because it was
+re-assumed.)
 
 ## Open
 
-- **`library/component_library.db` is missing `M_Product` — now the single highest-priority
-  open item in the project.** (Real, confirmed, not stale — see `CLAUDE.md`'s "KNOWN
-  PRE-EXISTING GAP".) **Reprioritized 2026-09-04**: this was previously catalogued as an
-  independent, low-priority side issue that "doesn't block anything Scan-to-BIM-specific." That
-  is no longer true and was wrong to leave standing — it blocks the entire back half of the
-  project's own stated pipeline (`scan → ... → BOM.db → compile → output.db → gates`), for
-  every building, at every scale. Everything downstream of `ProductRegistrar`'s pre-flight
-  (`IFCtoBOMPipeline.java:239-266`) — BOM assembly, `BomValidator`'s 18 QA gates, compile,
-  output.db, gates — is unverifiable until it's fixed. ~13 candidate migration files, order and
-  supersession unknown. Still deliberately not guessed through: it needs its own dedicated
-  session, which is precisely why it should get one soon rather than being squeezed into the
-  end of another task.
+- **`M_Product` — RESOLVED 2026-09-05.** Root cause was not a missing migration: change S168
+  moved every `M_Product` write to `ERP.db` but left `ProductRegistrar.ensureProductImages` and
+  `countUnlinkedProducts` still *reading* it from `component_library.db`. Both now `ATTACH` the
+  ERP database and read `erp.M_Product`. The previously-catalogued "~13 migration files, order
+  unknown" investigation turned out to be the wrong question — `M_Product` must NOT be put back
+  into `component_library.db` (doing so breaks `ensureProducts` with `no such column: Value`,
+  tested). Full reasoning and the three independent sources that settle it: `CLAUDE.md`.
+- **Dangling geometry refs — RESOLVED 2026-09-05.** A second, independent pre-existing blocker
+  behind the first: all 90 Sample House `I_Geometry_Map` rows pointed at `component_geometries`
+  entries that were never imported, and `MetadataValidator` rejected the whole compile.
+  `ExtractionPopulator.repairDanglingGeometry` now imports those blobs from the building's own
+  reference extraction (exact hash match, never synthesised; unresolvable hashes are reported).
+- **Smaller items left open by that session** — `extractIFCtoDB.py --library` mode still holds
+  the pre-S168 assumption; the library repair (+51 blobs, +50 image rows) is regenerable and
+  deliberately uncommitted; `library/ERP.db` is gitignored yet hardcoded, and the de-ERP rename
+  to `disc_patterns.db` is half-applied on Windows. All catalogued in `CLAUDE.md`'s
+  "STILL OPEN" section. None of them block the chain.
 - **Running the Java chain writes into the tracked, LFS-stored `library/component_library.db`.**
   Found 2026-09-04: a single `--classify` run on DeKH input wrote 5,531 DeKH-derived rows into
   `I_Geometry_Map` in that tracked file (reversed via `git checkout --`, after first verifying

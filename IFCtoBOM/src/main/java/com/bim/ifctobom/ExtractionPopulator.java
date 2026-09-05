@@ -108,6 +108,10 @@ public class ExtractionPopulator {
 
         // Fill geometry gaps in component_library.db (product catalog — legitimate)
         int geoInserted = fillGeometryGaps(compConn, rows, buildingType, refDb);
+        // The gap fill above only covers element_refs ABSENT from I_Geometry_Map. Rows that
+        // are already present but point at a geometry_hash missing from component_geometries
+        // are invisible to it, and MetadataValidator rejects the whole compile for them.
+        repairDanglingGeometry(compConn, buildingType, refDb);
 
         // C8: Per-instance GUID geometry entries for per-instance mesh diversity.
         // When CP-1 MA provides GUIDs as element_refs, MeshBinder can resolve
@@ -705,6 +709,80 @@ public class ExtractionPopulator {
      * (hash-only) and the geometry is already in component_library.db. In that case
      * this method is a no-op.
      */
+    /**
+     * Repair I_Geometry_Map rows that already exist but whose {@code geometry_hash} has no
+     * matching row in {@code component_geometries}.
+     *
+     * <p>Why this is separate from {@link #fillGeometryGaps}: that method is a GAP fill — it
+     * only looks at element_refs which are absent from I_Geometry_Map, imports blobs for
+     * those, and inserts the missing rows. A row that is already present is never revisited,
+     * so a dangling geometry_hash on an existing row is repaired by nothing. Sample House
+     * shipped in exactly that state: all 90 of its I_Geometry_Map rows (51 distinct hashes)
+     * pointed at component_geometries entries that were never imported, and
+     * MetadataValidator failed the entire compile with "90 dangling refs".
+     *
+     * <p>Extract-only, never invent: every blob is copied verbatim from the building's own
+     * reference extraction, matched on an exact geometry_hash. A hash the reference DB does
+     * not carry is left dangling and reported, not synthesised. Reuses the same
+     * {@link #ensureGeometryBlob} importer the other paths use, so hash-only (S168 NULL
+     * BLOB) extractions remain a no-op here too.
+     *
+     * @return number of geometry blobs imported
+     */
+    private static int repairDanglingGeometry(Connection compConn, String buildingType,
+                                              Path refDb) throws SQLException {
+        if (refDb == null || !Files.exists(refDb)) return 0;
+
+        List<String> dangling = new ArrayList<>();
+        String findSql = """
+                SELECT DISTINCT g.geometry_hash
+                FROM I_Geometry_Map g
+                LEFT JOIN component_geometries cg ON cg.geometry_hash = g.geometry_hash
+                WHERE g.building_type = ?
+                  AND g.geometry_hash IS NOT NULL
+                  AND cg.geometry_hash IS NULL
+                """;
+        try (PreparedStatement stmt = compConn.prepareStatement(findSql)) {
+            stmt.setString(1, buildingType);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) dangling.add(rs.getString(1));
+            }
+        }
+        if (dangling.isEmpty()) return 0;
+
+        int imported = 0;
+        try (Connection refConn = DriverManager.getConnection("jdbc:sqlite:" + refDb)) {
+            for (String hash : dangling) {
+                ensureGeometryBlob(compConn, refConn, hash);
+                imported++;
+            }
+        }
+
+        // Re-check rather than trusting the import count: ensureGeometryBlob is deliberately
+        // silent when the reference DB has no blob for a hash, and an unrepaired hash still
+        // fails the compile downstream, so it must be reported here, not discovered there.
+        int stillDangling = 0;
+        try (PreparedStatement stmt = compConn.prepareStatement(
+                "SELECT COUNT(DISTINCT g.geometry_hash) FROM I_Geometry_Map g "
+                + "LEFT JOIN component_geometries cg ON cg.geometry_hash = g.geometry_hash "
+                + "WHERE g.building_type = ? AND g.geometry_hash IS NOT NULL "
+                + "AND cg.geometry_hash IS NULL")) {
+            stmt.setString(1, buildingType);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) stillDangling = rs.getInt(1);
+            }
+        }
+        System.out.printf("  [ExtractionPopulator] Repaired %d dangling geometry ref(s) from "
+                + "reference DB (%d still unresolved)%n",
+                dangling.size() - stillDangling, stillDangling);
+        if (stillDangling > 0) {
+            System.err.printf("  [ExtractionPopulator] WARNING: %d geometry_hash value(s) for %s "
+                    + "are in I_Geometry_Map but in neither component_geometries nor %s — "
+                    + "compile will reject them%n", stillDangling, buildingType, refDb);
+        }
+        return imported;
+    }
+
     private static void ensureGeometryBlob(Connection compConn, Connection refConn,
                                             String geoHash) throws SQLException {
         // Check if already exists in library

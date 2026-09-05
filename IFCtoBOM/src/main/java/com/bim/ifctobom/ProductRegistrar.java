@@ -270,7 +270,7 @@ public class ProductRegistrar {
      * @param buildingType the building_type string (e.g. "SampleHouse")
      * @return number of new M_Product_Image rows inserted
      */
-    public static int ensureProductImages(Connection compConn,
+    public static int ensureProductImages(Connection compConn, Connection discConn,
                                           String buildingType) throws SQLException {
         // Create table if not exists (first run)
         try (Statement stmt = compConn.createStatement()) {
@@ -289,10 +289,20 @@ public class ProductRegistrar {
         // product_id/Value = abstract catalog name (used as M_Product_Image.M_Product_ID).
         // Fallback: if source_element_ref is NULL (pre-DV033 data), use Value.
         // One geometry_hash per product (product type = one canonical shape).
+        // S168-FIX: M_Product is read from ERP.db (attached as `erp`), NOT from
+        // component_library.db. S168 moved the M_Product writes to ERP.db but left this
+        // reader and countUnlinkedProducts below still selecting from compConn, where the
+        // table no longer exists - every --populate/--classify run aborted here with
+        // "no such table: M_Product". The join stays a single statement over an ATTACH
+        // rather than being reimplemented as a two-phase Java join on purpose: 35 of the 40
+        // SampleHouse products match more than one I_Geometry_Map row (up to 16 distinct
+        // geometry_hash values), so GROUP BY p.Value picks one arbitrarily. Preserving the
+        // exact statement preserves that pick; rewriting the join would silently change
+        // which geometry each product compiles to.
         String sql = """
                 INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
                 SELECT p.Value, g.geometry_hash
-                FROM M_Product p
+                FROM erp.M_Product p
                 JOIN I_Geometry_Map g ON g.element_ref = COALESCE(p.source_element_ref, p.Value)
                 WHERE p.building_type = ?
                     AND p.is_active = 1
@@ -300,11 +310,56 @@ public class ProductRegistrar {
                 """;
 
         int count = 0;
+        attachErp(compConn, discConn);
         try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
             stmt.setString(1, buildingType);
             count = stmt.executeUpdate();
+        } finally {
+            detachErp(compConn);
         }
         return count;
+    }
+
+    /** Schema name the ERP catalog is attached under, inside a component_library connection. */
+    private static final String ERP_SCHEMA = "erp";
+
+    /**
+     * ATTACH the ERP catalog database onto a component_library.db connection.
+     *
+     * <p>The file path is read back off {@code discConn} itself via {@code PRAGMA
+     * database_list} rather than hardcoded, so it cannot drift from whatever path the caller
+     * actually opened (IFCtoBOMMain and IFCtoBOMPipeline both open {@code library/ERP.db},
+     * but neither passes the path down).
+     */
+    private static void attachErp(Connection compConn, Connection discConn) throws SQLException {
+        String erpPath = null;
+        try (Statement stmt = discConn.createStatement();
+             ResultSet rs = stmt.executeQuery("PRAGMA database_list")) {
+            while (rs.next()) {
+                if ("main".equals(rs.getString("name"))) {
+                    erpPath = rs.getString("file");
+                    break;
+                }
+            }
+        }
+        if (erpPath == null || erpPath.isBlank()) {
+            throw new SQLException("Cannot resolve the ERP database file from discConn "
+                    + "(PRAGMA database_list returned no 'main' file) - M_Product has lived "
+                    + "in ERP.db since S168 and cannot be reached without it");
+        }
+        detachErp(compConn);  // defensive: release a leak from an earlier failed call
+        try (Statement stmt = compConn.createStatement()) {
+            stmt.execute("ATTACH DATABASE '" + erpPath.replace("'", "''") + "' AS " + ERP_SCHEMA);
+        }
+    }
+
+    /** DETACH the ERP catalog; a no-op when it was never attached. */
+    private static void detachErp(Connection compConn) {
+        try (Statement stmt = compConn.createStatement()) {
+            stmt.execute("DETACH DATABASE " + ERP_SCHEMA);
+        } catch (SQLException ignored) {
+            // not attached - nothing to release
+        }
     }
 
     /**
@@ -318,21 +373,26 @@ public class ProductRegistrar {
      * @param buildingType the building_type string
      * @return number of distinct product_ids with no geometry_hash
      */
-    public static int countUnlinkedProducts(Connection compConn,
+    public static int countUnlinkedProducts(Connection compConn, Connection discConn,
                                             String buildingType) throws SQLException {
+        // S168-FIX: M_Product from ERP.db (see ensureProductImages); M_Product_Image stays
+        // in component_library.db, so this guard is a cross-database join.
         String sql = """
                 SELECT COUNT(DISTINCT p.Value)
-                FROM M_Product p
+                FROM erp.M_Product p
                 LEFT JOIN M_Product_Image i ON p.Value = i.M_Product_ID
                 WHERE p.building_type = ?
                     AND p.is_active = 1
                     AND i.M_Product_ID IS NULL
                 """;
+        attachErp(compConn, discConn);
         try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
             stmt.setString(1, buildingType);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
+        } finally {
+            detachErp(compConn);
         }
     }
 

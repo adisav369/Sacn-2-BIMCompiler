@@ -430,15 +430,19 @@ every axis. The composition differences it also surfaces all trace to already-do
 already-understood upstream gaps — Phase 5 adds a genuinely independent (BOM-line-count-level)
 confirmation of those gaps' real-world size, not a new failure mode of its own.**
 
-### ⚠️ Phase 5 does NOT currently reproduce at HEAD (2026-09-04)
+### Phase 5 reproduces again at HEAD (fixed 2026-09-05; was blocked 2026-09-04)
 
-Everything above is a real, historical result — it is **not** reproducible from a fresh checkout
-today. Re-running the exact `classify_shpc.yaml` commands now aborts with
-`no such table: M_Product` (see `CLAUDE.md`'s known-gap section, and `PROGRESS.md`). Confirmed
-this is the pre-existing library gap and **not** a scale or point-cloud-input problem by running
-the small known-good case (135 elements) and a large DeKH one (5,543) — both abort identically,
-at `ProductRegistrar`'s pre-flight (`IFCtoBOMPipeline.java:239-266`), before BOM assembly and
-before `BomValidator`'s 18 gates.
+The 2026-09-04 block is resolved. `./scripts/run_RosettaStones.sh classify_sh.yaml` is 9/9 gates
+ALL GREEN from a byte-clean HEAD library, in one run. The `no such table: M_Product` abort at
+`ProductRegistrar`'s pre-flight turned out **not** to be the missing-migration problem it was
+catalogued as: change S168 moved the `M_Product` writes to `ERP.db` and left two readers still
+selecting from `component_library.db`. Behind it sat a second, independent pre-existing blocker
+(90 dangling `I_Geometry_Map` → `component_geometries` refs failing `MetadataValidator`). Both
+are fixed in code — root cause, evidence, and the residual open items are in `CLAUDE.md`.
+
+The 2026-09-04 diagnosis in this section was right that it was a pre-existing library-side gap,
+and right that it was not scale- or point-cloud-related (small 135-element and large
+5,543-element cases aborted identically). It was wrong about the cause.
 
 ### Real-world-scale dry run of the chain (`classify_dekhapc.yaml`)
 
@@ -458,7 +462,7 @@ or performance problem and no new failure mode at scale:
 | Storey / spatial containers | 1 auto-discovered |
 | `ProfileValidator` | 7 classes, dominant `IfcBuildingElementProxy` 77.3%, composition NORMAL |
 | `ShapeAdvisory` | 5,543/5,543 checked, 2,263 advisories, 5 batches |
-| BOM assembly, 18 QA gates, compile, gates | **BLOCKED** — `M_Product` |
+| BOM assembly, 18 QA gates, compile, gates | **BLOCKED at the time** — `M_Product`; that blocker is fixed as of 2026-09-05, but this DeKH run has not been repeated (needs library isolation first, see below) |
 
 One at-scale signal worth noting even from the partial run: 5,543 elements produced 5,523
 *distinct* catalog products — near 1:1, almost no reuse — the over-fragmentation gap showing up
@@ -615,8 +619,10 @@ a geometry-only capability boundary, not a defect, and it is orthogonal to fragm
 (2) predicted-element volume is high (over-fragmentation — see Option C's trade-off note), which
 inflates the "unmatched predicted elements" count in every scene.
 
-⚠️ These are **front-end** numbers. The full `scan → BOM → compile → gates` chain does not
-currently run at HEAD — see "Phase 5 does NOT currently reproduce at HEAD" above.
+These are **front-end** numbers. The full `scan → BOM → compile → gates` chain runs again as
+of 2026-09-05 (see "Phase 5 reproduces again at HEAD" above), but it has only been re-verified
+end-to-end on Sample House — no DeKH scene has been through the Java back end since the fix,
+because that still needs the library-isolation approach noted above.
 
 First run against a real terrestrial LiDAR scan, not the synthetic cloud every earlier phase
 was validated against — DeKH (German Hospital Dataset, published alongside the BIMStruct3D
