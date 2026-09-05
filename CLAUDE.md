@@ -129,13 +129,16 @@ goes 9/9 green.
   SQLite page churn); runs 2 and 3 are logically identical, so the file is a fixed point and
   does not keep growing. The re-extract command above is therefore only needed if the reference
   DB is ever regenerated in `--library` (hash-only) mode again.
-- **`scripts/restore_generative_meshes.py` crashes on a non-UTF-8 console, and the crash is
-  silent-ish.** It creates its back-compat `ad_geometry_map` view and then dies on the very next
-  line printing "§SELF-HEAL ... →" — a Windows `cp1252` encoding error — aborting before the
-  generative-mesh restore actually runs. That is why the repair took two passes to converge:
-  run 1 created the view and died, run 2 restored the 10 fixture meshes. Now latent (with the
-  view committed that branch is skipped), but it will bite anyone whose library lacks the view.
-  Not fixed here. Same class as the `PYTHONIOENCODING=utf-8` need for the Python validators.
+- ~~`scripts/restore_generative_meshes.py` crashes on a non-UTF-8 console.~~ **FIXED
+  2026-09-05 (`b3fa701a8`), repo-wide.** Two layers: every `.py` under `scripts/`, `tools/`
+  and `DAGCompiler/python/` that prints a non-ASCII literal (88 files) now reconfigures its
+  own stdout/stderr to UTF-8 with `errors="replace"` before anything else, so it holds however
+  the script is launched; and the 9 shell entry points export `PYTHONUTF8=1` +
+  `PYTHONIOENCODING=utf-8`, which also covers non-ASCII arriving at RUNTIME (a material name,
+  an IFC family, a path) that the literal scan cannot see. Verified by dropping the
+  `ad_geometry_map` view to force the fatal branch and re-running on a real cp1252 stdout with
+  no env override: completes, exit 0. **If you add a script that prints, you get this for free
+  through the shell entry points, but add the guard block too if it can be run directly.**
 - **`library/ERP.db` is gitignored and NOT in a fresh checkout**, yet the Java chain hardcodes
   it (`IFCtoBOMMain.java:122`, `IFCtoBOMPipeline.java:109`) and `M_Product` now lives there.
   `scripts/rebuild_erp.sh` regenerates it — but builds `library/disc_patterns.db` and then

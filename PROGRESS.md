@@ -53,12 +53,14 @@ re-assumed.)
   entries that were never imported, and `MetadataValidator` rejected the whole compile.
   `ExtractionPopulator.repairDanglingGeometry` now imports those blobs from the building's own
   reference extraction (exact hash match, never synthesised; unresolvable hashes are reported).
+- **UTF-8 console guard added repo-wide** (`b3fa701a8`) — a non-ASCII `print()` on a
+  cp1252 console can no longer abort a pipeline stage; 88 Python files guard their own stdio
+  and the 9 shell entry points export `PYTHONUTF8=1`.
 - **Library repair committed** (`a81f66ded`) — a fresh checkout runs 9/9 green with no manual
   step. Purely additive, audited, zero DeKH-derived rows, and verified to be the converged
   fixed point (three runs, content-fingerprint compared) rather than a mid-repair snapshot.
 - **Smaller items still open** — `extractIFCtoDB.py --library` mode still holds the pre-S168
-  assumption; `scripts/restore_generative_meshes.py` dies on a `cp1252` console before its mesh
-  restore runs (now latent, but it is why the repair needed two passes); `library/ERP.db` is
+  assumption; `library/ERP.db` is
   gitignored yet hardcoded, and the de-ERP rename to `disc_patterns.db` is half-applied on
   Windows. All catalogued in `CLAUDE.md`'s "STILL OPEN" section. None block the chain.
 - **Running the Java chain writes into the tracked, LFS-stored `library/component_library.db`.**
