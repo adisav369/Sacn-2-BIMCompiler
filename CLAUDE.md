@@ -147,7 +147,18 @@ goes 9/9 green.
   Untangling the de-ERP rename is its own task.
 - `library/schema_snapshot_component_library.sql` is stale (declares `M_Product`, predates
   `Value` and `source_element_ref`). Regenerate or annotate it.
-- **RGB-based opening detection (doors absorbed flush into wall planes) — investigated
+- The extractor's own `§PROOF` gate reports `LOD400_ENVELOPE 1/8 multi-layer elements shipped
+  as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
+  to the above; the chain is green regardless.
+
+## NEXT DEDICATED SESSIONS (2026-09-07) — the two headline accuracy gaps
+Each investigated and deliberately NOT attempted a third/second time in the same session —
+pick up either fresh, don't resume mid-idea. Both items below already used real investigation
+budget tonight and came back honestly negative or harder-than-scoped — that's a legitimate,
+useful outcome, not a stall. Whoever picks either back up should start from a fresh design
+menu grounded in what's written here, not from tuning either rejected attempt further.
+
+- **Real openings (doors/windows absorbed flush into wall planes) — RGB investigated
   2026-09-07, both designs REJECTED on measured evidence.** The color signal itself is real
   (real B_ICU doors vs. their host wall: median Δ 19.1 in RGB space vs. a same-wall noise
   floor of median 0.2/max 0.8 — not subtle), but neither of the two extraction designs tried
@@ -177,9 +188,6 @@ goes 9/9 green.
   why a third same-session attempt on this family of problem was deliberately not started are
   in `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet under "What's still not
   done." Needs its own dedicated session, same as openings.
-- The extractor's own `§PROOF` gate reports `LOD400_ENVELOPE 1/8 multi-layer elements shipped
-  as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
-  to the above; the chain is green regardless.
 
 ## STANDING RULE — verify bulk/automated edits against the diff, not against the tool
 Applies to any change applied mechanically across many files (a script that rewrites imports,
