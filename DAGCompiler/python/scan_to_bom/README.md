@@ -1221,16 +1221,45 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   confirmation that the trace was right**; the other is real scan-coverage occlusion, sitting
   physically beyond where the scanner ever reached (zero points at any stage). Nothing in the
   segmentation code can recover that one; it needs a rescan, not a fix.
-- **`IfcColumn` has no classification path at all — a complete class gap, never attempted.**
-  Measured: 0 predicted vs 9 real (B_ICU) and 0 vs 7 real (Building A). This is not a tuning or
-  accuracy problem — `classify.py` mentions `IfcColumn` only in its discipline map (`"IfcColumn":
-  "STR"`), and no branch can ever emit it, so the recall is structurally 0 and always has been.
-  Columns are geometrically distinctive (compact footprint, full floor-to-ceiling height,
-  free-standing rather than wall-embedded), so unlike doors/windows this looks genuinely
-  tractable from geometry alone — but it needs its own session with the same rigor applied
-  everywhere else here: measure real column geometry in the DeKH ground truth first, check what
-  the existing vertical-plane and cluster paths currently do with those points, and verify
-  against the synthetic baseline before trusting any new branch. Not started.
+- **`IfcColumn` has no classification path at all — a complete class gap, investigated
+  2026-09-07, still not started, and now understood to be a harder problem than it looked.**
+  Measured: 0 predicted vs 9 real (B_ICU) and 0 vs 7 real (Building A). `classify.py` mentions
+  `IfcColumn` only in its discipline map (`"IfcColumn": "STR"`), and no branch can ever emit it,
+  so the recall is structurally 0 and always has been.
+
+  **The earlier assumption on this line — "free-standing rather than wall-embedded," which is
+  what made this look tractable — was wrong, checked directly and corrected rather than carried
+  forward:** real column-to-nearest-wall gap, measured GT-to-GT (a real-geometry
+  characterization, not a predicted-rule validation, so this specific use doesn't fall under
+  the predicted→GT standing rule above), is 0.00–0.20m for 15 of 16 real columns across both
+  scenes (one outlier at 1.06–1.08m). Columns here are wall-adjacent in nearly every real case,
+  not open-room freestanding objects.
+
+  **The real finding, and the reason this is now understood to be an extraction problem, not a
+  classification problem:** point-membership traced (not AABB-overlap, which is meaningless
+  against multi-million-point slabs) every real column's own points against current predicted
+  segmentation. Unlike doors — absorbed but traceable to ONE dominant claimant plane per door
+  (13–35% of the door's points) — **no predicted segment claims a column-scale majority of any
+  column's points.** Real column points are thinly scattered, typically 3–30% (one case 51%),
+  across many large, unrelated ceiling/roof/wall segments that merely sweep near the column's
+  location; real per-column point totals range from 97 (near-total occlusion, Building A) to
+  47K (well-scanned, B_ICU) — real occlusion variance, not a data gap. There is no coherent
+  segment anywhere for a classifier to attach an `IfcColumn` label to. A thin (0.25–0.40m)
+  column standing flush or near-flush against a wall most likely never survives RANSAC as its
+  own plane at all — its faces are narrow enough to be swept into the adjacent wall's plane
+  (the same coplanar-absorption family that already cost doors two rejected fix attempts this
+  session, at a different geometry) or fragment below `MIN_PLANE_INLIERS`.
+
+  **Not implemented.** A classify.py-only branch was the assumed shape of this task before
+  investigating; it isn't viable, since there's no segment to classify. Real options going
+  forward — none attempted, none validated: (A) an extraction-level fix analogous to the door
+  attempts (real risk of the same outcome, touches `segment.py` again); (B) flag a
+  wall-adjacent column-scale anomaly as a low-confidence advisory rather than extracting full
+  geometry, mirroring the RGB investigation's own flag-not-extract option; (C) leave it. Given
+  two structurally similar extraction problems (doors, both designs) already used this
+  session's investigation budget with two honest rejections, a third attempt on a freshly
+  harder-than-scoped problem was deliberately not started tonight — this needs its own
+  dedicated session, same as openings.
 - **Flush-mounted openings (doors) are not recoverable by geometry alone — a capability
   boundary, not a defect.** Traced from Building C's gap-to-baseline (15/34 = 44.1% vs the
   BIMStruct3D baseline's 25/34 = 73.5%), which turned out to be **entirely doors**: we match

@@ -162,6 +162,21 @@ goes 9/9 green.
   opening/void detection instead of color) are in
   `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly opening detection"
   subsection. Do not re-attempt either of these two exact designs without reading it first.
+- **`IfcColumn` (complete class gap, 0/9 B_ICU, 0/7 Building A) — investigated 2026-09-07,
+  found to be an EXTRACTION problem, not the classification problem it looked like.** Two
+  things this file previously assumed turned out wrong when checked directly: columns are
+  wall-adjacent (0.00–0.20m gap for 15/16 real columns), not "free-standing" as earlier
+  assumed; and no predicted segment claims a column-scale majority of any real column's
+  points (unlike doors, which have one dominant absorbing plane) — points are thinly scattered
+  across many unrelated large segments, so there is no coherent segment for a classifier to
+  label in the first place. Likely mechanism: thin (0.25–0.40m) columns flush against a wall
+  don't survive RANSAC as their own plane — same coplanar-absorption family that already cost
+  doors two rejected attempts this session, different geometry. Not implemented — a
+  classify.py-only branch (the assumed shape of this task before investigating) isn't viable
+  given this. Full detail, the three untried options (extraction fix / flag-only / defer), and
+  why a third same-session attempt on this family of problem was deliberately not started are
+  in `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet under "What's still not
+  done." Needs its own dedicated session, same as openings.
 - The extractor's own `§PROOF` gate reports `LOD400_ENVELOPE 1/8 multi-layer elements shipped
   as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
   to the above; the chain is green regardless.
