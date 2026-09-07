@@ -3,6 +3,12 @@
 > **Rule:** thin status file. Detail lives in `DAGCompiler/python/scan_to_bom/README.md` (the
 > point-cloud pipeline's own validated-results doc) and `CLAUDE.md` (project rules + known
 > gaps). Keep this file short — a pointer to where the real detail lives, not the detail itself.
+>
+> For "what's left before this is production-ready and how big is each piece" —
+> `PRODUCTION_READINESS_BACKLOG.md` (2026-09-07 scoping session). Not a calendar estimate;
+> an itemized, sized backlog across model accuracy, generalization, infrastructure, and
+> tooling maturity, plus the decisions only the product owner can make that size several
+> items for real.
 
 ## Chain status (2026-09-05): running end-to-end again
 

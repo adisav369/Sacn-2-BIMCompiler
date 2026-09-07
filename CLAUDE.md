@@ -158,6 +158,11 @@ budget tonight and came back honestly negative or harder-than-scoped — that's 
 useful outcome, not a stall. Whoever picks either back up should start from a fresh design
 menu grounded in what's written here, not from tuning either rejected attempt further.
 
+These two are the headline items, not the whole picture — `PRODUCTION_READINESS_BACKLOG.md`
+(repo root) has the full itemized, sized backlog across model accuracy, generalization,
+infrastructure, and tooling maturity, plus the decisions only the product owner can make that
+determine how big several items really are.
+
 - **Real openings (doors/windows absorbed flush into wall planes) — RGB investigated
   2026-09-07, both designs REJECTED on measured evidence.** The color signal itself is real
   (real B_ICU doors vs. their host wall: median Δ 19.1 in RGB space vs. a same-wall noise
