@@ -1260,7 +1260,92 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   appearance and context priors that pure planar geometry has no access to. Closing it needs a
   genuinely different signal: RGB/intensity (already ingested, unused by `classify.py`), the
   dataset's `.npy` semantic labels, or detecting the *opening* in the host wall rather than the
-  door leaf. Not attempted — a real design question, not a patch.
+  door leaf. **RGB was tried this session — see below.**
+
+  **RGB-based color-anomaly opening detection — attempted and REJECTED, both variants
+  (2026-09-07).**
+
+  **Intensity is a dead end, checked first and fast:** DeKH_B_ICU.laz declares an `intensity`
+  dimension (LAS point format 2) but it is flat zero across the whole scan — 1 distinct value
+  in a 50K-point sample, min=max=0. Declared by the format, never actually populated by the
+  scanner/processing pipeline. Not usable; not investigated further.
+
+  **Step 1 — does color actually separate a door from its host wall? Real signal, not scan
+  noise, confirmed against a proper null hypothesis before designing anything on top of it:**
+  real GT B_ICU doors' own points vs. their host wall's surrounding material (excluding the
+  door's own footprint), real RGB, `RANSAC_DIST_THRESHOLD_M`-scale colors:
+
+  | | \|Δ\| RGB (0–255 scale) |
+  |---|---|
+  | Same-wall split-half noise floor (null; n=29 walls, huge point counts) | median 0.2, max 0.8 |
+  | Door vs. its own host wall (signal; n=14/15 doors scoreable) | median **19.1**, p25=10.5, p75=45.5 |
+
+  7/14 doors ≥15, 6/14 ≥30, only 1/14 <8 — and even that weakest case (Δ=4.6) is ~6× the noise
+  ceiling. The color difference is real and large relative to noise. This confirmed the signal
+  exists; it did **not** yet answer whether it could be safely *extracted*.
+
+  **Step 2 — false-positive check (Option A: global per-wall-plane color-anomaly detection),
+  run before choosing between the design menu's options, not after:** the detector (10cm
+  in-plane grid, `scipy.ndimage.label` connected components — reusing `segment.py`'s own
+  `_split_plane_into_components` grid/basis convention rather than inventing a new one) was run
+  against **all 321 predicted `IfcWall` segments** in real B_ICU output, not just known door
+  locations. A cell counts as anomalous at Δ≥15 from the wall's own per-channel-median
+  "dominant color."
+
+  | | |
+  |---|---|
+  | Anomaly regions found | 2,840 |
+  | Real doors (TP, majority of region's points inside a real GT door AABB) | 53 |
+  | Not doors (FP) | 2,787 |
+  | **Precision** | **1.9%** |
+  | Real GT doors covered by ≥1 TP region | 12/15 |
+  | Door-shape filter (0.6–1.4m wide, 1.6–2.3m tall, floor-touching) catches | TP 1/53, FP 7/2787 |
+
+  **Shape does not separate TP from FP** — width/height/area/floor-touch distributions are
+  statistically indistinguishable between the two populations (TP width med 0.33m vs FP 0.31m;
+  area med 0.038 vs 0.047 m²; floor-touch 36% vs 21%). A shape filter cannot rescue this.
+
+  **The actual confounder, found by inspecting the worst offenders, not the one the original
+  design menu guessed at (equipment/signage):** the largest FPs (5–16 m², 20K–54K points —
+  an order of magnitude bigger than the real signal) are **smooth vertical lighting/shading
+  gradients spanning a wall's entire height**, not material changes. Wall #229's own per-height
+  RGB bands: `(57,65,74)` near the floor → `(98,104,109)` mid-wall → `(75,79,83)` near the
+  ceiling — continuous, no step. A global per-wall dominant-color threshold cannot tell a real
+  door from this; both exceed the wall's own global median by a lot.
+
+  **Step 3 — a local-contrast refinement (Option B's actual mechanism: compare each cell to
+  its local spatial neighborhood, not the whole plane's global median), tried because a slow
+  gradient should show low *local* contrast while a door edge shows a sharp one — this
+  hypothesis, not the fix itself, is what got tested:**
+
+  | Radius | Anomaly regions | TP / FP | Precision | Doors covered | Wall #229's anomaly |
+  |---|---|---|---|---|---|
+  | 1.5m | 3,087 | 53 / 3,034 | 1.7% | 13/15 | still 28,530 pts (was 54,353) |
+  | 2.5m | 2,949 | 57 / 2,892 | 1.9% | 13/15 | still 51,341 pts — essentially unchanged |
+
+  **It did not work.** Precision stayed flat at both radii tested. **Why, confirmed rather than
+  left as "didn't work": wall #229 is only 2.9m tall, and the gradient sweeps its entire
+  height** — the gradient's own spatial wavelength is comparable to the whole wall, not small
+  relative to any reasonable smoothing radius. Too small a radius lets the door dominate its
+  own local reference, defeating the comparison; too large a radius is still truncated/biased
+  near the wall's own floor boundary — which is exactly where a real door also sits, for an
+  unrelated reason. The confound and the signal are spatially coincident at floor level, so no
+  radius separates them; this isn't a tuning problem, it's the wrong tool for this specific
+  confound.
+
+  **Verdict: REJECTED — not implemented into `segment.py`.** Two designs, two honest validation
+  attempts (global and local-contrast), same ~2% precision both times. `_fit_plane_ransac_multi`
+  /`_plane_extraction_round` is the most heavily-tuned, most-depended-upon code in this
+  pipeline — every existing comment in it traces to a specific past regression — and nothing
+  here cleared the bar to touch it. **What IS durable from this investigation: the color signal
+  itself is real** (Step 1's result stands on its own) **— it is the extraction methodology
+  that has not been solved**, not the existence of the signal. A future attempt needs a
+  genuinely different idea, not a tuning pass on either design tried here: per-wall vertical-
+  gradient detrending (regress out height-dependent lighting before anomaly detection, rather
+  than comparing to a single global or locally-windowed reference), the dataset's own `.npy`
+  semantic labels (an already-ingested, unnamed grouping signal, unused for this), or detecting
+  the *opening* geometrically (a void/hole signature in the host wall) instead of a color
+  signature on it. Not attempted — logged as open, not guessed through under time pressure.
 - **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched,
   traced to two new, distinct, non-segmentation causes.** The fixed 40-round cap was replaced
   with an adaptive diminishing-returns stop, then `MULTI_CANDIDATE_K=5` let each round accept

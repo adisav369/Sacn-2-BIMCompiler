@@ -147,6 +147,21 @@ goes 9/9 green.
   Untangling the de-ERP rename is its own task.
 - `library/schema_snapshot_component_library.sql` is stale (declares `M_Product`, predates
   `Value` and `source_element_ref`). Regenerate or annotate it.
+- **RGB-based opening detection (doors absorbed flush into wall planes) — investigated
+  2026-09-07, both designs REJECTED on measured evidence.** The color signal itself is real
+  (real B_ICU doors vs. their host wall: median Δ 19.1 in RGB space vs. a same-wall noise
+  floor of median 0.2/max 0.8 — not subtle), but neither of the two extraction designs tried
+  clears a usable false-positive rate: a global per-wall color-anomaly detector run against
+  all 321 real predicted `IfcWall` segments in B_ICU scored 1.9% precision (53 real doors vs.
+  2,787 false positives, shape-inseparable), and a local-contrast refinement — hypothesized to
+  fix it, tested at two radii — did not (still ~2% precision both times). Root cause: the
+  dominant false-positive source is a whole-wall-height lighting/shading gradient spatially
+  coincident with real doors at floor level, which neither a global nor a locally-windowed
+  color comparison can separate from a real door. Full numbers, both tables, and the specific
+  next ideas NOT yet tried (gradient detrending, the dataset's own `.npy` labels, geometric
+  opening/void detection instead of color) are in
+  `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly opening detection"
+  subsection. Do not re-attempt either of these two exact designs without reading it first.
 - The extractor's own `§PROOF` gate reports `LOD400_ENVELOPE 1/8 multi-layer elements shipped
   as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
   to the above; the chain is green regardless.
