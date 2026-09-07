@@ -4,11 +4,13 @@
 > point-cloud pipeline's own validated-results doc) and `CLAUDE.md` (project rules + known
 > gaps). Keep this file short — a pointer to where the real detail lives, not the detail itself.
 >
-> For "what's left before this is production-ready and how big is each piece" —
-> `PRODUCTION_READINESS_BACKLOG.md` (2026-09-07 scoping session). Not a calendar estimate;
-> an itemized, sized backlog across model accuracy, generalization, infrastructure, and
-> tooling maturity, plus the decisions only the product owner can make that size several
-> items for real.
+> For "what's left before this is production-ready, how big is each piece, and what's next" —
+> `PRODUCTION_READINESS_BACKLOG.md` (2026-09-07 scoping session; decisions RESOLVED same day)
+> and `CLAUDE.md`'s `## NEXT SESSION PLAN` (the condensed, sequenced version). Not a calendar
+> estimate; an itemized, sized backlog plus a decided priority order: (1) prove a real DeKH
+> scan through compile/gates, (2) multi-storey — re-scoped to a real first step, now outranks
+> openings, (3) openings — one more bounded attempt with an explicit stop condition, (4)
+> `IfcColumn` deferred.
 
 ## Chain status (2026-09-05): running end-to-end again
 

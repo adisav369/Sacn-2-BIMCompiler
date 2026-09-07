@@ -151,48 +151,76 @@ goes 9/9 green.
   as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
   to the above; the chain is green regardless.
 
-## NEXT DEDICATED SESSIONS (2026-09-07) — the two headline accuracy gaps
-Each investigated and deliberately NOT attempted a third/second time in the same session —
-pick up either fresh, don't resume mid-idea. Both items below already used real investigation
-budget tonight and came back honestly negative or harder-than-scoped — that's a legitimate,
-useful outcome, not a stall. Whoever picks either back up should start from a fresh design
-menu grounded in what's written here, not from tuning either rejected attempt further.
+## NEXT SESSION PLAN (decided 2026-09-07) — sequenced, not just an open backlog
+Production bar, target category, wall-recovery ceiling, and priority order were all decided by
+the product owner on 2026-09-07 (see `PRODUCTION_READINESS_BACKLOG.md`'s `## Decisions` and
+`## SEQUENCED SESSION PLAN` sections for full reasoning — this is the condensed version to open
+a session with). **Production bar = pilot-ready for a real client's building** (mostly-correct,
+human review/touch-up expected on known-weak parts, not full autonomy). **Target category =
+institutional/commercial only** (hospitals, offices — DeKH's own category; not generalizing
+beyond it yet). **87–97% wall recovery is accepted, closed, not pursued further.**
 
-These two are the headline items, not the whole picture — `PRODUCTION_READINESS_BACKLOG.md`
-(repo root) has the full itemized, sized backlog across model accuracy, generalization,
-infrastructure, and tooling maturity, plus the decisions only the product owner can make that
-determine how big several items really are.
+**Do these in order. Don't skip ahead, don't resume a rejected design mid-idea.**
 
-- **Real openings (doors/windows absorbed flush into wall planes) — RGB investigated
-  2026-09-07, both designs REJECTED on measured evidence.** The color signal itself is real
-  (real B_ICU doors vs. their host wall: median Δ 19.1 in RGB space vs. a same-wall noise
-  floor of median 0.2/max 0.8 — not subtle), but neither of the two extraction designs tried
-  clears a usable false-positive rate: a global per-wall color-anomaly detector run against
-  all 321 real predicted `IfcWall` segments in B_ICU scored 1.9% precision (53 real doors vs.
-  2,787 false positives, shape-inseparable), and a local-contrast refinement — hypothesized to
-  fix it, tested at two radii — did not (still ~2% precision both times). Root cause: the
-  dominant false-positive source is a whole-wall-height lighting/shading gradient spatially
-  coincident with real doors at floor level, which neither a global nor a locally-windowed
-  color comparison can separate from a real door. Full numbers, both tables, and the specific
-  next ideas NOT yet tried (gradient detrending, the dataset's own `.npy` labels, geometric
-  opening/void detection instead of color) are in
-  `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly opening detection"
-  subsection. Do not re-attempt either of these two exact designs without reading it first.
-- **`IfcColumn` (complete class gap, 0/9 B_ICU, 0/7 Building A) — investigated 2026-09-07,
-  found to be an EXTRACTION problem, not the classification problem it looked like.** Two
-  things this file previously assumed turned out wrong when checked directly: columns are
-  wall-adjacent (0.00–0.20m gap for 15/16 real columns), not "free-standing" as earlier
-  assumed; and no predicted segment claims a column-scale majority of any real column's
-  points (unlike doors, which have one dominant absorbing plane) — points are thinly scattered
-  across many unrelated large segments, so there is no coherent segment for a classifier to
-  label in the first place. Likely mechanism: thin (0.25–0.40m) columns flush against a wall
-  don't survive RANSAC as their own plane — same coplanar-absorption family that already cost
-  doors two rejected attempts this session, different geometry. Not implemented — a
-  classify.py-only branch (the assumed shape of this task before investigating) isn't viable
-  given this. Full detail, the three untried options (extraction fix / flag-only / defer), and
-  why a third same-session attempt on this family of problem was deliberately not started are
-  in `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet under "What's still not
-  done." Needs its own dedicated session, same as openings.
+1. **D4 → D1 — prove a real DeKH scan through the full Java chain (S/M).** Isolation mechanism
+   for the tracked LFS library (scratch copy, or mandatory post-run restore + verification —
+   both already named above), then one real `--classify` run through `compile`/`gates` on a
+   DeKH scene. No open design question. Converts "9/9 green on Sample House" into "9/9 green
+   on a real scan" — do this first, it's verification, not new capability, and everything else
+   is worth more once it's confirmed rather than assumed.
+2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — now outranks openings.**
+   Reasoning: it's a structural gap (most real institutional buildings are multi-floor; the
+   pipeline currently can't represent that at all), not a usability gap. Investigated, not just
+   labeled unscoped: the compile back end already has real multi-storey support, proven live
+   (IFC-authored SampleHouse carries 2 real `IfcBuildingStorey` rows and compiles clean) — the
+   gap is entirely in the point-cloud front end. Three chokepoints found: `segment.py`'s
+   `_finish_segmentation` labels only the single lowest horizontal plane "floor" (a 2nd floor's
+   real floor would be mislabeled "ceiling"); `floor_z` is the MEAN of every floor-segment
+   centroid across `classify.py`/`run_scan_to_bom.py`/`run_dekh_staged.py` (would silently
+   average two real floor heights into a meaningless number on a genuine multi-floor scan — a
+   live landmine, not just a missing feature); `write_reference_db.py` hardcodes exactly one
+   storey row and one storey string for every element. Real precedent already in hand: Building
+   A genuinely is 2 floors, scanned as 2 *separate* `.laz` files — today those are only combined
+   for scoring, never through `write_reference_db` as one real multi-storey model. **First
+   concrete action:** formalize that into a real multi-storey write (2 `IfcBuildingStorey` rows,
+   correct per-element tagging, using Building A's already-segmented floors — no new scan
+   needed), fixing the `floor_z`-averaging landmine as part of it. Auto-detecting floors from
+   one continuous multi-floor scan is a separate, larger, still-unscoped follow-on — don't
+   conflate it with this step. Full detail: `PRODUCTION_READINESS_BACKLOG.md` §SEQUENCED
+   SESSION PLAN, item 2.
+3. **Openings — ONE more bounded attempt, stop condition agreed before starting.** RGB
+   investigated 2026-09-07, both designs REJECTED: real signal (real B_ICU doors vs. host wall,
+   median Δ19.1 vs. a same-wall noise floor of 0.2/0.8), but neither a global per-wall
+   color-anomaly detector (1.9% precision, 2,787 false positives, shape-inseparable) nor a
+   local-contrast refinement at two radii (still ~2% both) clears a usable rate — root cause is
+   a whole-wall-height lighting gradient spatially coincident with real doors at floor level.
+   Full numbers in `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly
+   opening detection" section — read before re-attempting. **Next attempt, sequenced by cost:**
+   (a) cheap pre-check — does the dataset's own `.npy` semantic label actually distinguish
+   door-vs-wall, or only group by surface identity (never checked); (b) if not, per-wall
+   vertical-gradient detrending (regress RGB against height per wall, run the same tested
+   anomaly detector on the residuals instead of raw color — targets the diagnosed confound
+   directly, rather than a third variation on what's already failed twice). **Stop condition,
+   fixed now:** re-run the same false-positive check (all 321 real `IfcWall` segments, B_ICU).
+   Continue only if precision clears a real order-of-magnitude bar (~20%+, or a TP/FP
+   population that's finally shape-separable) — not merely "better than 2%." Landing back in
+   the same ~1–5%, shape-inseparable range is a 3rd honest rejection in this family — close it
+   for the pilot bar (which explicitly allows a human touch-up pass here) and don't start a 4th
+   design without a genuinely new data source.
+4. **`IfcColumn` — deferred behind 1–3.** Investigated 2026-09-07: found to be an EXTRACTION
+   problem, not the classification problem it looked like. Columns are wall-adjacent (0.00–
+   0.20m gap for 15/16 real columns, not "free-standing" as earlier assumed), and no predicted
+   segment claims a column-scale majority of any real column's points — unlike doors, there's
+   no coherent segment for a classifier to label at all. Likely mechanism: thin (0.25–0.40m)
+   columns flush against a wall don't survive RANSAC as their own plane — same coplanar-
+   absorption family as doors, different geometry. Full detail in
+   `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet. Real, but decided to be
+   lower-value than 1–3 — don't start until those are done or explicitly reprioritized.
+
+Full backlog across all four production-readiness dimensions (model accuracy, generalization,
+infrastructure, tooling maturity) — including the items NOT in this ordered list and why —
+lives in `PRODUCTION_READINESS_BACKLOG.md` (repo root). Update that file, not just this
+section, when any item's status changes.
 
 ## STANDING RULE — verify bulk/automated edits against the diff, not against the tool
 Applies to any change applied mechanically across many files (a script that rewrites imports,
