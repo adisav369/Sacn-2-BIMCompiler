@@ -28,6 +28,21 @@ search): a real 23.7M-point cloud needs more than 10 minutes of RANSAC search ro
 before component-splitting/clustering, so it checkpoints after every round it doesn't finish
 in time and picks back up from there — just re-run the identical `--stage segment` command
 until it logs "STAGE 2/3 (segment) COMPLETE" instead of "round checkpoint written".
+
+A genuinely multi-storey building (DeKH Building A: two SEPARATE floor scans, no single
+continuous multi-floor scan to segment as one unit — see normalize.combine_floors_to_shared_
+frame's docstring) runs --stage downsample/segment TWICE, once per floor, into two DIFFERENT
+--checkpoint-dir values, then a 4th stage combines them into one real multi-storey reference
+DB instead of each floor writing its own single-storey DB:
+
+    python3 run_dekh_staged.py --stage combine-storeys \
+        --floor-checkpoint-dir <floor 1 dir> --storey-name "Level 1" \
+        --floor-checkpoint-dir <floor 2 dir> --storey-name "Level 2" \
+        --out-db <path>/stage3_reference_multistorey.db
+
+Recomputes classify+merge fresh from each floor's stage2_segments.pkl (cheap — no re-touch of
+the raw point cloud file) rather than inventing a new checkpoint format for it, so only
+--stage segment needs to have completed for each floor first, not --stage classify.
 """
 
 from __future__ import annotations
@@ -311,11 +326,65 @@ def stage_classify(args):
     _log("STAGE 3/3 (classify) COMPLETE — FULL RUN DONE")
 
 
+def stage_combine_storeys(args):
+    """Combine 2+ already-segmented floors (each its own --stage segment checkpoint dir) into
+    ONE real multi-storey reference DB. See normalize.combine_floors_to_shared_frame's
+    docstring for why this needs its own reconciliation step (each floor was independently
+    normalized around its own tack point -- there's no single raw scan spanning both floors to
+    anchor a shared origin at ingestion time) and write_reference_db.write_multistorey_
+    reference_db's docstring for what actually gets written.
+    """
+    from classify import classify_segments
+    from merge_instances import merge_instances
+    from normalize import combine_floors_to_shared_frame
+    from write_reference_db import write_multistorey_reference_db
+
+    if len(args.floor_checkpoint_dir) < 2:
+        raise SystemExit("--stage combine-storeys needs at least 2 --floor-checkpoint-dir "
+                          "values (use --stage classify directly for a single-floor building)")
+    if len(args.storey_name) != len(args.floor_checkpoint_dir):
+        raise SystemExit(f"{len(args.floor_checkpoint_dir)} --floor-checkpoint-dir values but "
+                          f"{len(args.storey_name)} --storey-name values -- need exactly one "
+                          f"name per floor, in the same order")
+
+    floors_in = []
+    for ckpt_dir, name in zip(args.floor_checkpoint_dir, args.storey_name):
+        in_seg = Path(ckpt_dir) / "stage2_segments.pkl"
+        if not in_seg.exists():
+            raise SystemExit(f"missing {in_seg} -- run --stage segment for this floor first")
+        _log(f"COMBINE loading floor '{name}' <- {in_seg}")
+        with open(in_seg, "rb") as f:
+            data = pickle.load(f)
+        segments, xyz, floor_z = data["segments"], data["xyz"], data["floor_z"]
+        tack_point = data["tack_point"]
+
+        classified = classify_segments(segments, points=xyz, log=_log)
+        merged = merge_instances(classified, log=_log)
+        _log(f"COMBINE floor '{name}': {len(merged)} elements, floor_z="
+             f"{'n/a' if floor_z is None else f'{floor_z:.3f}m'}, tack_point="
+             f"({tack_point[0]:.3f}, {tack_point[1]:.3f}, {tack_point[2]:.3f})")
+        floors_in.append({"classified": merged, "tack_point": tack_point,
+                           "floor_z": floor_z, "name": name})
+
+    floors_shared = combine_floors_to_shared_frame(floors_in, log=_log)
+    for i, f in enumerate(floors_shared):
+        f["guid"] = f"PC_STOREY_{i + 1}"
+
+    out_path = Path(args.out_db)
+    part = write_multistorey_reference_db(floors_shared, out_path, log=_log)
+    _log(f"COMBINE multistorey reference DB written -> {out_path} "
+         f"({part['n_primary']} confident) + {part['lowconf']} "
+         f"({part['n_lowconf']} low-confidence)")
+    _log("COMBINE (combine-storeys) COMPLETE")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", required=True, choices=["downsample", "segment", "classify"])
-    ap.add_argument("--checkpoint-dir", required=True,
-                     help="scratch directory OUTSIDE the repo -- shared across all 3 stages")
+    ap.add_argument("--stage", required=True,
+                     choices=["downsample", "segment", "classify", "combine-storeys"])
+    ap.add_argument("--checkpoint-dir",
+                     help="scratch directory OUTSIDE the repo, required for --stage "
+                          "downsample/segment/classify (shared across those 3 stages)")
     ap.add_argument("--laz", help="required for --stage downsample")
     ap.add_argument("--npy", default=None, help="optional for --stage downsample")
     ap.add_argument("--voxel-size", type=float, default=0.01)
@@ -327,6 +396,14 @@ def main():
                           "checkpoint if this is hit before all MAX_PLANES rounds complete.")
     ap.add_argument("--gt-ifc-extracted", default=None, help="for --stage classify")
     ap.add_argument("--pred-ifc-extracted", default=None, help="for --stage classify")
+    ap.add_argument("--floor-checkpoint-dir", action="append", default=[],
+                     help="--stage combine-storeys only: repeatable, one per floor, in floor "
+                          "order -- each must already have a completed --stage segment "
+                          "checkpoint (stage2_segments.pkl)")
+    ap.add_argument("--storey-name", action="append", default=[],
+                     help="--stage combine-storeys only: repeatable, paired 1:1 with "
+                          "--floor-checkpoint-dir in the same order, e.g. 'Level 1'")
+    ap.add_argument("--out-db", help="--stage combine-storeys only: output reference DB path")
     args = ap.parse_args()
 
     import sys
@@ -335,11 +412,21 @@ def main():
     if args.stage == "downsample":
         if not args.laz:
             raise SystemExit("--laz is required for --stage downsample")
+        if not args.checkpoint_dir:
+            raise SystemExit("--checkpoint-dir is required for --stage downsample")
         stage_downsample(args)
     elif args.stage == "segment":
+        if not args.checkpoint_dir:
+            raise SystemExit("--checkpoint-dir is required for --stage segment")
         stage_segment(args)
     elif args.stage == "classify":
+        if not args.checkpoint_dir:
+            raise SystemExit("--checkpoint-dir is required for --stage classify")
         stage_classify(args)
+    elif args.stage == "combine-storeys":
+        if not args.out_db:
+            raise SystemExit("--out-db is required for --stage combine-storeys")
+        stage_combine_storeys(args)
 
 
 if __name__ == "__main__":

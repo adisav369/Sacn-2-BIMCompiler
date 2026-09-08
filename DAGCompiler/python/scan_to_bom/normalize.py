@@ -30,6 +30,7 @@ Satisfies two hard, verified requirements downstream, not just a style preferenc
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -81,6 +82,88 @@ def normalize_pointcloud(pc: PointCloud, tack_point: np.ndarray | None = None,
         f"{'OK' if gate_ok else 'STILL EXCEEDS — building larger than the gate, or bad tack point'})")
 
     return PointCloud(normalized_xyz, pc.rgb), tack_point
+
+
+def combine_floors_to_shared_frame(floors: list[dict], log=print) -> list[dict]:
+    """Reconcile multiple independently-normalized floors into ONE shared coordinate frame,
+    so they can be written as real storeys in a single reference DB instead of each floor
+    silently claiming its own coordinate origin.
+
+    This is the real, measured situation for DeKH Building A (see README's "Buildings A and C"
+    section): it has no single continuous multi-floor scan, only two SEPARATE floor scans
+    (1st_floor 507M pts, 2nd_floor 621M pts). Each floor already goes through its own
+    `normalize_pointcloud()` call with its own bbox-center tack point (there is no shared raw
+    scan to anchor both floors to a common origin at ingestion time) — until now those two
+    predictions were only ever un-shifted back to the raw/world frame and combined for
+    SCORING (run_dekh_staged.py's stage_classify), never written into one reference DB as real
+    storeys.
+
+    `floors`: `[{"classified": list[ClassifiedSegment], "tack_point": np.ndarray(3,),
+    "floor_z": float | None, "name": str}, ...]` — one dict per floor, in FLOOR ORDER (bottom
+    to top; only used for logging, elevation is what actually orders storeys downstream).
+    `floor_z` is that floor's own detected floor elevation, in ITS OWN normalized frame (same
+    value classify.py already computes from `orientation == "floor"` segments).
+
+    Shared frame: centered on the bbox-center of the UNION of every floor's RAW (pre-normalize)
+    extent — reconstructed by adding each floor's own tack_point back to its own segments'
+    normalized AABBs. This is the exact same bbox-center rule `compute_tack_point()` already
+    uses for one floor, just applied to the union of floors instead of one alone — not a new,
+    invented convention.
+
+    Each floor's `Segment.id`s are also renumbered into a disjoint range (floor 2's ids start
+    right after floor 1's highest id) so that `write_reference_db._guid()` — which keys purely
+    off `(ifc_class, segment.id)` — can't collide across floors sharing the same per-floor
+    numbering (both floors' own segmentation runs start counting from 0 independently).
+
+    Returns `[{"classified": [...], "elevation": float, "name": str}, ...]` — `classified`
+    holds NEW ClassifiedSegment/Segment objects (nothing in `floors` is mutated), shifted into
+    the shared frame and with renumbered ids; `elevation` is `floor_z` re-expressed in that
+    shared frame — what the caller should write as this storey's real elevation.
+    """
+    if len(floors) == 1:
+        f = floors[0]
+        elevation = float(f["floor_z"]) if f["floor_z"] is not None else 0.0
+        return [{"classified": f["classified"], "elevation": elevation, "name": f["name"]}]
+
+    raw_mins, raw_maxs = [], []
+    for f in floors:
+        cls = f["classified"]
+        if not cls:
+            continue
+        mins = np.array([cs.segment.aabb_min for cs in cls]).min(axis=0) + f["tack_point"]
+        maxs = np.array([cs.segment.aabb_max for cs in cls]).max(axis=0) + f["tack_point"]
+        raw_mins.append(mins)
+        raw_maxs.append(maxs)
+    if not raw_mins:
+        raise ValueError("combine_floors_to_shared_frame: every floor has zero classified "
+                          "elements — nothing to reconcile a shared frame from")
+    shared_tack_point = (np.min(raw_mins, axis=0) + np.max(raw_maxs, axis=0)) / 2.0
+    log(f"§COMBINE_FLOORS shared tack point (bbox-center of {len(floors)} floors' raw union): "
+        f"({shared_tack_point[0]:.3f}, {shared_tack_point[1]:.3f}, {shared_tack_point[2]:.3f})")
+
+    out = []
+    next_id_base = 0
+    for f in floors:
+        offset = f["tack_point"] - shared_tack_point  # this floor's normalized frame -> shared frame
+        shifted = []
+        max_id_seen = -1
+        for cs in f["classified"]:
+            seg = cs.segment
+            max_id_seen = max(max_id_seen, seg.id)
+            new_seg = dataclasses.replace(
+                seg, id=seg.id + next_id_base,
+                aabb_min=seg.aabb_min + offset, aabb_max=seg.aabb_max + offset)
+            new_cs = dataclasses.replace(cs, segment=new_seg, center=cs.center + offset)
+            shifted.append(new_cs)
+        elevation = float(f["floor_z"] + offset[2]) if f["floor_z"] is not None else float(offset[2])
+        log(f"§COMBINE_FLOORS '{f['name']}': offset=({offset[0]:.3f}, {offset[1]:.3f}, "
+            f"{offset[2]:.3f})m from its own tack point, ids [{next_id_base}, "
+            f"{next_id_base + max_id_seen}], {len(shifted)} elements, elevation -> "
+            f"{elevation:.3f}m in shared frame")
+        out.append({"classified": shifted, "elevation": elevation, "name": f["name"]})
+        next_id_base += max_id_seen + 1
+
+    return out
 
 
 def save_tack_point(pointcloud_path: str | Path, tack_point: np.ndarray,

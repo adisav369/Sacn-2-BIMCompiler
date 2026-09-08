@@ -4,7 +4,12 @@
 > (licensed-data isolation, prove a real DeKH scan through the chain) is DONE, and it surfaced
 > **A9** — compiled placement systematically wrong on every building — which is now ALSO
 > **FIXED and verified on all 3 real buildings** (DeKH Building A 498/498, SampleHousePC
-> 70/70, Sample House 59/59, all up from 0). Next up: item 2, multi-storey. This is the
+> 70/70, Sample House 59/59, all up from 0). Also 2026-09-08: item 2 (multi-storey)'s
+> write-side is DONE — `combine_floors_to_shared_frame` + `write_multistorey_reference_db` +
+> a new `run_dekh_staged.py --stage combine-storeys`, verified synthetically and against the
+> real (unmodified) `StructuralBomBuilder.java` consumer — but NOT yet run against real DeKH
+> Building A data (the `.laz` files aren't available in this environment; see `CLAUDE.md`'s
+> item 2 for the honest detail). This is the
 > itemized answer to "when is
 > this a production-ready tool" — not a calendar estimate (this project's own Prime Rule is
 > "never invent a number without a real source," and a date here would be exactly that). What
@@ -35,7 +40,7 @@
 | A1 | Openings (doors/windows), 0% recall on real scans | **L — priority 3, ONE bounded attempt** | 2 RGB extraction designs rejected on measured false-positive rate (~2% both). Priority + explicit stop condition DECIDED 2026-09-07 — see `SEQUENCED SESSION PLAN` §3. |
 | A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — priority 4, deferred** | Investigated 2026-09-07; found to be an extraction problem (no coherent segment exists to classify), not the classification problem it was picked as. 3 unimplemented options logged. Deferred behind items 1–3. |
 | A3 | Wall-face reunification (a wall's inner/outer face treated as 2 elements) | **L — not prioritized this round** | One design (distance-based merge) implemented, measured, and **rejected** — harmful fusions were the majority outcome at every threshold tested. 2 untried signals logged: in-plane footprint match, empty-cavity check between faces. |
-| A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07 — priority 2, real first step identified** | Investigated (not just labeled XL) — 3 specific front-end chokepoints found, 1 is a silent-wrong-answer landmine, and a real in-hand precedent (Building A's 2 separately-scanned floors) shrinks the realistic first step well below "auto-detect floors in one continuous scan." Full detail + the first concrete action in `SEQUENCED SESSION PLAN` §2. |
+| A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07, write-side DONE 2026-09-08** | The realistic first step (formalize Building A's 2 separately-scanned floors into one real multi-storey `write_reference_db` output) is implemented and verified synthetically + against the real `StructuralBomBuilder.java` consumer — not yet run against real DeKH data (`.laz` files unavailable this session). Auto-detecting floors from one continuous scan (the harder sub-problem) remains unscoped. Full detail in `SEQUENCED SESSION PLAN` §2. |
 | A9 | ~~Compiled placement is systematically wrong on EVERY point-cloud building~~ **FIXED 2026-09-08, verified on all 3 real buildings.** | **DONE** | Flat-BOM-tree hypothesis FALSIFIED (compiling IFC-authored Sample House directly showed the identical `P-PARENT 0/59` failure despite real assembly nesting — not a point-cloud or nesting-depth problem). Real cause, traced through the write path: `c_orderline.dx/dy/dz` is written once at BOM Drop and never updated (confirmed: zero `UPDATE` statements touch those columns anywhere); comparing it against the real walked `element_transforms` positions for the same elements showed both live in one consistent MIN-CORNER-relative local frame, never offset by the root `BUILDING` node's own `dx/dy/dz`. `StructuralBomBuilder.java`'s own comments confirm the convention explicitly ("building origin (LBD corner) from all elements"; a child offset "always >= 0"). `BomTreeProver`'s old `computeWorldPosition` summed the root's real-world placement seed (used elsewhere in `CompilationPipeline` to seed the walk — a different coordinate frame) into every containment check, AND checked center-relative when the confirmed convention is corner-relative. Fix: `LEAF dx/dy/dz` checked as `[0, parent_extent]` against its immediate parent only, no accumulation; `computeWorldPosition` (wrong and unnecessary) removed. Verified twice: simulated in Python against real `c_orderline` data from all 3 buildings first (100% each), then via the actual JUnit test — DeKH Building A 498/498, SampleHousePC 70/70, Sample House 59/59, all up from 0. `P-SIBLING` confirmed unregressed (100% throughout). Two unrelated pre-existing issues found and left alone: Sample House's own `.bimcobol` script independently fails on a missing `ProjectName` column (confirmed present before this fix too); `BuildingRegistryTest`'s `-Dbom.db` is JVM-global while its `@TestFactory` runs one dynamic test per `GATE_SCOPE` building, so pointing it at one building's compile-db while other registered buildings are also in scope produces an unrelated element-count mismatch on their dynamic tests — pre-existing (matches how `run_RosettaStones.sh` has always invoked this test), not part of A9. |
 | A5 | Cross-floor stitching (a wall spanning 2 independently-segmented floors can't unify) | **XL** | Known gap (Building A's last unmatched wall traced to exactly this). Related to but distinct from A4's first step (§2(a) doesn't attempt this); still unscoped. |
 | A6 | Output-volume growth from `MULTI_CANDIDATE_K=5` (~4.8x more predicted elements at Building A's scale) | **M** | Real, honestly-reported trade-off from the round-budget fix. Candidate approaches named (consolidation in `merge_instances.py`, or a smaller K for cluttered scenes) but not designed. |
@@ -216,13 +221,51 @@ not a re-statement of "this is unscoped":**
     floor-by-floor, for scanner-range and occlusion reasons — matching the DeKH precedent —
     so (a) may be the practically correct scope, not just the cheaper one). Do not start this
     without checking real client-scan practice first, and don't conflate it with (a).
-- **First concrete action for the next session:** implement (a) only. Fix chokepoint #2 as
-  part of it (each floor keeps its own `floor_z`, never averaged across floors — this closes
-  the silent-wrong-answer landmine even for the current single-run-per-floor workflow, which
-  is real value independent of the rest). Verify against Building A's real 2-floor GT the same
-  way every fix tonight was verified: does storey assignment match reality, does compile still
-  gate clean, does per-floor door/window classification improve now that `floor_z` isn't
-  cross-contaminated. (b) stays logged, not started, pending real client-scan-practice
+- **(a) DONE 2026-09-08 — write-side only, not yet run against real Building A data.**
+  `normalize.combine_floors_to_shared_frame()`: takes N floors, each already independently
+  segmented/classified/normalized (own tack point, own `floor_z`), and reconciles them into
+  ONE shared coordinate frame — shared tack point = bbox-center of the union of every floor's
+  reconstructed RAW extent (the exact same bbox-center rule `compute_tack_point()` already uses
+  for a single floor, not an invented convention), plus renumbers each floor's `Segment.id`s
+  into disjoint ranges so `write_reference_db._guid()` can't collide across floors that each
+  started counting segment ids from 0 independently (a real, guaranteed collision otherwise —
+  confirmed in the synthetic test below by deliberately reproducing it).
+  `write_reference_db.write_multistorey_reference_db()`: writes N real `IfcBuildingStorey`
+  rows, each with its own real elevation and correctly per-element-tagged `storey` column.
+  `write_reference_db()` (every other caller's existing entry point) now delegates to it with a
+  length-1 storey list — unchanged signature, unchanged behavior, confirmed by re-running the
+  pre-existing `validate_reference_db.py` Phase 4 harness against the real
+  `samplehouse_synthetic.ply`: schema integrity still reports "exactly 1 Building + 1 Storey."
+  New `run_dekh_staged.py --stage combine-storeys`: takes 2+ floors that each already completed
+  `--stage segment`, recomputes classify+merge fresh from each floor's own
+  `stage2_segments.pkl` (cheap, no new checkpoint format needed), then combines and writes.
+
+  **Correction to this section's own earlier framing:** chokepoint #2 (`floor_z` averaging)
+  turned out NOT to need fixing for case (a). It only corrupts a genuinely different scenario —
+  ONE continuous scan spanning multiple floors, i.e. case (b) below, where `_finish_
+  segmentation` would see multiple real floor planes in a single segmentation run and average
+  their heights. Building A's actual architecture (two SEPARATE `.laz` files, each its own
+  independent `segment_pointcloud()`/`classify_segments()` run) never triggers this: each
+  floor's own `floor_z` is already computed from only its own single, real floor plane, and
+  `combine_floors_to_shared_frame` re-expresses that already-correct per-floor value in the
+  shared frame rather than re-deriving or averaging it. Left untouched, correctly.
+
+  **Verified two ways, neither requiring real DeKH data** (checked this session: the actual
+  `.laz` files aren't present in this environment — only a HuggingFace dataset ref stub with no
+  downloaded blobs; DeKH is licensed and never cached in the repo, so availability isn't
+  guaranteed session to session): (1) a synthetic 2-floor test built `ClassifiedSegment` data
+  directly with deliberately colliding per-floor segment ids and a deliberately negative storey
+  elevation (Level 1 at -3.1m) — zero guid collisions, correct 2-storey `spatial_structure`,
+  correct per-element storey tagging, correct elevation deltas. (2) Read `StructuralBomBuilder.
+  java` (the real, unmodified consumer) directly: its per-storey floor AABB is derived purely
+  from that storey's own elements' real positions, never from the `elevation` field's sign —
+  consistent with Sample House's already-proven real 3-storey compile, so no Java-side risk.
+
+  **Still open, honestly:** an end-to-end run against REAL Building A point-cloud data (both
+  `--stage segment` checkpoints, `--stage combine-storeys`, then the actual Java
+  `--populate --classify --compile` chain with scratch `--comp-db`/`--erp-db` isolation, same
+  discipline as D1) — blocked on the real `.laz` files being available in whatever environment
+  picks this up next. (b) stays logged, not started, pending real client-scan-practice
   information.
 
 ### 3. Openings — ONE more bounded attempt, explicit stop condition agreed before starting

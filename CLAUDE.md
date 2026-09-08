@@ -213,26 +213,66 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    then a *different* registered building's dynamic test also runs against that same file,
    producing an unrelated element-count assertion failure. Pre-existing (this is exactly how
    `run_RosettaStones.sh` has always invoked this test), not caused by or related to A9.
-2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — now outranks openings.**
-   Reasoning: it's a structural gap (most real institutional buildings are multi-floor; the
-   pipeline currently can't represent that at all), not a usability gap. Investigated, not just
-   labeled unscoped: the compile back end already has real multi-storey support, proven live
+2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — write-side DONE
+   2026-09-08, real-data run still pending.** Reasoning: it's a structural gap (most real
+   institutional buildings are multi-floor; the pipeline couldn't represent that at all), not a
+   usability gap. The compile back end already had real multi-storey support, proven live
    (IFC-authored SampleHouse carries 2 real `IfcBuildingStorey` rows and compiles clean) — the
-   gap is entirely in the point-cloud front end. Three chokepoints found: `segment.py`'s
-   `_finish_segmentation` labels only the single lowest horizontal plane "floor" (a 2nd floor's
-   real floor would be mislabeled "ceiling"); `floor_z` is the MEAN of every floor-segment
-   centroid across `classify.py`/`run_scan_to_bom.py`/`run_dekh_staged.py` (would silently
-   average two real floor heights into a meaningless number on a genuine multi-floor scan — a
-   live landmine, not just a missing feature); `write_reference_db.py` hardcodes exactly one
-   storey row and one storey string for every element. Real precedent already in hand: Building
-   A genuinely is 2 floors, scanned as 2 *separate* `.laz` files — today those are only combined
-   for scoring, never through `write_reference_db` as one real multi-storey model. **First
-   concrete action:** formalize that into a real multi-storey write (2 `IfcBuildingStorey` rows,
-   correct per-element tagging, using Building A's already-segmented floors — no new scan
-   needed), fixing the `floor_z`-averaging landmine as part of it. Auto-detecting floors from
-   one continuous multi-floor scan is a separate, larger, still-unscoped follow-on — don't
-   conflate it with this step. Full detail: `PRODUCTION_READINESS_BACKLOG.md` §SEQUENCED
-   SESSION PLAN, item 2.
+   gap was entirely in the point-cloud front end's WRITE side, and Building A already has real
+   precedent for it: 2 *separate* `.laz` floor scans, each independently segmented/classified/
+   normalized (own tack point), today only combined for SCORING, never through
+   `write_reference_db` as one real multi-storey model.
+
+   **Built:** `normalize.combine_floors_to_shared_frame()` — reconciles N independently-
+   normalized floors into ONE shared coordinate frame (shared tack point = bbox-center of the
+   UNION of every floor's reconstructed RAW extent, the same bbox-center rule
+   `compute_tack_point()` already used for one floor, not a new invented convention) and
+   renumbers each floor's `Segment.id`s into disjoint ranges so `_guid()`'s `(ifc_class,
+   segment.id)` key can't collide across floors that each started counting from 0
+   independently (a real, guaranteed collision case — every floor's own `segment_pointcloud()`
+   run does exactly that). `write_reference_db.write_multistorey_reference_db()` — writes N
+   real `IfcBuildingStorey` rows, each with its own real elevation and correctly-tagged
+   elements; `write_reference_db()` (the existing single-storey entry point every other caller
+   uses — Sample House, B_ICU, Building C, DKAP, SHPC) now delegates to it with a length-1
+   storey list, unchanged signature and behavior. New `run_dekh_staged.py --stage
+   combine-storeys` stage: takes 2+ floors that each already completed `--stage segment`,
+   recomputes classify+merge fresh from each floor's own `stage2_segments.pkl` (cheap, no new
+   checkpoint format, no re-touch of the raw point cloud), reconciles frames, writes one
+   multi-storey reference DB.
+
+   **Verified two ways, neither of which needed real DeKH data:** (1) a synthetic 2-floor test
+   (scratch script, not committed) built `ClassifiedSegment` data directly with DELIBERATELY
+   colliding per-floor segment ids (both floors numbered 0/1, the real collision case) and a
+   DELIBERATELY negative storey elevation (Level 1 at -3.1m, stress-testing past Sample House's
+   own always-non-negative real elevations) — confirmed zero guid collisions, correct 2-storey
+   `spatial_structure`, correct per-element storey tagging, correct elevation deltas. (2) Read
+   `StructuralBomBuilder.java` (the real, unmodified — per this file's own "KEEP AS-IS" rule —
+   Java consumer) directly: its per-storey floor AABB (`fMinX/Y/Z` etc., line ~166-171) is
+   derived purely from that storey's own elements' real positions, never from the `elevation`
+   field's sign or any single-storey assumption — consistent with Sample House's already-proven
+   real 3-storey compile. Also re-ran the EXISTING Phase 4 harness
+   (`validate_reference_db.py` against the real `samplehouse_synthetic.ply` +
+   `SampleHouse_extracted.db`) to confirm zero regression to the single-storey path after the
+   refactor: schema integrity still reports "exactly 1 Building + 1 Storey", identical to
+   before.
+
+   **NOT done, and why, honestly:** running this against REAL DeKH Building A point-cloud data.
+   Checked this session — the actual `.laz` scan files aren't present in this environment (only
+   a HuggingFace dataset ref stub with no downloaded blobs; DeKH is licensed third-party data
+   that's never committed or cached in the repo, so per-session availability isn't guaranteed).
+   Natural next step once the real files are available: `--stage segment` on both floors (if a
+   prior session's checkpoints didn't survive — they live outside the repo by design, same
+   licensing rule), then `--stage combine-storeys`, then the resulting DB through the actual
+   Java `--populate --classify --compile` chain with scratch `--comp-db`/`--erp-db` isolation,
+   same discipline as D1.
+
+   **Also NOT done, and NOT the same problem:** the `floor_z`-averaging landmine (`floor_z` =
+   MEAN of every floor-segment centroid, in `classify.py`/`run_scan_to_bom.py`/
+   `run_dekh_staged.py`) is unchanged and still real, but it only bites the genuinely different,
+   harder, still-unscoped problem — auto-detecting multiple floors from ONE continuous scan.
+   Everything built this session is the two-SEPARATE-scans case (Building A's real precedent),
+   where each floor's own local `floor_z` is already computed correctly from only its own
+   single real floor plane. Don't conflate the two when picking this back up.
 3. **Openings — ONE more bounded attempt, stop condition agreed before starting.** RGB
    investigated 2026-09-07, both designs REJECTED: real signal (real B_ICU doors vs. host wall,
    median Δ19.1 vs. a same-wall noise floor of 0.2/0.8), but neither a global per-wall
