@@ -278,9 +278,15 @@ def _fit_plane_ransac_multi(xyz: np.ndarray, rng: np.random.Generator, log=None,
     return results
 
 
-def _plane_offset(normal: np.ndarray, point_on_plane: np.ndarray) -> float:
-    """c such that normal . x + c = 0 for points on the plane."""
-    return -float(np.dot(normal, point_on_plane))
+def _perpendicular_distance(normal: np.ndarray, point_on_plane: np.ndarray,
+                             other_point: np.ndarray) -> float:
+    """True perpendicular distance from `other_point` to the plane defined by `normal`
+    through `point_on_plane` — i.e. the actual "is this point on that plane" test. Sign of
+    `normal` doesn't matter (abs()'d), so no separate sign-alignment step is needed the way
+    _same_plane_equation() used to require — see its own docstring for why comparing each
+    plane's own perpendicular distance from the ORIGIN (each measured along its OWN normal)
+    isn't the same measurement, and this single-normal projection is what actually is."""
+    return abs(float(np.dot(normal, other_point - point_on_plane)))
 
 
 def _same_plane_equation(orientation_a: str, normal_a: np.ndarray, centroid_a: np.ndarray,
@@ -291,19 +297,34 @@ def _same_plane_equation(orientation_a: str, normal_a: np.ndarray, centroid_a: n
     question ("is this the same real surface"), just asked one phase earlier. Does NOT check
     spatial proximity (AABB gap) — same-orientation-and-equation but spatially far apart is a
     legitimate case (e.g. opposite parallel walls); callers needing that too should also
-    check aabb_gap()."""
+    check aabb_gap().
+
+    Offset check (fixed 2026-09-08 — see PRODUCTION_READINESS_BACKLOG.md's A10 for the full
+    investigation): this used to compare each plane's own perpendicular distance from the
+    ORIGIN, each measured along its OWN normal. That's only a valid proxy for
+    "is this the same plane" when normal_a and normal_b are IDENTICAL. Once they differ (and
+    up to NORMAL_ANGLE_TOL_DEG=8° is allowed here, by design, for real RANSAC fit noise), the
+    two offsets are measured along genuinely different axes, and the resulting error grows
+    with how far the centroids sit from the ORIGIN — not with how far apart the two real
+    surfaces actually are. Measured directly on real B_ICU data (a room spanning ~20m):
+    two fragments from the same wrongly-merged chain, 20m apart in plan and correctly
+    rejected pairwise by the OLD formula anyway (0.31m offset diff), had a RIGOROUS
+    single-normal perpendicular distance of 1.79m — a ~6x understatement at that range, and
+    real evidence the old formula can silently pass pairs the true geometry would fail. Fixed
+    by measuring the TRUE perpendicular distance from each centroid to the OTHER plane (using
+    that plane's own real normal — see `_perpendicular_distance`), symmetrically in both
+    directions, and requiring the WORSE of the two to still clear OFFSET_TOL_M. This is
+    exactly the test either plane's own points would have to pass to be considered inliers of
+    the other plane, and needs no separate normal-sign correction (abs() handles it)."""
     if orientation_a != orientation_b:
         return False
     cos_tol = np.cos(np.radians(NORMAL_ANGLE_TOL_DEG))
     cos_angle = abs(float(np.dot(normal_a, normal_b)))
     if cos_angle < cos_tol:
         return False
-    # Align b's normal sign to a's before comparing offsets — a plane's normal direction is
-    # arbitrary (SVD/RANSAC sign is not deterministic), the plane itself is not.
-    sign = 1.0 if np.dot(normal_a, normal_b) >= 0 else -1.0
-    off_a = _plane_offset(normal_a, centroid_a)
-    off_b = _plane_offset(sign * normal_b, centroid_b)
-    return abs(off_a - off_b) <= OFFSET_TOL_M
+    dist_b_from_a = _perpendicular_distance(normal_a, centroid_a, centroid_b)
+    dist_a_from_b = _perpendicular_distance(normal_b, centroid_b, centroid_a)
+    return max(dist_b_from_a, dist_a_from_b) <= OFFSET_TOL_M
 
 
 def _classify_orientation(normal: np.ndarray) -> str:
@@ -707,6 +728,29 @@ def _finish_segmentation(xyz: np.ndarray, remaining_mask: np.ndarray, segments: 
 # them (see _same_plane_equation(), the RANSAC-rediscovery check) to stop wasting plane-search
 # budget re-finding the same real surface piecemeal, the same real question this Phase 2.5
 # pass answers, just asked one phase earlier.
+#
+# Grouping algorithm (fixed 2026-09-08 — see PRODUCTION_READINESS_BACKLOG.md's A10 for the
+# full investigation): used to be pairwise union-find, which is NOT transitively sound for
+# the plane-equation criterion — A merging with B and B merging with C does not mean A and C
+# actually satisfy _same_plane_equation, only that a CHAIN of individually-tolerant pairwise
+# merges connects them. Measured directly on real B_ICU data: one merged "ceiling" segment
+# absorbed 143 separate fragments this way, spanning the entire room footprint and up to
+# 0.67m of real height variation within a single 1m x 1m (x,y) cell — clearly not one real
+# surface. Confirmed the mechanism, not just inferred it: the two most XY-distant fragments
+# in that 143-fragment chain fail _same_plane_equation pairwise by a wide margin (13.5° normal
+# angle, over NORMAL_ANGLE_TOL_DEG=8°) — they were never compatible directly, only connected
+# through intermediate fragments.
+#
+# Fixed with greedy first-fit grouping instead of union-find: fragments are processed
+# BIGGEST-first (larger fragments are more reliable RANSAC fits and make better group
+# anchors), and a candidate may only join a group if it satisfies _same_plane_equation
+# against EVERY current member of that group — not just one — so the plane-equation tolerance
+# can never be transitively violated; it's a verified equivalence, not a chain. The AABB-gap
+# check is deliberately NOT held to the same all-pairs standard — it stays checked against
+# the group's own accumulated (growing) bounding box, because spatial contiguity legitimately
+# IS transitive for one extended real surface (a long wall broken into fragments by a
+# doorway, or many small patches forming one big real ceiling) — only the "is this actually
+# flat" question needed the stricter check.
 
 
 def aabb_gap(min1: np.ndarray, max1: np.ndarray, min2: np.ndarray, max2: np.ndarray) -> float:
@@ -720,51 +764,50 @@ def merge_coplanar_fragments(segments: list[Segment], log=print) -> list[Segment
     other_segments = [s for s in segments if s.geometry_type != "plane"]
     planes = [segments[i] for i in plane_idx]
 
-    parent = list(range(len(planes)))
-
-    def find(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    def union(i: int, j: int) -> None:
-        ri, rj = find(i), find(j)
-        if ri != rj:
-            parent[ri] = rj
+    # Biggest-first: larger fragments are more reliable RANSAC fits and make better group
+    # anchors (a small, noisy fragment processed first could otherwise anchor a group with a
+    # less representative plane estimate).
+    order = sorted(range(len(planes)), key=lambda i: -planes[i].point_count)
+    groups: list[dict] = []  # {"orientation", "aabb_min", "aabb_max", "members": [Segment,...]}
 
     n_pairs_checked = 0
-    n_pairs_merged = 0
-    for i in range(len(planes)):
-        for j in range(i + 1, len(planes)):
-            a, b = planes[i], planes[j]
-            if a.orientation != b.orientation:
+    for i in order:
+        s = planes[i]
+        placed = False
+        for g in groups:
+            if g["orientation"] != s.orientation:
                 continue
-            n_pairs_checked += 1
-            if not _same_plane_equation(a.orientation, a.normal, a.centroid,
-                                         b.orientation, b.normal, b.centroid):
+            if aabb_gap(g["aabb_min"], g["aabb_max"], s.aabb_min, s.aabb_max) > MAX_GAP_M:
                 continue
-            gap = aabb_gap(a.aabb_min, a.aabb_max, b.aabb_min, b.aabb_max)
-            if gap > MAX_GAP_M:
+            compatible = True
+            for m in g["members"]:
+                n_pairs_checked += 1
+                if not _same_plane_equation(m.orientation, m.normal, m.centroid,
+                                             s.orientation, s.normal, s.centroid):
+                    compatible = False
+                    break
+            if not compatible:
                 continue
-            union(i, j)
-            n_pairs_merged += 1
-
-    groups: dict[int, list[int]] = {}
-    for i in range(len(planes)):
-        groups.setdefault(find(i), []).append(i)
+            g["members"].append(s)
+            g["aabb_min"] = np.minimum(g["aabb_min"], s.aabb_min)
+            g["aabb_max"] = np.maximum(g["aabb_max"], s.aabb_max)
+            placed = True
+            break
+        if not placed:
+            groups.append({"orientation": s.orientation, "aabb_min": s.aabb_min.copy(),
+                            "aabb_max": s.aabb_max.copy(), "members": [s]})
 
     merged_segments: list[Segment] = []
     next_id = (max((s.id for s in segments), default=-1)) + 1
     n_groups_merged = 0
-    for members_idx in groups.values():
-        if len(members_idx) == 1:
-            merged_segments.append(planes[members_idx[0]])
+    for g in groups:
+        members = g["members"]
+        if len(members) == 1:
+            merged_segments.append(members[0])
             continue
-        members = [planes[k] for k in members_idx]
         pt_idx = np.concatenate([m.point_indices for m in members])
-        aabb_min = np.min(np.stack([m.aabb_min for m in members]), axis=0)
-        aabb_max = np.max(np.stack([m.aabb_max for m in members]), axis=0)
+        aabb_min = g["aabb_min"]
+        aabb_max = g["aabb_max"]
         total_pts = sum(m.point_count for m in members)
         ref_normal = members[0].normal
         normal_acc = np.zeros(3)
@@ -789,9 +832,10 @@ def merge_coplanar_fragments(segments: list[Segment], log=print) -> list[Segment
         next_id += 1
         n_groups_merged += 1
 
-    log(f"§MERGE checked {n_pairs_checked} same-orientation plane pairs, "
-        f"{n_pairs_merged} pairwise unions, {n_groups_merged} groups actually merged "
-        f"(size>1) -> {len(planes)} plane segments in, {len(merged_segments)} out")
+    log(f"§MERGE checked {n_pairs_checked} same-orientation candidate pairs (all-pairs "
+        f"within-group verification, not a single pairwise pass), {len(groups)} final "
+        f"groups, {n_groups_merged} actually merged (size>1) -> {len(planes)} plane "
+        f"segments in, {len(merged_segments)} out")
 
     all_segments = merged_segments + other_segments
     for new_id, s in enumerate(sorted(all_segments, key=lambda s: s.id)):

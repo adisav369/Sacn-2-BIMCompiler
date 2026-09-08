@@ -306,31 +306,40 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    attempt needs a genuinely different idea (geometric void/hole detection in the host wall,
    named but untried, doesn't depend on color at all) or a new data source, not a 4th
    variation on color-anomaly detection.
-4. **`IfcColumn` — investigated further 2026-09-08, still not implemented.** 2026-09-07: found
-   to be an EXTRACTION problem, not the classification problem it looked like. Columns are
-   wall-adjacent (0.00–0.20m gap for 15/16 real columns, not "free-standing" as earlier
-   assumed), and no predicted segment claims a column-scale majority of any real column's
-   points. 2026-09-08: re-traced on a fresh real B_ICU re-segmentation (reproduced the
-   documented baseline first) rather than trusting the 2026-09-07 read at face value — found
-   that every real column's TOP claimant is a "ceiling" segment which turns out to be a merge
-   of 52–143 separate fragments spanning the whole room and up to 0.67m of LOCAL height
-   variance, not one real surface. Root cause read from the code: `merge_coplanar_fragments`
-   (`segment.py`) merges via pairwise union-find, which is transitively unsound — A-B and B-C
-   merges silently fuse A and C even if they were never checked against each other. Confirmed
-   OFFSET_TOL_M/NORMAL_ANGLE_TOL_DEG correctly block the ORIGINAL theory (absorption into the
-   adjacent wall, a 25–40cm real offset, well past the 5cm tolerance) — the absorption is into
-   this unrelated chaining artifact instead. **Tested whether fixing it also fixes column
-   recall — it does not.** An offline anchored-greedy alternative (never touched `segment.py`)
-   made the single biggest resulting segment dramatically more coherent (0.35m → 0.005m median
-   local Z std, confirming the mechanism) but left several others still incoherent (the AABB
-   spatial-gap check has the identical transitivity flaw, unaddressed), and re-running the
-   column trace against it showed points still scattered, no coherent column segment emerging
-   either way. **Not shipped, deliberately**: the fix is demonstrably incomplete, and even a
-   complete one wouldn't move column recall — the real value of fixing this (now logged as its
-   own item, `PRODUCTION_READINESS_BACKLOG.md` A10) is segmentation coherence generally, which
-   needs its own properly designed and tested session against this pipeline's most
-   heavily-tuned code, not a rushed change here. `IfcColumn`'s original three options
-   (extraction-level fix / flag-as-advisory / leave it) are unchanged — full detail in
+4. **`IfcColumn` — investigated further 2026-09-08, still not implemented (but surfaced and
+   FIXED A10).** 2026-09-07: found to be an EXTRACTION problem, not the classification problem
+   it looked like. Columns are wall-adjacent (0.00–0.20m gap for 15/16 real columns, not
+   "free-standing" as earlier assumed), and no predicted segment claims a column-scale
+   majority of any real column's points. 2026-09-08: re-traced on a fresh real B_ICU
+   re-segmentation (reproduced the documented baseline first) rather than trusting the
+   2026-09-07 read at face value — found that every real column's TOP claimant is a "ceiling"
+   segment which turns out to be a merge of 52–143 separate fragments spanning the whole room
+   and up to 0.67m of LOCAL height variance, not one real surface.
+
+   **Root-caused to TWO compounding bugs in `segment.py`, both now FIXED and shipped
+   (`PRODUCTION_READINESS_BACKLOG.md` A10 has the full before/after):** (1)
+   `merge_coplanar_fragments` merged via pairwise union-find, which is transitively unsound —
+   A-B and B-C merges silently fuse A and C even if never checked against each other. (2)
+   `_same_plane_equation`'s offset check compared each plane's own perpendicular distance from
+   the ORIGIN, each along its OWN normal — only valid when the two normals are identical;
+   measured a real pair 20m apart where this understated the true separation by ~6x (0.31m
+   naive vs 1.79m rigorous). An offline anchor-only fix caught bug (1) (confirmed: the biggest
+   resulting segment went from 0.35m to 0.005m median local Z std) but left several segments
+   still incoherent — traced further and found that was bug (2), not a second transitivity
+   leak as first suspected (confirmed: a single genuinely UNMERGED fragment showed the same
+   0.26m std entirely on its own — pre-existing RANSAC noise, not a merge artifact).
+
+   **Both fixed together and shipped**, after real validation: max merge-group size 143→8,
+   zero groups over 10 fragments (was 7). Real B_ICU GT match rate **unchanged, exactly
+   30/82** — the critical regression check. Synthetic Sample House Phase 4 harness also
+   checked: classification rate essentially unchanged, footprint-fidelity dropped as an
+   expected, already-documented consequence of correctly not merging non-coplanar fragments
+   (not a new problem this fix introduced). Not re-verified against Building A/C this session.
+
+   **Column recall re-checked with both bugs fixed — still not solved, confirming this was
+   never the actual fix for `IfcColumn`.** Points remain scattered with no coherent
+   column-scale claimant. `IfcColumn`'s original three options (extraction-level fix /
+   flag-as-advisory / leave it) are unchanged — full detail in
    `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet.
 
 Full backlog across all four production-readiness dimensions (model accuracy, generalization,

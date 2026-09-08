@@ -1286,30 +1286,64 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   confirmed) — the absorption is into this unrelated chaining artifact instead, not into the
   wall the earlier theory assumed.
 
-  **Measured whether fixing this would also fix column recall — it does NOT, on its own.**
-  Implemented an alternative (`merge_anchored_greedy`, offline only, never touched `segment.py`
-  itself) that processes fragments biggest-first and only lets a candidate join a group if it
-  matches that group's ORIGINAL anchor plane — the anchor never updates, breaking the
-  transitive chain by construction. Result, on the same real B_ICU data: the SINGLE biggest
-  resulting "ceiling" segment became dramatically more coherent (median local Z std 0.005m,
-  down from 0.35m) — real evidence the mechanism diagnosis is right. But several other large
-  segments were STILL incoherent (median local Z std 0.17–0.28m) — traced further: the
-  anchor-plane check stopped drifting, but the AABB spatial-gap check (`MAX_GAP_M` against the
-  group's own ever-growing accumulated AABB, not the anchor's original footprint) has the exact
-  same transitivity problem, unaddressed by this fix. And re-running the same 9-column
-  point-membership trace against the anchored-greedy output: **column points are still
-  scattered, not consolidated** — 5–9% top-claim fractions instead of 13–28%, but no coherent
-  column-scale segment emerged anywhere. Less contaminated, but not solved.
+  **First offline experiment — measured whether fixing transitivity alone would also fix
+  column recall. It did not, and pointed at a second, independent bug.** Implemented an
+  alternative (`merge_anchored_greedy`, offline only) that processes fragments biggest-first
+  and only lets a candidate join a group if it matches that group's ORIGINAL anchor plane —
+  the anchor never updates, breaking the transitive chain by construction. Result: the SINGLE
+  biggest resulting "ceiling" segment became dramatically more coherent (median local Z std
+  0.005m, down from 0.35m) — real evidence the transitivity diagnosis was right. But several
+  OTHER large segments stayed just as incoherent (median local Z std 0.17–0.28m), which looked
+  at first like a second transitivity leak through the AABB spatial-gap check.
 
-  **Deliberately not shipped tonight.** Two independent reasons: the fix itself is
-  demonstrably incomplete (the AABB-gap drift needs its own anchoring, not designed or tested
-  here), and — more importantly — even a fully correct version of it would not move `IfcColumn`
-  recall, which was the reason to look at this in the first place. `merge_coplanar_fragments`
-  is real, confirmed, worth fixing on its own merits (segmentation coherence generally, likely
-  affecting other classes/buildings beyond this investigation) — but as its own properly
-  designed and tested change, not a rushed addition to the most heavily-tuned code in this
-  pipeline. `IfcColumn`'s three original options (A/B/C above) still stand, unchanged by this
-  finding: there remains no coherent column-scale segment for any design to attach a label to.
+  **That second suspicion was checked directly and turned out to be a misdiagnosis — the real
+  second bug was in `_same_plane_equation`'s own math, not the AABB-gap check.** Comparing two
+  of the 143 chained fragments' most XY-distant pair pairwise (id 1761 vs 1696, 20m apart in
+  plan): the OLD `_same_plane_equation` correctly rejects them (normal angle 13.5° > the 8°
+  tolerance) — so that specific pair was never the leak. But computing the RIGOROUS true
+  perpendicular distance between them (projecting one centroid onto the other's actual plane,
+  using one consistent normal) gave 1.79m, against the old formula's own reported offset
+  difference of only 0.31m for the same pair — a ~6x understatement. The old formula compared
+  each plane's own perpendicular distance from the ORIGIN, each measured along its OWN normal
+  — mathematically valid only when the two normals are identical, and the error grows with
+  distance from the origin (B_ICU spans ~20m) regardless of how far apart the real surfaces
+  are. **This means the "still incoherent" segments in the anchor experiment weren't an
+  AABB-gap transitivity leak at all — they were pairs the old offset formula was quietly
+  passing that shouldn't have passed**, confirmed by checking a genuinely unmerged, single
+  original RANSAC fragment (577,177 points, zero merging involved) and finding it showed the
+  SAME 0.26m local Z std entirely on its own — real, pre-existing per-fragment noise/waviness
+  that any fix to the merge step was always going to inherit, not introduce.
+
+  **Fixed both bugs together, in `segment.py` (see `PRODUCTION_READINESS_BACKLOG.md`'s A10 for
+  the full before/after) — and this time shipped it, after real validation:**
+  `_same_plane_equation`'s offset check now measures true perpendicular distance symmetrically
+  in both directions (no more origin-distance-dependent error), and
+  `merge_coplanar_fragments` now requires all-pairs plane-equation compatibility within a
+  group (never transitive) while deliberately KEEPING the AABB-gap check transitive against
+  the group's own growing extent — that part was never the bug; spatial contiguity legitimately
+  chains for one long real surface (a wall broken by a doorway, many small patches forming one
+  real ceiling).
+
+  **Verified on real B_ICU before trusting it:** max merge-group size dropped from 143 to 8,
+  zero groups over 10 fragments (was 7, up to 143). **Critical regression check: real GT match
+  rate unchanged, exactly 30/82 (36.6%)** — same as the established baseline, confirming this
+  doesn't touch what actually gates production numbers. Also checked against the synthetic
+  Sample House Phase 4 harness: classification rate essentially unchanged (40.2%→41.8%);
+  footprint-dimensional-fidelity did drop (3/12→1/22), but that's the expected, already-
+  documented consequence of correctly declining to merge fragments that were never really
+  coplanar (see "Merging same-entity-but-different-face planes" above — fragmentation hurting
+  footprint fidelity is a pre-existing, known characteristic of this pipeline, not something
+  this fix introduced).
+
+  **Re-checked column recall with both bugs fixed — still not solved, confirming this was
+  never the fix for `IfcColumn`.** Column points remain scattered across several large
+  wall/ceiling segments with no coherent column-scale claimant, same conclusion as the
+  incomplete offline experiment. `IfcColumn`'s three original options (A/B/C above) still
+  stand, unchanged: there remains no coherent column-scale segment for any design to attach a
+  label to. Not re-verified against Building A/C this session (not re-segmented) — the change
+  is strictly more conservative than before (adds constraints, can only prevent incorrect
+  merges, never introduce new ones), so generalization risk is low but not directly confirmed
+  on those two scenes yet.
 - **Flush-mounted openings (doors) are not recoverable by geometry alone — a capability
   boundary, not a defect.** Traced from Building C's gap-to-baseline (15/34 = 44.1% vs the
   BIMStruct3D baseline's 25/34 = 73.5%), which turned out to be **entirely doors**: we match
