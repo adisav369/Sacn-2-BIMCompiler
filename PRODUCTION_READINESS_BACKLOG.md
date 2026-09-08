@@ -1,16 +1,19 @@
 # Production Readiness Backlog
 
-> Scoping session, 2026-09-07, **decisions resolved same day.** This is the itemized answer to
-> "when is this a production-ready tool" — not a calendar estimate (this project's own Prime
-> Rule is "never invent a number without a real source," and a date here would be exactly
-> that). What it is instead: every known gap, sized by what's actually knowable about it today.
-> The four decisions that determine real sizing (`## Decisions` below) are now RESOLVED, and
-> converted into a concrete, ordered starting point per item in `## SEQUENCED SESSION PLAN` —
+> Scoping session, 2026-09-07, **decisions resolved same day.** Updated 2026-09-08: D4→D1
+> (licensed-data isolation, prove a real DeKH scan through the chain) is DONE and surfaced a
+> new priority-1 finding (**A9** — compiled placement is systematically wrong on every point-
+> cloud building), which now leads the sequenced plan. This is the itemized answer to "when is
+> this a production-ready tool" — not a calendar estimate (this project's own Prime Rule is
+> "never invent a number without a real source," and a date here would be exactly that). What
+> it is instead: every known gap, sized by what's actually knowable about it today. The four
+> decisions that determine real sizing (`## Decisions` below) are RESOLVED; `## SEQUENCED
+> SESSION PLAN` converts them (plus A9) into a concrete, ordered starting point per item —
 > read that section first if you're picking this up fresh.
 >
-> Cross-reference: `CLAUDE.md`'s `## NEXT DEDICATED SESSIONS` section carries a condensed
-> version of the sequenced plan for quick reference; this file is the full picture and the
-> place to update when any item's status changes.
+> Cross-reference: `CLAUDE.md`'s `## NEXT SESSION PLAN` section carries a condensed version of
+> the sequenced plan for quick reference; this file is the full picture and the place to
+> update when any item's status changes.
 
 ## Sizing rubric (grounded in this project's own history, not abstract T-shirt sizes)
 
@@ -31,6 +34,7 @@
 | A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — priority 4, deferred** | Investigated 2026-09-07; found to be an extraction problem (no coherent segment exists to classify), not the classification problem it was picked as. 3 unimplemented options logged. Deferred behind items 1–3. |
 | A3 | Wall-face reunification (a wall's inner/outer face treated as 2 elements) | **L — not prioritized this round** | One design (distance-based merge) implemented, measured, and **rejected** — harmful fusions were the majority outcome at every threshold tested. 2 untried signals logged: in-plane footprint match, empty-cavity check between faces. |
 | A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07 — priority 2, real first step identified** | Investigated (not just labeled XL) — 3 specific front-end chokepoints found, 1 is a silent-wrong-answer landmine, and a real in-hand precedent (Building A's 2 separately-scanned floors) shrinks the realistic first step well below "auto-detect floors in one continuous scan." Full detail + the first concrete action in `SEQUENCED SESSION PLAN` §2. |
+| A9 | **Compiled placement is systematically wrong on EVERY point-cloud building — `P-PARENT` proof 0% pass, both buildings tested.** Found 2026-09-08 during D1 verification. | **NEW — priority 1, unscoped, needs its own investigation session** | `BuildingRegistryTest`'s `CHECK PLACEMENT` verb fails on both real DeKH Building A (0/498 pass, `P-PARENT`) and synthetic-derived SampleHousePC (0/70 pass) — 100% failure rate on the "child inside parent's allocated AABB" check, on EVERY point-cloud building ever compiled, while the sibling-relationship check (`P-SIBLING`) passes 100% on both. That pattern — internally consistent, uniformly misplaced relative to the container — points at a systematic origin/frame issue, not scattered noise. Result: BOM `DocStatus` flips to `VO` (void). Does NOT halt the pipeline — `output.db` still gets produced, `GeometryIntegrityChecker` still reports clean (0 FAIL) — so this was invisible until compile actually ran (see D1 below: it had been silently skipping). One hypothesis checked and ruled out: the storey's missing `center`/`size` in `spatial_structure` — IFC-authored SampleHouse has the identical gap and compiles clean, so that's not it. Leading unconfirmed hypothesis: every point-cloud BOM is structurally FLAT (`BUILDING → FLOOR → N leaf elements directly`, zero assembly-level nesting) where IFC-authored BOMs have real assembly grouping — `computeWorldPosition`'s container-origin logic may not handle a fully flat tree correctly. Not yet root-caused to the exact line. Recommended priority 1 — ahead of A4/A1/A2 — because unlike those three (missing capabilities), this is the existing output being placement-incorrect on every building tested, which is a bigger pilot-bar concern than any single missing element class. This reorders the 2026-09-07 priority decision; flagged explicitly rather than silently reshuffled. |
 | A5 | Cross-floor stitching (a wall spanning 2 independently-segmented floors can't unify) | **XL** | Known gap (Building A's last unmatched wall traced to exactly this). Related to but distinct from A4's first step (§2(a) doesn't attempt this); still unscoped. |
 | A6 | Output-volume growth from `MULTI_CANDIDATE_K=5` (~4.8x more predicted elements at Building A's scale) | **M** | Real, honestly-reported trade-off from the round-budget fix. Candidate approaches named (consolidation in `merge_instances.py`, or a smaller K for cluttered scenes) but not designed. |
 | A7 | Wall recovery ceiling (87–97%, not 100%, across 3 real buildings) | **DECIDED 2026-09-07 — CLOSED, not on the backlog** | Accepted as a legitimate ceiling; every remaining gap traced to occlusion/scoring edge cases, not pipeline bugs. Not pursuing further. |
@@ -58,10 +62,10 @@ Confirmed via source, not assumption, back in the original schema-spec phase —
 
 | # | Item | Size | Status |
 |---|---|---|---|
-| D1 | **No real DeKH scene has been through compile/gates since the M_Product fix** — only Sample House has | **priority 1 — S/M** | This is the biggest gap in the "9/9 green" claim: the proof compile/gates work is real, but it's on IFC-authored/synthetic-derived data, not a real scan's output. Blocked on D4. See `SEQUENCED SESSION PLAN` §1. |
+| D1 | ~~No real DeKH scene has been through compile/gates since the M_Product fix~~ **DONE 2026-09-08 — and it surfaced A9.** A real DeKH scan (Building A 1st floor, 498 elements) went through populate → classify → all 18 QA gates clean, fully isolated. Compile itself ran for real too (see D4) — and failed a genuine internal check (`CHECK PLACEMENT`), now tracked as **A9**, priority 1. | **DONE (verification), A9 spun out as new priority-1 finding** | Also corrected a standing claim: `BuildingRegistryTest`'s `GATE_SCOPE` allowlist didn't include `RE_DKAP` OR `RE_SHPC` — compile had been silently SKIPPING (assumeTrue → exit 0, indistinguishable from a pass at the mvn-exit-code level), not passing. The earlier "SampleHousePC 9/9 green" claim from 2026-09-07 almost certainly never actually verified compile. `GATE_SCOPE` fixed (both added) so this can't recur silently. |
 | D2 | `extractIFCtoDB.py --library` mode's stale pre-S168 `M_Product` assumption | **M** | Used by `bake_all_sandbox.sh` and `pipeline_library.sh` across many buildings; changing it needs its own session per `CLAUDE.md`. |
 | D3 | `library/ERP.db` / `disc_patterns.db` rename half-applied on Windows | **S/M** | Two independent files exist on this machine; code reads `ERP.db`. Untangling is a contained task. |
-| D4 | Licensed-data isolation approach for running DeKH through the Java chain | **M** | Required before D1 can be closed — the Java chain writes into the tracked LFS library, and licensed third-party data must not touch it without isolation. |
+| D4 | ~~Licensed-data isolation approach for running DeKH through the Java chain~~ **DONE 2026-09-08.** Added `--erp-db` (mirroring the existing `--comp-db`) to `IFCtoBOMMain`/`IFCtoBOMPipeline` — `ERP.db`'s path was hardcoded with no override until now, an incomplete isolation story. `populate`/`classify` now fully isolatable via scratch copies of both DBs. `compile` itself still has no CLI override (hardcoded in ~10 `DAGCompiler` files) — proven via the swap real-file→run→restore→verify-checksum pattern instead, which the backlog always named as an equally valid mechanism. Real tracked library verified byte-identical to HEAD after every run. | **DONE** | — |
 | D5 | `library/schema_snapshot_component_library.sql` is stale | **S** | Declares `M_Product`, predates `Value`/`source_element_ref`. Regenerate or annotate. |
 
 ## E. Tooling / deployment maturity — every item here is XL until the decision below is made
@@ -103,23 +107,58 @@ Confirmed via source, not assumption, back in the original schema-spec phase —
    tonight — it earns exactly one more bounded attempt with an explicit stop condition, not
    open-ended chasing. `IfcColumn` is real but lower-value than either — deferred behind both.
 
+   **Superseded in ORDER, not reasoning, 2026-09-08:** A9 (found during D1 verification —
+   compiled placement is wrong on every point-cloud building) now sits at priority 1, ahead of
+   all three. The reasoning above for multi-storey > openings > `IfcColumn` still holds among
+   themselves; A9 is a different kind of item (existing output being wrong, not a missing
+   capability) and is addressed on its own terms in `SEQUENCED SESSION PLAN` §1.
+
 **See `## SEQUENCED SESSION PLAN` below** — these decisions are now converted into a concrete,
 ordered starting point for each item, the same way D4→D1 already had one.
 
-## SEQUENCED SESSION PLAN (2026-09-07) — what the next session(s) actually do, in order
+## SEQUENCED SESSION PLAN (updated 2026-09-08) — what the next session(s) actually do, in order
 
 Not calendar time — sized in sessions, same discipline as everywhere else in this project.
 Each item below is scoped to a **first concrete action**, not a re-statement of its L/XL label.
 
-### 1. D4 → D1 — prove a real DeKH scan through the full Java chain (S/M, unchanged from above)
-Already the cheapest, most contained item on the backlog: an isolation mechanism (scratch copy
-of the library, or a mandatory post-run restore + verification — both already named in
-`CLAUDE.md`'s `KNOWN PRE-EXISTING GAP` history), then one real `--classify` run on a DeKH
-scene through `compile`/`gates`. No open design question. Converts "9/9 green on Sample House"
-into "9/9 green on a real terrestrial scan" — the single biggest hole in the current "proven"
-claim, closed for comparatively little risk. Do this first because it's real verification, not
-new capability — everything below is more valuable once this is actually confirmed rather than
-assumed.
+### 0. ~~D4 → D1~~ DONE 2026-09-08 — see A9 below for what it found
+Both are DONE (see their rows in section D above): `--erp-db` isolation added and working,
+and a real DeKH scan (498 elements) verified genuinely clean through populate/classify/all 18
+QA gates. Compile itself also now genuinely runs (a real bug — `GATE_SCOPE` was silently
+skipping it — is fixed) and surfaced a real, systematic defect. That defect is **A9** below,
+now priority 1, superseding this item rather than following it.
+
+### 1. A9 — compiled placement is systematically wrong on every point-cloud building
+(NEW, unscoped, priority 1 — reorders the 2026-09-07 decision)
+Found 2026-09-08 while closing out D1. `CHECK PLACEMENT`'s `P-PARENT` check (does each element
+sit inside its BOM parent's own allocated AABB) fails **100% of the time on both point-cloud
+buildings tested** — real DeKH Building A (0/498 pass) and synthetic-derived SampleHousePC
+(0/70 pass) — while the sibling-relationship check (`P-SIBLING`) passes 100% on both. Internally
+consistent, uniformly misplaced relative to the container: that pattern says systematic
+origin/frame issue, not scattered noise. Consequence: BOM `DocStatus` flips to `VO` (void).
+**Does not halt anything** — `output.db` is still produced, `GeometryIntegrityChecker` still
+reports 0 FAIL — which is exactly why this was invisible until compile genuinely ran for the
+first time.
+
+One hypothesis already checked and ruled out: the storey's `spatial_structure` row has no
+`center`/`size` (only `elevation`) — but IFC-authored SampleHouse has the identical gap and
+compiles clean, so that's not the cause. Leading unconfirmed hypothesis: every point-cloud BOM
+tree is completely flat (`BUILDING → FLOOR → N leaf elements`, zero assembly-level nesting) —
+IFC-authored BOMs have real assembly grouping (Sample House: 4 `ASSEMBLY`-type BOMs; DeKHAPC
+and SampleHousePC: none) — and `computeWorldPosition` in `BomTreeProver.java`'s container-
+origin logic may not handle a fully flat tree correctly. **First concrete action for the next
+session:** instrument or step through `computeWorldPosition(parent, nodes)` for one flat-BOM
+building and compare the FLOOR container's computed world origin against its actual allocated
+AABB center — confirm or falsify the flat-tree hypothesis before designing a fix. Verify any
+fix against IFC-authored Sample House too (must not regress a currently-passing case).
+
+**Why priority 1, ahead of the previously-decided order:** A4/A1/A2 below are missing
+capabilities (no multi-storey yet, no door recall yet, no column recall yet) — a human
+reviewer can work around a gap. A9 is the opposite: the output that DOES exist is placement-
+incorrect, on every element, on every building tested — a bigger concern against the decided
+pilot bar ("mostly-correct... human touch-up on known-weak parts") than any single missing
+element class, because it isn't confined to a known-weak part. Reordering is flagged explicitly
+here, not applied silently.
 
 ### 2. Multi-storey (re-scoped 2026-09-07 from XL down to a real first step)
 **Investigated before proposing a design, per this project's own standing practice — findings,
@@ -203,6 +242,6 @@ openings closes for the pilot bar (production bar #1 above explicitly allows a h
 touch-up pass on this exact gap).** Do not start a 4th design in this family without a
 genuinely new data source, not a 3rd variation on anomaly-detection-over-existing-segments.
 
-### 4. `IfcColumn` — deferred behind both of the above
+### 4. `IfcColumn` — deferred behind items 1–3 above
 Stays exactly as characterized in section A2. Not started until 1–3 are done or explicitly
 reprioritized.

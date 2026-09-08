@@ -73,6 +73,16 @@ public class IFCtoBOMPipeline {
     }
 
     /**
+     * Run the full pipeline against the default ERP.db ({@code library/ERP.db}) — convenience
+     * overload preserving the original 4-arg signature for existing callers (test suite).
+     */
+    public static PipelineResult run(Path yamlPath, Path bomDbPath,
+                                     Path compDbPath, Path schemaPath)
+            throws IOException, SQLException {
+        return run(yamlPath, bomDbPath, compDbPath, schemaPath, Path.of("library/ERP.db"));
+    }
+
+    /**
      * Run the full pipeline.
      *
      * <p>DETERMINISTIC — the only human-crafted input is the classification YAML.
@@ -83,10 +93,16 @@ public class IFCtoBOMPipeline {
      * @param bomDbPath path to output BOM DB (created fresh if not exists)
      * @param compDbPath path to component_library.db (read-only — populated by {@code --populate})
      * @param schemaPath path to schema_snapshot_bom.sql (for creating fresh DB)
+     * @param erpDbPath path to ERP.db (master product catalog, M_Product/M_Product_Category —
+     *        see ProductRegistrar's S168 note). Added 2026-09-08 (D4, licensed-data isolation):
+     *        {@code --comp-db} already isolated component_library.db; this closes the same gap
+     *        for ERP.db, which was hardcoded with no override until now. Defaults to
+     *        {@code library/ERP.db} via the 4-arg overload above — unchanged behavior for every
+     *        caller that doesn't need isolation.
      * @return pipeline result
      */
     public static PipelineResult run(Path yamlPath, Path bomDbPath,
-                                     Path compDbPath, Path schemaPath)
+                                     Path compDbPath, Path schemaPath, Path erpDbPath)
             throws IOException, SQLException {
 
         // Implementing BIMLogger.md §Wiring Status — IFCtoBOMPipeline initForRun() + stage()
@@ -106,7 +122,7 @@ public class IFCtoBOMPipeline {
 
         Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
-        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db");
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + erpDbPath);
 
         try {
             bomConn.setAutoCommit(false);

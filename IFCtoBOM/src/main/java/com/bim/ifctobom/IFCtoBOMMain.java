@@ -37,8 +37,15 @@ import java.util.*;
  *       --classify IFCtoBOM/src/main/resources/classify_sh.yaml \
  *       [--bom-db library/SH_BOM.db] \
  *       [--comp-db library/component_library.db] \
+ *       [--erp-db library/ERP.db] \
  *       [--schema library/schema_snapshot_bom.sql]
  * </pre>
+ *
+ * <p>{@code --erp-db} added 2026-09-08 (D4, licensed-data isolation): {@code --comp-db} let a
+ * caller isolate component_library.db, but M_Product/M_Product_Category live in ERP.db (see
+ * ProductRegistrar's S168 note) and that path was hardcoded with no override — an incomplete
+ * isolation story. Defaults to {@code library/ERP.db}, unchanged behavior for every existing
+ * caller.
  */
 public class IFCtoBOMMain {
 
@@ -46,6 +53,7 @@ public class IFCtoBOMMain {
         Path yamlPath = null;
         Path bomDbPath = Path.of("library/SH_BOM.db");
         Path compDbPath = Path.of("library/component_library.db");
+        Path erpDbPath = Path.of("library/ERP.db");
         Path schemaPath = Path.of("library/schema_snapshot_bom.sql");
         boolean populateOnly = false;
         boolean jointExtract = false;
@@ -57,6 +65,7 @@ public class IFCtoBOMMain {
                 case "--classify" -> yamlPath = Path.of(args[++i]);
                 case "--bom-db"   -> bomDbPath = Path.of(args[++i]);
                 case "--comp-db"  -> compDbPath = Path.of(args[++i]);
+                case "--erp-db"   -> erpDbPath = Path.of(args[++i]);
                 case "--schema"   -> schemaPath = Path.of(args[++i]);
                 default -> {
                     System.err.println("Unknown option: " + args[i]);
@@ -82,16 +91,16 @@ public class IFCtoBOMMain {
         }
 
         if (jointExtract) {
-            runJointExtract(yamlPath);
+            runJointExtract(yamlPath, erpDbPath);
             return;
         }
 
         if (populateOnly) {
-            runPopulate(yamlPath, compDbPath);
+            runPopulate(yamlPath, compDbPath, erpDbPath);
             return;
         }
 
-        var result = IFCtoBOMPipeline.run(yamlPath, bomDbPath, compDbPath, schemaPath);
+        var result = IFCtoBOMPipeline.run(yamlPath, bomDbPath, compDbPath, schemaPath, erpDbPath);
 
         System.out.printf("%n=== IFCtoBOM Complete ===%n");
         System.out.printf("Building:    %s%n", result.buildingType());
@@ -111,7 +120,7 @@ public class IFCtoBOMMain {
      * <p>Steps: extract elements → create M_Product catalog → link M_Product_Image.
      * Guards: countUnlinkedProducts must be 0 (every product needs geometry).
      */
-    private static void runPopulate(Path yamlPath, Path compDbPath) throws Exception {
+    private static void runPopulate(Path yamlPath, Path compDbPath, Path erpDbPath) throws Exception {
         ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
         BuildingConfig config = yaml.getBuilding();
         String buildingType = config.buildingType();
@@ -119,7 +128,7 @@ public class IFCtoBOMMain {
         System.out.printf("[populate] Building: %s (%s)%n", config.name(), buildingType);
 
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
-        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db");
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + erpDbPath);
         try {
             // 1. Extract + enrich in memory, fill geometry gaps in library
             Map<String, List<ExtractionElement>> storeyElements =
@@ -162,14 +171,14 @@ public class IFCtoBOMMain {
      * Extract MEP joint piece vocabulary from extracted DB → ERP.db.
      * Implementing §6.12.2 Phase J1+J2.
      */
-    private static void runJointExtract(Path yamlPath) throws Exception {
+    private static void runJointExtract(Path yamlPath, Path erpDbPath) throws Exception {
         ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
         BuildingConfig config = yaml.getBuilding();
         String buildingType = config.buildingType();
 
         System.out.printf("[joint-extract] Building: %s (%s)%n", config.name(), buildingType);
 
-        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:" + erpDbPath)) {
             // Phase J1: Extract joint piece types
             IFCtoERP.Result r = IFCtoERP.extract(erpConn, buildingType);
 

@@ -151,9 +151,9 @@ goes 9/9 green.
   as an envelope solid` for Sample House. Pre-existing IFC-authoring content issue, unrelated
   to the above; the chain is green regardless.
 
-## NEXT SESSION PLAN (decided 2026-09-07) — sequenced, not just an open backlog
-Production bar, target category, wall-recovery ceiling, and priority order were all decided by
-the product owner on 2026-09-07 (see `PRODUCTION_READINESS_BACKLOG.md`'s `## Decisions` and
+## NEXT SESSION PLAN (updated 2026-09-08) — sequenced, not just an open backlog
+Production bar, target category, wall-recovery ceiling, and priority order were decided by the
+product owner on 2026-09-07 (see `PRODUCTION_READINESS_BACKLOG.md`'s `## Decisions` and
 `## SEQUENCED SESSION PLAN` sections for full reasoning — this is the condensed version to open
 a session with). **Production bar = pilot-ready for a real client's building** (mostly-correct,
 human review/touch-up expected on known-weak parts, not full autonomy). **Target category =
@@ -162,12 +162,42 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
 
 **Do these in order. Don't skip ahead, don't resume a rejected design mid-idea.**
 
-1. **D4 → D1 — prove a real DeKH scan through the full Java chain (S/M).** Isolation mechanism
-   for the tracked LFS library (scratch copy, or mandatory post-run restore + verification —
-   both already named above), then one real `--classify` run through `compile`/`gates` on a
-   DeKH scene. No open design question. Converts "9/9 green on Sample House" into "9/9 green
-   on a real scan" — do this first, it's verification, not new capability, and everything else
-   is worth more once it's confirmed rather than assumed.
+0. ~~D4 → D1 — prove a real DeKH scan through the full Java chain.~~ **DONE 2026-09-08.**
+   Added `--erp-db` (mirroring `--comp-db`) to `IFCtoBOMMain`/`IFCtoBOMPipeline` — closes the
+   isolation gap for real. A real DeKH scan (Building A 1st floor, 498 elements) verified
+   genuinely clean through populate → classify → all 18 QA gates, fully isolated (scratch
+   `--comp-db`/`--erp-db`, real tracked library byte-verified untouched throughout — including
+   after two permission-classifier blocks, both resolved by asking rather than routing around).
+   Compile itself also now genuinely runs — **fixed a real bug found along the way:**
+   `BuildingRegistryTest`'s `GATE_SCOPE` allowlist didn't include `RE_DKAP` or `RE_SHPC`, so
+   compile had been silently SKIPPING (assumeTrue → mvn exit 0, indistinguishable from a real
+   pass), not passing. **This retroactively corrects an earlier claim in this file/session:**
+   "SampleHousePC 9/9 green" almost certainly never actually verified compile. `GATE_SCOPE` now
+   includes both. Once genuinely running, compile surfaced a real, systematic defect —
+   promoted to its own item, priority 1, superseding this one.
+1. **A9 — compiled placement is systematically wrong on every point-cloud building (NEW
+   2026-09-08, unscoped, now priority 1 — reorders the 2026-09-07 decision).** `CHECK
+   PLACEMENT`'s `P-PARENT` check (does each element sit inside its BOM parent's allocated AABB)
+   fails **100% of the time on both point-cloud buildings tested** — real DeKH Building A
+   (0/498 pass) and synthetic-derived SampleHousePC (0/70 pass) — while the sibling-
+   relationship check (`P-SIBLING`) passes 100% on both. Internally consistent, uniformly
+   misplaced relative to the container: systematic origin/frame issue, not scattered noise.
+   Consequence: BOM `DocStatus` flips to `VO` (void). **Does not halt anything** —
+   `output.db` still gets produced, `GeometryIntegrityChecker` still reports 0 FAIL — exactly
+   why this was invisible until compile genuinely ran for the first time (see item 0). One
+   hypothesis checked and ruled out: the storey's missing `center`/`size` in `spatial_structure`
+   — IFC-authored SampleHouse has the identical gap and compiles clean. Leading unconfirmed
+   hypothesis: every point-cloud BOM tree is completely flat (`BUILDING → FLOOR → N leaves`,
+   zero assembly nesting) where IFC-authored BOMs have real assembly grouping —
+   `computeWorldPosition` in `BomTreeProver.java` may not handle a fully flat tree correctly.
+   **First concrete action:** instrument/step through `computeWorldPosition` for one flat-BOM
+   building, compare the FLOOR container's computed world origin against its actual allocated
+   AABB center — confirm or falsify the flat-tree hypothesis before designing a fix. Verify any
+   fix against IFC-authored Sample House too (must not regress a currently-passing case). Why
+   priority 1 ahead of the 2026-09-07 order: items 2–4 below are missing capabilities (a human
+   reviewer can work around a gap); this is existing output being placement-wrong on every
+   element of every building tested, not confined to a known-weak part. Full detail:
+   `PRODUCTION_READINESS_BACKLOG.md` §SEQUENCED SESSION PLAN, item 1.
 2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — now outranks openings.**
    Reasoning: it's a structural gap (most real institutional buildings are multi-floor; the
    pipeline currently can't represent that at all), not a usability gap. Investigated, not just
