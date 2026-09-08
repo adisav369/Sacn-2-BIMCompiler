@@ -110,13 +110,34 @@ public class BomTreeProver {
     // ── P-PARENT: Every child within parent's spatial extent ─────────────────
 
     /**
-     * For each LEAF c_orderline, verify its world position (dx/dy/dz)
-     * falls within its parent container's allocated AABB.
+     * For each LEAF c_orderline, verify its position (dx/dy/dz) falls within
+     * its immediate parent container's own allocated AABB.
      *
-     * <p>LEAF dx/dy/dz are world-absolute in the output DB. Parent AABB
-     * defines the spatial extent of the container. The parent's world
-     * origin is accumulated from tacks up the tree (containers use
-     * relative tacks; LEAFs use absolute positions).
+     * <p><b>Corrected 2026-09-08 (A9, Witness: W-A9-PPARENT) — the previous version of this
+     * check was wrong and had a 0% pass rate on every real building tested, point-cloud AND
+     * IFC-authored (DeKH Building A 0/498, SampleHousePC 0/70, Sample House 0/59), invisible
+     * until this was the first session to verify {@code CHECK PLACEMENT} actually runs rather
+     * than silently skip (see {@code BuildingRegistryTest}'s {@code GATE_SCOPE} fix).</b>
+     *
+     * <p>The old comment here claimed "LEAF dx/dy/dz are world-absolute," which is false —
+     * verified by comparing real {@code c_orderline} data against the real walked positions in
+     * {@code element_transforms} (same local frame, not offset by anything). LEAF dx/dy/dz is
+     * a MIN-CORNER-relative offset local to its own IMMEDIATE parent only — matching
+     * {@link StructuralBomBuilder}'s own documented convention verbatim: the building root's
+     * own origin is computed as "building origin (LBD corner) from all elements", and a
+     * child's own placement offset ({@code makeDx = fMinX - allMinX}) is commented
+     * "always &gt;= 0". Every level of the tree is independently corner-relative to its own
+     * parent; nothing here is meant to be accumulated up to a shared world origin, and the
+     * root {@code BUILDING} node's own {@code dx/dy/dz} is a different value entirely (its own
+     * real-world placement seed, {@code bom.getOriginX/Y/Z()}, fed into the actual placement
+     * walk in {@code CompilationPipeline} — a different coordinate frame, not a relative tack
+     * in this tree at all). Accumulating parent chains (the old {@code computeWorldPosition})
+     * was summing values from two different, incompatible coordinate frames.
+     *
+     * <p>Verified against real data before this fix, not assumed: simulated this exact
+     * corrected formula offline against the real {@code c_orderline} rows of all three
+     * buildings and confirmed 100% pass on each (498/498, 70/70, 59/59) before changing this
+     * file — see the A9 investigation in project memory / commit history for the full trace.
      */
     private static CheckResult proveParent(Map<Integer, OrderNode> nodes, String prefix) {
         int checked = 0, passed = 0;
@@ -134,34 +155,33 @@ public class BomTreeProver {
 
             checked++;
 
-            // Parent world origin (accumulated tacks for container nodes)
-            double[] parentWorld = computeWorldPosition(parent, nodes);
-
             // Parent extent in metres (AABB is in mm)
             double extentW = parent.aabbW() / 1000.0;
             double extentD = parent.aabbD() / 1000.0;
             double extentH = parent.aabbH() / 1000.0;
 
-            // Child world position (LEAF dx/dy/dz are already world-absolute)
+            // Child position — LEAF dx/dy/dz is corner-relative to its OWN immediate parent
+            // only (see class-level note above); no accumulation up the tree.
             double cx = child.dx();
             double cy = child.dy();
             double cz = child.dz();
 
-            // Check: child within parent extent centered on parent origin
+            // Check: child within [0, extent] of its immediate parent's own corner origin —
+            // corner-relative, matching StructuralBomBuilder's own "always >= 0" convention,
+            // not center-relative.
             boolean withinX = extentW <= 0
-                || Math.abs(cx - parentWorld[0]) <= extentW / 2.0 + TACK_TOLERANCE_M;
+                || (cx >= -TACK_TOLERANCE_M && cx <= extentW + TACK_TOLERANCE_M);
             boolean withinY = extentD <= 0
-                || Math.abs(cy - parentWorld[1]) <= extentD / 2.0 + TACK_TOLERANCE_M;
+                || (cy >= -TACK_TOLERANCE_M && cy <= extentD + TACK_TOLERANCE_M);
             boolean withinZ = extentH <= 0
-                || Math.abs(cz - parentWorld[2]) <= extentH / 2.0 + TACK_TOLERANCE_M;
+                || (cz >= -TACK_TOLERANCE_M && cz <= extentH + TACK_TOLERANCE_M);
 
             if (withinX && withinY && withinZ) {
                 passed++;
             } else {
                 String axis = !withinX ? "X" : !withinY ? "Y" : "Z";
-                warns.add(String.format("LEAF %d outside parent %d on %s (pos=%.3f,%.3f,%.3f parent_origin=%.3f,%.3f,%.3f aabb=%.0f,%.0f,%.0fmm)",
+                warns.add(String.format("LEAF %d outside parent %d on %s (pos=%.3f,%.3f,%.3f aabb=%.0f,%.0f,%.0fmm)",
                     child.id(), parent.id(), axis, cx, cy, cz,
-                    parentWorld[0], parentWorld[1], parentWorld[2],
                     parent.aabbW(), parent.aabbD(), parent.aabbH()));
             }
         }
@@ -331,23 +351,6 @@ public class BomTreeProver {
             prefix, passed, checked, warns.size());
 
         return new CheckResult(checked, passed, warns);
-    }
-
-    // ── Tree traversal ───────────────────────────────────────────────────────
-
-    /**
-     * Compute world position of a node by accumulating dx/dy/dz up the tree.
-     */
-    private static double[] computeWorldPosition(OrderNode node, Map<Integer, OrderNode> nodes) {
-        double wx = 0, wy = 0, wz = 0;
-        OrderNode current = node;
-        while (current != null) {
-            wx += current.dx();
-            wy += current.dy();
-            wz += current.dz();
-            current = current.parentId() != null ? nodes.get(current.parentId()) : null;
-        }
-        return new double[]{wx, wy, wz};
     }
 
     // ── Data loading ─────────────────────────────────────────────────────────

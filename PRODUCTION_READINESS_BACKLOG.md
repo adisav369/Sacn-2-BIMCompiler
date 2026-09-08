@@ -1,9 +1,11 @@
 # Production Readiness Backlog
 
 > Scoping session, 2026-09-07, **decisions resolved same day.** Updated 2026-09-08: D4→D1
-> (licensed-data isolation, prove a real DeKH scan through the chain) is DONE and surfaced a
-> new priority-1 finding (**A9** — compiled placement is systematically wrong on every point-
-> cloud building), which now leads the sequenced plan. This is the itemized answer to "when is
+> (licensed-data isolation, prove a real DeKH scan through the chain) is DONE, and it surfaced
+> **A9** — compiled placement systematically wrong on every building — which is now ALSO
+> **FIXED and verified on all 3 real buildings** (DeKH Building A 498/498, SampleHousePC
+> 70/70, Sample House 59/59, all up from 0). Next up: item 2, multi-storey. This is the
+> itemized answer to "when is
 > this a production-ready tool" — not a calendar estimate (this project's own Prime Rule is
 > "never invent a number without a real source," and a date here would be exactly that). What
 > it is instead: every known gap, sized by what's actually knowable about it today. The four
@@ -34,7 +36,7 @@
 | A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — priority 4, deferred** | Investigated 2026-09-07; found to be an extraction problem (no coherent segment exists to classify), not the classification problem it was picked as. 3 unimplemented options logged. Deferred behind items 1–3. |
 | A3 | Wall-face reunification (a wall's inner/outer face treated as 2 elements) | **L — not prioritized this round** | One design (distance-based merge) implemented, measured, and **rejected** — harmful fusions were the majority outcome at every threshold tested. 2 untried signals logged: in-plane footprint match, empty-cavity check between faces. |
 | A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07 — priority 2, real first step identified** | Investigated (not just labeled XL) — 3 specific front-end chokepoints found, 1 is a silent-wrong-answer landmine, and a real in-hand precedent (Building A's 2 separately-scanned floors) shrinks the realistic first step well below "auto-detect floors in one continuous scan." Full detail + the first concrete action in `SEQUENCED SESSION PLAN` §2. |
-| A9 | **Compiled placement is systematically wrong on EVERY point-cloud building — `P-PARENT` proof 0% pass, both buildings tested.** Found 2026-09-08 during D1 verification. | **NEW — priority 1, unscoped, needs its own investigation session** | `BuildingRegistryTest`'s `CHECK PLACEMENT` verb fails on both real DeKH Building A (0/498 pass, `P-PARENT`) and synthetic-derived SampleHousePC (0/70 pass) — 100% failure rate on the "child inside parent's allocated AABB" check, on EVERY point-cloud building ever compiled, while the sibling-relationship check (`P-SIBLING`) passes 100% on both. That pattern — internally consistent, uniformly misplaced relative to the container — points at a systematic origin/frame issue, not scattered noise. Result: BOM `DocStatus` flips to `VO` (void). Does NOT halt the pipeline — `output.db` still gets produced, `GeometryIntegrityChecker` still reports clean (0 FAIL) — so this was invisible until compile actually ran (see D1 below: it had been silently skipping). One hypothesis checked and ruled out: the storey's missing `center`/`size` in `spatial_structure` — IFC-authored SampleHouse has the identical gap and compiles clean, so that's not it. Leading unconfirmed hypothesis: every point-cloud BOM is structurally FLAT (`BUILDING → FLOOR → N leaf elements directly`, zero assembly-level nesting) where IFC-authored BOMs have real assembly grouping — `computeWorldPosition`'s container-origin logic may not handle a fully flat tree correctly. Not yet root-caused to the exact line. Recommended priority 1 — ahead of A4/A1/A2 — because unlike those three (missing capabilities), this is the existing output being placement-incorrect on every building tested, which is a bigger pilot-bar concern than any single missing element class. This reorders the 2026-09-07 priority decision; flagged explicitly rather than silently reshuffled. |
+| A9 | ~~Compiled placement is systematically wrong on EVERY point-cloud building~~ **FIXED 2026-09-08, verified on all 3 real buildings.** | **DONE** | Flat-BOM-tree hypothesis FALSIFIED (compiling IFC-authored Sample House directly showed the identical `P-PARENT 0/59` failure despite real assembly nesting — not a point-cloud or nesting-depth problem). Real cause, traced through the write path: `c_orderline.dx/dy/dz` is written once at BOM Drop and never updated (confirmed: zero `UPDATE` statements touch those columns anywhere); comparing it against the real walked `element_transforms` positions for the same elements showed both live in one consistent MIN-CORNER-relative local frame, never offset by the root `BUILDING` node's own `dx/dy/dz`. `StructuralBomBuilder.java`'s own comments confirm the convention explicitly ("building origin (LBD corner) from all elements"; a child offset "always >= 0"). `BomTreeProver`'s old `computeWorldPosition` summed the root's real-world placement seed (used elsewhere in `CompilationPipeline` to seed the walk — a different coordinate frame) into every containment check, AND checked center-relative when the confirmed convention is corner-relative. Fix: `LEAF dx/dy/dz` checked as `[0, parent_extent]` against its immediate parent only, no accumulation; `computeWorldPosition` (wrong and unnecessary) removed. Verified twice: simulated in Python against real `c_orderline` data from all 3 buildings first (100% each), then via the actual JUnit test — DeKH Building A 498/498, SampleHousePC 70/70, Sample House 59/59, all up from 0. `P-SIBLING` confirmed unregressed (100% throughout). Two unrelated pre-existing issues found and left alone: Sample House's own `.bimcobol` script independently fails on a missing `ProjectName` column (confirmed present before this fix too); `BuildingRegistryTest`'s `-Dbom.db` is JVM-global while its `@TestFactory` runs one dynamic test per `GATE_SCOPE` building, so pointing it at one building's compile-db while other registered buildings are also in scope produces an unrelated element-count mismatch on their dynamic tests — pre-existing (matches how `run_RosettaStones.sh` has always invoked this test), not part of A9. |
 | A5 | Cross-floor stitching (a wall spanning 2 independently-segmented floors can't unify) | **XL** | Known gap (Building A's last unmatched wall traced to exactly this). Related to but distinct from A4's first step (§2(a) doesn't attempt this); still unscoped. |
 | A6 | Output-volume growth from `MULTI_CANDIDATE_K=5` (~4.8x more predicted elements at Building A's scale) | **M** | Real, honestly-reported trade-off from the round-budget fix. Candidate approaches named (consolidation in `merge_instances.py`, or a smaller K for cluttered scenes) but not designed. |
 | A7 | Wall recovery ceiling (87–97%, not 100%, across 3 real buildings) | **DECIDED 2026-09-07 — CLOSED, not on the backlog** | Accepted as a legitimate ceiling; every remaining gap traced to occlusion/scoring edge cases, not pipeline bugs. Not pursuing further. |
@@ -128,37 +130,47 @@ QA gates. Compile itself also now genuinely runs (a real bug — `GATE_SCOPE` wa
 skipping it — is fixed) and surfaced a real, systematic defect. That defect is **A9** below,
 now priority 1, superseding this item rather than following it.
 
-### 1. A9 — compiled placement is systematically wrong on every point-cloud building
-(NEW, unscoped, priority 1 — reorders the 2026-09-07 decision)
-Found 2026-09-08 while closing out D1. `CHECK PLACEMENT`'s `P-PARENT` check (does each element
-sit inside its BOM parent's own allocated AABB) fails **100% of the time on both point-cloud
-buildings tested** — real DeKH Building A (0/498 pass) and synthetic-derived SampleHousePC
-(0/70 pass) — while the sibling-relationship check (`P-SIBLING`) passes 100% on both. Internally
-consistent, uniformly misplaced relative to the container: that pattern says systematic
-origin/frame issue, not scattered noise. Consequence: BOM `DocStatus` flips to `VO` (void).
-**Does not halt anything** — `output.db` is still produced, `GeometryIntegrityChecker` still
-reports 0 FAIL — which is exactly why this was invisible until compile genuinely ran for the
-first time.
+### 1. ~~A9 — compiled placement is systematically wrong on every point-cloud building~~
+**FIXED 2026-09-08**
+Found while closing out D1; the flat-BOM-tree hypothesis floated at discovery time was
+investigated and **falsified** — compiling IFC-authored Sample House directly showed the
+identical `P-PARENT 0/59` failure despite real assembly nesting (4 `ASSEMBLY`-type BOMs), so
+it was never a point-cloud or nesting-depth problem.
 
-One hypothesis already checked and ruled out: the storey's `spatial_structure` row has no
-`center`/`size` (only `elevation`) — but IFC-authored SampleHouse has the identical gap and
-compiles clean, so that's not the cause. Leading unconfirmed hypothesis: every point-cloud BOM
-tree is completely flat (`BUILDING → FLOOR → N leaf elements`, zero assembly-level nesting) —
-IFC-authored BOMs have real assembly grouping (Sample House: 4 `ASSEMBLY`-type BOMs; DeKHAPC
-and SampleHousePC: none) — and `computeWorldPosition` in `BomTreeProver.java`'s container-
-origin logic may not handle a fully flat tree correctly. **First concrete action for the next
-session:** instrument or step through `computeWorldPosition(parent, nodes)` for one flat-BOM
-building and compare the FLOOR container's computed world origin against its actual allocated
-AABB center — confirm or falsify the flat-tree hypothesis before designing a fix. Verify any
-fix against IFC-authored Sample House too (must not regress a currently-passing case).
+**Real cause, traced through the actual write path, not guessed further:** grepped the whole
+compiler for any `UPDATE` touching `C_OrderLine`'s `dx/dy/dz` — none exist anywhere; those
+columns are written once at BOM Drop and never touched again. Comparing `c_orderline`'s LEAF
+values against the real walked positions in `element_transforms` for the same elements showed
+both live in one consistent MIN-CORNER-relative local frame (e.g. DeKH: both range ~0–35m),
+never offset by the root `BUILDING` node's own `dx/dy/dz`. `StructuralBomBuilder.java`'s own
+comments confirm this convention explicitly, not inferred: the building root's origin is
+literally commented `// Compute building origin (LBD corner) from all elements`, and a child's
+own placement offset is commented `MAKE dx/dy/dz = floor-to-building offset (always >= 0)`.
+`BomTreeProver`'s old `computeWorldPosition` accumulated dx/dy/dz through EVERY ancestor
+including the root — summing two incompatible coordinate frames, since the root's own
+`dx/dy/dz` is a *different* value (`bom.getOriginX/Y/Z()`, its real-world placement seed, used
+elsewhere in `CompilationPipeline` to seed the actual placement walk) — and additionally
+checked containment as center-relative (`|child − parent| ≤ extent/2`) when the confirmed
+convention is corner-relative (`0 ≤ child ≤ extent`). Two compounding defects, not one.
 
-**Why priority 1, ahead of the previously-decided order:** A4/A1/A2 below are missing
-capabilities (no multi-storey yet, no door recall yet, no column recall yet) — a human
-reviewer can work around a gap. A9 is the opposite: the output that DOES exist is placement-
-incorrect, on every element, on every building tested — a bigger concern against the decided
-pilot bar ("mostly-correct... human touch-up on known-weak parts") than any single missing
-element class, because it isn't confined to a known-weak part. Reordering is flagged explicitly
-here, not applied silently.
+**Fix:** `LEAF dx/dy/dz` is corner-relative to its own immediate parent only, no accumulation
+up the tree. `computeWorldPosition` (now provably wrong and unnecessary) removed;
+`BomTreeProver.proveParent` checks `child ∈ [0, parent_extent]` directly.
+
+**Verified twice, not assumed:** (1) simulated the exact corrected formula offline in Python
+against the real `c_orderline` rows of all three buildings — 498/498, 70/70, 59/59, all 100% —
+*before* touching any Java; (2) ran the actual JUnit test against all three for real, matching
+the simulation exactly: **DeKH Building A 498/498, SampleHousePC 70/70, Sample House 59/59**
+(all were 0 before). `P-SIBLING` confirmed unregressed at 100% throughout.
+
+Two things found along the way, explicitly not part of this fix and left alone: Sample House's
+own `SampleHouse.bimcobol` script independently fails on an unrelated pre-existing bug
+(`no such column: ProjectName` — confirmed present before this fix too). And
+`BuildingRegistryTest`'s `-Dbom.db` is a JVM-global property while its `@TestFactory` runs a
+dynamic sub-test per `GATE_SCOPE`-listed building — pointing it at one building's compile-db
+still runs every other registered building's own dynamic test against that same file, which
+correctly fails their own element-count assertions. Pre-existing (this is exactly how
+`run_RosettaStones.sh` has always invoked this test), unrelated to A9.
 
 ### 2. Multi-storey (re-scoped 2026-09-07 from XL down to a real first step)
 **Investigated before proposing a design, per this project's own standing practice — findings,
