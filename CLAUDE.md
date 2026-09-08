@@ -306,15 +306,32 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    attempt needs a genuinely different idea (geometric void/hole detection in the host wall,
    named but untried, doesn't depend on color at all) or a new data source, not a 4th
    variation on color-anomaly detection.
-4. **`IfcColumn` — deferred behind 1–3.** Investigated 2026-09-07: found to be an EXTRACTION
-   problem, not the classification problem it looked like. Columns are wall-adjacent (0.00–
-   0.20m gap for 15/16 real columns, not "free-standing" as earlier assumed), and no predicted
-   segment claims a column-scale majority of any real column's points — unlike doors, there's
-   no coherent segment for a classifier to label at all. Likely mechanism: thin (0.25–0.40m)
-   columns flush against a wall don't survive RANSAC as their own plane — same coplanar-
-   absorption family as doors, different geometry. Full detail in
-   `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet. Real, but decided to be
-   lower-value than 1–3 — don't start until those are done or explicitly reprioritized.
+4. **`IfcColumn` — investigated further 2026-09-08, still not implemented.** 2026-09-07: found
+   to be an EXTRACTION problem, not the classification problem it looked like. Columns are
+   wall-adjacent (0.00–0.20m gap for 15/16 real columns, not "free-standing" as earlier
+   assumed), and no predicted segment claims a column-scale majority of any real column's
+   points. 2026-09-08: re-traced on a fresh real B_ICU re-segmentation (reproduced the
+   documented baseline first) rather than trusting the 2026-09-07 read at face value — found
+   that every real column's TOP claimant is a "ceiling" segment which turns out to be a merge
+   of 52–143 separate fragments spanning the whole room and up to 0.67m of LOCAL height
+   variance, not one real surface. Root cause read from the code: `merge_coplanar_fragments`
+   (`segment.py`) merges via pairwise union-find, which is transitively unsound — A-B and B-C
+   merges silently fuse A and C even if they were never checked against each other. Confirmed
+   OFFSET_TOL_M/NORMAL_ANGLE_TOL_DEG correctly block the ORIGINAL theory (absorption into the
+   adjacent wall, a 25–40cm real offset, well past the 5cm tolerance) — the absorption is into
+   this unrelated chaining artifact instead. **Tested whether fixing it also fixes column
+   recall — it does not.** An offline anchored-greedy alternative (never touched `segment.py`)
+   made the single biggest resulting segment dramatically more coherent (0.35m → 0.005m median
+   local Z std, confirming the mechanism) but left several others still incoherent (the AABB
+   spatial-gap check has the identical transitivity flaw, unaddressed), and re-running the
+   column trace against it showed points still scattered, no coherent column segment emerging
+   either way. **Not shipped, deliberately**: the fix is demonstrably incomplete, and even a
+   complete one wouldn't move column recall — the real value of fixing this (now logged as its
+   own item, `PRODUCTION_READINESS_BACKLOG.md` A10) is segmentation coherence generally, which
+   needs its own properly designed and tested session against this pipeline's most
+   heavily-tuned code, not a rushed change here. `IfcColumn`'s original three options
+   (extraction-level fix / flag-as-advisory / leave it) are unchanged — full detail in
+   `DAGCompiler/python/scan_to_bom/README.md`'s `IfcColumn` bullet.
 
 Full backlog across all four production-readiness dimensions (model accuracy, generalization,
 infrastructure, tooling maturity) — including the items NOT in this ordered list and why —

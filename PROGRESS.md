@@ -17,7 +17,10 @@
 > openings — ~~one more bounded attempt~~ **CLOSED for the pilot bar 2026-09-08**: both
 > remaining ideas (`.npy` labels, per-wall gradient detrending) tried for real against a
 > fresh B_ICU re-segmentation, both rejected on measured evidence, per the pre-agreed stop
-> condition. Next: (4) `IfcColumn` deferred.
+> condition. (4) `IfcColumn` — investigated further 2026-09-08: found and measured a real
+> `merge_coplanar_fragments` transitive-chaining defect (new item A10) while tracing column
+> point membership, confirmed it does NOT fix column recall even so, deliberately not shipped
+> (incomplete fix, no proven column benefit). Still not implemented — needs its own session.
 
 ## Chain status (2026-09-05): running end-to-end again
 

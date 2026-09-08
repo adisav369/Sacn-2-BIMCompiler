@@ -15,7 +15,13 @@
 > using that real data: **item 3 (openings) is CLOSED for the pilot bar** — both remaining
 > ideas (the `.npy` labels, per-wall gradient detrending) were tried for real against a fresh
 > re-segmentation of real B_ICU, both REJECTED on measured evidence, per the pre-agreed stop
-> condition. This is the
+> condition. Same session, **item 4 (`IfcColumn`) investigated further**: tracing WHY column
+> points scatter (rather than accepting that as final) surfaced a real, previously-undocumented
+> defect (**A10** — `merge_coplanar_fragments` transitive-chaining) confirmed and measured, but
+> confirmed NOT to fix column recall even so — `IfcColumn` itself remains unimplemented, and
+> A10 remains unfixed (deliberately: an incomplete offline experiment, not a change made to
+> `segment.py`). All four sequenced-plan items have now had at least one real investigation
+> pass. This is the
 > itemized answer to "when is
 > this a production-ready tool" — not a calendar estimate (this project's own Prime Rule is
 > "never invent a number without a real source," and a date here would be exactly that). What
@@ -44,7 +50,7 @@
 | # | Item | Size | Status |
 |---|---|---|---|
 | A1 | Openings (doors/windows), 0% recall on real scans | **CLOSED for the pilot bar, 2026-09-08** | 3 RGB/color extraction designs rejected on measured evidence (global anomaly, local-contrast, per-wall gradient detrending — all ~0.6-2% precision). Closed per the pre-agreed 2026-09-07 stop condition; pilot bar explicitly allows human touch-up here. See `SEQUENCED SESSION PLAN` §3. |
-| A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — priority 4, deferred** | Investigated 2026-09-07; found to be an extraction problem (no coherent segment exists to classify), not the classification problem it was picked as. 3 unimplemented options logged. Deferred behind items 1–3. |
+| A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — investigated 2026-09-08, still not implemented** | 2026-09-07: found to be an extraction problem (no coherent segment exists to classify). 2026-09-08: re-traced on real B_ICU data, found and measured a related defect (**A10**) — fixing it improves segmentation coherence but does NOT recover column recall (points remain scattered even after). Original 3 options (extraction-level fix / flag-as-advisory / leave it) still stand, none attempted. |
 | A3 | Wall-face reunification (a wall's inner/outer face treated as 2 elements) | **L — not prioritized this round** | One design (distance-based merge) implemented, measured, and **rejected** — harmful fusions were the majority outcome at every threshold tested. 2 untried signals logged: in-plane footprint match, empty-cavity check between faces. |
 | A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07, write-side DONE 2026-09-08** | The realistic first step (formalize Building A's 2 separately-scanned floors into one real multi-storey `write_reference_db` output) is implemented and verified synthetically + against the real `StructuralBomBuilder.java` consumer — not yet run against real DeKH data (`.laz` files unavailable this session). Auto-detecting floors from one continuous scan (the harder sub-problem) remains unscoped. Full detail in `SEQUENCED SESSION PLAN` §2. |
 | A9 | ~~Compiled placement is systematically wrong on EVERY point-cloud building~~ **FIXED 2026-09-08, verified on all 3 real buildings.** | **DONE** | Flat-BOM-tree hypothesis FALSIFIED (compiling IFC-authored Sample House directly showed the identical `P-PARENT 0/59` failure despite real assembly nesting — not a point-cloud or nesting-depth problem). Real cause, traced through the write path: `c_orderline.dx/dy/dz` is written once at BOM Drop and never updated (confirmed: zero `UPDATE` statements touch those columns anywhere); comparing it against the real walked `element_transforms` positions for the same elements showed both live in one consistent MIN-CORNER-relative local frame, never offset by the root `BUILDING` node's own `dx/dy/dz`. `StructuralBomBuilder.java`'s own comments confirm the convention explicitly ("building origin (LBD corner) from all elements"; a child offset "always >= 0"). `BomTreeProver`'s old `computeWorldPosition` summed the root's real-world placement seed (used elsewhere in `CompilationPipeline` to seed the walk — a different coordinate frame) into every containment check, AND checked center-relative when the confirmed convention is corner-relative. Fix: `LEAF dx/dy/dz` checked as `[0, parent_extent]` against its immediate parent only, no accumulation; `computeWorldPosition` (wrong and unnecessary) removed. Verified twice: simulated in Python against real `c_orderline` data from all 3 buildings first (100% each), then via the actual JUnit test — DeKH Building A 498/498, SampleHousePC 70/70, Sample House 59/59, all up from 0. `P-SIBLING` confirmed unregressed (100% throughout). Two unrelated pre-existing issues found and left alone: Sample House's own `.bimcobol` script independently fails on a missing `ProjectName` column (confirmed present before this fix too); `BuildingRegistryTest`'s `-Dbom.db` is JVM-global while its `@TestFactory` runs one dynamic test per `GATE_SCOPE` building, so pointing it at one building's compile-db while other registered buildings are also in scope produces an unrelated element-count mismatch on their dynamic tests — pre-existing (matches how `run_RosettaStones.sh` has always invoked this test), not part of A9. |
@@ -52,6 +58,7 @@
 | A6 | Output-volume growth from `MULTI_CANDIDATE_K=5` (~4.8x more predicted elements at Building A's scale) | **M** | Real, honestly-reported trade-off from the round-budget fix. Candidate approaches named (consolidation in `merge_instances.py`, or a smaller K for cluttered scenes) but not designed. |
 | A7 | Wall recovery ceiling (87–97%, not 100%, across 3 real buildings) | **DECIDED 2026-09-07 — CLOSED, not on the backlog** | Accepted as a legitimate ceiling; every remaining gap traced to occlusion/scoring edge cases, not pipeline bugs. Not pursuing further. |
 | A8 | Phase 2 cluster-purity gap (30% of raw DBSCAN clusters mix points from >1 real element) | **M/L** | Real, unfixed, discovered while validating a later phase. Doesn't currently block anything measured, but it's real debt in the earliest stage of the pipeline. |
+| A10 | `merge_coplanar_fragments` transitive-chaining defect — pairwise union-find lets fragments merge into an incoherent "mega-segment" spanning far more than the intended tolerance | **M — discovered and measured 2026-09-08, not fixed** | Found while investigating A2 (`IfcColumn`): every real B_ICU column's top point-claimant is a "ceiling" segment that turns out to be a merge of 52–143 separate fragments, spanning the full room footprint and up to 0.67m of LOCAL (same x,y cell) Z variance — not one real surface. Root cause read from the code: `union(i,j)` on pairwise `_same_plane_equation` matches is transitive (A-B, B-C merged ⇒ A-C merged, even if never checked against each other or physically close). Tested an offline fix (`merge_anchored_greedy` — biggest-first, candidates only join a group's fixed original anchor, no drift) against real data: the single biggest resulting segment went from 0.35m to 0.005m median local Z std (confirms the mechanism), but several other segments stayed incoherent (0.17–0.28m) — the AABB spatial-gap check has the identical transitivity problem, unaddressed by the plane-equation fix alone. **Not shipped**: incomplete fix, and even a complete version doesn't recover `IfcColumn` recall (see A2) — the actual reason to fix this is segmentation coherence generally (likely affects other classes/buildings beyond this investigation), which needs its own properly designed and tested session against this pipeline's most heavily-tuned code, not a rushed change. |
 
 ## B. Generalization (untested outside this project's own 4 scenes)
 
@@ -329,6 +336,16 @@ section. A future attempt needs a genuinely new data source or a structurally di
 — geometric void/hole detection in the host wall was named but never tried, and doesn't
 depend on color at all, so nothing here counts as evidence against it.
 
-### 4. `IfcColumn` — deferred behind items 1–3 above
-Stays exactly as characterized in section A2. Not started until 1–3 are done or explicitly
-reprioritized.
+### 4. `IfcColumn` — investigated further 2026-09-08, still not implemented
+Stays exactly as characterized in section A2/A10. Re-traced on real B_ICU data (not just the
+2026-09-07 characterization taken on faith): every real column's top point-claimant is a
+"ceiling" segment that's actually an incoherent 52-to-143-fragment merge (see A10) spanning
+far more real height variation than one surface should. Investigated whether fixing that
+recovers column recall — it does not, even under a working (if incomplete) fix: column points
+stay scattered (5–9% top-claim fractions, no coherent column-scale segment) either way. The
+original three options — (A) an extraction-level fix, (B) flag a wall-adjacent column-scale
+anomaly as a low-confidence advisory, (C) leave it — are unchanged by this finding. None
+attempted: (A) inherits the same open-ended extraction-design risk RGB doors already used two
+honest rejections on; (B) would need its own new detection heuristic, the same risk class the
+2026-09-08 openings work just closed 3-for-3 against; (C) remains the safe default. Needs a
+properly scoped session of its own, not a rushed heuristic tacked on at the end of this one.

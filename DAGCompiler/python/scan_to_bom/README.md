@@ -1260,6 +1260,56 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   session's investigation budget with two honest rejections, a third attempt on a freshly
   harder-than-scoped problem was deliberately not started tonight — this needs its own
   dedicated session, same as openings.
+
+  **Follow-up session (2026-09-08) — re-traced against real B_ICU data (a fresh
+  re-segmentation, confirmed to reproduce the documented baseline exactly) and found something
+  bigger than the column problem itself: a real, previously-undocumented defect in
+  `merge_coplanar_fragments`.** Investigating WHY column points scatter across "many large,
+  unrelated ceiling/roof/wall segments" (rather than accepting that as the final answer) led to
+  tracing the actual TOP claimant for every one of the 9 real B_ICU columns: in every case, a
+  large `ceiling`-oriented segment. That's already suspicious for a vertical column shaft. Its
+  own `support_note` showed why: it's a merge of **143 separate coplanar fragments**, spans the
+  entire room footprint (17.3×20.4m) and 2–3m of real Z, and even within a single 1m×1m (x,y)
+  cell its own points have Z std up to 0.67m (median 0.35m) — not one real surface, several
+  genuinely different ones sharing one segment ID. The other big claimants (52–59 merged
+  fragments each) show the identical pattern.
+
+  **Root cause, read directly from the code, not inferred:** `merge_coplanar_fragments`
+  (`segment.py`) merges via pairwise union-find — `union(i, j)` fires whenever
+  `_same_plane_equation(i, j)` passes (8° normal, 5cm offset) and the AABBs are within
+  `MAX_GAP_M`. Union-find's transitivity is the bug: if A matches B and B matches C, A and C end
+  up in the same final segment whether or not A and C were EVER checked against each other, or
+  are anywhere near each other. A long chain of individually-plausible pairwise merges
+  accumulates into an incoherent mega-segment — exactly the shape of what's being measured
+  here. `OFFSET_TOL_M`/`NORMAL_ANGLE_TOL_DEG` were correctly ruling out merging a column's own
+  front face into the ADJACENT WALL (a 25–40cm real offset, well past the 5cm tolerance,
+  confirmed) — the absorption is into this unrelated chaining artifact instead, not into the
+  wall the earlier theory assumed.
+
+  **Measured whether fixing this would also fix column recall — it does NOT, on its own.**
+  Implemented an alternative (`merge_anchored_greedy`, offline only, never touched `segment.py`
+  itself) that processes fragments biggest-first and only lets a candidate join a group if it
+  matches that group's ORIGINAL anchor plane — the anchor never updates, breaking the
+  transitive chain by construction. Result, on the same real B_ICU data: the SINGLE biggest
+  resulting "ceiling" segment became dramatically more coherent (median local Z std 0.005m,
+  down from 0.35m) — real evidence the mechanism diagnosis is right. But several other large
+  segments were STILL incoherent (median local Z std 0.17–0.28m) — traced further: the
+  anchor-plane check stopped drifting, but the AABB spatial-gap check (`MAX_GAP_M` against the
+  group's own ever-growing accumulated AABB, not the anchor's original footprint) has the exact
+  same transitivity problem, unaddressed by this fix. And re-running the same 9-column
+  point-membership trace against the anchored-greedy output: **column points are still
+  scattered, not consolidated** — 5–9% top-claim fractions instead of 13–28%, but no coherent
+  column-scale segment emerged anywhere. Less contaminated, but not solved.
+
+  **Deliberately not shipped tonight.** Two independent reasons: the fix itself is
+  demonstrably incomplete (the AABB-gap drift needs its own anchoring, not designed or tested
+  here), and — more importantly — even a fully correct version of it would not move `IfcColumn`
+  recall, which was the reason to look at this in the first place. `merge_coplanar_fragments`
+  is real, confirmed, worth fixing on its own merits (segmentation coherence generally, likely
+  affecting other classes/buildings beyond this investigation) — but as its own properly
+  designed and tested change, not a rushed addition to the most heavily-tuned code in this
+  pipeline. `IfcColumn`'s three original options (A/B/C above) still stand, unchanged by this
+  finding: there remains no coherent column-scale segment for any design to attach a label to.
 - **Flush-mounted openings (doors) are not recoverable by geometry alone — a capability
   boundary, not a defect.** Traced from Building C's gap-to-baseline (15/34 = 44.1% vs the
   BIMStruct3D baseline's 25/34 = 73.5%), which turned out to be **entirely doors**: we match
