@@ -213,8 +213,9 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    then a *different* registered building's dynamic test also runs against that same file,
    producing an unrelated element-count assertion failure. Pre-existing (this is exactly how
    `run_RosettaStones.sh` has always invoked this test), not caused by or related to A9.
-2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — write-side DONE
-   2026-09-08, real-data run still pending.** Reasoning: it's a structural gap (most real
+2. **Multi-storey (re-scoped from XL to a real first step 2026-09-07) — write-side + real-data
+   BOM build DONE 2026-09-08, full compile blocked on an unrelated pre-existing gap.**
+   Reasoning: it's a structural gap (most real
    institutional buildings are multi-floor; the pipeline couldn't represent that at all), not a
    usability gap. The compile back end already had real multi-storey support, proven live
    (IFC-authored SampleHouse carries 2 real `IfcBuildingStorey` rows and compiles clean) — the
@@ -256,15 +257,33 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    refactor: schema integrity still reports "exactly 1 Building + 1 Storey", identical to
    before.
 
-   **NOT done, and why, honestly:** running this against REAL DeKH Building A point-cloud data.
-   Checked this session — the actual `.laz` scan files aren't present in this environment (only
-   a HuggingFace dataset ref stub with no downloaded blobs; DeKH is licensed third-party data
-   that's never committed or cached in the repo, so per-session availability isn't guaranteed).
-   Natural next step once the real files are available: `--stage segment` on both floors (if a
-   prior session's checkpoints didn't survive — they live outside the repo by design, same
-   licensing rule), then `--stage combine-storeys`, then the resulting DB through the actual
-   Java `--populate --classify --compile` chain with scratch `--comp-db`/`--erp-db` isolation,
-   same discipline as D1.
+   **Run against REAL DeKH Building A data, same session — the real `.laz` files turned out to
+   be available after all (`C:\DeKH\Buildings\`, found later this session — see the
+   `reference_dekh_data_location` memory; an earlier check in this same session wrongly
+   concluded otherwise).** Both floors (507M / 621M raw points) segmented for real —
+   `merge_coplanar_fragments`'s A10 fix (see item 4 below) verified clean on both, zero
+   pathological mega-merges, matching B_ICU. `--stage combine-storeys` produced a genuine
+   2-storey reference DB: Level 1 (elevation -3.56m, 1,424 confident elements), Level 2
+   (elevation 0.58m, 1,495 confident elements), verified directly — 1 building, 2 storeys,
+   zero orphan FKs, zero guid collisions, sensible per-class breakdown (736 walls, 21 doors,
+   75 windows). Ran it through the ACTUAL unmodified Java chain (scratch `--comp-db`/
+   `--erp-db` isolation, same discipline as D1; real tracked library confirmed byte-identical
+   before and after via sha256): `--populate --classify` succeeded — **`PIPELINE
+   auto-discovered 2 spatial containers from extraction: [Level 1, Level 2]`**, built 2 real
+   per-storey BOMs (`DKAPMS_L1_STR` 1,421 lines, `DKAPMS_L2_STR` 1,485 lines) matching the
+   Python-side counts exactly, and **all `BomValidator` QA checks passed clean** including the
+   per-storey `AABB W/D containment` checks. Compile itself (`BuildingRegistryTest`, temporarily
+   gate-scoped for this one-off verification and reverted immediately after) got genuinely far
+   — BOM walk, discipline routing, MEP routes, `C_Order` created, **2,914 `C_OrderLine` rows
+   written** — before failing on `MetadataMissingException: No geometry for IfcRoof
+   element_ref=IfcRoof (plane) ... [NO FALLBACK]`. **This is a real but UNRELATED, pre-existing
+   gap**: `component_library.db` has no generic `component_definitions`/`component_geometries`
+   entry for the point-cloud pipeline's generic `"IfcRoof (plane)"` family/discipline
+   combination — a catalog-completeness issue, correctly refusing to invent geometry per the
+   PRIME RULE, not a defect in the multi-storey write, A10, or anything else touched this
+   session. Not chased further tonight (needs a real catalog entry, its own small task). The
+   multi-storey structure itself is proven correct end-to-end through BOM build; only the
+   final geometry-instancing step for one specific product family remains blocked.
 
    **Also NOT done, and NOT the same problem:** the `floor_z`-averaging landmine (`floor_z` =
    MEAN of every floor-segment centroid, in `classify.py`/`run_scan_to_bom.py`/
@@ -334,7 +353,11 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    30/82** — the critical regression check. Synthetic Sample House Phase 4 harness also
    checked: classification rate essentially unchanged, footprint-fidelity dropped as an
    expected, already-documented consequence of correctly not merging non-coplanar fragments
-   (not a new problem this fix introduced). Not re-verified against Building A/C this session.
+   (not a new problem this fix introduced). **Re-verified same session against Building A**
+   (both real floors, 507M/621M raw points, a structurally different construction-site-scale
+   scene from B_ICU): zero pathological mega-merges on either floor (max group size 10, same
+   as B_ICU's 8) — the fix generalizes cleanly to a second real scene. Building C not
+   re-verified.
 
    **Column recall re-checked with both bugs fixed — still not solved, confirming this was
    never the actual fix for `IfcColumn`.** Points remain scattered with no coherent

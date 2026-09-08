@@ -10,10 +10,13 @@
 > estimate; an itemized, sized backlog plus a decided priority order: (1) ~~prove a real DeKH
 > scan through compile/gates~~ DONE — and it surfaced **A9** (compiled placement wrong on
 > every building), also now ~~FIXED~~, verified on all 3 real buildings (2026-09-08). (2)
-> multi-storey — write-side ~~DONE~~ 2026-09-08 (`combine_floors_to_shared_frame` +
-> `write_multistorey_reference_db`, verified synthetically + against the real
-> `StructuralBomBuilder.java` consumer; real DeKH data was found later the same session at
-> `C:\DeKH\Buildings\` — the real Building A end-to-end run is still open, not blocked). (3)
+> multi-storey — write-side ~~DONE~~ 2026-09-08, then run for real against Building A's real
+> data (`C:\DeKH\Buildings\`, found later that same session): both floors segmented, combined
+> into a genuine 2-storey reference DB, and pushed through the actual Java chain — the Java
+> side correctly `auto-discovered 2 spatial containers`, built 2 real per-storey BOMs, passed
+> every QA gate, wrote 2,914 real `C_OrderLine` rows. Full compile blocked only on an
+> unrelated, pre-existing `component_library.db` gap (no `IfcRoof (plane)` geometry entry) —
+> the multi-storey structure itself is proven correct end-to-end through BOM build. (3)
 > openings — ~~one more bounded attempt~~ **CLOSED for the pilot bar 2026-09-08**: both
 > remaining ideas (`.npy` labels, per-wall gradient detrending) tried for real against a
 > fresh B_ICU re-segmentation, both rejected on measured evidence, per the pre-agreed stop
@@ -21,7 +24,8 @@
 > **FIXED** a real `merge_coplanar_fragments` defect (item A10 — transitive union-find
 > chaining plus an unsound offset-comparison formula) while tracing column point membership.
 > Verified on real B_ICU (GT match rate unchanged, 30/82) and synthetic Sample House before
-> shipping. Confirmed this does NOT fix column recall even so — `IfcColumn` itself is still
+> shipping, then re-verified on Building A's real data too (zero pathological merges on
+> either floor). Confirmed this does NOT fix column recall even so — `IfcColumn` itself is still
 > not implemented, needs its own session with a genuinely different idea.
 
 ## Chain status (2026-09-05): running end-to-end again
