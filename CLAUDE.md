@@ -273,25 +273,39 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    Everything built this session is the two-SEPARATE-scans case (Building A's real precedent),
    where each floor's own local `floor_z` is already computed correctly from only its own
    single real floor plane. Don't conflate the two when picking this back up.
-3. **Openings — ONE more bounded attempt, stop condition agreed before starting.** RGB
-   investigated 2026-09-07, both designs REJECTED: real signal (real B_ICU doors vs. host wall,
-   median Δ19.1 vs. a same-wall noise floor of 0.2/0.8), but neither a global per-wall
-   color-anomaly detector (1.9% precision, 2,787 false positives, shape-inseparable) nor a
-   local-contrast refinement at two radii (still ~2% both) clears a usable rate — root cause is
-   a whole-wall-height lighting gradient spatially coincident with real doors at floor level.
-   Full numbers in `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly
-   opening detection" section — read before re-attempting. **Next attempt, sequenced by cost:**
-   (a) cheap pre-check — does the dataset's own `.npy` semantic label actually distinguish
-   door-vs-wall, or only group by surface identity (never checked); (b) if not, per-wall
-   vertical-gradient detrending (regress RGB against height per wall, run the same tested
-   anomaly detector on the residuals instead of raw color — targets the diagnosed confound
-   directly, rather than a third variation on what's already failed twice). **Stop condition,
-   fixed now:** re-run the same false-positive check (all 321 real `IfcWall` segments, B_ICU).
-   Continue only if precision clears a real order-of-magnitude bar (~20%+, or a TP/FP
-   population that's finally shape-separable) — not merely "better than 2%." Landing back in
-   the same ~1–5%, shape-inseparable range is a 3rd honest rejection in this family — close it
-   for the pilot bar (which explicitly allows a human touch-up pass here) and don't start a 4th
-   design without a genuinely new data source.
+3. **Openings — CLOSED for the pilot bar, 2026-09-08.** Three designs, three honest measured
+   rejections. 2026-09-07: neither a global per-wall color-anomaly detector (1.9% precision,
+   2,787 false positives, shape-inseparable) nor a local-contrast refinement at two radii
+   (still ~2% both) cleared a usable rate — root cause: a whole-wall-height lighting gradient
+   spatially coincident with real doors at floor level. 2026-09-08, both logged next ideas
+   tried for real against a fresh re-segmentation of the real B_ICU point cloud (reproduced
+   the documented baseline exactly — 4,661 segments, 321 `IfcWall`, GT match 30/82 — before
+   trusting the run): **(a) the `.npy` semantic labels — clean non-starter, eliminated cheaply
+   as planned.** Real GT doors and walls extracted from `DeKH_B_ICU.ifc`; both point
+   populations dominated by the SAME label value (75.6% of door points, 79.1% of wall points),
+   and 13/13 doors' label values are a strict subset of their host wall's — no door-exclusive
+   value exists. Looks like a coarse material-class map (a door leaf reads as similar solid
+   material to its wall), not door-vs-wall semantics or per-surface identity. **(b) per-wall
+   vertical-gradient detrending — implemented, measured, REJECTED.** The isolated door-vs-host
+   residual signal actually held up post-detrend (median Δ21.97, comparable to the original
+   19.1), but the full 321-wall detector did WORSE: precision 0.6% (down from 1.9%), only
+   6/15 real doors covered (down from 12/15), and TP/FP shape stats now essentially identical
+   (0.58m vs 0.60m width). Traced, not just reported: tested and FALSIFIED the obvious
+   hypothesis (the door's own points pulling its host wall's regression fit off-baseline —
+   an oracle re-fit excluding door points changed the residual by a ratio of 0.98–1.10 across
+   all 13 doors, i.e. essentially not at all). Real mechanism, consistent with the original
+   diagnosed confound: the lighting gradient and the door signal are spatially COINCIDENT at
+   floor level, not merely correlated — a linear per-wall detrend removes the smooth global
+   trend but leaves untouched both real 10cm-cell-scale noise and any OTHER near-floor color
+   variation (baseboards, floor-material bleed) a real detector can't tell apart from a door.
+   **Per the pre-agreed stop condition** (continue only past ~20%+ precision or a
+   shape-separable population — landing back in ~1–5%, shape-inseparable is a 3rd honest
+   rejection, close it): closed for the pilot bar, which explicitly allows human touch-up
+   here. Full numbers and reasoning in `DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based
+   color-anomaly opening detection" section — read before ever reopening this. A future
+   attempt needs a genuinely different idea (geometric void/hole detection in the host wall,
+   named but untried, doesn't depend on color at all) or a new data source, not a 4th
+   variation on color-anomaly detection.
 4. **`IfcColumn` — deferred behind 1–3.** Investigated 2026-09-07: found to be an EXTRACTION
    problem, not the classification problem it looked like. Columns are wall-adjacent (0.00–
    0.20m gap for 15/16 real columns, not "free-standing" as earlier assumed), and no predicted

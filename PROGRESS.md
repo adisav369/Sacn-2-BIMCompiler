@@ -12,9 +12,12 @@
 > every building), also now ~~FIXED~~, verified on all 3 real buildings (2026-09-08). (2)
 > multi-storey — write-side ~~DONE~~ 2026-09-08 (`combine_floors_to_shared_frame` +
 > `write_multistorey_reference_db`, verified synthetically + against the real
-> `StructuralBomBuilder.java` consumer; real DeKH Building A data not available this session
-> to run end-to-end). Next: (3) openings — one more bounded attempt with an explicit stop
-> condition, (4) `IfcColumn` deferred.
+> `StructuralBomBuilder.java` consumer; real DeKH data was found later the same session at
+> `C:\DeKH\Buildings\` — the real Building A end-to-end run is still open, not blocked). (3)
+> openings — ~~one more bounded attempt~~ **CLOSED for the pilot bar 2026-09-08**: both
+> remaining ideas (`.npy` labels, per-wall gradient detrending) tried for real against a
+> fresh B_ICU re-segmentation, both rejected on measured evidence, per the pre-agreed stop
+> condition. Next: (4) `IfcColumn` deferred.
 
 ## Chain status (2026-09-05): running end-to-end again
 

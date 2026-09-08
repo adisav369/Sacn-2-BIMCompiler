@@ -1375,6 +1375,86 @@ proximity-aware instance-merging pass in a later phase, not a bigger DBSCAN epsi
   semantic labels (an already-ingested, unnamed grouping signal, unused for this), or detecting
   the *opening* geometrically (a void/hole signature in the host wall) instead of a color
   signature on it. Not attempted — logged as open, not guessed through under time pressure.
+
+  **Follow-up session (2026-09-08) — both open ideas above tried for real, on a fresh re-
+  segmentation of the real B_ICU point cloud (reproduces the documented baseline exactly:
+  4,661 total segments, 321 `IfcWall`, GT match 30/82, both matching this section's own
+  numbers — confirming the re-run behaves identically to the one this investigation used).**
+
+  **Idea 1 — the `.npy` semantic labels: cheap pre-check, clean non-starter, eliminated in
+  under an hour as planned.** Extracted the real GT doors/walls from `DeKH_B_ICU.ifc`
+  (`--skip-normalize`, the same raw frame the `.laz`/`.npy` files are already in), then read
+  the real per-point label at every point inside a real GT door AABB and every point inside a
+  real GT wall AABB (excluding door footprints). Both populations are dominated by the SAME
+  label value (`4.0`: 75.6% of door points, 79.1% of wall points), and **13/13 scoreable real
+  doors' label values are a strict subset of their own host wall's label values** — doors only
+  ever carry `{4.0, 2.0, 8.0, 0.0}`, while walls also carry 6 more values (`11, 25, 14, 213,
+  203, 202`, presumably floor/ceiling material bleeding in near a wall's own top/bottom edge)
+  that never appear in a door at all. **9/13 doors share their host wall's exact dominant
+  label.** This isn't quite either of the two things this section originally guessed at
+  (semantic door-vs-wall labeling, or a per-surface identity id — the small, ~10-value label
+  set rules out per-surface identity, since that would need roughly one distinct value per
+  wall/door, ~46 here) — it looks like a coarse MATERIAL-class map (a closed door leaf is
+  physically a similar solid vertical surface to the wall around it, so it gets the same
+  material class). Whatever its true meaning, it carries no door-vs-wall signal. Confirmed
+  cheaply, real GT data, no re-segmentation needed for this half of the check.
+
+  **Idea 2 — per-wall vertical-gradient detrending: implemented, measured, REJECTED — a 3rd
+  honest rejection in this family, closing it for the pilot bar per the pre-agreed stop
+  condition.** Fit a separate linear regression of each RGB channel against real-world Z,
+  per wall, over that wall's own points; ran the SAME 10cm-grid/connected-component detector
+  from Option A on the DETRENDED RESIDUALS instead of raw color, across all 321 real predicted
+  `IfcWall` segments (the identical real B_ICU output this section already scored).
+
+  A signal-only check first, mirroring this section's own Step 1 methodology exactly but on
+  residuals: real door vs. host-wall residual delta across 13 scoreable doors, median
+  **21.97** (p25=7.37, p75=41.74) against a same-wall split-half residual noise floor of
+  median 0.53/max 2.19 — comparable to, even slightly stronger than, the original raw-color
+  signal (median 19.1). **The isolated signal survives detrending, even improves.**
+
+  **But the full 321-wall detector did WORSE, not better: precision 0.6% (9 TP / 1,626 FP,
+  down from 1.9%/53 TP/2,787 FP), only 6/15 real GT doors covered by a TP region (down from
+  12/15), and TP/FP shape stats that are now essentially IDENTICAL** (width median 0.58m TP
+  vs 0.60m FP; height 0.36m vs 0.37m; previously at least somewhat distinguishable). A shape
+  filter cannot rescue this either — if anything the populations converged further than
+  Option A's.
+
+  **Traced the gap between the two results, not just reported it — first hypothesis tested
+  and FALSIFIED, not assumed:** suspected the per-wall linear fit itself was being pulled
+  toward the door's own color by the door's own points (small partition walls in this
+  building can have a door occupying a large fraction of the wall face). Re-fit each of the
+  13 doors' host walls EXCLUDING that door's own points (an oracle check using GT, only to
+  test the mechanism — never a real detector, since a real detector can't know where doors
+  are in advance) and compared the resulting residual delta to the contaminated fit's delta:
+  ratio 0.98–1.10 across all 13 doors (median ~1.00) — **the fit is essentially unaffected by
+  whether the door's own points are included.** Self-contamination of the regression is not
+  the mechanism.
+
+  **What's actually happening, consistent with this section's own already-diagnosed
+  confound:** the original root cause wasn't just "a gradient correlates with door height" —
+  it was that **the gradient and the real door signal are spatially COINCIDENT at floor
+  level**, not merely correlated. A per-wall LINEAR height-vs-color fit removes a smooth,
+  global trend, but two things survive it untouched: (1) real per-point scan/material noise
+  at the 10cm-CELL scale, which was never what a *global* linear trend could remove in the
+  first place, and (2) any OTHER near-floor color variation genuinely unrelated to doors
+  (baseboards, floor-material bleed, shadowing) that the detrending has no way to
+  distinguish from a real door, because both live at low Z. Detrending traded one confound
+  (a smooth wall-height gradient) for exposure to a different, still-real one at the exact
+  same location the door signal lives — net negative, not net positive, for this specific
+  detector's cell-level anomaly test.
+
+  **Verdict: REJECTED, per the pre-agreed 2026-09-07 stop condition** ("continue only if
+  precision clears ~20%+, or a TP/FP population that's finally shape-separable... landing
+  back in the same ~1–5%, shape-inseparable range is a 3rd honest rejection in this family —
+  close it for the pilot bar"). 0.6% precision and now-identical TP/FP shape stats clear
+  neither bar. **This closes the openings/RGB-color-anomaly-detection family for the pilot
+  bar** (which explicitly allows a human touch-up pass here, per the 2026-09-07 production-
+  bar decision) — three designs (global, local-contrast, per-wall detrending), three honest
+  measured rejections, no tuning-pass variation left untried in this family. A future attempt
+  needs a genuinely new data source or a structurally different idea — geometric void/hole
+  detection in the host wall was named as one candidate in this section already and remains
+  untried; nothing here should be read as evidence against it, since it doesn't depend on
+  color at all.
 - **Building A's round-budget exhaustion — two fixes landed, 3 real walls still unmatched,
   traced to two new, distinct, non-segmentation causes.** The fixed 40-round cap was replaced
   with an adaptive diminishing-returns stop, then `MULTI_CANDIDATE_K=5` let each round accept

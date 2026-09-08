@@ -7,9 +7,15 @@
 > 70/70, Sample House 59/59, all up from 0). Also 2026-09-08: item 2 (multi-storey)'s
 > write-side is DONE — `combine_floors_to_shared_frame` + `write_multistorey_reference_db` +
 > a new `run_dekh_staged.py --stage combine-storeys`, verified synthetically and against the
-> real (unmodified) `StructuralBomBuilder.java` consumer — but NOT yet run against real DeKH
-> Building A data (the `.laz` files aren't available in this environment; see `CLAUDE.md`'s
-> item 2 for the honest detail). This is the
+> real (unmodified) `StructuralBomBuilder.java` consumer. **Correction, same day, found later
+> in the session: the real DeKH `.laz`/`.npy`/GT-IFC files ARE available on this machine**
+> (`C:\DeKH\Buildings\` — an earlier search in this session missed them; see the `reference-
+> dekh-data-location` memory) — the multi-storey item's real-data run is therefore still open,
+> not blocked, and should use that path directly next time it's picked up. Also 2026-09-08,
+> using that real data: **item 3 (openings) is CLOSED for the pilot bar** — both remaining
+> ideas (the `.npy` labels, per-wall gradient detrending) were tried for real against a fresh
+> re-segmentation of real B_ICU, both REJECTED on measured evidence, per the pre-agreed stop
+> condition. This is the
 > itemized answer to "when is
 > this a production-ready tool" — not a calendar estimate (this project's own Prime Rule is
 > "never invent a number without a real source," and a date here would be exactly that). What
@@ -37,7 +43,7 @@
 
 | # | Item | Size | Status |
 |---|---|---|---|
-| A1 | Openings (doors/windows), 0% recall on real scans | **L — priority 3, ONE bounded attempt** | 2 RGB extraction designs rejected on measured false-positive rate (~2% both). Priority + explicit stop condition DECIDED 2026-09-07 — see `SEQUENCED SESSION PLAN` §3. |
+| A1 | Openings (doors/windows), 0% recall on real scans | **CLOSED for the pilot bar, 2026-09-08** | 3 RGB/color extraction designs rejected on measured evidence (global anomaly, local-contrast, per-wall gradient detrending — all ~0.6-2% precision). Closed per the pre-agreed 2026-09-07 stop condition; pilot bar explicitly allows human touch-up here. See `SEQUENCED SESSION PLAN` §3. |
 | A2 | `IfcColumn`, complete class gap (0/9, 0/7) | **L — priority 4, deferred** | Investigated 2026-09-07; found to be an extraction problem (no coherent segment exists to classify), not the classification problem it was picked as. 3 unimplemented options logged. Deferred behind items 1–3. |
 | A3 | Wall-face reunification (a wall's inner/outer face treated as 2 elements) | **L — not prioritized this round** | One design (distance-based merge) implemented, measured, and **rejected** — harmful fusions were the majority outcome at every threshold tested. 2 untried signals logged: in-plane footprint match, empty-cavity check between faces. |
 | A4 | Multi-storey detection (currently hardcoded to 1 storey per building) | **re-scoped 2026-09-07, write-side DONE 2026-09-08** | The realistic first step (formalize Building A's 2 separately-scanned floors into one real multi-storey `write_reference_db` output) is implemented and verified synthetically + against the real `StructuralBomBuilder.java` consumer — not yet run against real DeKH data (`.laz` files unavailable this session). Auto-detecting floors from one continuous scan (the harder sub-problem) remains unscoped. Full detail in `SEQUENCED SESSION PLAN` §2. |
@@ -268,34 +274,60 @@ not a re-statement of "this is unscoped":**
   picks this up next. (b) stays logged, not started, pending real client-scan-practice
   information.
 
-### 3. Openings — ONE more bounded attempt, explicit stop condition agreed before starting
-Two untried ideas from the RGB investigation, sequenced by cost and how directly each targets
-the diagnosed root cause (not tried in the order they were originally listed):
+### 3. Openings — CLOSED for the pilot bar, 2026-09-08
+Both untried ideas from the RGB investigation were tried for real this session, against a
+fresh re-segmentation of the real B_ICU point cloud (reproduced the documented baseline
+exactly before trusting the run — 4,661 total segments, 321 `IfcWall`, GT match 30/82, all
+matching the 2026-09-07 numbers).
 
-1. **Cheap pre-check first: what do the dataset's own `.npy` semantic labels actually encode?**
-   Near-zero cost — this project has used the `.npy` array only as an "unnamed grouping
-   signal" for purity scoring so far, and has never checked whether its label values actually
-   distinguish door-vs-wall semantically or only group by surface identity. Read label values
-   at known GT door locations vs. known GT wall locations in B_ICU; if they don't separate,
-   this idea is a real non-starter and is eliminated in under an hour, not guessed away.
-2. **If (1) doesn't resolve it: per-wall vertical-gradient detrending.** The most targeted
-   remaining idea, because it directly attacks the diagnosed root cause rather than a symptom
-   — regress RGB against height (z) per wall (low-order polynomial, grounded in wall #229's
-   own measured smooth gradient shape before picking an order), then run the SAME grid +
-   connected-component anomaly detector from tonight's two attempts on the RESIDUALS instead
-   of raw color. Reuses the tested methodology; changes only what's being thresholded.
+1. **`.npy` semantic labels — clean non-starter, eliminated cheaply as planned.** Real GT
+   doors and walls extracted from `DeKH_B_ICU.ifc` (`--skip-normalize`, same raw frame as the
+   `.laz`/`.npy`); read the real per-point label at every point inside a real GT door AABB and
+   every point inside a real GT wall AABB. Both populations dominated by the SAME label value
+   (75.6% of door points, 79.1% of wall points); **13/13 scoreable doors' label values are a
+   strict subset of their host wall's own label values** — no label value is door-exclusive.
+   Not quite either original guess (door-vs-wall semantics, or per-surface identity — the
+   small ~10-value label set across doors+walls rules out per-surface identity, which would
+   need roughly one value per wall/door). Reads as a coarse material-class map instead — a
+   closed door leaf is a similar solid vertical surface to its host wall. No usable signal
+   either way.
+2. **Per-wall vertical-gradient detrending — implemented, measured, REJECTED.** Regressed each
+   RGB channel against real-world Z per wall (linear fit), ran the same 10cm-grid/connected-
+   component detector from the two 2026-09-07 attempts on the residuals instead of raw color,
+   across all 321 real predicted `IfcWall` segments. A signal-only check (mirroring the
+   original Step 1 exactly, on residuals) held up well — median door-vs-host-wall residual
+   delta 21.97 across 13 scoreable doors, comparable to or better than the original raw-color
+   19.1. **But the full detector did WORSE**: precision 0.6% (9 TP / 1,626 FP, down from
+   1.9%), only 6/15 real doors covered by a TP region (down from 12/15), and TP/FP shape stats
+   (width, height, area) now essentially identical between the two populations — worse
+   separation than either original attempt.
 
-**Stop condition, agreed now, not after seeing the result:** re-run the exact same
-false-positive check used twice tonight (all 321 real predicted `IfcWall` segments in B_ICU,
-TP = majority of a region's points inside a real GT door AABB). **Continue toward
-implementation only if precision clears a real, order-of-magnitude bar — not "better than 2%,"
-which is still unusable, but into a range (rough target: ~20%+, or a population that is finally
-shape-separable from FP where a filter could plausibly clean the rest) that makes extraction
-plausible.** If the result lands back in the same ~1–5% range with TP/FP shape-inseparable,
-same as both attempts tonight — **that is 3 honest rejections in this problem family, and
-openings closes for the pilot bar (production bar #1 above explicitly allows a human
-touch-up pass on this exact gap).** Do not start a 4th design in this family without a
-genuinely new data source, not a 3rd variation on anomaly-detection-over-existing-segments.
+   **Traced the gap, not just reported it.** First hypothesis — the door's own points pulling
+   its host wall's linear fit off-baseline (plausible: on small partition walls a door can be
+   a large fraction of the wall face) — tested directly with an oracle re-fit excluding each
+   door's own points from its host wall's regression, compared against the contaminated fit:
+   ratio 0.98–1.10 across all 13 doors (median ~1.00). **FALSIFIED** — the fit itself is
+   essentially unaffected by whether the door's points are included. The real mechanism,
+   consistent with the confound this project already diagnosed on 2026-09-07: the lighting
+   gradient and the real door signal are spatially COINCIDENT at floor level, not merely
+   correlated. A linear per-wall detrend removes a smooth global trend, but leaves untouched
+   both real 10cm-cell-scale scan/material noise and any OTHER near-floor color variation
+   (baseboards, floor-material bleed, shadowing) that a detector genuinely cannot distinguish
+   from a door — both live at the same low Z the detrending can't selectively touch.
+
+**Verdict, per the pre-agreed stop condition (fixed 2026-09-07, before this session's result
+was known):** "continue only if precision clears a real order-of-magnitude bar (~20%+, or a
+TP/FP population that's finally shape-separable)... landing back in the same ~1–5%,
+shape-inseparable range is a 3rd honest rejection in this family — close it for the pilot bar
+and don't start a 4th design without a genuinely new data source." 0.6% precision and
+now-identical TP/FP shapes clear neither bar. **Openings is CLOSED for the pilot bar**
+(production bar #1 above explicitly allows a human touch-up pass on this exact gap). Three
+designs (global anomaly, local-contrast, per-wall detrending), three honest measured
+rejections — no tuning-pass variation left untried in this family. Full numbers and reasoning:
+`DAGCompiler/python/scan_to_bom/README.md`'s "RGB-based color-anomaly opening detection"
+section. A future attempt needs a genuinely new data source or a structurally different idea
+— geometric void/hole detection in the host wall was named but never tried, and doesn't
+depend on color at all, so nothing here counts as evidence against it.
 
 ### 4. `IfcColumn` — deferred behind items 1–3 above
 Stays exactly as characterized in section A2. Not started until 1–3 are done or explicitly
