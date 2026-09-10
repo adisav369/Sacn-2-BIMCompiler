@@ -14,9 +14,14 @@
 > data (`C:\DeKH\Buildings\`, found later that same session): both floors segmented, combined
 > into a genuine 2-storey reference DB, and pushed through the actual Java chain — the Java
 > side correctly `auto-discovered 2 spatial containers`, built 2 real per-storey BOMs, passed
-> every QA gate, wrote 2,914 real `C_OrderLine` rows. Full compile blocked only on an
+> every QA gate, wrote 2,914 real `C_OrderLine` rows. Full compile was blocked on an
 > unrelated, pre-existing `component_library.db` gap (no `IfcRoof (plane)` geometry entry) —
-> the multi-storey structure itself is proven correct end-to-end through BOM build. (3)
+> **FIXED 2026-09-10** (commit `868d349dc`, real catalog entry sized to the real median of
+> 1,144 measured roof segments) — which unblocked that exception but immediately surfaced a
+> NEW, different, not-yet-investigated finding (item **A11**: `expectedElements()`=2,919 vs
+> `result.elementCount()`=175, a gap the measured ~1.2x factorization ratio doesn't explain).
+> The multi-storey structure itself remains proven correct end-to-end through BOM build; full
+> compile-to-completion is blocked by A11 now, not the catalog gap. (3)
 > openings — ~~one more bounded attempt~~ **CLOSED for the pilot bar 2026-09-08**: both
 > remaining ideas (`.npy` labels, per-wall gradient detrending) tried for real against a
 > fresh B_ICU re-segmentation, both rejected on measured evidence, per the pre-agreed stop

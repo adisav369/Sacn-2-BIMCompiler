@@ -281,9 +281,30 @@ beyond it yet). **87–97% wall recovery is accepted, closed, not pursued furthe
    entry for the point-cloud pipeline's generic `"IfcRoof (plane)"` family/discipline
    combination — a catalog-completeness issue, correctly refusing to invent geometry per the
    PRIME RULE, not a defect in the multi-storey write, A10, or anything else touched this
-   session. Not chased further tonight (needs a real catalog entry, its own small task). The
-   multi-storey structure itself is proven correct end-to-end through BOM build; only the
-   final geometry-instancing step for one specific product family remains blocked.
+   session.
+
+   **FIXED 2026-09-10 (commit `868d349dc`).** Added a real `component_definitions` +
+   `component_geometries` row: a box (same binary convention as a real, already-working
+   catalog entry, confirmed by reading its own blob bytes directly, not guessed) sized to the
+   REAL median of the 1,144 actually-measured `IfcRoof`-classified segments in this exact
+   building — 5.819×4.162×1.740m, never invented. `component_types` already had a real
+   `('IfcRoof','ROOF','ARC')` row (id=22) sitting unused — the schema already anticipated this
+   entry. Verified by reproducing the exact failure and fixing it: built and tested in a
+   scratch library copy first, confirmed byte-identical, then applied the same swap→run→
+   restore→verify pattern as D4/D1 to prove it against the real tracked file (byte-identical
+   before/after via sha256) before committing it permanently. Purely additive (+1/+1 rows,
+   verified directly).
+
+   **The `MetadataMissingException` is gone — compile proceeds through all 175 elements' real
+   geometry and every GEO forensic proof (175/175 OK, 0 FAIL) — but immediately hits a NEW,
+   different, not-yet-investigated finding: `entry.expectedElements()` (2,919) vs
+   `result.elementCount()` (175).** `IFCtoBOMPipeline`'s own comment says `expected_elements`
+   should already account for qty-based consolidation, and the classify-stage factorization
+   ratio measured for this build was a mild ~1.2x — nowhere near enough to explain this gap.
+   Logged as **A11** in `PRODUCTION_READINESS_BACKLOG.md` (new item, not yet investigated).
+   The multi-storey structure itself remains proven correct through BOM build; full
+   compile-to-completion is blocked by this new, separate finding now, not by the catalog gap
+   this fix closed.
 
    **Also NOT done, and NOT the same problem:** the `floor_z`-averaging landmine (`floor_z` =
    MEAN of every floor-segment centroid, in `classify.py`/`run_scan_to_bom.py`/
